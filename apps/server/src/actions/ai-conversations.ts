@@ -6,6 +6,7 @@ import {
   queryAiConversation,
   queryAiConversationSummary,
   queryAiConversations,
+  queryAiUsageDaily,
 } from '@nibleaf/clickhouse';
 import { createLogger } from '@nibleaf/logger';
 import {
@@ -68,4 +69,9 @@ export const listProjectAiContentGaps = async (tenantId: string, projectId: stri
     ...(await read(() => queryAiContentGaps(c.scope, query), { items: [] })),
     captureEnabled: c.captureEnabled,
   });
+};
+
+export const getProjectAiUsage = async (tenantId: string, projectId: string, query: AiConversationSummaryQuery) => {
+  const c = await context(tenantId, projectId);
+  return read(async () => ({ items: await queryAiUsageDaily(c.scope, query) }), { items: [] });
 };

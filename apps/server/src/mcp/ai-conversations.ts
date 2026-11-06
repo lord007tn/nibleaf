@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   getProjectAiConversation,
   getProjectAiConversationSummary,
+  getProjectAiUsage,
   listProjectAiContentGaps,
   listProjectAiConversations,
 } from '@/actions/ai-conversations';
@@ -16,6 +17,15 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
   const annotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   const org = principal.project.organizationId;
   const project = principal.project.id;
+  server.registerTool(
+    'get_ai_usage',
+    {
+      description: 'Daily per-model questions, outcomes, tokens, cost in micros, latency and first-token sums/counts, and retrieval cache hits.',
+      inputSchema: aiConversationSummaryQuery,
+      annotations,
+    },
+    (query) => runMcpReadTool(ctx, principal, 'get_ai_usage', 'analytics:read', () => getProjectAiUsage(org, project, query)),
+  );
   server.registerTool(
     'list_ai_conversations',
     {

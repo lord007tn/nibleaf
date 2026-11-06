@@ -16,6 +16,7 @@ const availableTools = [
   ['get_analytics_overview', 'analytics:read'],
   ['list_ai_conversations', 'analytics:read'],
   ['get_ai_conversation', 'analytics:read'],
+  ['get_ai_usage', 'analytics:read'],
   ['get_ai_feedback_summary', 'analytics:read'],
   ['list_ai_content_gaps', 'analytics:read'],
   ['get_search_configuration', 'search:read'],

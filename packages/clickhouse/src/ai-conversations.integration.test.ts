@@ -1,6 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { type AiTurnRow, queryAiContentGaps, queryAiConversationSummary, queryAiConversations } from './ai-conversations';
+import {
+  type AiTurnRow,
+  aiChatEventRowSchema,
+  deleteAiConversation,
+  deleteProjectAiConversations,
+  insertAiChatEvents,
+  queryAiChatEngagement,
+  queryAiContentGaps,
+  queryAiConversationSummary,
+  queryAiConversations,
+  queryAiUsageDaily,
+  refreshAiUsageDaily,
+} from './ai-conversations';
 import { getClickHouseClient } from './client';
 
 // Never run synthetic writes against a default or production database.
@@ -134,6 +146,48 @@ integration('AI archive SQL integration', () => {
         format: 'JSONEachRow',
         values: [{ tenant_id: tenant, project_id: project, conversation_id: deleted, deleted_at: at(0) }],
       });
+      const event = aiChatEventRowSchema.parse({
+        tenant_id: tenant,
+        project_id: project,
+        event_id: randomUUID(),
+        event_name: 'first_token',
+        occurred_at: at(0),
+        received_at: at(0),
+        conversation_id: c1,
+        turn_id: base.turn_id,
+        language: 'en',
+        visibility: 'public',
+        consent_state: 'unknown',
+        session_hash: null,
+        source: '',
+        outcome: '',
+        reason: '',
+        quota_kind: '',
+        provider_phase: '',
+        citation_id: '',
+        position: 0,
+        ttft_ms: 125,
+        latency_ms: 0,
+        provider: '',
+        model: '',
+        input_tokens: 0,
+        output_tokens: 0,
+        tokens_known: 0,
+        cost_micros: 0,
+        cost_known: 0,
+        retrieval_cache_hit: 0,
+        rating: '',
+        previous_rating: '',
+        feedback_reason: '',
+      });
+      await insertAiChatEvents([event, event], client);
+      expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBe(125);
+      const days = [at(0).slice(0, 10), at(24).slice(0, 10)];
+      await refreshAiUsageDaily(scope, days, client);
+      await refreshAiUsageDaily(scope, days, client);
+      const usage = await queryAiUsageDaily(scope, {});
+      expect(usage.reduce((n, r) => n + Number(r.questions), 0)).toBe(5);
+      expect(usage.reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(50);
       const all = await queryAiConversations(scope, {});
       expect(all.items).toHaveLength(3);
       expect(all.items.map((r) => r.conversationId)).not.toContain(deleted);
@@ -198,6 +252,9 @@ integration('AI archive SQL integration', () => {
         downCount: 1,
       });
       expect((await queryAiConversationSummary(gapScope, {})).usage).toMatchObject({ costUsd: null, costComplete: false });
+      await deleteAiConversation(scope, c1, client);
+      expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBeNull();
+      expect((await queryAiUsageDaily(scope, {})).reduce((n, r) => n + Number(r.questions), 0)).toBe(2);
       // A project-wide tombstone must exclude both sources even when facts still exist.
       await client.insert({
         table: 'ai_conversation_deletions',
@@ -207,8 +264,10 @@ integration('AI archive SQL integration', () => {
       expect((await queryAiConversations(scope, {})).items).toEqual([]);
       expect((await queryAiConversationSummary(scope, {})).totals.questions).toBe(0);
       expect((await queryAiContentGaps(scope, {})).items).toEqual([]);
+      await deleteProjectAiConversations(tenant, project);
+      expect(await queryAiUsageDaily(scope, {})).toEqual([]);
     } finally {
-      for (const table of ['ai_conversation_turns', 'ai_conversation_feedback', 'ai_conversation_deletions']) {
+      for (const table of ['ai_conversation_turns', 'ai_conversation_feedback', 'ai_chat_events', 'ai_usage_daily', 'ai_conversation_deletions']) {
         await client.command({
           query: `ALTER TABLE ${table} DELETE WHERE tenant_id={tenant:String} SETTINGS mutations_sync=2`,
           query_params: { tenant },

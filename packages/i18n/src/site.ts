@@ -19,6 +19,7 @@ import { site_ai_copyfailed } from './paraglide/messages/site_ai_copyfailed.js';
 import { site_ai_down } from './paraglide/messages/site_ai_down.js';
 import { site_ai_failed } from './paraglide/messages/site_ai_failed.js';
 import { site_ai_find } from './paraglide/messages/site_ai_find.js';
+import { site_ai_follow_ups } from './paraglide/messages/site_ai_follow_ups.js';
 import { site_ai_hard } from './paraglide/messages/site_ai_hard.js';
 import { site_ai_incomplete } from './paraglide/messages/site_ai_incomplete.js';
 import { site_ai_incorrect } from './paraglide/messages/site_ai_incorrect.js';
@@ -52,6 +53,7 @@ import { site_ai_stop } from './paraglide/messages/site_ai_stop.js';
 import { site_ai_subtitle } from './paraglide/messages/site_ai_subtitle.js';
 import { site_ai_suggestions } from './paraglide/messages/site_ai_suggestions.js';
 import { site_ai_summary } from './paraglide/messages/site_ai_summary.js';
+import { site_ai_support } from './paraglide/messages/site_ai_support.js';
 import { site_ai_thanks } from './paraglide/messages/site_ai_thanks.js';
 import { site_ai_title } from './paraglide/messages/site_ai_title.js';
 import { site_ai_typing } from './paraglide/messages/site_ai_typing.js';
@@ -154,6 +156,8 @@ const siteMessages = {
   aiPageBody: site_ai_page_body,
   aiPageTitle: site_ai_page_title,
   aiTyping: site_ai_typing,
+  aiFollowUps: site_ai_follow_ups,
+  aiSupport: site_ai_support,
   aiQuestion: site_ai_question,
   aiSend: site_ai_send,
   aiStop: site_ai_stop,

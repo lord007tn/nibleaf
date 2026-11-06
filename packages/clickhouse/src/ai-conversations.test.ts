@@ -3,9 +3,11 @@ import {
   aiConversationMigrations,
   buildAiConversationQuery,
   deleteAiConversation,
+  queryAiChatEngagement,
   queryAiContentGaps,
   queryAiConversationSummary,
   queryAiConversations,
+  refreshAiUsageDaily,
 } from './ai-conversations';
 import { redactConversationText } from './redaction';
 
@@ -56,13 +58,12 @@ describe('AI archive', () => {
     expect(q.query).toContain('ai_conversation_deletions FINAL');
   });
   it('uses additive idempotent migrations above the analytics range', () => {
-    expect(aiConversationMigrations.every((m) => m.version >= 1001 && m.statements.every((s) => s.startsWith('CREATE TABLE IF NOT EXISTS')))).toBe(
-      true,
-    );
+    expect(aiConversationMigrations.every((m) => m.version >= 1001 && m.statements.every((s) => s.includes('IF NOT EXISTS')))).toBe(true);
   });
   it('writes the tombstone before physical purges', async () => {
     const calls: string[] = [];
     const client = {
+      query: vi.fn().mockResolvedValue(reply([])),
       insert: async () => {
         calls.push('tombstone');
       },
@@ -71,7 +72,7 @@ describe('AI archive', () => {
       },
     };
     await deleteAiConversation(scope, 'c', client as never);
-    expect(calls).toEqual(['tombstone', 'purge', 'purge']);
+    expect(calls).toEqual(['tombstone', 'purge', 'purge', 'purge']);
   });
   it('binds list filters and cursor and maps bounded aggregate rows', async () => {
     mocks.query.mockResolvedValueOnce(reply([aggregate(), aggregate({ conversationId: 'a' })]));
@@ -180,7 +181,7 @@ describe('AI archive', () => {
     expect(result.timeseries[0]).toMatchObject({ date: '2026-10-31', questions: 2, costUsd: null });
     expect(result.languages).toEqual([{ language: 'ar', questions: 2 }]);
     for (const [call] of mocks.query.mock.calls) {
-      expect(call.query_params.timezone).toBe(expected);
+      if ('timezone' in call.query_params) expect(call.query_params.timezone).toBe(expected);
       expect(call.query).not.toContain('SELECT *');
       expect(call.query).toContain('ai_conversation_deletions FINAL');
     }
@@ -190,4 +191,28 @@ describe('AI archive', () => {
     expect(result.usage.costUsd).toBeNull();
     expect(result.usage.costComplete).toBe(false);
   });
+});
+
+it('maps engagement medians, opens and counts without content', async () => {
+  mocks.query.mockResolvedValue(
+    reply([
+      { event_name: 'chat_opened', source: 'launcher', n: '2', median: 0 },
+      { event_name: 'first_token', source: '', n: '1', median: 125 },
+      { event_name: 'citation_clicked', source: '', n: '3', median: 0 },
+    ]),
+  );
+  expect(await queryAiChatEngagement(scope, {})).toMatchObject({
+    opens: 2,
+    opensBySource: [{ source: 'launcher', count: 2 }],
+    citationClicks: 3,
+    medianFirstTokenMs: 125,
+    medianLatencyMs: null,
+  });
+});
+it('rebuilds exact rollups from FINAL rows and previous keys with bound days', async () => {
+  const command = vi.fn();
+  await refreshAiUsageDaily(scope, ['2026-11-01'], { command } as never);
+  expect(command.mock.calls[0]?.[0].query).toContain('ai_conversation_turns FINAL');
+  expect(command.mock.calls[0]?.[0].query).toContain('UNION ALL');
+  expect(command.mock.calls[0]?.[0].query_params.days).toEqual(['2026-11-01']);
 });

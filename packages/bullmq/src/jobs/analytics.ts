@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AiConversationJobData } from './ai-conversations';
 
 export type AnalyticsJobName =
+  | 'ai-chat-events'
   | 'ai-conversation-turn'
   | 'ai-conversation-feedback'
   | 'ingest-usage'

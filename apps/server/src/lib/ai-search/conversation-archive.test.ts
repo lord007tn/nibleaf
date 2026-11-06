@@ -19,6 +19,7 @@ import {
   buildAiFeedbackRow,
   buildAiTurnRow,
   type ChatTurnCapture,
+  recordAiChatEvents,
   recordAiChatTurn,
 } from './conversation-archive';
 
@@ -93,4 +94,17 @@ describe('capture policy', () => {
     await recordAiChatTurn(capture);
     expect(mocks.createJob).not.toHaveBeenCalled();
   });
+});
+
+it('captures content-free events with scoped, consent-gated session hashes', async () => {
+  const event = { name: 'chat_opened', conversationId: capture.conversationId, source: 'launcher' } as const;
+  await recordAiChatEvents({ ...capture, sessionId: 'session1', consent: 'unknown' }, [event]);
+  const first = mocks.createJob.mock.calls[0]?.[1].data.rows[0];
+  expect(first.session_hash).toBeNull();
+  expect(first).not.toHaveProperty('question');
+  await recordAiChatEvents({ ...capture, sessionId: 'session1' }, [event]);
+  await recordAiChatEvents({ ...capture, projectId: 'other', sessionId: 'session1' }, [event]);
+  expect(mocks.createJob.mock.calls[1]?.[1].data.rows[0].session_hash).not.toBe(mocks.createJob.mock.calls[2]?.[1].data.rows[0].session_hash);
+  mocks.createJob.mockRejectedValueOnce(new Error('private'));
+  await expect(recordAiChatEvents(capture, [event])).resolves.toBeUndefined();
 });

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConversationList } from './conversation-list';
 import { DeleteConversationButton } from './detail';
 import { GapList } from './gaps';
-import { CostValue } from './overview';
+import { CostValue, Engagement } from './overview';
 import { aiDashboardSearch, conversationFilters } from './search';
 
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -114,4 +114,29 @@ describe('AI dashboard', () => {
     expect(renderToStaticMarkup(<DeleteConversationButton allowed={false} pending={false} onDelete={vi.fn()} />)).toBe('');
     expect(renderToStaticMarkup(<DeleteConversationButton allowed pending onDelete={vi.fn()} />)).toContain('disabled');
   });
+});
+
+it('renders engagement counts and unknown timing in plain-language labels', () => {
+  const html = renderToStaticMarkup(
+    <Engagement
+      data={{
+        opens: 2,
+        opensBySource: [{ source: 'launcher', count: 2 }],
+        citationClicks: 3,
+        followUpClicks: 1,
+        copies: 0,
+        stops: 0,
+        newChats: 0,
+        feedbackGiven: 1,
+        feedbackChanged: 0,
+        quotaReached: 0,
+        providerErrors: 0,
+        medianFirstTokenMs: null,
+        medianLatencyMs: 123,
+      }}
+    />,
+  );
+  expect(html).toContain('dashboard.ai.launcher');
+  expect(html).toContain('dashboard.ai.noTiming');
+  expect(html).toContain('123');
 });

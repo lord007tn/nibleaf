@@ -66,6 +66,7 @@ export function Overview({ data }: { data: AiConversationSummary }) {
           </p>
         </details>
       </div>
+      <Engagement data={data.engagement} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Series data={data.timeseries} kind="questions" />
         <Series data={data.timeseries} kind="cost" />
@@ -149,6 +150,50 @@ function Series({ data, kind }: { data: AiConversationSummary['timeseries']; kin
           </ChartContainer>
         </details>
       )}
+    </section>
+  );
+}
+
+export function Engagement({ data }: { data: AiConversationSummary['engagement'] }) {
+  const t = useT();
+  const f = useFormatters();
+  const counts = [
+    'opens',
+    'citationClicks',
+    'followUpClicks',
+    'copies',
+    'stops',
+    'newChats',
+    'feedbackGiven',
+    'feedbackChanged',
+    'quotaReached',
+    'providerErrors',
+  ] as const;
+  return (
+    <section className="space-y-4">
+      <h2 className="font-medium">{t('dashboard.ai.engagement')}</h2>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ListCard
+          title={t('dashboard.ai.readerActions')}
+          empty={t('dashboard.ai.empty')}
+          items={counts.map((key) => ({ key, label: t(`dashboard.ai.${key}`), value: data[key] }))}
+        />
+        <ListCard
+          title={t('dashboard.ai.openSources')}
+          empty={t('dashboard.ai.empty')}
+          items={data.opensBySource.map((row) => ({ key: row.source, label: t(`dashboard.ai.${row.source}`), value: row.count }))}
+        />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {(['medianFirstTokenMs', 'medianLatencyMs'] as const).map((key) => (
+          <div key={key} className="rounded-xl border bg-card p-5">
+            <p className="text-muted-foreground text-sm">{t(`dashboard.ai.${key}`)}</p>
+            <p className="mt-2 font-semibold text-xl">
+              {data[key] === null ? t('dashboard.ai.noTiming') : t('dashboard.ai.milliseconds', { value: f.number(data[key]) })}
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

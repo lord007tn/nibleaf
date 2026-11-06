@@ -339,6 +339,7 @@ describe('Nibleaf MCP protocol surface', () => {
       'analytics:read',
       [
         'get_ai_conversation',
+        'get_ai_usage',
         'get_ai_feedback_summary',
         'get_analytics_overview',
         'get_capabilities',
