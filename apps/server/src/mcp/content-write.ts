@@ -49,7 +49,7 @@ const markdownArg = z
   .string()
   .max(MAX_MCP_MARKDOWN_BYTES)
   .describe(
-    `Page body as Markdown/MDX (max ${MAX_MCP_MARKDOWN_BYTES / 1024} KiB). A leading YAML frontmatter block may set title, description and icon; explicit arguments win over frontmatter.`,
+    `Page body as Markdown/MDX (max ${MAX_MCP_MARKDOWN_BYTES / 1024} KiB). A leading YAML frontmatter block may set title, description and icon; explicit arguments win over frontmatter. The title is shown above the body, so start the body with the content, not a "# Title" heading.`,
   );
 const titleArg = z.string().max(200);
 const descriptionArg = z.string().max(500);
