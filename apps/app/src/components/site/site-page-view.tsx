@@ -28,7 +28,8 @@ const applyUrlTemplate = (template: string | undefined, path: string, fallbackUr
 /** The dark-mode twin of a light/dark image pair (`hidden dark:block`): the
  *  reader sees one screenshot, not two. */
 const isDarkModeTwin = (image: string): boolean => {
-  const classes = image.match(/\bclass(?:Name)?=["']([^"']*)["']/)?.[1]?.split(/\s+/) ?? [];
+  // class="…", className="…" or className={"…"}
+  const classes = image.match(/\bclass(?:Name)?=\{?["']([^"']*)["']\}?/)?.[1]?.split(/\s+/) ?? [];
   return classes.includes('hidden') && classes.some((name) => name.startsWith('dark:') && name !== 'dark:hidden');
 };
 

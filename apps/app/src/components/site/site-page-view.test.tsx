@@ -117,6 +117,8 @@ describe('published page presentation', () => {
       renderToStaticMarkup(<SitePageView data={data({ page: { ...data().page, content } })} projectId="project-1" />).replaceAll('<!-- -->', '');
     expect(render(pair)).toMatch(/>\s*1 screenshot</);
     expect(render(`${pair}\n![Settings](/settings.png)`)).toMatch(/>\s*2 screenshots</);
+    // The JSX expression form of the class list counts the same way.
+    expect(render(pair.replace('className="hidden dark:block"', 'className={"hidden dark:block"}'))).toMatch(/>\s*1 screenshot</);
   });
 
   it.each(['en', 'ar'])('shows public %s content without Markdown source controls', async (language) => {

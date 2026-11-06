@@ -345,6 +345,67 @@ describe('published reader search', () => {
     expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
     await typeQuery('كيف أبدأ');
     expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+    // Arabic openers with a و/ف prefix, and ما before a longer phrase, are questions too.
+    for (const question of ['وكيف أغير الخطة', 'فهل يمكنني الإلغاء', 'ما الفرق بين الإصدارين']) {
+      await typeQuery(question);
+      expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+    }
+    // A short title such as "ما الجديد" (What's new) stays a keyword.
+    await typeQuery('ما الجديد');
+    expect(option('Setup guide')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('announces the best match when results arrive after the keystroke, and ↓ moves on from it', async () => {
+    const first = { ...hit, id: 'first', path: 'first', title: 'First guide' };
+    const second = { ...hit, id: 'second', path: 'second', title: 'Second guide' };
+    const { rerender } = await render();
+    // The keystroke renders while the debounced search still runs.
+    mocks.debounced = 'gui';
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await typeQuery('guide');
+    // Results arrive in a later render, as they always do in a browser.
+    mocks.debounced = undefined;
+    mocks.search.mockReturnValue({ data: [first, second], isFetching: false, error: null });
+    await rerender();
+    expect(option('First guide')?.getAttribute('aria-selected')).toBe('true');
+    expect(input()?.getAttribute('aria-activedescendant')).toBe(option('First guide')?.id);
+    await press('ArrowDown');
+    expect(option('Second guide')?.getAttribute('aria-selected')).toBe('true');
+    expect(input()?.getAttribute('aria-activedescendant')).toBe(option('Second guide')?.id);
+  });
+
+  it('opens the best match for an Enter pressed while a keyword search loads, unless the reader types on', async () => {
+    const { rerender } = await render();
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await typeQuery('setup');
+    await press('Enter');
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await rerender();
+    expect(mocks.navigate).toHaveBeenCalledOnce();
+    expect(mocks.navigate.mock.calls[0]?.[0]?.href).toContain('setup');
+    // Typing after Enter cancels the held press.
+    mocks.navigate.mockClear();
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await typeQuery('billing');
+    await press('Enter');
+    await typeQuery('billing plans');
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await rerender();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('offers "Ask AI" above the loading rows while a question\'s first results load', async () => {
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await render();
+    await typeQuery('How do I start?');
+    const ask = option('searchAskAiAbout');
+    expect(ask?.getAttribute('aria-selected')).toBe('true');
+    const skeleton = document.querySelector('[data-search-skeleton]');
+    expect(skeleton).not.toBeNull();
+    expect(ask && skeleton ? ask.compareDocumentPosition(skeleton) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
+    await press('Enter');
+    expect(mocks.mutate).toHaveBeenCalledOnce();
   });
 
   it('hands the question to an external assistant from results and from an empty result', async () => {

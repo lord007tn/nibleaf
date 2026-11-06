@@ -8,7 +8,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, ArrowLeft, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
-import { Fragment, lazy, type ReactNode, type RefObject, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, lazy, type ReactNode, type RefObject, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
@@ -164,10 +164,11 @@ function RowIcon({ children, className }: { children: ReactNode; className?: str
 }
 
 /** Queries phrased as questions default to "Ask AI"; keywords default to the best page. */
-// Arabic ما / من alone also start ordinary titles ("من نحن", About us), so only
-// ما هو/هي and من هو/هي count as question openers.
+// Arabic openers may carry a و/ف prefix ("وكيف", "فهل"). ما / من alone also start
+// ordinary titles ("من نحن" About us, "ما الجديد" What's new), so bare ما counts
+// only before two or more words, and من only as من هو/هي.
 const QUESTION =
-  /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will|كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s/i;
+  /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will)\s|^[وف]?(كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s|^[وف]?ما\s+\S+\s+\S+/i;
 
 // A controlled value no row has. cmdk auto-selects the first row whenever the
 // value is empty, so "nothing selected" needs a value of its own.
@@ -244,8 +245,11 @@ export default function SiteSearchDialog({
   // Results from before the field was emptied don't stand in for a new search:
   // until fresh results arrive, a new search after clearing shows skeletons.
   const [keepPrevious, setKeepPrevious] = useState(true);
+  // Enter pressed while a keyword search loads opens the best match once it arrives.
+  const [pendingEnter, setPendingEnter] = useState(false);
   const changeQuery = (value: string) => {
     setQuery(value);
+    setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
   };
   // Text typed before the dialog loaded keeps its caret at the end; a reopened
@@ -286,6 +290,8 @@ export default function SiteSearchDialog({
   const askInert = staleHits && !QUESTION.test(trimmed);
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
   const canAsk = askAiAvailable && trimmed.length >= 2;
+  // A question can go to "Ask AI" even while its first results load.
+  const questionLoading = queryPending && !staleHits && canAsk && QUESTION.test(trimmed);
   // A completed request belongs to the exact question and documentation scope
   // that produced it. Editing the query or version must never relabel old
   // evidence or send its citations into a different version.
@@ -393,10 +399,12 @@ export default function SiteSearchDialog({
     if (recent.length > 0) itemValues.push('recent-clear');
     itemValues.push(...suggestionValues);
   } else if (staleHits) {
-    // Dimmed results can't be chosen, and neither can "Ask AI" for a keyword:
-    // Enter waits for the new results rather than sending the keyword to the AI
-    // (cmdk would otherwise land on the first row it can). A question keeps it.
+    // Dimmed results can't be chosen, and neither can "Ask AI" for a keyword
+    // (cmdk would otherwise land on the first row it can): Enter is held until
+    // the new results arrive and then opens the best match. A question keeps it.
     if (canAsk && !askInert) itemValues.push(askValue);
+  } else if (questionLoading) {
+    itemValues.push(askValue);
   } else if (hits.length > 0) {
     if (canAsk) itemValues.push(askValue);
     for (const [index, hit] of hits.entries()) {
@@ -427,9 +435,30 @@ export default function SiteSearchDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new result set or query resets the highlight.
   useEffect(() => {
     setActiveItem('');
-    // Fresh results may again stand in, dimmed, while the next search loads.
-    if (hitsQuery.data !== undefined && !hitsQuery.isPlaceholderData) setKeepPrevious(true);
   }, [hitsQuery.data, debouncedQuery]);
+  // cmdk recomputes the input's aria-activedescendant only when its own selection
+  // changes, not when the controlled value does. So the controlled value only ever
+  // echoes a row cmdk itself selected (the reader's choice, or the best match routed
+  // through restoreSelection below); otherwise it holds NO_SELECTION. Without this,
+  // results that arrive after the keystroke are highlighted but not announced, and
+  // the first ↓ skips the best match.
+  const cmdkValue = itemValues.includes(activeItem) ? activeItem : NO_SELECTION;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-sync when the wanted row, the reader's row or the result set changes.
+  useLayoutEffect(() => {
+    if (activeItem === selectedValue || !selectedValue || selectedValue === NO_SELECTION) return;
+    queueMicrotask(() => restoreSelection(selectedValue));
+  }, [selectedValue, activeItem, hitsQuery.data]);
+  // Fresh results may again stand in, dimmed, while the next search loads.
+  useEffect(() => {
+    if (!queryPending && hits.length > 0) setKeepPrevious(true);
+  }, [queryPending, hits.length]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the held Enter can be answered.
+  useEffect(() => {
+    if (!pendingEnter || queryPending) return;
+    setPendingEnter(false);
+    const best = hits[0];
+    if (best && !searchFailed) openPage(best.path, best.language, { hit: best, position: 1 });
+  }, [pendingEnter, queryPending]);
 
   const statusMessage =
     mode === 'answer'
@@ -513,7 +542,7 @@ export default function SiteSearchDialog({
         <Command
           shouldFilter={false}
           label={t('searchDocumentation')}
-          value={selectedValue}
+          value={cmdkValue}
           onValueChange={(value) => {
             if (readerMovedRef.current) setActiveItem(value);
             else if (value !== selectedValue) queueMicrotask(() => restoreSelection(selectedValue));
@@ -549,9 +578,13 @@ export default function SiteSearchDialog({
               enterKeyHint={mode === 'answer' ? 'send' : 'search'}
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {
-                if (mode === 'answer' && event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+                if (mode === 'answer') {
                   event.preventDefault();
                   ask();
+                } else if (queryPending && !itemValues.includes(selectedValue)) {
+                  // Nothing to choose yet: open the best match when it arrives.
+                  setPendingEnter(true);
                 }
               }}
             />
@@ -584,14 +617,6 @@ export default function SiteSearchDialog({
               {/* Messages stay outside the listbox, which may only hold options. */}
               {!trimmed && recent.length === 0 && visibleSuggestions.length === 0 ? (
                 <p className="px-6 py-10 text-center text-muted-foreground text-sm">{t('searchPrompt')}</p>
-              ) : null}
-              {queryPending && !staleHits ? (
-                // First results for this search: rows shaped like the results.
-                <div aria-hidden className="space-y-1 p-1.5" data-search-skeleton>
-                  {['a', 'b', 'c'].map((row) => (
-                    <SkeletonListRow key={row} className="min-h-11 rounded-lg px-2.5" />
-                  ))}
-                </div>
               ) : null}
               {searchFailed ? (
                 <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
@@ -732,8 +757,18 @@ export default function SiteSearchDialog({
                     {askRow}
                     {suggestionGroup}
                   </>
+                ) : questionLoading ? (
+                  askRow
                 ) : null}
               </CommandList>
+              {queryPending && !staleHits ? (
+                // First results for this search: rows shaped like the results.
+                <div aria-hidden className="space-y-1 p-1.5" data-search-skeleton>
+                  {['a', 'b', 'c'].map((row) => (
+                    <SkeletonListRow key={row} className="min-h-11 rounded-lg px-2.5" />
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             <section
