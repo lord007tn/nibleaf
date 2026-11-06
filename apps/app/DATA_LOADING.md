@@ -186,9 +186,11 @@ Per-item rollback keeps a small record of what each write in flight claims, shar
 
 ```ts
 onMutate: async ({ id, resolved }) => {
-  const entry = intents.of(queryClient).get(id) ?? { confirmed: currentValue(id), pending: [] };
+  const byId = intents.of(queryClient);
+  const entry = byId.get(id) ?? { confirmed: currentValue(id), pending: [] };
   const token = intents.nextToken();
   entry.pending.push({ token, resolved }); // before any await, so the list follows click order
+  byId.set(id, entry); // save it: onSettled needs it to undo a failed write
   // …cancel queries, then show the newest pending value (or `confirmed`)
   return { token };
 },
