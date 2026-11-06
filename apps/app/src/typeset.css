@@ -534,11 +534,6 @@
 .reader-heading:focus-within .reader-section-link {
   opacity: 1;
 }
-.reader-image {
-  position: relative;
-  display: inline-block;
-  max-inline-size: 100%;
-}
 .reader-image-zoom {
   position: absolute;
   inset-inline-end: 0.5rem;
@@ -591,20 +586,30 @@
   font-size: 0.75rem;
   font-weight: 600;
 }
+/* The scrollbar follows the theme's code surface (warm in Manuscript, author-set
+ * anywhere), falling back to the default dark panel. */
+[data-theme-component="code"] {
+  --code-scrollbar-track: var(--theme-code, #0d1117);
+  --code-scrollbar-thumb: color-mix(
+    in oklab,
+    var(--theme-code-foreground, #e2e8f0) 35%,
+    var(--code-scrollbar-track)
+  );
+}
 [data-theme-component="code"] pre {
   white-space: pre;
   overflow-x: auto;
   scrollbar-width: thin;
-  scrollbar-color: #596579 #161d28;
+  scrollbar-color: var(--code-scrollbar-thumb) var(--code-scrollbar-track);
 }
 [data-theme-component="code"] pre::-webkit-scrollbar {
   height: 8px;
 }
 [data-theme-component="code"] pre::-webkit-scrollbar-track {
-  background: #161d28;
+  background: var(--code-scrollbar-track);
 }
 [data-theme-component="code"] pre::-webkit-scrollbar-thumb {
-  background: #596579;
+  background: var(--code-scrollbar-thumb);
   border-radius: 4px;
 }
 @media (pointer: coarse) {

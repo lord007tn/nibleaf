@@ -598,7 +598,7 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
       // Point the reader at the matching heading when the match is inside a
       // section, previewing that section rather than the page's first mention.
       const page = pageById.get(hit.id);
-      const match = page ? matchedSearchSection(page, query) : undefined;
+      const match = page ? matchedSearchSection(page, query, `${deploymentId}:${page.id}`) : undefined;
       return match ? { ...hit, section: match.section, snippet: match.snippet || hit.snippet } : hit;
     });
   const runtime = perLanguage.some(({ result }) => result.runtime === 'legacy-fallback')

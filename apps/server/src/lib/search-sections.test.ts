@@ -59,6 +59,14 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
     expect(snippet).toContain('إِلْغَاءُ الاشتراك');
   });
 
+  it('parses a published page once per cache key', () => {
+    const first = matchedSearchSection(billing, 'mistake', 'deployment-1:billing');
+    // Same key, different body: the cached sections are reused rather than re-parsed.
+    const second = matchedSearchSection({ ...billing, content: '## Other\n\nmistake here' }, 'mistake', 'deployment-1:billing');
+    expect(second?.section).toEqual(first?.section);
+    expect(matchedSearchSection({ ...billing, content: '## Other\n\nmistake here' }, 'mistake', 'deployment-2:billing')?.section.id).toBe('other');
+  });
+
   it('keeps heading anchors aligned when code fences contain heading-like lines', () => {
     expect(matchedSearchSection(billing, 'curl')?.section.id).toBe('download-invoices');
     expect(matchedSearchSection(billing, 'curl')?.snippet).toContain('curl https://example.com/invoices');

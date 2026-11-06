@@ -21,7 +21,7 @@ vi.mock('@nibleaf/i18n/site', async (importOriginal) => {
   return { siteT: (language?: string) => (mocks.realLabels ? siteT(language) : (key: string) => key) };
 });
 
-import { SiteSearch } from './site-search';
+import { SearchShell, SiteSearch } from './site-search';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -159,7 +159,8 @@ describe('published reader search', () => {
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')];
     const escapeHint = buttons.find((button) => button.textContent?.includes('Esc'));
     const cancel = buttons.find((button) => button.textContent === 'Cancel');
-    expect(escapeHint?.getAttribute('aria-label')).toBe('Close search');
+    // The visible "Esc" stays part of the accessible name (WCAG 2.5.3).
+    expect(escapeHint?.getAttribute('aria-label')).toBe('Close search (Esc)');
     expect(escapeHint?.getAttribute('aria-keyshortcuts')).toBe('Escape');
     expect(cancel).toBeDefined();
     // No icon-only X button.
@@ -178,6 +179,8 @@ describe('published reader search', () => {
     await rerender();
     const alert = document.querySelector('[role="alert"]');
     expect(alert?.textContent).toContain('searchFailed');
+    // Messages and their buttons sit beside the listbox, which may only hold options.
+    expect(alert?.closest('[role="listbox"]')).toBeNull();
     expect(document.body.textContent).not.toContain('Setup guide');
     await act(async () => alert?.querySelector('button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
@@ -339,6 +342,53 @@ describe('published reader search', () => {
     await select('Refunds');
     expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/billing#refunds' });
     window.history.replaceState(null, '', '/');
+  });
+
+  it('highlights Arabic matches the way search folds them (alef forms, diacritics)', async () => {
+    mocks.search.mockReturnValue({
+      data: [{ ...hit, title: 'إِلْغَاء الاشتراك', language: 'ar' }],
+      isFetching: false,
+      error: null,
+    });
+    await render({ aiAnswers: false, lang: 'ar' });
+    await typeQuery('الغاء');
+    expect(document.querySelector('[role="option"] mark')?.textContent).toBe('إِلْغَاء');
+  });
+
+  it('keeps text typed before the dialog loaded, with the caret at the end', async () => {
+    const { default: SiteSearchDialog } = await import('./site-search-dialog');
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<SiteSearchDialog projectId="docs" open onOpenChange={vi.fn()} lang="en" initialQuery="sea" />));
+    await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    expect(input()?.value).toBe('sea');
+    expect(input()?.selectionStart).toBe(3);
+  });
+
+  it('shows a working input at once while the dialog code is still loading', async () => {
+    const onChange = vi.fn();
+    const onClose = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () =>
+      root.render(
+        <SearchShell value="" onChange={onChange} onClose={onClose} placeholder="Search documentation…" label="Search documentation" rtl />,
+      ),
+    );
+    const field = container.querySelector('input');
+    expect(document.activeElement).toBe(field);
+    expect(container.querySelector('[dir="rtl"]')).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, 'r');
+      field?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(onChange).toHaveBeenCalledWith('r');
+    await act(async () => field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('labels a result from another published language', async () => {

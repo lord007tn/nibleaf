@@ -43,6 +43,16 @@ describe('normalizeMdxBlocks', () => {
     const once = normalizeMdxBlocks('<Note>Text</Note>');
     expect(normalizeMdxBlocks(once)).toBe(once);
   });
+  it('never rewrites code samples, including nested and mixed fences', () => {
+    const nested = '````md\n```mdx\n<Note>Example</Note>\n```\n<Frame>\nimg\n</Frame>\n````';
+    expect(normalizeMdxBlocks(nested)).toBe(nested);
+    const mixed = '~~~\n<Note>Inside tildes</Note>\n```\n<Card title="x" />\n~~~';
+    expect(normalizeMdxBlocks(mixed)).toBe(mixed);
+    const block = '```mdx\n<Note>\ntext\n</Note>\n```';
+    expect(normalizeMdxBlocks(block)).toBe(block);
+    // Prose after a closed fence is still normalized.
+    expect(normalizeMdxBlocks('````\n```\n````\n<Note>After</Note>')).toBe('````\n```\n````\n<Note>\n\nAfter\n\n</Note>');
+  });
   it('expands nested one-line block components level by level and leaves same-tag siblings alone', () => {
     expect(normalizeMdxBlocks('<CardGroup cols="2"><Card title="A">Body</Card></CardGroup>')).toBe(
       '<CardGroup cols="2">\n\n<Card title="A">\n\nBody\n\n</Card>\n\n</CardGroup>',

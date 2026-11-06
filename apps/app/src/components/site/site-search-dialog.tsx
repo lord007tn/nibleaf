@@ -40,37 +40,72 @@ export interface SiteSearchSuggestion {
   versionIndependent?: boolean;
 }
 
-/** Wrap occurrences of the query's words in <mark> so matches stand out. */
-const splitWithOffsets = (text: string, pattern: RegExp) => {
-  const parts: Array<{ key: string; value: string }> = [];
-  let offset = 0;
-  for (const value of text.split(pattern)) {
-    parts.push({ key: `${offset}-${value}`, value });
-    offset += value.length;
-  }
-  return parts;
-};
+// Mirrors normalizeArabicSearchText in @nibleaf/search: diacritics and tatweel
+// drop out, alef forms and alef maqsura fold, so the words search matched on the
+// server are the words highlighted here (e.g. "الغاء" marks "إلغاء").
+const ARABIC_MARKS = /[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/;
+const foldChar = (char: string): string =>
+  ARABIC_MARKS.test(char)
+    ? ''
+    : char
+        .replace(/[\u0622\u0623\u0625\u0671]/, '\u0627')
+        .replace('\u0649', '\u064a')
+        .toLowerCase();
 
+/** Wrap occurrences of the query's words in <mark> so matches stand out. */
 function Highlight({ text, query }: { text: string; query: string }) {
-  const tokens = query
-    .trim()
-    .split(/\s+/)
-    .filter((token) => token.length >= 2)
-    .map((token) => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const tokens = [
+    ...new Set(
+      query
+        .trim()
+        .split(/\s+/)
+        .map((token) => [...token].map(foldChar).join('')),
+    ),
+  ].filter((token) => token.length >= 2);
   if (tokens.length === 0) {
     return <>{text}</>;
   }
-  const splitRe = new RegExp(`(${tokens.join('|')})`, 'gi');
-  const testRe = new RegExp(`^(${tokens.join('|')})$`, 'i');
+  // Fold the text while remembering which original character each folded one came from.
+  let folded = '';
+  const origin: number[] = [];
+  for (let index = 0; index < text.length; index += 1) {
+    for (const char of foldChar(text[index] ?? '')) {
+      folded += char;
+      origin.push(index);
+    }
+  }
+  const ranges: Array<[number, number]> = [];
+  for (const token of tokens) {
+    for (let at = folded.indexOf(token); at !== -1; at = folded.indexOf(token, at + token.length)) {
+      let end = (origin[at + token.length - 1] ?? text.length - 1) + 1;
+      // Keep trailing diacritics with their letter.
+      while (end < text.length && ARABIC_MARKS.test(text[end] ?? '')) end += 1;
+      ranges.push([origin[at] ?? 0, end]);
+    }
+  }
+  if (ranges.length === 0) {
+    return <>{text}</>;
+  }
+  ranges.sort((left, right) => left[0] - right[0]);
+  const parts: Array<{ start: number; value: string; marked: boolean }> = [];
+  let cursor = 0;
+  for (const [rangeStart, rangeEnd] of ranges) {
+    if (rangeEnd <= cursor) continue;
+    const from = Math.max(rangeStart, cursor);
+    if (from > cursor) parts.push({ start: cursor, value: text.slice(cursor, from), marked: false });
+    parts.push({ start: from, value: text.slice(from, rangeEnd), marked: true });
+    cursor = rangeEnd;
+  }
+  if (cursor < text.length) parts.push({ start: cursor, value: text.slice(cursor), marked: false });
   return (
     <>
-      {splitWithOffsets(text, splitRe).map(({ key, value }) =>
-        testRe.test(value) ? (
-          <mark key={key} className="rounded-[3px] bg-primary/15 px-px font-semibold text-inherit">
+      {parts.map(({ start: offset, value, marked }) =>
+        marked ? (
+          <mark key={offset} className="rounded-[3px] bg-primary/15 px-px font-semibold text-inherit">
             {value}
           </mark>
         ) : (
-          <span key={key}>{value}</span>
+          <span key={offset}>{value}</span>
         ),
       )}
     </>
@@ -95,7 +130,7 @@ function Key({ children, className }: { children: ReactNode; className?: string 
 /** Shown on the highlighted row so keyboard users see what Enter does. */
 function EnterHint() {
   return (
-    <span aria-hidden className="ms-auto hidden shrink-0 self-center group-data-[selected=true]/command-item:inline-flex">
+    <span aria-hidden className="ms-auto hidden shrink-0 self-center group-data-[selected=true]/command-item:inline-flex pointer-coarse:hidden!">
       <Key>
         <CornerDownLeft className="size-3" />
       </Key>
@@ -138,6 +173,7 @@ export default function SiteSearchDialog({
   aiAnswers,
   onAskAi,
   suggestions = [],
+  initialQuery = '',
 }: {
   projectId: string;
   open: boolean;
@@ -166,6 +202,8 @@ export default function SiteSearchDialog({
   onAskAi?: (question: string) => void;
   /** Pages offered before the reader types and when nothing matches. */
   suggestions?: SiteSearchSuggestion[];
+  /** Text typed into the lightweight input shown while this dialog's code loaded. */
+  initialQuery?: string;
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
@@ -182,7 +220,10 @@ export default function SiteSearchDialog({
       readerMovedRef.current = false;
     });
   };
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
+  // Text typed before the dialog loaded keeps its caret at the end; a reopened
+  // dialog selects its old query so typing starts a new search.
+  const keepCaretRef = useRef(initialQuery !== '');
   const [requestedMode, setMode] = useState<'search' | 'answer'>('search');
   const askAiAvailable = Boolean(onAskAi) || Boolean(aiAnswers);
   // An external assistant replaces the built-in answer view entirely.
@@ -289,8 +330,17 @@ export default function SiteSearchDialog({
     if (!open) return;
     setSelectedVersion(version);
     setRecent(readRecent(projectId));
-    // Reopening keeps the last query; select it so typing starts a new search.
-    const frame = requestAnimationFrame(() => inputRef.current?.select());
+    const frame = requestAnimationFrame(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      if (keepCaretRef.current) {
+        keepCaretRef.current = false;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      } else {
+        input.select();
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [open, version, projectId]);
 
@@ -321,6 +371,8 @@ export default function SiteSearchDialog({
   const selectedValue = itemValues.includes(activeItem) ? activeItem : (preferred ?? '');
   // Re-select through cmdk's own pointer path so its internal selection and
   // the input's aria-activedescendant follow (a controlled value alone does not).
+  // Relies on cmdk 1.x items selecting themselves on pointermove; the "highlights
+  // the best page first" test fails if a cmdk upgrade changes that.
   const restoreSelection = (value: string) => {
     listRef.current?.querySelector(`[cmdk-item][data-value="${value}"]`)?.dispatchEvent(new Event('pointermove', { bubbles: true }));
   };
@@ -447,16 +499,17 @@ export default function SiteSearchDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              aria-label={t('closeSearch')}
+              // The visible "Esc" stays in the accessible name (WCAG 2.5.3).
+              aria-label={`${t('closeSearch')} (Esc)`}
               aria-keyshortcuts="Escape"
-              className="hidden h-8 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:inline-flex"
+              className="hidden h-8 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:inline-flex pointer-coarse:hidden!"
             >
               <Key>Esc</Key>
             </button>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="inline-flex h-11 shrink-0 cursor-pointer items-center rounded-md px-3 font-medium text-primary text-sm focus-visible:outline-2 focus-visible:outline-ring sm:hidden"
+              className="inline-flex h-11 shrink-0 cursor-pointer items-center rounded-md px-3 font-medium text-primary text-sm focus-visible:outline-2 focus-visible:outline-ring sm:hidden pointer-coarse:inline-flex!"
             >
               {t('searchCancel')}
             </button>
@@ -467,14 +520,48 @@ export default function SiteSearchDialog({
           </div>
 
           {mode === 'search' ? (
-            <CommandList
-              ref={listRef}
-              label={t('results')}
-              className="max-h-none min-h-0 flex-1 overscroll-contain pb-[env(safe-area-inset-bottom)]"
-              onPointerMoveCapture={markReaderMove}
-            >
-              {!trimmed ? (
-                recent.length > 0 || visibleSuggestions.length > 0 ? (
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+              {/* Messages stay outside the listbox, which may only hold options. */}
+              {!trimmed && recent.length === 0 && visibleSuggestions.length === 0 ? (
+                <p className="px-6 py-10 text-center text-muted-foreground text-sm">{t('searchPrompt')}</p>
+              ) : null}
+              {trimmed && queryPending ? (
+                <div aria-hidden className="space-y-1 p-1.5">
+                  {['w-2/5', 'w-1/2', 'w-1/3'].map((width) => (
+                    <div key={width} className="flex items-center gap-3 rounded-lg px-2.5 py-2">
+                      <span className="size-8 shrink-0 rounded-md bg-muted" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className={cn('h-3 rounded bg-muted', width)} />
+                        <div className="h-2.5 w-4/5 rounded bg-muted/70" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {searchFailed ? (
+                <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
+                  <AlertCircle aria-hidden className="size-6 text-destructive" />
+                  <p className="text-sm">{t('searchFailed')}</p>
+                  <button
+                    type="button"
+                    onClick={() => void hitsQuery.refetch?.()}
+                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 font-medium text-sm transition-colors hover:bg-muted pointer-coarse:h-11"
+                  >
+                    <RotateCcw aria-hidden className="size-3.5" />
+                    {t('searchRetry')}
+                  </button>
+                </div>
+              ) : null}
+              {noResults ? (
+                <div className="px-6 pt-8 pb-4 text-center">
+                  <p className="font-medium text-sm" dir="auto">
+                    {t('searchNoResultsFor', { query: trimmed })}
+                  </p>
+                  <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
+                </div>
+              ) : null}
+              <CommandList ref={listRef} label={t('results')} className="max-h-none overflow-visible" onPointerMoveCapture={markReaderMove}>
+                {!trimmed ? (
                   <>
                     {recent.length > 0 ? (
                       <CommandGroup heading={t('searchRecent')} className={GROUP}>
@@ -497,7 +584,11 @@ export default function SiteSearchDialog({
                             <EnterHint />
                           </CommandItem>
                         ))}
-                        <CommandItem value="recent-clear" onSelect={clearRecent} className={cn(ROW, 'min-h-9 text-muted-foreground text-xs')}>
+                        <CommandItem
+                          value="recent-clear"
+                          onSelect={clearRecent}
+                          className={cn(ROW, 'min-h-9 text-muted-foreground text-xs pointer-coarse:min-h-11')}
+                        >
                           <RotateCcw aria-hidden className="ms-2.5 size-3.5" />
                           <span className="ms-1.5">{t('searchClearRecent')}</span>
                         </CommandItem>
@@ -505,106 +596,75 @@ export default function SiteSearchDialog({
                     ) : null}
                     {suggestionGroup}
                   </>
-                ) : (
-                  <p className="px-6 py-10 text-center text-muted-foreground text-sm">{t('searchPrompt')}</p>
-                )
-              ) : queryPending ? (
-                <div aria-hidden className="space-y-1 p-1.5">
-                  {['w-2/5', 'w-1/2', 'w-1/3'].map((width) => (
-                    <div key={width} className="flex items-center gap-3 rounded-lg px-2.5 py-2">
-                      <span className="size-8 shrink-0 rounded-md bg-muted" />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className={cn('h-3 rounded bg-muted', width)} />
-                        <div className="h-2.5 w-4/5 rounded bg-muted/70" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : searchFailed ? (
-                <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
-                  <AlertCircle aria-hidden className="size-6 text-destructive" />
-                  <p className="text-sm">{t('searchFailed')}</p>
-                  <button
-                    type="button"
-                    onClick={() => void hitsQuery.refetch?.()}
-                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 font-medium text-sm transition-colors hover:bg-muted"
-                  >
-                    <RotateCcw aria-hidden className="size-3.5" />
-                    {t('searchRetry')}
-                  </button>
-                </div>
-              ) : hits.length > 0 ? (
-                <>
-                  {askRow}
-                  <CommandGroup heading={t('searchPages')} className={GROUP}>
-                    {hits.map((hit, index) => {
-                      const otherLanguage = baseLanguage && hit.language.toLowerCase().split(/[-_]/)[0] !== baseLanguage;
-                      const analytics = { hit, position: index + 1 };
-                      return (
-                        <Fragment key={hit.id}>
-                          <CommandItem value={`page-${index}`} onSelect={() => openPage(hit.path, hit.language, analytics)} className={ROW}>
-                            <RowIcon>{hasIcon(hit.icon) ? <PageIcon name={hit.icon} className="size-4" /> : <FileText className="size-4" />}</RowIcon>
-                            <div className="min-w-0 flex-1" dir="auto" lang={hit.language}>
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="truncate font-medium">
-                                  <Highlight text={hit.title} query={debouncedQuery} />
-                                </span>
-                                {otherLanguage ? (
-                                  <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
-                                    {languageName(hit.language)}
-                                  </span>
-                                ) : null}
-                              </div>
-                              {hit.section ? (
-                                hit.description ? (
-                                  <div className="truncate text-muted-foreground text-xs">{hit.description}</div>
-                                ) : null
-                              ) : (
-                                <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
-                                  <Highlight text={hit.snippet} query={debouncedQuery} />
-                                </div>
-                              )}
-                            </div>
-                            <EnterHint />
-                          </CommandItem>
-                          {hit.section ? (
-                            <CommandItem
-                              value={`section-${index}`}
-                              onSelect={() => openPage(`${hit.path}#${hit.section?.id}`, hit.language, analytics)}
-                              className={cn(ROW, 'ms-7')}
-                            >
-                              <RowIcon className="size-7">
-                                <Hash className="size-3.5" />
+                ) : hits.length > 0 ? (
+                  <>
+                    {askRow}
+                    <CommandGroup heading={t('searchPages')} className={GROUP}>
+                      {hits.map((hit, index) => {
+                        const otherLanguage = baseLanguage && hit.language.toLowerCase().split(/[-_]/)[0] !== baseLanguage;
+                        const analytics = { hit, position: index + 1 };
+                        return (
+                          <Fragment key={hit.id}>
+                            <CommandItem value={`page-${index}`} onSelect={() => openPage(hit.path, hit.language, analytics)} className={ROW}>
+                              <RowIcon>
+                                {hasIcon(hit.icon) ? <PageIcon name={hit.icon} className="size-4" /> : <FileText className="size-4" />}
                               </RowIcon>
                               <div className="min-w-0 flex-1" dir="auto" lang={hit.language}>
-                                <div className="truncate font-medium text-[13px]">
-                                  <Highlight text={hit.section.title} query={debouncedQuery} />
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <span className="truncate font-medium">
+                                    <Highlight text={hit.title} query={debouncedQuery} />
+                                  </span>
+                                  {otherLanguage ? (
+                                    <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+                                      {languageName(hit.language)}
+                                    </span>
+                                  ) : null}
                                 </div>
-                                <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
-                                  <Highlight text={hit.snippet} query={debouncedQuery} />
-                                </div>
+                                {hit.section ? (
+                                  hit.description ? (
+                                    <div className="truncate text-muted-foreground text-xs">{hit.description}</div>
+                                  ) : null
+                                ) : (
+                                  <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
+                                    <Highlight text={hit.snippet} query={debouncedQuery} />
+                                  </div>
+                                )}
                               </div>
                               <EnterHint />
                             </CommandItem>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })}
-                  </CommandGroup>
-                </>
-              ) : (
-                <>
-                  <div className="px-6 pt-8 pb-4 text-center">
-                    <p className="font-medium text-sm" dir="auto">
-                      {t('searchNoResultsFor', { query: trimmed })}
-                    </p>
-                    <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
-                  </div>
-                  {askRow}
-                  {suggestionGroup}
-                </>
-              )}
-            </CommandList>
+                            {hit.section ? (
+                              <CommandItem
+                                value={`section-${index}`}
+                                onSelect={() => openPage(`${hit.path}#${hit.section?.id}`, hit.language, analytics)}
+                                className={cn(ROW, 'ms-7')}
+                              >
+                                <RowIcon className="size-7">
+                                  <Hash className="size-3.5" />
+                                </RowIcon>
+                                <div className="min-w-0 flex-1" dir="auto" lang={hit.language}>
+                                  <div className="truncate font-medium text-[13px]">
+                                    <Highlight text={hit.section.title} query={debouncedQuery} />
+                                  </div>
+                                  <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
+                                    <Highlight text={hit.snippet} query={debouncedQuery} />
+                                  </div>
+                                </div>
+                                <EnterHint />
+                              </CommandItem>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </CommandGroup>
+                  </>
+                ) : noResults ? (
+                  <>
+                    {askRow}
+                    {suggestionGroup}
+                  </>
+                ) : null}
+              </CommandList>
+            </div>
           ) : (
             <section
               aria-labelledby={`${baseId}-answer-title`}
@@ -618,7 +678,7 @@ export default function SiteSearchDialog({
                     setMode('search');
                     inputRef.current?.focus();
                   }}
-                  className="-ms-2 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                  className="-ms-2 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground pointer-coarse:h-11"
                 >
                   <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
                   {t('searchBackToResults')}
@@ -642,7 +702,7 @@ export default function SiteSearchDialog({
                     type="button"
                     disabled={trimmed.length < 2}
                     onClick={ask}
-                    className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-11"
                   >
                     <Sparkles aria-hidden className="size-4" />
                     {t('answer')}
@@ -669,10 +729,10 @@ export default function SiteSearchDialog({
               className={cn(
                 'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
                 // Key hints mean nothing on touch screens; keep the bar only for the version filter there.
-                showVersionFilter ? 'flex' : 'hidden sm:flex',
+                showVersionFilter ? 'flex' : 'hidden sm:flex pointer-coarse:hidden!',
               )}
             >
-              <div className="hidden items-center gap-4 sm:flex">
+              <div className="hidden items-center gap-4 sm:flex pointer-coarse:hidden!">
                 <span className="inline-flex items-center gap-1.5">
                   <Key>↑</Key>
                   <Key>↓</Key>

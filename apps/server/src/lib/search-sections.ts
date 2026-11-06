@@ -1,5 +1,6 @@
 import { normalizeArabicSearchText, stripMarkdown } from '@nibleaf/search';
-import { extractHeadings } from '@nibleaf/shared/site';
+import { extractHeadings, type Heading } from '@nibleaf/shared/site';
+import { LruCache } from './lru';
 
 export interface SearchHitSection {
   /** DOM anchor of the heading (github-slugger, identical to the reader's ids). */
@@ -53,28 +54,25 @@ function sectionSnippet(lines: string[], tokens: string[]): string {
   return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
 }
 
-/**
- * Finds the section of a page that a keyword query matched, so the reader can
- * jump straight to that heading, with a preview taken from that section.
- * Returns nothing when the page title already covers the query (the page itself
- * is the best target) or when the match is only in the introduction.
- */
-export function matchedSearchSection(
-  page: { title: string; content: string },
-  query: string,
-): { section: SearchHitSection; snippet: string } | undefined {
-  const tokens = queryTokens(query);
-  if (tokens.length === 0) return undefined;
-  const title = normalize(page.title);
-  if (tokens.every((token) => title.includes(token))) return undefined;
+interface ParsedSection {
+  heading: Heading;
+  lines: string[];
+  /** Normalized heading and body text, so scoring does no per-query normalization. */
+  headingText: string;
+  bodyText: string;
+}
 
-  // Split the body into sections, mirroring extractHeadings' line walk so the
-  // nth heading line maps to the nth extracted heading (and its anchor id).
-  const headings = extractHeadings(page.content);
-  const sections: Array<{ heading: (typeof headings)[number]; lines: string[] }> = [];
+/** Parsed sections per published page; a new deployment uses new keys. */
+const parsedSections = new LruCache<string, ParsedSection[]>(500);
+
+/** Split a page body into sections, mirroring extractHeadings' line walk so the
+ *  nth heading line maps to the nth extracted heading (and its anchor id). */
+function parseSections(content: string): ParsedSection[] {
+  const headings = extractHeadings(content);
+  const sections: Array<{ heading: Heading; lines: string[] }> = [];
   let index = 0;
   let inFence = false;
-  for (const line of page.content.split('\n')) {
+  for (const line of content.split('\n')) {
     const fence = line.trimStart().startsWith('```');
     if (!(inFence || fence) && HEADING_LINE.test(line) && index < headings.length) {
       const heading = headings[index];
@@ -85,17 +83,44 @@ export function matchedSearchSection(
     if (fence) inFence = !inFence;
     sections.at(-1)?.lines.push(line);
   }
+  return sections.map((section) => ({
+    ...section,
+    headingText: normalize(section.heading.text),
+    bodyText: normalize(section.lines.join(' ')),
+  }));
+}
+
+/**
+ * Finds the section of a page that a keyword query matched, so the reader can
+ * jump straight to that heading, with a preview taken from that section.
+ * Returns nothing when the page title already covers the query (the page itself
+ * is the best target) or when the match is only in the introduction.
+ */
+export function matchedSearchSection(
+  page: { title: string; content: string },
+  query: string,
+  /** Stable identity of this published page (deployment + page id) to reuse its parsed sections. */
+  cacheKey?: string,
+): { section: SearchHitSection; snippet: string } | undefined {
+  const tokens = queryTokens(query);
+  if (tokens.length === 0) return undefined;
+  const title = normalize(page.title);
+  if (tokens.every((token) => title.includes(token))) return undefined;
+
+  let sections = cacheKey ? parsedSections.get(cacheKey) : undefined;
+  if (!sections) {
+    sections = parseSections(page.content);
+    if (cacheKey) parsedSections.set(cacheKey, sections);
+  }
   // Score every section: a heading that names the whole query wins outright,
   // heading words weigh more than body words, and more matched words beat fewer.
   // Ties keep document order.
-  let match: (typeof sections)[number] | undefined;
+  let match: ParsedSection | undefined;
   let bestScore = 0;
   for (const section of sections) {
     if (section.heading.depth <= 1) continue;
-    const heading = normalize(section.heading.text);
-    const body = normalize(section.lines.join(' '));
-    const headingHits = tokens.filter((token) => heading.includes(token)).length;
-    const bodyHits = tokens.filter((token) => body.includes(token)).length;
+    const headingHits = tokens.filter((token) => section.headingText.includes(token)).length;
+    const bodyHits = tokens.filter((token) => section.bodyText.includes(token)).length;
     if (headingHits + bodyHits === 0) continue;
     const score = (headingHits === tokens.length ? 100 : 0) + headingHits * 3 + bodyHits;
     if (score > bestScore) {

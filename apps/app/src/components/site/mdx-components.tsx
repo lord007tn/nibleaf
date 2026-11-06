@@ -23,6 +23,7 @@ import {
   type ReactElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -118,6 +119,8 @@ export function Step({ title, children }: { title?: string; children?: ReactNode
     </li>
   );
 }
+
+// ─── Tabs ───────────────────────────────────────────────────────────────────
 
 const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
 
@@ -277,13 +280,30 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
   const [open, setOpen] = useState(false);
   const id = useId();
   const pointerOpen = useRef(false);
-  if (!tip) return <>{children}</>;
+  const wrapper = useRef<HTMLSpanElement>(null);
   const linked = containsLink(children);
+  // A tooltip around a link has no button of its own, so the link carries the
+  // description (added to any it already has).
+  useEffect(() => {
+    if (!tip || !linked) return;
+    const link = wrapper.current?.querySelector<HTMLElement>('a[href], [href]');
+    if (!link) return;
+    const existing = link.getAttribute('aria-describedby');
+    const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
+    ids.add(id);
+    link.setAttribute('aria-describedby', [...ids].join(' '));
+    return () => {
+      if (existing) link.setAttribute('aria-describedby', existing);
+      else link.removeAttribute('aria-describedby');
+    };
+  }, [tip, linked, id]);
+  if (!tip) return <>{children}</>;
   return (
     // Hover, focus and Escape are handled on the wrapper so the pointer can move
     // onto the tip without closing it (WCAG 1.4.13) and focus inside a link works.
     // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: the focusable trigger is a child; the wrapper only keeps the tip open.
     <span
+      ref={wrapper}
       className="relative inline-block"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
@@ -318,6 +338,8 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
     </span>
   );
 }
+
+// ─── Inline icon ──────────────────────────────────────────────────────────────
 
 export function Icon({ icon, name, color, size }: { icon?: string; name?: string; color?: string; size?: string | number }) {
   const resolved = icon ?? name;

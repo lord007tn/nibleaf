@@ -72,7 +72,10 @@ export function SiteBanner({
         // then removes the banner for good, so the attribute difference is expected.
         suppressHydrationWarning
       >
-        <span className="font-medium">{message}</span>
+        {/* Authored text keeps its own direction (an English notice on an Arabic site). */}
+        <span className="font-medium" dir="auto">
+          {message}
+        </span>
         {banner.linkUrl ? (
           <a
             href={banner.linkUrl}
@@ -80,7 +83,7 @@ export function SiteBanner({
             rel="noreferrer"
             className="inline-flex cursor-pointer items-center gap-1 font-semibold underline underline-offset-4 hover:opacity-90"
           >
-            {banner.linkLabel ?? t('viewDetails')}
+            <span dir="auto">{banner.linkLabel ?? t('viewDetails')}</span>
             <ExternalLink className="size-3" aria-hidden />
           </a>
         ) : null}

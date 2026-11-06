@@ -73,7 +73,10 @@ describe('reader content ergonomics', () => {
       ),
     );
     expect(container.querySelector('button')).toBeNull();
-    expect(container.querySelector('a[href="/guide"]')).not.toBeNull();
+    const link = container.querySelector('a[href="/guide"]');
+    const linkedTip = container.querySelector('[role="tooltip"]');
+    // Screen readers hear the tip from the link itself.
+    expect(link?.getAttribute('aria-describedby')).toBe(linkedTip?.id);
   });
   it('reports clipboard rejection and success through one shared live region', async () => {
     const writeText = vi.fn().mockRejectedValueOnce(new Error('denied')).mockResolvedValue(undefined);
@@ -168,9 +171,12 @@ describe('reader content ergonomics', () => {
         />,
       ),
     );
-    const classes = container.querySelector('img')?.className ?? '';
-    expect(classes).toContain('dark:hidden');
-    expect(classes).toContain('block');
+    // Visibility classes move to the wrapper, so the image and its zoom button hide together.
+    const wrapper = container.querySelector('.reader-image');
+    expect(wrapper?.className).toContain('dark:hidden');
+    expect(wrapper?.className).toContain('block');
+    expect(wrapper?.className).not.toContain('inline-block');
+    expect(container.querySelector('img')?.className).toBe('rounded-xl border border-border');
   });
   it('does not offer zoom for linked images or tiny icons', async () => {
     await act(async () =>

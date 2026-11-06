@@ -60,7 +60,30 @@ const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
 const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b[^>]*>\\s*$`, 'i');
 // A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
 const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b((?:[^>]*[^/>])?)>(.*\\S.*)</\\2>\\s*$`, 'i');
-const FENCE = /^\s*(```|~~~)/;
+// Fenced code: 3+ backticks or tildes. A fence closes only with the same character,
+// at least as long, and nothing after it (CommonMark), so a ```` sample that shows
+// ``` inside stays one block. Indentation is allowed, as authors indent inside components.
+const FENCE_OPEN = /^\s*(`{3,}|~{3,})(.*)$/;
+const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
+
+/** Marks every line that belongs to fenced code (fence lines included). */
+function fencedLines(lines: string[]): boolean[] {
+  let open = '';
+  return lines.map((line) => {
+    if (open) {
+      const close = FENCE_CLOSE.exec(line)?.[1];
+      if (close && close[0] === open[0] && close.length >= open.length) open = '';
+      return true;
+    }
+    const [, fence = '', info = ''] = FENCE_OPEN.exec(line) ?? [];
+    // A backtick fence's info string cannot contain backticks (that is inline code).
+    if (fence && !(fence[0] === '`' && info.includes('`'))) {
+      open = fence;
+      return true;
+    }
+    return false;
+  });
+}
 
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
@@ -80,44 +103,62 @@ export function normalizeMdxBlocks(src: string): string {
     if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
     return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
   };
-  let inFence = false;
-  const lines = src.split('\n').flatMap((line) => {
-    if (FENCE.test(line)) inFence = !inFence;
-    return inFence ? [line] : expand(line);
-  });
+  // Code samples are never rewritten: every step below skips fenced lines.
+  const authored = src.split('\n');
+  const authoredFences = fencedLines(authored);
+  const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
+  const fenced = fencedLines(lines);
   const out: string[] = [];
+  const outFenced: boolean[] = [];
+  const push = (line: string, inCode = false) => {
+    out.push(line);
+    outFenced.push(inCode);
+  };
   for (let i = 0; i < lines.length; i++) {
     const authoredLine = lines[i] ?? '';
+    if (fenced[i]) {
+      push(authoredLine, true);
+      continue;
+    }
     // Indentation is visual authoring syntax, not a request to turn component
     // tags into CommonMark code blocks.
     const line = COMPONENT_LINE.test(authoredLine) ? authoredLine.trim() : authoredLine;
     if (OPEN_TAG.test(line)) {
-      out.push(line);
+      push(line);
       const next = lines[i + 1];
       if (next !== undefined && next.trim() !== '') {
-        out.push('');
+        push('');
       }
     } else if (CLOSE_TAG.test(line)) {
       const prev = out[out.length - 1];
       if (prev !== undefined && prev.trim() !== '') {
-        out.push('');
+        push('');
       }
-      out.push(line);
+      push(line);
     } else {
-      out.push(line);
+      push(line);
     }
   }
   // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
   // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
   // group 1 is only the optional closing slash) so the tag stays well-formed.
-  return (
-    out
-      .join('\n')
+  const prose = (text: string) =>
+    text
       .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
       // HTML parsers do not honor XML self-closing syntax for unknown elements.
       // Expand authored atoms so sibling File/RelatedCard nodes cannot nest.
-      .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>')
-  );
+      .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+  // Renames apply to runs of prose only (a tag may span lines), never inside code.
+  const segments: string[] = [];
+  let start = 0;
+  for (let index = 1; index <= out.length; index += 1) {
+    if (index === out.length || outFenced[index] !== outFenced[start]) {
+      const text = out.slice(start, index).join('\n');
+      segments.push(outFenced[start] ? text : prose(text));
+      start = index;
+    }
+  }
+  return segments.join('\n');
 }
 
 /** Sanitize schema: the GitHub-safe default, extended to permit our component

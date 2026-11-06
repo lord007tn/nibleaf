@@ -125,9 +125,15 @@ import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewfullsize } from './paraglide/messages/site_viewfullsize.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
-/** Paraglide types a message with {variables} as requiring them; siteT passes
- * the caller's variables straight through, like translateFn does. */
-const withVariables = (message: unknown) => message as MessageFn;
+/** Messages with {variables} keep Paraglide's generated input types, so a caller
+ * that forgets a variable fails to compile instead of rendering "{query}". */
+const siteVariableMessages = {
+  searchNoResultsFor: site_searchnoresultsfor,
+  searchAskAiAbout: site_searchaskaiabout,
+  searchResultCount: site_searchresultcount,
+  languageCurrent: site_languagecurrent,
+  versionCurrent: site_versioncurrent,
+};
 
 const siteMessages = {
   closeSearch: site_closesearch,
@@ -135,12 +141,9 @@ const siteMessages = {
   searchRecent: site_searchrecent,
   searchClearRecent: site_searchclearrecent,
   searchSuggested: site_searchsuggested,
-  searchNoResultsFor: withVariables(site_searchnoresultsfor),
   searchNoResultsHint: site_searchnoresultshint,
-  searchAskAiAbout: withVariables(site_searchaskaiabout),
   searchAskAiHint: site_searchaskaihint,
   searchPages: site_searchpages,
-  searchResultCount: withVariables(site_searchresultcount),
   searchRetry: site_searchretry,
   searchBackToResults: site_searchbacktoresults,
   searchKeysNavigate: site_searchkeysnavigate,
@@ -239,8 +242,6 @@ const siteMessages = {
   menu: site_menu,
   language: site_language,
   version: site_version,
-  languageCurrent: withVariables(site_languagecurrent),
-  versionCurrent: withVariables(site_versioncurrent),
   siteLinks: site_sitelinks,
   docsSections: site_docssections,
   docsPages: site_docspages,
@@ -257,10 +258,25 @@ const siteMessages = {
 
 type SiteContractKey = Extract<MessageKey, `site.${string}`>;
 export type SiteMessageKey = SiteContractKey extends `site.${infer Key}` ? Key : never;
+type SiteVariableKey = keyof typeof siteVariableMessages;
+type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey>;
+type SiteVariables<Key extends SiteVariableKey> = Parameters<(typeof siteVariableMessages)[Key]>[0];
+
+/** Translates a reader key; keys whose message has {variables} require them. */
+export interface SiteTranslator {
+  <Key extends SiteVariableKey>(key: Key, variables: SiteVariables<Key>): string;
+  (key: SitePlainKey): string;
+}
+
+const isVariableKey = (key: SiteMessageKey): key is SiteVariableKey => key in siteVariableMessages;
 
 /** Published-site chrome uses its content locale explicitly; it must not mutate
  * the dashboard's Paraglide locale or depend on a browser preference. */
-export function siteT(language?: string): (key: SiteMessageKey, variables?: MessageVariables) => string {
+export function siteT(language?: string): SiteTranslator {
   const locale = resolveLocale(language) ?? 'en';
-  return (key, variables) => siteMessages[key](variables, { locale });
+  // The SiteTranslator overloads check variables at each call site; this
+  // dispatch only forwards them.
+  const translate = (key: SiteMessageKey, variables?: MessageVariables): string =>
+    isVariableKey(key) ? (siteVariableMessages[key] as unknown as MessageFn)(variables, { locale }) : siteMessages[key](undefined, { locale });
+  return translate as SiteTranslator;
 }

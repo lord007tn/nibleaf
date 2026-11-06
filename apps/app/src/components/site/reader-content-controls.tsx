@@ -1,3 +1,4 @@
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { Link, ZoomIn } from 'lucide-react';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
@@ -48,8 +49,16 @@ export function SectionLink({ id, language }: { id: string; language?: string })
 const isZoomable = (image: HTMLImageElement) =>
   !image.closest('a') && image.naturalWidth > 96 && image.naturalHeight > 96 && image.width > 64 && image.height > 64;
 
+// Display utilities, with any variants (`dark:hidden`, `md:block`).
+const DISPLAY_CLASS = /^(?:[\w-]+:)*(?:hidden|block|inline|inline-block|flex|inline-flex|grid|contents)$/;
+
 /** The sibling trigger keeps images valid inside paragraphs and avoids nested links. */
-export function ContentImage({ language, ...props }: ComponentProps<'img'> & { language?: string }) {
+export function ContentImage({ language, className, ...props }: ComponentProps<'img'> & { language?: string }) {
+  // Visibility classes (light/dark image pairs) go on the wrapper, so the zoom
+  // button disappears together with its image.
+  const classes = (className ?? '').split(/\s+/).filter(Boolean);
+  const display = classes.filter((name) => DISPLAY_CLASS.test(name)).join(' ');
+  const imageClassName = classes.filter((name) => !DISPLAY_CLASS.test(name)).join(' ');
   const [zoomable, setZoomable] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -72,10 +81,11 @@ export function ContentImage({ language, ...props }: ComponentProps<'img'> & { l
     modal.showModal();
   };
   return (
-    <span className="reader-image">
+    <span className={cn('reader-image relative inline-block max-w-full', display)}>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: load measures dimensions; interaction uses a separate button. */}
       <img
         {...props}
+        className={imageClassName || undefined}
         ref={image}
         alt={props.alt ?? ''}
         onLoad={(event) => {
@@ -94,7 +104,7 @@ export function ContentImage({ language, ...props }: ComponentProps<'img'> & { l
             <dialog
               ref={dialog}
               className="reader-image-dialog"
-              aria-label={t('viewFullSize')}
+              aria-label={props.alt?.trim() || t('viewFullSize')}
               onCancel={(event) => {
                 event.preventDefault();
                 dialog.current?.close();
