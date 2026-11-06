@@ -8,6 +8,9 @@ if (!connectionString) throw new Error('POSTGRES_URL is required for the MCP mig
 const migrationDirectory = new URL('../prisma/migrations/20260823240000_mcp_control_plane/', import.meta.url);
 const migration = await readFile(new URL('migration.sql', migrationDirectory), 'utf8');
 const rollback = await readFile(new URL('rollback.sql', migrationDirectory), 'utf8');
+const writeMigrationDirectory = new URL('../prisma/migrations/20261106090000_mcp_write_audit_idempotency/', import.meta.url);
+const writeMigration = await readFile(new URL('migration.sql', writeMigrationDirectory), 'utf8');
+const writeRollback = await readFile(new URL('rollback.sql', writeMigrationDirectory), 'utf8');
 const nameRowsSchema = z.array(z.object({ name: z.string() }));
 const scopeRowsSchema = z.array(z.object({ scopes: z.array(z.string()) }));
 const prisma = getDb({ connectionString });
@@ -50,16 +53,62 @@ try {
         );
       `);
 
+      // The write-path migration adds attribution columns to existing audit
+      // rows and the idempotency cache, whose unique key must reject a second
+      // in-flight record for the same key/operation/clientRequestId.
+      await tx.$executeRawUnsafe(writeMigration);
+      await tx.$executeRawUnsafe(`
+        INSERT INTO mcp_audit_event (
+          id, "projectId", "apiKeyId", "actorUserId", "requestId", kind, operation,
+          capability, outcome, "targetType", "targetId", "clientRequestId", "durationMs"
+        ) VALUES (
+          'audit-2', 'project-1', 'key-1', 'user-1', 'request-2', 'tool',
+          'update_page', 'pages:write', 'succeeded', 'page', 'page-1', 'retry-0001', 1
+        );
+        INSERT INTO mcp_idempotency_record (
+          id, "projectId", "apiKeyId", operation, "clientRequestId", "argsHash", status, "expiresAt"
+        ) VALUES (
+          'idem-1', 'project-1', 'key-1', 'update_page', 'retry-0001', 'hash', 'pending', now() + interval '1 day'
+        );
+      `);
+      await tx.$executeRawUnsafe('SAVEPOINT duplicate_idempotency_key');
+      let duplicateRejected = false;
+      try {
+        await tx.$executeRawUnsafe(`
+          INSERT INTO mcp_idempotency_record (
+            id, "projectId", "apiKeyId", operation, "clientRequestId", "argsHash", status, "expiresAt"
+          ) VALUES (
+            'idem-2', 'project-1', 'key-1', 'update_page', 'retry-0001', 'other', 'pending', now() + interval '1 day'
+          );
+        `);
+      } catch {
+        duplicateRejected = true;
+      }
+      await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT duplicate_idempotency_key');
+      if (!duplicateRejected) throw new Error('MCP idempotency cache accepted a duplicate clientRequestId');
+
+      await tx.$executeRawUnsafe(writeRollback);
+      const remainingWriteColumns = nameRowsSchema.parse(
+        await tx.$queryRawUnsafe(`
+          SELECT column_name AS name
+          FROM information_schema.columns
+          WHERE table_schema = 'mcp_migration_smoke'
+            AND table_name = 'mcp_audit_event'
+            AND column_name IN ('actorUserId', 'targetType', 'targetId', 'clientRequestId')
+        `),
+      );
+      if (remainingWriteColumns.length !== 0) throw new Error('write-path rollback retained MCP audit attribution columns');
+
       await tx.$executeRawUnsafe(rollback);
       const remainingMcpTables = nameRowsSchema.parse(
         await tx.$queryRawUnsafe(`
           SELECT table_name AS name
           FROM information_schema.tables
           WHERE table_schema = 'mcp_migration_smoke'
-            AND table_name = 'mcp_audit_event'
+            AND table_name IN ('mcp_audit_event', 'mcp_idempotency_record')
         `),
       );
-      if (remainingMcpTables.length !== 0) throw new Error('rollback retained MCP audit storage');
+      if (remainingMcpTables.length !== 0) throw new Error('rollback retained MCP audit or idempotency storage');
 
       const remainingMcpColumns = nameRowsSchema.parse(
         await tx.$queryRawUnsafe(`
@@ -92,7 +141,7 @@ try {
     },
     { timeout: 30_000 },
   );
-  console.log('MCP migration ownership, wildcard normalization, audit, and rollback checks passed.');
+  console.log('MCP migration ownership, wildcard normalization, audit, idempotency, and rollback checks passed.');
 } finally {
   await prisma.$disconnect();
 }
