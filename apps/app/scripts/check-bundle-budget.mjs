@@ -22,15 +22,18 @@ const profiles = {
 // size. Keep enough headroom for normal feature work while preventing a large
 // shared dependency or dashboard catalog from silently returning to docs pages.
 //
-// 390_000 → 392_000 pays for the Ask AI chat assistant (#279), measured against
-// main@178fc83d (public-docs 378.56 → 382.12 KiB, +3.56): the eager chat context
-// (~0.95 KiB; the panel, launcher, page card and strings all load lazily), the AI
-// dashboard route's search schema in the route tree (~0.77), and Rolldown
-// re-splitting reader modules the lazy chat chunks share (Button/Sheet internals,
-// useMutation, query-core, a thumbs icon: ~1.6). See BUNDLE_BUDGET.md.
+// 390_000 → 393_000 pays for the Ask AI chat assistant (#279), +3.54 KiB on its
+// own: the eager chat context (~0.95 KiB; the panel, launcher, page card and
+// strings all load lazily), the AI dashboard route's search schema in the route
+// tree (~0.77), and Rolldown re-splitting reader modules the lazy chat chunks share
+// (Button/Sheet internals, useMutation, query-core, a thumbs icon: ~1.6). Main
+// itself was 379.97 KiB at e1244b8f (#280 added 1.41), so #279 measures 383.51.
+// This is a ceiling, not a target: #291 brings the public bundle back to
+// ≤ 375 KiB by keeping dashboard-only routes and schemas out of the reader.
+// See BUNDLE_BUDGET.md.
 const gzipBudgets = {
-  'public-docs': 392_000,
-  'public-docs-index': 392_000,
+  'public-docs': 393_000,
+  'public-docs-index': 393_000,
 };
 
 // A size budget catches overall growth; these signatures make accidental

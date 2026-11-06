@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 392,000-byte gzip JavaScript budget. The
+Public documentation pages have a 393,000-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a regression buffer above the
 August 2026 baseline. CI also rejects public profiles that contain known
@@ -33,7 +33,7 @@ the transfer cost, and record the new measured route totals in the pull request.
 
 ## Budget history
 
-### 390,000 → 392,000 bytes: Ask AI chat assistant (#279)
+### 390,000 → 393,000 bytes: Ask AI chat assistant (#279)
 
 Measured with `pnpm --filter @nibleaf/app bundle:report` on production builds
 (gzip level 9):
@@ -44,8 +44,12 @@ Measured with `pnpm --filter @nibleaf/app bundle:report` on production builds
 | #279 merged on 50124dba | 380.65 KiB | 379.84 KiB |
 | main@178fc83d (#288 dashboard conventions) | 378.56 KiB | 377.76 KiB |
 | #279 merged on 178fc83d | 382.12 KiB | 381.32 KiB |
+| main@e1244b8f (#280 support MCP, +1.41) | 379.97 KiB | 379.17 KiB |
+| #279 merged on e1244b8f | 383.51 KiB | 382.70 KiB |
 
-The +3.56 KiB over main@178fc83d is:
+The budget was first raised to 392,000 bytes against main@178fc83d; #280 then
+grew main by 1.41 KiB (new routes in the route tree, an `mcp` chunk, query keys),
+so it was set to 393,000 bytes. #279's own cost, about +3.54 KiB, is:
 
 - **Eager chat context, ~0.95 KiB.** The reader layout's provider, which queues
   "open the chat" requests from search and the end-of-article card. The panel,
@@ -61,8 +65,11 @@ The +3.56 KiB over main@178fc83d is:
   bytes are the same; the extra chunks compress less well. Removing the legacy
   answer view (`useAnswerSite`) also changed `useMutation`'s importers.
 
-Before this, the chat had cost +7.6 KiB with its strings and launcher eager.
+Before this work, the chat had cost +7.6 KiB with its strings and launcher eager.
 Not adopted: opting the provider out of the React Compiler, injecting
 Button/Sheet into lazy chunks, or a global Rolldown chunk group. Each saves
 under 1 KiB at the cost of a fragile build.
 
+This budget is a ceiling, not a target. [#291](https://github.com/lord007tn/nibleaf/issues/291)
+brings the public bundle back to 375 KiB or less by keeping dashboard-only routes
+and schemas out of the reader bundle.
