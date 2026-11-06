@@ -62,6 +62,8 @@ export const AI_CHAT_EVENT = {
   final: 'nibleaf.chat.final',
   /** Exactly one per failed run, before RUN_ERROR. Value: `aiChatErrorEventSchema`. */
   error: 'nibleaf.chat.error',
+  /** Optional, after `final` for answered turns. Value: `aiChatFollowUpsEventSchema`. */
+  followUps: 'nibleaf.chat.followups',
 } as const;
 
 export const aiChatPhaseSchema = z.enum(['searching', 'writing', 'checking']);
@@ -96,6 +98,8 @@ export const aiChatSourceSchema = z
     path: z.string(),
     heading: z.string().optional(),
     snippet: z.string(),
+    /** DOM id of the cited section on the published page (github-slugger, as the TOC). */
+    anchor: z.string().min(1).max(200).optional(),
     direction: z.enum(['ltr', 'rtl']),
   })
   .strict();
@@ -128,6 +132,8 @@ export const aiChatFinalEventSchema = z
     suggestions: z.array(aiChatSourceSchema),
     /** Opaque proof that this reader received this turn; required for feedback. */
     feedbackToken: z.string().min(16).max(256),
+    /** Where readers can get help when the docs do not answer (no_answer only). */
+    supportUrl: z.string().max(500).optional(),
     language: z.string(),
     limits: z
       .object({
@@ -138,6 +144,67 @@ export const aiChatFinalEventSchema = z
   })
   .strict();
 export type AiChatFinalEvent = z.infer<typeof aiChatFinalEventSchema>;
+
+export const aiChatFollowUpsEventSchema = z
+  .object({
+    turnId: z.uuid(),
+    questions: z.array(z.string().trim().min(3).max(120)).max(3),
+  })
+  .strict();
+export type AiChatFollowUpsEvent = z.infer<typeof aiChatFollowUpsEventSchema>;
+
+// ─── Chat event catalog (analytics) ─────────────────────────────────────────
+
+/** Every chat analytics event. Client-reported events are a subset (below);
+ * the rest are recorded by the API itself. All are content-free. */
+export const aiChatEventNameSchema = z.enum([
+  'chat_opened',
+  'question_asked',
+  'first_token',
+  'answer_completed',
+  'citation_clicked',
+  'follow_up_clicked',
+  'copy',
+  'stop',
+  'new_chat',
+  'feedback_given',
+  'feedback_changed',
+  'quota_reached',
+  'provider_error',
+]);
+export type AiChatEventName = z.infer<typeof aiChatEventNameSchema>;
+export const aiChatOpenSourceSchema = z.enum(['launcher', 'page_button', 'search_handoff', 'deep_link']);
+export type AiChatOpenSource = z.infer<typeof aiChatOpenSourceSchema>;
+/** answered / no_answer as in the final event; blocked = refused before
+ * generation (quota, budget, limits, unavailable); failed; cancelled. */
+export const aiChatOutcomeSchema = z.enum(['answered', 'no_answer', 'blocked', 'failed', 'cancelled']);
+export type AiChatOutcome = z.infer<typeof aiChatOutcomeSchema>;
+export const aiChatQuotaKindSchema = z.enum(['daily_quota', 'token_budget', 'conversation_limit', 'rate_limited']);
+export const aiChatProviderPhaseSchema = z.enum(['condense', 'retrieval', 'generation', 'follow_ups']);
+
+const turnRef = { conversationId: z.uuid(), turnId: z.uuid() };
+/** Events the reader UI reports through `POST /api/public/sites/:id/chat/events`. */
+export const aiChatClientEventSchema = z.discriminatedUnion('name', [
+  z.object({ name: z.literal('chat_opened'), source: aiChatOpenSourceSchema, conversationId: z.uuid() }).strict(),
+  z
+    .object({ name: z.literal('citation_clicked'), ...turnRef, citationId: z.string().min(1).max(16), position: z.number().int().min(1).max(50) })
+    .strict(),
+  z.object({ name: z.literal('follow_up_clicked'), ...turnRef, position: z.number().int().min(1).max(3) }).strict(),
+  z.object({ name: z.literal('copy'), ...turnRef }).strict(),
+  z.object({ name: z.literal('stop'), conversationId: z.uuid() }).strict(),
+  z.object({ name: z.literal('new_chat'), conversationId: z.uuid() }).strict(),
+]);
+export type AiChatClientEvent = z.infer<typeof aiChatClientEventSchema>;
+
+export const siteChatEventsBody = z
+  .object({
+    events: z.array(aiChatClientEventSchema).min(1).max(20),
+    consent: aiChatConsentSchema.default('unknown'),
+    sessionId: z.string().trim().min(8).max(128).optional(),
+    lang: z.string().trim().min(2).max(35).optional(),
+  })
+  .strict();
+export type SiteChatEventsBody = z.infer<typeof siteChatEventsBody>;
 
 export const aiChatFeedbackRatingSchema = z.enum(['up', 'down']);
 export type AiChatFeedbackRating = z.infer<typeof aiChatFeedbackRatingSchema>;
@@ -166,6 +233,8 @@ export const siteChatFeedbackBody = z
     rating: aiChatFeedbackRatingSchema.nullable(),
     reason: aiChatFeedbackReasonSchema.optional(),
     comment: z.string().trim().max(AI_CHAT_LIMITS.feedbackCommentMax).optional(),
+    /** The rating this edit replaces (absent on the first rating), for given/changed analytics. */
+    previousRating: aiChatFeedbackRatingSchema.nullable().optional(),
     consent: aiChatConsentSchema.default('unknown'),
     lang: z.string().trim().min(2).max(35).optional(),
   })
@@ -328,6 +397,25 @@ export const aiConversationSummarySchema = z
         .strict(),
     ),
     languages: z.array(z.object({ language: z.string(), questions: z.number().int().min(0) }).strict()),
+    /** Counts from the chat event catalog over the same range. */
+    engagement: z
+      .object({
+        opens: z.number().int().min(0),
+        opensBySource: z.array(z.object({ source: aiChatOpenSourceSchema, count: z.number().int().min(0) }).strict()),
+        citationClicks: z.number().int().min(0),
+        followUpClicks: z.number().int().min(0),
+        copies: z.number().int().min(0),
+        stops: z.number().int().min(0),
+        newChats: z.number().int().min(0),
+        feedbackGiven: z.number().int().min(0),
+        feedbackChanged: z.number().int().min(0),
+        quotaReached: z.number().int().min(0),
+        providerErrors: z.number().int().min(0),
+        /** Median time to first streamed token; null without data. */
+        medianFirstTokenMs: z.number().int().min(0).nullable(),
+        medianLatencyMs: z.number().int().min(0).nullable(),
+      })
+      .strict(),
   })
   .strict();
 export type AiConversationSummary = z.infer<typeof aiConversationSummarySchema>;

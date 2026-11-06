@@ -98,6 +98,13 @@ const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) })
 
 export const SEARCH_MAX_RESULTS = { default: 12, min: 1, max: 50 } as const;
 
+/** Where readers can get human help when the docs do not answer. */
+export const aiSupportUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .regex(/^(?:https?:\/\/|mailto:)/i, 'Use an https:// link or a mailto: address.');
+
 export const aiStarterQuestionsSchema = z
   .array(z.string().trim().min(AI_CHAT_LIMITS.starterQuestionMin).max(AI_CHAT_LIMITS.starterQuestionMax))
   .max(AI_CHAT_LIMITS.starterQuestionsMax);
@@ -117,6 +124,7 @@ export const searchConfigurationSchema = z
     aiConversationCapture: z.boolean().default(true),
     /** Suggested first questions in the site's default language. */
     aiStarterQuestions: aiStarterQuestionsSchema.default([]),
+    aiSupportUrl: aiSupportUrlSchema.optional(),
     hotkey: z.enum(['cmdk', 'slash']).default('cmdk'),
     placeholder: z.string().trim().max(80).optional(),
   })
@@ -126,9 +134,9 @@ export type SearchConfiguration = z.infer<typeof searchConfigurationSchema>;
 /** A settings mutation is partial. `null` clears authored placeholder copy so
  * each active language returns to the localized Paraglide site default. */
 export const updateProjectSearchConfigurationBody = searchConfigurationSchema
-  .omit({ placeholder: true })
+  .omit({ placeholder: true, aiSupportUrl: true })
   .partial()
-  .extend({ placeholder: z.string().trim().max(80).nullable().optional() })
+  .extend({ placeholder: z.string().trim().max(80).nullable().optional(), aiSupportUrl: aiSupportUrlSchema.nullable().optional() })
   .strict();
 export type UpdateProjectSearchConfigurationBody = z.infer<typeof updateProjectSearchConfigurationBody>;
 
@@ -326,6 +334,7 @@ export const projectConfigSchema = z
         aiProvider: aiSelectionSchema.optional(),
         aiConversationCapture: z.boolean().optional(),
         aiStarterQuestions: aiStarterQuestionsSchema.optional(),
+        aiSupportUrl: aiSupportUrlSchema.optional(),
       })
       .strict()
       .optional(),
