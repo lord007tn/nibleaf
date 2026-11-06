@@ -32,6 +32,7 @@ type Row = {
   path: string;
   config: null;
   content: string;
+  updatedAt: Date;
 };
 
 const row = (overrides: Partial<Row> = {}): Row => ({
@@ -46,6 +47,7 @@ const row = (overrides: Partial<Row> = {}): Row => ({
   path: 'untitled',
   config: null,
   content: 'Existing documentation',
+  updatedAt: new Date('2026-11-02T00:00:00.000Z'),
   ...overrides,
 });
 
@@ -58,7 +60,13 @@ const seed = (page: Row) => {
     return current;
   });
   database.findMany.mockImplementation(async () => [current]);
-  database.transaction.mockResolvedValue([]);
+  // Interactive transactions run their callback against the same page client;
+  // batch transactions resolve their queries.
+  database.transaction.mockImplementation(async (work: unknown) =>
+    typeof work === 'function'
+      ? (work as (tx: unknown) => Promise<unknown>)({ page: { findFirst: database.findFirst, findMany: database.findMany, update: database.update } })
+      : Promise.all(work as Promise<unknown>[]),
+  );
 };
 
 describe('updatePage placeholder slug adoption', () => {
@@ -117,6 +125,29 @@ describe('updatePage placeholder slug adoption', () => {
   });
 });
 
+describe('updatePage structural changes', () => {
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+  });
+
+  it('commits the slug change and the path recomputation in one transaction', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { slug: 'handbook' });
+    expect(database.transaction).toHaveBeenCalledOnce();
+    expect(database.transaction.mock.calls[0]?.[0]).toBeTypeOf('function');
+    expect(database.transaction.mock.calls[0]?.[1]).toMatchObject({ timeout: expect.any(Number) });
+  });
+
+  it('fails the whole change when the paths cannot be recomputed', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    database.findMany.mockRejectedValueOnce(new Error('connection lost'));
+    await expect(updatePage('project-1', 'page-1', { slug: 'handbook' })).rejects.toThrow('connection lost');
+    // The page write happened inside the transaction that failed, so it rolls back with it.
+    expect(database.update).toHaveBeenCalledOnce();
+    expect(database.transaction).toHaveBeenCalledOnce();
+  });
+});
+
 describe('updatePage non-Latin slugs', () => {
   beforeEach(() => {
     for (const mock of Object.values(database)) mock.mockReset();
@@ -145,5 +176,49 @@ describe('updatePage non-Latin slugs', () => {
     const updated = await updatePage('project-1', 'page-1', { title: '🚀🎉' });
 
     expect(updated.slug).toBe('page');
+  });
+});
+
+describe('updatePage revision precondition', () => {
+  const readRevision = new Date('2026-11-02T00:00:00.000Z');
+  const notFoundError = () => Object.assign(new Error('No record was found for an update.'), { code: 'P2025' });
+
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+    recordEdit.mockClear();
+  });
+
+  it('refuses before writing when the page already changed since the expected revision', async () => {
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await expect(
+      updatePage('project-1', 'page-1', { content: 'new' }, 'author-1', { expectedUpdatedAt: new Date('2026-11-01T00:00:00.000Z') }),
+    ).rejects.toMatchObject({ code: 'database:conflict', details: { id: 'page-1', reason: 'revision_conflict' } });
+    expect(database.update).not.toHaveBeenCalled();
+    expect(recordEdit).not.toHaveBeenCalled();
+  });
+
+  it('makes the final write conditional on the revision that was read', async () => {
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await updatePage('project-1', 'page-1', { content: 'new' }, 'author-1', { expectedUpdatedAt: readRevision });
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'page-1', updatedAt: readRevision } }));
+    expect(recordEdit).toHaveBeenCalledOnce();
+  });
+
+  it('turns an edit that lands between the read and the write into a conflict', async () => {
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    database.update.mockRejectedValueOnce(notFoundError());
+    await expect(updatePage('project-1', 'page-1', { content: 'new' }, 'author-1', { expectedUpdatedAt: readRevision })).rejects.toMatchObject({
+      code: 'database:conflict',
+      details: { reason: 'revision_conflict' },
+    });
+    expect(recordEdit).not.toHaveBeenCalled();
+  });
+
+  it('leaves dashboard callers without a precondition unchanged', async () => {
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await updatePage('project-1', 'page-1', { hidden: true }, 'author-1');
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'page-1' } }));
+    database.update.mockRejectedValueOnce(notFoundError());
+    await expect(updatePage('project-1', 'page-1', { hidden: false }, 'author-1')).rejects.toMatchObject({ code: 'P2025' });
   });
 });

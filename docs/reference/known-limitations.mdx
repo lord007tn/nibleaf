@@ -112,10 +112,15 @@ runtime, credential, or external account is available. Configurable credentials
 are encrypted with a dedicated operator-managed key. Provider-visible tests and
 destructive deletion require explicit actions and safe confirmation boundaries.
 
-The HTTP MCP endpoint is disabled by default and project-bound. Its new-domain
-adapters are read-only; it cannot publish, reindex, export usage, accept provider
-credentials, or mutate add-ons, themes, usage, search, or integrations. Theme
-import preview validates a template without writing project state.
+The HTTP MCP endpoint is disabled by default and project-bound. Its only writes
+are page drafts in the working copy and a project-wide publish that needs a
+fresh preview and explicit confirmation. It cannot delete content, reindex,
+export usage, accept provider credentials, or mutate settings, members, add-ons,
+themes, usage, search, or integrations. Theme import preview validates a
+template without writing project state. OAuth sign-in for MCP clients, such as
+ChatGPT and claude.ai connectors, needs the instance to be served over HTTPS
+(or loopback in development); see
+[OAuth for MCP clients](/self-hosting/mcp#oauth-for-mcp-clients).
 
 ## Report a blocking gap
 

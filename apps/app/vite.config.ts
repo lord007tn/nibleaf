@@ -16,6 +16,15 @@ import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
 // HTML after TanStack Start has created its streaming response.
+/** OAuth discovery documents MCP clients fetch from the dashboard origin
+ *  (RFC 9728 protected resource, RFC 8414 / OpenID metadata). The API serves
+ *  them at its root; see apps/server/src/modules/mcp/oauth-discovery.ts. */
+const OAUTH_DISCOVERY_PREFIXES = [
+  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-authorization-server',
+  '/.well-known/openid-configuration',
+] as const;
+
 const SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
@@ -99,7 +108,10 @@ export default defineConfig(({ mode }) => {
       port: 4310,
       // Vite's static middleware claims unknown dotted paths before Nitro in
       // development. Route imported media directly to the API at that layer.
-      proxy: { '/api/public/assets': { target: apiTarget, changeOrigin: true } },
+      proxy: {
+        '/api/public/assets': { target: apiTarget, changeOrigin: true },
+        ...Object.fromEntries(OAUTH_DISCOVERY_PREFIXES.map((prefix) => [prefix, { target: apiTarget, changeOrigin: true }])),
+      },
     },
     plugins: [
       paraglideVitePlugin({
@@ -131,6 +143,13 @@ export default defineConfig(({ mode }) => {
           // the broad API proxy, leaving imported images as published-site 404s.
           '/api/public/assets/**': { proxy: `${apiTarget}/api/public/assets/**` },
           '/api/**': { proxy: `${apiTarget}/api/**` },
+          // MCP clients discover OAuth at the public origin, outside /api.
+          ...Object.fromEntries(
+            OAUTH_DISCOVERY_PREFIXES.flatMap((prefix) => [
+              [prefix, { proxy: `${apiTarget}${prefix}` }],
+              [`${prefix}/**`, { proxy: `${apiTarget}${prefix}/**` }],
+            ]),
+          ),
         },
       }),
       tanstackStart(),

@@ -51,6 +51,9 @@ vi.mock('@/hooks/api/query-options', () =>
       'pages',
       'listExportRuns',
       'listExportSchedules',
+      'apiKeys',
+      'connectedApps',
+      'integrations',
     ].map((name) => [`${name}QueryOptions`, (id: string) => ({ queryKey: [name, id] })]),
   ),
 );
@@ -207,5 +210,24 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[data-testid="general-settings"]')).toBeNull();
     await act(async () => container.querySelector<HTMLButtonElement>('button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe('site settings data loading', () => {
+  type Loader = (args: { context: { queryClient: unknown }; deps: { section: string }; params: { projectId: string } }) => void;
+  const loader = Route.options.loader as unknown as Loader;
+  const loaderDeps = Route.options.loaderDeps as unknown as (args: { search: { section: string } }) => { section: string };
+
+  it('prefetches AI assistant keys and connected apps for that section', () => {
+    const queryClient = {};
+    mocks.prefetch.mockClear();
+    expect(loaderDeps({ search: { section: 'apiKeys' } })).toEqual({ section: 'apiKeys' });
+    loader({ context: { queryClient }, deps: { section: 'apiKeys' }, params: { projectId: 'project-1' } });
+    expect(mocks.prefetch.mock.calls).toEqual([
+      [queryClient, { queryKey: ['project', 'project-1'] }],
+      [queryClient, { queryKey: ['projectMembers', 'project-1'] }],
+      [queryClient, { queryKey: ['apiKeys', 'project-1'] }],
+      [queryClient, { queryKey: ['connectedApps', 'project-1'] }],
+    ]);
   });
 });

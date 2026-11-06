@@ -51,7 +51,9 @@ vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
 vi.mock('../deployments', () => ({
   getCurrentSnapshot: mocks.getCurrentSnapshot,
 }));
-vi.mock('../importers/content', () => ({
+vi.mock('../importers/content', async (importOriginal) => ({
+  // serializeGitPage is the real serializer (shared with the MCP Markdown resource).
+  serializeGitPage: (await importOriginal<typeof import('../importers/content')>()).serializeGitPage,
   deriveTitle: vi.fn(),
   humanize: (value: string) => value,
   parseFrontmatter: mocks.parseFrontmatter,

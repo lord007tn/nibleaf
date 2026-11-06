@@ -38,7 +38,7 @@ const getThemeCatalogDto = async (organizationId: string, projectId: string) => 
 };
 
 export const registerThemeSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('themes:read')) return;
+  if (!principal.credential.scopes.includes('themes:read')) return;
   const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
   server.registerTool(
     'get_theme_catalog',

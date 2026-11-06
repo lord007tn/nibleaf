@@ -53,7 +53,7 @@ const listAddonAuditDto = async (ctx: Context<HonoEnv>, projectId: string, query
 };
 
 export const registerAddonSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('addons:read')) return;
+  if (!principal.credential.scopes.includes('addons:read')) return;
   server.registerTool(
     'list_addons',
     {

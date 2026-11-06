@@ -106,7 +106,7 @@ const listIntegrationsDto = async (ctx: Context<HonoEnv>, projectId: string) =>
   (await listProjectIntegrations(ctx, projectId)).map((entry) => integrationDto(entry));
 
 export const registerIntegrationSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('integrations:read')) return;
+  if (!principal.credential.scopes.includes('integrations:read')) return;
   const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
   server.registerTool(
     'list_integrations',
