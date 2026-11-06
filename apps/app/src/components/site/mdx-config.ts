@@ -70,13 +70,20 @@ export function normalizeMdxBlocks(src: string): string {
   // A one-line block component would otherwise sit inside a Markdown paragraph,
   // rendering a <div> inside a <p> (invalid HTML that breaks hydration). Give it
   // block form so its text is parsed as Markdown inside the component.
+  // Nested one-liners (`<CardGroup><Card>x</Card></CardGroup>`) expand level by level.
+  const expand = (line: string): string[] => {
+    const match = ONE_LINE_BLOCK.exec(line);
+    if (!match) return [line];
+    const [, indent = '', tag = '', attributes = '', body = ''] = match;
+    // Siblings of the same tag on one line (`<Card>a</Card><Card>b</Card>`) would be
+    // mis-split by the greedy match; leave those lines as authored.
+    if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
+    return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
+  };
   let inFence = false;
   const lines = src.split('\n').flatMap((line) => {
     if (FENCE.test(line)) inFence = !inFence;
-    const match = inFence ? null : ONE_LINE_BLOCK.exec(line);
-    if (!match) return [line];
-    const [, indent = '', tag = '', attributes = '', body = ''] = match;
-    return [`${indent}<${tag}${attributes}>`, '', body.trim(), '', `${indent}</${tag}>`];
+    return inFence ? [line] : expand(line);
   });
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {

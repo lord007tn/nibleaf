@@ -17,14 +17,29 @@ const queryTokens = (query: string): string[] =>
     .split(/\s+/)
     .filter((token) => token.length >= 2);
 
+function normalizeWithOffsets(text: string): { value: string; offsets: number[] } {
+  let value = '';
+  const offsets: number[] = [];
+  for (let index = 0; index < text.length; index += 1) {
+    for (const char of normalize(text[index] ?? '')) {
+      value += char;
+      offsets.push(index);
+    }
+  }
+  offsets.push(text.length);
+  return { value, offsets };
+}
+
 /** A preview of the section body around the first matching word, cut on whole words. */
 function sectionSnippet(lines: string[], tokens: string[]): string {
   // Keep code text (a reader may search for a command) but drop the fence markers.
   const text = stripMarkdown(lines.filter((line) => !line.trimStart().startsWith('```')).join('\n'));
   if (text.length <= SNIPPET_LENGTH) return text;
-  const lower = normalize(text);
-  const hit = tokens.map((token) => lower.indexOf(token)).filter((index) => index >= 0);
-  const anchor = hit.length > 0 ? Math.min(...hit) : 0;
+  // Match in normalized text (no Arabic diacritics, folded alef forms), then map
+  // the position back to the original text so the window stays on the match.
+  const normalized = normalizeWithOffsets(text);
+  const hit = tokens.map((token) => normalized.value.indexOf(token)).filter((index) => index >= 0);
+  const anchor = hit.length > 0 ? (normalized.offsets[Math.min(...hit)] ?? 0) : 0;
   let start = Math.max(0, anchor - SNIPPET_LENGTH / 3);
   if (start > 0) {
     const space = text.indexOf(' ', start);
@@ -70,14 +85,24 @@ export function matchedSearchSection(
     if (fence) inFence = !inFence;
     sections.at(-1)?.lines.push(line);
   }
-  const candidates = sections.filter(({ heading }) => heading.depth > 1);
-  // Prefer a heading that names the query, then the first section that mentions it.
-  const match =
-    candidates.find(({ heading }) => tokens.every((token) => normalize(heading.text).includes(token))) ??
-    candidates.find(({ lines }) => {
-      const text = normalize(lines.join(' '));
-      return tokens.some((token) => text.includes(token));
-    });
+  // Score every section: a heading that names the whole query wins outright,
+  // heading words weigh more than body words, and more matched words beat fewer.
+  // Ties keep document order.
+  let match: (typeof sections)[number] | undefined;
+  let bestScore = 0;
+  for (const section of sections) {
+    if (section.heading.depth <= 1) continue;
+    const heading = normalize(section.heading.text);
+    const body = normalize(section.lines.join(' '));
+    const headingHits = tokens.filter((token) => heading.includes(token)).length;
+    const bodyHits = tokens.filter((token) => body.includes(token)).length;
+    if (headingHits + bodyHits === 0) continue;
+    const score = (headingHits === tokens.length ? 100 : 0) + headingHits * 3 + bodyHits;
+    if (score > bestScore) {
+      match = section;
+      bestScore = score;
+    }
+  }
   if (!match) return undefined;
   return { section: { id: match.heading.id, title: match.heading.text }, snippet: sectionSnippet(match.lines, tokens) };
 }

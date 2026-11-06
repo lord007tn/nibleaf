@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import rehypeRaw from 'rehype-raw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownRenderer } from '../markdown';
 import { Step, Steps, Tooltip } from './mdx-components';
@@ -47,17 +48,55 @@ describe('reader content ergonomics', () => {
     expect(tip.hidden).toBe(false);
     act(() => trigger.click());
     expect(tip.hidden).toBe(true);
+    // A tooltip is not a disclosure: no expanded state is announced.
+    expect(trigger.hasAttribute('aria-expanded')).toBe(false);
   });
-  it('reports clipboard rejection and success with a live status', async () => {
+  it('keeps the tip open while the pointer moves onto it and never nests a link in a button', async () => {
+    await act(async () => root.render(<Tooltip tip="Explanation">Term</Tooltip>));
+    const wrapper = container.firstElementChild as HTMLElement;
+    const trigger = container.querySelector('button');
+    const tip = container.querySelector<HTMLElement>('[role="tooltip"]');
+    if (!trigger || !tip) throw new Error('Missing tooltip parts');
+    // React's onMouseEnter/onMouseLeave listen to mouseover/mouseout with relatedTarget.
+    act(() => trigger.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, relatedTarget: document.body })));
+    expect(tip.hidden).toBe(false);
+    act(() => trigger.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: tip })));
+    expect(tip.hidden).toBe(false);
+    act(() => tip.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })));
+    expect(tip.hidden).toBe(true);
+    expect(wrapper.contains(tip)).toBe(true);
+    await act(async () =>
+      root.render(
+        <Tooltip tip="Explanation">
+          <a href="/guide">Guide</a>
+        </Tooltip>,
+      ),
+    );
+    expect(container.querySelector('button')).toBeNull();
+    expect(container.querySelector('a[href="/guide"]')).not.toBeNull();
+  });
+  it('reports clipboard rejection and success through one shared live region', async () => {
     const writeText = vi.fn().mockRejectedValueOnce(new Error('denied')).mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
-    await act(async () => root.render(<MarkdownRenderer content={'```js\nconst a = 1;\n```'} site={{ projectId: 'test', lang: 'en' }} />));
-    const button = container.querySelector('button');
+    await act(async () =>
+      root.render(
+        <MarkdownRenderer content={'## Setup\n\n```js\nconst a = 1;\n```\n\n```js\nconst b = 2;\n```'} site={{ projectId: 'test', lang: 'en' }} />,
+      ),
+    );
+    // No per-heading or per-code-block live regions.
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(0);
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="Copy code"]');
     if (!button) throw new Error('Missing copy button');
+    const announcer = () => [...document.querySelectorAll('[data-reader-announcer]')];
     await act(async () => button.click());
-    expect(container.querySelector('[role="status"]')?.textContent).toContain("Couldn't copy");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 80)));
+    expect(announcer()).toHaveLength(1);
+    expect(announcer()[0]?.textContent).toContain("Couldn't copy");
+    expect(container.textContent).toContain("Couldn't copy");
     await act(async () => button.click());
-    expect(container.querySelector('[role="status"]')?.textContent).toBe('Copied');
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 80)));
+    expect(announcer()).toHaveLength(1);
+    expect(announcer()[0]?.textContent).toBe('Copied');
     expect(writeText).toHaveBeenLastCalledWith('const a = 1;\n');
   });
   it('preserves heading IDs and text and copies absolute section URLs only in readers', async () => {
@@ -68,6 +107,8 @@ describe('reader content ergonomics', () => {
     );
     const buttons = container.querySelectorAll<HTMLButtonElement>('button[aria-label="Copy link to this section"]');
     expect(buttons).toHaveLength(3);
+    // Each button is described by its own heading, so a list of buttons tells them apart.
+    expect([...buttons].map((button) => button.getAttribute('aria-describedby'))).toEqual(['getting-started', 'next', 'details']);
     expect(container.querySelector('h2')?.id).toBe('getting-started');
     expect(container.querySelector('h2')?.textContent).toBe('Getting started');
     await act(async () => buttons[0]?.click());
@@ -117,6 +158,20 @@ describe('reader content ergonomics', () => {
     act(() => dialog.querySelector('button')?.click());
     expect(dialog.open).toBe(false);
   });
+  it('keeps authored image classes, such as light/dark image pairs, over the default frame', async () => {
+    await act(async () =>
+      root.render(
+        <MarkdownRenderer
+          content={'<img src="/light.png" alt="Light" class="block dark:hidden" />'}
+          site={{ projectId: 'test', lang: 'en' }}
+          extraRehypePlugins={[rehypeRaw]}
+        />,
+      ),
+    );
+    const classes = container.querySelector('img')?.className ?? '';
+    expect(classes).toContain('dark:hidden');
+    expect(classes).toContain('block');
+  });
   it('does not offer zoom for linked images or tiny icons', async () => {
     await act(async () =>
       root.render(
@@ -140,9 +195,12 @@ describe('reader content ergonomics', () => {
     }
     expect(container.querySelector('button')).toBeNull();
   });
-  it('recognizes lucide aliases and falls back for unknown authored icons', async () => {
+  it('recognizes lucide aliases and leaves unknown authored icons to the caller', async () => {
     for (const name of ['life-buoy', 'lifebuoy', 'LifeBuoy', 'circle-help']) expect(hasIcon(name)).toBe(true);
-    await act(async () => root.render(<PageIcon name="unknown-icon" />));
+    await act(async () => root.render(<PageIcon name="life-buoy" />));
     expect(container.querySelector('svg')).not.toBeNull();
+    // Unknown names render nothing, so inline <Icon> and the sidebar don't show a stray document icon.
+    await act(async () => root.render(<PageIcon name="unknown-icon" />));
+    expect(container.querySelector('svg')).toBeNull();
   });
 });

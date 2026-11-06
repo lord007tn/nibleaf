@@ -159,9 +159,11 @@ describe('published reader search', () => {
     const buttons = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')];
     const escapeHint = buttons.find((button) => button.textContent?.includes('Esc'));
     const cancel = buttons.find((button) => button.textContent === 'Cancel');
-    expect(escapeHint?.textContent).toContain('Close search');
+    expect(escapeHint?.getAttribute('aria-label')).toBe('Close search');
+    expect(escapeHint?.getAttribute('aria-keyshortcuts')).toBe('Escape');
     expect(cancel).toBeDefined();
-    expect(document.querySelector('button[aria-label="Close search"]')).toBeNull();
+    // No icon-only X button.
+    expect(document.querySelector('[role="dialog"] button svg.lucide-x')).toBeNull();
     await act(async () => cancel?.click());
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
     await act(async () => escapeHint?.click());
@@ -362,6 +364,40 @@ describe('published reader search', () => {
     await select('searchClearRecent');
     expect(document.body.textContent).not.toContain('searchRecent');
     expect(window.localStorage.getItem('nibleaf:site-search:recent:docs')).toBe('[]');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('keeps current results through a background refetch of the same query', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    const { rerender } = await render({ aiAnswers: false });
+    await typeQuery('setup');
+    mocks.search.mockReturnValue({ data: [hit], isFetching: true, error: null });
+    await rerender();
+    expect(option('Setup guide')?.getAttribute('aria-selected')).toBe('true');
+    expect(status()).toBe('searchResultCount');
+  });
+
+  it('links version-independent suggestions without a version prefix', async () => {
+    window.history.replaceState(null, '', '/sites/docs/start');
+    const versions = [
+      { id: 'main', name: 'main', slug: 'main', isDefault: true },
+      { id: 'v1', name: 'v1', slug: 'v1', isDefault: false },
+    ];
+    await render({
+      aiAnswers: false,
+      lang: 'en',
+      defaultLanguage: 'en',
+      version: 'v1',
+      versions,
+      suggestions: [
+        { title: 'API', path: 'api-reference/auth', versionIndependent: true },
+        { title: 'Guide', path: 'guide' },
+      ],
+    });
+    await select('API');
+    expect(mocks.navigate).toHaveBeenLastCalledWith({ href: '/sites/docs/api-reference/auth' });
+    await select('Guide');
+    expect(mocks.navigate).toHaveBeenLastCalledWith({ href: '/sites/docs/v1/guide' });
     window.history.replaceState(null, '', '/');
   });
 

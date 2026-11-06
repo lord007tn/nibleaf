@@ -43,6 +43,13 @@ describe('normalizeMdxBlocks', () => {
     const once = normalizeMdxBlocks('<Note>Text</Note>');
     expect(normalizeMdxBlocks(once)).toBe(once);
   });
+  it('expands nested one-line block components level by level and leaves same-tag siblings alone', () => {
+    expect(normalizeMdxBlocks('<CardGroup cols="2"><Card title="A">Body</Card></CardGroup>')).toBe(
+      '<CardGroup cols="2">\n\n<Card title="A">\n\nBody\n\n</Card>\n\n</CardGroup>',
+    );
+    const siblings = '<Card title="A">a</Card><Card title="B">b</Card>';
+    expect(normalizeMdxBlocks(siblings)).toBe(siblings);
+  });
   it('is idempotent', () => {
     const once = normalizeMdxBlocks('<Card title="x">\nbody\n</Card>');
     expect(normalizeMdxBlocks(once)).toBe(once);

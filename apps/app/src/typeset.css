@@ -534,15 +534,6 @@
 .reader-heading:focus-within .reader-section-link {
   opacity: 1;
 }
-.reader-copy-status {
-  grid-column: 1 / -1;
-  display: block;
-  font-size: 0.875rem;
-  font-weight: normal;
-}
-.reader-copy-status:empty {
-  display: none;
-}
 .reader-image {
   position: relative;
   display: inline-block;
@@ -626,8 +617,7 @@
 }
 @media print {
   .reader-control,
-  .reader-copy-status,
-  [data-theme-component="code"] [role="status"] {
+  .reader-code-copy-failed {
     display: none !important;
   }
   [data-theme-component="code"],

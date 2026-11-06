@@ -136,14 +136,14 @@ const normalize = (name: string): string =>
     .toLowerCase()
     .replace(/[\s_]+/g, '-');
 
-/** Render known icons and use a document icon for unknown authored names. */
+/** Render the named icon, or null when the name is empty/unrecognized so callers
+ *  can decide on a fallback. */
 export function PageIcon({ name, className }: { name?: string | null; className?: string }) {
   if (!name) {
     return null;
   }
   const Icon = ICONS[normalize(name)];
-  const ResolvedIcon = Icon ?? FileText;
-  return <ResolvedIcon className={className} aria-hidden />;
+  return Icon ? <Icon className={className} aria-hidden /> : null;
 }
 
 /** Whether an authored icon name resolves to a real icon. */

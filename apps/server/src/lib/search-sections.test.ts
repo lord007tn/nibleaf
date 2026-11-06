@@ -42,6 +42,23 @@ describe('matchedSearchSection', () => {
     expect(matchedSearchSection(billing, 'mistake')?.snippet).toBe('If you were charged by mistake, we refund the full amount.');
   });
 
+  it('picks the section that matches the most query words, weighting headings', () => {
+    expect(matchedSearchSection(billing, 'billing invoices')?.section.id).toBe('download-invoices');
+    expect(matchedSearchSection(billing, 'mistake refund')?.section.id).toBe('refunds');
+  });
+
+  it('keeps the Arabic preview on the match when the text carries diacritics', () => {
+    const filler = 'نَصٌّ تَمْهِيدِيٌّ طَوِيلٌ '.repeat(20);
+    const page = {
+      title: 'دليل',
+      content: `## الإعدادات
+
+${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${filler}`,
+    };
+    const snippet = matchedSearchSection(page, 'الغاء')?.snippet ?? '';
+    expect(snippet).toContain('إِلْغَاءُ الاشتراك');
+  });
+
   it('keeps heading anchors aligned when code fences contain heading-like lines', () => {
     expect(matchedSearchSection(billing, 'curl')?.section.id).toBe('download-invoices');
     expect(matchedSearchSection(billing, 'curl')?.snippet).toContain('curl https://example.com/invoices');

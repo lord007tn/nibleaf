@@ -265,43 +265,55 @@ export function Frame({ caption, children }: { caption?: string; children?: Reac
   );
 }
 
+/** True when the content holds a link, which must not be nested in a button. */
+const containsLink = (node: ReactNode): boolean =>
+  Children.toArray(node).some(
+    (child) =>
+      isValidElement<{ href?: unknown; children?: ReactNode }>(child) &&
+      (child.type === 'a' || child.props.href !== undefined || containsLink(child.props.children)),
+  );
+
 export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const pointerOpen = useRef(false);
   if (!tip) return <>{children}</>;
+  const linked = containsLink(children);
   return (
-    <span className="relative inline-block">
-      <button
-        type="button"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onPointerDown={() => {
-          pointerOpen.current = open;
-        }}
-        tabIndex={0}
-        aria-describedby={id}
-        aria-expanded={open}
-        className="cursor-help underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onClick={(event) => setOpen(event.detail ? !pointerOpen.current : !open)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') {
-            event.stopPropagation();
-            setOpen(false);
-          }
-        }}
-      >
-        {children}
-      </button>
-      <span
-        id={id}
-        role="tooltip"
-        hidden={!open}
-        className="absolute start-0 bottom-full z-20 mb-2 w-max max-w-[min(20rem,80vw)] rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md"
-      >
-        {tip}
+    // Hover, focus and Escape are handled on the wrapper so the pointer can move
+    // onto the tip without closing it (WCAG 1.4.13) and focus inside a link works.
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: the focusable trigger is a child; the wrapper only keeps the tip open.
+    <span
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      {linked ? (
+        children
+      ) : (
+        <button
+          type="button"
+          aria-describedby={id}
+          className="cursor-help underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+          onPointerDown={() => {
+            pointerOpen.current = open;
+          }}
+          onClick={(event) => setOpen(event.detail ? !pointerOpen.current : !open)}
+        >
+          {children}
+        </button>
+      )}
+      {/* Bottom padding, not a margin, keeps the gap above the trigger hoverable. */}
+      <span id={id} role="tooltip" hidden={!open} className="absolute start-0 bottom-full z-20 w-max max-w-[min(20rem,80vw)] pb-2">
+        <span className="block rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md">{tip}</span>
       </span>
     </span>
   );

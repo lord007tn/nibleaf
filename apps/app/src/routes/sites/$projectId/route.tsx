@@ -15,7 +15,7 @@ import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/compone
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
-import { firstLeafPath, leadingPages, SiteNav } from '@/components/site/site-nav';
+import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
 import { preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
@@ -349,7 +349,12 @@ function SiteChrome() {
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
   const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
-  const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({ title: node.title, path: node.path, icon: node.icon }));
+  const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({
+    title: node.title,
+    path: node.path,
+    icon: node.icon,
+    versionIndependent: isVersionIndependentNavNode(node),
+  }));
   // Phones keep the header to one row, so these switchers live in the drawer there.
   const mobileChoices: MobileNavChoice[] = [
     {

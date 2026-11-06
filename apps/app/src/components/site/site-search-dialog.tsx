@@ -36,6 +36,8 @@ export interface SiteSearchSuggestion {
   title: string;
   path: string;
   icon?: string | null;
+  /** API-reference pages belong to no docs version, so their link carries none. */
+  versionIndependent?: boolean;
 }
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
@@ -202,7 +204,9 @@ export default function SiteSearchDialog({
   // snapshot; each hit carries its own language for correct localized routing.
   const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
-  const queryPending = trimmed !== debouncedQuery.trim() || hitsQuery.isFetching;
+  // Only a first load for this query counts as pending: a background refetch of
+  // the same query keeps its results, highlight and announcement in place.
+  const queryPending = trimmed !== debouncedQuery.trim() || (hitsQuery.isFetching && hitsQuery.data === undefined);
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
   const hits: SiteSearchHit[] = trimmed && !queryPending && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
@@ -256,7 +260,12 @@ export default function SiteSearchDialog({
     if (!answerMatchesScope || answerMutation.error) ask();
   };
 
-  const openPage = (path: string, language: string | undefined, analytics?: { hit: SiteSearchHit; position: number }) => {
+  const openPage = (
+    path: string,
+    language: string | undefined,
+    analytics?: { hit: SiteSearchHit; position: number },
+    options?: { versionIndependent?: boolean },
+  ) => {
     if (analytics) {
       track({
         name: 'search_result_clicked',
@@ -271,7 +280,7 @@ export default function SiteSearchDialog({
     void router.navigate({
       href: siteHref(projectId, path, {
         lang: siteLanguageParam(language ?? lang ?? defaultLanguage ?? '', defaultLanguage),
-        version: selectedVersion,
+        version: options?.versionIndependent ? undefined : selectedVersion,
       }),
     });
   };
@@ -289,7 +298,10 @@ export default function SiteSearchDialog({
   // keyword query the first page result starts highlighted so Enter opens the
   // best match, with "Ask AI" one ↑ above it; a question starts on "Ask AI".
   const askValue = 'ask-ai';
-  const suggestionValues = suggestions.map((_, index) => `suggest-${index}`);
+  // Suggestions come from the current version's sidebar, so they only apply while
+  // the reader searches that version.
+  const visibleSuggestions = selectedVersion === version ? suggestions : [];
+  const suggestionValues = visibleSuggestions.map((_, index) => `suggest-${index}`);
   const itemValues: string[] = [];
   if (!trimmed) {
     itemValues.push(...recent.map((_, index) => `recent-${index}`));
@@ -351,10 +363,15 @@ export default function SiteSearchDialog({
   ) : null;
 
   const suggestionGroup =
-    suggestions.length > 0 ? (
+    visibleSuggestions.length > 0 ? (
       <CommandGroup heading={t('searchSuggested')} className={GROUP}>
-        {suggestions.map((suggestion, index) => (
-          <CommandItem key={suggestion.path} value={`suggest-${index}`} onSelect={() => openPage(suggestion.path, lang)} className={ROW}>
+        {visibleSuggestions.map((suggestion, index) => (
+          <CommandItem
+            key={suggestion.path}
+            value={`suggest-${index}`}
+            onSelect={() => openPage(suggestion.path, lang, undefined, { versionIndependent: suggestion.versionIndependent })}
+            className={ROW}
+          >
             <RowIcon>{hasIcon(suggestion.icon) ? <PageIcon name={suggestion.icon} className="size-4" /> : <FileText className="size-4" />}</RowIcon>
             <span className="min-w-0 flex-1 truncate" dir="auto">
               {suggestion.title}
@@ -430,10 +447,11 @@ export default function SiteSearchDialog({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
+              aria-label={t('closeSearch')}
+              aria-keyshortcuts="Escape"
               className="hidden h-8 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:inline-flex"
             >
               <Key>Esc</Key>
-              <span className="sr-only">{t('closeSearch')}</span>
             </button>
             <button
               type="button"
@@ -456,12 +474,20 @@ export default function SiteSearchDialog({
               onPointerMoveCapture={markReaderMove}
             >
               {!trimmed ? (
-                recent.length > 0 || suggestions.length > 0 ? (
+                recent.length > 0 || visibleSuggestions.length > 0 ? (
                   <>
                     {recent.length > 0 ? (
                       <CommandGroup heading={t('searchRecent')} className={GROUP}>
                         {recent.map((item, index) => (
-                          <CommandItem key={item} value={`recent-${index}`} onSelect={() => setQuery(item)} className={ROW}>
+                          <CommandItem
+                            key={item}
+                            value={`recent-${index}`}
+                            onSelect={() => {
+                              setQuery(item);
+                              inputRef.current?.focus();
+                            }}
+                            className={ROW}
+                          >
                             <RowIcon>
                               <Clock className="size-4" />
                             </RowIcon>

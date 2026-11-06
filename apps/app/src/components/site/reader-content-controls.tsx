@@ -3,28 +3,45 @@ import { Link, ZoomIn } from 'lucide-react';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+let liveRegion: HTMLElement | null = null;
+
+/** One shared polite live region for reader controls (copy code, copy section
+ * link), instead of a status element per heading and code block. */
+export function announce(message: string): void {
+  if (typeof document === 'undefined') return;
+  if (!liveRegion?.isConnected) {
+    liveRegion = document.createElement('div');
+    liveRegion.setAttribute('role', 'status');
+    liveRegion.setAttribute('aria-live', 'polite');
+    liveRegion.setAttribute('data-reader-announcer', '');
+    liveRegion.className = 'sr-only';
+    document.body.append(liveRegion);
+  }
+  const region = liveRegion;
+  // Clear first so repeating the same message is announced again.
+  region.textContent = '';
+  window.setTimeout(() => {
+    region.textContent = message;
+  }, 50);
+}
+
 export function SectionLink({ id, language }: { id: string; language?: string }) {
-  const [status, setStatus] = useState('');
   const t = siteT(language);
   async function copy() {
     try {
       const url = new URL(window.location.href);
       url.hash = id;
       await navigator.clipboard.writeText(url.href);
-      setStatus(t('copied'));
+      announce(t('copied'));
     } catch {
-      setStatus(t('copyFailed'));
+      announce(t('copyFailed'));
     }
   }
   return (
-    <>
-      <button type="button" className="reader-section-link reader-control" aria-label={t('copySectionLink')} onClick={copy}>
-        <Link className="size-4" aria-hidden />
-      </button>
-      <span role="status" className="reader-copy-status">
-        {status}
-      </span>
-    </>
+    // The heading (its id) describes each button, so a list of buttons tells them apart.
+    <button type="button" className="reader-section-link reader-control" aria-label={t('copySectionLink')} aria-describedby={id} onClick={copy}>
+      <Link className="size-4" aria-hidden />
+    </button>
   );
 }
 
@@ -44,6 +61,16 @@ export function ContentImage({ language, ...props }: ComponentProps<'img'> & { l
     const element = image.current;
     if (element?.complete && element.naturalWidth > 0) setZoomable(isZoomable(element));
   }, []);
+  const openFullSize = () => {
+    const modal = dialog.current;
+    const source = trigger.current;
+    if (!modal || !source) return;
+    // The dialog is portaled out of the article, so carry over its direction and language.
+    modal.dir = getComputedStyle(source).direction === 'rtl' ? 'rtl' : 'ltr';
+    const lang = source.closest('[lang]')?.getAttribute('lang');
+    if (lang) modal.lang = lang;
+    modal.showModal();
+  };
   return (
     <span className="reader-image">
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: load measures dimensions; interaction uses a separate button. */}
@@ -58,17 +85,12 @@ export function ContentImage({ language, ...props }: ComponentProps<'img'> & { l
       />
       {zoomable ? (
         <>
-          <button
-            ref={trigger}
-            type="button"
-            className="reader-image-zoom reader-control"
-            aria-label={t('viewFullSize')}
-            onClick={() => dialog.current?.showModal()}
-          >
+          <button ref={trigger} type="button" className="reader-image-zoom reader-control" aria-label={t('viewFullSize')} onClick={openFullSize}>
             <ZoomIn className="size-4" aria-hidden />
           </button>
           {/* A dialog is not phrasing content, so it must not live inside the image's paragraph. */}
           {createPortal(
+            // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Escape already closes the native dialog; the click only handles the backdrop.
             <dialog
               ref={dialog}
               className="reader-image-dialog"
@@ -78,6 +100,10 @@ export function ContentImage({ language, ...props }: ComponentProps<'img'> & { l
                 dialog.current?.close();
               }}
               onClose={() => trigger.current?.focus()}
+              onClick={(event) => {
+                // A click on the dialog element itself (not its content) is a backdrop click.
+                if (event.target === event.currentTarget) dialog.current?.close();
+              }}
             >
               <button type="button" className="reader-control" onClick={() => dialog.current?.close()}>
                 {t('closeImage')}

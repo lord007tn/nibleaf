@@ -50,7 +50,7 @@ import {
   sanitizeSchema,
 } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
-import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
+import { announce, ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -112,9 +112,11 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
     try {
       await navigator.clipboard.writeText(ref.current?.textContent ?? '');
       setCopied(true);
+      announce(t('copied'));
       setTimeout(() => setCopied(false), 1500);
     } catch {
       setFailed(true);
+      announce(t('copyFailed'));
     }
   };
   const copyButton = (
@@ -159,9 +161,8 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
           {copyButton}
         </>
       )}
-      <span role="status" className={failed ? 'block px-4 py-2 text-sm text-white' : 'sr-only'}>
-        {failed ? t('copyFailed') : copied ? t('copied') : ''}
-      </span>
+      {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
+      {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
       <pre
         dir="ltr"
         ref={ref}
@@ -497,7 +498,10 @@ export function MarkdownRenderer({
                 {props.id && <SectionLink id={props.id} language={site.lang} />}
               </div>
             ),
-            img: ({ node: _node, ...props }) => <ContentImage {...props} className="rounded-xl border border-border" language={site.lang} />,
+            // Authored classes (e.g. light/dark image pairs) must keep winning over the default frame.
+            img: ({ node: _node, ...props }) => (
+              <ContentImage {...props} className={cn('rounded-xl border border-border', props.className)} language={site.lang} />
+            ),
           } satisfies Components)
         : {}),
       pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
