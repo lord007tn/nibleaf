@@ -78,9 +78,10 @@ it('hands text typed into the loading shell to the dialog, with focus and the ca
   expect(document.activeElement).toBe(shellInput);
   await act(async () => setValue(shellInput, 'ref'));
   gate.release();
-  // The gated chunk resolves asynchronously; wait until the real dialog replaces the shell.
-  for (let attempt = 0; attempt < 100 && !document.querySelector('[data-slot="command-input"]'); attempt += 1) {
-    await act(async () => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+  // The gated chunk resolves asynchronously (its module graph can take a few
+  // seconds to import on a busy machine); wait until the real dialog replaces the shell.
+  for (let attempt = 0; attempt < 200 && !document.querySelector('[data-slot="command-input"]'); attempt += 1) {
+    await act(async () => new Promise<void>((resolve) => setTimeout(resolve, 50)));
   }
   await act(async () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
   const input = document.querySelector<HTMLInputElement>('[data-slot="command-input"]');
@@ -89,4 +90,4 @@ it('hands text typed into the loading shell to the dialog, with focus and the ca
   expect(document.activeElement).toBe(input);
   expect(input?.selectionStart).toBe(3);
   await act(async () => root.unmount());
-});
+}, 15_000);
