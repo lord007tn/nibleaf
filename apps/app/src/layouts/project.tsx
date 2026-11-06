@@ -1,15 +1,25 @@
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@nibleaf/design-system/components/ui/breadcrumb';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Eye, Loader2, Rocket } from 'lucide-react';
+import { Eye, Loader2, Rocket, Search } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
+import { useOpenCommandPalette } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
-import { DeployPipeline } from '@/components/project/deploy-pipeline';
+import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
-import { useDeployments, useProject } from '@/hooks/api';
+import { useDeployments, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 
@@ -19,8 +29,10 @@ export function PublishControl({
   project,
   initialPublishOpen = false,
   beforePublish,
+  currentPage,
 }: {
   project: Project;
+  currentPage?: PublishPage;
   initialPublishOpen?: boolean;
   beforePublish?: () => Promise<void> | Promise<boolean>;
 }) {
@@ -32,6 +44,8 @@ export function PublishControl({
   const t = useT();
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
+  const pending = usePendingChanges(project.id);
+  const changeCount = pending.data?.changes.length ?? 0;
   const latest = deployments.data?.[0];
   const building = latest?.status === 'PENDING' || latest?.status === 'BUILDING';
 
@@ -54,7 +68,8 @@ export function PublishControl({
         size="sm"
       >
         {preparing ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
-        <span className="hidden sm:inline">{building ? t('project.publishing') : t('project.publish')}</span>
+        <span>{building ? t('project.publishing') : t('project.publish')}</span>
+        {changeCount > 0 ? <span className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">{changeCount}</span> : null}
       </Button>
 
       <PublishModal
@@ -69,14 +84,27 @@ export function PublishControl({
         project={project}
       />
       <DeployPipeline
+        currentPage={currentPage}
         onOpenChange={setDeployOpen}
         open={deployOpen}
         project={project}
+        onRetry={() => {
+          setDeployOpen(false);
+          setPublishOpen(true);
+        }}
         trackedAttribution={publishedAttribution}
         trackedDeploymentId={publishedDeploymentId}
       />
     </div>
   );
+}
+
+/** Breadcrumb label for the site section being viewed (none on the site overview). */
+function sectionKeyFromPathname(pathname: string): MessageKey | null {
+  if (/\/settings\/?$/.test(pathname)) return 'project.settings';
+  if (/\/analytics\/?$/.test(pathname)) return 'project.analytics';
+  if (/\/preview\/?$/.test(pathname)) return 'project.preview';
+  return null;
 }
 
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
@@ -89,6 +117,8 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const openPalette = useOpenCommandPalette();
+  const sectionKey = sectionKeyFromPathname(pathname);
   if (pathname.endsWith('/editor')) {
     return <div className="h-screen overflow-hidden">{children}</div>;
   }
@@ -98,15 +128,41 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
       <ProjectSidebar projectId={projectId} />
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
-          <SidebarTrigger className="-ms-1" />
-          {project?.name ? (
-            <span className="truncate font-medium text-sm" dir="auto">
-              {project.name}
-            </span>
-          ) : (
-            <span className="h-4 w-28 animate-pulse rounded bg-muted" aria-hidden />
-          )}
+          <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
+          {/* Where am I: Sites › <site> › <section>, each step a way back. */}
+          <Breadcrumb className="min-w-0">
+            <BreadcrumbList className="flex-nowrap">
+              <BreadcrumbItem className="hidden sm:inline-flex">
+                <BreadcrumbLink render={<Link to="/app/sites" />}>{t('nav.sites')}</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden sm:inline-flex" />
+              <BreadcrumbItem className="min-w-0">
+                {!project?.name ? (
+                  <span aria-hidden className="h-4 w-28 animate-pulse rounded bg-muted" />
+                ) : sectionKey ? (
+                  <BreadcrumbLink className="truncate" dir="auto" render={<Link params={{ projectId }} to="/app/projects/$projectId" />}>
+                    {project.name}
+                  </BreadcrumbLink>
+                ) : (
+                  <BreadcrumbPage className="truncate font-medium" dir="auto">
+                    {project.name}
+                  </BreadcrumbPage>
+                )}
+              </BreadcrumbItem>
+              {sectionKey ? (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage className="font-medium">{t(sectionKey)}</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              ) : null}
+            </BreadcrumbList>
+          </Breadcrumb>
           <div className="ms-auto flex items-center gap-2">
+            <Button aria-label={t('command.dialog.title')} onClick={() => openPalette?.()} size="icon-sm" variant="ghost">
+              <Search aria-hidden className="size-4" />
+            </Button>
             <NotificationsPopover />
             <Button
               nativeButton={false}
@@ -125,7 +181,9 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             </Button>
           </div>
         </header>
-        <div className="flex-1">{children}</div>
+        <div className="flex-1 outline-none" id="main-content" tabIndex={-1}>
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

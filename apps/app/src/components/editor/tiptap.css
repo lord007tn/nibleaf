@@ -706,3 +706,18 @@
   font-size: 0.8rem;
   color: var(--color-muted-foreground);
 }
+
+/* First strong character chooses mixed prose direction; blank blocks inherit the page. */
+.pl-editor .ProseMirror [data-auto-direction] {
+  unicode-bidi: isolate;
+  text-align: start;
+}
+.pl-editor .ProseMirror li {
+  unicode-bidi: isolate;
+}
+
+.pl-editor:not(.pl-editor-document) {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+}

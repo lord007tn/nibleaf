@@ -83,6 +83,8 @@ type PageKind = 'PAGE' | 'GROUP';
 export interface PageNode {
   id: string;
   parentId: string | null;
+  /** The docs version (branch) the page belongs to; the API always returns it. */
+  branchId?: string;
   languageId: string;
   kind: PageKind;
   title: string;

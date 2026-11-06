@@ -17,10 +17,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { usePendingChanges, usePublish } from '@/hooks/api';
+import { useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
-import { siteHref } from '@/lib/links';
+import { canonicalSiteBase } from '@/lib/site-seo';
 
 interface PublishModalProps {
   project: Project;
@@ -43,6 +43,7 @@ const STATUS_META: Record<PendingChange['status'], { icon: LucideIcon; dot: stri
 export function PublishModal({ project, open, onOpenChange, onPublished, beforePublish }: PublishModalProps) {
   const t = useT();
   const publish = usePublish(project.id);
+  const domains = useDomains(project.id);
   // Only compute the diff while the dialog is open (it re-reads on each open).
   const {
     data: pending,
@@ -139,7 +140,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
           onOpenChange(false);
           onPublished(deployment, firstPublishAttribution);
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('publish.failed')),
+        onError: () => toast.error(t('publish.failed')),
         onSettled: () => {
           if (!isCurrentAttempt()) return;
           publishInFlight.current = false;
@@ -152,6 +153,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const count = sorted.length;
   const redirectIssues = pending?.redirectIssues ?? [];
   const checkingChanges = loadingChanges || refreshingChanges;
+  // An empty article diff is not "nothing to publish": the preflight only compares
+  // pages, while redirects and language settings also ship with a publish.
   const publishBlocked = preparing || checkingChanges || preflightFailed || redirectIssues.length > 0;
   const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
@@ -233,51 +236,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                 </ul>
               </ScrollArea>
             </aside>
-            <section className="min-w-0 bg-[#0b0b0b] text-[#ededed]">
-              <div className="border-white/10 border-b px-7 py-5">
-                <div className="flex items-center gap-2 text-white/60 text-xs">
-                  <FileText className="size-3.5" />
-                  <span className="font-mono">/{selectedChange.path}</span>
-                  <span className={cn('ms-auto font-medium', STATUS_META[selectedChange.status].chip)}>
-                    {t(STATUS_META[selectedChange.status].labelKey)}
-                  </span>
-                </div>
-                <h2 className="mt-2 max-w-2xl font-semibold text-2xl tracking-tight">{selectedChange.title || selectedChange.path}</h2>
-                <div className="mt-2 flex gap-3 text-xs">
-                  <span className="text-emerald-300">+{selectedChange.additions}</span>
-                  <span className="text-rose-300">-{selectedChange.deletions}</span>
-                  {selectedChange.fields.length > 0 ? <span className="text-white/45">{selectedChange.fields.join(', ')}</span> : null}
-                </div>
-              </div>
-              <ScrollArea className="h-[40dvh] sm:h-[430px]">
-                <div className="px-7 py-6">
-                  <div className="overflow-hidden rounded-md border border-white/10 bg-black/25 font-mono text-[12.5px] leading-6">
-                    {selectedChange.lines.length > 0 ? (
-                      selectedChange.lines.map((line) => (
-                        <div
-                          key={`${line.type}-${line.oldLine ?? 'x'}-${line.newLine ?? 'x'}-${line.text}`}
-                          className={cn(
-                            'grid grid-cols-[48px_1fr] border-s-2 px-3',
-                            line.type === 'added' && 'border-emerald-300 bg-emerald-400/15 text-emerald-50',
-                            line.type === 'removed' && 'border-rose-300 bg-rose-400/15 text-rose-50',
-                            line.type === 'unchanged' && 'border-transparent text-white/55',
-                          )}
-                        >
-                          <span className="select-none text-white/30">{line.newLine ?? line.oldLine ?? ''}</span>
-                          <span className={cn('whitespace-pre-wrap break-words', line.type === 'removed' && 'line-through decoration-rose-200/70')}>
-                            {line.text || ' '}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="px-3 py-8 text-center text-white/45">{t('publish.noLineDiff')}</div>
-                    )}
-                    {selectedChange.truncated ? (
-                      <div className="border-white/10 border-t px-3 py-2 text-white/45">{t('publish.diffTruncated')}</div>
-                    ) : null}
-                  </div>
-                </div>
-              </ScrollArea>
+            <section className="min-w-0 bg-muted/30 p-6 text-foreground">
+              <p className={cn('text-sm font-medium', STATUS_META[selectedChange.status].chip)}>{t(STATUS_META[selectedChange.status].labelKey)}</p>
+              <h2 className="mt-2 break-words text-2xl font-semibold" dir="auto">
+                {selectedChange.title || selectedChange.path}
+              </h2>
+              <p className="mt-2 break-all text-sm text-muted-foreground" dir="ltr">
+                /{selectedChange.path}
+              </p>
             </section>
           </div>
         ) : (
@@ -286,7 +252,12 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               <NibleafMark className="size-9 shrink-0" />
               <div className="min-w-0 leading-tight">
                 <div className="truncate font-semibold text-[13.5px]">{project.name}</div>
-                <div className="truncate font-mono text-[12.5px] text-muted-foreground">{siteHref(project.id)}</div>
+                <div className="truncate font-mono text-[12.5px] text-muted-foreground">
+                  {canonicalSiteBase(project.id, {
+                    slug: project.slug,
+                    primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
+                  })}
+                </div>
               </div>
             </div>
 

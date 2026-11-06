@@ -13,10 +13,25 @@ const { mutate, showError, preflight, refreshPreflight } = vi.hoisted(() => ({
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: showError } }));
+const pendingChange = {
+  id: 'page-a',
+  title: 'Getting started',
+  path: 'getting-started',
+  languageCode: 'en',
+  kind: 'PAGE',
+  status: 'modified',
+  fields: ['content'],
+  additions: 1,
+  deletions: 0,
+  lines: [],
+  truncated: false,
+};
 vi.mock('@/hooks/api', () => ({
+  useDomains: () => ({ data: [] }),
   usePublish: () => ({ isPending: false, mutate }),
   usePendingChanges: () => ({
-    data: { changes: [], redirectIssues: [], hasBaseline: true },
+    // One edited page: publishing is only offered when there is something to publish.
+    data: { changes: [pendingChange], redirectIssues: [], hasBaseline: true },
     isPending: false,
     isFetching: preflight.isFetching,
     isError: false,

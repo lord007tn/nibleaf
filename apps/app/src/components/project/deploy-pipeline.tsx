@@ -3,16 +3,36 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
+import { useRouterState } from '@tanstack/react-router';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { useDeployments, useRollback } from '@/hooks/api';
+import { publishedVersionSlugFor } from '@/components/editor/docs-version';
+import { useBranches, useDeployments, useDomains, useLanguages, usePage, useRollback } from '@/hooks/api';
 import type { DeploymentStatus, Project } from '@/hooks/api/types';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
-import { siteHref } from '@/lib/links';
+import { canonicalSiteBase } from '@/lib/site-seo';
+
+export interface PublishPage {
+  path: string;
+  title: string;
+  languageCode?: string;
+  /** Web-address prefix of a NON-default docs version (e.g. `v2`); unset for the default version. */
+  versionSlug?: string;
+}
+
+/** The published address of a page: `<site>/<version>/<path>?lang=<code>`, with the
+ *  version segment only for a non-default version (the site's URL convention). */
+export const publishedPageUrl = (siteUrl: string, page: PublishPage): string => {
+  const segments = [...(page.versionSlug ? [page.versionSlug] : []), ...page.path.split('/').filter(Boolean)];
+  const query = page.languageCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
+  return `${siteUrl}/${segments.map(encodeURIComponent).join('/')}${query}`;
+};
 
 interface DeployPipelineProps {
+  currentPage?: PublishPage;
   project: Project;
+  onRetry?: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   trackedAttribution?: FirstPublishAttribution | null;
@@ -47,7 +67,28 @@ function activeStep(status: DeploymentStatus | undefined): number {
 type StepState = 'done' | 'active' | 'failed' | 'pending';
 
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
-export function DeployPipeline({ project, open, onOpenChange, trackedAttribution, trackedDeploymentId }: DeployPipelineProps) {
+export function DeployPipeline({ project, open, onOpenChange, trackedAttribution, trackedDeploymentId, onRetry, currentPage }: DeployPipelineProps) {
+  const domains = useDomains(project.id);
+  const pageId = useRouterState({ select: (state) => (state.location.search as { pageId?: string }).pageId });
+  const page = usePage(project.id, pageId);
+  const languages = useLanguages(project.id);
+  const branches = useBranches(project.id);
+  const language = languages.data?.find((item) => item.id === page.data?.languageId);
+  const siteUrl = canonicalSiteBase(project.id, {
+    slug: project.slug,
+    primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
+  });
+  const livePage =
+    currentPage ??
+    (page.data
+      ? {
+          path: page.data.path,
+          title: page.data.title,
+          languageCode: language?.code,
+          versionSlug: publishedVersionSlugFor(branches.data, page.data.branchId),
+        }
+      : undefined);
+  const pageUrl = livePage ? publishedPageUrl(siteUrl, livePage) : null;
   const rollback = useRollback(project.id);
   const confirm = useConfirm();
   const t = useT();
@@ -80,18 +121,18 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   // Fire the "published" toast exactly once, on transition into READY while the dialog is open.
   const announced = useRef<string | null>(null);
   useEffect(() => {
-    if (open && done && deployment && announced.current !== deployment.id) {
+    if (done && deployment && (open || deployment.id === trackedDeploymentId) && announced.current !== deployment.id) {
       announced.current = deployment.id;
       toast.success(t('deploy.published'), {
         action: {
           label: t('deploy.viewSiteArrow'),
-          onClick: () => window.location.assign(siteHref(project.id)),
+          onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
         },
       });
     }
-  }, [open, done, deployment, project.id, t]);
+  }, [open, done, deployment, siteUrl, t, trackedDeploymentId]);
 
-  const viewSite = () => window.location.assign(siteHref(project.id));
+  const viewSite = () => window.open(siteUrl, '_blank', 'noopener,noreferrer');
 
   const doRollback = async () => {
     if (!previousReady) {
@@ -112,13 +153,13 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
         toast.success(t('deploy.rollback.success', { version: previousReady.version }));
         onOpenChange(false);
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('deploy.rollback.error')),
+      onError: () => toast.error(t('deploy.rollback.error')),
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 p-0 sm:max-w-[420px]" showCloseButton={false}>
+      <DialogContent className="gap-0 p-0 sm:max-w-[420px]" showCloseButton={true}>
         <div className="flex flex-col gap-5 px-6 pt-6 pb-2">
           <div className="flex items-center gap-3">
             {done ? (
@@ -139,7 +180,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
                 {done ? t('deploy.deployed') : failed ? t('deploy.failed') : t('deploy.deploying')}
               </DialogTitle>
               <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
-                {siteHref(project.id)}
+                {siteUrl}
               </div>
             </div>
           </div>
@@ -165,19 +206,27 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             })}
           </ul>
 
-          {failed && deployment?.error ? (
+          {failed ? (
             <p className="-mt-1 pb-1 text-destructive text-xs" dir="auto">
-              {deployment.error}
+              {t('publish.failed')}
             </p>
           ) : null}
         </div>
 
         {done ? (
-          <div className="flex items-center gap-2.5 px-6 pt-3.5 pb-5">
-            <Button variant="outline" disabled={!previousReady || rollback.isPending} onClick={doRollback}>
-              {rollback.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-              {t('deploy.rollback')}
-            </Button>
+          <div className="flex flex-wrap items-center gap-2.5 px-6 pt-3.5 pb-5">
+            {pageUrl ? (
+              <a className="w-full text-sm text-primary underline" href={pageUrl} target="_blank" rel="noopener noreferrer" dir="auto">
+                {livePage?.title}
+              </a>
+            ) : null}
+            <details className="w-full text-sm text-muted-foreground">
+              <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
+              <Button variant="outline" disabled={!previousReady || rollback.isPending} onClick={doRollback}>
+                {rollback.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                {t('deploy.rollback')}
+              </Button>
+            </details>
             <span className="flex-1" />
             <Button variant="outline" onClick={viewSite}>
               {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
@@ -185,7 +234,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             <Button onClick={() => onOpenChange(false)}>{t('deploy.done')}</Button>
           </div>
         ) : failed ? (
-          <div className="flex justify-end px-6 pt-3.5 pb-5">
+          <div className="flex justify-end gap-2 px-6 pt-3.5 pb-5">
+            {onRetry ? <Button onClick={onRetry}>{t('common.retry')}</Button> : null}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('deploy.close')}
             </Button>

@@ -1,9 +1,10 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ChevronDown, Eye, FileText } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@
 import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
 import type { PageNode } from '@/hooks/api/types';
+import { PublishControl } from '@/layouts/project';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
@@ -211,6 +213,17 @@ function ProjectPreview() {
         }
         content={
           <main className="min-h-0 flex-1 overflow-y-auto bg-background" data-theme-region="preview-main">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b p-3">
+              <Button variant="outline" nativeButton={false} render={<Link to="/app/projects/$projectId/editor" params={{ projectId }} />}>
+                {t('preview.backToEditor')}
+              </Button>
+              {project ? (
+                <PublishControl
+                  project={project}
+                  currentPage={page ? { path: page.path, title: page.title, languageCode: activeLanguage?.code } : undefined}
+                />
+              ) : null}
+            </div>
             {/* Same typography variables the published site sets on its chrome, so
             the preview reads exactly like production. */}
             <article className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10" data-theme-region="article" dir={contentDir}>
@@ -225,7 +238,7 @@ function ProjectPreview() {
                   <div className="mb-8 border-border border-b pb-5">
                     <div className="flex items-center gap-2 text-muted-foreground text-sm">
                       <PageIcon className="size-4" name={page.icon} />
-                      {page.path || '/'}
+                      {page.title}
                     </div>
                     <h1 className="mt-2 font-semibold text-3xl tracking-tight">{page.title}</h1>
                     {page.description ? <p className="mt-2 text-muted-foreground">{page.description}</p> : null}

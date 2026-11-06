@@ -14,6 +14,23 @@ const CALLOUT_VARIANTS = {
 
 type CalloutVariant = keyof typeof CALLOUT_VARIANTS;
 
+/** Keep authored titles and other attributes when changing an imported callout. */
+export function calloutVariantAttributes(attributes: Record<string, unknown>, variant: CalloutVariant) {
+  const tag = variant[0]?.toUpperCase() + variant.slice(1);
+  let sourceOpen = String(attributes.sourceOpen ?? '');
+  let sourceClose = String(attributes.sourceClose ?? '');
+  if (/^\s*<Callout\b/.test(sourceOpen)) {
+    const typeAttribute = /\btype\s*=\s*(?:"[^"]*"|'[^']*'|\{[^}]*\})/;
+    sourceOpen = typeAttribute.test(sourceOpen)
+      ? sourceOpen.replace(typeAttribute, `type="${variant}"`)
+      : sourceOpen.replace('<Callout', `<Callout type="${variant}"`);
+  } else {
+    sourceOpen = sourceOpen.replace(/^(\s*<)(Note|Tip|Info|Check|Warning|Danger)\b/, `$1${tag}`);
+    sourceClose = sourceClose.replace(/^(\s*<\/)(Note|Tip|Info|Check|Warning|Danger)\b/, `$1${tag}`);
+  }
+  return { variant, sourceOpen, sourceClose };
+}
+
 const KEYWORD_TO_VARIANT: Record<string, CalloutVariant> = Object.fromEntries(
   Object.entries(CALLOUT_VARIANTS).map(([variant, def]) => [def.keyword, variant as CalloutVariant]),
 );
@@ -105,6 +122,22 @@ export const Callout = Node.create({
         ({ commands }) =>
           commands.toggleWrap(this.name, attributes),
     };
+  },
+
+  addKeyboardShortcuts() {
+    const unwrap = (key: 'Enter' | 'Backspace') => {
+      const { selection } = this.editor.state;
+      if (!selection.empty || !this.editor.isActive(this.name)) return false;
+      const { $from } = selection;
+      let depth = $from.depth;
+      while (depth > 0 && $from.node(depth).type.name !== this.name) depth--;
+      if (!depth) return false;
+      if (key === 'Enter' && $from.parent.content.size === 0 && $from.index(depth) === $from.node(depth).childCount - 1)
+        return this.editor.commands.lift(this.name);
+      if (key === 'Backspace' && $from.parentOffset === 0 && $from.index(depth) === 0) return this.editor.commands.lift(this.name);
+      return false;
+    };
+    return { Enter: () => unwrap('Enter'), Backspace: () => unwrap('Backspace') };
   },
 
   /**

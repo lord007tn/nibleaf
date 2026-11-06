@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import type { MessageKey } from '@nibleaf/i18n';
+import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { type Editor, Extension } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
@@ -19,6 +19,8 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Typography from '@tiptap/extension-typography';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { Plugin } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
@@ -52,11 +54,12 @@ import { type ComponentType, type CSSProperties, type ReactNode, useCallback, us
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
-import { Callout } from './extensions/callout';
+import { Callout, calloutVariantAttributes } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
+import { ImageUpload, uploadEditorImage } from './extensions/image-upload';
 import { mdxNodes } from './extensions/mdx-nodes';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
-import { SlashCommand } from './extensions/slash-command';
+import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 
@@ -218,25 +221,53 @@ interface BuildExtensionsOptions {
    *  (drag deltas are inverted under `direction: rtl`), so resizing is
    *  disabled for RTL documents. */
   dir?: 'ltr' | 'rtl';
+  locale?: Locale;
 }
 
 /** Let every prose block choose LTR/RTL from its own content. This keeps an
  * English installation section LTR inside an Arabic page while Arabic blocks
  * remain RTL, without persisting presentation-only attributes to Markdown. */
-const AutomaticBlockDirection = Extension.create({
+export const blockDirection = (text: string, fallback: 'rtl' | 'ltr'): 'rtl' | 'ltr' => {
+  const firstLetter = text.match(/\p{Letter}/u)?.[0];
+  if (!firstLetter) return fallback;
+  return /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u.test(firstLetter) ? 'rtl' : 'ltr';
+};
+const AutomaticBlockDirection = Extension.create<{ dir: 'ltr' | 'rtl' }>({
+  addOptions() {
+    return { dir: 'ltr' };
+  },
   name: 'automaticBlockDirection',
-  addGlobalAttributes() {
+  addProseMirrorPlugins() {
+    const fallback = this.options.dir;
     return [
-      {
-        types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'taskList', 'taskItem', 'tableCell', 'tableHeader'],
-        attributes: {
-          dir: {
-            default: null,
-            parseHTML: () => null,
-            renderHTML: () => ({ dir: 'auto' }),
+      new Plugin({
+        props: {
+          decorations(state) {
+            const decorations: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (
+                [
+                  'paragraph',
+                  'heading',
+                  'blockquote',
+                  'bulletList',
+                  'orderedList',
+                  'listItem',
+                  'taskList',
+                  'taskItem',
+                  'tableCell',
+                  'tableHeader',
+                ].includes(node.type.name)
+              ) {
+                decorations.push(
+                  Decoration.node(pos, pos + node.nodeSize, { dir: blockDirection(node.textContent, fallback), 'data-auto-direction': '' }),
+                );
+              }
+            });
+            return DecorationSet.create(state.doc, decorations);
           },
         },
-      },
+      }),
     ];
   },
 });
@@ -250,19 +281,28 @@ const AutomaticBlockDirection = Extension.create({
  * and tiptap-markdown drops the attr on serialize, so offering it in the UI
  * would silently lose the author's formatting on save.
  */
-export function buildEditorExtensions({ onUpload, getComments, getActiveId, dir = 'ltr' }: BuildExtensionsOptions = {}) {
+export function buildEditorExtensions({
+  onUpload,
+  getComments,
+  getActiveId,
+  dir = 'ltr',
+  locale = dir === 'rtl' ? 'ar' : 'en',
+}: BuildExtensionsOptions = {}) {
   return [
     StarterKit.configure({
       // CodeBlockLowlight replaces StarterKit's plain code block.
       codeBlock: false,
+      undoRedo: { newGroupDelay: 300 },
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
-    AutomaticBlockDirection,
+    AutomaticBlockDirection.configure({ dir }),
+    ImageUpload,
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
     Placeholder.configure({
-      placeholder: ({ node }) => (node.type.name === 'heading' ? 'Heading' : "Write something, or press '/' for commands"),
+      placeholder: ({ node }) =>
+        translateFn(node.type.name === 'heading' ? 'editor.placeholder.heading' : 'editor.placeholder.body', undefined, locale),
     }),
     CodeBlock.configure({ lowlight }),
     Highlight.configure({ multicolor: false }),
@@ -282,7 +322,7 @@ export function buildEditorExtensions({ onUpload, getComments, getActiveId, dir 
     Callout,
     ...mdxNodes,
     ...opaqueMdxNodes,
-    SlashCommand.configure({ onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
+    SlashCommand.configure({ locale, onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
 }
@@ -555,7 +595,7 @@ function EditorFooter({ editor, documentMode = false }: { editor: Editor; docume
     <div
       className={cn(
         'pointer-events-none z-10 flex justify-end',
-        documentMode ? 'shrink-0 border-border border-t bg-background/95 px-3 py-1.5' : 'sticky bottom-3',
+        documentMode ? 'shrink-0 border-border border-t bg-background/95 px-3 py-1.5' : 'sticky bottom-3 mt-auto',
       )}
     >
       <span className="rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
@@ -642,19 +682,13 @@ export function TiptapEditor({
   }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload, value]);
 
   // Upload an image file and insert it at the current selection.
-  const insertUploadedImage = (file: File) => {
+  const insertUploadedImage = (file: File, position?: number) => {
     const upload = onUploadRef.current;
     const ed = editorRef.current;
-    if (!upload || !ed || !file.type.startsWith('image/')) {
+    if (!upload || !ed) {
       return;
     }
-    upload(file)
-      .then((url) => {
-        if (url) {
-          ed.chain().focus().setImage({ src: url }).run();
-        }
-      })
-      .catch(() => undefined);
+    void uploadEditorImage(ed, file, upload, position);
   };
 
   const editor = useEditor(
@@ -665,6 +699,7 @@ export function TiptapEditor({
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
         dir,
+        locale: scaffoldLocaleOf({ lang, dir }),
       }),
       content: value,
       onCreate: ({ editor }) => {
@@ -702,7 +737,7 @@ export function TiptapEditor({
         // Paste or drop an image file → upload and insert the hosted URL.
         handlePaste: (_view, event) => {
           if (commentModeRef.current) return true;
-          const files = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+          const files = Array.from(event.clipboardData?.files ?? []);
           if (files.length === 0 || !onUploadRef.current) {
             return false;
           }
@@ -712,15 +747,16 @@ export function TiptapEditor({
           }
           return true;
         },
-        handleDrop: (_view, event) => {
+        handleDrop: (view, event) => {
           if (commentModeRef.current) return true;
-          const files = Array.from((event as DragEvent).dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'));
+          const files = Array.from((event as DragEvent).dataTransfer?.files ?? []);
           if (files.length === 0 || !onUploadRef.current) {
             return false;
           }
           event.preventDefault();
           for (const file of files) {
-            insertUploadedImage(file);
+            const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+            insertUploadedImage(file, position);
           }
           return true;
         },
@@ -728,7 +764,7 @@ export function TiptapEditor({
     },
     // Rebuild the editor (and its extension set) when the page direction flips —
     // table resizability is baked into the Table extension configuration.
-    [dir, variant],
+    [dir, lang, variant],
   );
 
   // Re-seed when `value` changes externally (differs from what the editor last emitted).
@@ -783,6 +819,8 @@ export function TiptapEditor({
       style={style}
     >
       {editor && variant === 'wysiwyg' && !commentMode ? <DocumentToolbar editor={editor} /> : null}
+      {editor && !commentMode ? <CalloutMenu editor={editor} /> : null}
+      {editor && !commentMode ? <ImageDescription editor={editor} /> : null}
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <TableBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <CodeBlockMenu editor={editor} /> : null}
@@ -800,5 +838,67 @@ export function TiptapEditor({
       )}
       {editor && editable && !commentMode ? <EditorFooter documentMode={variant === 'wysiwyg'} editor={editor} /> : null}
     </div>
+  );
+}
+
+function ImageDescription({ editor }: { editor: Editor }) {
+  const t = useT();
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({ active: current.isActive('image'), alt: String(current.getAttributes('image').alt ?? '') }),
+  });
+  return (
+    <BubbleMenu editor={editor} pluginKey="image-description" options={{ placement: 'bottom' }} shouldShow={() => editor.isActive('image')}>
+      <label className="flex flex-col gap-1 rounded-lg border border-border bg-card p-3 text-sm shadow-lg">
+        {t('editor.image.description')}
+        <input
+          className="rounded border border-border bg-background p-2"
+          dir="auto"
+          value={state.alt}
+          onChange={(event) => editor.commands.updateAttributes('image', { alt: event.target.value })}
+        />
+      </label>
+    </BubbleMenu>
+  );
+}
+
+function CalloutMenu({ editor }: { editor: Editor }) {
+  const t = useT();
+  const variants = ['note', 'tip', 'info', 'check', 'warning', 'danger'] as const;
+  return (
+    <BubbleMenu
+      editor={editor}
+      pluginKey="callout-controls"
+      options={{ placement: 'bottom' }}
+      shouldShow={() => editor.isFocused && editor.isActive('callout') && editor.state.selection.empty && !isSlashMenuOpen(editor.state)}
+    >
+      <div className="flex max-w-[calc(100vw-2rem)] flex-wrap gap-1 rounded-lg border border-border bg-card p-1 shadow-lg">
+        {variants.map((variant) => (
+          <Button
+            onMouseDown={(event) => event.preventDefault()}
+            key={variant}
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              editor
+                .chain()
+                .focus()
+                .updateAttributes('callout', calloutVariantAttributes(editor.getAttributes('callout'), variant))
+                .run()
+            }
+          >
+            {t(`editor.slash.${variant}.title`)}
+          </Button>
+        ))}
+        <Button
+          onMouseDown={(event) => event.preventDefault()}
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().lift('callout').run()}
+        >
+          {t('editor.callout.remove')}
+        </Button>
+      </div>
+    </BubbleMenu>
   );
 }
