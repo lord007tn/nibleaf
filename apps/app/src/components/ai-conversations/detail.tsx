@@ -27,6 +27,7 @@ import { useFormatters } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
 
 import { useSession } from '@/services/auth-client';
+import { aiCost } from './overview';
 
 export function DeleteConversationButton({ allowed, pending, onDelete }: { allowed: boolean; pending: boolean; onDelete: () => void }) {
   const t = useT();
@@ -150,7 +151,7 @@ export function ConversationDetail({ projectId, conversation, onClose }: { proje
                           t('dashboard.ai.tokens'),
                           `${turn.inputTokens === null ? '—' : f.number(turn.inputTokens)} / ${turn.outputTokens === null ? '—' : f.number(turn.outputTokens)}`,
                         ],
-                        [t('dashboard.ai.cost'), turn.costUsd === null ? t('dashboard.ai.unknownCost') : f.currency(turn.costUsd)],
+                        [t('dashboard.ai.cost'), turn.costUsd === null ? t('dashboard.ai.unknownCost') : aiCost(f, turn.costUsd)],
                         [t('dashboard.ai.latency'), turn.latencyMs === null ? '—' : f.number(turn.latencyMs)],
                       ].map(([label, value]) => (
                         <div className="contents" key={label}>

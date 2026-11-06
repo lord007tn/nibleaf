@@ -4,6 +4,12 @@ import type { AiConversationSummary } from '@nibleaf/validators';
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { ListCard } from '@/components/analytics/list-card';
 import { useFormatters } from '@/lib/format';
+
+/** AI spend is often a fraction of a cent; keep two significant digits there
+ * instead of rounding a real cost to "$0.00". */
+export const aiCost = (f: ReturnType<typeof useFormatters>, value: number) =>
+  value > 0 && value < 0.01 ? f.number(value, { style: 'currency', currency: 'USD', maximumSignificantDigits: 2 }) : f.currency(value);
+
 export function CostValue({ usage }: { usage: AiConversationSummary['usage'] }) {
   const t = useT();
   const f = useFormatters();
@@ -12,8 +18,8 @@ export function CostValue({ usage }: { usage: AiConversationSummary['usage'] }) 
       {usage.costUsd === null
         ? t('dashboard.ai.unknownCost')
         : usage.costComplete
-          ? f.currency(usage.costUsd)
-          : t('dashboard.ai.atLeast', { cost: f.currency(usage.costUsd) })}
+          ? aiCost(f, usage.costUsd)
+          : t('dashboard.ai.atLeast', { cost: aiCost(f, usage.costUsd) })}
     </>
   );
 }
@@ -109,7 +115,7 @@ function Series({ data, kind }: { data: AiConversationSummary['timeseries']; kin
         <AreaChart accessibilityLayer data={data}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="date" tickFormatter={(value) => f.shortDate(value)} />
-          <YAxis width={50} tickFormatter={(value) => f.number(value)} />
+          <YAxis width={kind === 'cost' ? 64 : 50} tickFormatter={(value) => (kind === 'cost' ? aiCost(f, value) : f.number(value))} />
           <ChartTooltip content={<ChartTooltipContent />} />
           {kind === 'questions' ? (
             <>

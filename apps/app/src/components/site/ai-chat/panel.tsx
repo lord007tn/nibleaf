@@ -150,6 +150,13 @@ export default function Panel(
         side={options.direction === 'rtl' ? 'left' : 'right'}
         style={viewport}
         showCloseButton={false}
+        // Desktop readers can type straight away; on touch screens focus the
+        // dialog itself so the keyboard does not cover the answer.
+        initialFocus={(type) =>
+          type === 'touch' || window.matchMedia('(max-width: 767px)').matches
+            ? true
+            : (document.querySelector<HTMLTextAreaElement>('[data-theme-surface="ai"] textarea') ?? true)
+        }
         dir={options.direction}
         data-theme-surface="ai"
         className="h-[var(--chat-height,100dvh)]! top-[var(--chat-top,0px)]! bottom-auto! w-full! max-w-none! gap-0 overflow-hidden pt-[env(safe-area-inset-top)] motion-reduce:transition-none md:w-[440px]! md:max-w-[460px]!"
