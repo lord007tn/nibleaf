@@ -106,6 +106,19 @@ describe('published page presentation', () => {
     expect(render(`${examples}\n![Actual](/actual.png)`)).not.toContain('screenshots');
   });
 
+  it('counts a light/dark image pair as one screenshot', () => {
+    const pair = [
+      '<Frame>',
+      '  <img src="/light.png" alt="Dashboard" className="block dark:hidden" />',
+      '  <img src="/dark.png" alt="Dashboard" className="hidden dark:block" />',
+      '</Frame>',
+    ].join('\n');
+    const render = (content: string) =>
+      renderToStaticMarkup(<SitePageView data={data({ page: { ...data().page, content } })} projectId="project-1" />).replaceAll('<!-- -->', '');
+    expect(render(pair)).toMatch(/>\s*1 screenshot</);
+    expect(render(`${pair}\n![Settings](/settings.png)`)).toMatch(/>\s*2 screenshots</);
+  });
+
   it.each(['en', 'ar'])('shows public %s content without Markdown source controls', async (language) => {
     const html = await renderCompleteHtml(<SitePageView data={data({ activeLanguage: language })} lang={language} projectId="project-1" />);
     expect(html).toContain('Public body.');

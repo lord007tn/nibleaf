@@ -574,8 +574,8 @@ export default function SiteSearchDialog({
                     variant="outline"
                     loading={hitsQuery.isFetching}
                     onClick={() => {
-                      // The button is disabled while it retries and goes away on success;
-                      // keep focus in the field.
+                      // A search that never loaded goes back to its result skeleton (a failed
+                      // refresh keeps this button, busy); either way keep focus in the field.
                       inputRef.current?.focus();
                       void hitsQuery.refetch?.();
                     }}

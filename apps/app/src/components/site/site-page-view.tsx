@@ -25,6 +25,13 @@ const applyUrlTemplate = (template: string | undefined, path: string, fallbackUr
     .replaceAll('{url}', encodeURIComponent(fallbackUrl));
 };
 
+/** The dark-mode twin of a light/dark image pair (`hidden dark:block`): the
+ *  reader sees one screenshot, not two. */
+const isDarkModeTwin = (image: string): boolean => {
+  const classes = image.match(/\bclass(?:Name)?=["']([^"']*)["']/)?.[1]?.split(/\s+/) ?? [];
+  return classes.includes('hidden') && classes.some((name) => name.startsWith('dark:') && name !== 'dark:hidden');
+};
+
 /** "Was this page helpful?" + edit/issue links, rendered at the end of the
  *  article so it always aligns with the reading column. */
 function ReaderActions({
@@ -171,7 +178,9 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/[`#*_>[\](){}|~-]/g, ' ');
   const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
-  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
+  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
+    (image) => !isDarkModeTwin(image),
+  ).length;
   const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
   const article = (
     <article

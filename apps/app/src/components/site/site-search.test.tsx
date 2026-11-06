@@ -185,13 +185,24 @@ describe('published reader search', () => {
     await act(async () => alert?.querySelector('button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(input());
-    // While it retries, the message stays and the button shows it is working.
-    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: new Error('Network unavailable'), refetch: mocks.refetch });
+    // A query that never loaded goes back to pending on retry: result skeletons.
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null, refetch: mocks.refetch });
+    await rerender();
+    expect(document.querySelector('[data-search-skeleton]')).not.toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('keeps the error in place with a working Retry when a refresh of loaded results fails', async () => {
+    const { rerender } = await render();
+    await typeQuery('setup');
+    // The query has results from before, so a failed refresh keeps its error while it retries.
+    mocks.search.mockReturnValue({ data: [hit], isFetching: true, error: new Error('Network unavailable'), refetch: mocks.refetch });
     await rerender();
     const retry = document.querySelector('[role="alert"] button');
     expect(retry?.getAttribute('aria-busy')).toBe('true');
     expect(retry?.hasAttribute('disabled')).toBe(true);
     expect(document.querySelector('[data-search-skeleton]')).toBeNull();
+    expect(document.body.textContent).not.toContain('Setup guide');
   });
 
   it('shows the answer button working while an answer loads', async () => {
