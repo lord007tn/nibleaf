@@ -1,0 +1,153 @@
+import { useT } from '@nibleaf/i18n/react';
+import { ThumbsUp } from 'lucide-react';
+import { type FeedbackInsights, useFeedbackInsights } from '@/hooks/api/analytics';
+import { SimpleTable } from './data-table';
+import type { InsightsSearch } from './filters';
+import { InsightCard, PageLabel } from './insight-card';
+import { InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { KpiCard } from './kpi-card';
+import { PageInsightsLink } from './section-links';
+import { mergeSeries, TrendChart } from './trend-chart';
+import { useInsightFormat } from './use-insight-format';
+import { useInsightsFilters } from './use-insights-filters';
+
+type FeedbackPage = FeedbackInsights['pages'][number];
+
+/** Worst first: lowest helpful rate, then most "not helpful" votes; pages without votes last. */
+export function sortWorstFirst(pages: FeedbackPage[]): FeedbackPage[] {
+  return [...pages].sort((a, b) => {
+    if (a.helpfulRate === null || b.helpfulRate === null) return a.helpfulRate === null ? (b.helpfulRate === null ? 0 : 1) : -1;
+    return a.helpfulRate - b.helpfulRate || b.notHelpful - a.notHelpful;
+  });
+}
+
+export function FeedbackSection() {
+  const { projectId, filters, query } = useInsightsFilters();
+  const result = useFeedbackInsights(projectId, query);
+  return <FeedbackView data={result.data} filters={filters} projectId={projectId} state={insightsState(result)} />;
+}
+
+function FeedbackView({
+  data,
+  state,
+  projectId,
+  filters,
+}: {
+  data: FeedbackInsights | undefined;
+  state: ReturnType<typeof insightsState>;
+  projectId: string;
+  filters: InsightsSearch;
+}) {
+  const t = useT();
+  const format = useInsightFormat();
+  const { loading, unknown } = state;
+  const kpis = data?.kpis;
+  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  const noVotes = data !== undefined && !unknown && data.kpis.helpful.value === 0 && data.kpis.notHelpful.value === 0;
+  return (
+    <div className="flex flex-col gap-4">
+      <InsightsStatus projectId={projectId} state={state} />
+      {noVotes ? (
+        <InsightsEmpty
+          body={t('analytics.feedback.emptyBody')}
+          icon={<ThumbsUp aria-hidden className="size-5" />}
+          title={t('analytics.feedback.empty')}
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4">
+            <KpiCard
+              compared={kpis?.helpfulRate}
+              hint={t('analytics.metric.helpfulRate.hint')}
+              kind="rate"
+              label={t('analytics.metric.helpfulRate')}
+              loading={loading}
+              polarity="higher_is_better"
+            />
+            <KpiCard
+              compared={kpis?.helpful}
+              hint={t('analytics.metric.helpfulVotes.hint')}
+              kind="count"
+              label={t('analytics.feedback.helpful')}
+              loading={loading}
+              polarity="higher_is_better"
+            />
+            <KpiCard
+              compared={kpis?.notHelpful}
+              hint={t('analytics.metric.notHelpfulVotes.hint')}
+              kind="count"
+              label={t('analytics.feedback.notHelpful')}
+              loading={loading}
+              polarity="lower_is_better"
+            />
+            <KpiCard
+              compared={kpis?.responseRate}
+              hint={t('analytics.metric.responseRate.hint')}
+              kind="rate"
+              label={t('analytics.metric.responseRate')}
+              loading={loading}
+              polarity="higher_is_better"
+            />
+          </div>
+
+          <InsightCard description={t('analytics.feedback.trend.description')} title={t('analytics.feedback.trend.title')}>
+            <TrendChart
+              empty={t('analytics.feedback.empty')}
+              granularity={data?.meta.granularity ?? 'day'}
+              loading={loading}
+              rows={mergeSeries([
+                { key: 'helpful', points: (data?.series ?? []).map((point) => ({ bucket: point.bucket, value: point.helpful })) },
+                { key: 'notHelpful', points: (data?.series ?? []).map((point) => ({ bucket: point.bucket, value: point.notHelpful })) },
+              ])}
+              series={[
+                { key: 'helpful', label: t('analytics.feedback.helpful'), color: 'var(--success)' },
+                { key: 'notHelpful', label: t('analytics.feedback.notHelpful'), color: 'var(--destructive)' },
+              ]}
+              summary={t('analytics.feedback.chartSummary', {
+                helpful: format.count(kpis?.helpful.value ?? null),
+                notHelpful: format.count(kpis?.notHelpful.value ?? null),
+              })}
+              unknown={unknown}
+            />
+          </InsightCard>
+
+          <InsightCard description={t('analytics.feedback.pages.description')} title={t('analytics.feedback.pages.title')}>
+            <SimpleTable
+              caption={t('analytics.feedback.pages.title')}
+              columns={[
+                {
+                  key: 'page',
+                  header: t('analytics.pages.column.page'),
+                  cell: (row: FeedbackPage) => (
+                    <PageInsightsLink className="block max-w-[18rem]" filters={filters} path={row.path} projectId={projectId}>
+                      <PageLabel path={row.path} title={row.title} />
+                    </PageInsightsLink>
+                  ),
+                },
+                {
+                  key: 'rate',
+                  header: t('analytics.pages.column.helpful'),
+                  cell: (row: FeedbackPage) => format.rate(row.helpfulRate),
+                  numeric: true,
+                },
+                { key: 'helpful', header: t('analytics.feedback.helpful'), cell: (row: FeedbackPage) => format.count(row.helpful), numeric: true },
+                {
+                  key: 'notHelpful',
+                  header: t('analytics.feedback.notHelpful'),
+                  cell: (row: FeedbackPage) => format.count(row.notHelpful),
+                  numeric: true,
+                },
+                { key: 'views', header: t('analytics.pages.column.views'), cell: (row: FeedbackPage) => format.count(row.views), numeric: true },
+              ]}
+              empty={t('analytics.feedback.empty')}
+              loading={loading}
+              rowKey={(row) => row.path}
+              rows={sortWorstFirst(data?.pages ?? [])}
+              unknown={unknown}
+            />
+          </InsightCard>
+        </>
+      )}
+    </div>
+  );
+}
