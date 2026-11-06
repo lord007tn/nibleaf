@@ -43,7 +43,7 @@ const getAnalyticsDto = async (organizationId: string, projectId: string, range:
 };
 
 export const registerInsightSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('analytics:read')) return;
+  if (!principal.credential.scopes.includes('analytics:read')) return;
   server.registerTool(
     'get_analytics_overview',
     {

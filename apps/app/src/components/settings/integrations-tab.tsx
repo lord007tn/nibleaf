@@ -245,6 +245,48 @@ function IntegrationStatus({ entry }: { entry: IntegrationCatalogEntry }) {
   );
 }
 
+/** One catalog card's shape: icon tile and status, name, two description lines. */
+function CatalogCardSkeleton() {
+  return (
+    <div aria-hidden className="flex min-h-36 w-full flex-col rounded-xl border border-border bg-card p-4">
+      <div className="flex w-full items-start justify-between gap-3">
+        <Skeleton className="size-10 rounded-lg" />
+        <Skeleton className="h-5 w-20 rounded-full" />
+      </div>
+      <Skeleton className="mt-4 h-4 w-28" />
+      <Skeleton className="mt-2 h-3.5 w-full" />
+      <Skeleton className="mt-1.5 h-3.5 w-2/3" />
+    </div>
+  );
+}
+
+// Two category groups, as the catalog usually shows on first load.
+const SKELETON_GROUPS = [
+  { id: 'first', cards: ['a', 'b', 'c', 'd'] },
+  { id: 'second', cards: ['e', 'f'] },
+];
+
+function CatalogSkeleton() {
+  const t = useT();
+  return (
+    <section aria-busy="true" className="flex flex-col gap-7">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      {SKELETON_GROUPS.map((group) => (
+        <div key={group.id}>
+          <Skeleton aria-hidden className="mb-3 h-3 w-24" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {group.cards.map((card) => (
+              <CatalogCardSkeleton key={card} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function CatalogCard({ entry, onSelect }: { entry: IntegrationCatalogEntry; onSelect: () => void }) {
   const t = useT();
   const meta = PROVIDER_META[entry.id];
@@ -358,8 +400,8 @@ function ConfirmationDialog({
           <Button disabled={pending} onClick={() => onOpenChange(false)} type="button" variant="outline">
             {t('common.cancel')}
           </Button>
-          <Button disabled={pending} onClick={onConfirm} type="button" variant={destructive ? 'destructive' : 'default'}>
-            {pending ? t('common.loading') : confirmLabel}
+          <Button loading={pending} onClick={onConfirm} type="button" variant={destructive ? 'destructive' : 'default'}>
+            {confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -412,7 +454,6 @@ function IntegrationDetail({
     );
   }
 
-  const notifyError = () => toast.error(t('settings.integrations.actionError'));
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (pending) return;
@@ -447,7 +488,7 @@ function IntegrationDetail({
       }
       setWebhookUrl('');
     } catch {
-      notifyError();
+      // Toasted in plain words by the mutation (meta.errorMessage).
     }
   };
 
@@ -459,7 +500,7 @@ function IntegrationDetail({
       await mutation.mutateAsync({ providerId: entry.id, body: { expectedRevision: connection.revision, idempotencyKey: newIdempotencyKey() } });
       toast.success(t(connection.status === 'inactive' ? 'settings.integrations.activatedToast' : 'settings.integrations.deactivatedToast'));
     } catch {
-      notifyError();
+      // Toasted in plain words by the mutation (meta.errorMessage).
     }
   };
 
@@ -486,7 +527,7 @@ function IntegrationDetail({
       setVerifyOpen(false);
       toast.success(t('settings.integrations.verifiedToast'));
     } catch {
-      notifyError();
+      // Toasted in plain words by the mutation (meta.errorMessage).
     }
   };
 
@@ -499,7 +540,7 @@ function IntegrationDetail({
       toast.success(t('settings.integrations.deletedToast'));
       onBack();
     } catch {
-      notifyError();
+      // Toasted in plain words by the mutation (meta.errorMessage).
     }
   };
 
@@ -611,11 +652,18 @@ function IntegrationDetail({
               {t('settings.integrations.credentialPrivacy')}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button className="h-9" disabled={pending} type="submit">
+              <Button className="h-9" disabled={pending} loading={create.isPending || update.isPending} type="submit">
                 {connection ? t('common.save') : t('settings.integrations.connect')}
               </Button>
               {connection ? (
-                <Button className="h-9" disabled={pending} onClick={changeStatus} type="button" variant="outline">
+                <Button
+                  className="h-9"
+                  disabled={pending}
+                  loading={activate.isPending || deactivate.isPending}
+                  onClick={changeStatus}
+                  type="button"
+                  variant="outline"
+                >
                   {connection.status === 'inactive' ? t('settings.integrations.activate') : t('settings.integrations.deactivate')}
                 </Button>
               ) : null}
@@ -623,6 +671,7 @@ function IntegrationDetail({
                 <Button
                   className="h-9"
                   disabled={pending || connection.status !== 'active'}
+                  loading={verify.isPending && !verifyOpen}
                   onClick={() => runVerify()}
                   type="button"
                   variant="outline"
@@ -632,7 +681,14 @@ function IntegrationDetail({
                 </Button>
               ) : null}
               {connection ? (
-                <Button className="h-9 sm:ms-auto" disabled={pending} onClick={() => setDeleteOpen(true)} type="button" variant="destructive">
+                <Button
+                  className="h-9 sm:ms-auto"
+                  disabled={pending}
+                  loading={false}
+                  onClick={() => setDeleteOpen(true)}
+                  type="button"
+                  variant="destructive"
+                >
                   <Trash2 />
                   {t('common.delete')}
                 </Button>
@@ -669,7 +725,7 @@ export function IntegrationsTab({ projectId, project }: { projectId?: string; pr
   const t = useT();
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<IntegrationProviderId | null>(null);
-  const integrations = useProjectIntegrations(projectId ?? '');
+  const integrations = useProjectIntegrations(projectId);
   const filtered = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     if (!query) return integrations.data ?? [];
@@ -705,14 +761,7 @@ export function IntegrationsTab({ projectId, project }: { projectId?: string; pr
           value={search}
         />
       </div>
-      {integrations.isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Skeleton className="h-36 rounded-xl" />
-          <Skeleton className="h-36 rounded-xl" />
-          <Skeleton className="h-36 rounded-xl" />
-          <Skeleton className="h-36 rounded-xl" />
-        </div>
-      ) : null}
+      {integrations.isPending ? <CatalogSkeleton /> : null}
       {integrations.isError ? (
         <Alert variant="destructive">
           <TriangleAlert />
@@ -723,14 +772,14 @@ export function IntegrationsTab({ projectId, project }: { projectId?: string; pr
           </Button>
         </Alert>
       ) : null}
-      {!integrations.isLoading && !integrations.isError && filtered.length === 0 ? (
+      {integrations.isSuccess && filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed p-8 text-center">
           <PlugZap className="mx-auto size-8 text-muted-foreground" />
           <p className="mt-3 font-medium text-sm">{t('settings.integrations.noResults')}</p>
           <p className="mt-1 text-muted-foreground text-sm">{t('settings.integrations.noResultsDescription')}</p>
         </div>
       ) : null}
-      {!integrations.isLoading && !integrations.isError ? (
+      {integrations.isSuccess ? (
         <div className="flex flex-col gap-7">
           {CATEGORY_ORDER.map((category) => {
             const entries = filtered.filter((entry) => entry.category === category);

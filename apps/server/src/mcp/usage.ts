@@ -60,7 +60,7 @@ const entitlementsDto = async (ctx: Context<HonoEnv>, projectId: string) => {
 };
 
 export const registerUsageSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (principal.apiKey.scopes.includes('usage:read')) {
+  if (principal.credential.scopes.includes('usage:read')) {
     server.registerTool(
       'get_usage_summary',
       {
@@ -80,7 +80,7 @@ export const registerUsageSurface = (server: McpServer, ctx: Context<HonoEnv>, p
     );
   }
 
-  if (principal.apiKey.scopes.includes('entitlements:read')) {
+  if (principal.credential.scopes.includes('entitlements:read')) {
     server.registerTool(
       'get_entitlements',
       { title: 'Get entitlements', description: 'Read advisory project capability decisions and exact limits.', annotations: readOnly },

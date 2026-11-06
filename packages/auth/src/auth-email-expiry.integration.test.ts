@@ -21,7 +21,7 @@ describe('installed Better Auth OTP delivery contract', () => {
           resendStrategy: 'rotate',
           changeEmail: { enabled: true, verifyCurrentEmail: true },
           async sendVerificationOTP(request, context) {
-            const recipient = request.type === 'change-email' ? `${context?.context.session?.user.email}-${request.email}` : request.email;
+            const recipient = request.type === 'change-email' ? `${context?.context.session?.user.id}:${request.email}` : request.email;
             const stored = await context?.context.internalAdapter.findVerificationValue(`${request.type}-otp-${recipient}`);
             if (!(stored?.expiresAt instanceof Date)) throw new Error('OTP must be persisted before email delivery');
             const metadata = await authOtpEmailMetadata(request, context);

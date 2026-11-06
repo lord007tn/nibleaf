@@ -14,8 +14,12 @@ export interface AuthSession {
   userId: string;
 }
 
+/** A project-bound machine credential: a personal API key, or an MCP OAuth
+ *  connection (`kind: 'oauth'`, `id` = McpOAuthGrant.id). */
 export interface ApiKeyContext {
   id: string;
+  /** Absent means an API key (every caller before OAuth). */
+  kind?: 'api_key' | 'oauth';
   projectId: string;
   scopes: string[];
 }

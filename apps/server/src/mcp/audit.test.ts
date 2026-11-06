@@ -9,8 +9,9 @@ import { recordMcpAudit } from './audit';
 
 const context = { get: (key: string) => (key === 'requestId' ? 'request-1' : undefined) } as never;
 const principal = {
-  apiKey: { id: 'key-1', name: 'Reader', scopes: ['mcp:connect'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
+  credential: { kind: 'api_key', id: 'key-1', name: 'Reader', scopes: ['mcp:connect'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
+  actor: null,
 } as never;
 
 describe('MCP audit persistence failure', () => {
@@ -29,5 +30,56 @@ describe('MCP audit persistence failure', () => {
 
     expect(mocks.logError).toHaveBeenCalledWith({ errorName: 'TypeError', requestId: 'request-1' }, 'MCP audit persistence failed');
     expect(JSON.stringify(mocks.logError.mock.calls)).not.toContain('sensitive database detail');
+  });
+});
+
+describe('MCP audit row contents', () => {
+  it('records the actor, target, and clientRequestId of a write but never its inputs', async () => {
+    mocks.create.mockResolvedValueOnce({ id: 'audit-1' });
+    const writer = {
+      credential: {
+        kind: 'api_key',
+        id: 'key-1',
+        name: 'Writer',
+        scopes: ['mcp:connect', 'pages:write'],
+        expiresAt: new Date('2030-01-01T00:00:00.000Z'),
+      },
+      project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
+      actor: { userId: 'user-1', role: 'member' },
+    } as never;
+    await recordMcpAudit(context, writer, {
+      kind: 'tool',
+      operation: 'update_page',
+      capability: 'pages:write',
+      outcome: 'failed',
+      errorCode: 'mcp:revision_conflict',
+      target: { type: 'page', id: 'page-1' },
+      clientRequestId: 'retry-0001',
+      durationMs: 3.6,
+    });
+    expect(mocks.create).toHaveBeenCalledWith({
+      data: {
+        projectId: 'project-1',
+        apiKeyId: 'key-1',
+        actorUserId: 'user-1',
+        requestId: 'request-1',
+        kind: 'tool',
+        operation: 'update_page',
+        capability: 'pages:write',
+        outcome: 'failed',
+        errorCode: 'mcp:revision_conflict',
+        targetType: 'page',
+        targetId: 'page-1',
+        clientRequestId: 'retry-0001',
+        durationMs: 4,
+      },
+      select: { id: true },
+    });
+  });
+
+  it('leaves write attribution empty for reads by a key without an actor', async () => {
+    mocks.create.mockResolvedValueOnce({ id: 'audit-2' });
+    await recordMcpAudit(context, principal, { kind: 'resource', operation: 'page', capability: 'pages:read', outcome: 'succeeded', durationMs: 1 });
+    expect(mocks.create.mock.calls.at(-1)?.[0].data).toMatchObject({ actorUserId: null, targetType: null, targetId: null, clientRequestId: null });
   });
 });

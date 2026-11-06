@@ -1,3 +1,4 @@
+import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
@@ -7,9 +8,10 @@ import type { GitWorkflowStatus } from './git-workflow';
 import { queryKeys } from './query-keys';
 import type { ReaderAccessData } from './reader-access';
 import type {
-  ApiKey,
+  ApiKeyList,
   Branch,
   Comment,
+  ConnectedApp,
   Deployment,
   Domain,
   Language,
@@ -124,11 +126,36 @@ export const projectAddonsQueryOptions = (projectId: string | undefined) =>
       : skipToken,
   });
 
+/** Personal MCP keys (one's own; everyone's for admins) plus the instance's MCP settings. */
 export const apiKeysQueryOptions = (projectId: string | undefined) =>
   queryOptions({
     queryKey: queryKeys.apiKeys.all(projectId ?? ''),
     queryFn: projectId
-      ? async () => getData<ApiKey[]>(await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId } }), 'API keys')
+      ? async (): Promise<ApiKeyList> => {
+          const response = await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId } });
+          // getData throws the readable error; the list needs `meta` too, so read the body here.
+          if (!response.ok) await getData(response, 'AI assistant keys');
+          return response.json();
+        }
+      : skipToken,
+  });
+
+/** The integration catalog, with each provider's connection for this project. */
+export const integrationsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.integrations.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<IntegrationCatalogEntry[]>(await api.app.projects[':projectId'].integrations.$get({ param: { projectId } }), 'integrations')
+      : skipToken,
+  });
+
+/** AI apps connected by signing in (OAuth): one's own, or everyone's for admins. */
+export const connectedAppsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.connectedApps.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<ConnectedApp[]>(await api.app.projects[':projectId']['connected-apps'].$get({ param: { projectId } }), 'connected apps')
       : skipToken,
   });
 

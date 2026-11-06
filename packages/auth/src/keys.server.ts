@@ -34,6 +34,13 @@ export const keys = () =>
         .string()
         .optional()
         .transform((value) => value === 'true' || value === '1'),
+      // Same switch the API reads for /api/mcp. When on, Better Auth also
+      // becomes the OAuth authorization server for MCP clients (the tables
+      // exist either way; see the 20261106120000_mcp_oauth migration).
+      MCP_ENABLED: z
+        .enum(['true', 'false', '1', '0'])
+        .default('false')
+        .transform((value) => value === 'true' || value === '1'),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,
