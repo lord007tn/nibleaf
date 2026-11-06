@@ -57,7 +57,8 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
               if (!value) {
                 requestAnimationFrame(() => {
                   const target = request.trigger;
-                  if (target?.isConnected && target.getClientRects().length) target.focus();
+                  // A deep link opens from no control at all (focus is on <body>).
+                  if (target && target !== document.body && target.isConnected && target.getClientRects().length) target.focus();
                   else launcher.current?.focus();
                 });
               }

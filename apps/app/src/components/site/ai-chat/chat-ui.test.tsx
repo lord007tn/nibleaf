@@ -88,6 +88,19 @@ describe('ChatRoot', () => {
     frame.mockRestore();
   });
 
+  it('returns focus to the launcher after a deep-linked question, which has no trigger', async () => {
+    const openChat = vi.fn();
+    const view = await mount(<ChatRoot {...options} openChat={openChat} />);
+    await view.render(<ChatRoot {...options} openChat={openChat} request={{ ...request(1, 'How?'), source: 'deep_link', trigger: document.body }} />);
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    await act(async () => mocks.panel.mock.lastCall?.[0].onOpenChange(false));
+    expect(document.activeElement).toBe(launcher());
+    frame.mockRestore();
+  });
+
   it('steps the launcher aside while the analytics consent banner shows', async () => {
     const config = { analytics: { cookieConsent: true, plausible: 'docs.example.com' } } as ProjectConfig;
     const banner = document.createElement('section');
