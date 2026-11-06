@@ -4,6 +4,7 @@ import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useProject } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { SitePageSkeleton } from './site-page-skeleton';
 
 /** Do not mount project tools until access has been resolved. A revoked
  * membership must also hide cached project data; a transient background error
@@ -14,13 +15,7 @@ export function ProjectAccessBoundary({ projectId, children }: { projectId: stri
   const unavailable = error instanceof ApiResponseError && [401, 403, 404].includes(error.status);
 
   if (project && !unavailable) return children;
-  if (isPending) {
-    return (
-      <div className="grid min-h-screen place-items-center bg-background p-6" role="status">
-        {t('common.loading')}
-      </div>
-    );
-  }
+  if (isPending) return <SitePageSkeleton />;
 
   const missing = unavailable || !error;
   return (
