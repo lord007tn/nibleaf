@@ -199,6 +199,8 @@ export default function Panel(
               .filter((part) => part.type === 'text')
               .map((part) => part.content)
               .join('');
+            // A refused run (quota, limits) can leave an empty assistant shell.
+            if (message.role !== 'user' && !text && !finals[message.id] && !chat.isLoading) return null;
             return message.role === 'user' ? (
               <div key={message.id} className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
                 {text}

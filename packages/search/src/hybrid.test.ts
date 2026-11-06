@@ -7,6 +7,7 @@ import {
   rerankHybridChunks,
   type SearchScope,
   searchCacheKey,
+  searchChunkSnippet,
   selectAnswerChunks,
   sparseVectorForChunk,
   sparseVectorForQuery,
@@ -254,5 +255,26 @@ describe('documentation passage selection', () => {
     expect(new Set(selected.map((chunk) => chunk.pageId))).toEqual(
       new Set(['basic-contract', 'advanced-contract', 'comparison', 'pricing', 'company', 'appendix']),
     );
+  });
+});
+
+describe('chunk snippets', () => {
+  it('drops MDX component tags but keeps lowercase CLI placeholders', () => {
+    const chunk = {
+      id: 'c',
+      pageId: 'p',
+      ordinal: 0,
+      title: 'Tabs',
+      path: 'tabs',
+      description: '',
+      heading: '',
+      headingPath: [],
+      content: '<Tabs> <Tab title="macOS"> Run `acme export --notebook <name>`. </Tab> <Card icon="x" /></Tabs>',
+      contentHash: 'h',
+      language: 'en',
+      direction: 'ltr' as const,
+      visible: true,
+    };
+    expect(searchChunkSnippet(chunk, 'export')).toBe('Run acme export --notebook <name>.');
   });
 });

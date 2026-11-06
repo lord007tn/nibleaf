@@ -10,6 +10,9 @@ export type SearchTokenAdapter = (token: string) => string[];
 const plainText = (value: string): string =>
   value
     .replace(/^\s*(?:```|~~~)[^\n]*$/gm, ' ')
+    // MDX components (<Tabs>, <Card title="…">) are layout, not prose. Lowercase
+    // placeholders such as `--notebook <name>` stay readable.
+    .replace(/<\/?[A-Z][\w.]*(?:\s[^<>]*)?\/?>/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
