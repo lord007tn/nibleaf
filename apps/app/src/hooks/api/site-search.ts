@@ -8,7 +8,7 @@ import { queryKeys } from './query-keys';
  * part of the loader-safe API client.
  */
 
-export const siteSearchQueryOptions = (siteId: string | undefined, query: string, language?: string, version?: string, limit?: number) =>
+const siteSearchQueryOptions = (siteId: string | undefined, query: string, language?: string, version?: string, limit?: number) =>
   queryOptions({
     queryKey: queryKeys.site.search(siteId ?? '', query, language, version, limit),
     queryFn:
