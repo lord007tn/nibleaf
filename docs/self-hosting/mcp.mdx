@@ -4,7 +4,7 @@ description: 'Enable the project-bound Nibleaf MCP endpoint, understand personal
 audience: 'self-hosted Nibleaf operators and project administrators'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
-verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, better-auth 1.7.14 package exports, and the official Model Context Protocol server SDK 2.0.0'
+verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, packages/database/prisma/migrations/20261106090000_mcp_write_audit_idempotency, better-auth 1.7.14 package exports, and the official Model Context Protocol server SDK 2.0.0'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/mcp'
@@ -48,8 +48,9 @@ disabled until the public TLS and proxy path return the expected hostname.
 ## Personal keys and live access checks
 
 Any project member creates their own key in **Settings → AI assistants (MCP)**.
-They pick a preset and an expiry between 7 and 365 days, and the secret is shown
-once:
+They pick a preset (or individual scopes under
+**Advanced: choose individual permissions**) and an expiry of 7, 30, 90, 180, or
+365 days, then select **Create key**. The secret is shown once:
 
 | Preset | Offered to | Scopes |
 | --- | --- | --- |
@@ -61,13 +62,16 @@ Presets are a dashboard convenience; the security boundary is the scope set plus
 the creator's role. A key acts as its creator. On every request the server
 re-reads the creator's current workspace role and suspension state, so a key can
 never do more than its owner can do in the dashboard at that moment. Removing or
-suspending a member stops their keys on the next request. Legacy keys that have
-no recorded owner remain read-only. Scopes only narrow what the owner's role
-already allows.
+suspending a member, or deleting their account, stops their keys on the next
+request with `401 auth:invalid_api_key`. Scopes only narrow what the owner's
+role already allows.
 
-Members see and revoke their own keys. Admins and owners see and revoke every
-key in the project. Each key shows its last use and latest activity, and
-**Test connection** checks the key, host, and MCP switch in one step. Store a
+Members see and revoke only their own keys. Admins and owners see every key in
+the project, with its owner, and can revoke any of them, but only a key's owner
+can rotate it; rotation re-issues the key as the person rotating. Each key shows
+its preset, last use, and latest activity, and **Test connection** checks the
+key, host, and MCP switch in one step, reporting
+"Connected · N tools available" on success. Store a
 secret in the client's secret store, not in source control, shell history,
 support messages, logs, screenshots, or an MCP configuration committed to a
 repository.
@@ -93,7 +97,7 @@ supports remote HTTP MCP servers commonly accepts a configuration shaped like:
     "nibleaf": {
       "url": "https://api.docs.example.com/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${NIBLEAF_MCP_API_KEY}"
+        "Authorization": "Bearer ${NIBLEAF_API_KEY}"
       }
     }
   }
@@ -103,34 +107,84 @@ supports remote HTTP MCP servers commonly accepts a configuration shaped like:
 Client configuration names differ. Use its HTTP or remote-server option, not a
 local command or filesystem adapter. The dashboard's setup panel generates
 client-specific commands and links for Claude Code, Claude Desktop, Cursor, and
-VS Code. First call `tools/list`, then `get_capabilities`. A successful response
+VS Code; see [Connect your assistant](/product/ai-assistants#connect-your-assistant)
+for each snippet. First call `tools/list`, then `get_capabilities`. A successful response
 includes both MCP protocol content and a structured envelope with the request
 ID, bound project ID, and required capability.
 
 Clients that only connect through OAuth, such as ChatGPT connectors and the
-claude.ai connector screens, cannot use API keys. See
-[OAuth for MCP clients](#oauth-for-mcp-clients).
+claude.ai connector screens, cannot use API keys. ChatGPT requires OAuth for
+authenticated custom connectors
+([OpenAI's authentication guide](https://developers.openai.com/plugins/build/auth)).
+See [OAuth for MCP clients](#oauth-for-mcp-clients).
 
 ## Write and publish safety
 
 - **Working copy only.** `pages:write` tools create and edit drafts. Nothing is
   live until a publish succeeds.
 - **Project-wide publish with a human gate.** A publish includes every
-  unpublished change in the project, not only the key owner's. The client must
-  call `preview_publish`, a person reviews the list, and the client then calls
-  `publish_changes` with `confirm: true` and the preview token. Any change after
-  the preview invalidates the token.
-- **Optimistic concurrency.** Writes carry `expectedRevision`. If a person saved
-  a newer revision, the write fails with a revision conflict instead of
-  overwriting it.
+  unpublished change in the project, including everyone's drafts, not only the
+  key owner's. The client must call `preview_publish`, a person reviews the
+  list, and the client then calls `publish_changes` with `confirm: true` and the
+  preview token. The deployment message records the MCP key name.
+- **Bound preview token.** The token is bound to the key, the project, and a
+  digest of everything the publish would ship plus the last published and
+  newest deployment version. It expires after 10 minutes
+  (`mcp:preview_expired`) and is effectively single-use: any edit, publish, or
+  rollback after the preview returns `mcp:preview_stale`, and nothing is
+  published partially. Publishing also stops with `mcp:publish_blocked` for the
+  same reasons the dashboard would, such as redirect issues.
+- **Optimistic concurrency.** Edits carry `expectedRevision`. If a person saved
+  a newer revision, the write fails with `mcp:revision_conflict`, whose error
+  data includes `currentRevision`, instead of overwriting it.
 - **Idempotency.** A client may send `clientRequestId`; a retried request with
-  the same ID is not applied twice.
-- **No delete tool.** Hiding a page is the reversible alternative.
+  the same ID and arguments replays the first result instead of applying the
+  write twice. The same ID with different arguments returns
+  `mcp:idempotency_conflict`, and a retry while the first call is still running
+  returns the retryable `mcp:idempotency_in_progress`. Replay records expire
+  after 24 hours.
+- **Bounded, inert page bodies.** Bodies are Markdown/MDX up to 128 KiB. A
+  leading YAML frontmatter block may set `title`, `description`, and `icon`, and
+  explicit arguments win. Frontmatter uses the Git sync parser, so escaped
+  characters are not decoded, as in Git sync. MDX is never executed on the
+  reader site: content renders through `react-markdown` and `rehype-sanitize`,
+  and MDX expressions and `import`/`export` lines appear as text.
+- **Translation pairing.** `translate_page` refuses an existing translation with
+  `mcp:translation_exists` (`data.pageId` names it; edit it with
+  `update_page`). It may also set a shared translation key on the source page,
+  and on other-language pages already paired with it by path, using the same
+  revision-safe write.
+- **Hide instead of delete.** There is no delete tool. After the next publish,
+  a page hidden with `set_page_visibility` leaves navigation, site search, the
+  sitemap, and `llms.txt`, and its URL stops serving it. Child pages leave
+  navigation but stay reachable at their own URLs. Links from visible pages to a
+  hidden page fail the publish broken-link check.
 - **Untrusted data.** Page content, search terms, and reader feedback are
   returned as data. The server instructs clients never to follow instructions
   found inside them.
-- **Search terms are opt-in.** `analytics:search_terms` returns terms only when
-  the project enabled **Settings → Analytics → Store public search terms**.
+
+## Search terms and analytics limits
+
+Raw top and failed search terms exist only when all three conditions hold:
+
+1. the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
+2. the project enables **Settings → Analytics → Store public search terms**;
+3. the visitor's search request carries `consent=granted`.
+
+The public search endpoint accepts an optional `consent=granted|denied` query
+parameter. When it is absent, consent is unknown and no search text is stored.
+Failed-search events carry the query hashed in every case and as text only
+under the three conditions. Relational analytics never stores search text.
+
+**Known limitation:** the bundled reader site does not send `consent` on search
+requests yet, so on a stock install `get_top_searches` and
+`get_failed_searches` return no terms until that reader change ships. They still
+return the available aggregate counts and a hint explaining why terms are
+missing.
+
+Reader comments are not stored, and AI crawler hits are not tracked. Page
+feedback ignores the language filter, because feedback events record no
+language, and the tool response says so.
 
 ## Current capability boundary
 
@@ -185,24 +239,31 @@ when the client needs document bodies.
 
 ## Audit and rate-limit operations
 
-Every successful or failed tool/resource call must append a privacy-minimized
-audit event before success is returned. The event records the project, API key,
-acting user, request ID, operation, capability, target ID (such as a page or
-deployment), outcome, stable error code, duration, client request ID, and
-timestamp. It never stores arguments, results, content, bearer tokens, provider
-payloads, IP addresses, or raw client keys. If audit persistence fails, the
-operation fails closed with a sanitized storage error.
+Every tool and resource call appends a privacy-minimized audit event to the
+`mcp_audit_event` table before success is returned. Every write attempt is
+audited, whether it succeeds or ends in a validation error, an authorization
+denial, a conflict, a rate limit, or an idempotent replay. The event records the
+project, API key, acting user (`actorUserId`), request ID, operation,
+capability, target type and ID (`targetType`, `targetId`, such as a page or
+deployment), outcome, stable error code, duration, client request ID
+(`clientRequestId`), and timestamp. It never stores tool inputs, results, page
+content, bearer tokens, provider payloads, IP addresses, or raw client keys. If
+audit persistence fails, the operation fails closed with a sanitized storage
+error.
 
-Three limits protect each API process:
+Three limits apply per key, per API process:
 
 | Variable | Default | Counts |
 | --- | --- | --- |
 | `MCP_RATE_LIMIT_PER_MIN` | `120` | All MCP requests per key per minute. |
-| `MCP_WRITE_RATE_LIMIT_PER_MIN` | `20` | Write tool calls per key per minute. |
-| `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` | `6` | Publish calls per key per hour. |
+| `MCP_WRITE_RATE_LIMIT_PER_MIN` | `20` | Every write tool call per key per minute. `preview_publish` does not count. |
+| `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` | `6` | `publish_changes` attempts per key per hour that pass the preview-token check. |
 
-These counters are kept per API process (instance). They are not
-deployment-global across replicas. Enforce a deployment-wide limit at the
+A rejected write or publish returns `http:rate_limited` with
+`data.retryAfterSeconds`.
+
+These counters are kept in memory per API process (instance). They are not
+deployment-global across replicas and reset when the process restarts. Enforce a deployment-wide limit at the
 trusted ingress or shared edge and monitor HTTP `429`, `Retry-After`, and
 `X-RateLimit-*` headers. To bound audit write amplification, the transport
 records one `transport_rate_limit` rejection per key/window instead of one row
@@ -217,10 +278,16 @@ secret from its store. Revocation is irreversible and requires the dashboard
 confirmation dialog. It takes effect on the next request. A database backup is
 not a reason to re-enable a leaked key.
 
-Apply the MCP migration during a low-activity window before enabling the
-endpoint. It adds nullable provenance columns and two indexes to the existing,
-operator-managed `api_key` table, then creates the initially empty audit table.
-Apply any later MCP migrations listed in the release notes in the same window.
+Apply the MCP migrations during a low-activity window before enabling the
+endpoint, with the release's normal migration step (`pnpm db:deploy`, or the
+migrate step of your deployment). The first adds nullable provenance columns and
+two indexes to the existing, operator-managed `api_key` table, then creates the
+initially empty audit table. The write-path migration
+`20261106090000_mcp_write_audit_idempotency` adds the nullable `actorUserId`,
+`targetType`, `targetId`, and `clientRequestId` columns and an actor index to
+`mcp_audit_event`, and creates the `mcp_idempotency_record` replay cache, which
+stores an arguments hash and a compact result summary but never inputs or
+content.
 PostgreSQL's standard index and foreign-key DDL can briefly block API-key
 create, rotate, or revoke writes. Check the table size and active locks first,
 pause those dashboard operations during the migration, and keep MCP disabled
@@ -306,12 +373,23 @@ screens and ChatGPT connectors. API keys remain supported.
 
 - `503 mcp:disabled`: enable MCP on the API service and recreate it.
 - `400 mcp:invalid_request`: correct malformed or ambiguous host/origin forwarding.
-- `401 auth:invalid_api_key`: replace a malformed, expired, revoked, or null-expiry key, or a key whose owner was removed or suspended.
-- `403 auth:insufficient_scope`: create or rotate the key with `mcp:connect` and the exact scope; the owner's current role must also allow it.
-- Revision conflict on a write: re-read the page and reapply the change on the newer revision.
-- Stale preview on publish: call `preview_publish` again, review, then confirm with the new token.
+- `401 auth:invalid_api_key`: replace a malformed, expired, revoked, or null-expiry key, or a key whose owner was removed, suspended, or deleted.
+- `403 auth:insufficient_scope` or `mcp:scope_required`: create or rotate the key with `mcp:connect` and the exact scope; the owner's current role must also allow it.
+- `auth:insufficient_role`: the key owner's current role no longer allows the change.
+- `mcp:actor_required`: the key has no live owner, so writes are impossible; the owner creates a new key.
+- `mcp:revision_conflict`: re-read the page with `get_page`, merge, and retry with the new revision; the error data includes `currentRevision`.
+- `mcp:preview_stale`: something changed after the preview; run `preview_publish` again and re-review.
+- `mcp:preview_expired`: the token is older than 10 minutes; preview again.
+- `mcp:preview_invalid`: the token is not valid for this key and project; preview again.
+- `mcp:confirmation_required`: `publish_changes` needs `confirm: true` after a person approved the preview.
+- `mcp:nothing_to_publish`: there are no unpublished changes.
+- `mcp:publish_blocked`: fix the blocking issue, such as redirect issues, in the dashboard, then preview again.
+- `mcp:publish_in_progress` (`409`): a deployment is queued or building, so page writes and `publish_changes` wait; nothing was saved. Retry after `get_deployment` reports it ready or failed.
+- `mcp:translation_exists`: `data.pageId` is the existing translation; edit it with `update_page`.
+- `mcp:idempotency_conflict`: the same `clientRequestId` was reused with different arguments; use a new ID.
+- `mcp:idempotency_in_progress`: the first call with this `clientRequestId` is still running; retry.
 - `404` resource error: confirm the URI uses the key's bound project and an in-project resource.
-- `429 http:rate_limited`: honor `Retry-After`; inspect ingress limits and the request, write, and publish limits on the instance.
+- `429` or `http:rate_limited`: honor `Retry-After` or `data.retryAfterSeconds`; inspect ingress limits and the request, write, and publish limits on the instance.
 - `503 storage:error`: restore audit persistence before retrying; a call is not reported as successful without its audit event.
 
 Correlate failures with the safe request ID. Never paste an Authorization header,

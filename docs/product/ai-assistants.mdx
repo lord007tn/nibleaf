@@ -4,7 +4,7 @@ description: 'Connect Claude, Cursor, or VS Code to one Nibleaf project with a p
 audience: 'support staff and documentation editors'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
-verified_against: 'packages/shared/src/mcp.ts and the planned support MCP contract in apps/server/src/mcp'
+verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, apps/app/src/components/settings/api-keys-tab.tsx and assistant-setup.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/ai-assistants'
@@ -21,7 +21,8 @@ changes and confirms the publish.
 
 - Your Nibleaf instance must have MCP turned on. On a self-hosted instance an
   operator enables it; see [Connect MCP clients securely](/self-hosting/mcp). If
-  it is off, **Test connection** and every client report that MCP is disabled.
+  it is off, the settings page says that AI connections are disabled on this
+  instance, and every client receives `mcp:disabled`.
 - You need to be a member of the project's workspace. Any member can create a
   key for themselves.
 - Install the assistant you plan to use: Claude Code, Claude Desktop, Cursor, or
@@ -29,7 +30,8 @@ changes and confirms the publish.
 
 ## Choose what the assistant may do
 
-Each key starts from a preset. Pick the smallest one that covers the task.
+Each key starts from a preset, shown under **Assistant permissions**. Pick the
+smallest one that covers the task.
 
 | Preset | Who can choose it | The assistant can | The assistant cannot |
 | --- | --- | --- | --- |
@@ -37,61 +39,75 @@ Each key starts from a preset. Pick the smallest one that covers the task.
 | **Support writer** | Any member | Everything in Read only, plus read top and failed search terms, create and edit page drafts, move, translate, hide or show pages, and publish after your confirmation. | Delete pages, change settings, members, billing, themes, add-ons, or integrations, or publish without a fresh preview and your confirmation. |
 | **Full admin** | Admins and owners | Every read and write the MCP server offers, including usage, entitlements, add-ons, themes, exports, and integration status reads. | Anything the server does not offer at all: deleting content, credentials, payments, or running code. |
 
+Members see **Full admin** with the note "Available to admins only." and cannot
+select it.
+
 Two rules apply on top of every preset:
 
 - **The key acts as you.** On every request Nibleaf re-checks your current role
   and account status. If an admin removes you from the workspace or suspends
-  you, your keys stop working on their next request. Older keys with no
-  recorded owner can only read.
-- **Search terms are optional data.** Top and failed search terms exist only if
-  someone turned on **Settings → Analytics → Store public search terms** for the
-  project. Without it, the search-term tools return no terms.
+  you, or your account is deleted, your keys stop working on their next
+  request.
+- **Search terms are optional data.** Individual search terms are available
+  only under the conditions in
+  [What analytics can and cannot tell you](#what-analytics-can-and-cannot-tell-you).
+  Otherwise the search-term tools return counts without terms and say why.
 
 ## Create your personal key
 
 1. Open the project, then **Settings → AI assistants (MCP)**.
-2. Select **Create key**, give it a name that says where it will be used (for
-   example "Laptop – Claude Code"), choose a preset, and choose an expiry between
-   7 and 365 days.
+2. Give the key a name that says where it will be used (for example
+   "Laptop – Claude Code"), choose a preset, and choose an expiry of 7, 30,
+   90, 180, or 365 days (90 by default). Then select **Create key**. To pick
+   scopes one by one instead of a preset, open
+   **Advanced: choose individual permissions**.
 3. Copy the secret. It is shown only once. Paste it straight into your assistant
    or a password manager, never into chat, tickets, screenshots, or a file you
-   commit to a repository.
+   commit to a repository. When it is stored, select **I saved my key — hide it**.
 
 Select **Test connection** to confirm that the key, the server address, and MCP
-on the instance all work before you configure a client. The key list shows when
-each key was last used and its most recent activity. Members see their own keys;
-admins see and can revoke everyone's.
+on the instance all work before you configure a client. On success it shows
+"Connected · N tools available", where N is the number of tools your key can
+use.
+
+The key list shows each key's preset, when it was last used, and its latest
+activity; admins also see who owns each key. Members see and revoke only their
+own keys. Admins and owners see everyone's keys and can revoke any of them, but
+only a key's owner can rotate it. Rotation revokes the old secret and issues a
+new one that acts as the person who rotated it.
 
 ## Connect your assistant
 
 The setup panel next to your new key offers a ready-made command, link, or
 configuration for each client, with the server address already filled in. The
-examples below use `https://api.docs.example.com/api/mcp` and a key in the
-`NIBLEAF_MCP_API_KEY` environment variable; replace them with the values from
-your setup panel.
+examples below use `https://api.docs.example.com/api/mcp` and the placeholder
+`YOUR_NIBLEAF_KEY`; replace them with the values from your setup panel.
 
 ### Claude Code
 
-1. Copy the command from the setup panel.
+1. Copy the command from the setup panel. It already contains your key.
 2. Run it in a terminal:
 
 ```bash
-claude mcp add --transport http nibleaf https://api.docs.example.com/api/mcp \
-  --header "Authorization: Bearer $NIBLEAF_MCP_API_KEY"
+claude mcp add --transport http nibleaf "https://api.docs.example.com/api/mcp" --header "Authorization: Bearer YOUR_NIBLEAF_KEY"
 ```
 
 3. Start Claude Code and run `/mcp`; `nibleaf` should be listed as connected.
 
-Keep the default local scope. Do not add `--scope project`, because that writes
-the key into a `.mcp.json` file that is usually committed.
+Because the key is part of the command, your shell saves it in its history.
+Remove that history entry afterwards, especially on a shared machine. Keep the
+default local scope. Do not add `--scope project`, because that writes the key
+into a `.mcp.json` file that is usually committed.
 
 ### Claude Desktop
 
 Claude Desktop reaches a remote server with a key through the `mcp-remote`
 bridge, which needs Node.js.
 
-1. Open **Settings → Developer → Edit Config**.
-2. Paste the block from the setup panel and replace the placeholder with your key:
+1. Open the Claude Desktop configuration file:
+   `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS or
+   `%APPDATA%/Claude/claude_desktop_config.json` on Windows.
+2. Paste the block from the setup panel. It already contains your key:
 
 ```json
 {
@@ -103,10 +119,10 @@ bridge, which needs Node.js.
         "mcp-remote",
         "https://api.docs.example.com/api/mcp",
         "--header",
-        "Authorization:${NIBLEAF_AUTH_HEADER}"
+        "Authorization:${NIBLEAF_AUTH}"
       ],
       "env": {
-        "NIBLEAF_AUTH_HEADER": "Bearer YOUR_NIBLEAF_KEY"
+        "NIBLEAF_AUTH": "Bearer YOUR_NIBLEAF_KEY"
       }
     }
   }
@@ -121,11 +137,12 @@ bridge receives it intact on every operating system.
 
 ### Cursor
 
-1. Select **Add to Cursor** in the setup panel. Cursor opens and shows the server
-   it is about to install.
-2. Confirm the install. If the installed entry holds a placeholder rather than
-   your key, open `~/.cursor/mcp.json` and read the key from an environment
-   variable instead:
+1. Set the environment variable `NIBLEAF_API_KEY` to your key in the
+   environment Cursor starts from.
+2. Select **Add to Cursor** in the setup panel and confirm the install in
+   Cursor. The link contains no secret: the installed entry reads the key from
+   `NIBLEAF_API_KEY`. To configure Cursor by hand instead, save this as
+   `.cursor/mcp.json`:
 
 ```json
 {
@@ -133,28 +150,31 @@ bridge receives it intact on every operating system.
     "nibleaf": {
       "url": "https://api.docs.example.com/api/mcp",
       "headers": {
-        "Authorization": "Bearer ${env:NIBLEAF_MCP_API_KEY}"
+        "Authorization": "Bearer ${env:NIBLEAF_API_KEY}"
       }
     }
   }
 }
 ```
 
-3. Check that the `nibleaf` server shows a green status and lists its tools.
+3. Restart Cursor and check that the `nibleaf` server shows a green status and
+   lists its tools.
 
 ### VS Code
 
-1. Select **Install in VS Code** in the setup panel and confirm the install.
-2. When VS Code starts the server, it asks for the key in a password prompt and
-   stores it in its secret storage. The installed configuration looks like this:
+1. Select **Install in VS Code** in the setup panel and confirm the install, or
+   save the configuration below as `.vscode/mcp.json`.
+2. When VS Code first starts the server, it asks for the key in a password
+   prompt and stores it in its secret storage. The configuration looks like
+   this:
 
 ```json
 {
   "inputs": [
     {
-      "type": "promptString",
       "id": "nibleaf-key",
-      "description": "Nibleaf MCP API key",
+      "type": "promptString",
+      "description": "Nibleaf API key",
       "password": true
     }
   ],
@@ -174,17 +194,18 @@ bridge receives it intact on every operating system.
 
 ### ChatGPT
 
-ChatGPT connectors currently sign in to remote MCP servers through OAuth and do
-not accept a pasted API key, so ChatGPT cannot connect to Nibleaf yet. The same
-applies to the connector screens in claude.ai. Support depends on OAuth sign-in
-for MCP, which is planned; see
-[OAuth for MCP clients](/self-hosting/mcp#oauth-for-mcp-clients).
+ChatGPT is not available with API keys. ChatGPT requires OAuth for
+authenticated custom connectors (see
+[OpenAI's authentication guide](https://developers.openai.com/plugins/build/auth)),
+and the claude.ai connector screens likewise sign in through OAuth. Nibleaf
+does not offer OAuth sign-in for MCP in this release; the evaluation and plan
+are in [OAuth for MCP clients](/self-hosting/mcp#oauth-for-mcp-clients).
 
 ### Check the connection from the assistant
 
 Ask the assistant to "call `get_capabilities`". The answer names the bound
-project and lists exactly the tools your key can use. If a tool you expect is
-missing, your preset or your current role does not include it.
+project and lists exactly the tools and prompts your key can use. If a tool you
+expect is missing, your preset or your current role does not include it.
 
 ## Example: close a content gap end to end
 
@@ -192,7 +213,9 @@ This walk-through uses a **Support writer** key.
 
 1. **Find what readers miss.** Ask: "Using `get_failed_searches` for the last
    7 days, which searches found nothing? Group similar terms." You can also
-   start from the `find_content_gaps` prompt.
+   start from the `find_content_gaps` prompt. If the tool reports that terms
+   are unavailable, see
+   [What analytics can and cannot tell you](#what-analytics-can-and-cannot-tell-you).
 2. **Check before writing.** Ask the assistant to run `search_pages` for each
    group, so it extends an existing page rather than creating a duplicate.
 3. **Draft the fix.** Ask it to update the closest page with `update_page`, or
@@ -200,51 +223,118 @@ This walk-through uses a **Support writer** key.
    working copy. Readers still see the published site.
 4. **Review the draft.** Open the page in the Nibleaf editor and read it as a
    reader would. Edit it yourself if needed. If you edit after the assistant
-   read the page, its next write fails with a revision conflict instead of
-   overwriting your work; ask it to read the page again first.
+   read the page, its next write fails with `mcp:revision_conflict` instead of
+   overwriting your work; it then reads the page again and merges its change.
 5. **Preview the publish.** Ask for `preview_publish`. It lists every
    unpublished change in the project, including other people's drafts, because a
    publish is project-wide. If the list contains something that is not ready,
    stop and coordinate with its author.
 6. **Publish on your confirmation.** When you are satisfied, tell the assistant
    to publish. It calls `publish_changes` with `confirm: true` and the token from
-   the preview. If anything changed after the preview, the token is no longer
-   valid and you preview again.
+   the preview. If anything changed after the preview, the publish is refused
+   with `mcp:preview_stale` and you preview again.
 7. **Check the live site.** Ask it to watch `get_deployment` until the deployment
    is ready, then open the page while signed out and search for one of the
    original failed terms. Follow [Publish and verify](/product/publishing) for
    the complete reader check.
 
-Nibleaf records every call in an audit log with the key and the person it acted
-for, without storing the page content.
+The deployment message records the name of the key that published, and the
+audit log records the key and the person it acted for, without storing page
+content.
+
+## How the assistant writes pages
+
+- **Body format.** Page bodies are Markdown or MDX, up to 128 KiB per page. A
+  leading YAML frontmatter block may set `title`, `description`, and `icon`;
+  explicit tool arguments win over frontmatter. This is the same parser Git sync
+  uses, so escaped characters in frontmatter values are not decoded, exactly as
+  in Git sync.
+- **MDX is never executed.** Readers' pages are rendered through
+  `react-markdown` with `rehype-sanitize`. MDX expressions and `import` or
+  `export` lines appear as plain text rather than running.
+- **Translations.** `translate_page` creates the translation as a draft in the
+  target language. If one already exists, it fails with `mcp:translation_exists`
+  and `data.pageId` names the existing page; edit that page with `update_page`.
+  To pair the pages, it may also set a shared translation key on the source page
+  and on other-language pages already paired with it by path, using the same
+  revision-safe write.
+- **Hiding a page.** After the next publish, a page hidden with
+  `set_page_visibility` leaves navigation, site search, the sitemap, and
+  `llms.txt`, and its URL stops serving it. Its child pages leave navigation but
+  stay reachable at their own URLs. A link from a visible page to a hidden page
+  fails the publish's broken-link check, so fix those links first.
 
 ## What keeps your docs safe
 
 - **Drafts first.** Writes change the working copy only. Nothing is live until a
   publish succeeds.
 - **Preview, review, confirm.** Publishing needs a preview, a human decision, and
-  an explicit confirmation carrying the preview token.
-- **No silent overwrites.** Every write names the revision it is based on.
-- **No duplicate actions on retry.** An assistant can attach a client request ID
-  so a retried request is not applied twice.
+  an explicit confirmation carrying the preview token. The token is bound to
+  your key, the project, and exactly what the publish would ship. It expires
+  after 10 minutes and is effectively single-use: any edit, publish, or rollback
+  after the preview, including the publish it approved, makes it stale.
+- **Project-wide publish.** A publish includes everyone's unpublished changes in
+  the project, not only the assistant's.
+- **No silent overwrites.** Every edit names the revision it is based on.
+- **No duplicate actions on retry.** An assistant can attach a
+  `clientRequestId` so a retried request is not applied twice. Reusing the same
+  ID with different arguments is refused.
 - **No deletion.** There is no delete tool. Hiding a page is reversible.
 - **Untrusted content stays data.** Page text, search terms, and reader feedback
   can contain anything a visitor or author typed. Nibleaf tells the assistant
   never to follow instructions found inside them. If an assistant suggests doing
   something because a page or search term "says so", decline.
-- **Limits and an audit trail.** Requests, writes, and publishes are rate
-  limited, and every call is recorded without storing your content.
+- **Limits.** Each key has a request limit, a separate per-minute limit on write
+  tool calls, and an hourly limit on publishes. `preview_publish` does not count
+  against the write limit.
+- **Audit trail.** Every write attempt is recorded, whether it succeeds, fails
+  validation, is denied, conflicts, is rate limited, or is replayed from a
+  retry. Tool inputs and page content are never stored.
+
+## What analytics can and cannot tell you
+
+Individual top and failed search terms exist only when all of these are true:
+
+- the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
+- an admin turned on **Settings → Analytics → Store public search terms** for
+  the project;
+- the visitor's search request carried consent (`consent=granted`).
+
+Relational analytics never stores search text. **Known limitation:** the bundled
+reader site does not send consent with its search requests yet, so on a stock
+install search terms stay unavailable until that reader change ships. The
+search-term tools still return the aggregate counts the analytics source has,
+with a hint about why terms are missing.
+
+Other limits:
+
+- Reader comments are not collected, so the assistant cannot read them.
+- Visits from AI crawlers are not tracked. `get_referrers` classifies human
+  visits that arrive from AI assistants, not crawler traffic.
+- Page feedback ignores the language filter, because feedback events record no
+  language. The tool says so in its response.
 
 ## Troubleshoot
 
 | What you see | Why | What to do |
 | --- | --- | --- |
-| "MCP is disabled for this Nibleaf instance" (`mcp:disabled`) | MCP is off on the instance. | Ask your operator to enable it. |
-| "The API key is invalid, expired, or revoked" (`auth:invalid_api_key`) | The key expired, was revoked, was pasted incompletely, or its owner was removed or suspended. | Create a new key and update the client. |
-| `auth:insufficient_scope`, or a tool is missing | The preset or your current role does not allow it. | Create a key with a larger preset, or ask an admin about your role. |
-| Revision conflict on a write | Someone changed the page after the assistant read it. | Ask the assistant to read the page again and reapply its change on top. |
-| Publish refused because the preview is stale | Something changed after `preview_publish`. | Run the preview again, review the new list, then confirm. |
-| Too many requests (`http:rate_limited`) | A request, write, or publish limit was reached. | Wait for the time in `Retry-After`; slow the assistant down or batch the work. |
+| `mcp:disabled` | MCP is off on the instance. | Ask your operator to enable it. |
+| `auth:invalid_api_key` (HTTP 401) | The key expired, was revoked, was pasted incompletely, or its owner was removed, suspended, or deleted. | Create a new key and update the client. |
+| `auth:insufficient_scope`, `mcp:scope_required`, or a tool is missing | The key's preset does not include it, or your current role does not allow it. | Create a key with a larger preset, or ask an admin about your role. |
+| `auth:insufficient_role` | Your current role no longer allows this change. | Ask an admin about your role. |
+| `mcp:actor_required` | The key has no live owner, so it cannot write. | Create a new key of your own. |
+| `mcp:revision_conflict` | Someone changed the page after the assistant read it. The error data includes `currentRevision`. | Ask the assistant to read the page again with `get_page`, merge its change, and retry with the new revision. |
+| `mcp:translation_exists` | The page already has a translation in that language; `data.pageId` names it. | Edit that page with `update_page`. |
+| `mcp:preview_stale` | Something changed after `preview_publish`. | Run `preview_publish` again, review the new list, then confirm. |
+| `mcp:preview_expired` | The preview token is older than 10 minutes. | Run `preview_publish` again. |
+| `mcp:preview_invalid` | The token is not valid for this key and project. | Run `preview_publish` again and use the new token. |
+| `mcp:confirmation_required` | `publish_changes` was called without `confirm: true`. | Confirm only after you approved the preview. |
+| `mcp:nothing_to_publish` | There are no unpublished changes. | Nothing to do. |
+| `mcp:publish_blocked` | The publish is blocked, for example by redirect issues, exactly as it would be in the dashboard. | Fix the issue in the dashboard, then preview again. |
+| `mcp:publish_in_progress` | A publish is still being built, so page edits and new publishes wait. Nothing was saved. | Wait until `get_deployment` reports the deployment ready or failed, then retry. |
+| `mcp:idempotency_conflict` | The same `clientRequestId` was reused with different arguments. | Use a new `clientRequestId` for a different write. |
+| `mcp:idempotency_in_progress` | A request with the same `clientRequestId` is still running. | Retry shortly. |
+| `http:rate_limited` | A request, write, or publish limit was reached. | Wait for `data.retryAfterSeconds` (or `Retry-After`); slow the assistant down or batch the work. |
 
 When you ask for help, share the request ID from the error, never the key, the
 `Authorization` header, or page content.
@@ -252,7 +342,8 @@ When you ask for help, share the request ID from the error, never the key, the
 ## Tool and prompt catalog
 
 The assistant sees only the entries its key allows. The **Preset** column shows
-the smallest preset that includes each entry.
+the smallest preset that includes each entry. A prompt appears only when the key
+holds every scope listed for it.
 
 | Name | Kind | Scope | Preset | Purpose |
 | --- | --- | --- | --- | --- |
@@ -278,7 +369,7 @@ the smallest preset that includes each entry.
 | `create_page_draft` | Tool | `pages:write` | Support writer | Create a new page as a draft. |
 | `update_page` | Tool | `pages:write` | Support writer | Edit a page's draft; needs `expectedRevision`. |
 | `move_page` | Tool | `pages:write` | Support writer | Move a page in the page tree. |
-| `translate_page` | Tool | `pages:write` | Support writer | Create or update a page's translation as a draft. |
+| `translate_page` | Tool | `pages:write` | Support writer | Create a page's translation as a draft. |
 | `set_page_visibility` | Tool | `pages:write` | Support writer | Hide or show a page. |
 | `preview_publish` | Tool | `deployments:publish` | Support writer | List everything the next publish would include and return a preview token. |
 | `publish_changes` | Tool | `deployments:publish` | Support writer | Publish after review; needs `confirm: true` and the preview token. |
@@ -296,11 +387,11 @@ the smallest preset that includes each entry.
 | `get_git_integration_status` | Tool | `integrations:read` | Full admin | Git sync status. |
 | `list_integrations` | Tool | `integrations:read` | Full admin | List integrations. |
 | `get_integration` | Tool | `integrations:read` | Full admin | Read one integration. |
-| `find_content_gaps` | Prompt | `analytics:search_terms`, `pages:read` | Support writer | Turn failed searches into a list of missing or weak pages. |
-| `weekly_docs_health_report` | Prompt | `analytics:read`, `search:read` | Read only | Summarize traffic, feedback, and search health for the week. |
-| `draft_article` | Prompt | `pages:read`, `pages:write` | Support writer | Draft a new article after checking for an existing one. |
+| `find_content_gaps` | Prompt | `analytics:search_terms`, `pages:read`, `search:read`, `pages:write`, `deployments:publish` | Support writer | Turn failed searches into a list of missing pages, draft the chosen ones, and stop at a publish preview. |
+| `weekly_docs_health_report` | Prompt | `analytics:read`, `search:read`, `deployments:read` | Read only | Summarize traffic, feedback, referrers, search health, and pending changes for the week. Without `analytics:search_terms` it says failed searches are unavailable to the key. |
+| `draft_article` | Prompt | `pages:read`, `search:read`, `pages:write` | Support writer | Draft a new article after checking for an existing one. |
 | `translate_article` | Prompt | `pages:read`, `pages:write` | Support writer | Draft a translation of an existing page. |
-| `review_unhelpful_pages` | Prompt | `analytics:read`, `pages:read` | Read only | Review pages readers marked unhelpful and suggest fixes. |
+| `review_unhelpful_pages` | Prompt | `analytics:read`, `pages:read`, `pages:write` | Support writer | Review pages readers marked unhelpful and propose revision-safe edits. |
 | `nibleaf://projects/{projectId}/pages/{pageId}/markdown` | Resource | `pages:read` | Read only | One page as `text/markdown` with frontmatter, in the same format as Git sync. |
 
 Analytics tools take a range of `24h`, `7d`, `30d`, or `90d`, or a `from` and

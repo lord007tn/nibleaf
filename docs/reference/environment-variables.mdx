@@ -112,13 +112,13 @@ When `MARKETING_GTM_ID` is enabled, configure one Google tag in GTM with automat
 | --- | --- | --- | --- |
 | `MCP_ENABLED` | No | `false` | Enables the authenticated project-bound `/api/mcp` endpoint. Keep it disabled until proxy and key-lifecycle checks pass. |
 | `MCP_ALLOWED_HOSTS` | No | Empty | Comma-separated additional public hostnames. `API_URL` and `APP_URL` hosts are already allowed. Schemes, paths, wildcard values, and ambiguous forwarded chains are rejected. |
-| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-key requests of any kind accepted by one API process per minute. Add an ingress/shared-edge limit for deployment-wide enforcement. |
-| `MCP_WRITE_RATE_LIMIT_PER_MIN` | No | `20` | Per-key write tool calls (page drafts, edits, moves, translations, visibility) accepted by one API process per minute. |
-| `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` | No | `6` | Per-key publish calls accepted by one API process per hour. |
+| `MCP_RATE_LIMIT_PER_MIN` | No | `120` | Per-key MCP requests of any kind accepted by one API process per minute. Counters are in memory per process; add an ingress/shared-edge limit for deployment-wide enforcement. |
+| `MCP_WRITE_RATE_LIMIT_PER_MIN` | No | `20` | Per-key write tool calls (page drafts, edits, moves, translations, visibility, and publishes) accepted by one API process per minute. `preview_publish` does not count. |
+| `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` | No | `6` | Per-key `publish_changes` attempts accepted by one API process per hour. Only attempts that pass the preview-token check count. |
 
 See [secure MCP client setup and operations](/self-hosting/mcp) before enabling
 the endpoint. API keys are personal: each member creates their own, admins can
-revoke any, and secrets are displayed once. They must not be stored in
+revoke any but only the owner can rotate one, and secrets are displayed once. They must not be stored in
 environment examples or repository configuration.
 
 ### Export workers
