@@ -325,7 +325,11 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-sm">{key.name}</span>
                     <Badge variant="outline">{t(`settings.apiKeys.${key.preset}`)}</Badge>
-                    {canAdminister(role) && key.createdBy ? <span>{key.createdBy.name}</span> : null}
+                    {canAdminister(role) && key.createdBy ? (
+                      <span className="text-muted-foreground text-xs">
+                        {t('settings.apiKeys.createdBy')}: <bdi className="text-foreground">{key.createdBy.name.trim() || key.createdBy.email}</bdi>
+                      </span>
+                    ) : null}
                     {key.state === 'active' ? <Badge variant="secondary">{t('settings.integrations.status.active')}</Badge> : null}
                     {key.state === 'revoked' ? <Badge variant="destructive">{t('settings.apiKeys.revoked')}</Badge> : null}
                     {key.state === 'expired' ? <Badge variant="destructive">{t('settings.apiKeys.expired')}</Badge> : null}
@@ -337,8 +341,21 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                     {t('settings.apiKeys.createdAt')}: {formattedDate(key.createdAt, locale)}
                   </p>
                   {key.lastActivity ? (
-                    <p className="mt-1 text-xs" dir="auto">
-                      {key.lastActivity.operation} ? {key.lastActivity.outcome} ? {formattedDate(key.lastActivity.at, locale)}
+                    <p className="mt-1 text-muted-foreground text-xs">
+                      {t('settings.apiKeys.lastActivity')}:{' '}
+                      <code className="text-foreground" dir="ltr">
+                        {key.lastActivity.operation}
+                      </code>
+                      {' · '}
+                      <span className={key.lastActivity.outcome === 'failed' ? 'text-destructive' : 'text-foreground'}>
+                        {key.lastActivity.outcome === 'failed'
+                          ? t('settings.apiKeys.outcomeFailed')
+                          : key.lastActivity.outcome === 'replayed'
+                            ? t('settings.apiKeys.outcomeReplayed')
+                            : t('settings.apiKeys.outcomeSucceeded')}
+                      </span>
+                      {' · '}
+                      <bdi>{formattedDate(key.lastActivity.at, locale)}</bdi>
                     </p>
                   ) : null}
                   <dl className="mt-2 grid gap-1 text-muted-foreground text-xs sm:grid-cols-2">

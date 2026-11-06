@@ -18,7 +18,7 @@ const keySelect = {
   expiresAt: true,
   revokedAt: true,
   rotatedFromId: true,
-  createdBy: { select: { id: true, name: true } },
+  createdBy: { select: { id: true, name: true, email: true } },
 } as const;
 const ownership = (actor: Actor) => (canAdminister(actor.role) ? {} : { createdById: actor.id });
 const issueScopes = (body: RotateApiKeyBody, role: string) => {
