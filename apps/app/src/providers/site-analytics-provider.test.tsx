@@ -199,6 +199,9 @@ it('records one page view when StrictMode replays the effect', async () => {
     ),
   );
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view' && event.payload.path === 'strict')).toHaveLength(1);
+  // The replay keeps one vitals collector: leaving the page reports vitals once.
+  await act(async () => window.dispatchEvent(new Event('pagehide')));
+  expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'web_vitals' && event.payload.path === 'strict')).toHaveLength(1);
 });
 
 it.each([

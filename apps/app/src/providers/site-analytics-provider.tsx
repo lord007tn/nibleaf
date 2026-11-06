@@ -8,6 +8,7 @@ export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/s
 
 const viewedDocuments = new WeakSet<Document>();
 const replayedViews = new WeakMap<Document, string>();
+const activeVitals = new WeakMap<Document, { key: string; pending: boolean; stop: () => void }>();
 const vitalDocuments = new WeakSet<Document>();
 
 const randomIdFn = (): string => {
@@ -149,10 +150,32 @@ export function SiteAnalyticsProvider({
   // optional vitals (unknown values), rather than relabeling the old document's LCP.
   useEffect(() => {
     if (!path) return;
-    const initial = !vitalDocuments.has(document);
-    vitalDocuments.add(document);
-    return collectSiteWebVitals((vitals) => track({ name: 'web_vitals', path, language, ...vitals }), initial);
-  }, [path, language, track]);
+    const key = `${projectId}|${path}|${language ?? ''}`;
+    const running = activeVitals.get(document);
+    if (running?.pending && running.key === key) {
+      // An immediate replay of the same view (StrictMode) keeps the running collector.
+      running.pending = false;
+    } else {
+      const initial = !vitalDocuments.has(document);
+      vitalDocuments.add(document);
+      activeVitals.set(document, {
+        key,
+        pending: false,
+        stop: collectSiteWebVitals((vitals) => track({ name: 'web_vitals', path, language, ...vitals }), initial),
+      });
+    }
+    return () => {
+      const entry = activeVitals.get(document);
+      if (entry?.key !== key) return;
+      // Stop (and report) at the end of this task unless the same view is replayed first.
+      entry.pending = true;
+      queueMicrotask(() => {
+        if (!entry.pending) return;
+        if (activeVitals.get(document) === entry) activeVitals.delete(document);
+        entry.stop();
+      });
+    };
+  }, [path, language, projectId, track]);
 
   useEffect(() => {
     if (!path) return;
