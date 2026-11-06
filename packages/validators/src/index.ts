@@ -3,6 +3,7 @@ import { MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
+import { AI_CHAT_LIMITS } from './ai-chat';
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
 import { themeConfigSchema } from './themes';
 
@@ -97,6 +98,10 @@ const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) })
 
 export const SEARCH_MAX_RESULTS = { default: 12, min: 1, max: 50 } as const;
 
+export const aiStarterQuestionsSchema = z
+  .array(z.string().trim().min(AI_CHAT_LIMITS.starterQuestionMin).max(AI_CHAT_LIMITS.starterQuestionMax))
+  .max(AI_CHAT_LIMITS.starterQuestionsMax);
+
 /** Resolved, provider-neutral controls used by both the dashboard and MCP.
  * `placeholder` deliberately has no default here: the published UI falls back
  * to its active-language Paraglide copy when the project has not authored one. */
@@ -107,6 +112,11 @@ export const searchConfigurationSchema = z
     versionFilterEnabled: z.boolean().default(true),
     aiAnswers: z.boolean().default(false),
     aiProvider: aiSelectionSchema.default('instance'),
+    /** Save reader questions/answers (redacted, retention-bounded) for the AI
+     * conversations dashboard. Visitor consent still applies per request. */
+    aiConversationCapture: z.boolean().default(true),
+    /** Suggested first questions in the site's default language. */
+    aiStarterQuestions: aiStarterQuestionsSchema.default([]),
     hotkey: z.enum(['cmdk', 'slash']).default('cmdk'),
     placeholder: z.string().trim().max(80).optional(),
   })
@@ -314,6 +324,8 @@ export const projectConfigSchema = z
         versionFilterEnabled: z.boolean().optional(),
         aiAnswers: z.boolean().optional(),
         aiProvider: aiSelectionSchema.optional(),
+        aiConversationCapture: z.boolean().optional(),
+        aiStarterQuestions: aiStarterQuestionsSchema.optional(),
       })
       .strict()
       .optional(),
@@ -1216,3 +1228,4 @@ export const gitConflictResolutionBody = z
 export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody>;
 
 export * from './ai';
+export * from './ai-chat';

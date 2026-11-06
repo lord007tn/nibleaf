@@ -11,6 +11,11 @@
   "pnpm": {
     "overrides": {
       "@ai-sdk/provider-utils@>=4.0.0 <4.0.33": "4.0.33",
+      "@tanstack/ai": "1.0.0",
+      "@tanstack/ai-client": "1.0.0",
+      "@tanstack/ai-event-client": "1.0.0",
+      "@tanstack/ai-utils": "1.0.0",
+      "@tanstack/openai-base": "1.0.0",
       "@tiptap/extension-bubble-menu": "3.30.4",
       "@tiptap/extension-floating-menu": "3.30.4",
       "@tiptap/y-tiptap": "3.0.7",
