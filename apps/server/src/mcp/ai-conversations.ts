@@ -23,7 +23,7 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
     'get_ai_usage',
     {
       description:
-        'AI assistant usage per day and model, with totals: questions, answered, unanswered, failed and cancelled answers, tokens, cost in USD (only for answers whose provider reported it; see costKnownAnswers), average answer and first-token times in milliseconds, and retrieval cache hits.',
+        'AI assistant spend per day and model, with totals. Counts every turn a provider billed, automated traffic included, so its question count can exceed get_ai_feedback_summary (people only): questions, answered, unanswered, failed and cancelled answers, tokens (a stopped or failed answer contributes an estimate), cost in USD (only for answers whose provider reported it; see costKnownAnswers), average answer and first-token times in milliseconds, and retrieval cache hits.',
       inputSchema: aiConversationSummaryQuery,
       annotations,
     },
@@ -53,7 +53,7 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
     'get_ai_feedback_summary',
     {
       description:
-        'Understand how often your docs assistant answers readers, which answers receive useful feedback, what it costs, and how readers use it (engagement: opens by source, source and follow-up clicks, copies, stops, new chats, rating changes, limits reached, provider errors, median response times).',
+        'Understand how often your docs assistant answers readers, which answers receive useful feedback, what it costs, and how readers use it (engagement: opens by source, source and follow-up clicks, copies, stops, new chats, rating changes, limits reached, provider errors, median response times). Question, answer and engagement counts are people only (declared bots and scripts are left out); usage and cost cover every billed turn, as in get_ai_usage.',
       inputSchema: aiConversationSummaryQuery,
       annotations,
     },
