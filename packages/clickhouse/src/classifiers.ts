@@ -1,5 +1,10 @@
 import type { AiAssistantSource, CrawledResource, CrawlerCategory, TrafficChannel } from './insights/types';
 
+export const crawlerPolicyTokens = [
+  { token: 'Google-Extended', policyOnly: true },
+  { token: 'Applebot-Extended', policyOnly: true },
+] as const;
+
 /** Ordered: extended/user/search agents must win over their broader family. UA
  * identity is a claim, never IP verification. Keep this catalog dependency-free. */
 const catalog: Array<[string, string, CrawlerCategory]> = [
@@ -12,11 +17,9 @@ const catalog: Array<[string, string, CrawlerCategory]> = [
   ['anthropic-ai', 'Anthropic', 'ai_training'],
   ['Perplexity-User', 'Perplexity', 'ai_assistant'],
   ['PerplexityBot', 'Perplexity', 'ai_search'],
-  ['Google-Extended', 'Google', 'ai_training'],
   ['Googlebot', 'Google', 'search_engine'],
   ['GoogleOther', 'Google', 'other'],
   ['Bingbot', 'Microsoft', 'search_engine'],
-  ['Applebot-Extended', 'Apple', 'ai_training'],
   ['Applebot', 'Apple', 'search_engine'],
   ['CCBot', 'Common Crawl', 'ai_training'],
   ['Bytespider', 'ByteDance', 'ai_training'],
@@ -46,7 +49,13 @@ export interface ActorClassification {
 }
 
 export const classifyUserAgent = (userAgent?: string | null): ActorClassification => {
-  const ua = (userAgent ?? '').slice(0, 2048).toLowerCase();
+  const ua = crawlerPolicyTokens.reduce(
+    (value, { token }) => value.replaceAll(token.toLowerCase(), ''),
+    (userAgent ?? '').slice(0, 2048).toLowerCase(),
+  );
+  // Policy-only tokens have no request identity. Do not let the generic bot
+  // heuristic (or Applebot's broader name) turn a bare token into a crawler.
+
   const match = catalog.find(([name]) => ua.includes(name.toLowerCase()));
   if (match) return { actorType: 'bot', botName: match[0], botOperator: match[1], botCategory: match[2], verification: 'claimed' };
   const automated =

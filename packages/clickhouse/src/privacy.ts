@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client';
 import { getClickHouseClient } from './client';
+import { invalidateInsightsCache } from './insights/cache';
 import { ANALYTICS_PROJECT_TABLES } from './tables';
 
 export const deleteProjectAnalytics = async (
@@ -13,6 +14,7 @@ export const deleteProjectAnalytics = async (
     format: 'JSONEachRow',
     values: [{ tenant_id: tenantId, project_id: projectId, deleted_at: new Date().toISOString(), reason: 'privacy_deletion' }],
   });
+  invalidateInsightsCache(tenantId, projectId);
   await Promise.all(
     ANALYTICS_PROJECT_TABLES.filter((table) => !table.preserve).map((table) =>
       client.command({
@@ -64,6 +66,10 @@ export interface ExportedAnalyticsEvent {
 
 /** Content-free data-subject/project export. Raw search terms, query hashes,
  * session hashes, answer content, and credentials are intentionally excluded. */
+/** Derived snapshots in ANALYTICS_PROJECT_TABLES are explicitly excluded:
+ * they contain no facts absent from this raw export. Sensitive queries and
+ * permanent deletion tombstones remain excluded to avoid exposing search text
+ * or stable visit hashes. No new table introduces separate subject data. */
 export const exportProjectAnalytics = async (
   tenantId: string,
   projectId: string,

@@ -13,12 +13,12 @@ describe('server actor and referral classification', () => {
     ['anthropic-ai', 'ai_training'],
     ['PerplexityBot', 'ai_search'],
     ['Perplexity-User', 'ai_assistant'],
-    ['Google-Extended', 'ai_training'],
+
     ['Googlebot', 'search_engine'],
     ['GoogleOther', 'other'],
     ['Bingbot', 'search_engine'],
     ['Applebot', 'search_engine'],
-    ['Applebot-Extended', 'ai_training'],
+
     ['CCBot', 'ai_training'],
     ['Bytespider', 'ai_training'],
     ['Amazonbot', 'ai_training'],
@@ -50,6 +50,10 @@ describe('server actor and referral classification', () => {
       expect(classifyUserAgent(ua).actorType).toBe('bot');
     },
   );
+  it('does not identify policy-only tokens as real request agents', () => {
+    expect(classifyUserAgent('Google-Extended').actorType).toBe('human');
+    expect(classifyUserAgent('Applebot-Extended').actorType).toBe('human');
+  });
   it('keeps ordinary readers human', () => {
     expect(classifyUserAgent('Mozilla/5.0 Chrome/140 Safari/537.36').actorType).toBe('human');
   });

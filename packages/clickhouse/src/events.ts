@@ -287,6 +287,8 @@ export const buildAnalyticsEvent = (input: AnalyticsEventInput, context: ServerE
     context.siteHost,
   );
   const actor = classifyUserAgent(context.userAgent);
+  const identityAllowed = parsed.consentState === 'granted' || parsed.consentState === 'not_required';
+  const hashScope = JSON.stringify([context.tenantId, context.projectId]);
   const payload = cleanPayload(structuredClone(parsed.payload), parsed.consentState, context.privacy);
   const rawQuery = 'query' in payload && payload.query ? normalizeSearchTerm(payload.query) : undefined;
   if ('query' in payload) delete payload.query;
@@ -306,15 +308,16 @@ export const buildAnalyticsEvent = (input: AnalyticsEventInput, context: ServerE
     projectId: context.projectId,
     siteId: context.siteId,
     deploymentId: context.deploymentId ?? null,
-    sessionHash: parsed.sessionId ? sha256(context.hashSalt, 'session', parsed.sessionId) : null,
-    anonymousUserHash: parsed.anonymousUserId ? sha256(context.hashSalt, 'anonymous-user', parsed.anonymousUserId) : null,
+    sessionHash: identityAllowed && parsed.sessionId ? sha256(context.hashSalt, `session:${hashScope}`, parsed.sessionId) : null,
+    anonymousUserHash:
+      identityAllowed && parsed.anonymousUserId ? sha256(context.hashSalt, `anonymous-user:${hashScope}`, parsed.anonymousUserId) : null,
     source: context.source,
     consentState: parsed.consentState,
     visibility: context.privacy.visibility,
     country: context.country?.toUpperCase().slice(0, 2) ?? null,
     device: context.device?.toLowerCase().slice(0, 32) ?? null,
     payload,
-    queryHash: rawQuery ? sha256(context.hashSalt, 'query', rawQuery) : null,
+    queryHash: rawQuery ? sha256(context.hashSalt, `query:${hashScope}`, rawQuery) : null,
     queryLength: rawQuery?.length ?? null,
     queryTokenCount: rawQuery ? rawQuery.split(/\s+/u).filter(Boolean).length : null,
     sensitiveQueryText: mayStoreQuery ? (rawQuery?.slice(0, 200) ?? null) : null,

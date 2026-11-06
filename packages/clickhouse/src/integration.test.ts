@@ -22,14 +22,17 @@ integration('ClickHouse schema integration', () => {
   });
 
   it('deduplicates retries in raw facts and rollups', async () => {
-    const event = fixedAnalyticsEvent({ occurredAt: new Date().toISOString(), receivedAt: new Date().toISOString() });
+    const projectId = `analytics-project-${randomUUID()}`;
+    const event = fixedAnalyticsEvent({ projectId, occurredAt: new Date().toISOString(), receivedAt: new Date().toISOString() });
     const otherTenantEvent = fixedAnalyticsEvent({
+      projectId,
       eventId: '00000000-0000-4000-8000-000000000009',
       occurredAt: event.occurredAt,
       receivedAt: event.receivedAt,
       tenantId: 'tenant-other',
     });
     const unknownCostEvent = fixedAnalyticsEvent({
+      projectId,
       eventId: '00000000-0000-4000-8000-000000000010',
       occurredAt: event.occurredAt,
       receivedAt: event.receivedAt,

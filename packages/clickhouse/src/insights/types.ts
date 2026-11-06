@@ -40,6 +40,8 @@ export interface InsightsMeta {
   /** Granularity of every timeseries in this response. */
   granularity: 'hour' | 'day';
   generatedAt: string;
+  /** Newest human event received for this project across all periods. */
+  lastEventAt: string | null;
 }
 
 /** A metric and the same metric over the comparison period. */
