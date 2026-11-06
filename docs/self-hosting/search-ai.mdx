@@ -144,10 +144,26 @@ Each turn runs these steps:
    when the reader may read it.
 4. If retrieval is not confident enough, the model is not called. The reader is
    told the docs could not confirm an answer and is offered the best-matching
-   articles.
+   articles, plus a **Contact support** link when the site has one.
 5. Otherwise the answer streams as Markdown with inline `[S1]` source markers.
    When the stream ends, Nibleaf validates it and sends a final event that the
-   reader UI uses in place of the streamed text.
+   reader UI uses in place of the streamed text. Each source links to the exact
+   section it came from, using the same heading anchor as the article's table of
+   contents.
+6. While the answer streams, one small extra model call prepares up to three
+   follow-up questions that the retrieved sources can answer. They appear under
+   an answered question; readers can tap one to ask it.
+
+Answers lead with the direct answer, give tasks as numbered steps with the exact
+button and setting names from the docs, and put commands in code blocks. They
+reply in the reader's language, including questions that mix Arabic and English.
+When a vague question matches several different things in the docs, the assistant
+asks one clarifying question that lists the options instead of guessing. When the
+docs only partly cover a question, it answers that part and says what is missing.
+
+Set **Support link** in the site's search settings (an `https://` link or a
+`mailto:` address) to offer readers a way to reach a person when the docs don't
+have the answer. Leave it empty to hide the link.
 
 Validation keeps the existing safety rules and relaxes only the formatting rules.
 An unknown source marker anywhere withdraws the whole answer, as does an answer
@@ -188,6 +204,7 @@ Re-run the evaluation when you change the answer model.
 | `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | Provider tokens per project per UTC day. `0` turns this budget off. |
 | `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Earlier messages sent to the model with each question. |
 | `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated token cap for that history. |
+| `SEARCH_CHAT_UTILITY_MODEL` | empty | Optional OpenRouter model for rewriting follow-ups and suggesting next questions, on workspaces that use OpenRouter. Empty uses each workspace's answer model. |
 
 Budgets use provider-reported token usage. When a provider reports none, Nibleaf
 counts a conservative estimate instead. The site's AI settings can also list up

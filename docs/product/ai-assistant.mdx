@@ -40,13 +40,21 @@ On wide screens the assistant opens as a side panel. On phones it fills the
 screen. It follows the reader's language, including right-to-left layout for
 Arabic, and the site's light or dark appearance.
 
+Answers start with the direct answer, then give numbered steps with the exact
+button and setting names from your docs. The assistant replies in the reader's
+language, even when they mix two languages in one question. If a question is too
+vague, it asks one short question back, with the options your docs cover.
+
 Each answer shows numbered markers such as **1** and **2** that point to source
-cards. Each card links to the page the information came from. Readers can ask
-follow-up questions, stop an answer while it is being written, copy an answer,
-start a new chat, and rate each answer.
+cards. Each card opens the exact section of the page the information came from.
+Under an answer, the assistant suggests up to three related questions that your
+docs can answer. Readers can also ask their own follow-up questions, stop an
+answer while it is being written, copy an answer, start a new chat, and rate
+each answer.
 
 If the assistant cannot confirm an answer from your docs, it says "I couldn't
-verify this from the docs" and lists the articles most likely to help. While an
+verify this from the docs" and lists the articles most likely to help, plus a
+**Contact support** link if you set one. While an
 answer is being written, readers may briefly see wording that disappears when
 the assistant checks its sources. Only checked text stays on screen.
 
@@ -56,6 +64,13 @@ In the site's search settings you can add up to four **Suggested questions**. Ne
 readers see them before they type anything, in the site's default language. Good
 suggestions are real questions your readers ask, such as "How do I reset my
 password?". Readers in other languages see general starter questions instead.
+
+## Point readers to support
+
+When the docs don't have an answer, readers can reach a person. In the site's
+search settings, set **Support link** to your help page (`https://…`) or a support
+email address (`mailto:…`). The assistant shows **Contact support** under answers
+it couldn't confirm. Leave the field empty to hide the link.
 
 ## Review conversations and fill gaps
 
