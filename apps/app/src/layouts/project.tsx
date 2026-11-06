@@ -12,7 +12,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Loader2, Rocket, Search } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useState } from 'react';
+import { type CSSProperties, type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { useOpenCommandPalette } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
@@ -42,18 +42,24 @@ export function PublishControl({
   const [publishedDeploymentId, setPublishedDeploymentId] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const t = useT();
+  const countId = useId();
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
   const pending = usePendingChanges(project.id);
   const changeCount = pending.data?.changes.length ?? 0;
   const latest = deployments.data?.[0];
   const building = latest?.status === 'PENDING' || latest?.status === 'BUILDING';
+  // The number on the button is the site's unpublished-change count. Say what it
+  // means on hover, and to keyboard and screen-reader users as the description.
+  const countLabel = changeCount > 0 ? t('editor.unpublishedCount', { count: changeCount }) : undefined;
 
   return (
     <div className="flex items-center gap-2">
       <Button
+        aria-describedby={countLabel ? countId : undefined}
         aria-label={building ? t('project.publishing') : t('project.publish')}
         disabled={building || preparing}
+        title={countLabel}
         onClick={async () => {
           setPreparing(true);
           try {
@@ -69,8 +75,17 @@ export function PublishControl({
       >
         {preparing ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
         <span>{building ? t('project.publishing') : t('project.publish')}</span>
-        {changeCount > 0 ? <span className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">{changeCount}</span> : null}
+        {changeCount > 0 ? (
+          <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
+            {changeCount}
+          </span>
+        ) : null}
       </Button>
+      {countLabel ? (
+        <span className="sr-only" id={countId}>
+          {countLabel}
+        </span>
+      ) : null}
 
       <PublishModal
         beforePublish={beforePublish}
@@ -119,6 +134,8 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const openPalette = useOpenCommandPalette();
   const sectionKey = sectionKeyFromPathname(pathname);
+  // The draft preview marks its own article area as the skip target, past its page list.
+  const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
   if (pathname.endsWith('/editor')) {
     return <div className="h-screen overflow-hidden">{children}</div>;
   }
@@ -181,7 +198,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             </Button>
           </div>
         </header>
-        <div className="flex-1 outline-none" id="main-content" tabIndex={-1}>
+        <div className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
           {children}
         </div>
       </SidebarInset>

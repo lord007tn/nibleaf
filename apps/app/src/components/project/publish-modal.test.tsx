@@ -3,7 +3,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api/types';
-import { PublishModal } from './publish-modal';
+import { PublishModal, reviewRows } from './publish-modal';
 
 const { mutate, showError, preflight, refreshPreflight } = vi.hoisted(() => ({
   mutate: vi.fn(),
@@ -23,7 +23,7 @@ const pendingChange = {
   fields: ['content'],
   additions: 1,
   deletions: 0,
-  lines: [],
+  lines: [] as Array<{ type: 'added' | 'removed' | 'unchanged'; text: string; oldLine: number | null; newLine: number | null }>,
   truncated: false,
 };
 vi.mock('@/hooks/api', () => ({
@@ -194,5 +194,72 @@ describe('publish draft barrier', () => {
     await act(async () => finishSaving());
     expect(refreshPreflight).not.toHaveBeenCalled();
     expect(mutate).not.toHaveBeenCalled();
+  });
+});
+
+const line = (type: 'added' | 'removed' | 'unchanged', text: string, oldLine: number | null, newLine: number | null) => ({
+  type,
+  text,
+  oldLine,
+  newLine,
+});
+
+describe('review changes', () => {
+  let container: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+  beforeEach(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    pendingChange.lines = [];
+    pendingChange.truncated = false;
+  });
+
+  const openReview = async () => {
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const review = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('publish.reviewDiff'));
+    if (!review) throw new Error('Review action was not rendered');
+    await act(async () => review.click());
+  };
+
+  it('shows the edited text line by line, each line in its own direction and named for screen readers', async () => {
+    pendingChange.lines = [
+      line('unchanged', 'Refunds take', 1, 1),
+      line('removed', 'Refunds cost $10.', 2, null),
+      line('added', 'تكلفة الاسترداد ١٥ دولارًا.', null, 2),
+    ];
+    await openReview();
+    const texts = [...document.querySelectorAll('[dir="auto"]')].map((element) => element.textContent);
+    expect(texts).toEqual(expect.arrayContaining(['Refunds cost $10.', 'تكلفة الاسترداد ١٥ دولارًا.']));
+    expect(document.body.textContent).toContain('publish.removed');
+    expect(document.body.textContent).toContain('publish.added');
+    expect(document.body.innerHTML).not.toContain('#0b0b0b');
+  });
+
+  it('says when the text did not change and when the list was shortened', async () => {
+    pendingChange.lines = [line('unchanged', 'Same text', 1, 1)];
+    pendingChange.truncated = true;
+    await openReview();
+    expect(document.body.textContent).toContain('publish.noLineDiff');
+    expect(document.body.textContent).toContain('publish.diffTruncated');
+  });
+});
+
+describe('reviewRows', () => {
+  it('keeps a few lines around each change and collapses long unchanged stretches', () => {
+    const lines = Array.from({ length: 20 }, (_, index) => line('unchanged', `line ${index + 1}`, index + 1, index + 1));
+    lines[10] = line('added', 'new line', null, 11);
+    const rows = reviewRows(lines, 2);
+    expect(rows.map((row) => (row.kind === 'gap' ? '⋯' : row.line.text))).toEqual(['⋯', 'line 9', 'line 10', 'new line', 'line 12', 'line 13', '⋯']);
+  });
+
+  it('shows everything when the changes are close together', () => {
+    const lines = [line('removed', 'a', 1, null), line('unchanged', 'b', 2, 1), line('added', 'c', null, 2)];
+    expect(reviewRows(lines, 1).every((row) => row.kind === 'line')).toBe(true);
   });
 });

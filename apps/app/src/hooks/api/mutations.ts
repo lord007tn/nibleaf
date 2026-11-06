@@ -268,7 +268,13 @@ export const usePublish = (projectId: string) => {
         }),
         'Could not publish.',
       ),
-    onSuccess: () => {
+    onSuccess: (deployment) => {
+      // List the new publish right away: the editor then knows a publish is running
+      // (a page's address stops following its title), and the poll that sees it go
+      // READY can tell it was in flight.
+      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+      );
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
@@ -284,7 +290,10 @@ export const usePublishAnyway = (projectId: string) => {
         await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         'Could not publish.',
       ),
-    onSuccess: () => {
+    onSuccess: (deployment) => {
+      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+      );
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });

@@ -3,15 +3,13 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useRouterState } from '@tanstack/react-router';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { publishedVersionSlugFor } from '@/components/editor/docs-version';
-import { useBranches, useDeployments, useDomains, useLanguages, usePage, useRollback } from '@/hooks/api';
-import type { DeploymentStatus, Project } from '@/hooks/api/types';
+import { useDeployments, useDomains, useRollback } from '@/hooks/api';
+import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
-import { canonicalSiteBase } from '@/lib/site-seo';
+import { canonicalSiteBase, type SiteUrlOptions, sitePageUrl } from '@/lib/site-seo';
 
 export interface PublishPage {
   path: string;
@@ -23,13 +21,22 @@ export interface PublishPage {
 
 /** The published address of a page: `<site>/<version>/<path>?lang=<code>`, with the
  *  version segment only for a non-default version (the site's URL convention). */
-export const publishedPageUrl = (siteUrl: string, page: PublishPage): string => {
-  const segments = [...(page.versionSlug ? [page.versionSlug] : []), ...page.path.split('/').filter(Boolean)];
-  const query = page.languageCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-  return `${siteUrl}/${segments.map(encodeURIComponent).join('/')}${query}`;
+export const publishedPageUrl = (projectId: string, page: PublishPage, site?: SiteUrlOptions): string =>
+  sitePageUrl(projectId, [page.versionSlug, ...page.path.split('/')].filter(Boolean).join('/'), page.languageCode, site);
+
+/** What a failed publish reported, for the "What went wrong" details: the
+ *  per-page check issues when there are any, else the raw error text. */
+export const publishFailureDetails = (deployment: Pick<Deployment, 'error' | 'errorDetails'> | undefined): string[] => {
+  const issues = (deployment?.errorDetails ?? []).flatMap((issue) =>
+    issue && typeof issue.detail === 'string' ? [[issue.pageTitle || issue.pagePath, issue.detail].filter(Boolean).join(' — ')] : [],
+  );
+  if (issues.length > 0) return [...new Set(issues)];
+  const error = deployment?.error?.trim();
+  return error ? [error] : [];
 };
 
 interface DeployPipelineProps {
+  /** The page the writer is on: "Your changes are live" links to its published address. */
   currentPage?: PublishPage;
   project: Project;
   onRetry?: () => void;
@@ -69,26 +76,13 @@ type StepState = 'done' | 'active' | 'failed' | 'pending';
 /** Live deploy progress. Polls the deployments list while building. Faithful to design lines 2143-2178. */
 export function DeployPipeline({ project, open, onOpenChange, trackedAttribution, trackedDeploymentId, onRetry, currentPage }: DeployPipelineProps) {
   const domains = useDomains(project.id);
-  const pageId = useRouterState({ select: (state) => (state.location.search as { pageId?: string }).pageId });
-  const page = usePage(project.id, pageId);
-  const languages = useLanguages(project.id);
-  const branches = useBranches(project.id);
-  const language = languages.data?.find((item) => item.id === page.data?.languageId);
-  const siteUrl = canonicalSiteBase(project.id, {
+  const siteOptions: SiteUrlOptions = {
     slug: project.slug,
     primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
-  });
-  const livePage =
-    currentPage ??
-    (page.data
-      ? {
-          path: page.data.path,
-          title: page.data.title,
-          languageCode: language?.code,
-          versionSlug: publishedVersionSlugFor(branches.data, page.data.branchId),
-        }
-      : undefined);
-  const pageUrl = livePage ? publishedPageUrl(siteUrl, livePage) : null;
+  };
+  const siteUrl = canonicalSiteBase(project.id, siteOptions);
+  const livePage = currentPage;
+  const pageUrl = livePage ? publishedPageUrl(project.id, livePage, siteOptions) : null;
   const rollback = useRollback(project.id);
   const confirm = useConfirm();
   const t = useT();
@@ -100,6 +94,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const running = status === 'PENDING' || status === 'BUILDING';
   const done = status === 'READY';
   const failed = status === 'FAILED';
+  const failureDetails = failed ? publishFailureDetails(deployment) : [];
   const active = activeStep(status);
 
   // The previous READY deployment is the rollback target.
@@ -207,9 +202,25 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
           </ul>
 
           {failed ? (
-            <p className="-mt-1 pb-1 text-destructive text-xs" dir="auto">
-              {t('publish.failed')}
-            </p>
+            <div className="-mt-1 flex flex-col gap-2 pb-1">
+              <p className="text-destructive text-xs" dir="auto">
+                {t('publish.failed')}
+              </p>
+              {/* The reason, so a writer can fix it (or paste it to support)
+                  instead of retrying blind. */}
+              {failureDetails.length > 0 ? (
+                <details className="rounded-md border border-border text-xs">
+                  <summary className="cursor-pointer px-3 py-2 font-medium text-foreground pointer-coarse:py-3">{t('deploy.failedDetails')}</summary>
+                  <ul className="max-h-40 space-y-1 overflow-y-auto border-border border-t px-3 py-2 text-muted-foreground select-text">
+                    {failureDetails.map((detail) => (
+                      <li className="break-words" dir="auto" key={detail}>
+                        {detail}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </div>
           ) : null}
         </div>
 

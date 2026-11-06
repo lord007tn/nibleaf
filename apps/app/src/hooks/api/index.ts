@@ -1,4 +1,5 @@
 export * from './analytics';
+export * from './deployment-cache';
 export * from './errors';
 export * from './exports';
 export * from './git-workflow';

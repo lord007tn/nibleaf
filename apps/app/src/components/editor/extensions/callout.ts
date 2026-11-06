@@ -1,4 +1,6 @@
 import { mergeAttributes, Node } from '@tiptap/core';
+import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { liftTarget } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { preservedClosingTag, sourceMetadataAttributes, writeBlockTag } from './mdx-roundtrip';
 
@@ -50,9 +52,79 @@ declare module '@tiptap/core' {
       /** Wrap the selection (or insert) a callout block. */
       setCallout: (attributes?: { variant?: CalloutVariant }) => ReturnType;
       toggleCallout: (attributes?: { variant?: CalloutVariant }) => ReturnType;
+      /** Remove the callout around the caret, keeping ALL of its content. */
+      unsetCallout: () => ReturnType;
     };
   }
 }
+
+/** Depth of the innermost callout around the selection start, or 0. */
+const calloutDepth = (state: EditorState): number => {
+  const { $from } = state.selection;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    if ($from.node(depth).type.name === 'callout') return depth;
+  }
+  return 0;
+};
+
+/** Start position of the callout around the selection, or null outside one. */
+const calloutStart = (state: EditorState): number | null => {
+  const depth = calloutDepth(state);
+  return depth ? state.selection.$from.before(depth) : null;
+};
+
+/**
+ * Unwrap the callout around the caret as a whole: every paragraph, list and
+ * nested block inside it moves out together. (A plain `lift` only moves the
+ * block holding the caret, which splits a three-paragraph callout in two.)
+ */
+const unwrapCallout = (state: EditorState, dispatch?: (tr: Transaction) => void): boolean => {
+  const depth = calloutDepth(state);
+  if (!depth) return false;
+  const { $from } = state.selection;
+  const callout = $from.node(depth);
+  const start = $from.before(depth);
+  const $contentStart = state.doc.resolve(start + 1);
+  const $contentEnd = state.doc.resolve(start + callout.nodeSize - 1);
+  const range = $contentStart.blockRange($contentEnd, (node) => node === callout);
+  const target = range ? liftTarget(range) : null;
+  if (!range || target === null || target === undefined) return false;
+  dispatch?.(state.tr.lift(range, target).scrollIntoView());
+  return true;
+};
+
+/** Hides the callout's type menu once the writer types in the callout, so it
+ *  never sits over the lines being written (on phones especially). It returns
+ *  when the caret moves into a callout again, or on a click inside one. */
+const calloutMenuKey = new PluginKey<{ hidden: boolean }>('calloutMenu');
+/** Transactions carrying this meta (e.g. a type change from the menu) keep the menu open. */
+export const keepCalloutMenu = (tr: Transaction) => tr.setMeta(calloutMenuKey, { hidden: false });
+export const isCalloutMenuHidden = (state: EditorState): boolean => calloutMenuKey.getState(state)?.hidden ?? false;
+
+const calloutMenuPlugin = () =>
+  new Plugin<{ hidden: boolean }>({
+    key: calloutMenuKey,
+    state: {
+      init: () => ({ hidden: false }),
+      apply(tr, value, oldState, newState) {
+        const meta = tr.getMeta(calloutMenuKey) as { hidden: boolean } | undefined;
+        if (meta) return meta;
+        // Loading a page body (seeding, no update event) is not the writer typing.
+        if (tr.getMeta('preventUpdate')) return { hidden: false };
+        if (calloutStart(newState) !== calloutStart(oldState)) return { hidden: false };
+        if (tr.docChanged && calloutStart(newState) !== null) return { hidden: true };
+        return value;
+      },
+    },
+    props: {
+      handleClick(view) {
+        if (calloutStart(view.state) !== null && isCalloutMenuHidden(view.state)) {
+          view.dispatch(view.state.tr.setMeta(calloutMenuKey, { hidden: false }));
+        }
+        return false;
+      },
+    },
+  });
 
 /**
  * A colored callout/admonition block. Holds block content (usually a paragraph).
@@ -121,7 +193,15 @@ export const Callout = Node.create({
         (attributes) =>
         ({ commands }) =>
           commands.toggleWrap(this.name, attributes),
+      unsetCallout:
+        () =>
+        ({ state, dispatch }) =>
+          unwrapCallout(state, dispatch),
     };
+  },
+
+  addProseMirrorPlugins() {
+    return [calloutMenuPlugin()];
   },
 
   addKeyboardShortcuts() {

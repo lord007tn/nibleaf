@@ -19,7 +19,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Typography from '@tiptap/extension-typography';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { Plugin } from '@tiptap/pm/state';
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -54,7 +54,7 @@ import { type ComponentType, type CSSProperties, type ReactNode, useCallback, us
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
-import { Callout, calloutVariantAttributes } from './extensions/callout';
+import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { ImageUpload, uploadEditorImage } from './extensions/image-upload';
 import { mdxNodes } from './extensions/mdx-nodes';
@@ -224,14 +224,85 @@ interface BuildExtensionsOptions {
   locale?: Locale;
 }
 
+const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
 /** Let every prose block choose LTR/RTL from its own content. This keeps an
  * English installation section LTR inside an Arabic page while Arabic blocks
  * remain RTL, without persisting presentation-only attributes to Markdown. */
 export const blockDirection = (text: string, fallback: 'rtl' | 'ltr'): 'rtl' | 'ltr' => {
   const firstLetter = text.match(/\p{Letter}/u)?.[0];
   if (!firstLetter) return fallback;
-  return /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u.test(firstLetter) ? 'rtl' : 'ltr';
+  return RTL_LETTER.test(firstLetter) ? 'rtl' : 'ltr';
 };
+const DIRECTION_BLOCKS = new Set([
+  'paragraph',
+  'heading',
+  'blockquote',
+  'bulletList',
+  'orderedList',
+  'listItem',
+  'taskList',
+  'taskItem',
+  'tableCell',
+  'tableHeader',
+]);
+
+/** Same answer as `blockDirection(node.textContent)`, but stops at the first
+ *  letter instead of joining every text node of a long list or table. */
+const nodeDirection = (node: PMNode, fallback: 'rtl' | 'ltr'): 'rtl' | 'ltr' => {
+  let found: 'rtl' | 'ltr' | null = null;
+  node.descendants((child) => {
+    if (found) return false;
+    if (child.isText) {
+      const letter = child.text?.match(/\p{Letter}/u)?.[0];
+      if (letter) found = RTL_LETTER.test(letter) ? 'rtl' : 'ltr';
+    }
+    return !found;
+  });
+  return found ?? fallback;
+};
+
+const directionDecoration = (node: PMNode, pos: number, fallback: 'rtl' | 'ltr') =>
+  Decoration.node(pos, pos + node.nodeSize, { dir: nodeDirection(node, fallback), 'data-auto-direction': '' }, { autoDirection: true });
+
+/** Direction decorations for every prose block of a document. */
+export const blockDirectionDecorations = (doc: PMNode, fallback: 'rtl' | 'ltr'): DecorationSet => {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (DIRECTION_BLOCKS.has(node.type.name)) decorations.push(directionDecoration(node, pos, fallback));
+  });
+  return DecorationSet.create(doc, decorations);
+};
+
+/**
+ * Keep the direction decorations current after a transaction without walking the
+ * whole document: map the previous set, then recompute only the blocks that the
+ * transaction's steps touched (and their ancestors, whose first letter may have
+ * changed). Selection-only transactions reuse the set as is.
+ */
+export const updateBlockDirections = (previous: DecorationSet, tr: Transaction, fallback: 'rtl' | 'ltr'): DecorationSet => {
+  if (!tr.docChanged) return previous;
+  const { doc } = tr;
+  let next = previous.map(tr.mapping, doc);
+  tr.mapping.maps.forEach((stepMap, index) => {
+    const after = tr.mapping.slice(index + 1);
+    stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      const from = Math.max(0, after.map(newStart, -1) - 1);
+      const to = Math.min(doc.content.size, after.map(newEnd, 1) + 1);
+      const stale: Decoration[] = [];
+      const fresh: Decoration[] = [];
+      doc.nodesBetween(from, to, (node, pos) => {
+        if (!DIRECTION_BLOCKS.has(node.type.name)) return;
+        const end = pos + node.nodeSize;
+        stale.push(...next.find(pos, end, (spec) => spec.autoDirection === true).filter((item) => item.from === pos && item.to === end));
+        fresh.push(directionDecoration(node, pos, fallback));
+      });
+      next = next.remove(stale).add(doc, fresh);
+    });
+  });
+  return next;
+};
+
+const blockDirectionKey = new PluginKey<DecorationSet>('automaticBlockDirection');
 const AutomaticBlockDirection = Extension.create<{ dir: 'ltr' | 'rtl' }>({
   addOptions() {
     return { dir: 'ltr' };
@@ -240,32 +311,14 @@ const AutomaticBlockDirection = Extension.create<{ dir: 'ltr' | 'rtl' }>({
   addProseMirrorPlugins() {
     const fallback = this.options.dir;
     return [
-      new Plugin({
+      new Plugin<DecorationSet>({
+        key: blockDirectionKey,
+        state: {
+          init: (_config, state) => blockDirectionDecorations(state.doc, fallback),
+          apply: (tr, previous) => updateBlockDirections(previous, tr, fallback),
+        },
         props: {
-          decorations(state) {
-            const decorations: Decoration[] = [];
-            state.doc.descendants((node, pos) => {
-              if (
-                [
-                  'paragraph',
-                  'heading',
-                  'blockquote',
-                  'bulletList',
-                  'orderedList',
-                  'listItem',
-                  'taskList',
-                  'taskItem',
-                  'tableCell',
-                  'tableHeader',
-                ].includes(node.type.name)
-              ) {
-                decorations.push(
-                  Decoration.node(pos, pos + node.nodeSize, { dir: blockDirection(node.textContent, fallback), 'data-auto-direction': '' }),
-                );
-              }
-            });
-            return DecorationSet.create(state.doc, decorations);
-          },
+          decorations: (state) => blockDirectionKey.getState(state),
         },
       }),
     ];
@@ -870,20 +923,35 @@ function CalloutMenu({ editor }: { editor: Editor }) {
       editor={editor}
       pluginKey="callout-controls"
       options={{ placement: 'bottom' }}
-      shouldShow={() => editor.isFocused && editor.isActive('callout') && editor.state.selection.empty && !isSlashMenuOpen(editor.state)}
+      // Hidden once the writer types in the callout (see calloutMenuKey), so it
+      // never covers the lines being written; a click in the callout brings it back.
+      shouldShow={() =>
+        editor.isFocused &&
+        editor.isActive('callout') &&
+        editor.state.selection.empty &&
+        !isSlashMenuOpen(editor.state) &&
+        !isCalloutMenuHidden(editor.state)
+      }
     >
-      <div className="flex max-w-[calc(100vw-2rem)] flex-wrap gap-1 rounded-lg border border-border bg-card p-1 shadow-lg">
+      {/* One scrollable row: on a phone it covers a single line, not two. */}
+      <div className="flex max-w-[calc(100vw-2rem)] gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-lg">
         {variants.map((variant) => (
           <Button
             onMouseDown={(event) => event.preventDefault()}
             key={variant}
             variant="ghost"
             size="sm"
+            className="shrink-0"
             onClick={() =>
               editor
                 .chain()
                 .focus()
                 .updateAttributes('callout', calloutVariantAttributes(editor.getAttributes('callout'), variant))
+                // Choosing a type is not typing: keep the menu open to compare types.
+                .command(({ tr }) => {
+                  keepCalloutMenu(tr);
+                  return true;
+                })
                 .run()
             }
           >
@@ -894,7 +962,8 @@ function CalloutMenu({ editor }: { editor: Editor }) {
           onMouseDown={(event) => event.preventDefault()}
           variant="ghost"
           size="sm"
-          onClick={() => editor.chain().focus().lift('callout').run()}
+          className="shrink-0"
+          onClick={() => editor.chain().focus().unsetCallout().run()}
         >
           {t('editor.callout.remove')}
         </Button>

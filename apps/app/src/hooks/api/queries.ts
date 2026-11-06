@@ -1,7 +1,8 @@
 import { useT } from '@nibleaf/i18n/react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
+import { isDeploymentInFlight, syncPublishReceipt } from './deployment-cache';
 import { queryKeys } from './query-keys';
 import type {
   ApiKey,
@@ -110,20 +111,24 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
 
 // Publishing is async (worker builds the snapshot). Poll while a deployment is
 // in flight so the dashboard transitions PENDING/BUILDING → READY/FAILED on its
-// own instead of appearing stuck until a manual refresh.
-const isInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
-
-export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) =>
-  useQuery({
+// own instead of appearing stuck until a manual refresh. Each read also checks
+// whether a publish just went live, so published-state UI never trusts the
+// pre-publish answer (see syncPublishReceipt).
+export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) => {
+  const queryClient = useQueryClient();
+  return useQuery({
     queryKey: queryKeys.deployments.all(projectId ?? ''),
     enabled: Boolean(projectId) && (options?.enabled ?? true),
-    queryFn: async () =>
-      getData<Deployment[]>(
-        await api.app.projects[':projectId'].deployments.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'deployments',
-      ),
-    refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
+    queryFn: async () => {
+      const id = requireQueryValue(projectId, 'Project ID');
+      const previous = queryClient.getQueryData<Deployment[]>(queryKeys.deployments.all(id));
+      const next = await getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId: id } }), 'deployments');
+      syncPublishReceipt(queryClient, id, previous, next);
+      return next;
+    },
+    refetchInterval: (query) => (query.state.data?.some((d) => isDeploymentInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
   });
+};
 
 // What the next publish will change vs. the last deploy (Mintlify-style "show
 // changes"). Cheap to recompute, and the editor autosaves constantly, so keep it

@@ -1986,6 +1986,7 @@ export const MESSAGE_IDS = {
   'deploy.deploying': 'deploy_deploying',
   'deploy.deployed': 'deploy_deployed',
   'deploy.failed': 'deploy_failed',
+  'deploy.failedDetails': 'deploy_faileddetails',
   'deploy.published': 'deploy_published',
   'deploy.viewSite': 'deploy_viewsite',
   'deploy.viewSiteArrow': 'deploy_viewsitearrow',

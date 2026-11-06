@@ -161,6 +161,13 @@ export function getProjection(items: Flat[], activeId: string, overId: string, d
   return { depth, parentId };
 }
 
+type RenameField = 'title' | 'sidebarTitle';
+/** The name a tree row shows, and which page field holds it. */
+export const rowName = (node: Pick<PageNode, 'title' | 'config'>): { label: string; field: RenameField } => {
+  const sidebarTitle = node.config?.sidebarTitle?.trim();
+  return sidebarTitle ? { label: sidebarTitle, field: 'sidebarTitle' } : { label: node.title, field: 'title' };
+};
+
 export function SortablePageTree({
   pages,
   activeId,
@@ -179,7 +186,8 @@ export function SortablePageTree({
   onAddChild: (parentId: string) => void;
   onSettings: (id: string) => void;
   onMove: (items: Array<{ id: string; parentId: string | null; position: number }>) => void;
-  onRename?: (id: string, title: string) => void;
+  /** `field` is the name the row shows: the sidebar title when the page has one, else its title. */
+  onRename?: (id: string, title: string, field: RenameField) => void;
   onDelete?: (id: string) => void;
   /** Namespace for persisting which groups are collapsed (e.g. the language id). */
   treeKey?: string;
@@ -273,7 +281,7 @@ export function SortablePageTree({
   // Screen readers hear page titles, never internal ids.
   const titleOf = (id: UniqueIdentifier) => {
     const node = flatFull.find((f) => f.id === String(id))?.node;
-    return node ? node.config?.sidebarTitle?.trim() || node.title : '';
+    return node ? rowName(node).label : '';
   };
   const announcements: Announcements = {
     onDragStart: ({ active }) => t('editor.dnd.pickedUp', { title: titleOf(active.id) }),
@@ -318,7 +326,7 @@ export function SortablePageTree({
             onStartRename={onRename ? setRenamingId : undefined}
             onRename={(title) => {
               setRenamingId(null);
-              if (title !== null) onRename?.(item.id, title);
+              if (title !== null) onRename?.(item.id, title, rowName(item.node).field);
             }}
           />
         ))}
@@ -418,7 +426,8 @@ function RowPresentation({
 }) {
   const t = useT();
   const isGroup = node.kind === 'GROUP';
-  const label = node.config?.sidebarTitle?.trim() || node.title;
+  // Renaming edits the name the row shows (the sidebar title when there is one).
+  const { label, field: nameField } = rowName(node);
   const collapsible = isGroup && hasChildren && Boolean(onToggleCollapse);
   return (
     <div
@@ -462,7 +471,11 @@ function RowPresentation({
         <span className="size-4 shrink-0" aria-hidden />
       )}
       {renaming ? (
-        <RenameInput initialValue={node.title} label={t('editor.rename')} onDone={(title) => onRename?.(title)} />
+        <RenameInput
+          initialValue={label}
+          label={nameField === 'sidebarTitle' ? t('editor.pageSettings.sidebarTitle') : t('editor.rename')}
+          onDone={(title) => onRename?.(title)}
+        />
       ) : (
         <button
           type="button"

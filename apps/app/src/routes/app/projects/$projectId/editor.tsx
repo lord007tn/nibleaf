@@ -15,6 +15,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useDebouncer } from '@tanstack/react-pacer';
+import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
   ChevronLeft,
@@ -55,7 +56,7 @@ import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
-import { NeverPublishedBanner, SaveStatus } from '@/components/editor/save-status';
+import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
@@ -63,9 +64,12 @@ import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
-import type { Language, PageNode } from '@/hooks/api';
+import type { Deployment, Language, PageNode } from '@/hooks/api';
 import {
+  addressMayFollowTitle,
   friendlyErrorMessage,
+  pageNeverPublished,
+  queryKeys,
   useBranches,
   useComments,
   useCreatePage,
@@ -138,6 +142,7 @@ function EditorPage() {
   // What the next publish would change. Shared with the Publish button (same
   // query); autosave, create, delete and reorder invalidate it.
   const { data: pendingChanges } = usePendingChanges(projectId);
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
   const prompt = usePrompt();
   const { locale } = useLocale();
@@ -207,16 +212,15 @@ function EditorPage() {
   if (pendingSwitch && isSwitchSettled(pendingSwitch, { selectedId, groupId: selectedGroup?.id ?? null, pageId: page?.id ?? null })) {
     setPendingSwitch(null);
   }
-  const switching = pendingSwitch !== null;
-  // The page being opened failed to load (deleted elsewhere, offline…): end the
-  // switch with a plain message instead of leaving the canvas locked forever.
-  const openFailed = pendingSwitch?.kind === 'open' && pendingSwitch.id === activeId && pageQuery.isError;
-  useEffect(() => {
-    if (!openFailed) return;
+  // The page on screen failed to load (deleted elsewhere, a stale link or
+  // bookmark, offline…). This covers the first page of a visit and deep links as
+  // well as a switch: the canvas says so, with Retry and the page list, instead
+  // of spinning (or staying locked) forever.
+  const pageLoadFailed = Boolean(activeId) && !page && pageQuery.isError;
+  if (pageLoadFailed && pendingSwitch?.kind === 'open' && pendingSwitch.id === activeId) {
     setPendingSwitch(null);
-    setSelectedId(null);
-    toast.error(friendlyErrorMessage(t, pageQuery.error, 'editor.openPageFailed'));
-  }, [openFailed, pageQuery.error, t]);
+  }
+  const switching = pendingSwitch !== null;
 
   // Has the open page ever been published? Only a page the pending-changes
   // check lists as "added" (or any page before the first publish) is unpublished.
@@ -400,15 +404,18 @@ function EditorPage() {
 
   const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
-  const pendingChangesRef = useRef(pendingChanges);
+  // Read the publish state straight from the query cache at save time: a publish
+  // that just went live (or is still running) must stop the address from following
+  // the title even before this component re-renders with the new answer.
+  const addressFollowsTitleRef = useRef<(pageId: string) => boolean>(() => false);
   // The freshest server copy we know of (a save response can be newer than the
   // detail query, which refetches after it).
   const lastSavedRef = useRef<PageNode | null>(null);
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
-    pendingChangesRef.current = pendingChanges;
-  }, [synced, title, content, page, updatePage, pendingChanges]);
+    addressFollowsTitleRef.current = (pageId: string) => addressFollowsTitle(queryClient, projectId, pageId);
+  }, [synced, title, content, page, updatePage, queryClient, projectId]);
   const saveQueue = useMemo(
     () =>
       createEditorSaveQueue(async (draft: PageDraft) => {
@@ -420,7 +427,7 @@ function EditorPage() {
                 slug: server.slug,
                 serverTitle: server.title,
                 nextTitle: draft.title,
-                unpublished: isNeverPublished(draft.id, pendingChangesRef.current),
+                unpublished: addressFollowsTitleRef.current(draft.id),
               })
             : undefined;
           const saved = await updatePageRef.current.mutateAsync({
@@ -643,19 +650,29 @@ function EditorPage() {
     deepLinkedPageId.current = null;
     if (decision.kind === 'switch') setActiveBranchId(decision.branchId);
   }, [page, activeBranchId, branches]);
-  const renameNode = (id: string, nextTitle: string) => {
+  const renameNode = (id: string, nextTitle: string, field: 'title' | 'sidebarTitle' = 'title') => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    // A page with its own sidebar title shows that name in the list, so renaming
+    // the row changes that name (the page title stays as it is).
+    if (field === 'sidebarTitle') {
+      if (!node) return;
+      updatePage.mutate(
+        { pageId: id, body: { config: { ...node.config, sidebarTitle: nextTitle } } },
+        { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.renameFailed')) },
+      );
+      return;
+    }
     // The open page renames through its draft, so the editor and autosave agree.
     if (id === activeId && synced?.id === id) {
       setTitle(nextTitle);
       return;
     }
-    const node = (allPages ?? []).find((p) => p.id === id);
     if (!node) return;
     const slug = titleSlugToFollow({
       slug: node.slug,
       serverTitle: node.title,
       nextTitle,
-      unpublished: isNeverPublished(id, pendingChanges),
+      unpublished: addressFollowsTitle(queryClient, projectId, id),
     });
     updatePage.mutate(
       { pageId: id, body: { title: nextTitle, ...(slug ? { slug } : {}) } },
@@ -925,7 +942,11 @@ function EditorPage() {
           ) : null}
         </div>
       </header>
-      {siteNeverPublished && view === 'content' ? <NeverPublishedBanner /> : null}
+      {siteNeverPublished && view === 'content' ? (
+        <NeverPublishedBanner />
+      ) : view === 'content' && page && !switching && pagePublishState ? (
+        <PagePublishStateBar state={pagePublishState} />
+      ) : null}
 
       {/* Editor grid: page-tree sidebar + canvas (+ comments rail). The single row is
           pinned to the container height (minmax(0,1fr)) so each column is bounded and
@@ -1171,7 +1192,7 @@ function EditorPage() {
                   <PageSettingsDialog
                     projectId={projectId}
                     page={settingsPage}
-                    published={pendingChanges ? !isNeverPublished(settingsPage.id, pendingChanges) : false}
+                    published={pendingChanges ? !pageNeverPublished(settingsPage.id, pendingChanges) : false}
                     open
                     onOpenChange={(o) => !o && setSettingsForId(null)}
                   />
@@ -1180,287 +1201,322 @@ function EditorPage() {
             : null}
         </aside>
 
-        {/* Main area: site configuration */}
-        {view === 'config' ? (
-          <section className="min-h-0 min-w-0 overflow-y-auto">
-            {/* A muted overline so it reads as "Site configuration › <section>"
+        {/* The one main landmark, for every canvas state (configuration, loading,
+            group, page, empty): "Skip to main content" lands here. */}
+        <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
+          {/* Main area: site configuration */}
+          {view === 'config' ? (
+            <section className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+              {/* A muted overline so it reads as "Site configuration › <section>"
               rather than competing with each section's own heading. */}
-            <div className="border-border border-b px-6 py-3">
-              <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
-            </div>
-            <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
-              {project ? (
-                <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
-                  <ConfigDirtyProvider report={reportConfigDirty}>
-                    <ConfigSection project={project} section={configSection} />
-                  </ConfigDirtyProvider>
+              <div className="border-border border-b px-6 py-3">
+                <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
+              </div>
+              <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
+                {project ? (
+                  <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
+                    <ConfigDirtyProvider report={reportConfigDirty}>
+                      <ConfigSection project={project} section={configSection} />
+                    </ConfigDirtyProvider>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+                )}
+              </div>
+            </section>
+          ) : switching ? (
+            // Locked while switching or creating: the page being left is gone from
+            // the screen, so nothing typed now can end up in it.
+            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
+              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                {pendingSwitch?.kind === 'create' ? t('editor.creatingPage') : t('editor.openingPage')}
+              </p>
+            </section>
+          ) : selectedGroup ? (
+            <section className="grid flex-1 place-items-center px-6 text-center">
+              <div className="max-w-md">
+                <FolderPlus className="mx-auto size-7 text-muted-foreground" />
+                <h1 className="mt-3 break-words font-semibold text-xl tracking-tight" dir="auto">
+                  {selectedGroup.title}
+                </h1>
+                <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {selectedGroup.languageId ? (
+                    <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
+                      <Plus className="size-4" /> {t('editor.addPageInside')}
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => void renameGroup(selectedGroup)}>
+                    <Pencil className="size-4" /> {t('editor.rename')}
+                  </Button>
+                  <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
+                    <Settings2 className="size-4" /> {t('editor.groupSettings')}
+                  </Button>
+                  <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteNode(selectedGroup.id)}>
+                    <Trash2 className="size-4" /> {t('editor.deleteGroup')}
+                  </Button>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-              )}
-            </div>
-          </section>
-        ) : switching ? (
-          // Locked while switching or creating: the page being left is gone from
-          // the screen, so nothing typed now can end up in it.
-          <section className="grid place-items-center text-center" aria-busy="true">
-            <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 aria-hidden className="size-5 animate-spin" />
-              {pendingSwitch?.kind === 'create' ? t('editor.creatingPage') : t('editor.openingPage')}
-            </p>
-          </section>
-        ) : selectedGroup ? (
-          <section className="grid place-items-center px-6 text-center">
-            <div className="max-w-md">
-              <FolderPlus className="mx-auto size-7 text-muted-foreground" />
-              <h1 className="mt-3 break-words font-semibold text-xl tracking-tight" dir="auto">
-                {selectedGroup.title}
-              </h1>
-              <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
-              <div className="mt-4 flex flex-wrap justify-center gap-2">
-                {selectedGroup.languageId ? (
-                  <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
-                    <Plus className="size-4" /> {t('editor.addPageInside')}
+              </div>
+            </section>
+          ) : pageLoadFailed ? (
+            <section className="grid flex-1 place-items-center px-6 text-center">
+              <div className="max-w-sm" role="alert">
+                <TriangleAlert aria-hidden className="mx-auto size-7 text-destructive" />
+                <p className="mt-3 font-medium">{friendlyErrorMessage(t, pageQuery.error, 'editor.openPageFailed')}</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Button disabled={pageQuery.isFetching} onClick={() => void pageQuery.refetch()}>
+                    {pageQuery.isFetching ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
+                    {t('common.retry')}
+                  </Button>
+                  {/* Pick another page: the list is a drawer on small screens (and may be collapsed). */}
+                  <Button
+                    className={cn(!sidebarCollapsed && 'lg:hidden')}
+                    onClick={() => {
+                      setSidebarCollapsed(false);
+                      setMobileSidebarOpen(true);
+                    }}
+                    variant="outline"
+                  >
+                    <PanelLeftOpen aria-hidden className="size-4 rtl:-scale-x-100" /> {t('editor.showPages')}
+                  </Button>
+                </div>
+              </div>
+            </section>
+          ) : activeId && !page ? (
+            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
+              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                {t('editor.openingPage')}
+              </p>
+            </section>
+          ) : activeId && page ? (
+            /* Main area: page editor */
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+              {status === 'error' ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
+                >
+                  <TriangleAlert className="size-4 shrink-0" />
+                  <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
+                  <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
+                    {t('editor.retrySave')}
+                  </Button>
+                </div>
+              ) : null}
+              {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
+              document mode/view controls. */}
+              <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+                {markdownFocused ? (
+                  // The focused layout hides the tree; this floats it over the canvas so
+                  // the author can still switch pages without leaving Markdown mode.
+                  <Button
+                    ref={showPagesTrigger}
+                    size="icon-sm"
+                    variant="ghost"
+                    className="cursor-pointer"
+                    onClick={() => setFocusedTreeOpen(true)}
+                    aria-expanded={treeOverlay}
+                    aria-label={t('editor.showPages')}
+                    title={t('editor.showPages')}
+                  >
+                    <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+                  </Button>
+                ) : !mobileSidebarOpen ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className={cn('cursor-pointer', !sidebarCollapsed && 'lg:hidden')}
+                    onClick={() => {
+                      setSidebarCollapsed(false);
+                      setMobileSidebarOpen(true);
+                    }}
+                    aria-label={t('editor.showSidebar')}
+                    title={t('editor.showSidebar')}
+                  >
+                    <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
                   </Button>
                 ) : null}
-                <Button variant="outline" onClick={() => void renameGroup(selectedGroup)}>
-                  <Pencil className="size-4" /> {t('editor.rename')}
-                </Button>
-                <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
-                  <Settings2 className="size-4" /> {t('editor.groupSettings')}
-                </Button>
-                <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteNode(selectedGroup.id)}>
-                  <Trash2 className="size-4" /> {t('editor.deleteGroup')}
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : activeId && !page ? (
-          <section className="grid place-items-center text-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </section>
-        ) : activeId && page ? (
-          /* Main area: page editor */
-          <section className="flex min-h-0 min-w-0 flex-col">
-            {status === 'error' ? (
-              <div
-                role="alert"
-                className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
-              >
-                <TriangleAlert className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
-                <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
-                  {t('editor.retrySave')}
-                </Button>
-              </div>
-            ) : null}
-            {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
-              document mode/view controls. */}
-            <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
-              {markdownFocused ? (
-                // The focused layout hides the tree; this floats it over the canvas so
-                // the author can still switch pages without leaving Markdown mode.
+                {effectiveMode === 'markdown' ? (
+                  <Button size="sm" variant="secondary" className="ms-auto cursor-pointer" onClick={() => setEditorMode(visualMode)}>
+                    <Pencil className="size-3.5" /> {t('editor.backToVisual')}
+                  </Button>
+                ) : (
+                  <span className="ms-auto" />
+                )}
                 <Button
-                  ref={showPagesTrigger}
+                  size="sm"
+                  variant={commentMode ? 'secondary' : 'ghost'}
+                  aria-pressed={commentMode}
+                  aria-label={commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
+                  className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
+                  onClick={toggleCommentMode}
+                  title={t('editor.comments.modeHint')}
+                >
+                  <MessageSquare className="size-4" />
+                  <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
+                </Button>
+                {!markdownFocused ? (
+                  <Button
+                    aria-label={railLabel}
+                    aria-pressed={wideLayout ? railOpen : railSheetOpen}
+                    className="cursor-pointer"
+                    onClick={() => (wideLayout ? setRailOpen((v) => !v) : setRailSheetOpen((v) => !v))}
+                    size="icon-sm"
+                    title={railLabel}
+                    variant={(wideLayout ? railOpen : railSheetOpen) ? 'secondary' : 'ghost'}
+                  >
+                    <PanelRight className="size-4 rtl:-scale-x-100" />
+                  </Button>
+                ) : null}
+                <Button
                   size="icon-sm"
                   variant="ghost"
                   className="cursor-pointer"
-                  onClick={() => setFocusedTreeOpen(true)}
-                  aria-expanded={treeOverlay}
-                  aria-label={t('editor.showPages')}
-                  title={t('editor.showPages')}
+                  onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
+                  aria-label={t('editor.pageSettings.title')}
+                  title={t('editor.pageSettings.title')}
                 >
-                  <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+                  <Settings2 className="size-4" />
                 </Button>
-              ) : !mobileSidebarOpen ? (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  className={cn('cursor-pointer', !sidebarCollapsed && 'lg:hidden')}
-                  onClick={() => {
-                    setSidebarCollapsed(false);
-                    setMobileSidebarOpen(true);
-                  }}
-                  aria-label={t('editor.showSidebar')}
-                  title={t('editor.showSidebar')}
-                >
-                  <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
-                </Button>
-              ) : null}
-              {effectiveMode === 'markdown' ? (
-                <Button size="sm" variant="secondary" className="ms-auto cursor-pointer" onClick={() => setEditorMode(visualMode)}>
-                  <Pencil className="size-3.5" /> {t('editor.backToVisual')}
-                </Button>
-              ) : (
-                <span className="ms-auto" />
-              )}
-              <Button
-                size="sm"
-                variant={commentMode ? 'secondary' : 'ghost'}
-                aria-pressed={commentMode}
-                aria-label={commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
-                className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
-                onClick={toggleCommentMode}
-                title={t('editor.comments.modeHint')}
-              >
-                <MessageSquare className="size-4" />
-                <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
-              </Button>
-              {!markdownFocused ? (
-                <Button
-                  aria-label={railLabel}
-                  aria-pressed={wideLayout ? railOpen : railSheetOpen}
-                  className="cursor-pointer"
-                  onClick={() => (wideLayout ? setRailOpen((v) => !v) : setRailSheetOpen((v) => !v))}
-                  size="icon-sm"
-                  title={railLabel}
-                  variant={(wideLayout ? railOpen : railSheetOpen) ? 'secondary' : 'ghost'}
-                >
-                  <PanelRight className="size-4 rtl:-scale-x-100" />
-                </Button>
-              ) : null}
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
-                aria-label={t('editor.pageSettings.title')}
-                title={t('editor.pageSettings.title')}
-              >
-                <Settings2 className="size-4" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      className="cursor-pointer"
-                      aria-label={t('editor.moreActions')}
-                      title={t('editor.moreActions')}
-                    />
-                  }
-                >
-                  <MoreHorizontal className="size-4" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuCheckboxItem
-                    checked={effectiveMode === 'wysiwyg'}
-                    disabled={effectiveMode === 'markdown'}
-                    onCheckedChange={(checked) => {
-                      const next = checked ? 'wysiwyg' : 'visual';
-                      setVisualMode(next);
-                      setEditorMode(next);
-                    }}
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="cursor-pointer"
+                        aria-label={t('editor.moreActions')}
+                        title={t('editor.moreActions')}
+                      />
+                    }
                   >
-                    {t('editor.showToolbar')}
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (commentMode) toggleCommentMode();
-                      setEditorMode(effectiveMode === 'markdown' ? visualMode : 'markdown');
-                    }}
-                  >
-                    <Code2 />
-                    <span className="flex min-w-0 flex-col">
-                      <span>{effectiveMode === 'markdown' ? t('editor.backToVisual') : t('editor.editSource')}</span>
-                      {effectiveMode === 'markdown' ? null : <span className="text-muted-foreground text-xs">{t('editor.editSourceHint')}</span>}
-                    </span>
-                  </DropdownMenuItem>
-                  {!showBranchSwitcher ? (
-                    <DropdownMenuItem onClick={() => setNewVersionOpen(true)}>
-                      <Layers /> {t('editor.branch.new')}
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuCheckboxItem
+                      checked={effectiveMode === 'wysiwyg'}
+                      disabled={effectiveMode === 'markdown'}
+                      onCheckedChange={(checked) => {
+                        const next = checked ? 'wysiwyg' : 'visual';
+                        setVisualMode(next);
+                        setEditorMode(next);
+                      }}
+                    >
+                      {t('editor.showToolbar')}
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (commentMode) toggleCommentMode();
+                        setEditorMode(effectiveMode === 'markdown' ? visualMode : 'markdown');
+                      }}
+                    >
+                      <Code2 />
+                      <span className="flex min-w-0 flex-col">
+                        <span>{effectiveMode === 'markdown' ? t('editor.backToVisual') : t('editor.editSource')}</span>
+                        {effectiveMode === 'markdown' ? null : <span className="text-muted-foreground text-xs">{t('editor.editSourceHint')}</span>}
+                      </span>
                     </DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={() => deleteNode(page.id)}>
-                    <Trash2 /> {t('editor.deletePage')}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                    {!showBranchSwitcher ? (
+                      <DropdownMenuItem onClick={() => setNewVersionOpen(true)}>
+                        <Layers /> {t('editor.branch.new')}
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => deleteNode(page.id)}>
+                      <Trash2 /> {t('editor.deletePage')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-            <div
-              ref={canvasRef}
-              className={cn(
-                'min-h-0 flex-1',
-                effectiveMode === 'markdown'
-                  ? 'flex flex-col overflow-hidden'
-                  : effectiveMode === 'wysiwyg'
+              <div
+                ref={canvasRef}
+                className={cn(
+                  'min-h-0 flex-1',
+                  effectiveMode === 'markdown'
                     ? 'flex flex-col overflow-hidden'
-                    : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
-              )}
-            >
-              {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
-                <div
-                  className={cn(
-                    'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
-                    effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
-                  )}
-                  role="status"
-                >
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                  <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
-                </div>
-              ) : null}
-              {/* Visual mode keeps its reading measure. Rich Text and Markdown
+                    : effectiveMode === 'wysiwyg'
+                      ? 'flex flex-col overflow-hidden'
+                      : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
+                )}
+              >
+                {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
+                  <div
+                    className={cn(
+                      'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
+                      effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
+                    )}
+                    role="status"
+                  >
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                    <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
+                  </div>
+                ) : null}
+                {/* Visual mode keeps its reading measure. Rich Text and Markdown
                 render their toolbar and title inside their full-height canvas. */}
-              {effectiveMode === 'visual' ? <div className="mx-auto max-w-[720px]">{pageTitleInput}</div> : null}
-              {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
-                // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
-                // gutter for the block handle — so it is NOT wrapped in a narrow box.
-                // Keyed by page id: every page gets its own TipTap instance, so a
-                // document can never linger across a page switch.
-                // The link picker searches the version this page belongs to.
-                <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
-                  <TiptapEditor
+                {effectiveMode === 'visual' ? <div className="mx-auto max-w-[720px]">{pageTitleInput}</div> : null}
+                {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
+                  // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
+                  // gutter for the block handle — so it is NOT wrapped in a narrow box.
+                  // Keyed by page id: every page gets its own TipTap instance, so a
+                  // document can never linger across a page switch.
+                  // The link picker searches the version this page belongs to.
+                  <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
+                    <TiptapEditor
+                      key={page.id}
+                      value={content}
+                      onChange={setContent}
+                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                      dir={activeLangDir}
+                      lang={activeLanguage?.code}
+                      style={typographyVars(project?.config?.typography)}
+                      onUpload={onUploadImage}
+                      comments={commentMarkers}
+                      activeCommentId={activeCommentId}
+                      commentMode={commentMode}
+                      onAddComment={(anchor) => {
+                        setPendingAnchor(anchor);
+                        openRail();
+                        setRailTab('comments');
+                      }}
+                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                    />
+                  </ActiveBranchContext.Provider>
+                ) : (
+                  <MarkdownSourceEditor
                     key={page.id}
+                    dir={activeLangDir}
+                    label={t('editor.markdownPlaceholder')}
                     value={content}
                     onChange={setContent}
-                    className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                    dir={activeLangDir}
-                    lang={activeLanguage?.code}
-                    style={typographyVars(project?.config?.typography)}
-                    onUpload={onUploadImage}
-                    comments={commentMarkers}
-                    activeCommentId={activeCommentId}
-                    commentMode={commentMode}
-                    onAddComment={(anchor) => {
-                      setPendingAnchor(anchor);
-                      openRail();
-                      setRailTab('comments');
-                    }}
-                    titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                    variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                    placeholder={t('editor.markdownPlaceholder')}
+                    titleSlot={pageTitleInput}
                   />
-                </ActiveBranchContext.Provider>
-              ) : (
-                <MarkdownSourceEditor
-                  key={page.id}
-                  dir={activeLangDir}
-                  label={t('editor.markdownPlaceholder')}
-                  value={content}
-                  onChange={setContent}
-                  placeholder={t('editor.markdownPlaceholder')}
-                  titleSlot={pageTitleInput}
-                />
-              )}
-            </div>
-          </section>
-        ) : (
-          <section className="grid place-items-center text-center">
-            <div>
-              <FileText className="mx-auto size-7 text-muted-foreground" />
-              <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
-              <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
-              {defaultLanguageId ? (
-                <Button className="mt-4 cursor-pointer" disabled={createPage.isPending || switching} onClick={() => addPage(null, defaultLanguageId)}>
-                  <Plus className="size-4" /> {t('editor.newPage')}
-                </Button>
-              ) : null}
-            </div>
-          </section>
-        )}
+                )}
+              </div>
+            </section>
+          ) : (
+            <section className="grid flex-1 place-items-center text-center">
+              <div>
+                <FileText className="mx-auto size-7 text-muted-foreground" />
+                <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
+                <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
+                {defaultLanguageId ? (
+                  <Button
+                    className="mt-4 cursor-pointer"
+                    disabled={createPage.isPending || switching}
+                    onClick={() => addPage(null, defaultLanguageId)}
+                  >
+                    <Plus className="size-4" /> {t('editor.newPage')}
+                  </Button>
+                ) : null}
+              </div>
+            </section>
+          )}
+        </main>
 
         {/* Right rail: Figma-style tabbed panel — Comments / AI. A column at xl… */}
         {showRail && wideLayout && railPanel ? (
@@ -1483,10 +1539,14 @@ function EditorPage() {
 
 type PendingChangesData = ReturnType<typeof usePendingChanges>['data'];
 
-/** True only when we know the page has never been published: the site was
- *  never published, or the pending-changes check lists the page as new. */
-function isNeverPublished(id: string, pending: PendingChangesData): boolean {
-  return Boolean(pending && (!pending.hasBaseline || pending.changes.some((change) => change.id === id && change.status === 'added')));
+/** Whether a page's address may still follow its title, from the freshest cached
+ *  publish state (see addressMayFollowTitle). */
+function addressFollowsTitle(queryClient: QueryClient, projectId: string, pageId: string): boolean {
+  return addressMayFollowTitle(
+    pageId,
+    queryClient.getQueryData<PendingChangesData>(queryKeys.deployments.changes(projectId)),
+    queryClient.getQueryData<Deployment[]>(queryKeys.deployments.all(projectId)),
+  );
 }
 
 /** The newer of two server copies of the same page (by revision stamp). */
