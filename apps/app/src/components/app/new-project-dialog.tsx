@@ -5,6 +5,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
+import { useNavigate } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { useCreateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
@@ -12,6 +13,7 @@ import { required } from '@/lib/form';
 export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const create = useCreateProject();
   const t = useT();
+  const navigate = useNavigate();
   const form = useForm({
     defaultValues: { name: '' },
     onSubmit: async ({ value }) => {
@@ -19,14 +21,17 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
         create.mutate(
           { name: value.name.trim() },
           {
-            onSuccess: () => {
+            onSuccess: (project) => {
               toast.success(t('newSite.created'));
               form.reset();
               onOpenChange(false);
               resolve();
+              // A new site's next step is its first article, so open the editor.
+              void navigate({ to: '/app/projects/$projectId/editor', params: { projectId: project.id } });
             },
-            onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('newSite.error'));
+            onError: () => {
+              // The server's message is English and technical; show the localized one.
+              toast.error(t('newSite.error'));
               resolve();
             },
           },
@@ -66,6 +71,9 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
             </form.Field>
           </div>
           <DialogFooter>
+            <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
+              {t('common.cancel')}
+            </Button>
             <form.Subscribe selector={(state) => [state.isSubmitting, state.values.name] as const}>
               {([isSubmitting, name]) => (
                 <Button disabled={!name.trim()} loading={isSubmitting} loadingText={t('newSite.creating')} type="submit">

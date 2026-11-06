@@ -4,7 +4,7 @@ import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn(), send: vi.fn(), social: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
@@ -13,7 +13,7 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('@/hooks/api/public', () => ({ useGetPublicMeta: mocks.publicMeta }));
 vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
-vi.mock('@/services/auth-client', () => ({ authClient: {}, signIn: {} }));
+vi.mock('@/services/auth-client', () => ({ authClient: { emailOtp: { sendVerificationOtp: mocks.send } }, signIn: { social: mocks.social } }));
 vi.mock('@/lib/invitations', () => ({ readPendingInvitation: () => null }));
 
 import { Route } from './sign-up';
@@ -70,5 +70,23 @@ describe('sign-up availability', () => {
 
     expect(container.querySelector('input[type="email"]')).not.toBeNull();
     expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('explains the unticked terms instead of silently disabling the buttons', async () => {
+    mocks.publicMeta.mockReturnValue({ isPending: false, data: { signupDisabled: false, providers: { google: true } } });
+    await act(async () => root.render(<SignUpPage />));
+    const submit = container.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const google = [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent?.includes('auth.google.signUp'));
+    expect(submit?.disabled).toBe(false);
+    expect(google?.disabled).toBe(false);
+
+    await act(async () => google?.click());
+    expect(mocks.social).not.toHaveBeenCalled();
+    expect(container.querySelector('#agree-terms-error')?.textContent).toBe('auth.legal.agreeFirst');
+    expect(container.querySelector('#agree-terms')?.getAttribute('aria-describedby')).toBe('agree-terms-error');
+    expect(document.activeElement?.id).toBe('agree-terms');
+
+    await act(async () => container.querySelector<HTMLInputElement>('#agree-terms')?.click());
+    expect(container.querySelector('#agree-terms-error')).toBeNull();
   });
 });
