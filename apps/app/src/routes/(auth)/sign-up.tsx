@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
@@ -11,6 +12,8 @@ import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetPublicMeta } from '@/hooks/api/public';
+import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -25,9 +28,13 @@ export const Route = createFileRoute('/(auth)/sign-up')({
         intent: z.literal('first-publish').optional().catch(undefined),
       })
       .parse(search),
+  // The form waits on the instance metadata (sign-up open? Google?): start it on link hover.
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, getPublicMetaQueryOptions()),
   head: () => ({ meta: [{ title: 'Sign up — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignUpPage,
 });
+
+const SIGN_UP_SKELETON_FIELDS = ['name', 'email'];
 
 function SignUpPage() {
   const t = useT();
@@ -41,7 +48,9 @@ function SignUpPage() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   // Buttons stay enabled; pressing one without the terms ticked says why instead.
   const [termsError, setTermsError] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Which request is running, so only the button that started it shows a spinner.
+  const [busy, setBusy] = useState<'send' | 'resend' | 'verify' | null>(null);
+  const isSubmitting = busy !== null;
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
@@ -62,8 +71,8 @@ function SignUpPage() {
     }
   };
 
-  const requestCode = async () => {
-    setIsSubmitting(true);
+  const requestCode = async (kind: 'send' | 'resend' = 'send') => {
+    setBusy(kind);
     setError(null);
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
@@ -76,12 +85,12 @@ function SignUpPage() {
     } catch {
       setError(t('auth.error.tryAgain'));
     } finally {
-      setIsSubmitting(false);
+      setBusy(null);
     }
   };
 
   const verifyCode = async () => {
-    setIsSubmitting(true);
+    setBusy('verify');
     setError(null);
     try {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), name: name.trim() });
@@ -93,7 +102,7 @@ function SignUpPage() {
     } catch {
       setError(t('auth.error.tryAgain'));
     } finally {
-      setIsSubmitting(false);
+      setBusy(null);
     }
   };
 
@@ -124,11 +133,25 @@ function SignUpPage() {
   };
 
   if (metaPending) {
+    // Shaped like the form below (name, email, terms, button), so it doesn't jump when sign-up opens.
     return (
       <AuthLayout subtitle={t('auth.signUp.subtitle')}>
-        <p className="py-4 text-center text-muted-foreground text-sm" role="status">
-          {t('common.loading')}
-        </p>
+        <div aria-busy="true" className="flex flex-col gap-4">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          {SIGN_UP_SKELETON_FIELDS.map((field) => (
+            <div aria-hidden className="flex flex-col gap-1.5" key={field}>
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ))}
+          <div aria-hidden className="flex items-start gap-2.5">
+            <Skeleton className="mt-0.5 size-4 shrink-0 rounded-sm" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+          <Skeleton aria-hidden className="mt-1 h-9 w-full" />
+        </div>
       </AuthLayout>
     );
   }
@@ -164,7 +187,8 @@ function SignUpPage() {
         <>
           <Button
             className="mb-4 w-full gap-2"
-            disabled={isGoogleSubmitting}
+            loading={isGoogleSubmitting}
+            loadingText={t('auth.google.submitting')}
             onClick={() => {
               if (requireTerms()) void signUpWithGoogle();
             }}
@@ -172,7 +196,7 @@ function SignUpPage() {
             variant="outline"
           >
             <GoogleIcon className="size-4" />
-            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.signUp')}
+            {t('auth.google.signUp')}
           </Button>
           <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
             <span className="h-px flex-1 bg-border" />
@@ -274,14 +298,14 @@ function SignUpPage() {
             {error}
           </p>
         ) : null}
-        <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent && otp.length !== 6)} type="submit">
-          {isSubmitting
-            ? codeSent
-              ? t('auth.otp.verifying')
-              : t('auth.otp.sending')
-            : codeSent
-              ? t('auth.otp.verifyCreate')
-              : t('auth.otp.sendCreate')}
+        <Button
+          className="mt-1 w-full"
+          disabled={isSubmitting || (codeSent && otp.length !== 6)}
+          loading={busy === 'send' || busy === 'verify'}
+          loadingText={busy === 'verify' ? t('auth.otp.verifying') : t('auth.otp.sending')}
+          type="submit"
+        >
+          {codeSent ? t('auth.otp.verifyCreate') : t('auth.otp.sendCreate')}
         </Button>
         {codeSent ? (
           <div className="flex items-center justify-between">
@@ -298,7 +322,14 @@ function SignUpPage() {
             >
               <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('auth.otp.changeDetails')}
             </Button>
-            <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
+            <Button
+              disabled={isSubmitting || resendIn > 0}
+              loading={busy === 'resend'}
+              onClick={() => void requestCode('resend')}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
               {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}
             </Button>
           </div>

@@ -11,10 +11,16 @@ import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
+import { QueryErrorState } from '@/components/query-error-state';
+import { friendlyErrorMessage, useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
+import { membersQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { email as validateEmail } from '@/lib/form';
 
+const MEMBER_SKELETON_ROWS = ['a', 'b', 'c'];
+
 export const Route = createFileRoute('/app/(dashboard)/members')({
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, membersQueryOptions()),
   component: MembersPage,
 });
 
@@ -35,7 +41,7 @@ const roleLabelKey = (role: string | null | undefined): MessageKey => {
 
 function MembersPage() {
   const t = useT();
-  const { data, isPending } = useMembers();
+  const { data, isPending, isError, isFetching, refetch } = useMembers();
   const invite = useInviteMember();
   const remove = useRemoveMember();
   const updateRole = useUpdateMemberRole();
@@ -52,7 +58,8 @@ function MembersPage() {
     if (!ok) return;
     remove.mutate(member.id, {
       onSuccess: () => toast.success(t('members.toast.removed')),
-      onError: () => toast.error(t('settings.members.toast.removeError')),
+      onError: (error) =>
+        toast.error(friendlyErrorMessage(t, error, 'settings.members.toast.removeError', { 409: 'settings.members.toast.removeError' })),
     });
   };
   // No `owner` option: invitations and role changes can never grant ownership.
@@ -76,7 +83,9 @@ function MembersPage() {
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('members.toast.inviteError'));
+              // Server text is English and technical; say what happened in plain words.
+              // 409: that person is already a member.
+              toast.error(friendlyErrorMessage(t, error, 'members.toast.inviteError', { 409: 'members.toast.alreadyMember' }));
               resolve();
             },
           },
@@ -134,22 +143,21 @@ function MembersPage() {
               </Select>
             )}
           </form.Field>
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <Button className="flex-1 sm:flex-none" disabled={isSubmitting} type="submit">
-                <Mail className="size-4" /> {t('members.invite')}
-              </Button>
-            )}
-          </form.Subscribe>
+          <Button className="flex-1 sm:flex-none" loading={invite.isPending} type="submit">
+            <Mail className="size-4" /> {t('members.invite')}
+          </Button>
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-border">
-        {isPending ? (
-          <div className="p-4">
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
+      {isError && !data ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
+
+      <div aria-busy={isPending && !isError ? true : undefined} className="overflow-hidden rounded-xl border border-border">
+        {isPending && !isError ? (
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+        ) : null}
+        {isError && !data ? null : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-border border-b bg-muted/50 text-muted-foreground">
@@ -159,6 +167,23 @@ function MembersPage() {
               </tr>
             </thead>
             <tbody>
+              {/* Shaped like a member row: name over email, the role picker, the remove button. */}
+              {isPending
+                ? MEMBER_SKELETON_ROWS.map((row) => (
+                    <tr aria-hidden className="border-border border-b last:border-0" key={row}>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-4 w-36" />
+                        <Skeleton className="mt-1.5 h-3 w-48 max-w-full" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="h-8 w-32" />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Skeleton className="ms-auto size-7" />
+                      </td>
+                    </tr>
+                  ))
+                : null}
               {(data?.members ?? []).map((member) => (
                 <tr key={member.id} className="border-border border-b last:border-0">
                   <td className="px-4 py-3">
@@ -177,7 +202,10 @@ function MembersPage() {
                             { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
                             {
                               onSuccess: () => toast.success(t('members.toast.roleUpdated')),
-                              onError: (error) => toast.error(error instanceof Error ? error.message : t('members.toast.roleUpdateError')),
+                              onError: (error) =>
+                                toast.error(
+                                  friendlyErrorMessage(t, error, 'members.toast.roleUpdateError', { 409: 'members.toast.roleUpdateError' }),
+                                ),
                             },
                           )
                         }
@@ -202,7 +230,7 @@ function MembersPage() {
                         variant="ghost"
                         aria-label={t('members.remove')}
                         title={t('members.remove')}
-                        disabled={remove.isPending}
+                        loading={remove.isPending && remove.variables === member.id}
                         onClick={() => void removeMember(member)}
                       >
                         <Trash2 className="size-4" />

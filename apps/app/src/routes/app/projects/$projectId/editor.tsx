@@ -10,6 +10,7 @@ import {
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { isRtl } from '@nibleaf/i18n';
@@ -22,11 +23,9 @@ import {
   ChevronRight,
   Code2,
   Eye,
-  FileText,
   FolderPlus,
   Languages,
   Layers,
-  Loader2,
   MessageSquare,
   MoreHorizontal,
   PanelLeftClose,
@@ -48,6 +47,7 @@ import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { deepLinkBranchDecision, publishedVersionSlugFor } from '@/components/editor/docs-version';
+import { ConfigCanvas, EmptyCanvas, GroupCanvas, PageCanvasSkeleton, PageLoadFailedCanvas } from '@/components/editor/editor-canvas-states';
 import { nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
@@ -57,18 +57,18 @@ import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
-import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
+import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
-import { ConfigDirtyProvider } from '@/components/project-settings/shared';
 import type { Deployment, Language, PageNode } from '@/hooks/api';
 import {
   addressMayFollowTitle,
   friendlyErrorMessage,
   pageNeverPublished,
+  pagePublishState,
   queryKeys,
   useBranches,
   useComments,
@@ -83,13 +83,15 @@ import {
   useUpdatePage,
   useUploadAsset,
 } from '@/hooks/api';
+import { commentsQueryOptions, getPublicMetaQueryOptions, pageQueryOptions } from '@/hooks/api/query-options';
+import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { typographyVars } from '@/lib/typography';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
-  component: EditorPage,
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
   // publish-check issue), `?publish=true` opens the publish flow directly.
   validateSearch: (search) =>
@@ -100,6 +102,20 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
         publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
       })
       .parse(search),
+  loaderDeps: ({ search: { page } }) => ({ page }),
+  // The parent route prefetches the site, languages, branches and publishes. This
+  // adds the page tree (every language, default branch), the AI switch and, for a
+  // deep link, the page and its comments. The pending-changes check is left to the
+  // component: it is always stale, so a prefetch would only fetch it twice.
+  loader: ({ context: { queryClient }, params: { projectId }, deps: { page } }) => {
+    prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
+    prefetchRouteData(queryClient, getPublicMetaQueryOptions());
+    if (page) {
+      prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
+      prefetchRouteData(queryClient, commentsQueryOptions(projectId, page));
+    }
+  },
+  component: EditorPage,
 });
 
 function EditorPage() {
@@ -222,15 +238,10 @@ function EditorPage() {
   }
   const switching = pendingSwitch !== null;
 
-  // Has the open page ever been published? Only a page the pending-changes
-  // check lists as "added" (or any page before the first publish) is unpublished.
+  // Is the open page live as it is now? Unknown (no state shown) until the
+  // pending-changes answer arrives, including right after a publish went live.
   const siteNeverPublished = pendingChanges?.hasBaseline === false;
-  const pagePublishState: 'unpublished' | 'published' | null =
-    pendingChanges && page
-      ? siteNeverPublished || pendingChanges.changes.some((change) => change.id === page.id)
-        ? 'unpublished'
-        : 'published'
-      : null;
+  const pageState = page ? pagePublishState(page.id, pendingChanges) : null;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [requestedRailTab, setRailTab] = useState<'comments' | 'ai'>('comments');
@@ -900,7 +911,7 @@ function EditorPage() {
           }}
         />
         {view === 'content' && page && !switching ? (
-          <SaveStatus state={status} publishState={pagePublishState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
+          <SaveStatus state={status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
         ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
           <Button
@@ -944,8 +955,8 @@ function EditorPage() {
       </header>
       {siteNeverPublished && view === 'content' ? (
         <NeverPublishedBanner />
-      ) : view === 'content' && page && !switching && pagePublishState ? (
-        <PagePublishStateBar state={pagePublishState} />
+      ) : view === 'content' && page && !switching && pageState ? (
+        <PagePublishStateBar state={pageState} />
       ) : null}
 
       {/* Editor grid: page-tree sidebar + canvas (+ comments rail). The single row is
@@ -1028,7 +1039,13 @@ function EditorPage() {
                   }}
                 />
               ) : isPending ? (
-                <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
+                // The page canvas announces the loading status; this mirrors the tree.
+                <div aria-busy="true" className="space-y-1.5 px-1 py-1.5">
+                  <Skeleton aria-hidden className="mb-3 h-8 w-full" />
+                  {TREE_SKELETON_WIDTHS.map((width) => (
+                    <Skeleton aria-hidden className={cn('h-6', width)} key={width} />
+                  ))}
+                </div>
               ) : (
                 <>
                   {newPageLanguage ? (
@@ -1192,7 +1209,8 @@ function EditorPage() {
                   <PageSettingsDialog
                     projectId={projectId}
                     page={settingsPage}
-                    published={pendingChanges ? !pageNeverPublished(settingsPage.id, pendingChanges) : false}
+                    // While publish state is unknown, assume the page may be live, so changing its address still warns.
+                    published={!pageNeverPublished(settingsPage.id, pendingChanges)}
                     open
                     onOpenChange={(o) => !o && setSettingsForId(null)}
                   />
@@ -1206,90 +1224,36 @@ function EditorPage() {
         <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
           {/* Main area: site configuration */}
           {view === 'config' ? (
-            <section className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-              {/* A muted overline so it reads as "Site configuration › <section>"
-              rather than competing with each section's own heading. */}
-              <div className="border-border border-b px-6 py-3">
-                <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
-              </div>
-              <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
-                {project ? (
-                  <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
-                    <ConfigDirtyProvider report={reportConfigDirty}>
-                      <ConfigSection project={project} section={configSection} />
-                    </ConfigDirtyProvider>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-                )}
-              </div>
-            </section>
+            <ConfigCanvas project={project} reportDirty={reportConfigDirty} section={configSection} />
           ) : switching ? (
             // Locked while switching or creating: the page being left is gone from
             // the screen, so nothing typed now can end up in it.
-            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
-              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 aria-hidden className="size-5 animate-spin" />
-                {pendingSwitch?.kind === 'create' ? t('editor.creatingPage') : t('editor.openingPage')}
-              </p>
-            </section>
+            <PageCanvasSkeleton status={pendingSwitch?.kind === 'create' ? t('editor.creatingPage') : t('editor.openingPage')} />
+          ) : isPending ? (
+            // The page tree is still loading: don't offer "No page selected" yet.
+            <PageCanvasSkeleton status={t('common.loading')} />
           ) : selectedGroup ? (
-            <section className="grid flex-1 place-items-center px-6 text-center">
-              <div className="max-w-md">
-                <FolderPlus className="mx-auto size-7 text-muted-foreground" />
-                <h1 className="mt-3 break-words font-semibold text-xl tracking-tight" dir="auto">
-                  {selectedGroup.title}
-                </h1>
-                <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  {selectedGroup.languageId ? (
-                    <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
-                      <Plus className="size-4" /> {t('editor.addPageInside')}
-                    </Button>
-                  ) : null}
-                  <Button variant="outline" onClick={() => void renameGroup(selectedGroup)}>
-                    <Pencil className="size-4" /> {t('editor.rename')}
-                  </Button>
-                  <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
-                    <Settings2 className="size-4" /> {t('editor.groupSettings')}
-                  </Button>
-                  <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteNode(selectedGroup.id)}>
-                    <Trash2 className="size-4" /> {t('editor.deleteGroup')}
-                  </Button>
-                </div>
-              </div>
-            </section>
+            <GroupCanvas
+              addingPage={createPage.isPending}
+              group={selectedGroup}
+              onAddPage={() => selectedGroup.languageId && addPage(selectedGroup.id, selectedGroup.languageId)}
+              onDelete={() => deleteNode(selectedGroup.id)}
+              onOpenSettings={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}
+              onRename={() => void renameGroup(selectedGroup)}
+            />
           ) : pageLoadFailed ? (
-            <section className="grid flex-1 place-items-center px-6 text-center">
-              <div className="max-w-sm" role="alert">
-                <TriangleAlert aria-hidden className="mx-auto size-7 text-destructive" />
-                <p className="mt-3 font-medium">{friendlyErrorMessage(t, pageQuery.error, 'editor.openPageFailed')}</p>
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <Button disabled={pageQuery.isFetching} onClick={() => void pageQuery.refetch()}>
-                    {pageQuery.isFetching ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
-                    {t('common.retry')}
-                  </Button>
-                  {/* Pick another page: the list is a drawer on small screens (and may be collapsed). */}
-                  <Button
-                    className={cn(!sidebarCollapsed && 'lg:hidden')}
-                    onClick={() => {
-                      setSidebarCollapsed(false);
-                      setMobileSidebarOpen(true);
-                    }}
-                    variant="outline"
-                  >
-                    <PanelLeftOpen aria-hidden className="size-4 rtl:-scale-x-100" /> {t('editor.showPages')}
-                  </Button>
-                </div>
-              </div>
-            </section>
+            <PageLoadFailedCanvas
+              error={pageQuery.error}
+              onRetry={() => void pageQuery.refetch()}
+              onShowPages={() => {
+                setSidebarCollapsed(false);
+                setMobileSidebarOpen(true);
+              }}
+              retrying={pageQuery.isFetching}
+              sidebarCollapsed={sidebarCollapsed}
+            />
           ) : activeId && !page ? (
-            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
-              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
-                <Loader2 aria-hidden className="size-5 animate-spin" />
-                {t('editor.openingPage')}
-              </p>
-            </section>
+            <PageCanvasSkeleton status={t('editor.openingPage')} />
           ) : activeId && page ? (
             /* Main area: page editor */
             <section className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1499,22 +1463,11 @@ function EditorPage() {
               </div>
             </section>
           ) : (
-            <section className="grid flex-1 place-items-center text-center">
-              <div>
-                <FileText className="mx-auto size-7 text-muted-foreground" />
-                <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
-                <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
-                {defaultLanguageId ? (
-                  <Button
-                    className="mt-4 cursor-pointer"
-                    disabled={createPage.isPending || switching}
-                    onClick={() => addPage(null, defaultLanguageId)}
-                  >
-                    <Plus className="size-4" /> {t('editor.newPage')}
-                  </Button>
-                ) : null}
-              </div>
-            </section>
+            <EmptyCanvas
+              canCreate={Boolean(defaultLanguageId)}
+              creating={createPage.isPending || switching}
+              onNewPage={() => defaultLanguageId && addPage(null, defaultLanguageId)}
+            />
           )}
         </main>
 
@@ -1536,6 +1489,8 @@ function EditorPage() {
     </div>
   );
 }
+
+const TREE_SKELETON_WIDTHS = ['w-1/2', 'w-4/5', 'w-3/4', 'w-2/3', 'w-4/5 ms-4', 'w-3/5 ms-4'];
 
 type PendingChangesData = ReturnType<typeof usePendingChanges>['data'];
 

@@ -194,8 +194,8 @@ function LanguageFooterForm({
       try {
         await update.mutateAsync({ id: language.id, body: { config: { footer: copyright ? { copyright } : null } } });
         toast.success(t('common.saved'));
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+      } catch {
+        toast.error(t('settings.saveError'));
       }
     },
   });

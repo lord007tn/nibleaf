@@ -1,11 +1,18 @@
 import { cn } from '../../lib/utils'
 
+/**
+ * The placeholder look (tone, radius, pulse, reduced-motion stillness), for a
+ * placeholder that can't be a `<div>` (inside a heading or a button label, use
+ * a `<span>` with this class and `data-slot="skeleton"`).
+ */
+const skeletonClassName = "animate-pulse rounded-md bg-foreground/8 motion-reduce:animate-none"
+
 /** A single placeholder block. Pulses gently; stays still for reduced-motion users. */
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="skeleton"
-      className={cn("animate-pulse rounded-md bg-foreground/8 motion-reduce:animate-none", className)}
+      className={cn(skeletonClassName, className)}
       {...props}
     />
   )
@@ -90,4 +97,4 @@ function SkeletonStatTile({ className, ...props }: React.ComponentProps<"div">) 
   )
 }
 
-export { Skeleton, SkeletonCard, SkeletonListRow, SkeletonStatTile, SkeletonTableRows, SkeletonText }
+export { Skeleton, SkeletonCard, SkeletonListRow, SkeletonStatTile, SkeletonTableRows, SkeletonText, skeletonClassName }

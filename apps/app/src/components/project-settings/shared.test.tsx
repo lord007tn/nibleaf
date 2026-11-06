@@ -45,6 +45,13 @@ describe('Field', () => {
 });
 
 describe('SaveBar', () => {
+  it('announces saving and prevents duplicate submissions while the form saves', () => {
+    const markup = renderToStaticMarkup(<SaveBar disabled={false} isSubmitting />);
+    expect(markup).toMatch(/<button[^>]*aria-busy="true"/);
+    expect(markup).toMatch(/<button[^>]*disabled=""/);
+    expect(markup).toContain('data-loading=""');
+  });
+
   it('keeps invalid configuration disabled even when its explicit values differ from the saved defaults', () => {
     const markup = renderToStaticMarkup(<SaveBar values={{ title: 'Changed' }} defaults={{ title: 'Saved' }} invalid isSubmitting={false} />);
     expect(markup).toMatch(/<button[^>]* disabled=""/);

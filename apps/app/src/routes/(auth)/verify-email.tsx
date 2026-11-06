@@ -167,8 +167,8 @@ function VerifyEmailPage() {
               {error}
             </p>
           ) : null}
-          <Button className="w-full" disabled={verifying || otp.length !== 6} type="submit">
-            {verifying ? t('auth.verify.submitting') : t('auth.verify.submit')}
+          <Button className="w-full" disabled={otp.length !== 6} loading={verifying} loadingText={t('auth.verify.submitting')} type="submit">
+            {t('auth.verify.submit')}
           </Button>
         </form>
       ) : error ? (
@@ -177,8 +177,16 @@ function VerifyEmailPage() {
         </p>
       ) : null}
 
-      <Button className="mt-3 w-full" disabled={sending || verifying || !email} onClick={resend} type="button" variant="outline">
-        {sending ? t('auth.verify.resending') : t('auth.verify.resend')}
+      <Button
+        className="mt-3 w-full"
+        disabled={verifying || !email}
+        loading={sending}
+        loadingText={t('auth.verify.resending')}
+        onClick={resend}
+        type="button"
+        variant="outline"
+      >
+        {t('auth.verify.resend')}
       </Button>
 
       <div className="mt-5 text-center text-muted-foreground text-sm">

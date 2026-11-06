@@ -2,8 +2,25 @@ import { queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { syncPublishReceipt } from './deployment-cache';
+import type { ExportRun, ExportSchedule } from './exports';
+import type { GitWorkflowStatus } from './git-workflow';
 import { queryKeys } from './query-keys';
-import type { Branch, Deployment, Language, PageNode, Project } from './types';
+import type { ReaderAccessData } from './reader-access';
+import type {
+  ApiKey,
+  Branch,
+  Comment,
+  Deployment,
+  Domain,
+  Language,
+  NotificationList,
+  OpenApiConfiguration,
+  Page,
+  PageNode,
+  Project,
+  ProjectAddon,
+  WorkspaceSettings,
+} from './types';
 
 /*
  * Query factories (`queryOptions`) are the single definition of each query: its
@@ -14,7 +31,11 @@ import type { Branch, Deployment, Language, PageNode, Project } from './types';
  *
  * Keep this module light: route loaders import it directly, and a loader's
  * imports ship with the route's main chunk, which public pages also load. No
- * i18n, mutations or components here.
+ * i18n, mutations or components here (type-only imports are erased, so types
+ * may come from any hook module).
+ *
+ * Naming: hook `useFooBar` → factory `fooBarQueryOptions`. Polling
+ * (`refetchInterval`) and other per-screen options stay on the hook.
  */
 
 export const projectsQueryOptions = () =>
@@ -73,4 +94,168 @@ export const deploymentsQueryOptions = (projectId: string | undefined) =>
           return next;
         }
       : skipToken,
+  });
+
+export const pageQueryOptions = (projectId: string | undefined, pageId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.pages.detail(projectId ?? '', pageId ?? ''),
+    queryFn:
+      projectId && pageId
+        ? async () => getData<Page>(await api.app.projects[':projectId'].pages[':id'].$get({ param: { projectId, id: pageId } }), 'page')
+        : skipToken,
+  });
+
+// What the next publish will change vs. the last publish. Cheap to recompute, and
+// the editor autosaves constantly, so it must follow every save: always stale.
+export const pendingChangesQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.deployments.changes(projectId ?? ''),
+    staleTime: 0,
+    queryFn: projectId
+      ? async () => getData(await api.app.projects[':projectId'].deployments.changes.$get({ param: { projectId } }), 'changes')
+      : skipToken,
+  });
+
+export const projectAddonsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.addons.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<ProjectAddon[]>(await api.app.projects[':projectId'].addons.$get({ param: { projectId } }), 'project add-ons')
+      : skipToken,
+  });
+
+export const apiKeysQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.apiKeys.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<ApiKey[]>(await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId } }), 'API keys')
+      : skipToken,
+  });
+
+export const domainsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.domains.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<Domain[]>(await api.app.projects[':projectId'].domains.$get({ param: { projectId } }), 'domains')
+      : skipToken,
+  });
+
+export const openApiConfigurationQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.openapi.detail(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<OpenApiConfiguration | null>(await api.app.projects[':projectId'].openapi.$get({ param: { projectId } }), 'OpenAPI configuration')
+      : skipToken,
+  });
+
+/** Per-site usage counters (content, team, publish activity, traffic, storage)
+ *  rendered as plan-limit meters on the settings Usage tab. */
+export const projectUsageQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.usage.forProject(projectId ?? ''),
+    queryFn: projectId ? async () => getData(await api.app.projects[':projectId'].settings.usage.$get({ param: { projectId } }), 'usage') : skipToken,
+  });
+
+export const commentsQueryOptions = (projectId: string | undefined, pageId?: string) =>
+  queryOptions({
+    queryKey: queryKeys.comments.all(projectId ?? '', pageId),
+    queryFn: projectId
+      ? async () =>
+          getData<Comment[]>(
+            await api.app.projects[':projectId'].comments.$get({ param: { projectId }, query: pageId ? { pageId } : {} }),
+            'comments',
+          )
+      : skipToken,
+  });
+
+/** Workspace/site operational settings. Pass a projectId to read the SITE's own
+ *  org settings (each site is its own workspace); omit it for the account view. */
+export const workspaceSettingsQueryOptions = (projectId?: string) =>
+  queryOptions({
+    queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings(),
+    queryFn: async () =>
+      projectId
+        ? getData<WorkspaceSettings>(await api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
+        : getData<WorkspaceSettings>(await api.app.workspace.$get(), 'workspace settings'),
+  });
+
+export const membersQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.members.all(),
+    queryFn: async () => getData(await api.app.members.$get(), 'members'),
+  });
+
+/** Members + pending invitations for a single site (its own organization). */
+export const projectMembersQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.members.forProject(projectId ?? ''),
+    queryFn: projectId ? async () => getData(await api.app.projects[':projectId'].members.$get({ param: { projectId } }), 'members') : skipToken,
+  });
+
+/** The first inbox page (newest 50). */
+export const notificationsQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.notifications.list(),
+    queryFn: async () => getData<NotificationList>(await api.app.notifications.$get({ query: {} }), 'notifications'),
+  });
+
+/** Unread badge count for the header bell (the hook adds polling). */
+export const unreadNotificationCountQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: async () => getData(await api.app.notifications['unread-count'].$get(), 'notifications'),
+  });
+
+// ─── Exports, Git workflow, reader access ────────────────────────────────────
+
+export const listExportRunsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.exports.runs(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<ExportRun[]>(await api.app.projects[':projectId'].exports.$get({ param: { projectId } }), 'export runs')
+      : skipToken,
+  });
+
+export const listExportSchedulesQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.exports.schedules(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<ExportSchedule[]>(await api.app.projects[':projectId'].exports.schedules.$get({ param: { projectId } }), 'export schedules')
+      : skipToken,
+  });
+
+export const gitWorkflowQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.gitWorkflow.detail(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<GitWorkflowStatus | null>(await api.app.projects[':projectId'].git.$get({ param: { projectId } }), 'Git workflow')
+      : skipToken,
+  });
+
+export const readerAccessQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.readerAccess.detail(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<ReaderAccessData>(await api.app.projects[':projectId']['reader-access'].$get({ param: { projectId } }), 'reader access settings')
+      : skipToken,
+  });
+
+// ─── Public (signed-out) ─────────────────────────────────────────────────────
+
+/** Instance metadata (sign-up switch, sign-in providers, marketing analytics).
+ *  Changes only with a deploy, so five minutes of freshness is plenty. */
+export const getPublicMetaQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.public.meta(),
+    queryFn: async () => getData(await api.public.meta.$get(), 'public instance metadata'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+export const getInvitationInfoQueryOptions = (invitationId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.public.invitation(invitationId ?? ''),
+    queryFn: invitationId ? async () => getData(await api.public.invitations[':id'].$get({ param: { id: invitationId } }), 'invitation') : skipToken,
   });

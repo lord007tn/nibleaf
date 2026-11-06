@@ -4,11 +4,21 @@ import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ session: vi.fn(), updateUser: vi.fn(), send: vi.fn(), requestChange: vi.fn(), toastError: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  session: vi.fn(),
+  updateUser: vi.fn(),
+  send: vi.fn(),
+  requestChange: vi.fn(),
+  changeEmail: vi.fn(),
+  toastError: vi.fn(),
+}));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/services/auth-client', () => ({
   useSession: mocks.session,
-  authClient: { updateUser: mocks.updateUser, emailOtp: { sendVerificationOtp: mocks.send, requestEmailChange: mocks.requestChange } },
+  authClient: {
+    updateUser: mocks.updateUser,
+    emailOtp: { sendVerificationOtp: mocks.send, requestEmailChange: mocks.requestChange, changeEmail: mocks.changeEmail },
+  },
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: mocks.toastError } }));
 
@@ -79,18 +89,45 @@ describe('account settings hydration', () => {
     expect(mocks.updateUser).not.toHaveBeenCalled();
   });
 
-  async function beginEmailChange() {
+  async function typeCode(id: string, code: string) {
+    const input = container.querySelector<HTMLInputElement>(id);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, code);
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  }
+
+  async function beginEmailChange(address = 'new@example.test') {
     root = createRoot(container);
     await act(async () => root?.render(<AccountTab />));
     const change = [...container.querySelectorAll('button')].find((button) => button.textContent === 'settings.account.email.change');
     await act(async () => change?.click());
     const input = container.querySelector<HTMLInputElement>('#acct-email');
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'new@example.test');
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, address);
       input?.dispatchEvent(new Event('input', { bubbles: true }));
     });
     await act(async () => input?.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   }
+
+  it('stops at the form when the new address is the current one, instead of sending codes that can never work', async () => {
+    await beginEmailChange(' ADA@example.test ');
+    expect(mocks.send).not.toHaveBeenCalled();
+    expect(container.querySelector('#acct-email-error')?.textContent).toBe('settings.account.email.sameAsCurrent');
+    expect(container.querySelector('#acct-current-email-otp')).toBeNull();
+  });
+
+  it('says the address is taken at the confirm step, never the English server text', async () => {
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.requestChange.mockResolvedValue({ error: null });
+    mocks.changeEmail.mockResolvedValue({ error: { status: 400, message: 'Email already in use' } });
+    await beginEmailChange();
+    await typeCode('#acct-current-email-otp', '123456');
+    await typeCode('#acct-email-otp', '654321');
+
+    expect(mocks.changeEmail).toHaveBeenCalledExactlyOnceWith({ newEmail: 'new@example.test', otp: '654321' });
+    expect(mocks.toastError).toHaveBeenLastCalledWith('settings.account.email.inUse');
+  });
 
   it('localizes required delivery failure while preserving the email-change draft', async () => {
     mocks.send.mockResolvedValue({ error: { code: 'AUTH_EMAIL_UNAVAILABLE', message: 'Unable to send a code. Please try again shortly.' } });

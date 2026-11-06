@@ -1,4 +1,5 @@
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -57,14 +58,37 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   );
 }
 
+const PALETTE_SKELETON_ROWS = ['a', 'b', 'c'];
+
+/** A results group still loading: its heading over item-shaped placeholder rows. */
+function PaletteLoadingRows({ heading }: { heading: string }) {
+  const t = useT();
+  return (
+    <div aria-busy="true" className="p-1">
+      <p className="px-2 py-1.5 font-medium text-muted-foreground text-xs">{heading}</p>
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      {PALETTE_SKELETON_ROWS.map((row) => (
+        <div aria-hidden className="flex h-9 items-center gap-2 px-2" key={row}>
+          <Skeleton className="size-4 shrink-0 rounded-sm" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
   const navigate = useNavigate();
   // Mounted above the site routes, so read the site from the deepest match.
   const projectId = useRouterState({ select: (state) => (state.matches.at(-1)?.params as { projectId?: string } | undefined)?.projectId });
-  const { data: projects } = useProjects();
+  const { data: projects, isPending: projectsPending } = useProjects();
   // Only fetch the current site's pages once the palette is actually open.
-  const { data: pages } = usePages(open ? projectId : undefined);
+  const { data: pages, isPending: pagesQueryPending } = usePages(open ? projectId : undefined);
+  // A disabled query (no site, palette closed) is also "pending"; only a real first load counts.
+  const pagesPending = Boolean(open && projectId) && pagesQueryPending;
   const { resolvedTheme, setTheme } = useTheme();
   const [query, setQuery] = useState('');
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -106,7 +130,10 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
       <CommandDialog description={t('command.dialog.description')} onOpenChange={changeOpen} open={open} title={t('command.dialog.title')}>
         <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
         <CommandList>
-          <CommandEmpty>{t('command.noResults')}</CommandEmpty>
+          {/* While sites or pages are still loading, a miss isn't "no results" yet. */}
+          {projectsPending || pagesPending ? null : <CommandEmpty>{t('command.noResults')}</CommandEmpty>}
+          {pagesPending ? <PaletteLoadingRows heading={t('command.group.pages')} /> : null}
+          {projectsPending ? <PaletteLoadingRows heading={t('command.group.projects')} /> : null}
           {projectId && pageItems.length > 0 ? (
             <CommandGroup heading={t('command.group.pages')}>
               {pageItems.map((page) => {

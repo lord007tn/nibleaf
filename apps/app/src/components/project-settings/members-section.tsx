@@ -4,7 +4,7 @@ import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
@@ -24,6 +24,7 @@ import {
 } from '@/components/settings/api-key-alert-dialog';
 import { GradientAvatar } from '@/components/settings/section';
 import {
+  friendlyErrorMessage,
   useCancelProjectInvitation,
   useInviteProjectMember,
   useProjectMembers,
@@ -36,7 +37,8 @@ import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { useSession } from '@/services/auth-client';
 import { DirtyStateReporter, SectionHeader } from './shared';
 
-/** A small button that copies an invite link to the clipboard with feedback. */
+/** A small button that copies an invite link to the clipboard with feedback.
+ *  Copying is instant, so it shows a tick afterwards rather than a spinner. */
 function CopyLinkButton({ link, label }: { link: string; label: string }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
@@ -94,6 +96,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
+  /** Only the row whose remove/revoke is being confirmed spins. */
+  const actionRunning = (kind: MemberAction['kind'], id: string) => actionPending && memberAction?.kind === kind && memberAction.id === id;
   const actionInFlight = useRef(false);
 
   const requestMemberAction = (action: MemberAction) => {
@@ -117,11 +121,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
         setMemberAction(null);
       },
       onError: (error: unknown) => {
-        setActionError(
-          error instanceof Error
-            ? error.message
-            : t(action.kind === 'remove' ? 'settings.members.toast.removeError' : 'settings.members.toast.revokeError'),
-        );
+        // A 409 here is "the last owner can't be removed": the action's own message, not "someone else changed this".
+        const fallbackKey = action.kind === 'remove' ? 'settings.members.toast.removeError' : 'settings.members.toast.revokeError';
+        setActionError(friendlyErrorMessage(t, error, fallbackKey, { 409: fallbackKey }));
       },
       onSettled: () => {
         actionInFlight.current = false;
@@ -154,7 +156,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
               resolve();
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : t('settings.members.toast.inviteError'));
+              toast.error(friendlyErrorMessage(t, error, 'settings.members.toast.inviteError', { 409: 'members.toast.alreadyMember' }));
               resolve();
             },
           },
@@ -216,7 +218,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
             </form.Field>
             <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
               {([isSubmitting, emailValue]) => (
-                <Button className="flex-1 sm:flex-none" disabled={isSubmitting || !emailValue.trim()} type="submit">
+                <Button className="flex-1 sm:flex-none" disabled={!emailValue.trim()} loading={isSubmitting} type="submit">
                   <Mail className="size-4" /> {t('settings.members.invite')}
                 </Button>
               )}
@@ -267,7 +269,14 @@ export function MembersSection({ projectId }: { projectId: string }) {
       </div>
 
       {isPending ? (
-        <Skeleton className="h-12 w-full rounded-xl" />
+        <div aria-busy="true">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          <SkeletonListRow />
+          <SkeletonListRow />
+          <SkeletonListRow />
+        </div>
       ) : (
         <>
           {members.map((member) => (
@@ -295,7 +304,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         variant="ghost"
                         aria-label={t('settings.members.transferOwnership')}
                         title={t('settings.members.transferOwnership')}
-                        disabled={transfer.isPending}
+                        loading={transfer.isPending && transfer.variables?.memberId === member.id}
                         onClick={async () => {
                           const ok = await confirm({
                             title: t('settings.members.transferOwnership'),
@@ -310,7 +319,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
                             { memberId: member.id },
                             {
                               onSuccess: () => toast.success(t('settings.members.toast.ownershipTransferred')),
-                              onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.transferError')),
+                              onError: (error) =>
+                                toast.error(
+                                  friendlyErrorMessage(t, error, 'settings.members.toast.transferError', {
+                                    409: 'settings.members.toast.transferError',
+                                  }),
+                                ),
                             },
                           );
                         }}
@@ -326,7 +340,10 @@ export function MembersSection({ projectId }: { projectId: string }) {
                           { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
                           {
                             onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
-                            onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.members.toast.roleError')),
+                            onError: (error) =>
+                              toast.error(
+                                friendlyErrorMessage(t, error, 'settings.members.toast.roleError', { 409: 'settings.members.toast.roleError' }),
+                              ),
                           },
                         )
                       }
@@ -347,7 +364,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       variant="ghost"
                       aria-label={t('settings.members.remove')}
                       title={t('settings.members.remove')}
-                      disabled={actionPending || remove.isPending || cancelInvite.isPending}
+                      loading={actionRunning('remove', member.id)}
                       onClick={() => requestMemberAction({ kind: 'remove', id: member.id, name: member.user.name || member.user.email })}
                     >
                       <Trash2 className="size-4" />
@@ -379,7 +396,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <div className="ms-auto flex items-center gap-1">
                       <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
                       <Button
-                        disabled={actionPending || remove.isPending || cancelInvite.isPending}
+                        loading={actionRunning('revoke', inv.id)}
                         onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
                         size="icon-sm"
                         variant="ghost"
@@ -424,8 +441,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
           ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionPending}>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction disabled={actionPending} onClick={submitMemberAction}>
-              {actionPending ? t('common.loading') : t(memberAction?.kind === 'revoke' ? 'settings.members.revokeInvite' : 'settings.members.remove')}
+            <AlertDialogAction loading={actionPending} loadingText={t('common.loading')} onClick={submitMemberAction}>
+              {t(memberAction?.kind === 'revoke' ? 'settings.members.revokeInvite' : 'settings.members.remove')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
@@ -7,11 +8,14 @@ import { AuthProviders } from '@/components/auth-providers';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetInvitationInfo } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { getInvitationInfoQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { clearPendingInvitation, readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
+  loader: ({ context: { queryClient }, params: { invitationId } }) => prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId)),
   // Not under the (auth) layout, so noindex it directly: the URL carries a live
   // invitation token that must never be crawled or indexed.
   head: () => ({
@@ -104,9 +108,17 @@ function AcceptInviteContent() {
   const subtitle = info?.organizationName ? t('auth.invite.joinPrompt', { org: info.organizationName }) : t('auth.invite.subtitle');
 
   if (isPending || invitation.isPending) {
+    // Shaped like the invitation card: who it's for, the prompt, then the action.
     return (
       <AuthLayout subtitle={subtitle}>
-        <p className="text-center text-muted-foreground text-sm">{t('common.loading')}</p>
+        <div aria-busy="true" className="flex flex-col items-center gap-4">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          <Skeleton aria-hidden className="h-4 w-3/4" />
+          <Skeleton aria-hidden className="h-4 w-2/3" />
+          <Skeleton aria-hidden className="h-9 w-full" />
+        </div>
       </AuthLayout>
     );
   }
@@ -177,12 +189,12 @@ function AcceptInviteContent() {
         )}
         {error ? <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm">{error}</p> : null}
         {mismatch ? (
-          <Button className="w-full" disabled={switchingAccount} onClick={switchAccount} type="button">
-            {switchingAccount ? t('common.loading') : t('auth.invite.switchAccount')}
+          <Button className="w-full" loading={switchingAccount} onClick={switchAccount} type="button">
+            {t('auth.invite.switchAccount')}
           </Button>
         ) : (
-          <Button className="w-full" disabled={accepting} onClick={accept} type="button">
-            {accepting ? t('auth.invite.accepting') : t('auth.invite.accept')}
+          <Button className="w-full" loading={accepting} loadingText={t('auth.invite.accepting')} onClick={accept} type="button">
+            {t('auth.invite.accept')}
           </Button>
         )}
         <Link className="text-center text-muted-foreground text-sm hover:underline" onClick={clearPendingInvitation} to="/app">

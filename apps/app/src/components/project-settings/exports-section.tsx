@@ -3,12 +3,15 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
-import { Archive, Ban, Download, FileArchive, Play, Plus, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
+import { useDeployments, useProject } from '@/hooks/api';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
   type ExportArtifact,
   type ExportFormat,
@@ -35,6 +38,27 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
 };
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
+/**
+ * What a failed export start means. 409: too many exports running, or today's
+ * limit reached. 400 once a version is known to be live: that version is larger
+ * than this instance exports (retrying won't help); otherwise the site was
+ * never published.
+ */
+const startStatusKeys = (hasLiveVersion: boolean | undefined): Partial<Record<number, MessageKey>> => ({
+  409: 'settings.exports.workflow.limitReached',
+  400: hasLiveVersion ? 'settings.exports.workflow.tooLarge' : 'settings.exports.workflow.publishFirst',
+});
+
+/**
+ * Whether the site has a published version to export. The site's own flag
+ * covers every publish however old; the deployments list (newest 50) catches a
+ * first publish that finished after the site was loaded. Unknown until both say.
+ */
+const liveVersionKnown = (projectHasOne: boolean | undefined, recentReady: boolean | undefined): boolean | undefined => {
+  if (projectHasOne || recentReady) return true;
+  return projectHasOne === false && recentReady === false ? false : undefined;
+};
+
 export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
@@ -45,6 +69,15 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
   const create = useCreateExport(projectId);
   const cancel = useCancelExport(projectId);
   const downloadMutation = useGetExportDownload(projectId);
+  // Exports copy the live version, so a site that was never published has nothing to export yet.
+  const project = useProject(projectId);
+  const deployments = useDeployments(projectId);
+  const hasLiveVersion = liveVersionKnown(
+    project.data?.hasPublishedVersion,
+    deployments.data ? deployments.data.some((deployment) => deployment.status === 'READY') : undefined,
+  );
+  const neverPublished = hasLiveVersion === false;
+  const createHintId = useId();
   const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
       const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
@@ -58,7 +91,7 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
         link.remove();
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.exports.workflow.downloadError'));
+      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.downloadError'));
     }
   };
   const toggleFormat = (format: ExportFormat) =>
@@ -112,18 +145,26 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.formatHint')}</p>
+              <p className="text-muted-foreground text-xs" id={createHintId}>
+                {neverPublished ? t('settings.exports.workflow.publishFirst') : t('settings.exports.workflow.formatHint')}
+              </p>
+              {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it.
+                  It looks like a disabled button too: dimmed, and no hover darkening or press movement. */}
               <Button
-                disabled={create.isPending}
-                onClick={() =>
+                aria-describedby={neverPublished ? createHintId : undefined}
+                aria-disabled={neverPublished || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary aria-disabled:active:not-aria-[haspopup]:translate-y-0"
+                loading={create.isPending}
+                onClick={() => {
+                  if (neverPublished) return;
                   create.mutate(formats, {
                     onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
-                    onError: (error) => toast.error(error.message),
-                  })
-                }
+                    onError: (error) =>
+                      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
+                  });
+                }}
               >
-                {create.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <FileArchive className="size-3.5" />}{' '}
-                {t('settings.exports.workflow.create')}
+                <FileArchive className="size-3.5" /> {t('settings.exports.workflow.create')}
               </Button>
             </div>
           </div>
@@ -142,10 +183,25 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
           </div>
           {showSchedule && canManageSchedules ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
           <div className="space-y-2">
+            {schedules.isPending ? (
+              <div aria-busy="true">
+                <p className="sr-only" role="status">
+                  {t('common.loading')}
+                </p>
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : null}
             {schedules.data?.map((schedule) => (
-              <ScheduleRow canManage={canManageSchedules} key={schedule.id} projectId={projectId} schedule={schedule} />
+              <ScheduleRow
+                canManage={canManageSchedules}
+                hasLiveVersion={hasLiveVersion}
+                key={schedule.id}
+                projectId={projectId}
+                schedule={schedule}
+              />
             ))}
-            {!schedules.isLoading && !schedules.data?.length ? (
+            {!schedules.isPending && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
                 <Archive className="mx-auto size-5 text-muted-foreground" />
                 <p className="mt-2 font-medium text-sm">{t('settings.exports.workflow.noSchedules')}</p>
@@ -160,6 +216,15 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
         <section className="space-y-3">
           <div className="font-semibold text-sm">{t('settings.exports.workflow.history')}</div>
           <div className="space-y-2">
+            {runs.isPending ? (
+              <div aria-busy="true">
+                <p className="sr-only" role="status">
+                  {t('common.loading')}
+                </p>
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+            ) : null}
             {runs.data?.map((run) => (
               <div className="rounded-lg border border-border p-4" key={run.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -178,7 +243,12 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                     </div>
                   </div>
                   {run.status === 'PENDING' || run.status === 'RUNNING' ? (
-                    <Button disabled={cancel.isPending} onClick={() => cancel.mutate(run.id)} size="sm" variant="outline">
+                    <Button
+                      loading={cancel.isPending && cancel.variables === run.id}
+                      onClick={() => cancel.mutate(run.id)}
+                      size="sm"
+                      variant="outline"
+                    >
                       <Ban className="size-3.5" /> {t('common.cancel')}
                     </Button>
                   ) : null}
@@ -191,7 +261,13 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                 {run.artifacts.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {run.artifacts.map((artifact) => (
-                      <Button key={artifact.id} onClick={() => downloadArtifact(run, artifact)} size="sm" variant="outline">
+                      <Button
+                        loading={downloadMutation.isPending && downloadMutation.variables?.artifactId === artifact.id}
+                        key={artifact.id}
+                        onClick={() => downloadArtifact(run, artifact)}
+                        size="sm"
+                        variant="outline"
+                      >
                         <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {formatExportFileSize(artifact.size, locale)}
                       </Button>
                     ))}
@@ -199,7 +275,7 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                 ) : null}
               </div>
             ))}
-            {!runs.isLoading && !runs.data?.length ? (
+            {!runs.isPending && !runs.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
                 <FileArchive className="mx-auto size-5 text-muted-foreground" />
                 <p className="mt-2 font-medium text-sm">{t('settings.exports.workflow.noRuns')}</p>
@@ -290,7 +366,8 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
           toast.success(t('settings.exports.workflow.scheduleCreated'));
           onCreated();
         },
-        onError: (error) => toast.error(error.message),
+        // 409: the site already has the most schedules allowed.
+        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError', { 409: 'settings.exports.workflow.scheduleLimit' })),
       },
     );
   };
@@ -445,7 +522,7 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
         ))}
       </div>
       <div className="flex items-center justify-end sm:col-span-2">
-        <Button disabled={!name.trim() || !timezone.trim() || create.isPending} type="submit" size="sm">
+        <Button disabled={!name.trim() || !timezone.trim()} loading={create.isPending} type="submit" size="sm">
           {t('settings.exports.workflow.createSchedule')}
         </Button>
       </div>
@@ -453,7 +530,17 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   );
 }
 
-function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; schedule: ExportSchedule; canManage: boolean }) {
+function ScheduleRow({
+  projectId,
+  schedule,
+  canManage,
+  hasLiveVersion,
+}: {
+  projectId: string;
+  schedule: ExportSchedule;
+  canManage: boolean;
+  hasLiveVersion: boolean | undefined;
+}) {
   const { locale, t } = useLocale();
   const update = useUpdateExportSchedule(projectId, schedule.id);
   const run = useRunExportSchedule(projectId, schedule.id);
@@ -481,11 +568,12 @@ function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; sc
       {canManage ? (
         <div className="flex gap-2">
           <Button
-            disabled={run.isPending}
+            loading={run.isPending}
             onClick={() =>
               run.mutate(undefined, {
                 onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
-                onError: (error) => toast.error(error.message),
+                onError: (error) =>
+                  toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
               })
             }
             size="sm"
@@ -494,8 +582,10 @@ function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; sc
             <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
           </Button>
           <Button
-            disabled={update.isPending}
-            onClick={() => update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(error.message) })}
+            loading={update.isPending}
+            onClick={() =>
+              update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')) })
+            }
             size="sm"
             variant="outline"
           >
