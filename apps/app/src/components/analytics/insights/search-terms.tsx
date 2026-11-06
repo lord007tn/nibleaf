@@ -19,8 +19,8 @@ import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useProjectMembers } from '@/hooks/api';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
-import { analyticsQueryKeys } from '@/hooks/api/analytics/query-keys';
 import { useCreatePage, useUpdateProjectConfig } from '@/hooks/api/mutations';
+import { queryKeys } from '@/hooks/api/query-keys';
 import { useSession } from '@/services/auth-client';
 import { HIDDEN_TERMS_EXPLANATION } from './labels';
 
@@ -129,7 +129,7 @@ function TurnOnSearchTermsButton({ projectId, threshold }: { projectId: string; 
         onSuccess: () => {
           setOpen(false);
           toast.success(t('analytics.search.enable.done'));
-          void queryClient.invalidateQueries({ queryKey: analyticsQueryKeys.insightsForProject(projectId) });
+          void queryClient.invalidateQueries({ queryKey: queryKeys.analytics.insightsForProject(projectId) });
         },
         onError: (failure) =>
           setError(t((failure as { status?: number }).status === 403 ? 'analytics.search.enable.forbidden' : 'analytics.search.enable.failed')),

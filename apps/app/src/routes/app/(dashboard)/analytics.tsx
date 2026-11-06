@@ -9,7 +9,9 @@ import { ListCard } from '@/components/analytics/list-card';
 import { RangeTabs } from '@/components/analytics/range-tabs';
 import { StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
-import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
+import type { AnalyticsRange } from '@/hooks/api';
+import { analyticsTimezone, useWorkspaceAnalytics, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 
 /** Device buckets emitted by the server (`deviceFromUserAgent`); unknown values fall back to the raw bucket. */
@@ -22,13 +24,18 @@ const DEVICE_KEYS: Record<string, MessageKey> = {
 
 import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-provider';
 
+const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
+
 export const Route = createFileRoute('/app/(dashboard)/analytics')({
+  // Same range and timezone as the page's first render (AnalyticsProvider below).
+  loader: ({ context: { queryClient } }) =>
+    prefetchRouteData(queryClient, workspaceAnalyticsQueryOptions(DEFAULT_ANALYTICS_RANGE, analyticsTimezone())),
   component: WorkspaceAnalyticsRoute,
 });
 
 function WorkspaceAnalyticsRoute() {
   return (
-    <AnalyticsProvider>
+    <AnalyticsProvider defaultRange={DEFAULT_ANALYTICS_RANGE}>
       <WorkspaceAnalyticsPage />
     </AnalyticsProvider>
   );
