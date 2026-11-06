@@ -202,11 +202,13 @@ describe('OpenRouter SDK answers', () => {
         model: 'new/provider-model',
         object: 'chat.completion',
         system_fingerprint: null,
-        choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: '{"answer":"missing fields"}' } }],
+        choices: [{ index: 0, finish_reason: 'stop', message: { role: 'assistant', content: 'private source excerpt with invalid JSON' } }],
       }),
     );
     const provider = new OpenRouterChatProvider({ apiKey: 'secret', fetch: request, model: 'new/provider-model' });
-    await expect(provider.complete([{ role: 'user', content: 'question' }])).rejects.toThrow();
+    await expect(provider.complete([{ role: 'user', content: 'question' }])).rejects.toThrow(
+      'The answer provider returned an invalid structured response.',
+    );
     expect(request).toHaveBeenCalledOnce();
   });
 });

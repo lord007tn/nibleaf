@@ -9,12 +9,15 @@ import { useMemo, useState, useSyncExternalStore } from 'react';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useProjects } from '@/hooks/api';
+import { projectsQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/app/(dashboard)/sites')({
-  component: SitesPage,
   validateSearch: (search: Record<string, unknown>): { newSite?: boolean } =>
     search.newSite === true || search.newSite === 'true' ? { newSite: true } : {},
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, projectsQueryOptions()),
+  component: SitesPage,
 });
 
 const subscribeToHydration = () => () => undefined;

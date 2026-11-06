@@ -10,6 +10,7 @@ export * from './project-search';
 export * from './public';
 export * from './queries';
 export * from './query-keys';
+export * from './query-options';
 export * from './reader-access';
 export * from './site-events';
 export * from './site-search';

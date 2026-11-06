@@ -5,7 +5,6 @@ import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { getSessionFn } from '@/functions/session';
-import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSession } from '@/services/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
 
@@ -26,11 +25,9 @@ export const Route = createFileRoute('/app')({
 /** Forward guard: signed-out users go to sign-in; the rest get the app. */
 function AppRoute() {
   return (
-    <QueryProvider>
-      <AppProviders>
-        <AppGuard />
-      </AppProviders>
-    </QueryProvider>
+    <AppProviders>
+      <AppGuard />
+    </AppProviders>
   );
 }
 
