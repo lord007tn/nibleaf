@@ -205,10 +205,13 @@ The two reference hooks:
 - `useResolveComment`: one boolean per comment. Shows the newest click still in flight, else the value the server last
   confirmed, so an older failure never undoes a later Resolve or Reopen.
 - `useMarkNotificationsRead`: rows claimed by several writes, plus a count. A failed row goes back to unread only when no
-  other write still claims it and no finished write made it read. A cached value that something else refetched
-  meanwhile (the bell polls its count) is the server's answer and no longer contains your optimistic change, so never
-  add a rollback on top of it: remember the query's `dataUpdateCount` after you write it, and only undo what is still
-  there.
+  other write still claims it and no finished write made it read. The count is never rolled back: the bell polls it on
+  its own, so the cached number may already be the server's answer, and that answer may or may not include a write
+  that hasn't answered yet. Any inverse change could be wrong either way. Once the last write has finished, the count is
+  refetched instead.
+
+Rule of thumb: roll back per item only for values you set yourself. For an aggregate that something else can refetch
+(a count, a total), don't compute an inverse; refetch it when the writes are done.
 
 If the outcome is monotonic and nothing depends on a local rollback, the simpler correct option is no rollback at all:
 on failure, toast and invalidate.

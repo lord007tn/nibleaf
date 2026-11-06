@@ -882,26 +882,12 @@ export const useImportFromGhost = (projectId: string) => {
 
 /** Mark-read writes still waiting for the server (see `overlappingWrites`). */
 interface MarkReadState {
-  /**
-   * Rows shown read only because of writes in flight: which writes claim each row, the time shown, and whether the
-   * cached count still has the row taken off (no longer true once the count was refetched).
-   */
-  claims: Map<string, { tokens: Set<number>; readAt: string | null; inCount: boolean }>;
+  /** Rows shown read only because of writes in flight: which writes claim each row, and the time shown for it. */
+  claims: Map<string, { tokens: Set<number>; readAt: string | null }>;
   /** Rows a finished write made read: a later failure must not show them unread again. */
   confirmed: Set<string>;
-  /** "Mark all read" writes in flight, and how much of the cached count they cleared for rows not loaded in the inbox. */
-  allTokens: Set<number>;
-  unlisted: number;
-  /** The count's `dataUpdateCount` right after this hook last wrote it: any other value means it was refetched since. */
-  countVersion: number | undefined;
 }
-const markReads = overlappingWrites<MarkReadState>(() => ({
-  claims: new Map(),
-  confirmed: new Set(),
-  allTokens: new Set(),
-  unlisted: 0,
-  countVersion: undefined,
-}));
+const markReads = overlappingWrites<MarkReadState>(() => ({ claims: new Map(), confirmed: new Set() }));
 
 /**
  * Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`.
@@ -911,12 +897,13 @@ const markReads = overlappingWrites<MarkReadState>(() => ({
  * Several writes can overlap (a row, then another, then "Mark all read"), so a
  * failure never restores an old copy of the inbox: it shows unread again only
  * the rows that no other write still in flight covers and no finished write
- * made read, and the inbox is refetched once the last write has finished.
+ * made read.
  *
- * The bell polls its count on its own, so the count can be refetched while a
- * write is in flight. A refetched count is the server's answer, which never had
- * our rows taken off, so a failure only adds back what it took off the count
- * that is still cached — never on top of a fresh answer.
+ * The count is never rolled back. The bell polls it on its own, so while writes
+ * are in flight the cached count may already be the server's answer, and that
+ * answer may or may not include a write that has not answered yet: an inverse
+ * change could be wrong either way. Instead, once the last write has finished,
+ * the inbox and the count are refetched, so the badge is the server's own number.
  */
 export const useMarkNotificationsRead = () => {
   const qc = useQueryClient();
@@ -924,18 +911,6 @@ export const useMarkNotificationsRead = () => {
   const mutationKey = ['notifications', 'markRead'];
   const listKey = queryKeys.notifications.list();
   const countKey = queryKeys.notifications.unreadCount();
-  const countVersion = () => qc.getQueryState(countKey)?.dataUpdateCount;
-  /** Forget what we took off the count once something else (a poll, a reconnect) has replaced it. */
-  const syncCount = (state: MarkReadState) => {
-    if (countVersion() === state.countVersion) return;
-    for (const claim of state.claims.values()) claim.inCount = false;
-    state.unlisted = 0;
-    state.countVersion = countVersion();
-  };
-  const changeCount = (state: MarkReadState, change: (count: number) => number) => {
-    qc.setQueryData<{ count: number }>(countKey, (current) => (current ? { ...current, count: change(current.count) } : current));
-    state.countVersion = countVersion();
-  };
   return useMutation({
     mutationKey,
     mutationFn: async (body: MarkNotificationsReadBody) =>
@@ -943,27 +918,21 @@ export const useMarkNotificationsRead = () => {
     onMutate: async (body) => {
       await Promise.all([qc.cancelQueries({ queryKey: listKey, exact: true }), qc.cancelQueries({ queryKey: countKey, exact: true })]);
       const state = markReads.of(qc);
-      syncCount(state);
       const token = markReads.nextToken();
       const list = qc.getQueryData<NotificationList>(listKey);
-      const count = qc.getQueryData<{ count: number }>(countKey);
       const readAt = new Date().toISOString();
       const targets = body.all ? null : new Set(body.ids ?? []);
       const claimed: string[] = [];
-      let takenOff = 0;
+      let newlyRead = 0;
       const claim = (id: string, unread: boolean, shownReadAt: string | null) => {
         let entry = state.claims.get(id);
         if (!entry) {
           if (!unread) return;
-          entry = { tokens: new Set(), readAt: shownReadAt, inCount: false };
+          entry = { tokens: new Set(), readAt: shownReadAt };
           state.claims.set(id, entry);
+          newlyRead += 1;
         }
         entry.tokens.add(token);
-        // A row comes off the cached count once, by whichever write claims it first since the count was last fetched.
-        if (count && !entry.inCount) {
-          entry.inCount = true;
-          takenOff += 1;
-        }
         claimed.push(id);
       };
       const listed = new Set<string>();
@@ -979,20 +948,16 @@ export const useMarkNotificationsRead = () => {
           items: list.items.map((item) => (item.readAt === null && state.claims.has(item.id) ? { ...item, readAt } : item)),
         });
       }
-      if (targets === null) {
-        state.allTokens.add(token);
-        if (count) state.unlisted += Math.max(0, count.count - takenOff);
-      }
-      if (count) changeCount(state, (current) => (targets === null ? 0 : Math.max(0, current - takenOff)));
-      return { token, claimed, all: targets === null };
+      qc.setQueryData<{ count: number }>(countKey, (current) =>
+        current ? { ...current, count: targets === null ? 0 : Math.max(0, current.count - newlyRead) } : current,
+      );
+      return { token, claimed };
     },
     onSettled: (_data, error, _body, context) => {
       const state = markReads.peek(qc);
       if (state && context) {
-        syncCount(state);
         // Rows this write was the last to claim, with the time shown for them (null: not in the loaded inbox).
         const released = new Map<string, string | null>();
-        let countBack = 0;
         for (const id of context.claimed) {
           const claim = state.claims.get(id);
           if (!claim) continue;
@@ -1000,20 +965,7 @@ export const useMarkNotificationsRead = () => {
           if (!error) state.confirmed.add(id);
           if (claim.tokens.size > 0) continue;
           state.claims.delete(id);
-          if (error && !state.confirmed.has(id)) {
-            released.set(id, claim.readAt);
-            // Only what is still taken off the cached count goes back on it.
-            if (claim.inCount) countBack += 1;
-          }
-        }
-        if (context.all) {
-          state.allTokens.delete(context.token);
-          // The count cleared for rows outside the inbox comes back once no "Mark all read" is left to cover it.
-          if (!error) state.unlisted = 0;
-          else if (state.allTokens.size === 0) {
-            countBack += state.unlisted;
-            state.unlisted = 0;
-          }
+          if (error && !state.confirmed.has(id)) released.set(id, claim.readAt);
         }
         const list = qc.getQueryData<NotificationList>(listKey);
         // A row refetched meanwhile shows the server's answer, so only rows still showing our time go back to unread.
@@ -1024,7 +976,6 @@ export const useMarkNotificationsRead = () => {
             items: list.items.map((item) => (restore.has(item.id) ? { ...item, readAt: null } : item)),
           });
         }
-        if (countBack > 0) changeCount(state, (current) => current + countBack);
       }
       // A refetch while another write is still in flight would briefly show the older answer.
       if (qc.isMutating({ mutationKey }) > 1) return;

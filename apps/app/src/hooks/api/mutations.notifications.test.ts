@@ -101,21 +101,24 @@ describe('useMarkNotificationsRead', () => {
     act(() => root.unmount());
   });
 
-  it('marks everything read at once and rolls back when the server refuses', async () => {
+  const failure = () => json(500, { error: { message: 'Internal error' } });
+  const count = () => queryClient.getQueryData<{ count: number }>(countKey)?.count;
+  /** The badge is refetched from the server (never rolled back by hand). */
+  const countRefetched = () => queryClient.getQueryState(countKey)?.isInvalidated;
+
+  it('marks everything read at once and restores the rows when the server refuses', async () => {
     const { hooks, root } = await render();
     const marking = await startMarking(hooks, { all: true });
 
     expect(readIds()).toEqual(['n1', 'n2', 'n3']);
-    expect(queryClient.getQueryData(countKey)).toEqual({ count: 0 });
+    expect(count()).toBe(0);
 
-    await marking.respond(json(500, { error: { message: 'Internal error' } }));
+    await marking.respond(failure());
     expect(readIds()).toEqual(['n3']);
-    expect(queryClient.getQueryData(countKey)).toEqual({ count: 2 });
+    // The count isn't guessed back: the server's answer replaces it.
+    expect(countRefetched()).toBe(true);
     act(() => root.unmount());
   });
-
-  const failure = () => json(500, { error: { message: 'Internal error' } });
-  const count = () => queryClient.getQueryData<{ count: number }>(countKey)?.count;
 
   it('keeps a later row read when an earlier overlapping write fails, and reports each failure', async () => {
     const { hooks, root } = await render();
@@ -127,14 +130,14 @@ describe('useMarkNotificationsRead', () => {
     await first.respond(failure());
     // Only the failed row comes back; the other write is still in flight, so nothing is refetched yet.
     expect(readIds()).toEqual(['n2', 'n3']);
-    expect(count()).toBe(1);
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(false);
+    expect(countRefetched()).toBe(false);
     await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(1));
 
     await second.respond(failure());
     expect(readIds()).toEqual(['n3']);
-    expect(count()).toBe(2);
     expect(queryClient.getQueryState(listKey)?.isInvalidated).toBe(true);
+    expect(countRefetched()).toBe(true);
     await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(2));
     expect(mocks.toast).toHaveBeenLastCalledWith('notifications.markReadError');
     act(() => root.unmount());
@@ -150,12 +153,11 @@ describe('useMarkNotificationsRead', () => {
     // The row fails, but "Mark all read" still covers it.
     await row.respond(failure());
     expect(readIds()).toEqual(['n1', 'n2', 'n3']);
-    expect(count()).toBe(0);
 
-    // Neither write succeeded: the inbox and the badge match the server again, even before a refetch.
+    // Neither write succeeded: the inbox matches the server again, and the badge is refetched.
     await all.respond(failure());
     expect(readIds()).toEqual(['n3']);
-    expect(count()).toBe(2);
+    expect(countRefetched()).toBe(true);
     act(() => root.unmount());
   });
 
@@ -174,45 +176,44 @@ describe('useMarkNotificationsRead', () => {
     act(() => root.unmount());
   });
 
-  /** The bell's own poll (or a reconnect) answering while a write is in flight: the server hasn't marked anything yet. */
+  /** The bell's own poll (or a reconnect) answering while a write is in flight. */
   const pollCount = (serverCount: number) =>
     act(async () => {
       await queryClient.fetchQuery({ queryKey: countKey, queryFn: async () => ({ count: serverCount }), staleTime: 0 });
     });
 
-  it('does not add a failed row back on top of a count the bell refetched meanwhile', async () => {
+  it('never changes a count the bell refetched meanwhile when a write fails', async () => {
     const { hooks, root } = await render();
     const marking = await startMarking(hooks, { ids: ['n1'] });
     expect(count()).toBe(1);
 
     await pollCount(2);
-    expect(count()).toBe(2);
-
-    // Nothing refetches afterwards (no bell is mounted), so this is what stays on screen until the next poll.
     await marking.respond(failure());
     expect(readIds()).toEqual(['n3']);
     expect(count()).toBe(2);
     act(() => root.unmount());
   });
 
-  it('keeps the count right when "Mark all read" fails after a refetch and a later row write', async () => {
+  it('does not undercount when a poll already includes a row whose answer is late and "Mark all read" then fails', async () => {
+    // Two unread rows loaded (n1, n2) and two older unread ones outside the first page.
+    queryClient.setQueryData(countKey, { count: 4 });
     const { hooks, root } = await render();
+    const row = await startMarking(hooks, { ids: ['n1'] });
+    expect(count()).toBe(3);
+
+    // The server has saved n1; the bell's poll says so before n1's own answer arrives.
+    await pollCount(3);
     const all = await startMarking(hooks, { all: true });
     expect(count()).toBe(0);
 
-    await pollCount(2);
-    // A row marked after the refetch comes off the fresh count.
-    const row = await startMarking(hooks, { ids: ['n2'] });
-    expect(count()).toBe(1);
-
-    // n1 goes back to unread; n2 is still covered by the row write, so the count stays one below the server's.
+    await row.respond(json(200, { data: { updated: 1 } }));
     await all.respond(failure());
-    expect(readIds()).toEqual(['n2', 'n3']);
-    expect(count()).toBe(1);
-
-    await row.respond(failure());
-    expect(readIds()).toEqual(['n3']);
-    expect(count()).toBe(2);
+    // n1 stays read (its write succeeded), n2 comes back, and nothing is subtracted or added by guesswork:
+    // the badge is refetched, and the server answers 3.
+    expect(readIds()).toEqual(['n1', 'n3']);
+    expect(countRefetched()).toBe(true);
+    await pollCount(3);
+    expect(count()).toBe(3);
     act(() => root.unmount());
   });
 });
