@@ -26,6 +26,21 @@ describe('chat heading detection', () => {
     expect(result).toMatchObject({ status: 'answered' });
   });
 
+  it('treats bold section labels like headings (live model output)', () => {
+    const chunks = [chunk, { ...chunk, id: 'c2', pageId: 'p2' }, { ...chunk, id: 'c3', pageId: 'p3' }];
+    const text =
+      'You can export notes as Markdown from the app or the CLI. [S1]\n\n**From the app**\n\n1. Open a notebook.\n2. Choose **More → Export**.\n3. Pick **Markdown**.\n4. Select **Download**. One export can include up to 500 notes. [S3]\n\n**From the CLI:**\n\nRun:\n\n```bash\nacme export --format markdown --out ./backup\n```\n\nTo export a single notebook, add `--notebook <name>`. [S2]';
+    expect(validateCitedAnswer(text, chunks, 'export', 'chat')).toMatchObject({ status: 'answered', answer: text, droppedParagraphs: 0 });
+    // A bold sentence that states a fact is still a claim that needs a source.
+    expect(validateCitedAnswer('**Exports are unlimited.**\n\nUse s3 [S1]', [chunk], 'x', 'chat')).toMatchObject({ status: 'no_answer' });
+    expect(validateCitedAnswer('**من التطبيق:**\n\nاستخدم s3 [S1]', [chunk], 'x', 'chat')).toMatchObject({ status: 'answered' });
+    expect(
+      validateCitedAnswer('**Exports are unlimited and free for everyone on every plan today.** Really.\n\nUse s3 [S1]', [chunk], 'x', 'chat'),
+    ).toMatchObject({
+      status: 'no_answer',
+    });
+  });
+
   it('still drops a trailing uncited heading but keeps cited ones', () => {
     expect(validateCitedAnswer('## Setup\n\nUse s3 [S1]\n\n##\tNext steps', [chunk], 'storage', 'chat')).toMatchObject({
       status: 'answered',

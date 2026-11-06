@@ -71,7 +71,11 @@ export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query
   } else {
     const blocks = markdownBlocks(text);
     // Disjoint parts keep this linear on long runs of spaces (CodeQL js/polynomial-redos).
-    const heading = (block: string) => /^#{1,6}[ \t]+\S[^\n]*$/.test(block);
+    // A short bold line such as "**From the app:**" is a section label, not a
+    // claim; models use it in place of a Markdown heading. A bold sentence (ending
+    // in . ! ? or ؟) is still a claim. Bounded, so linear.
+    const heading = (block: string) =>
+      /^#{1,6}[ \t]+\S[^\n]*$/.test(block) || /^(?:\*\*|__)[^\n*_]{0,79}[^\n*_.!?؟](?:\*\*|__):?$/.test(block.trim());
     const code = (block: string) => /^\s*(`{3,}|~{3,})/.test(block);
     const list = (block: string) => /^\s*(?:[-*+]|\d+[.)])\s/.test(block);
     const substantive = blocks.map((block, index) => {
