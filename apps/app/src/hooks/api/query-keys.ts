@@ -50,6 +50,8 @@ export const queryKeys = {
   },
   comments: {
     all: (projectId: string, pageId?: string) => ['comments', projectId, pageId ?? null] as const,
+    /** Broad prefix matching the site-wide and every per-page comment list — use for invalidation. */
+    allForProject: (projectId: string) => ['comments', projectId] as const,
   },
   workspace: {
     settings: () => ['workspace', 'settings'] as const,
@@ -77,6 +79,10 @@ export const queryKeys = {
   },
   integrations: {
     all: (projectId: string) => ['integrations', projectId] as const,
+  },
+  public: {
+    meta: () => ['public', 'meta'] as const,
+    invitation: (invitationId: string) => ['public', 'invitations', invitationId] as const,
   },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,

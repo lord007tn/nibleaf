@@ -30,7 +30,8 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(async () => false) }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: currentUserId } } }) }));
-vi.mock('@/hooks/api', () => ({
+vi.mock('@/hooks/api', async () => ({
+  friendlyErrorMessage: (await vi.importActual<typeof import('@/hooks/api/errors')>('@/hooks/api/errors')).friendlyErrorMessage,
   useProjectMembers: () => ({
     data: { members, invitations: [{ id: 'invite-a', email: 'invitee@example.com', role: 'member', expiresAt: '2030-01-01T00:00:00Z' }] },
     isPending: false,
@@ -114,7 +115,11 @@ describe('MembersSection destructive confirmations', () => {
   let root: ReturnType<typeof createRoot>;
 
   const dialogButton = (label: string) =>
-    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === label);
+    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => {
+      const visible = button.cloneNode(true) as HTMLElement;
+      for (const hidden of visible.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+      return visible.textContent === label;
+    });
 
   beforeEach(async () => {
     currentUserId = 'u-owner';
@@ -163,7 +168,7 @@ describe('MembersSection destructive confirmations', () => {
       failed.onError(new Error('Removal failed. Try again.'));
       failed.onSettled();
     });
-    expect(document.querySelector('[role="alertdialog"] [role="alert"]')?.textContent).toBe('Removal failed. Try again.');
+    expect(document.querySelector('[role="alertdialog"] [role="alert"]')?.textContent).toBe('settings.members.toast.removeError');
     expect(dialogButton('settings.members.remove')?.disabled).toBe(false);
     await act(async () => dialogButton('settings.members.remove')?.click());
     expect(mutation.mutate).toHaveBeenCalledTimes(2);

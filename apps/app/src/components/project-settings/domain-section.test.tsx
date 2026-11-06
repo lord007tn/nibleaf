@@ -32,7 +32,8 @@ it('shows verification progress only on its domain and renders three independent
     expect(first?.disabled).toBe(true);
     const second = [...secondRow.querySelectorAll('button')].find((b) => b.textContent?.includes('settings.domain.retry'));
     expect(second?.disabled).toBe(false);
-    expect(secondRow.textContent).not.toContain('common.loading');
+    expect(secondRow.querySelector('button[aria-busy="true"]')).toBeNull();
+    expect(first?.getAttribute('aria-busy')).toBe('true');
     expect(container.querySelector('[role="status"]')).toBeNull();
     expect([...container.querySelectorAll('ol li')].map((li) => li.textContent)).toEqual([
       'settings.domain.guide.step1',

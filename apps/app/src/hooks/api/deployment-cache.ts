@@ -32,19 +32,20 @@ export const newlyReadyDeployment = <T extends DeploymentReceipt>(
   return next.find((deployment) => deployment.status === 'READY' && before.get(deployment.id) !== 'READY') ?? null;
 };
 
-/** What the pending-changes answer must look like right after a publish went live:
- *  the site has a published version and what was waiting is now live. A refetch
- *  replaces this projection with the server's answer moments later. */
-export const projectPublishedChanges = <T extends PendingChangesLike>(old: T | undefined, version: number): T | undefined =>
-  old ? { ...old, hasBaseline: true, lastVersion: Math.max(old.lastVersion ?? 0, version), changes: [] as unknown as T['changes'] } : old;
-
 /**
  * Called with every fresh read of the deployments list. Once a publish reaches
- * READY, the cached "unpublished changes" answer still describes the previous
- * published version (it is only refetched when something invalidates it), so
- * badges, the first-publish banner and the address-follows-title rule would keep
- * treating live pages as never published. Project the receipt at once, then
- * refetch the real answer (cancelling any older request still in flight).
+ * READY, the cached "unpublished changes" answer describes the previous published
+ * version, so badges, the first-publish banner and the address-follows-title rule
+ * would keep treating live pages as never published.
+ *
+ * READY only proves that the snapshot the worker captured is live, not that the
+ * current draft equals it: an edit saved after the capture (here or by a
+ * colleague) is still unpublished. So the old answer is dropped rather than
+ * guessed at — until the server's new answer arrives, publish state is unknown:
+ * no "Published" claim, no change count, and addresses stop following titles
+ * (see {@link addressMayFollowTitle}). Active screens refetch at once (cancelling
+ * any older request); if that fails, the state stays unknown instead of a false
+ * "Published".
  */
 export const syncPublishReceipt = (
   queryClient: QueryClient,
@@ -54,10 +55,21 @@ export const syncPublishReceipt = (
 ): boolean => {
   const ready = newlyReadyDeployment(previous, next);
   if (!ready) return false;
-  queryClient.setQueryData<PendingChangesLike>(queryKeys.deployments.changes(projectId), (old) => projectPublishedChanges(old, ready.version));
-  void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+  void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
   return true;
+};
+
+/**
+ * The open page's publish state in words, or null while unknown (the
+ * pending-changes answer hasn't arrived, or was dropped when a publish went live
+ * and couldn't be re-read). A page is unpublished before the site's first publish
+ * or while the check lists it as changed.
+ */
+export const pagePublishState = (pageId: string, pending: PendingChangesLike | undefined): 'unpublished' | 'published' | null => {
+  if (!pending) return null;
+  return !pending.hasBaseline || pending.changes.some((change) => change.id === pageId) ? 'unpublished' : 'published';
 };
 
 /** True only when we know the page has never been published: the site was never

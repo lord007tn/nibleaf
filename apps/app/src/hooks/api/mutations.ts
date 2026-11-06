@@ -26,13 +26,27 @@ import type {
   UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { applyPageReorder, isPageListKey } from './page-cache';
 import { queryKeys } from './query-keys';
-import type { ApiKey, ApiKeySecret, Asset, Comment, Deployment, Language, Page, PageNode, Project, ProjectAddon, WorkspaceSettings } from './types';
+import type {
+  ApiKey,
+  ApiKeySecret,
+  Asset,
+  Comment,
+  Deployment,
+  Language,
+  NotificationItem,
+  NotificationList,
+  Page,
+  PageNode,
+  Project,
+  ProjectAddon,
+  WorkspaceSettings,
+} from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -153,7 +167,11 @@ export const useDeleteProject = () => {
   return useMutation({
     mutationFn: async (projectId: string) =>
       mutateData(await api.app.projects[':id'].$delete({ param: { id: projectId } }), 'Could not delete the site.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+    onSuccess: (_data, projectId) => {
+      // Drop the deleted site's detail rather than refetching it into a "not found".
+      qc.removeQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
+      return qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+    },
   });
 };
 
@@ -257,6 +275,25 @@ export const useReorderPages = (projectId: string) => {
   });
 };
 
+/** Every read a publish or rollback changes: the publish list, the live version,
+ *  what the next publish would change and the sites list's publish summary. */
+const invalidatePublishState = (qc: QueryClient, projectId: string) => {
+  void qc.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+};
+
+/** List a just-queued publish at once: the editor then knows a publish is running
+ *  (a page's address stops following its title), and the poll that sees it go
+ *  READY can tell it was in flight. */
+const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deployment) => {
+  qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+    old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+  );
+  invalidatePublishState(qc, projectId);
+};
+
 export const usePublish = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
@@ -268,17 +305,7 @@ export const usePublish = (projectId: string) => {
         }),
         'Could not publish.',
       ),
-    onSuccess: (deployment) => {
-      // List the new publish right away: the editor then knows a publish is running
-      // (a page's address stops following its title), and the poll that sees it go
-      // READY can tell it was in flight.
-      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
-      );
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 
@@ -290,14 +317,7 @@ export const usePublishAnyway = (projectId: string) => {
         await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         'Could not publish.',
       ),
-    onSuccess: (deployment) => {
-      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
-      );
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 
@@ -309,11 +329,7 @@ export const useRollback = (projectId: string) => {
         await api.app.projects[':projectId'].deployments[':id'].rollback.$post({ param: { projectId, id: deploymentId } }),
         'Could not roll back.',
       ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: () => invalidatePublishState(qc, projectId),
   });
 };
 
@@ -474,15 +490,29 @@ export const useCancelProjectInvitation = (projectId: string) => {
 
 // ─── Comments ─────────────────────────────────────────────────────────────—
 
-export const useCreateComment = (projectId: string, pageId?: string) => {
+/** Optimistically edit every cached comment list of a site (site-wide and per
+ *  page); returns the previous lists so `onError` can roll them back. */
+const patchCommentLists = async (qc: QueryClient, projectId: string, update: (comments: Comment[]) => Comment[]) => {
+  const filter = { queryKey: queryKeys.comments.allForProject(projectId) };
+  await qc.cancelQueries(filter);
+  const previous = qc.getQueriesData<Comment[]>(filter);
+  qc.setQueriesData<Comment[]>(filter, (comments) => (comments ? update(comments) : comments));
+  return { previous };
+};
+
+// The site-wide list shows a new page comment too, so every list of the site is
+// refreshed (`pageId` stays in the signature for existing callers).
+export const useCreateComment = (projectId: string, _pageId?: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateCommentBody) =>
       mutateData<Comment>(await api.app.projects[':projectId'].comments.$post({ param: { projectId }, json: body }), 'Could not post the comment.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.comments.all(projectId, pageId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
   });
 };
 
+/** Resolve/reopen optimistically: flipping the flag has only one outcome. Rolls
+ *  back if the server refuses (the caller shows the error). */
 export const useResolveComment = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
@@ -491,16 +521,26 @@ export const useResolveComment = (projectId: string) => {
         await api.app.projects[':projectId'].comments[':id'].$patch({ param: { projectId, id }, json: { resolved } }),
         'Could not update the comment.',
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
+    onMutate: ({ id, resolved }) =>
+      patchCommentLists(qc, projectId, (comments) => comments.map((comment) => (comment.id === id ? { ...comment, resolved } : comment))),
+    onError: (_error, _variables, context) => {
+      for (const [key, comments] of context?.previous ?? []) qc.setQueryData(key, comments);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
   });
 };
 
+/** Delete optimistically (the comment disappears at once); restored on failure. */
 export const useDeleteComment = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
       mutateData(await api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }), 'Could not delete the comment.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
+    onMutate: (id) => patchCommentLists(qc, projectId, (comments) => comments.filter((comment) => comment.id !== id)),
+    onError: (_error, _id, context) => {
+      for (const [key, comments] of context?.previous ?? []) qc.setQueryData(key, comments);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
   });
 };
 
@@ -653,7 +693,7 @@ export const useImportFromGit = (projectId: string) => {
       mutateData(await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }), 'Could not import from Git.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
-      qc.invalidateQueries({ queryKey: ['pages', projectId] });
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
   });
 };
@@ -735,15 +775,48 @@ export const useImportFromGhost = (projectId: string) => {
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 
-/** Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`. */
+/**
+ * Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`.
+ * Optimistic (marking read always succeeds unless the request fails): the rows
+ * and the bell's count change at once, and both roll back if the server refuses.
+ */
 export const useMarkNotificationsRead = () => {
   const qc = useQueryClient();
+  const t = useT();
+  const listKey = queryKeys.notifications.list();
+  const countKey = queryKeys.notifications.unreadCount();
   return useMutation({
     mutationFn: async (body: MarkNotificationsReadBody) =>
       mutateData(await api.app.notifications.read.$post({ json: body }), 'Could not update notifications.'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.list() });
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+    onMutate: async (body) => {
+      await Promise.all([qc.cancelQueries({ queryKey: listKey, exact: true }), qc.cancelQueries({ queryKey: countKey, exact: true })]);
+      const previousList = qc.getQueryData<NotificationList>(listKey);
+      const previousCount = qc.getQueryData<{ count: number }>(countKey);
+      const targets = body.all ? null : new Set(body.ids ?? []);
+      const marks = (item: NotificationItem) => item.readAt === null && (targets === null || targets.has(item.id));
+      const readAt = new Date().toISOString();
+      // Rows not in the cached page are assumed unread, so the count never stays too high.
+      const newlyRead =
+        targets === null
+          ? Number.POSITIVE_INFINITY
+          : [...targets].filter((id) => previousList?.items.find((item) => item.id === id)?.readAt == null).length;
+      if (previousList) {
+        qc.setQueryData<NotificationList>(listKey, {
+          ...previousList,
+          items: previousList.items.map((item) => (marks(item) ? { ...item, readAt } : item)),
+        });
+      }
+      if (previousCount) qc.setQueryData<{ count: number }>(countKey, { ...previousCount, count: Math.max(0, previousCount.count - newlyRead) });
+      return { previousList, previousCount };
     },
+    onError: (_error, _body, context) => {
+      if (context?.previousList) qc.setQueryData(listKey, context.previousList);
+      if (context?.previousCount) qc.setQueryData(countKey, context.previousCount);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: listKey, exact: true });
+      void qc.invalidateQueries({ queryKey: countKey, exact: true });
+    },
+    meta: { errorMessage: t('notifications.markReadError') },
   });
 };

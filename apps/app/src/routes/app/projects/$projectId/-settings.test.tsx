@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   members: vi.fn(),
+  project: vi.fn(),
+  prefetch: vi.fn(),
   section: 'general',
   navigate: vi.fn(),
   refetch: vi.fn(),
@@ -28,9 +30,31 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@/components/editor/site-config-panel', () => ({ ConfigSectionList: () => null, ConfigSection: () => null }));
 vi.mock('@/hooks/api', () => ({
-  useProject: () => ({ data: { id: 'project-1', name: 'Docs' } }),
+  useProject: mocks.project,
   useProjectMembers: mocks.members,
 }));
+vi.mock('@/hooks/api/query-options', () =>
+  Object.fromEntries(
+    [
+      'branches',
+      'deployments',
+      'project',
+      'projectMembers',
+      'domains',
+      'languages',
+      'projectAddons',
+      'openApiConfiguration',
+      'projectUsage',
+      'workspaceSettings',
+      'gitWorkflow',
+      'readerAccess',
+      'pages',
+      'listExportRuns',
+      'listExportSchedules',
+    ].map((name) => [`${name}QueryOptions`, (id: string) => ({ queryKey: [name, id] })]),
+  ),
+);
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetch }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: false }) }));
 vi.mock('@/components/project-settings/addons-section', () => ({ AddonsSection: () => null }));
 vi.mock('@/components/project-settings/authentication-section', () => ({ AuthenticationSection: () => null }));
@@ -70,6 +94,7 @@ describe('site settings permissions', () => {
   let root: Root;
 
   beforeEach(() => {
+    mocks.project.mockReturnValue({ data: { id: 'project-1', name: 'Docs' }, isPending: false });
     mocks.section = 'general';
     mocks.dirty = false;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false });
@@ -82,6 +107,33 @@ describe('site settings permissions', () => {
     await act(async () => root.unmount());
     container.remove();
     vi.clearAllMocks();
+  });
+
+  it('shows an accessible skeleton while settings permissions load', async () => {
+    mocks.members.mockReturnValue({ isPending: true });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('common.loading');
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(3);
+  });
+
+  it('keeps loaded settings visible during background refresh', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false, isFetching: true });
+    mocks.project.mockReturnValue({ data: { id: 'project-1', name: 'Docs' }, isPending: false, isFetching: true });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('[data-testid="general-settings"]')).not.toBeNull();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
+  });
+
+  it('prefetches site, permissions and the selected domain section', () => {
+    const queryClient = {};
+    const loader = Route.options.loader as unknown as (args: unknown) => void;
+    loader({ context: { queryClient }, params: { projectId: 'project-1' }, deps: { section: 'domain' } });
+    expect(mocks.prefetch.mock.calls).toEqual([
+      [queryClient, { queryKey: ['project', 'project-1'] }],
+      [queryClient, { queryKey: ['projectMembers', 'project-1'] }],
+      [queryClient, { queryKey: ['domains', 'project-1'] }],
+    ]);
   });
 
   it.each([

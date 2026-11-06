@@ -142,6 +142,17 @@ describe('Paraglide message catalogs', () => {
     },
   );
 
+  it('addresses German readers formally (Sie), never with du', () => {
+    const german = loadCatalog('de');
+    // Blog articles are English-only source copy; everything else is interface text.
+    const informal = Object.entries(german).filter(
+      ([key, value]) =>
+        !key.startsWith('blog_') &&
+        (/\b(du|dich|dein\w*)\b/i.test(value) || /(^|[.!?] )(Lade|Wähle|Teile|Speichere|Schreibe|Versuche|Suche nach) /.test(value)),
+    );
+    expect(informal.map(([key]) => key)).toEqual([]);
+  });
+
   it('maps every stable dotted UI key to a generated message id', () => {
     expect(new Set(Object.values(MESSAGE_IDS)).size).toBe(Object.keys(MESSAGE_IDS).length);
     for (const id of Object.values(MESSAGE_IDS)) expect(english).toHaveProperty(id);

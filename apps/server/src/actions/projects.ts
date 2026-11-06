@@ -74,14 +74,43 @@ const uniqueProjectSlug = async (desired: string) => {
   return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
 };
 
-/** List every site the user can reach — i.e. across all the orgs they belong to. */
+/** The commit message `publishStarterSite` (@nibleaf/auth) gives the sign-up
+ *  starter site's automatic first publish (always version 1). */
+const STARTER_PUBLISH_MESSAGE = 'Publish starter site';
+
+/** Publishes a person started: everything except the starter site's automatic
+ *  version 1. `not` skips NULLs in SQL, hence the explicit `null` branch. */
+const ownPublishWhere: Prisma.DeploymentWhereInput = {
+  OR: [{ version: { not: 1 } }, { commitMessage: null }, { commitMessage: { not: STARTER_PUBLISH_MESSAGE } }],
+};
+
+/** List every site the user can reach — i.e. across all the orgs they belong to.
+ *  Each site also says how many of its own publishes went live (`livePublishes`)
+ *  and whether one is queued or running now (`publishing`), so the dashboard's
+ *  first-run checklist is decided by this one request for any number of sites. */
 export const listProjects = async (userId: string) => {
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
   const organizationIds = memberships.map((m) => m.organizationId);
-  return prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     where: { organizationId: { in: organizationIds } },
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
+  });
+  const activity =
+    projects.length === 0
+      ? []
+      : await prisma.deployment.groupBy({
+          by: ['projectId', 'status'],
+          where: { projectId: { in: projects.map((project) => project.id) }, status: { in: ['READY', 'PENDING', 'BUILDING'] }, ...ownPublishWhere },
+          _count: { _all: true },
+        });
+  return projects.map((project) => {
+    const rows = activity.filter((row) => row.projectId === project.id);
+    return {
+      ...project,
+      livePublishes: rows.filter((row) => row.status === 'READY').reduce((sum, row) => sum + row._count._all, 0),
+      publishing: rows.some((row) => row.status !== 'READY' && row._count._all > 0),
+    };
   });
 };
 

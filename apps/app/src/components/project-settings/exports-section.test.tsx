@@ -173,7 +173,7 @@ describe('export schedule permissions', () => {
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.history')?.click());
     await act(async () => findButton('settings.exports.workflow.format.pdf')?.click());
-    expect(mocks.error).toHaveBeenCalledExactlyOnceWith('This export has expired.');
+    expect(mocks.error).toHaveBeenCalledExactlyOnceWith('settings.exports.workflow.downloadError');
     expect(anchorClick).not.toHaveBeenCalled();
     expect(window.location.href).toBe(originalLocation);
   });

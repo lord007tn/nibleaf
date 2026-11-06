@@ -14,16 +14,14 @@ import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
-import { getData } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
-import { projectsQueryOptions } from '@/hooks/api/query-options';
-import type { Deployment, PageNode } from '@/hooks/api/types';
+import { deploymentsQueryOptions, pagesQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { useFormatters, viewsTrend } from '@/lib/format';
 import { type SiteActivity, type StartHereProgress, startHereProgress, startHereRequests } from '@/lib/start-here';
-import { api } from '@/services/api';
 import { useSession } from '@/services/auth-client';
+
+const SITES_SKELETON_ROWS = 3;
 
 export const Route = createFileRoute('/app/(dashboard)/')({
   validateSearch: (search: Record<string, unknown>): { firstPublish?: boolean; newSite?: boolean } => ({
@@ -46,43 +44,40 @@ const readStartHereDismissed = (key: string | null) => {
     return false;
   }
 };
-const isInFlight = (deployments: Deployment[] | undefined) => deployments?.some((d) => d.status === 'PENDING' || d.status === 'BUILDING') ?? false;
+const NO_REQUESTS = { deploymentSiteIds: [], pageSiteIds: [] };
 
 /**
- * The publish history and (for the sample) page list the checklist needs. They
- * share cache entries with the editor's own deployments/pages queries, refetch
- * on every visit, and poll while a publish is still building, so a publish
- * finishing — or failing — shows up here without a reload.
+ * The sample's publish history and page list, which the checklist reads to tell
+ * whether the user edited it (publishing comes from the sites list itself). The
+ * shared factories are spread as-is, so these reads share cache entries and the
+ * publish-receipt check with the editor. A failed read counts as "nothing found"
+ * so the checklist can still settle.
  */
 function useStartHereActivity(deploymentSiteIds: string[], pageSiteIds: string[]): ReadonlyMap<string, SiteActivity> {
-  const deploymentResults = useQueries({
-    queries: deploymentSiteIds.map((projectId) => ({
-      queryKey: queryKeys.deployments.all(projectId),
-      staleTime: 0,
-      queryFn: async () => getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments'),
-      refetchInterval: (query: { state: { data?: Deployment[] } }) => (isInFlight(query.state.data) ? 2500 : false),
-    })),
-  });
-  const pageResults = useQueries({
-    queries: pageSiteIds.map((projectId) => ({
-      queryKey: queryKeys.pages.all(projectId),
-      staleTime: 0,
-      queryFn: async () => getData<PageNode[]>(await api.app.projects[':projectId'].pages.$get({ param: { projectId }, query: {} }), 'pages'),
-    })),
-  });
+  const deploymentResults = useQueries({ queries: deploymentSiteIds.map((projectId) => deploymentsQueryOptions(projectId)) });
+  const pageResults = useQueries({ queries: pageSiteIds.map((projectId) => pagesQueryOptions(projectId)) });
   const activity = new Map<string, SiteActivity>();
   deploymentSiteIds.forEach((projectId, index) => {
-    activity.set(projectId, { ...activity.get(projectId), deployments: deploymentResults[index]?.data });
+    const result = deploymentResults[index];
+    activity.set(projectId, { ...activity.get(projectId), deployments: result?.data ?? (result?.isError ? [] : undefined) });
   });
   pageSiteIds.forEach((projectId, index) => {
-    activity.set(projectId, { ...activity.get(projectId), pages: pageResults[index]?.data });
+    const result = pageResults[index];
+    activity.set(projectId, { ...activity.get(projectId), pages: result?.data ?? (result?.isError ? [] : undefined) });
   });
   return activity;
 }
 
 function ProjectsPage() {
   const { firstPublish, newSite } = Route.useSearch();
-  const { data: projects, isPending, isError: projectsError, isFetching: projectsFetching, refetch: retryProjects } = useProjects();
+  // Polls while a site is publishing, so a publish finishing (or failing) updates the checklist without a reload.
+  const {
+    data: projects,
+    isPending,
+    isError: projectsError,
+    isFetching: projectsFetching,
+    refetch: retryProjects,
+  } = useProjects({ pollWhilePublishing: true });
   // The shared project query can resolve before this streamed route hydrates.
   // Render the server's loading tree until hydration so the markup matches.
   const hydrated = useSyncExternalStore(
@@ -108,15 +103,18 @@ function ProjectsPage() {
     () => true,
   );
   const [dismissedNow, setDismissedNow] = useState(false);
+  const dismissed = storedDismissed || dismissedNow;
   const t = useT();
   const navigate = useNavigate();
   const { number } = useFormatters();
 
   const siteList = useMemo(() => projects ?? [], [projects]);
   const focusId = useMemo(() => startHereProgress(siteList, undefined).focus?.id, [siteList]);
-  const { data: team } = useProjectMembers(focusId);
-  const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : undefined;
-  const requests = useMemo(() => startHereRequests(siteList), [siteList]);
+  // A dismissed checklist reads nothing beyond the sites list.
+  const { data: team, isError: teamError } = useProjectMembers(dismissed ? undefined : focusId);
+  // If the team can't be read, leave "invite" open rather than hiding the checklist.
+  const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : teamError ? 1 : undefined;
+  const requests = useMemo(() => (dismissed ? NO_REQUESTS : startHereRequests(siteList)), [dismissed, siteList]);
   const activity = useStartHereActivity(requests.deploymentSiteIds, requests.pageSiteIds);
   const progress = startHereProgress(siteList, teamSize, activity);
 
@@ -126,9 +124,11 @@ function ProjectsPage() {
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
   const hasSites = !projectsLoading && siteList.length > 0;
   // A brand-new user gets a "what to do next" path, not a wall of zeros:
-  // analytics appear once they've published something or have traffic.
+  // analytics appear once they've published something or have traffic. Both
+  // come with the sites list, so this never waits on another request.
   const showAnalytics = !projectsLoading && (projectsError || progress.published || (analytics?.totalViews ?? 0) > 0);
-  const showStartHere = hasSites && !projectsError && progress.done < progress.total && !storedDismissed && !dismissedNow;
+  // Only once every step is known: someone who finished it never sees it flash in.
+  const showStartHere = hasSites && !projectsError && progress.known && progress.done < progress.total && !dismissed;
 
   useEffect(() => {
     const starterProject = projects?.[0];
@@ -175,10 +175,42 @@ function ProjectsPage() {
           <h2 className="font-semibold text-sm">{t('dashboard.sitesTable')}</h2>
         </div>
         {projectsLoading ? (
-          <div className="space-y-2 p-5">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
+          // Same table as the loaded state (site, pages, publishes), so nothing moves when rows arrive.
+          <div aria-busy="true">
+            <p className="sr-only" role="status">
+              {t('common.loading')}
+            </p>
+            <Table aria-hidden>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t('dashboard.col.site')}</TableHead>
+                  <TableHead className="text-end">{t('dashboard.col.pages')}</TableHead>
+                  <TableHead className="text-end">{t('dashboard.col.deploys')}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: SITES_SKELETON_ROWS }, (_, row) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder rows never reorder
+                  <TableRow key={row}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-8 shrink-0 rounded-md" />
+                        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                          <Skeleton className="h-4 w-2/5" />
+                          <Skeleton className="h-3 w-1/4" />
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="ms-auto h-4 w-8" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="ms-auto h-4 w-8" />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         ) : projectsError && !projects ? null : siteList.length === 0 ? (
           // Also the recovery path for a user whose workspace provisioning

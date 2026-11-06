@@ -1,10 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { Check, Loader2, Trash2 } from 'lucide-react';
+import { Check, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
@@ -137,8 +138,7 @@ export function CommentsPanel({
             >
               {t('common.cancel')}
             </Button>
-            <Button disabled={!draft.trim() || createComment.isPending} onClick={() => submit(pendingAnchor)} size="sm">
-              {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            <Button disabled={!draft.trim()} loading={createComment.isPending} onClick={() => submit(pendingAnchor)} size="sm">
               {t('editor.comment')}
             </Button>
           </div>
@@ -148,7 +148,22 @@ export function CommentsPanel({
       <ScrollArea className="-mx-1 min-h-0 flex-1">
         <div className="space-y-2.5 px-1">
           {isPending ? (
-            <p className="px-1 text-muted-foreground text-sm">{t('common.loading')}</p>
+            // Shaped like comment cards: author row, then the comment text.
+            <div aria-busy="true" className="space-y-2.5">
+              <p className="sr-only" role="status">
+                {t('common.loading')}
+              </p>
+              {['a', 'b'].map((card) => (
+                <div aria-hidden className="rounded-xl border border-border p-3" key={card}>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="size-6 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="ms-auto h-3 w-10" />
+                  </div>
+                  <SkeletonText className="mt-3" lines={2} />
+                </div>
+              ))}
+            </div>
           ) : list.length === 0 ? (
             <p className="px-1 py-6 text-center text-muted-foreground text-sm">
               {commentMode ? t('editor.comments.modeHint') : t('editor.noComments')}
@@ -197,8 +212,12 @@ export function CommentsPanel({
                 <div className="mt-2 flex items-center gap-1">
                   <Button
                     className={cn('h-6 gap-1 px-1.5 text-xs', comment.resolved ? 'text-primary' : 'text-muted-foreground')}
-                    disabled={resolveComment.isPending}
-                    onClick={() => resolveComment.mutate({ id: comment.id, resolved: !comment.resolved })}
+                    onClick={() =>
+                      resolveComment.mutate(
+                        { id: comment.id, resolved: !comment.resolved },
+                        { onError: (err) => toast.error(friendlyErrorMessage(t, err, 'error.unexpected')) },
+                      )
+                    }
                     size="sm"
                     variant="ghost"
                   >
@@ -209,7 +228,7 @@ export function CommentsPanel({
                     <Button
                       aria-label={t('editor.comments.deleteAria')}
                       className="ms-auto size-6 text-muted-foreground hover:text-destructive"
-                      disabled={deleteComment.isPending}
+                      disabled={deleteComment.isPending && deleteComment.variables === comment.id}
                       onClick={async () => {
                         const ok = await confirm({
                           title: t('editor.comments.deleteAria'),
@@ -250,8 +269,7 @@ export function CommentsPanel({
             placeholder={t('editor.leaveComment')}
             value={draft}
           />
-          <Button className="w-full" disabled={!draft.trim() || createComment.isPending} onClick={() => submit()} size="sm">
-            {createComment.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          <Button className="w-full" disabled={!draft.trim()} loading={createComment.isPending} onClick={() => submit()} size="sm">
             {t('editor.comment')}
           </Button>
         </div>

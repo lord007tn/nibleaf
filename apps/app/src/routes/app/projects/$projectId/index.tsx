@@ -12,7 +12,6 @@ import {
   FileText,
   Globe2,
   Link2Off,
-  Loader2,
   type LucideIcon,
   PenLine,
   Plug,
@@ -30,12 +29,20 @@ import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
-import { useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
+import { friendlyErrorMessage, useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
+import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
+  // The site layout's loader already starts the site, pages and publishes; add
+  // what only the overview shows (team size, live address).
+  loader: ({ context: { queryClient }, params: { projectId } }) => {
+    prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
+    prefetchRouteData(queryClient, domainsQueryOptions(projectId));
+  },
   component: SiteOverviewPage,
 });
 
@@ -43,6 +50,8 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
 // configured for this deployment; otherwise it 404s, so we fall back to /sites/:id.
 const siteBaseDomain = () => env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 const siteUrl = (domain: string | null, projectId: string) => (domain ? `https://${domain}` : `/sites/${projectId}`);
+const ACTIVITY_SKELETON_ROWS = ['a', 'b', 'c'];
+const RECENT_PAGE_SKELETON_ROWS = ['a', 'b', 'c', 'd'];
 
 /** Per-site dashboard: the hub each site opens to (stats, traffic, recent pages,
  *  and quick links). The full-page editor lives at /editor. */
@@ -51,7 +60,7 @@ function SiteOverviewPage() {
   const t = useT();
   const { date } = useFormatters();
   const [range, setRange] = useState<AnalyticsRange>('30d');
-  const { data: project } = useProject(projectId);
+  const { data: project, isPending: projectPending } = useProject(projectId);
   const { data: pages, isPending: pagesPending } = usePages(projectId);
   const { data: members, isPending: membersPending } = useProjectMembers(projectId);
   const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
@@ -84,7 +93,17 @@ function SiteOverviewPage() {
     <div className="w-full px-6 py-8 xl:px-10">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="font-semibold text-2xl tracking-tight">{project?.name ?? t('overview.title')}</h1>
+          {/* The site name, not a generic "Overview" that flips to the name a moment later. */}
+          <h1 className="font-semibold text-2xl tracking-tight">
+            {projectPending ? (
+              <>
+                <span className="sr-only">{t('overview.title')}</span>
+                <Skeleton aria-hidden className="h-8 w-48" />
+              </>
+            ) : (
+              (project?.name ?? t('overview.title'))
+            )}
+          </h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('overview.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -163,7 +182,24 @@ function SiteOverviewPage() {
               <Badge variant={deploymentStatusVariant(latestDeployment.status)}>{deploymentStatusLabel(latestDeployment.status, t)}</Badge>
             ) : null}
           </div>
-          <div className="flex flex-col gap-2">
+          <div aria-busy={deploymentsPending || undefined} className="flex flex-col gap-2">
+            {deploymentsPending ? (
+              <>
+                <p className="sr-only" role="status">
+                  {t('common.loading')}
+                </p>
+                {/* Shaped like an activity line: version, message, date. */}
+                {ACTIVITY_SKELETON_ROWS.map((row) => (
+                  <div aria-hidden className="flex h-5 items-center justify-between gap-3" key={row}>
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <Skeleton className="h-4 w-8 shrink-0" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                    <Skeleton className="h-3 w-16 shrink-0" />
+                  </div>
+                ))}
+              </>
+            ) : null}
             {(deployments ?? []).slice(0, 3).map((deployment) => (
               <div className="flex items-center justify-between gap-3 text-sm" key={deployment.id}>
                 {/* The version tag is code (always LTR); commit messages are free
@@ -180,7 +216,7 @@ function SiteOverviewPage() {
                 <span className="shrink-0 text-muted-foreground text-xs">{date(deployment.completedAt ?? deployment.createdAt)}</span>
               </div>
             ))}
-            {(deployments ?? []).length === 0 ? <p className="text-muted-foreground text-sm">{t('overview.activity.empty')}</p> : null}
+            {deployments && deployments.length === 0 ? <p className="text-muted-foreground text-sm">{t('overview.activity.empty')}</p> : null}
           </div>
         </div>
       </div>
@@ -225,7 +261,37 @@ function SiteOverviewPage() {
               {t('overview.openEditor')} <ArrowRight className="size-3 rtl:-scale-x-100" />
             </Link>
           </div>
-          {recentPages.length === 0 ? (
+          {pagesPending ? (
+            <div aria-busy="true">
+              <p className="sr-only" role="status">
+                {t('common.loading')}
+              </p>
+              <Table aria-hidden>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('overview.col.page')}</TableHead>
+                    <TableHead className="text-end">{t('overview.col.updated')}</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {/* Shaped like a recent-page row: icon and title, then the date. */}
+                  {RECENT_PAGE_SKELETON_ROWS.map((row) => (
+                    <TableRow key={row}>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          <Skeleton className="size-3.5 shrink-0 rounded-sm" />
+                          <Skeleton className="h-4 w-1/2" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="ms-auto h-3 w-16" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : recentPages.length === 0 ? (
             <p className="px-5 py-8 text-center text-muted-foreground text-sm">{t('overview.noPages')}</p>
           ) : (
             <Table>
@@ -353,7 +419,8 @@ function PublishFailureCard({
       onSuccess: () => {
         toast.success(t('overview.publishFailed.queued'));
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('overview.publishFailed.error')),
+      // Server text is English and technical; say what happened in plain words.
+      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'overview.publishFailed.error')),
     });
   };
 
@@ -376,9 +443,14 @@ function PublishFailureCard({
           </p>
         </div>
         {grammarOnly ? (
-          <Button size="sm" disabled={publishAnyway.isPending} onClick={publishAnywayWithFeedback}>
-            {publishAnyway.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
-            {publishAnyway.isPending ? t('overview.publishFailed.publishing') : t('overview.publishFailed.publishAnyway')}
+          <Button
+            loading={publishAnyway.isPending}
+            loadingText={t('overview.publishFailed.publishing')}
+            onClick={publishAnywayWithFeedback}
+            size="sm"
+          >
+            <Rocket className="size-3.5" />
+            {t('overview.publishFailed.publishAnyway')}
           </Button>
         ) : null}
       </div>

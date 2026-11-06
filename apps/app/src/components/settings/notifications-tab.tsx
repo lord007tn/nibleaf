@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/services/auth-client';
+import { SettingsListSkeleton } from '../project-settings/shared';
 import { SettingsSection } from './section';
 
 interface NotifItem {
@@ -123,13 +124,13 @@ export function NotificationsTab({ projectId }: { projectId?: string }) {
       { notifications: next },
       {
         onSuccess: () => toast.success(t('common.saved')),
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.notifications.toast.updateError')),
+        onError: (_error) => toast.error(t('settings.notifications.toast.updateError')),
       },
     );
   };
 
   if (query.isError && !data) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
-  if (!data) return <p role="status">{t('common.loading')}</p>;
+  if (query.isPending) return <SettingsListSkeleton />;
 
   return (
     <div className="flex flex-col gap-6">

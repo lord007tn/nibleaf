@@ -3,7 +3,7 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -239,8 +239,8 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
           ) : null}
 
           <div className="flex justify-end">
-            <Button disabled={pending} onClick={save} type="button">
-              {pending ? t('common.saving') : t('common.save')}
+            <Button loading={pending} onClick={save} type="button" loadingText={t('common.saving')}>
+              {t('common.save')}
             </Button>
           </div>
         </div>
@@ -251,22 +251,25 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
 
 export function AddonsSection({ projectId }: { projectId: string }) {
   const t = useT();
-  const { data, isLoading, isError, refetch } = useProjectAddons(projectId);
+  const { data, isPending, isError, isFetching, refetch } = useProjectAddons(projectId);
 
   return (
     <div>
       <SectionHeader description={t('settings.addons.description')} icon={<Blocks className="size-4" />} title={t('settings.addons.title')} />
-      {isLoading ? (
-        <div className="grid gap-3">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
+      {isPending ? (
+        <div aria-busy="true" className="grid gap-3">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       ) : null}
       {isError ? (
         <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
           <p>{t('settings.addons.loadError')}</p>
-          <Button className="mt-3" onClick={() => refetch()} size="sm" variant="outline">
+          <Button className="mt-3" loading={isFetching} onClick={() => refetch()} size="sm" variant="outline">
             {t('common.retry')}
           </Button>
         </div>

@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
+  friendlyErrorMessage,
   useAuthorizeGitWorkflow,
   useConnectGitWorkflow,
   useDisconnectGitWorkflow,
@@ -33,6 +34,7 @@ import {
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
+import { SettingsFormSkeleton } from '../project-settings/shared';
 
 type GitIdentity = { login: string; name: string | null };
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
@@ -45,7 +47,7 @@ function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Co
   const resolveConflict = (resolution: 'OURS' | 'THEIRS' | 'CUSTOM', content?: string | null) =>
     resolve.mutate(
       { resolution, ...(resolution === 'CUSTOM' ? { content: content ?? null } : {}) },
-      { onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.conflict.error')) },
+      { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.conflict.error')) },
     );
   return (
     <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
@@ -79,16 +81,16 @@ function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Co
         value={custom}
       />
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button disabled={resolve.isPending} onClick={() => resolveConflict('OURS')} size="sm">
+        <Button loading={resolve.isPending} onClick={() => resolveConflict('OURS')} size="sm">
           {t('settings.git.workflow.conflict.useNibleaf')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolveConflict('THEIRS')} size="sm" variant="outline">
+        <Button loading={resolve.isPending} onClick={() => resolveConflict('THEIRS')} size="sm" variant="outline">
           {t('settings.git.workflow.conflict.useGit')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolveConflict('CUSTOM', custom)} size="sm" variant="secondary">
+        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', custom)} size="sm" variant="secondary">
           {t('settings.git.workflow.conflict.useCustom')}
         </Button>
-        <Button disabled={resolve.isPending} onClick={() => resolveConflict('CUSTOM', null)} size="sm" variant="destructive">
+        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', null)} size="sm" variant="destructive">
           {t('settings.git.workflow.conflict.delete')}
         </Button>
       </div>
@@ -128,12 +130,12 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           setAuthorizedAccount(null);
           toast.success(t('settings.git.workflow.connected'));
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.connectError')),
+        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
       },
     );
   const queueOperation = (body: GitOperationBody) =>
     operation.mutate(body, {
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.operationError')),
+      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError')),
     });
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
@@ -149,20 +151,15 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     setContentPath(connection.contentPath);
   }, [connection]);
 
-  if (query.isPending)
-    return (
-      <div aria-live="polite" className="rounded-xl border p-5 text-muted-foreground text-sm">
-        {t('settings.git.workflow.loading')}
-      </div>
-    );
+  if (query.isPending) return <SettingsFormSkeleton />;
   if (query.isError) {
     return (
       <Alert variant="destructive">
         <AlertTriangle />
         <AlertTitle>{t('settings.git.workflow.loadError')}</AlertTitle>
         <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-          <span>{query.error instanceof Error ? query.error.message : t('settings.git.workflow.loadErrorHint')}</span>
-          <Button onClick={() => query.refetch()} size="sm" variant="outline">
+          <span>{t('settings.git.workflow.loadErrorHint')}</span>
+          <Button loading={query.isFetching} onClick={() => query.refetch()} size="sm" variant="outline">
             {t('common.retry')}
           </Button>
         </AlertDescription>
@@ -247,7 +244,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                 </div>
                 {authorize.isError ? (
                   <p aria-live="polite" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-sm">
-                    {authorize.error instanceof Error ? authorize.error.message : t('settings.git.workflow.authorizeError')}
+                    {t('settings.git.workflow.authorizeError')}
                   </p>
                 ) : null}
               </div>
@@ -326,7 +323,9 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               connectStep === 1 ? (
                 <Button
                   className="w-full sm:w-auto"
-                  disabled={authorize.isPending || token.trim().length < 20}
+                  disabled={token.trim().length < 20}
+                  loading={authorize.isPending}
+                  loadingText={t('settings.git.workflow.authorizing')}
                   onClick={() =>
                     authorize.mutate(token, {
                       onSuccess: (identity) => {
@@ -336,8 +335,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                     })
                   }
                 >
-                  {authorize.isPending ? t('settings.git.workflow.authorizing') : t('settings.git.workflow.authorize')}{' '}
-                  <ArrowRight className="size-4 rtl:-scale-x-100" />
+                  {t('settings.git.workflow.authorize')} <ArrowRight className="size-4 rtl:-scale-x-100" />
                 </Button>
               ) : (
                 <Button
@@ -351,10 +349,12 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             ) : (
               <Button
                 className="w-full sm:w-auto"
-                disabled={connect.isPending || !authorizedAccount || !repository || !token}
+                disabled={!authorizedAccount || !repository || !token}
+                loading={connect.isPending}
                 onClick={connectRepository}
+                loadingText={t('settings.git.workflow.verifying')}
               >
-                {connect.isPending ? t('settings.git.workflow.verifying') : t('settings.git.workflow.connect')}
+                {t('settings.git.workflow.connect')}
               </Button>
             )}
           </div>
@@ -377,7 +377,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               {connection.repository}: {connection.headBranch} → {connection.baseBranch}
             </p>
           </div>
-          <Button onClick={() => query.refetch()} size="sm" variant="outline">
+          <Button loading={query.isFetching} onClick={() => query.refetch()} size="sm" variant="outline">
             <RefreshCw className="size-4" /> {t('common.refresh')}
           </Button>
         </div>
@@ -435,10 +435,11 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           </p>
           <Button
             className="mt-4"
-            disabled={operation.isPending || activeConflicts.length > 0}
+            disabled={activeConflicts.length > 0}
+            loading={operation.isPending}
             onClick={() => queueOperation({ idempotencyKey: crypto.randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
           >
-            <RefreshCw className={`size-4 ${operation.isPending ? 'animate-spin' : ''}`} />{' '}
+            <RefreshCw className="size-4" />{' '}
             {connection.lastSyncedAt ? t('settings.git.workflow.syncLatest') : t('settings.git.workflow.importExisting')}
           </Button>
           {activeConflicts.length > 0 ? (
@@ -473,7 +474,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              disabled={operation.isPending}
+              loading={operation.isPending}
               onClick={() =>
                 queueOperation({
                   idempotencyKey: crypto.randomUUID(),
@@ -541,11 +542,11 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             ) : null}
             <Button
               className="mt-3"
-              disabled={rotate.isPending}
+              loading={rotate.isPending}
               onClick={() =>
                 rotate.mutate(undefined, {
                   onSuccess: (result) => setWebhookSecret(result.webhookSecret),
-                  onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.rotateError')),
+                  onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
                 })
               }
               size="sm"
@@ -585,12 +586,12 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             </div>
             <div className="mt-4 flex flex-wrap justify-between gap-2">
               <Button
-                disabled={disconnect.isPending}
+                loading={disconnect.isPending}
                 onClick={() => {
                   if (window.confirm(t('settings.git.workflow.disconnectConfirm'))) {
                     disconnect.mutate(undefined, {
                       onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
-                      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.workflow.disconnectError')),
+                      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
                     });
                   }
                 }}
@@ -598,8 +599,8 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               >
                 {t('settings.git.disconnect')}
               </Button>
-              <Button disabled={connect.isPending} onClick={connectRepository} variant="outline">
-                {connect.isPending ? t('common.saving') : t('settings.git.workflow.saveConnection')}
+              <Button loading={connect.isPending} onClick={connectRepository} variant="outline" loadingText={t('common.saving')}>
+                {t('settings.git.workflow.saveConnection')}
               </Button>
             </div>
           </section>

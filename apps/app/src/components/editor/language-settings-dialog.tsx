@@ -20,7 +20,7 @@ import { CirclePlus, type LucideIcon, SearchCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language, LanguageConfig } from '@/hooks/api';
-import { useUpdateLanguage } from '@/hooks/api';
+import { friendlyErrorMessage, useUpdateLanguage } from '@/hooks/api';
 
 type Direction = 'LTR' | 'RTL';
 type LangSettingsSection = 'general' | 'seo';
@@ -97,7 +97,7 @@ export function LanguageSettingsDialog({
           toast.success(t('editor.langSettings.saved'));
           onOpenChange(false);
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.langSettings.saveError')),
+        onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.langSettings.saveError')),
       },
     );
   };
@@ -192,8 +192,8 @@ export function LanguageSettingsDialog({
 
             <DialogFooter className="border-border border-t px-6 py-3">
               <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-              <Button type="button" onClick={save} disabled={update.isPending}>
-                {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
+              <Button type="button" onClick={save} loading={update.isPending} loadingText={t('common.saving')}>
+                {t('editor.pageSettings.save')}
               </Button>
             </DialogFooter>
           </div>

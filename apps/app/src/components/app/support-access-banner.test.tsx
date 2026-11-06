@@ -35,11 +35,15 @@ async function render(customerName?: string | null) {
   return container;
 }
 
+/** The text a sighted user sees: Button keeps both labels in the layout and hides the inactive one. */
+const visibleLabel = (container: HTMLElement) =>
+  [...container.querySelectorAll<HTMLElement>('button > span > span')].find((label) => !label.classList.contains('invisible'))?.textContent;
+
 describe('SupportAccessBanner', () => {
   it('localizes the stop button and falls back to the translated customer label', async () => {
     const container = await render(null);
 
-    expect(container.querySelector('button')?.textContent).toBe('support.banner.stop');
+    expect(visibleLabel(container)).toBe('support.banner.stop');
     expect(container.textContent).toContain('support.banner.viewingAs(support.banner.customerFallback)');
   });
 
@@ -50,6 +54,26 @@ describe('SupportAccessBanner', () => {
     await act(async () => container.querySelector('button')?.click());
 
     expect(container.querySelector('[role="alert"]')?.textContent).toBe('support.banner.stopError');
-    expect(container.querySelector('button')?.textContent).toBe('support.banner.stop');
+    expect(visibleLabel(container)).toBe('support.banner.stop');
+    expect(container.querySelector('button')?.getAttribute('aria-busy')).toBeNull();
+  });
+
+  it('never shows the server message, and spins the button while stopping', async () => {
+    let resolveStop: ((value: unknown) => void) | undefined;
+    mocks.stopImpersonating.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveStop = resolve;
+        }),
+    );
+    const container = await render('Layla');
+
+    await act(async () => container.querySelector('button')?.click());
+    expect(container.querySelector('button')?.getAttribute('aria-busy')).toBe('true');
+    expect(visibleLabel(container)).toBe('support.banner.stopping');
+
+    await act(async () => resolveStop?.({ error: { message: 'Impersonation session not found in adapter' } }));
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('support.banner.stopError');
+    expect(container.textContent).not.toContain('Impersonation session');
   });
 });

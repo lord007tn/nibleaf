@@ -15,7 +15,7 @@ import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
-import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
+import { DirtyStateReporter, FIELD_MONO, SectionHeader, SettingsFormSkeleton } from './shared';
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
@@ -38,11 +38,14 @@ export function DomainSection({ project }: { project: Project }) {
     }
   };
   const [domain, setDomain] = useState('');
+  const [copyingRecord, setCopyingRecord] = useState<string | null>(null);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
   const list = domains ?? [];
   const copyRecord = async (key: string, text: string) => {
+    setCopyingRecord(key);
     const ok = await copyToClipboard(text);
+    setCopyingRecord(null);
     if (!ok) {
       toast.error(t('settings.domain.dns.copyFailed'));
       return;
@@ -53,7 +56,7 @@ export function DomainSection({ project }: { project: Project }) {
   };
 
   if (query.isError && !domains) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
-  if (!domains) return <p role="status">{t('common.loading')}</p>;
+  if (query.isPending) return <SettingsFormSkeleton />;
   return (
     <div>
       {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
@@ -79,7 +82,7 @@ export function DomainSection({ project }: { project: Project }) {
                 toast.success(t('settings.domain.toast.added'));
                 setDomain('');
               },
-              onError: (err) => toast.error(err instanceof Error ? err.message : t('settings.domain.toast.addError')),
+              onError: (_err) => toast.error(t('settings.domain.toast.addError')),
             },
           );
         }}
@@ -95,7 +98,7 @@ export function DomainSection({ project }: { project: Project }) {
           placeholder="docs.yoursite.com"
           value={domain}
         />
-        <Button className="cursor-pointer rounded-[10px]" disabled={add.isPending || !domain.trim()} type="submit">
+        <Button className="cursor-pointer rounded-[10px]" disabled={!domain.trim()} loading={add.isPending} type="submit">
           {t('settings.domain.add')}
         </Button>
       </form>
@@ -155,24 +158,26 @@ export function DomainSection({ project }: { project: Project }) {
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
-                    disabled={verify.isPending && verify.variables === d.id}
+                    loading={verify.isPending && verify.variables === d.id}
+                    loadingText={t('common.loading')}
                     onClick={() =>
                       verify.mutate(d.id, {
                         onSuccess: (result) =>
                           toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.status.provisioning')),
-                        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.domain.toast.verifyError')),
+                        onError: (_error) => toast.error(t('settings.domain.toast.verifyError')),
                       })
                     }
                     size="sm"
                     variant="outline"
                   >
-                    <RefreshCw className={cn('size-3.5', verify.isPending && verify.variables === d.id && 'animate-spin')} />
-                    {verify.isPending && verify.variables === d.id ? t('common.loading') : t('settings.domain.retry')}
+                    <RefreshCw className="size-3.5" />
+                    {t('settings.domain.retry')}
                   </Button>
                 ) : null}
                 {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
                   <Button
                     className="cursor-pointer"
+                    loading={setPrimary.isPending && setPrimary.variables === d.id}
                     onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
                     size="sm"
                     variant="outline"
@@ -180,7 +185,13 @@ export function DomainSection({ project }: { project: Project }) {
                     {t('settings.domain.makePrimary')}
                   </Button>
                 ) : null}
-                <Button className="cursor-pointer" onClick={() => removeDomain(d.id, d.domain)} size="sm" variant="ghost">
+                <Button
+                  className="cursor-pointer"
+                  loading={remove.isPending && remove.variables === d.id}
+                  onClick={() => removeDomain(d.id, d.domain)}
+                  size="sm"
+                  variant="ghost"
+                >
                   {t('settings.domain.remove')}
                 </Button>
               </div>
@@ -222,6 +233,7 @@ export function DomainSection({ project }: { project: Project }) {
                                 </div>
                                 <Button
                                   aria-label={`${t('settings.domain.dns.copy')}: ${label}`}
+                                  loading={copyingRecord === fieldKey}
                                   onClick={() => void copyRecord(fieldKey, value)}
                                   size="icon-sm"
                                   type="button"

@@ -148,8 +148,8 @@ function LanguageBannerForm({
         try {
           await update.mutateAsync({ id: language.id, body: { config: { banner: Object.keys(banner).length > 0 ? banner : null } } });
           toast.success(t('common.saved'));
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+        } catch {
+          toast.error(t('settings.saveError'));
         }
       }}
     />

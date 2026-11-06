@@ -14,10 +14,15 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   toastSuccess: vi.fn(),
   refetch: vi.fn(),
+  prefetchRouteData: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/hooks/api', () => ({ useGetInvitationInfo: mocks.invitation }));
+vi.mock('@/hooks/api/query-options', () => ({
+  getInvitationInfoQueryOptions: (invitationId: string) => ({ queryKey: ['public', 'invitations', invitationId] }),
+}));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetchRouteData }));
 vi.mock('@/services/auth-client', () => ({
   useSession: mocks.session,
   authClient: { organization: { acceptInvitation: mocks.accept }, signOut: mocks.signOut },
@@ -80,6 +85,32 @@ describe('invitation recovery', () => {
 
   const render = () => act(async () => root.render(<Page />));
   const button = () => container.querySelector<HTMLButtonElement>('button');
+  /** The text a sighted user sees: Button keeps both labels in the layout and hides the inactive one. */
+  const visibleLabel = () =>
+    [...(button()?.querySelectorAll<HTMLElement>(':scope > span > span') ?? [])].find((label) => !label.classList.contains('invisible'))?.textContent;
+
+  it('prefetches the invitation in the route loader', () => {
+    const queryClient = {};
+    const loader = (Route.options as unknown as { loader: (args: unknown) => void }).loader;
+    loader({ context: { queryClient }, params: { invitationId: 'invite-1' } });
+    expect(mocks.prefetchRouteData).toHaveBeenCalledExactlyOnceWith(queryClient, { queryKey: ['public', 'invitations', 'invite-1'] });
+  });
+
+  it('shows a busy skeleton, not loading text, while the invitation loads', async () => {
+    mocks.invitation.mockReturnValue({
+      data: undefined,
+      error: null,
+      isPending: true,
+      isError: false,
+      isSuccess: false,
+      isFetching: true,
+      refetch: mocks.refetch,
+    });
+    await render();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('common.loading');
+    expect(container.querySelector('button')).toBeNull();
+  });
 
   it('signs out a mismatched account and keeps the invitation for the correct sign-in', async () => {
     mocks.session.mockReturnValue({ data: { user: { email: 'wrong@example.com' } }, isPending: false });
@@ -123,12 +154,14 @@ describe('invitation recovery', () => {
     await render();
     await act(async () => button()?.click());
     expect(button()?.disabled).toBe(true);
-    expect(button()?.textContent).toBe('auth.invite.accepting');
+    expect(button()?.getAttribute('aria-busy')).toBe('true');
+    expect(visibleLabel()).toBe('auth.invite.accepting');
     await act(async () => rejectRequest?.(new Error('Network disconnected')));
     expect(container.textContent).toContain('auth.invite.error');
     expect(container.textContent).not.toContain('Network disconnected');
     expect(button()?.disabled).toBe(false);
-    expect(button()?.textContent).toBe('auth.invite.accept');
+    expect(button()?.getAttribute('aria-busy')).toBeNull();
+    expect(visibleLabel()).toBe('auth.invite.accept');
     expect(readPendingInvitation()).toBe('invite-1');
     await act(async () => button()?.click());
     expect(mocks.accept).toHaveBeenCalledTimes(2);

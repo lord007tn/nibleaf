@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.t }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
+  friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useCreateLanguage: () => ({ mutateAsync: mocks.mutateAsync }),
   useLanguages: mocks.useLanguages,
 }));

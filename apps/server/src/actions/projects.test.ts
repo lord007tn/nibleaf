@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   memberFindMany: vi.fn(),
   projectFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
+  deploymentGroupBy: vi.fn(),
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn() },
@@ -27,6 +28,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
+    deployment: { groupBy: mocks.deploymentGroupBy },
     $transaction: (run: (tx: typeof mocks.tx) => Promise<unknown>) => run(mocks.tx),
   },
 }));
@@ -47,6 +49,7 @@ describe('project page counts', () => {
   it('lists the sites a user can reach with a default-branch content-page count', async () => {
     mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a' }, { organizationId: 'org-b' }]);
     mocks.projectFindMany.mockResolvedValue([{ id: 'project-a', _count: { pages: 58, deployments: 3 } }]);
+    mocks.deploymentGroupBy.mockResolvedValue([]);
 
     const projects = await listProjects('user-1');
 
@@ -56,6 +59,46 @@ describe('project page counts', () => {
       include: { _count: { select: { pages: contentPages, deployments: true } } },
     });
     expect(projects[0]?._count).toEqual({ pages: 58, deployments: 3 });
+  });
+
+  it("tells each site how many of the user's own publishes went live and whether one is running, in one query", async () => {
+    mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a' }]);
+    mocks.projectFindMany.mockResolvedValue([
+      { id: 'live', _count: { pages: 2, deployments: 3 } },
+      { id: 'building', _count: { pages: 1, deployments: 1 } },
+      { id: 'starter-only', _count: { pages: 6, deployments: 1 } },
+    ]);
+    mocks.deploymentGroupBy.mockResolvedValue([
+      { projectId: 'live', status: 'READY', _count: { _all: 2 } },
+      { projectId: 'building', status: 'BUILDING', _count: { _all: 1 } },
+    ]);
+
+    const projects = await listProjects('user-1');
+
+    expect(mocks.deploymentGroupBy).toHaveBeenCalledTimes(1);
+    expect(mocks.deploymentGroupBy).toHaveBeenCalledWith({
+      by: ['projectId', 'status'],
+      where: {
+        projectId: { in: ['live', 'building', 'starter-only'] },
+        status: { in: ['READY', 'PENDING', 'BUILDING'] },
+        // The sign-up starter site's automatic first publish is not the user's.
+        OR: [{ version: { not: 1 } }, { commitMessage: null }, { commitMessage: { not: 'Publish starter site' } }],
+      },
+      _count: { _all: true },
+    });
+    expect(projects.map(({ id, livePublishes, publishing }) => ({ id, livePublishes, publishing }))).toEqual([
+      { id: 'live', livePublishes: 2, publishing: false },
+      { id: 'building', livePublishes: 0, publishing: true },
+      { id: 'starter-only', livePublishes: 0, publishing: false },
+    ]);
+  });
+
+  it('skips the publish summary when the user has no sites', async () => {
+    mocks.memberFindMany.mockResolvedValue([]);
+    mocks.projectFindMany.mockResolvedValue([]);
+
+    await expect(listProjects('user-1')).resolves.toEqual([]);
+    expect(mocks.deploymentGroupBy).not.toHaveBeenCalled();
   });
 
   it('reads a project with the same content-page count and keeps the _count shape', async () => {

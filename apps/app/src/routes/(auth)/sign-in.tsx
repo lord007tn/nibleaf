@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
+import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
@@ -18,6 +20,8 @@ import { authClient, signIn } from '@/services/auth-client';
 export const Route = createFileRoute('/(auth)/sign-in')({
   validateSearch: (search) =>
     z.object({ invite: z.string().optional().catch(undefined), email: z.string().optional().catch(undefined) }).parse(search),
+  // Whether to offer Google: start the instance metadata on link hover.
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, getPublicMetaQueryOptions()),
   head: () => ({ meta: [{ title: 'Log in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignInPage,
 });
@@ -29,7 +33,9 @@ function SignInPage() {
   const [email, setEmail] = useState(search.email ?? '');
   const [otp, setOtp] = useState('');
   const [codeSent, setCodeSent] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Which request is running, so only the button that started it shows a spinner.
+  const [busy, setBusy] = useState<'send' | 'resend' | 'verify' | null>(null);
+  const isSubmitting = busy !== null;
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { resendIn, resetCountdown, startCountdown } = useOtpResendCountdown();
@@ -48,8 +54,8 @@ function SignInPage() {
     }
   };
 
-  const requestCode = async () => {
-    setIsSubmitting(true);
+  const requestCode = async (kind: 'send' | 'resend' = 'send') => {
+    setBusy(kind);
     setError(null);
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
@@ -62,12 +68,12 @@ function SignInPage() {
     } catch {
       setError(t('auth.error.tryAgain'));
     } finally {
-      setIsSubmitting(false);
+      setBusy(null);
     }
   };
 
   const verifyCode = async () => {
-    setIsSubmitting(true);
+    setBusy('verify');
     setError(null);
     try {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim() });
@@ -79,7 +85,7 @@ function SignInPage() {
     } catch {
       setError(t('auth.error.tryAgain'));
     } finally {
-      setIsSubmitting(false);
+      setBusy(null);
     }
   };
 
@@ -103,9 +109,16 @@ function SignInPage() {
     <AuthLayout subtitle={codeSent ? t('auth.otp.checkEmail', { email: normalizedEmail }) : t('auth.signIn.subtitle')}>
       {!codeSent && googleEnabled ? (
         <>
-          <Button className="mb-4 w-full gap-2" disabled={isGoogleSubmitting} onClick={signInWithGoogle} type="button" variant="outline">
+          <Button
+            className="mb-4 w-full gap-2"
+            loading={isGoogleSubmitting}
+            loadingText={t('auth.google.submitting')}
+            onClick={signInWithGoogle}
+            type="button"
+            variant="outline"
+          >
             <GoogleIcon className="size-4" />
-            {isGoogleSubmitting ? t('auth.google.submitting') : t('auth.google.signIn')}
+            {t('auth.google.signIn')}
           </Button>
           <div className="mb-4 flex items-center gap-3 text-muted-foreground text-xs">
             <span className="h-px flex-1 bg-border" />
@@ -162,14 +175,14 @@ function SignInPage() {
             {error}
           </p>
         ) : null}
-        <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent ? otp.length !== 6 : !normalizedEmail)} type="submit">
-          {isSubmitting
-            ? codeSent
-              ? t('auth.otp.verifying')
-              : t('auth.otp.sending')
-            : codeSent
-              ? t('auth.otp.verifySignIn')
-              : t('auth.otp.sendSignIn')}
+        <Button
+          className="mt-1 w-full"
+          disabled={isSubmitting || (codeSent ? otp.length !== 6 : !normalizedEmail)}
+          loading={busy === 'send' || busy === 'verify'}
+          loadingText={busy === 'verify' ? t('auth.otp.verifying') : t('auth.otp.sending')}
+          type="submit"
+        >
+          {codeSent ? t('auth.otp.verifySignIn') : t('auth.otp.sendSignIn')}
         </Button>
         {codeSent ? (
           <div className="flex items-center justify-between">
@@ -186,7 +199,14 @@ function SignInPage() {
             >
               <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('auth.otp.differentEmail')}
             </Button>
-            <Button disabled={isSubmitting || resendIn > 0} onClick={requestCode} size="sm" type="button" variant="ghost">
+            <Button
+              disabled={isSubmitting || resendIn > 0}
+              loading={busy === 'resend'}
+              onClick={() => void requestCode('resend')}
+              size="sm"
+              type="button"
+              variant="ghost"
+            >
               {resendIn > 0 ? t('auth.otp.resendIn', { seconds: resendIn }) : t('auth.otp.resend')}
             </Button>
           </div>
