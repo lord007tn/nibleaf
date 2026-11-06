@@ -56,6 +56,7 @@ export const workspaceAiOverviewSchema = z
       .object({
         published: z.boolean(),
         status: z.enum(['PENDING', 'RUNNING', 'READY', 'FAILED', 'DISABLED']).nullable(),
+        errorCode: z.string().max(80).nullable(),
         pages: z.number(),
         chunks: z.number(),
       })

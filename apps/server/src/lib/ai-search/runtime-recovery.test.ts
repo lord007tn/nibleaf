@@ -27,7 +27,7 @@ vi.mock('@nibleaf/search/workspace', () => ({
   workspaceAnswerProvider: () => ({ model: 'test', complete: vi.fn() }),
 }));
 
-import { answerPublishedSearch, runPublishedSearch } from './runtime';
+import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from './runtime';
 
 const scope: SearchScope = {
   projectId: 'project',
@@ -51,6 +51,11 @@ describe('hybrid index recovery', () => {
       revision: 'test',
       answersEnabled: true,
     });
+  });
+
+  it('reports AI answers unavailable instead of failing the site when readiness cannot be read', async () => {
+    doubles.resolveWorkspaceAi.mockRejectedValueOnce(new Error('database unavailable'));
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
   });
 
   it('keeps keyword search available while the published index is empty', async () => {

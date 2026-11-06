@@ -45,7 +45,18 @@ const indexedChunkPayloadSchema = z.object({
   icon: z.string().optional(),
 });
 
-export const answerSearchAvailable = async (projectId?: string, deploymentId?: string) => {
+export const answerSearchAvailable = async (projectId?: string, deploymentId?: string): Promise<boolean> => {
+  try {
+    return await readAnswerAvailability(projectId, deploymentId);
+  } catch (error) {
+    // The site shell and keyword search must keep working; only the AI
+    // capability is reported unavailable.
+    log.warn({ projectId, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'AI answer readiness check failed');
+    return false;
+  }
+};
+
+const readAnswerAvailability = async (projectId?: string, deploymentId?: string) => {
   if (!qdrant) return false;
   if (!projectId) return Boolean(env.OPENROUTER_API_KEY && env.SEARCH_ANSWER_ENABLED);
   const runtime = await resolveWorkspaceAi(projectId);

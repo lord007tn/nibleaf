@@ -417,6 +417,9 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     let embedded = 0;
     for (let offset = 0; offset < toEmbed.length; offset += BATCH_SIZE) {
       await renewRunClaim(run);
+      // Disabling Smart AI or replacing the key must stop spending on the old credential.
+      const current = await resolveWorkspaceAi(job.data.projectId);
+      if (!current || current.revision !== ai.revision) throw new SearchIndexFailure('embedding_provider_changed', 0, []);
       const batch = toEmbed.slice(offset, offset + BATCH_SIZE);
       const embedBatch = async () => {
         try {

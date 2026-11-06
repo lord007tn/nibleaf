@@ -392,6 +392,16 @@ describe('hybrid search differential indexing jobs', () => {
     expect(mocks.embed).not.toHaveBeenCalled();
   });
 
+  it('stops embedding when Smart AI is disabled or its key is replaced during a run', async () => {
+    mocks.resolveAi
+      .mockResolvedValueOnce({ providerId: 'openrouter', apiKey: 'old-key', embeddingModel: 'test-embedding', revision: 'connection:1' })
+      .mockResolvedValueOnce({ providerId: 'openrouter', apiKey: 'new-key', embeddingModel: 'test-embedding', revision: 'connection:2' });
+    await expect(handleSearchJobs(job('index-deployment'))).rejects.toThrow();
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.runs.at(-1)).toMatchObject({ status: 'FAILED', errorCode: 'embedding_provider_changed' });
+  });
+
   it('does not claim an indexing run when workspace credential lookup fails', async () => {
     mocks.resolveAi.mockRejectedValueOnce(new Error('database unavailable'));
     await expect(handleSearchJobs(job('index-deployment'))).rejects.toThrow('database unavailable');

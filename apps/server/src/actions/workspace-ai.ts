@@ -55,6 +55,15 @@ const readCredential = (projectId: string, providerId: z.infer<typeof aiProvider
   throw new AppError({ code: 'integration:credentials_invalid' });
 };
 
+const credentialReadable = (projectId: string, providerId: z.infer<typeof aiProviderIdSchema>, ciphertext: string) => {
+  try {
+    readCredential(projectId, providerId, ciphertext);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /** Fixed provider origins, bounded GET-only checks, and allowlisted response
  * fields. Never expose an SDK error containing authorization headers or a key. */
 const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdSchema>, apiKey: string) => {
@@ -111,7 +120,7 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
     ? await prisma.searchIndexRun.findFirst({
         where: { projectId, deploymentId: deployment.id },
         orderBy: { createdAt: 'desc' },
-        select: { status: true, indexedPages: true, indexedChunks: true },
+        select: { status: true, errorCode: true, indexedPages: true, indexedChunks: true },
       })
     : null;
   const selection = selectionSchema.safeParse(project.config);
@@ -130,12 +139,26 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
         id,
         configured: Boolean(connection),
         revision: connection?.revision ?? 0,
-        verified: connection?.status === 'ACTIVE' && connection.lastVerificationStatus === 'HEALTHY',
+        // "Verified" must mean the runtime resolver will accept this connection:
+        // healthy, built for the instance embedding model, and still decryptable
+        // with the current keyring.
+        verified:
+          connection?.status === 'ACTIVE' &&
+          connection.lastVerificationStatus === 'HEALTHY' &&
+          config.success &&
+          config.data.embeddingModel === env.SEARCH_EMBEDDING_MODEL &&
+          credentialReadable(projectId, id, connection.credentialEncrypted),
         verifiedAt: connection?.lastVerifiedAt?.toISOString() ?? null,
         answerModel: config.success ? config.data.answerModel : null,
       };
     }),
-    index: { published: Boolean(deployment), status: run?.status ?? null, pages: run?.indexedPages ?? 0, chunks: run?.indexedChunks ?? 0 },
+    index: {
+      published: Boolean(deployment),
+      status: run?.status ?? null,
+      errorCode: run?.errorCode ?? null,
+      pages: run?.indexedPages ?? 0,
+      chunks: run?.indexedChunks ?? 0,
+    },
     openaiOAuth: {
       available: false,
       reason: 'registration_required' as const,

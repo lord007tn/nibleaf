@@ -48,11 +48,14 @@ export function SmartAiSection({ project }: { project: Project }) {
     );
   if (query.isError || !data) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
   const ready = data.index.status === 'READY' && data.index.chunks > 0;
-  const enabled = data.selectedProvider !== 'disabled' && data.answersEnabled;
   const providerConfigured =
     data.selectedProvider === 'instance'
       ? data.instanceConfigured
       : data.providers.some((provider) => provider.id === data.selectedProvider && provider.verified);
+  // Only report answers as enabled when the runtime can actually serve them.
+  const enabled = data.selectedProvider !== 'disabled' && data.answersEnabled && providerConfigured;
+  // A run whose enqueue failed stays PENDING; the server re-enqueues it on retry.
+  const indexActive = data.index.status === 'RUNNING' || (data.index.status === 'PENDING' && data.index.errorCode !== 'queue_unavailable');
 
   return (
     <div className="min-w-0 space-y-6">
@@ -133,13 +136,7 @@ export function SmartAiSection({ project }: { project: Project }) {
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
-            disabled={
-              !data.index.published ||
-              !data.infrastructureConfigured ||
-              !providerConfigured ||
-              reindex.isPending ||
-              ['PENDING', 'RUNNING'].includes(data.index.status ?? '')
-            }
+            disabled={!data.index.published || !data.infrastructureConfigured || !providerConfigured || reindex.isPending || indexActive}
             onClick={() => reindex.mutate(undefined, { onSuccess: () => void query.refetch() })}
             type="button"
             variant="outline"
