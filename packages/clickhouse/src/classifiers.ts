@@ -120,6 +120,29 @@ export const classifyReferral = (
   return { channel: 'referral', aiSource: '' };
 };
 
+// Linear-time email redaction (no nested quantifiers: search text is public input).
+// Labels cannot contain '.', so the anchored domain match never backtracks.
+const QUOTED_LOCAL_PART = /"[^"]{1,64}"@/gu;
+const EMAIL_DOMAIN = /^[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/u;
+const LOCAL_PART_BOUNDARY = new Set(['<', '>', '"', '(', ')', ',', ';', ':', '@']);
+
+/** Each '@' scans back at most to the previous '@' (a boundary) and forward at most
+ * one domain length, so the whole token is processed in linear time. */
+const redactEmailsInToken = (token: string): string => {
+  let out = '';
+  let cursor = 0;
+  for (let at = token.indexOf('@'); at !== -1; at = token.indexOf('@', at + 1)) {
+    if (at < cursor) continue;
+    let localStart = at;
+    while (localStart > cursor && !LOCAL_PART_BOUNDARY.has(token[localStart - 1] ?? '')) localStart -= 1;
+    const domain = localStart < at ? EMAIL_DOMAIN.exec(token.slice(at + 1, at + 254)) : null;
+    if (!domain) continue;
+    out += `${token.slice(cursor, localStart)}[email]`;
+    cursor = at + 1 + domain[0].length;
+  }
+  return out + token.slice(cursor);
+};
+
 /** Redact before hashing as well as storing, so equivalent private values cannot
  * become a high-cardinality identifier. Dotted domains are required: ordinary
  * version tokens such as api@v2 remain searchable. Unicode and quoted local
@@ -128,7 +151,10 @@ export const normalizeSearchTerm = (term: string): string =>
   term
     .normalize('NFKC')
     .toLowerCase()
-    .replace(/(?:"(?:[^"\\]|\\.)+"|[^\s@<>"(),;:]+)@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu, '[email]')
+    .replace(QUOTED_LOCAL_PART, 'quoted@')
+    .split(/(\s+)/u)
+    .map((token) => (token.includes('@') ? redactEmailsInToken(token) : token))
+    .join('')
     .replace(/(?:https?:\/\/|www\.)[^\s]+/giu, '[url]')
     .replace(/\p{Nd}{6,}/gu, '[number]')
     .trim()
