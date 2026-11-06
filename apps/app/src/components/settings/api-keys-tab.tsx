@@ -2,6 +2,7 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale } from '@nibleaf/i18n/react';
 import { MCP_KEY_PRESETS, MCP_PRESET_MIN_ROLE, MCP_PRESET_SCOPES, MCP_SCOPES, type McpKeyPreset, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import { canAdminister, roleAtLeast } from '@nibleaf/shared/rbac';
@@ -11,7 +12,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
-import { localeTag, useFormatters } from '@/lib/format';
+import { useFormatters } from '@/lib/format';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,7 +24,7 @@ import {
   AlertDialogTitle,
 } from './api-key-alert-dialog';
 import { assistantSetup, ConnectionError, oauthAssistantSetup, testAssistantConnection } from './assistant-setup';
-import { ConnectedApps } from './connected-apps';
+import { ConnectedApps, CredentialRowsSkeleton, formattedDate, McpActivityLine, relativeMinutes, TechnicalDetails } from './connected-apps';
 import { SettingsSection } from './section';
 
 type IssuableMcpScope = (typeof MCP_SCOPES)[number];
@@ -37,14 +38,11 @@ const issuableScopes = new Set<string>(MCP_SCOPES);
 const isIssuableScope = (scope: string): scope is IssuableMcpScope => issuableScopes.has(scope);
 const isRetainedScope = (scope: string): scope is Exclude<IssuableMcpScope, 'mcp:connect'> => scope !== 'mcp:connect' && isIssuableScope(scope);
 
-const formattedDate = (value: string, locale: string) =>
-  new Intl.DateTimeFormat(localeTag(locale), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-
 export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
   const { number } = useFormatters();
   const [waiting, setWaiting] = useState<{ id: string; since: number } | null>(null);
-  const { data: response, error, isError, isLoading } = useApiKeys(projectId, waiting);
+  const { data: response, isError, isPending } = useApiKeys(projectId, waiting);
   const create = useCreateApiKey(projectId);
   const rotate = useRotateApiKey(projectId);
   const revoke = useRevokeApiKey(projectId);
@@ -86,7 +84,6 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
           setSecret(created.secret);
           toast.success(t('settings.apiKeys.created.toast'));
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.apiKeys.createError')),
       },
     );
   };
@@ -102,11 +99,13 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
           setWaiting({ id: created.id, since: Date.now() });
           toast.success(t('settings.apiKeys.rotatedToast'));
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.apiKeys.rotateError')),
       },
     );
   };
 
+  // Create, rotate and revoke failures are toasted in plain words by the
+  // mutations themselves (meta.errorMessage); revoke also rolls the row back
+  // and leaves the dialog open so the person can retry.
   const confirmRevoke = () => {
     if (!revokeCandidate) return;
     revoke.mutate(revokeCandidate.id, {
@@ -118,7 +117,6 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
         setRevokeCandidate(null);
         toast.success(t('settings.apiKeys.revokedToast'));
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.apiKeys.revokeError')),
     });
   };
 
@@ -152,9 +150,13 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       <SettingsSection description={t('settings.apiKeys.description')} title={t('settings.apiKeys.title')}>
         <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
           <ShieldCheck aria-hidden className="size-4 shrink-0 text-primary" />
-          <code dir="ltr" className="min-w-0 break-all text-foreground">
-            {endpoint}
-          </code>
+          {isPending ? (
+            <Skeleton aria-hidden className="h-4 w-64 max-w-full" />
+          ) : (
+            <code dir="ltr" className="min-w-0 break-all text-foreground">
+              {endpoint}
+            </code>
+          )}
         </div>
 
         {response && !enabled ? (
@@ -258,7 +260,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 ))}
               </SelectContent>
             </Select>
-            <Button disabled={!enabled || !allowedScopes.length || !name.trim() || create.isPending} onClick={submit} type="button">
+            <Button disabled={!enabled || !allowedScopes.length || !name.trim()} loading={create.isPending} onClick={submit} type="button">
               <KeyRound aria-hidden />
               {t('settings.apiKeys.create')}
             </Button>
@@ -344,7 +346,13 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 </>
               )}
               <div>
-                <Button type="button" disabled={testing || !enabled} onClick={() => void testConnection()}>
+                <Button
+                  disabled={!enabled}
+                  loading={testing}
+                  loadingText={t('settings.apiKeys.testing')}
+                  onClick={() => void testConnection()}
+                  type="button"
+                >
                   {t('settings.apiKeys.test')}
                 </Button>
                 <p role="status">{connection}</p>
@@ -356,83 +364,71 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       ) : null}
 
       <SettingsSection>
-        {isLoading ? null : isError || error ? (
+        {isError ? (
           <p className="py-3 text-center text-destructive text-sm" role="alert">
             {t('settings.apiKeys.loadError')}
           </p>
+        ) : isPending ? (
+          <CredentialRowsSkeleton actions={2} label={t('settings.apiKeys.loadingKeys')} />
         ) : keys.length === 0 ? (
           <p className="py-3 text-center text-muted-foreground text-sm">{t('settings.apiKeys.empty')}</p>
         ) : (
-          <div className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-border">
             {keys.map((key) => (
-              <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center" key={key.id}>
+              <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center" key={key.id}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-sm">{key.name}</span>
+                    <bdi className="min-w-0 truncate font-medium text-sm">{key.name}</bdi>
                     <Badge variant="outline">{t(`settings.apiKeys.${key.preset}`)}</Badge>
-                    {canAdminister(role) && key.createdBy ? (
-                      <span className="text-muted-foreground text-xs">
-                        {t('settings.apiKeys.createdBy')}: <bdi className="text-foreground">{key.createdBy.name.trim() || key.createdBy.email}</bdi>
-                      </span>
-                    ) : null}
                     {key.state === 'active' ? <Badge variant="secondary">{t('settings.integrations.status.active')}</Badge> : null}
                     {key.state === 'revoked' ? <Badge variant="destructive">{t('settings.apiKeys.revoked')}</Badge> : null}
                     {key.state === 'expired' ? <Badge variant="destructive">{t('settings.apiKeys.expired')}</Badge> : null}
                     {key.state === 'rotation_required' && key.legacy ? <Badge variant="secondary">{t('settings.apiKeys.legacy')}</Badge> : null}
                     {key.state === 'rotation_required' ? <Badge variant="outline">{t('settings.apiKeys.rotationRequired')}</Badge> : null}
                   </div>
-                  <p className="mt-1 text-muted-foreground text-xs">{t('settings.apiKeys.lastFour', { lastFour: key.lastFour })}</p>
-                  <p className="mt-1 text-xs">
-                    {t('settings.apiKeys.createdAt')}: {formattedDate(key.createdAt, locale)}
+                  <p className="mt-1 text-muted-foreground text-sm">
+                    {key.preset === 'custom' ? t('settings.apiKeys.customDescription') : t(`settings.apiKeys.${key.preset}Description`)}
                   </p>
-                  {key.lastActivity ? (
-                    <p className="mt-1 text-muted-foreground text-xs">
-                      {t('settings.apiKeys.lastActivity')}:{' '}
-                      <code className="text-foreground" dir="ltr">
-                        {key.lastActivity.operation}
-                      </code>
-                      {' · '}
-                      <span className={key.lastActivity.outcome === 'failed' ? 'text-destructive' : 'text-foreground'}>
-                        {key.lastActivity.outcome === 'failed'
-                          ? t('settings.apiKeys.outcomeFailed')
-                          : key.lastActivity.outcome === 'replayed'
-                            ? t('settings.apiKeys.outcomeReplayed')
-                            : t('settings.apiKeys.outcomeSucceeded')}
-                      </span>
-                      {' · '}
-                      <bdi>{formattedDate(key.lastActivity.at, locale)}</bdi>
-                    </p>
-                  ) : null}
                   <dl className="mt-2 grid gap-1 text-muted-foreground text-xs sm:grid-cols-2">
+                    <div className="flex gap-1.5">
+                      <dt>{t('settings.apiKeys.lastUsed')}</dt>
+                      <dd className="font-medium text-foreground">
+                        {key.lastUsedAt ? relativeMinutes(key.lastUsedAt, locale) : t('settings.apiKeys.neverUsed')}
+                      </dd>
+                    </div>
                     <div className="flex gap-1.5">
                       <dt>{t('settings.apiKeys.expires')}</dt>
                       <dd className="text-foreground">{key.expiresAt ? formattedDate(key.expiresAt, locale) : t('settings.apiKeys.noExpiry')}</dd>
                     </div>
-                    <div className="flex gap-1.5">
-                      <dt>{t('settings.apiKeys.lastUsed')}</dt>
-                      <dd className="text-foreground">
-                        {key.lastUsedAt
-                          ? new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' }).format(
-                              -Math.max(0, Math.floor((Date.now() - Date.parse(key.lastUsedAt)) / 60_000)),
-                              'minute',
-                            )
-                          : t('settings.apiKeys.neverUsed')}
+                    {canAdminister(role) && key.createdBy ? (
+                      <div className="flex gap-1.5">
+                        <dt>{t('settings.apiKeys.createdBy')}:</dt>
+                        <dd>
+                          <bdi className="text-foreground">{key.createdBy.name.trim() || key.createdBy.email}</bdi>
+                        </dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                  {key.lastActivity ? <McpActivityLine activity={key.lastActivity} subject="key" /> : null}
+                  <TechnicalDetails activity={key.lastActivity} scopes={key.scopes}>
+                    <div>
+                      <dt>{t('settings.apiKeys.keyEnding')}</dt>
+                      <dd className="mt-1 text-foreground">
+                        <code dir="ltr">{key.lastFour}</code>
                       </dd>
                     </div>
-                  </dl>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {key.scopes.map((scope) => (
-                      <Badge className="font-mono" key={scope} variant="outline">
-                        {scope}
-                      </Badge>
-                    ))}
-                  </div>
+                    <div>
+                      <dt>{t('settings.apiKeys.createdAt')}</dt>
+                      <dd className="mt-1 text-foreground">{formattedDate(key.createdAt, locale)}</dd>
+                    </div>
+                  </TechnicalDetails>
                 </div>
                 <div className="flex gap-2 self-start sm:self-center">
                   {key.ownedByViewer === false ? null : (
                     <Button
                       className="h-9"
-                      disabled={!enabled || !allowedScopes.length || Boolean(key.revokedAt) || rotate.isPending}
+                      disabled={!enabled || !allowedScopes.length || Boolean(key.revokedAt) || (rotate.isPending && rotate.variables?.id !== key.id)}
+                      loading={rotate.isPending && rotate.variables?.id === key.id}
                       onClick={() => rotateKey(key)}
                       type="button"
                       variant="outline"
@@ -443,7 +439,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   )}
                   <Button
                     className="h-9"
-                    disabled={Boolean(key.revokedAt) || revoke.isPending}
+                    disabled={Boolean(key.revokedAt)}
                     onClick={() => setRevokeCandidate(key)}
                     type="button"
                     variant="destructive"
@@ -452,15 +448,15 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                     {t('settings.apiKeys.revoke')}
                   </Button>
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
       </SettingsSection>
 
       <ConnectedApps projectId={projectId} role={role} />
 
-      <AlertDialog onOpenChange={(open) => (open ? undefined : setRevokeCandidate(null))} open={Boolean(revokeCandidate)}>
+      <AlertDialog onOpenChange={(open) => (open || revoke.isPending ? undefined : setRevokeCandidate(null))} open={Boolean(revokeCandidate)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('settings.apiKeys.revokeConfirm.title')}</AlertDialogTitle>
@@ -468,7 +464,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={revoke.isPending}>{t('settings.apiKeys.cancel')}</AlertDialogCancel>
-            <AlertDialogAction disabled={revoke.isPending} onClick={confirmRevoke}>
+            <AlertDialogAction loading={revoke.isPending} onClick={confirmRevoke}>
               <Trash2 aria-hidden />
               {t('settings.apiKeys.revoke')}
             </AlertDialogAction>

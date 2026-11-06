@@ -1,9 +1,9 @@
-import { useT } from '@nibleaf/i18n/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import {
+  apiKeysQueryOptions,
   branchesQueryOptions,
   deploymentsQueryOptions,
   languagesQueryOptions,
@@ -11,7 +11,7 @@ import {
   projectQueryOptions,
   projectsQueryOptions,
 } from './query-options';
-import type { ApiKey, Comment, Domain, NotificationList, OpenApiConfiguration, Page, ProjectAddon, WorkspaceSettings } from './types';
+import type { Comment, Domain, NotificationList, OpenApiConfiguration, Page, ProjectAddon, WorkspaceSettings } from './types';
 
 const requireQueryValue = (value: string | undefined, label: string) => {
   if (!value) {
@@ -30,22 +30,16 @@ export const useProjectAddons = (projectId: string) =>
     queryFn: async () => getData<ProjectAddon[]>(await api.app.projects[':projectId'].addons.$get({ param: { projectId } }), 'project add-ons'),
   });
 
-export const useApiKeys = (projectId: string | undefined, waiting?: { id: string; since: number } | null) => {
-  const t = useT();
-  return useQuery({
-    queryKey: queryKeys.apiKeys.all(projectId ?? ''),
-    enabled: Boolean(projectId),
+/** While `waiting` is set (a key was just created or rotated), poll until that
+ *  key is used after `since`, so the page can say the assistant connected. */
+export const useApiKeys = (projectId: string | undefined, waiting?: { id: string; since: number } | null) =>
+  useQuery({
+    ...apiKeysQueryOptions(projectId),
     refetchInterval: (query) =>
       waiting && !query.state.data?.data.some((key) => key.id === waiting.id && key.lastUsedAt && Date.parse(key.lastUsedAt) > waiting.since)
         ? 5000
         : false,
-    queryFn: async () => {
-      const response = await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } });
-      if (!response.ok) await getData(response, t('settings.apiKeys.title'));
-      return response.json();
-    },
   });
-};
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
   useQuery(pagesQueryOptions(projectId, languageId, branchId));

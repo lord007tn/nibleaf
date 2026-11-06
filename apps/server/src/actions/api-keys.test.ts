@@ -116,6 +116,15 @@ describe('personal key permissions', () => {
     expect(database.audit).toHaveBeenCalledOnce();
     expect(keys[0]).toMatchObject({ preset: 'custom', lastActivity: { operation: 'get_page', outcome: 'success' } });
   });
+  it('includes the audit error code in the newest activity', async () => {
+    const { Prisma } = await import('@nibleaf/database');
+    database.audit.mockResolvedValue([
+      { apiKeyId: successor.id, operation: 'publish_changes', outcome: 'failed', errorCode: 'mcp:scope_required', at: new Date() },
+    ]);
+    const keys = await listApiKeys('org-1', 'project-1', member);
+    expect(vi.mocked(Prisma.sql).mock.calls[0]?.[0].join('')).toContain('"errorCode"');
+    expect(keys[0]?.lastActivity).toMatchObject({ operation: 'publish_changes', outcome: 'failed', errorCode: 'mcp:scope_required' });
+  });
   it.each(['read_only', 'support_writer', 'full_admin'] as const)('derives exact preset %s', async (preset) => {
     database.findMany.mockResolvedValue([{ ...successor, scopes: [...MCP_PRESET_SCOPES[preset]].reverse() }]);
     expect((await listApiKeys('org-1', 'project-1', admin))[0]?.preset).toBe(preset);

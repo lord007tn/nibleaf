@@ -45,8 +45,8 @@ export const listApiKeys = async (organizationId: string, projectId: string, act
   const keys = await prisma.apiKey.findMany({ where: { projectId, ...ownership(actor) }, orderBy: { createdAt: 'desc' }, select: keySelect });
   // DISTINCT ON bounds the result to one event per visible key in one query.
   const events = keys.length
-    ? await prisma.$queryRaw<Array<{ apiKeyId: string; operation: string; outcome: string; at: Date }>>(Prisma.sql`
-    SELECT DISTINCT ON ("apiKeyId") "apiKeyId", operation, outcome, "createdAt" AS at
+    ? await prisma.$queryRaw<Array<{ apiKeyId: string; operation: string; outcome: string; errorCode: string | null; at: Date }>>(Prisma.sql`
+    SELECT DISTINCT ON ("apiKeyId") "apiKeyId", operation, outcome, "errorCode", "createdAt" AS at
     FROM mcp_audit_event WHERE "projectId" = ${projectId} AND "apiKeyId" IN (${Prisma.join(keys.map((key) => key.id))})
     ORDER BY "apiKeyId", "createdAt" DESC, id DESC
   `)

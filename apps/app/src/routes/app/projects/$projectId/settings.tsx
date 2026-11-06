@@ -59,6 +59,8 @@ import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
 import { useProject, useProjectMembers } from '@/hooks/api';
+import { apiKeysQueryOptions, connectedAppsQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
@@ -129,6 +131,13 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
     // Analytics moved under Integrations — keep old ?section=analytics links working.
     section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : 'general',
   }),
+  loaderDeps: ({ search: { section } }) => ({ section }),
+  // Non-blocking: the section renders its skeleton while these load.
+  loader: ({ context: { queryClient }, deps: { section }, params: { projectId } }) => {
+    if (section !== 'apiKeys') return;
+    prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));
+    prefetchRouteData(queryClient, connectedAppsQueryOptions(projectId));
+  },
 });
 
 function ProjectSettingsPage() {

@@ -2,7 +2,7 @@ import { queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { Branch, Deployment, Language, PageNode, Project } from './types';
+import type { ApiKeyList, Branch, ConnectedApp, Deployment, Language, PageNode, Project } from './types';
 
 /*
  * Query factories (`queryOptions`) are the single definition of each query: its
@@ -64,5 +64,28 @@ export const deploymentsQueryOptions = (projectId: string | undefined) =>
     queryKey: queryKeys.deployments.all(projectId ?? ''),
     queryFn: projectId
       ? async () => getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments')
+      : skipToken,
+  });
+
+/** Personal MCP keys (one's own; everyone's for admins) plus the instance's MCP settings. */
+export const apiKeysQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.apiKeys.all(projectId ?? ''),
+    queryFn: projectId
+      ? async (): Promise<ApiKeyList> => {
+          const response = await api.app.projects[':projectId']['api-keys'].$get({ param: { projectId } });
+          // getData throws the readable error; the list needs `meta` too, so read the body here.
+          if (!response.ok) await getData(response, 'AI assistant keys');
+          return response.json();
+        }
+      : skipToken,
+  });
+
+/** AI apps connected by signing in (OAuth): one's own, or everyone's for admins. */
+export const connectedAppsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.connectedApps.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () => getData<ConnectedApp[]>(await api.app.projects[':projectId']['connected-apps'].$get({ param: { projectId } }), 'connected apps')
       : skipToken,
   });

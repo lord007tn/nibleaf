@@ -166,8 +166,8 @@ export const listConnectedApps = async (organizationId: string, projectId: strin
     select: connectedAppSelect,
   });
   const events = grants.length
-    ? await prisma.$queryRaw<Array<{ oauthGrantId: string; operation: string; outcome: string; at: Date }>>(Prisma.sql`
-    SELECT DISTINCT ON ("oauthGrantId") "oauthGrantId", operation, outcome, "createdAt" AS at
+    ? await prisma.$queryRaw<Array<{ oauthGrantId: string; operation: string; outcome: string; errorCode: string | null; at: Date }>>(Prisma.sql`
+    SELECT DISTINCT ON ("oauthGrantId") "oauthGrantId", operation, outcome, "errorCode", "createdAt" AS at
     FROM mcp_audit_event WHERE "projectId" = ${projectId} AND "oauthGrantId" IN (${Prisma.join(grants.map((grant) => grant.id))})
     ORDER BY "oauthGrantId", "createdAt" DESC, id DESC
   `)

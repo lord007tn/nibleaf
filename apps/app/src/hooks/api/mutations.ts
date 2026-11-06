@@ -31,7 +31,7 @@ import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type { ApiKey, ApiKeySecret, Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
+import type { ApiKey, ApiKeyList, ApiKeySecret, Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -85,6 +85,7 @@ export const useCreateApiKey = (projectId: string) => {
         t('settings.apiKeys.createError'),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
+    meta: { errorMessage: t('settings.apiKeys.createError') },
   });
 };
 
@@ -98,19 +99,38 @@ export const useRotateApiKey = (projectId: string) => {
         t('settings.apiKeys.rotateError'),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
+    meta: { errorMessage: t('settings.apiKeys.rotateError') },
   });
 };
 
 export const useRevokeApiKey = (projectId: string) => {
   const queryClient = useQueryClient();
   const t = useT();
+  const queryKey = queryKeys.apiKeys.all(projectId);
   return useMutation({
     mutationFn: async (id: string) =>
       mutateData<ApiKey>(
         await api.app.projects[':projectId']['api-keys'][':id'].$delete({ param: { projectId, id } }),
         t('settings.apiKeys.revokeError'),
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
+    // Optimistic: revoking only ever succeeds or leaves the key as it was, so mark
+    // it revoked at once and put the previous list back if the call fails.
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<ApiKeyList>(queryKey);
+      const revokedAt = new Date().toISOString();
+      queryClient.setQueryData<ApiKeyList>(queryKey, (list) =>
+        list
+          ? { ...list, data: list.data.map((key) => (key.id === id ? { ...key, revokedAt: key.revokedAt ?? revokedAt, state: 'revoked' } : key)) }
+          : list,
+      );
+      return { previous };
+    },
+    onError: (_error, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey }),
+    meta: { errorMessage: t('settings.apiKeys.revokeError') },
   });
 };
 
