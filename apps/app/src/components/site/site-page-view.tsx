@@ -178,7 +178,6 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
       data-theme-region="article"
     >
-      {showToc ? <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : null}
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
@@ -224,6 +223,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             </li>
           ))}
         </ul>
+      ) : null}
+      {/* Below the wide breakpoint the outline sits after the page header, where readers look for it. */}
+      {showToc ? (
+        <div className="mt-6">
+          <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} />
+        </div>
       ) : null}
       <div className="mt-8">
         <Suspense fallback={null}>

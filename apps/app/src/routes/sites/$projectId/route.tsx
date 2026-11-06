@@ -520,7 +520,6 @@ function SiteChrome() {
                       onFocus={preloadSiteSearch}
                       onPointerEnter={preloadSiteSearch}
                       onTouchStart={preloadSiteSearch}
-                      data-theme-region="search-trigger"
                       type="button"
                       aria-label={t('searchDocumentation')}
                     >
