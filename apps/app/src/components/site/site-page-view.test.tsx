@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import { renderToPipeableStream, renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
+import { DOCUMENTATION_THEME_TEMPLATES } from './documentation-theme-provider';
 import { SitePageView } from './site-page-view';
+import { MobileTableOfContents, selectActiveHeading, TableOfContents } from './toc';
 
 vi.mock('@/components/site/page-alternates-context', () => ({ useSitePageAlternates: () => ({ setAlternates: vi.fn() }) }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
@@ -119,5 +121,60 @@ describe('published page presentation', () => {
     const html = renderToStaticMarkup(<SitePageView data={data(patch)} projectId="project-1" />);
     expect(html).not.toContain('View Markdown');
     expect(html).not.toContain('Copy Markdown');
+  });
+});
+
+describe('reader layout ergonomics', () => {
+  it.each(['center', 'wide', 'default'] as const)('retains the themed shell for %s pages without an outline', (mode) => {
+    const html = renderToStaticMarkup(<SitePageView data={data({ page: { ...data().page, config: { mode } } })} projectId="project-1" />);
+    expect(html).toContain('data-documentation-layout="harbor-reference-page"');
+    expect(html).not.toContain('data-theme-region="toc"');
+  });
+  it.each(Object.values(DOCUMENTATION_THEME_TEMPLATES))('retains $id padding without reserving an outline column', (template) => {
+    const html = renderToStaticMarkup(template.PageLayout({ article: <article>Body</article> }));
+    expect(html).toContain('data-theme-region="page-shell"');
+    expect(html).toContain('Body');
+    expect(html).not.toContain('data-theme-region="toc"');
+    expect(html).not.toContain('xl:grid-cols-');
+  });
+  it('renders a collapsed mobile outline and the Signal styling hooks with a named landmark', () => {
+    const headings = [{ id: 'refunds', text: 'Refunds', depth: 2 }];
+    const html = renderToStaticMarkup(<MobileTableOfContents headings={headings} label="On this page" />);
+    expect(html).toContain('<details');
+    expect(html).not.toContain(' open=');
+    expect(html).toContain('min-h-11');
+    expect(html).toContain('aria-label="On this page"');
+    const desktop = renderToStaticMarkup(<TableOfContents headings={headings} label="On this page" />);
+    for (const hook of [
+      'data-theme-component="toc"',
+      'data-theme-region="toc-list"',
+      'data-theme-region="toc-label"',
+      'data-theme-region="toc-link"',
+    ])
+      expect(desktop).toContain(hook);
+  });
+  it.each(['en', 'ar'])('renders visible localized pager labels for %s', (language) => {
+    const html = renderToStaticMarkup(
+      <SitePageView
+        data={data({ activeLanguage: language, prev: { title: 'Earlier title', path: 'earlier' }, next: { title: 'Later title', path: 'later' } })}
+        projectId="project-1"
+      />,
+    );
+    expect(html).toContain(language === 'ar' ? 'السابق' : 'Previous');
+    expect(html).toContain(language === 'ar' ? 'التالي' : 'Next');
+    expect(html).toContain('line-clamp-2');
+    expect(html).toContain('min-h-11');
+  });
+  it('selects from all heading positions, supports reverse scrolling and forces the final heading at the end', () => {
+    const headings = [
+      { id: 'start', top: 100 },
+      { id: 'payment', top: 600 },
+      { id: 'refunds', top: 1100 },
+    ];
+    expect(selectActiveHeading(headings, 700, false)).toBe('payment');
+    expect(selectActiveHeading(headings, 300, false)).toBe('start');
+    expect(selectActiveHeading(headings, 800, true)).toBe('refunds');
+    expect(selectActiveHeading(headings, 1200, false)).toBe('refunds');
+    expect(selectActiveHeading([], 100, true)).toBe('');
   });
 });

@@ -5,7 +5,7 @@ import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, I
 import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
-import { TableOfContents } from '@/components/site/toc';
+import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
@@ -65,36 +65,39 @@ function ReaderActions({
         'flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between',
         presentation === 'card' ? 'mt-8 rounded-xl border border-border bg-muted/30 p-4 sm:p-5' : 'mt-14 border-border/70 border-t pt-6',
       )}
+      data-theme-region="reader-actions"
     >
       {showFeedback ? (
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-          {sentiment ? (
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              <Check className="size-4 text-primary" /> {t('feedbackThanks')}
-            </span>
-          ) : (
-            <>
-              <span>{t('feedbackQuestion')}</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  onClick={() => sendFeedback('helpful')}
-                  type="button"
-                  aria-label={t('feedbackYes')}
-                >
-                  <ThumbsUp className="size-3.5" />
-                </button>
-                <button
-                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  onClick={() => sendFeedback('not_helpful')}
-                  type="button"
-                  aria-label={t('feedbackNo')}
-                >
-                  <ThumbsDown className="size-3.5" />
-                </button>
-              </div>
-            </>
-          )}
+          <span>{t('feedbackQuestion')}</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="grid size-11 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary aria-pressed:border-primary aria-pressed:text-primary"
+              onClick={() => sendFeedback('helpful')}
+              type="button"
+              aria-label={t('feedbackYes')}
+              aria-pressed={sentiment === 'helpful'}
+            >
+              <ThumbsUp className="size-4" aria-hidden />
+            </button>
+            <button
+              className="grid size-11 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary aria-pressed:border-primary aria-pressed:text-primary"
+              onClick={() => sendFeedback('not_helpful')}
+              type="button"
+              aria-label={t('feedbackNo')}
+              aria-pressed={sentiment === 'not_helpful'}
+            >
+              <ThumbsDown className="size-4" aria-hidden />
+            </button>
+          </div>
+          <span role="status" className="inline-flex min-h-6 items-center gap-1.5 text-foreground">
+            {sentiment ? (
+              <>
+                <Check className="size-4 text-primary" aria-hidden />
+                {t('feedbackThanks')}
+              </>
+            ) : null}
+          </span>
         </div>
       ) : (
         <div />
@@ -171,7 +174,11 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
   const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
   const article = (
-    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">
+    <article
+      className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
+      data-theme-region="article"
+    >
+      {showToc ? <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : null}
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
@@ -240,15 +247,19 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             'flex items-center justify-between gap-6 text-sm',
             hasReaderActions && !readerActionsAfterNavigation ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6',
           )}
+          data-theme-region="pager"
           aria-label={`${tArticle('previous')} / ${tArticle('next')}`}
         >
           {prev ? (
             <a
               href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
-              className="group inline-flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
-              <span className="truncate">{prev.title}</span>
+              <span className="min-w-0">
+                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('previous')}</span>
+                <span className="line-clamp-2 break-words">{prev.title}</span>
+              </span>
             </a>
           ) : (
             <span />
@@ -256,9 +267,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           {next ? (
             <a
               href={siteHref(projectId, next.path, { lang: navigationLanguage, version: versionPrefix })}
-              className="group inline-flex min-w-0 items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <span className="truncate">{next.title}</span>
+              <span className="min-w-0">
+                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('next')}</span>
+                <span className="line-clamp-2 break-words">{next.title}</span>
+              </span>
               <ChevronRight className="size-4 shrink-0 rtl:-scale-x-100" />
             </a>
           ) : (
@@ -278,12 +292,10 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     </article>
   );
 
-  if (mode === 'center') {
-    return <div className="mx-auto min-w-0 max-w-[42rem] py-9 lg:py-12">{article}</div>;
-  }
-  if (!showToc) {
-    return <div className="min-w-0 py-9 lg:py-12">{article}</div>;
-  }
-
-  return <DocumentationPageLayout article={article} tableOfContents={<TableOfContents headings={page.headings} label={tArticle('onThisPage')} />} />;
+  return (
+    <DocumentationPageLayout
+      article={article}
+      tableOfContents={showToc ? <TableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : undefined}
+    />
+  );
 }
