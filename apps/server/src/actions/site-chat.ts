@@ -7,6 +7,7 @@ import {
   CHAT_MIN_SOURCES_TOKENS,
   CHAT_OUTPUT_TOKEN_LIMITS,
   CHAT_PROMPT_VERSION,
+  CHAT_SOURCES_HEADROOM_TOKENS,
   type ChatTurnShape,
   type ChatUsage,
   chatCallInputBounds,
@@ -171,6 +172,9 @@ interface TurnOutcome {
   unreported: Map<ProviderCall, { input: number; output: number; inputBound: number; outputBound: number }>;
   /** The answer text streamed so far, to estimate an interrupted answer. */
   streamed: string;
+  /** Sources the answer read (fewer than retrieval found when the context or a
+   * budget was full). */
+  sourceCount?: number;
   errorCode?: AiChatErrorCode;
   /** From the request to the first visible text. */
   firstTokenMs?: number;
@@ -290,7 +294,9 @@ const openChatTurn = async (context: PublishedAnswerContext, conversationId: str
   if (!context.available) return { ok: false as const, code: 'unavailable' as const };
   const runtime = await resolveChatRuntime(projectId).catch(() => null);
   if (!runtime) return { ok: false as const, code: 'unavailable' as const };
-  const reservation = await reserveChatTurn(projectId, conversationId, estimatedTokens);
+  // Admitted only with room to read a full context too, so a conversation near
+  // its cap is told to start over rather than answered from less.
+  const reservation = await reserveChatTurn(projectId, conversationId, estimatedTokens, undefined, CHAT_SOURCES_HEADROOM_TOKENS);
   if (!reservation.allowed) return { ok: false as const, code: reservation.reason };
   const quota = await consumeAnswerQuota(projectId).catch(() => null);
   if (!quota?.allowed) {
@@ -421,9 +427,16 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     if (retrieval.chunks.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
       const fitted = fitChatContext(retrieval.chunks);
       const wanted = chatSourcesTokens(shape, fitted) - CHAT_MIN_SOURCES_TOKENS;
-      const granted = wanted > 0 ? await extendChatTurn(projectId, body.conversationId, reservation, wanted).catch(() => 0) : 0;
+      const granted =
+        wanted > 0
+          ? await extendChatTurn(projectId, body.conversationId, reservation, wanted).catch(() => {
+              log.warn({ projectId }, 'AI chat could not reserve its sources; reading the least');
+              return 0;
+            })
+          : 0;
       sources = granted >= wanted ? fitted : fitChatSources(shape, fitted, CHAT_MIN_SOURCES_TOKENS + granted);
     }
+    outcome.sourceCount = sources.length;
 
     yield { type: EventType.TEXT_MESSAGE_START, messageId: turnId, role: 'assistant', timestamp: Date.now() };
     textStarted = true;
@@ -507,7 +520,11 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
       if (result.status === 'answered') followUps = (await suggested).questions;
-      else await suggested;
+      else {
+        // Not shown after a declined answer: stop them now rather than wait.
+        sideCalls.abort();
+        await suggested;
+      }
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
     textStarted = false;
@@ -699,7 +716,7 @@ const finishTurn = async ({
     ...(outcome.retrieval
       ? {
           retrievalConfidence: outcome.retrieval.confidence,
-          chunkCount: outcome.retrieval.chunks.length,
+          chunkCount: outcome.sourceCount ?? 0,
           retrievalCacheHit: outcome.retrieval.cacheHit,
         }
       : {}),

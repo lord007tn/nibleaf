@@ -238,7 +238,7 @@ the benchmark when you change the answer model or the prompts.
 | `SEARCH_ANSWER_DAILY_PER_PROJECT` | `200` | Existing daily answer quota. Each chat question counts once. |
 | `SEARCH_ANSWER_RATE_LIMIT_PER_MIN` | `10` | Per-IP minute limit, applied separately to `/answer` and `/chat`. |
 | `SEARCH_CHAT_MAX_TURNS` | `20` | Questions per conversation before readers are asked to start a new chat. |
-| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `60000` | Provider tokens one conversation may use. |
+| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `150000` | Provider tokens one conversation may use. |
 | `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | Provider tokens per project per UTC day. `0` turns this budget off. |
 | `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Earlier messages sent to the model with each question. |
 | `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated token cap for that history. |
@@ -355,14 +355,20 @@ characters included), never at an estimate. A turn reserves in two steps:
   about 7,000 tokens for a first question and up to about 24,000 with the default
   history limits. The API logs a warning at startup when
   `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is
-  below the largest of these.
+  below the most room a question can need (about 52,000 with the defaults).
 - Once retrieval has found the best matches, what reading them adds: up to 24,000
-  tokens of documentation and the topics suggestions list, as much as the budgets still
-  have room for. With less room, the answer reads fewer sources instead of overspending.
+  tokens of documentation and the topics suggestions list.
 
-Each step is atomic and checked against both budgets, so neither one question nor
-several at once can take spend past a budget, as long as providers honor the output
-caps. Unused reservation comes back when the turn ends.
+A question is admitted only while both budgets also have room for that second step at
+its largest (about 27,000 more tokens), so an admitted question reads every source it
+found; a conversation without that room is told to start a new one instead of getting
+an answer from less. Only when concurrent questions take the last room of a budget, or
+the counter store is unreachable, does an answer read fewer sources, never more than
+were reserved. Each step is atomic and checked against both budgets, so neither one
+question nor several at once can take spend past a budget, as long as providers honor
+the output caps. Unused reservation comes back when the turn ends. With the defaults,
+a conversation has room for about 15 typical questions. A turn records how many sources
+its answer read (`chunk_count`).
 
 A call that is stopped or fails before reporting its usage is charged to the budgets at
 the most it could have used: its prompt at that bound and its full output cap. Its

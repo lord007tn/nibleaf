@@ -8,6 +8,8 @@ import {
   boundChatHistory,
   CHAT_MIN_SOURCES_TOKENS,
   CHAT_OUTPUT_TOKEN_LIMITS,
+  CHAT_SOURCES_HEADROOM_TOKENS,
+  CHAT_SOURCES_MAX_TOKENS,
   type ChatTurnShape,
   chatCallInputBounds,
   chatCallInputTokens,
@@ -20,6 +22,7 @@ import {
   fitChatSources,
   largestChatTurnTokens,
   NO_ANSWER_SENTINEL,
+  parseFollowUpQuestions,
   replyLanguage,
   streamGroundedChat,
   suggestedArticles,
@@ -415,6 +418,9 @@ describe('a bounded context and strict reservations', () => {
     };
     expect(chatTurnReservation(hostile)).toBeLessThanOrEqual(largest);
     expect(largestChatTurnTokens({ questionMax: 500, historyLimits: { maxMessages: 12, maxTokens: 16_000 } })).toBeGreaterThan(largest);
+    // Admission needs room for the reservation and a full context on top.
+    expect(largest).toBeGreaterThanOrEqual(chatTurnReservation(hostile) + CHAT_SOURCES_HEADROOM_TOKENS);
+    expect(CHAT_MIN_SOURCES_TOKENS + CHAT_SOURCES_HEADROOM_TOKENS).toBe(CHAT_SOURCES_MAX_TOKENS);
   });
 });
 
@@ -470,14 +476,31 @@ describe('follow-up suggestions', () => {
   });
   it.each([
     [{ error: 'boom' }, true],
-    [{ text: 'not json' }, undefined],
-    [{ text: '["broken' }, undefined],
+    [{ text: 'not json' }, true],
+    [{ text: '["broken' }, true],
+    [{ text: '[]' }, undefined],
   ] as const)('yields none when the model fails or answers badly (%j)', async (response, failed) => {
     const adapter = fakeText();
     adapter.setResponses([response]);
     const result = await suggestFollowUps({ adapter, question: 'How?', chunks, language: 'en' });
     expect(result.questions).toEqual([]);
     expect(result.failed).toBe(failed);
+  });
+  it('keeps the complete questions of an array cut off at the output cap', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: 'Here you go: ["Can I export to PDF?", "Does \\"sync\\" work offline?", {"question": "Is there a CLI fla' }]);
+    const result = await suggestFollowUps({ adapter, question: 'How?', chunks, language: 'en' });
+    expect(result.questions).toEqual(['Can I export to PDF?', 'Does "sync" work offline?']);
+    expect(result.failed).toBeUndefined();
+    // A short cut-off output with nothing complete is unreadable.
+    const cut = fakeText();
+    cut.setResponses([{ text: `["${'\\"'.repeat(200)}` }]);
+    expect((await suggestFollowUps({ adapter: cut, question: 'How?', chunks, language: 'en' })).failed).toBe(true);
+    // Reading a long, hostile cut-off output is one pass.
+    const started = performance.now();
+    expect(parseFollowUpQuestions(`["${'\\"'.repeat(500_000)}`, 'How?')).toEqual({ questions: [], unreadable: true });
+    expect(parseFollowUpQuestions(`[${'"Can I? ", '.repeat(100_000)}`, 'How?').questions).toEqual(['Can I?']);
+    expect(performance.now() - started).toBeLessThan(500);
   });
   it('reports a failed rewrite so the server can count it', async () => {
     const adapter = fakeText();

@@ -33,7 +33,7 @@ describe('chat budgets', () => {
     const limits = {
       SEARCH_CHAT_HISTORY_MESSAGES: 6,
       SEARCH_CHAT_HISTORY_MAX_TOKENS: 1500,
-      SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000,
+      SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 150_000,
       SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 2_000_000,
     };
     // The defaults fit several of the largest turns.
@@ -53,6 +53,14 @@ describe('chat budgets', () => {
     expect(longHistory?.largestTurnTokens).toBeGreaterThan(low?.largestTurnTokens ?? Number.POSITIVE_INFINITY);
   });
 
+  it('admits a turn only with room for its headroom too', async () => {
+    mocks.eval.mockResolvedValue([1, 1, 0]);
+    await reserveChatTurn('project-1', 'conversation-1', 7000, now, 27_000.5);
+    const [script, , ...rest] = mocks.eval.mock.calls[0] ?? [];
+    expect(String(script)).toContain('reserve + tonumber(ARGV[7])');
+    expect(rest.at(-1)).toBe(27_001);
+  });
+
   it('reserves a turn with its estimated tokens and reports the remaining allowance', async () => {
     mocks.eval.mockResolvedValue([1, 3, 0]);
     await expect(reserveChatTurn('project-1', 'conversation-1', 8000.4, now)).resolves.toEqual({
@@ -64,10 +72,10 @@ describe('chat budgets', () => {
     });
     const [script, keyCount, ...rest] = mocks.eval.mock.calls[0] ?? [];
     // Both keys share one per-project hash tag so the script is atomic in Dragonfly.
-    expect([keyCount, ...rest]).toEqual([2, ...keys, 20, 60_000, 2_000_000, 86_400, 8001, 172_800]);
+    expect([keyCount, ...rest]).toEqual([2, ...keys, 20, 60_000, 2_000_000, 86_400, 8001, 172_800, 0]);
     // The reservation must fit under each cap, and is counted in the same atomic step as the turn.
-    expect(script).toContain('tokens + reserve > tonumber(ARGV[2])');
-    expect(script).toContain('daily + reserve > tonumber(ARGV[3])');
+    expect(script).toContain('tokens + room > tonumber(ARGV[2])');
+    expect(script).toContain('daily + room > tonumber(ARGV[3])');
     expect(script).toMatch(/HINCRBY', KEYS\[1\], 'tokens', ARGV\[5\][\s\S]*INCRBY', KEYS\[2\], ARGV\[5\]/);
   });
 

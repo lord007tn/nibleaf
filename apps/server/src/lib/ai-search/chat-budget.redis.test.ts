@@ -54,6 +54,18 @@ describe.skipIf(!enabled)('chat budgets (real Redis)', () => {
     expect(Number(await redis.get(daily))).toBe(10_000);
   });
 
+  it('admits a turn only while a budget also has its headroom', async () => {
+    const projectId = `budget-test-${run}-headroom`;
+    // 4,000 reserved plus 5,000 of headroom fits the 10,000 daily budget once.
+    const first = await budget.reserveChatTurn(projectId, randomUUID(), 4000, new Date(), 5000);
+    expect(first.allowed).toBe(true);
+    const second = await budget.reserveChatTurn(projectId, randomUUID(), 4000, new Date(), 5000);
+    expect(second).toEqual({ allowed: false, reason: 'budget_exhausted' });
+    // Headroom is a condition, not a reservation: only the first turn's 4,000 is counted.
+    const daily = `{search-chat:${projectId}}:tokens:${new Date().toISOString().slice(0, 10)}`;
+    expect(Number(await redis.get(daily))).toBe(4000);
+  });
+
   it('refuses a turn whose reservation alone would pass a cap', async () => {
     const projectId = `budget-test-${run}-oversized`;
     const daily = await budget.reserveChatTurn(projectId, randomUUID(), 10_001);

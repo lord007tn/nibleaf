@@ -38,8 +38,9 @@ const keysFor = (projectId: string, conversationId: string, now: Date) => {
   return { conversation: `${tag}:conversation:${conversationId}`, dailyTokens: `${tag}:tokens:${day(now)}` };
 };
 
-// Admit a turn only if its reserved tokens fit under each cap, so no turn can
-// start that might take spend past it. Check every cap before counting the turn,
+// Admit a turn only if its reserved tokens, plus the headroom it may still
+// reserve (ARGV[7]), fit under each cap, so no turn can start that might take
+// spend past it or have to read less than it found. Check every cap before counting the turn,
 // so a refused request never consumes capacity, then count the turn and reserve
 // its estimated tokens in the same atomic step: concurrent turns each see the
 // others' reservations. Returns [allowed, turnsUsed, refusal]; refusal 1 is the
@@ -49,8 +50,9 @@ local turns = tonumber(redis.call('HGET', KEYS[1], 'turns') or '0')
 local tokens = tonumber(redis.call('HGET', KEYS[1], 'tokens') or '0')
 local daily = tonumber(redis.call('GET', KEYS[2]) or '0')
 local reserve = tonumber(ARGV[5])
-if turns >= tonumber(ARGV[1]) or tokens + reserve > tonumber(ARGV[2]) then return {0, turns, 1} end
-if tonumber(ARGV[3]) > 0 and daily + reserve > tonumber(ARGV[3]) then return {0, turns, 2} end
+local room = reserve + tonumber(ARGV[7])
+if turns >= tonumber(ARGV[1]) or tokens + room > tonumber(ARGV[2]) then return {0, turns, 1} end
+if tonumber(ARGV[3]) > 0 and daily + room > tonumber(ARGV[3]) then return {0, turns, 2} end
 turns = redis.call('HINCRBY', KEYS[1], 'turns', 1)
 redis.call('HINCRBY', KEYS[1], 'tokens', ARGV[5])
 redis.call('EXPIRE', KEYS[1], ARGV[4])
@@ -105,13 +107,15 @@ export type ChatTurnReservation =
 const whole = (tokens: number) => Math.max(0, Math.ceil(tokens));
 
 /** Reserve one conversation turn and its estimated tokens before any provider
- * spend. Throws when Redis is unavailable: callers fail closed, like the daily
- * answer quota. */
+ * spend, admitting it only while each budget also has `headroomTokens` more room
+ * (what the turn may still reserve once it knows what it reads). Throws when
+ * Redis is unavailable: callers fail closed, like the daily answer quota. */
 export const reserveChatTurn = async (
   projectId: string,
   conversationId: string,
   estimatedTokens: number,
   now = new Date(),
+  headroomTokens = 0,
 ): Promise<ChatTurnReservation> => {
   const keys = keysFor(projectId, conversationId, now);
   const reservedTokens = whole(estimatedTokens);
@@ -127,6 +131,7 @@ export const reserveChatTurn = async (
     CONVERSATION_TTL_SECONDS,
     reservedTokens,
     DAY_TTL_SECONDS,
+    whole(headroomTokens),
   )) as [number, number, number];
   const [allowed, turns, refusal] = result.map(Number) as [number, number, number];
   if (allowed !== 1) return { allowed: false, reason: refusal === 2 ? 'budget_exhausted' : 'conversation_limit' };

@@ -409,9 +409,12 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
     ),
   ]);
   const billed = new Map(spend.map((row) => [row.date, row]));
-  for (const date of billed.keys())
+  /** A day with spend but no people's questions to count. */
+  const addDay = (date: string) => {
     if (!days.some((day) => day.date === date))
       days.push({ date, questions: 0, answered: 0, noAnswer: 0, up: 0, down: 0, inputTokens: 0, outputTokens: 0, costMicros: 0, knownCosts: 0 });
+  };
+  for (const date of billed.keys()) addDay(date);
   days.sort((a, b) => a.date.localeCompare(b.date));
   const billedTurns = new Map<string, number>();
   for (const day of days) {
@@ -423,10 +426,13 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
     billedTurns.set(day.date, Number(row?.turns ?? 0));
   }
   // Full UTC days have the same boundaries as the rollup, which keeps exact
-  // spend. Keep the partial first day and language/local-zone queries on the source rows.
+  // spend, also for days whose conversations have expired (the rollup outlives
+  // them). Keep the partial first day and language/local-zone queries on the source rows.
   if (!q.language && timezone === 'UTC') {
     const usage = await queryAiUsageDaily(s, q);
     const firstDay = String(queryParams.since).slice(0, 10);
+    for (const row of usage) if (String(row.day) > firstDay) addDay(String(row.day));
+    days.sort((a, b) => a.date.localeCompare(b.date));
     for (const day of days) {
       if (day.date <= firstDay) continue;
       const models = usage.filter((row) => row.day === day.date);
@@ -449,18 +455,22 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
       noAnswer: Number(t.noAnswer),
       failed: Number(t.failed),
     };
-    const usage = days.reduce(
-      (sum, day) => ({
-        inputTokens: sum.inputTokens + Number(day.inputTokens),
-        outputTokens: sum.outputTokens + Number(day.outputTokens),
-        costMicros: sum.costMicros + Number(day.costMicros),
-        knownCosts: sum.knownCosts + Number(day.knownCosts),
-      }),
-      { inputTokens: 0, outputTokens: 0, costMicros: 0, knownCosts: 0 },
-    );
-    const turns = [...billedTurns.values()].reduce((sum, count) => sum + count, 0);
-    out.usage = { ...usageResult(usage), costComplete: turns > 0 && usage.knownCosts === turns };
   }
+  const usage = days.reduce(
+    (sum, day) => ({
+      inputTokens: sum.inputTokens + Number(day.inputTokens),
+      outputTokens: sum.outputTokens + Number(day.outputTokens),
+      costMicros: sum.costMicros + Number(day.costMicros),
+      knownCosts: sum.knownCosts + Number(day.knownCosts),
+    }),
+    { inputTokens: 0, outputTokens: 0, costMicros: 0, knownCosts: 0 },
+  );
+  const turns = [...billedTurns.values()].reduce((sum, count) => sum + count, 0);
+  // A range longer than conversation retention has lost turns no total can
+  // rebuild (its partial first day, and every expired day of a language or
+  // local-time view), so its spend is at least what is shown, never complete.
+  const covered = Number.parseInt(q.range ?? '30d', 10) <= keys().AI_CONVERSATION_RETENTION_DAYS;
+  out.usage = { ...usageResult(usage), costComplete: covered && turns > 0 && usage.knownCosts === turns };
   out.feedback = {
     up: Number(feedback[0]?.up ?? 0),
     down: Number(feedback[0]?.down ?? 0),

@@ -55,6 +55,7 @@ vi.mock('@nibleaf/search', async (importOriginal) => {
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,
     CHAT_MIN_SOURCES_TOKENS: actual.CHAT_MIN_SOURCES_TOKENS,
+    CHAT_SOURCES_HEADROOM_TOKENS: actual.CHAT_SOURCES_HEADROOM_TOKENS,
     chatTurnReservation: actual.chatTurnReservation,
     chatCallInputTokens: actual.chatCallInputTokens,
     chatCallInputBounds: actual.chatCallInputBounds,
@@ -76,6 +77,7 @@ vi.mock('@nibleaf/search', async (importOriginal) => {
 import {
   CHAT_MIN_SOURCES_TOKENS,
   CHAT_OUTPUT_TOKEN_LIMITS,
+  CHAT_SOURCES_HEADROOM_TOKENS,
   chatCallInputBounds,
   chatCallInputTokens,
   chatSourcesTokens,
@@ -223,7 +225,8 @@ describe('reader AI chat stream', () => {
     // the answer and suggestion calls spent. One short source fits the least
     // documentation reserved up front, so nothing more was reserved.
     const reserved = chatTurnReservation(chatTurnShape(body(), 'en', { title: 'Install', path: 'guides/install' }));
-    expect(mocks.reserve).toHaveBeenCalledWith('project-1', final.conversationId, reserved);
+    // Admitted only with room to read a full context on top.
+    expect(mocks.reserve).toHaveBeenCalledWith('project-1', final.conversationId, reserved, undefined, CHAT_SOURCES_HEADROOM_TOKENS);
     expect(reserved).toBeGreaterThan(chatTurnReservation(chatTurnShape(body(), 'en')));
     expect(mocks.extend).not.toHaveBeenCalled();
     expect(mocks.settle).toHaveBeenCalledWith('project-1', final.conversationId, reservation, 160);
@@ -326,6 +329,8 @@ describe('reader AI chat stream', () => {
     });
     const events = await readEvents(await chatSite('project-1', body()));
     expect(events.some((event) => event.name === AI_CHAT_EVENT.followUps)).toBe(false);
+    // Suggestions are not shown after a declined answer, so they are stopped.
+    expect(mocks.suggest.mock.calls[0]?.[0].signal.aborted).toBe(true);
     await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
   });
@@ -512,6 +517,8 @@ describe('reader AI chat stream', () => {
     expect(mocks.extend.mock.calls[0]?.[3]).toBe(chatSourcesTokens(shape, read) - CHAT_MIN_SOURCES_TOKENS);
     const turn = mocks.recordTurn.mock.calls.at(-1)?.[0] as Record<string, number | boolean>;
     expect(turn.usageEstimated).toBe(true);
+    // The record counts the sources the answer read, not every chunk retrieval found.
+    expect(turn.chunkCount).toBe(read.length);
     // The record: reported suggestions plus the answer's estimated prompt as sent.
     expect(turn.inputTokens).toBe(30 + chatCallInputTokens(shape, read).generation);
     // The budgets: never charged more than the turn reserved.
@@ -524,9 +531,11 @@ describe('reader AI chat stream', () => {
     const sources = Array.from({ length: 6 }, (_, index) => searchChunk(index, 'x'.repeat(2000)));
     mocks.retrieve.mockResolvedValue({ chunks: sources, hits: [], confidence: 0.8, cacheHit: false });
     const shape = chatTurnShape(body(), 'en');
-    for (const granted of [1000, 0]) {
+    for (const granted of [1000, 0, 'unavailable'] as const) {
       mocks.stream.mockClear();
       mocks.extend.mockImplementationOnce(async (_project: string, _conversation: string, hold: { reservedTokens: number }) => {
+        // Redis down: the turn reads the least it reserved up front.
+        if (granted === 'unavailable') throw new Error('redis down');
         hold.reservedTokens += granted;
         return granted;
       });
@@ -546,10 +555,12 @@ describe('reader AI chat stream', () => {
       await readEvents(await chatSite('project-1', body()));
       for (let i = 0; i < 3; i++) await settle();
       const read = mocks.stream.mock.calls[0]?.[0].chunks as SearchChunk[];
-      expect(read).toEqual(fitChatSources(shape, sources, CHAT_MIN_SOURCES_TOKENS + granted));
+      const room = CHAT_MIN_SOURCES_TOKENS + (granted === 'unavailable' ? 0 : granted);
+      expect(read).toEqual(fitChatSources(shape, sources, room));
       expect(read.length).toBeGreaterThan(0);
       expect(read.length).toBeLessThan(sources.length);
-      expect(chatSourcesTokens(shape, read)).toBeLessThanOrEqual(CHAT_MIN_SOURCES_TOKENS + granted);
+      expect(chatSourcesTokens(shape, read)).toBeLessThanOrEqual(room);
+      expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).toMatchObject({ chunkCount: read.length });
     }
   });
 

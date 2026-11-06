@@ -127,7 +127,7 @@ const usageFrom = (usage: TokenUsage): ChatUsage => ({
 });
 const DEFAULT_HISTORY_LIMITS = { maxMessages: 6, maxTokens: 1500 };
 /** Output caps of a turn's three provider calls, so callers can bound a turn's spend before it runs. */
-export const CHAT_OUTPUT_TOKEN_LIMITS = { condense: 120, followUps: 200, answer: 1200 } as const;
+export const CHAT_OUTPUT_TOKEN_LIMITS = { condense: 120, followUps: 400, answer: 1200 } as const;
 /** The most tokens a text can be: one per UTF-8 byte, the most a byte-level
  * tokenizer (or a byte-fallback one) produces for any text, digits and rare
  * characters included. Budgets reserve against this, never against estimates. */
@@ -137,6 +137,12 @@ export const CHAT_CONTEXT_TOKENS = 24_000;
 /** The least documentation worth answering from, reserved with the rest of a turn
  * before it runs, so an admitted question can always read some. */
 export const CHAT_MIN_SOURCES_TOKENS = 3000;
+/** The most reading sources adds to a turn, at its bound: a full context and the
+ * widest suggestion topics. */
+export const CHAT_SOURCES_MAX_TOKENS = CHAT_CONTEXT_TOKENS + FOLLOW_UP_TOPIC_LIMIT * (FOLLOW_UP_TOPIC_CHARS * 3 + 3);
+/** Room a turn must find beyond its reservation to be admitted: enough to read a
+ * full context, so an admitted question is never quietly answered from less. */
+export const CHAT_SOURCES_HEADROOM_TOKENS = CHAT_SOURCES_MAX_TOKENS - CHAT_MIN_SOURCES_TOKENS;
 /** Per-message framing a provider adds around each prompt message. */
 const MESSAGE_FRAMING_TOKENS = 8;
 
@@ -254,9 +260,10 @@ export const fitChatSources = (shape: ChatTurnShape, sources: SearchChunk[], bud
   return cut ? [cut] : [];
 };
 
-/** The largest reservation a turn makes before it runs under these limits: the
- * longest question, a full history and the longest page context, in characters
- * that take the most bytes. Token budgets below it refuse every such turn. */
+/** The most room a turn needs to be admitted under these limits (its reservation
+ * and the headroom to read a full context): the longest question, a full history
+ * and the longest page context, in characters that take the most bytes. Token
+ * budgets below it refuse every such turn. */
 export const largestChatTurnTokens = ({
   questionMax,
   historyLimits,
@@ -269,18 +276,21 @@ export const largestChatTurnTokens = ({
   const messages = Math.max(0, Math.floor(historyLimits.maxMessages));
   // As many messages as are kept, together as long as the history may be.
   const each = messages ? Math.max(1, Math.floor(historyLimits.maxTokens / messages)) : 0;
-  return chatTurnReservation({
-    question: '文'.repeat(questionMax),
-    // Oldest first and opening with a question, so bounding keeps every message.
-    history: Array.from({ length: messages }, (_, index) => ({
-      role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
-      content: '文'.repeat(each),
-    })),
-    language,
-    // Control characters, which the prompt's JSON escapes to six bytes each.
-    pageContext: { title: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.title), path: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.path) },
-    historyLimits,
-  });
+  return (
+    CHAT_SOURCES_HEADROOM_TOKENS +
+    chatTurnReservation({
+      question: '文'.repeat(questionMax),
+      // Oldest first and opening with a question, so bounding keeps every message.
+      history: Array.from({ length: messages }, (_, index) => ({
+        role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
+        content: '文'.repeat(each),
+      })),
+      language,
+      // Control characters, which the prompt's JSON escapes to six bytes each.
+      pageContext: { title: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.title), path: '\u0001'.repeat(CHAT_PAGE_CONTEXT_LIMITS.path) },
+      historyLimits,
+    })
+  );
 };
 /** Provider request options for a completion capped at `maxTokens`. */
 export type ChatModelOptions = (maxTokens: number) => Record<string, unknown>;
@@ -366,25 +376,59 @@ const questionKey = (value: string) => {
   while (end > 0 && (QUESTION_END.has(text[end - 1] ?? '') || text[end - 1] === ' ')) end -= 1;
   return text.slice(0, end).trim().toLocaleLowerCase();
 };
-const parseQuestions = (text: string, question: string, asked: string[] = []): string[] => {
+/** Every complete string value in JSON text, in one linear pass: what a model's
+ * array still holds when its output was cut off at the cap. Object keys are skipped. */
+const completeJsonStrings = (text: string): string[] => {
+  const found: string[] = [];
+  let open = -1;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (open < 0) {
+      if (char === '"') open = index;
+    } else if (char === '\\') index += 1;
+    else if (char === '"') {
+      const literal = text.slice(open, index + 1);
+      open = -1;
+      if (/^\s*:/.test(text.slice(index + 1, index + 32))) continue;
+      try {
+        const value: unknown = JSON.parse(literal);
+        if (typeof value === 'string') found.push(value);
+      } catch {
+        // Not a JSON string literal.
+      }
+    }
+  }
+  return found;
+};
+/** The model's suggestions: its JSON array, or the complete questions of an array
+ * cut off at the output cap. `unreadable` when no array or question could be read. */
+export const parseFollowUpQuestions = (text: string, question: string, asked: string[] = []): { questions: string[]; unreadable: boolean } => {
   const start = text.indexOf('[');
   const end = text.lastIndexOf(']');
-  let parsed: unknown = [];
+  let items: unknown[] | undefined;
   try {
-    parsed = start >= 0 && end > start ? JSON.parse(text.slice(start, end + 1)) : [];
+    const parsed: unknown = start >= 0 && end > start ? JSON.parse(text.slice(start, end + 1)) : undefined;
+    if (Array.isArray(parsed)) items = parsed;
   } catch {
-    return [];
+    // Cut off or malformed: read what is complete.
   }
+  if (!items && start >= 0) {
+    const salvaged = completeJsonStrings(text.slice(start));
+    if (salvaged.length) items = salvaged;
+  }
+  if (!items) return { questions: [], unreadable: true };
   const seen = new Set([question, ...asked].map(questionKey));
-  return (Array.isArray(parsed) ? parsed : [])
+  const questions = items
     .filter((item): item is string => typeof item === 'string')
     .map((item) => stripMarkers(item).replace(/\s+/g, ' ').trim())
     .filter((item) => item.length >= 3 && item.length <= 120 && !seen.has(questionKey(item)) && seen.add(questionKey(item)))
     .slice(0, FOLLOW_UP_LIMIT);
+  return { questions, unreadable: false };
 };
 
 /** Up to three short next questions the retrieved sources can answer, from one
- * small non-streaming call. A provider failure yields none and `failed`. */
+ * small non-streaming call. A provider failure, or output with no readable
+ * questions, yields none and `failed`. */
 export const suggestFollowUps = async ({
   adapter,
   question,
@@ -419,7 +463,8 @@ export const suggestFollowUps = async ({
         },
       ],
     });
-    return { questions: parseQuestions(text, question, asked), usage };
+    const { questions, unreadable } = parseFollowUpQuestions(text, question, asked);
+    return { questions, usage, ...(unreadable ? { failed: true as const } : {}) };
   } catch {
     return { questions: [], usage, ...(signal?.aborted ? {} : { failed: true as const }) };
   } finally {

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildAiConversationQuery,
   deleteAiConversation,
@@ -255,6 +255,79 @@ describe('AI archive', () => {
     const result = await queryAiConversationSummary(scope, {});
     expect(result.usage.costUsd).toBeNull();
     expect(result.usage.costComplete).toBe(false);
+  });
+
+  describe('when conversations expire before their daily usage', () => {
+    const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
+    const rollup = (date: string, costMicros: number) => ({
+      day: date,
+      provider: 'openrouter',
+      model: 'm',
+      questions: 2,
+      answered: 2,
+      no_answer: 0,
+      failed: 0,
+      cancelled: 0,
+      input_tokens: 100,
+      output_tokens: 10,
+      cost_micros: costMicros,
+      cost_known_turns: 2,
+      latency_ms_sum: 0,
+      latency_turns: 0,
+      first_token_ms_sum: 0,
+      first_token_turns: 0,
+      retrieval_cache_hits: 0,
+    });
+    // Totals, feedback, reasons, days, languages and spend from the stored turns; then the rollup.
+    const stored = (turns: { date: string; costMicros: number }[], rollups: Record<string, unknown>[]) => {
+      const spend = turns.map((turn) => ({
+        date: turn.date,
+        turns: '2',
+        inputTokens: '100',
+        outputTokens: '10',
+        costMicros: String(turn.costMicros),
+        knownCosts: '2',
+      }));
+      const totals = { conversations: String(turns.length), questions: String(2 * turns.length), answered: '0', noAnswer: '0', failed: '0' };
+      mocks.query
+        .mockResolvedValueOnce(reply([totals]))
+        .mockResolvedValueOnce(reply([{ up: '0', down: '0' }]))
+        .mockResolvedValueOnce(reply([]))
+        .mockResolvedValueOnce(reply(turns.map((turn) => ({ date: turn.date, questions: '2', answered: '2', noAnswer: '0', up: '0', down: '0' }))))
+        .mockResolvedValueOnce(reply([]))
+        .mockResolvedValueOnce(reply(spend))
+        .mockResolvedValueOnce(reply(rollups));
+    };
+    beforeEach(() => {
+      vi.stubEnv('AI_CONVERSATION_RETENTION_DAYS', '30');
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('keeps the spend of days whose conversations expired', async () => {
+      stored([], [rollup(day(60), 1_000_000)]);
+      const result = await queryAiConversationSummary(scope, { range: '90d' });
+      expect(result.usage).toEqual({ inputTokens: 100, outputTokens: 10, costUsd: 1, costComplete: false });
+      expect(result.timeseries).toMatchObject([{ date: day(60), questions: 0, costUsd: 1 }]);
+    });
+
+    it('never calls cost complete for a range longer than conversations are kept', async () => {
+      stored([{ date: day(1), costMicros: 500_000 }], [rollup(day(60), 1_000_000), rollup(day(1), 500_000)]);
+      const result = await queryAiConversationSummary(scope, { range: '90d' });
+      // $1 from the rollup of an expired day and $0.50 still stored: at least $1.50.
+      expect(result.usage).toEqual({ inputTokens: 200, outputTokens: 20, costUsd: 1.5, costComplete: false });
+      expect(result.timeseries.map((point) => point.date)).toEqual([day(60), day(1)]);
+      // Within retention, the same day's fully reported spend is complete.
+      stored([{ date: day(1), costMicros: 500_000 }], [rollup(day(1), 500_000)]);
+      expect((await queryAiConversationSummary(scope, { range: '7d' })).usage).toMatchObject({ costUsd: 0.5, costComplete: true });
+    });
+
+    it('marks a local-time or language view of an expired range as incomplete', async () => {
+      stored([{ date: day(1), costMicros: 500_000 }], []);
+      const local = await queryAiConversationSummary(scope, { range: '90d', timezone: 'Asia/Riyadh' });
+      expect(local.usage).toMatchObject({ costUsd: 0.5, costComplete: false });
+    });
   });
 });
 
