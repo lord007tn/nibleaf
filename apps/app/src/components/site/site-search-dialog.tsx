@@ -796,7 +796,7 @@ export default function SiteSearchDialog({
                     onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
                     value={selectedVersion ?? '__default'}
                   >
-                    <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs">
+                    <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs pointer-coarse:h-11">
                       <SelectValue placeholder={t('searchFilterVersion')} />
                     </SelectTrigger>
                     <SelectContent>

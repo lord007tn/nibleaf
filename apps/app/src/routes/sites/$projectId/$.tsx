@@ -35,12 +35,9 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
     try {
-      // A page preloaded on link hover (or visited moments ago) comes from the
-      // query cache; a stale copy shows at once and refreshes in the background.
-      page = await queryClient.ensureQueryData({
-        ...sitePageQueryOptions(params.projectId, path, deps.lang, version),
-        revalidateIfStale: true,
-      });
+      // A page preloaded on link hover (or read moments ago) comes from the query
+      // cache; once it is stale, the loader waits for the published version again.
+      page = await queryClient.query(sitePageQueryOptions(params.projectId, path, deps.lang, version));
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;

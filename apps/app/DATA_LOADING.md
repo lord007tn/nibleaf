@@ -80,9 +80,10 @@ loader — that would hold the navigation on the full-screen pending loader inst
 ### Published reader pages (server-rendered)
 
 The public reader is the exception: a page's content and SEO tags must be in the server-rendered HTML, so its loaders
-`await queryClient.ensureQueryData({ ...sitePageQueryOptions(...), revalidateIfStale: true })` and the component reads
-the loader's result. The router dehydrates loader data, so hydration matches. In the browser, a link-hover preload and the
-click that follows share one cache entry, and a page read moments ago opens at once. The route's `pendingComponent`
+`await queryClient.query(sitePageQueryOptions(...))` and the component reads the loader's result. The router dehydrates
+loader data, so hydration matches. In the browser, a link-hover preload and the click that follows share one cache entry,
+and a page read moments ago opens at once. Not `ensureQueryData` with `revalidateIfStale`: its background refresh would
+land in the cache, not in the loader data the article shows, so a stale page would be shown once more. The route's `pendingComponent`
 (`SiteArticleSkeleton`) keeps the reader chrome and shows an article-shaped placeholder. Factories the reader's loaders
 import live in `src/hooks/api/site-query-options.ts`, which ships in the public first load: keep it as light as
 `query-options.ts`.

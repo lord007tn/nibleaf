@@ -173,4 +173,14 @@ describe('published page loader', () => {
     expect(mocks.getSitePage).toHaveBeenCalledOnce();
     expect(mocks.getSitePage).toHaveBeenCalledWith({ data: { projectId: 'docs', path: 'start', language: 'ar', version: 'start' } });
   });
+
+  it('waits for the published page again once the cached copy is stale', async () => {
+    const republished = { ...page, page: { path: 'start', title: 'Updated' } } as unknown as SitePage;
+    mocks.getSitePage.mockResolvedValue(republished);
+    const queryClient = createQueryClient();
+    queryClient.setQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
+    // The article renders the loader's result, so a stale copy must never be returned.
+    await expect(load(queryClient)).resolves.toMatchObject({ page: republished });
+    expect(mocks.getSitePage).toHaveBeenCalledOnce();
+  });
 });

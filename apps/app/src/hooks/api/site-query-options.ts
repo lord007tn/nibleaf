@@ -9,12 +9,12 @@ import { queryKeys } from './query-keys';
  */
 
 /**
- * One published page. Reader loaders read it with
- * `queryClient.ensureQueryData(...)` (awaited, unlike the dashboard's
- * `prefetchRouteData`) because the article and its SEO tags must be in the
- * server-rendered HTML. In the browser, link-hover preloads and the click that
- * follows share this cache entry, so an opened page appears without a second
- * request.
+ * One published page. Reader loaders read it with `queryClient.query(...)`
+ * (awaited, unlike the dashboard's `prefetchRouteData`) because the article and
+ * its SEO tags must be in the server-rendered HTML. In the browser, a link-hover
+ * preload and the click that follows share this cache entry while it is fresh, so
+ * an opened page appears without a second request; a stale entry is fetched
+ * again before the page shows, because the article renders the loader's result.
  */
 export const sitePageQueryOptions = (projectId: string, path: string, language?: string, version?: string) =>
   queryOptions({

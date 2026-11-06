@@ -19,10 +19,7 @@ export const Route = createFileRoute('/sites/$projectId/')({
   // Empty path resolves to the site's first page server-side (content + SEO).
   loader: async ({ params, deps, context: { queryClient } }) => {
     try {
-      const page = await queryClient.ensureQueryData({
-        ...sitePageQueryOptions(params.projectId, '', deps.lang),
-        revalidateIfStale: true,
-      });
+      const page = await queryClient.query(sitePageQueryOptions(params.projectId, '', deps.lang));
       return { page, lang: deps.lang, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {

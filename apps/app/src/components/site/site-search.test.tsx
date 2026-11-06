@@ -244,6 +244,17 @@ describe('published reader search', () => {
     expect(document.body.textContent).not.toContain('Setup guide');
   });
 
+  it('keeps the version filter a full-size touch target', async () => {
+    await render({
+      versions: [
+        { id: 'v1', name: 'v1', slug: 'v1', isDefault: true },
+        { id: 'v2', name: 'v2', slug: 'v2', isDefault: false },
+      ],
+    });
+    // 44px on coarse pointers (phones and touch tablets), compact with a mouse.
+    expect(document.querySelector('[aria-label="searchFilterVersion"]')?.className).toContain('pointer-coarse:h-11');
+  });
+
   it('shows result-shaped skeleton rows only while a first search loads', async () => {
     mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
     await render();
