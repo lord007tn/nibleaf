@@ -1,0 +1,73 @@
+import { aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
+import { z } from 'zod';
+
+const apiKey = z
+  .string()
+  .trim()
+  .min(10)
+  .max(4096)
+  .refine((value) => !/[\r\n]/.test(value));
+
+export const workspaceAiModelsBody = z.object({ providerId: aiProviderIdSchema, apiKey: apiKey.optional() }).strict();
+export const saveWorkspaceAiConnectionBody = z
+  .object({
+    providerId: aiProviderIdSchema,
+    apiKey: apiKey.optional(),
+    answerModel: z.string().trim().min(1).max(180),
+    expectedRevision: z.number().int().nonnegative(),
+    replaceCredential: z.literal(true).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.expectedRevision === 0 && !value.apiKey)
+      ctx.addIssue({ code: 'custom', path: ['apiKey'], message: 'An API key is required for a new connection.' });
+    if (value.expectedRevision > 0 && value.apiKey && !value.replaceCredential)
+      ctx.addIssue({ code: 'custom', path: ['replaceCredential'], message: 'Confirm credential replacement.' });
+  });
+export const workspaceAiSelectionBody = z
+  .object({ providerId: aiSelectionSchema, answersEnabled: z.boolean(), expectedRevision: z.number().int().positive().optional() })
+  .strict();
+
+export type WorkspaceAiModelsBody = z.infer<typeof workspaceAiModelsBody>;
+export type SaveWorkspaceAiConnectionBody = z.infer<typeof saveWorkspaceAiConnectionBody>;
+export type WorkspaceAiSelectionBody = z.infer<typeof workspaceAiSelectionBody>;
+
+export const workspaceAiProviderSchema = z
+  .object({
+    id: aiProviderIdSchema,
+    configured: z.boolean(),
+    revision: z.number().int().nonnegative(),
+    verified: z.boolean(),
+    verifiedAt: z.iso.datetime().nullable(),
+    answerModel: z.string().nullable(),
+  })
+  .strict();
+export const workspaceAiOverviewSchema = z
+  .object({
+    selectedProvider: aiSelectionSchema,
+    answersEnabled: z.boolean(),
+    encryptionConfigured: z.boolean(),
+    instanceConfigured: z.boolean(),
+    instanceAnswersEnabled: z.boolean(),
+    embeddingModel: z.string(),
+    infrastructureConfigured: z.boolean(),
+    providers: z.array(workspaceAiProviderSchema),
+    index: z
+      .object({
+        published: z.boolean(),
+        status: z.enum(['PENDING', 'RUNNING', 'READY', 'FAILED', 'DISABLED']).nullable(),
+        errorCode: z.string().max(80).nullable(),
+        pages: z.number(),
+        chunks: z.number(),
+      })
+      .strict(),
+    openaiOAuth: z
+      .object({
+        available: z.literal(false),
+        reason: z.literal('registration_required'),
+        documentation: z.literal('https://developers.openai.com/siwc/token-sharing-open-source'),
+      })
+      .strict(),
+  })
+  .strict();
+export type WorkspaceAiProvider = z.infer<typeof workspaceAiProviderSchema>;

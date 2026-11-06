@@ -3,21 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import type {
-  ApiKey,
-  Branch,
-  Comment,
-  Deployment,
-  Domain,
-  Language,
-  NotificationList,
-  OpenApiConfiguration,
-  Page,
-  PageNode,
-  Project,
-  ProjectAddon,
-  WorkspaceSettings,
-} from './types';
+import {
+  branchesQueryOptions,
+  deploymentsQueryOptions,
+  languagesQueryOptions,
+  pagesQueryOptions,
+  projectQueryOptions,
+  projectsQueryOptions,
+} from './query-options';
+import type { ApiKey, Comment, Domain, NotificationList, OpenApiConfiguration, Page, ProjectAddon, WorkspaceSettings } from './types';
 
 const requireQueryValue = (value: string | undefined, label: string) => {
   if (!value) {
@@ -26,19 +20,9 @@ const requireQueryValue = (value: string | undefined, label: string) => {
   return value;
 };
 
-export const useProjects = () =>
-  useQuery({
-    queryKey: queryKeys.projects.all(),
-    queryFn: async () => getData<Project[]>(await api.app.projects.$get(), 'documentation sites'),
-  });
+export const useProjects = () => useQuery(projectsQueryOptions());
 
-export const useProject = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.projects.detail(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Project>(await api.app.projects[':id'].$get({ param: { id: requireQueryValue(projectId, 'Project ID') } }), 'project'),
-  });
+export const useProject = (projectId: string | undefined) => useQuery(projectQueryOptions(projectId));
 
 export const useProjectAddons = (projectId: string) =>
   useQuery({
@@ -60,40 +44,11 @@ export const useApiKeys = (projectId: string | undefined) => {
 };
 
 export const usePages = (projectId: string | undefined, languageId?: string, branchId?: string) =>
-  useQuery({
-    queryKey: queryKeys.pages.all(projectId ?? '', languageId, branchId),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<PageNode[]>(
-        await api.app.projects[':projectId'].pages.$get({
-          param: { projectId: requireQueryValue(projectId, 'Project ID') },
-          query: { ...(languageId ? { languageId } : {}), ...(branchId ? { branchId } : {}) },
-        }),
-        'pages',
-      ),
-  });
+  useQuery(pagesQueryOptions(projectId, languageId, branchId));
 
-export const useLanguages = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.languages.all(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Language[]>(
-        await api.app.projects[':projectId'].languages.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'languages',
-      ),
-  });
+export const useLanguages = (projectId: string | undefined) => useQuery(languagesQueryOptions(projectId));
 
-export const useBranches = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.branches.all(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Branch[]>(
-        await api.app.projects[':projectId'].branches.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'branches',
-      ),
-  });
+export const useBranches = (projectId: string | undefined) => useQuery(branchesQueryOptions(projectId));
 
 export const usePage = (projectId: string | undefined, pageId: string | undefined) =>
   useQuery({
@@ -115,13 +70,8 @@ const isInFlight = (status?: string): boolean => status === 'PENDING' || status 
 
 export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) =>
   useQuery({
-    queryKey: queryKeys.deployments.all(projectId ?? ''),
-    enabled: Boolean(projectId) && (options?.enabled ?? true),
-    queryFn: async () =>
-      getData<Deployment[]>(
-        await api.app.projects[':projectId'].deployments.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'deployments',
-      ),
+    ...deploymentsQueryOptions(projectId),
+    enabled: options?.enabled ?? true,
     refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
   });
 

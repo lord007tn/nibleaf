@@ -24,6 +24,8 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
   useNavigate: () => mocks.navigate,
 }));
+vi.mock('@/hooks/api/query-options', () => ({ projectsQueryOptions: () => ({ queryKey: ['projects'] }) }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects }));
 vi.mock('@/components/app/new-project-dialog', () => ({ NewProjectDialog: () => null }));
 
