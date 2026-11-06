@@ -65,6 +65,7 @@ export const authenticateMcpRequest = async (ctx: Context<HonoEnv>): Promise<Mcp
   const principal: McpPrincipal = {
     apiKey: { id: key.id, name: key.name, scopes, expiresAt: key.expiresAt },
     project: key.project,
+    actor: null,
   };
   ctx.set('apiKey', { id: key.id, projectId: key.project.id, scopes });
   ctx.set('project', key.project);

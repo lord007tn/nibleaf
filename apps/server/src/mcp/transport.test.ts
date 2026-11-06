@@ -27,6 +27,7 @@ vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
 const principal = {
   apiKey: { id: 'key-1', name: 'test', scopes: ['mcp:connect'] as const, expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
+  actor: null,
 };
 
 const initializeBody = JSON.stringify({

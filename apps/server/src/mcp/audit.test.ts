@@ -11,6 +11,7 @@ const context = { get: (key: string) => (key === 'requestId' ? 'request-1' : und
 const principal = {
   apiKey: { id: 'key-1', name: 'Reader', scopes: ['mcp:connect'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
+  actor: null,
 } as never;
 
 describe('MCP audit persistence failure', () => {
