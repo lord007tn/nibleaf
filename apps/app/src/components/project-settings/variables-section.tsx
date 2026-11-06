@@ -5,7 +5,7 @@ import { useForm } from '@tanstack/react-form';
 import { Plus, X } from 'lucide-react';
 import type { Project } from '@/hooks/api';
 import { useUpdateProjectConfig } from '@/hooks/api';
-import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection } from './shared';
+import { FIELD_COMPACT_MONO, SaveBar, SectionHeader, saveConfigSection, useDraftRowUndo } from './shared';
 
 export function VariablesSection({ project }: { project: Project }) {
   const t = useT();
@@ -14,6 +14,7 @@ export function VariablesSection({ project }: { project: Project }) {
   const defaultValues = {
     variables: (project.config?.variables ?? []).map((pair) => ({ key: pair.key, value: pair.value })),
   };
+  const { offerUndo, clearUndo } = useDraftRowUndo();
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
@@ -27,6 +28,7 @@ export function VariablesSection({ project }: { project: Project }) {
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        clearUndo();
         form.handleSubmit();
       }}
     >
@@ -45,8 +47,11 @@ export function VariablesSection({ project }: { project: Project }) {
             {field.state.value.length > 0 ? (
               <div className="mb-3 overflow-hidden rounded-xl border border-border">
                 {field.state.value.map((_, index) => (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: positional rows
-                  <div className="grid grid-cols-[1fr_1.4fr_32px] items-center gap-2.5 border-border border-b p-3 last:border-b-0" key={index}>
+                  <div
+                    className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto] items-center gap-2.5 border-border border-b p-3 last:border-b-0"
+                    // biome-ignore lint/suspicious/noArrayIndexKey: positional form rows
+                    key={index}
+                  >
                     <form.Field name={`variables[${index}].key`}>
                       {(sub) => (
                         <Input
@@ -74,7 +79,12 @@ export function VariablesSection({ project }: { project: Project }) {
                     <Button
                       aria-label={t('settings.variables.remove')}
                       className="text-muted-foreground"
-                      onClick={() => field.removeValue(index)}
+                      onClick={() => {
+                        const removed = field.state.value[index];
+                        if (!removed) return;
+                        field.removeValue(index);
+                        offerUndo(() => field.insertValue(index, removed));
+                      }}
                       size="icon-xs"
                       type="button"
                       variant="ghost"

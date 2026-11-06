@@ -1,6 +1,12 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
   'editor.saveConfigFirst': 'editor_saveconfigfirst',
+  'settings.unsaved.title': 'settings_unsaved_title',
+  'settings.unsaved.description': 'settings_unsaved_description',
+  'settings.unsaved.keep': 'settings_unsaved_keep',
+  'settings.appearance.location': 'settings_appearance_location',
+  'settings.domain.guide': 'settings_domain_guide',
+  'settings.members.rolesHint': 'settings_members_roleshint',
   'settings.config.discardDescription': 'settings_config_discarddescription',
   'settings.members.removeConfirm': 'settings_members_removeconfirm',
   'settings.members.revokeConfirm': 'settings_members_revokeconfirm',

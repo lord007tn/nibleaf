@@ -4,7 +4,15 @@ import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ members: vi.fn(), section: 'general', navigate: vi.fn(), refetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  members: vi.fn(),
+  section: 'general',
+  navigate: vi.fn(),
+  refetch: vi.fn(),
+  blocker: vi.fn(),
+  confirm: vi.fn(),
+  dirty: false,
+}));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({
@@ -13,8 +21,11 @@ vi.mock('@tanstack/react-router', () => ({
     useSearch: () => ({ section: mocks.section }),
   }),
   useNavigate: () => mocks.navigate,
+  useBlocker: mocks.blocker,
   Link: ({ children }: { children: ReactNode }) => <a href="/app/projects/project-1/editor">{children}</a>,
 }));
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
+vi.mock('@/components/editor/site-config-panel', () => ({ ConfigSectionList: () => null, ConfigSection: () => null }));
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Docs' } }),
   useProjectMembers: mocks.members,
@@ -25,7 +36,16 @@ vi.mock('@/components/project-settings/authentication-section', () => ({ Authent
 vi.mock('@/components/project-settings/danger-section', () => ({ DangerSection: () => <div data-testid="danger-settings" /> }));
 vi.mock('@/components/project-settings/domain-section', () => ({ DomainSection: () => null }));
 vi.mock('@/components/project-settings/exports-section', () => ({ ExportsSection: () => null }));
-vi.mock('@/components/project-settings/general-section', () => ({ GeneralSection: () => <div data-testid="general-settings" /> }));
+vi.mock('@/components/project-settings/general-section', async () => {
+  const { DirtyStateReporter } = await import('@/components/project-settings/shared');
+  return {
+    GeneralSection: () => (
+      <div data-testid="general-settings">
+        <DirtyStateReporter dirty={mocks.dirty} />
+      </div>
+    ),
+  };
+});
 vi.mock('@/components/project-settings/languages-section', () => ({ LanguagesSection: () => <div data-testid="language-settings" /> }));
 vi.mock('@/components/project-settings/members-section', () => ({ MembersSection: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
@@ -49,6 +69,7 @@ describe('site settings permissions', () => {
 
   beforeEach(() => {
     mocks.section = 'general';
+    mocks.dirty = false;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false });
     container = document.createElement('div');
     document.body.append(container);
@@ -88,6 +109,19 @@ describe('site settings permissions', () => {
 
     expect(container.querySelector('[data-testid="general-settings"]')).not.toBeNull();
     expect(container.querySelector('nav')?.textContent).toContain('settings.danger');
+  });
+
+  it('blocks dirty navigation when editing is kept and permits explicit discard', async () => {
+    mocks.dirty = true;
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    const blocker = mocks.blocker.mock.lastCall?.[0];
+    expect(blocker.enableBeforeUnload).toBe(true);
+    mocks.confirm.mockResolvedValueOnce(false);
+    await expect(blocker.shouldBlockFn()).resolves.toBe(true);
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ cancelLabel: 'settings.unsaved.keep', destructive: true }));
+    mocks.confirm.mockResolvedValueOnce(true);
+    await expect(blocker.shouldBlockFn()).resolves.toBe(false);
   });
 
   it('offers recovery when permission lookup fails instead of mounting editable settings', async () => {

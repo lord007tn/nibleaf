@@ -9,6 +9,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn, useT } from '@nibleaf/i18n/react';
 import type { ProjectConfigUpdate } from '@nibleaf/validators';
+import { useBlocker } from '@tanstack/react-router';
 import {
   cloneElement,
   createContext,
@@ -20,6 +21,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
 } from 'react';
 import { toast } from 'sonner';
 
@@ -33,6 +35,35 @@ const ConfigDirtyContext = createContext<((source: string, dirty: boolean) => vo
 
 export function ConfigDirtyProvider({ report, children }: { report: (source: string, dirty: boolean) => void; children: ReactNode }) {
   return <ConfigDirtyContext.Provider value={report}>{children}</ConfigDirtyContext.Provider>;
+}
+
+/** Protect explicit-save forms, including search-param section navigation. */
+export function useSettingsDirtyGuard() {
+  const t = useT();
+  const confirm = useConfirm();
+  const [sources, setSources] = useState<Set<string>>(() => new Set());
+  const report = useCallback((source: string, dirty: boolean) => {
+    setSources((current) => {
+      if (current.has(source) === dirty) return current;
+      const next = new Set(current);
+      if (dirty) next.add(source);
+      else next.delete(source);
+      return next;
+    });
+  }, []);
+  useBlocker({
+    shouldBlockFn: async () =>
+      sources.size > 0 &&
+      !(await confirm({
+        title: t('settings.unsaved.title'),
+        description: t('settings.unsaved.description'),
+        cancelLabel: t('settings.unsaved.keep'),
+        confirmLabel: t('settings.chrome.scope.discardConfirm'),
+        destructive: true,
+      })),
+    enableBeforeUnload: sources.size > 0,
+  });
+  return report;
 }
 
 /**
@@ -389,3 +420,18 @@ export const FIELD_TEXTAREA = 'min-h-[84px] text-sm';
  *  background and read as wells instead of border-on-border frames. */
 export const FIELD_COMPACT = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background text-[13px]';
 export const FIELD_COMPACT_MONO = '[--control-size-default:var(--control-size-compact)] rounded-md bg-background font-mono text-[13px]';
+
+export function useDraftRowUndo() {
+  const t = useT();
+  const toastId = useRef<string | number | undefined>(undefined);
+  const clearUndo = useCallback(() => {
+    if (toastId.current !== undefined) toast.dismiss(toastId.current);
+    toastId.current = undefined;
+  }, []);
+  useEffect(() => clearUndo, [clearUndo]);
+  const offerUndo = (restore: () => void) => {
+    clearUndo();
+    toastId.current = toast(t('publish.removed'), { action: { label: t('settings.theme.undo'), onClick: restore } });
+  };
+  return { offerUndo, clearUndo };
+}

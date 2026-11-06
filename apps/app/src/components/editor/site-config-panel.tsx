@@ -66,6 +66,7 @@ export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionI
   const t = useT();
   return (
     <div className="space-y-0.5">
+      <p className="px-2.5 pb-3 text-muted-foreground text-xs">{t('settings.appearance.location')}</p>
       {EDITOR_CONFIG_SECTIONS.map(({ id, labelKey, icon: Icon }) => (
         <Button
           aria-current={active === id ? 'page' : undefined}

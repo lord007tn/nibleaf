@@ -79,10 +79,10 @@ export function StylingSection({ project }: { project: Project }) {
   const initial = styling.primaryColor || '#5546e8';
   const [hex, setHex] = useState(initial.toUpperCase());
   const [hsl, setHsl] = useState<Hsl>(() => hexToHsl(initial) ?? { h: 245, s: 78, l: 59 });
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(styling.theme ?? 'light');
+  const theme = styling.theme ?? 'light';
   const [radius, setRadius] = useState<'sharp' | 'rounded' | 'pill'>(styling.radius ?? 'rounded');
   const [saving, setSaving] = useState(false);
-  const dirty = hex.toLowerCase() !== initial.toLowerCase() || theme !== (styling.theme ?? 'light') || radius !== (styling.radius ?? 'rounded');
+  const dirty = hex.toLowerCase() !== initial.toLowerCase() || radius !== (styling.radius ?? 'rounded');
 
   // Apply a fully-formed hex (from input / preset): updates both hex + sliders.
   const applyHex = (next: string) => {
@@ -185,19 +185,6 @@ export function StylingSection({ project }: { project: Project }) {
           />
         ))}
       </div>
-
-      <Field hint={t('settings.styling.theme.hint')} label={t('settings.styling.theme.label')}>
-        <Segmented
-          className="max-w-[340px]"
-          onChange={setTheme}
-          options={[
-            { value: 'light', label: t('settings.styling.theme.light') },
-            { value: 'dark', label: t('settings.styling.theme.dark') },
-            { value: 'system', label: t('settings.styling.theme.system') },
-          ]}
-          value={theme}
-        />
-      </Field>
 
       <Field hint={t('settings.styling.radius.hint')} label={t('settings.styling.radius.label')}>
         <Segmented
