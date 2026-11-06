@@ -15,7 +15,7 @@ import {
 import { useChat } from '@tanstack/ai-react';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
-import { Composer } from './composer';
+import { Composer, type ComposerDraft } from './composer';
 import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey } from './helpers';
 import { ChatMessage } from './message';
@@ -121,7 +121,11 @@ export default function Panel(
       }
       if (name === AI_CHAT_EVENT.followUps) {
         const result = aiChatFollowUpsEventSchema.safeParse(value);
-        if (result.success) setFollowUps((previous) => ({ ...previous, [result.data.turnId]: result.data.questions }));
+        if (result.success) {
+          setFollowUps((previous) => ({ ...previous, [result.data.turnId]: result.data.questions }));
+          // They arrive after the answer: tell screen readers they are there.
+          if (result.data.questions.length) setAnnouncement(t('aiSuggestionsAdded'));
+        }
       }
     },
   });
@@ -131,6 +135,7 @@ export default function Panel(
   const answering = chat.isLoading && !(latest && latest.role !== 'user' && finals[latest.id]);
   const send = (question: string, context: PageContext | null = page ?? null) => {
     if (answering) return;
+    pinned.current = true;
     setLastQuestion(question);
     setCode(undefined);
     setAnnouncement('');
@@ -173,28 +178,19 @@ export default function Panel(
     }, 0);
     return () => window.clearTimeout(timer);
   }, [options.request, answering]);
-  // A question refused for the conversation limit is asked again in the new chat.
-  const carried = useRef<string | undefined>(undefined);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: runs once the new conversation is in place.
-  useEffect(() => {
-    const question = carried.current;
-    if (!question) return;
-    // Like a hand-off: wait one task while the chat client attaches to the new conversation.
-    const timer = window.setTimeout(() => {
-      carried.current = undefined;
-      sendRequest(question);
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [conversationId]);
+
   useEffect(() => {
     if (chat.error && !code) {
       setCode(navigator.onLine ? 'failed' : 'offline');
       setAnnouncement(t(navigator.onLine ? 'aiFailed' : 'aiOffline'));
     }
   }, [chat.error, code, t]);
+  // Follow new content only while the reader is at the bottom: someone who
+  // scrolled up to read is never pulled away by later text or suggestions.
+  const pinned = useRef(true);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when message content, sources or suggestions change.
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'nearest' });
+    if (pinned.current) end.current?.scrollIntoView({ block: 'nearest' });
   }, [chat.messages, finals, followUps]);
   const stop = () => {
     const asked = chat.messages.findLast((message) => message.role === 'user');
@@ -225,9 +221,12 @@ export default function Panel(
     setAnnouncement('');
     setConversationId(crypto.randomUUID());
   };
+  // The refused question goes to the new chat's field, to edit before sending:
+  // the new chat starts without the earlier conversation it may refer to.
+  const [draft, setDraft] = useState<ComposerDraft>();
   const askInNewChat = (question: string) => {
     reset();
-    carried.current = question || undefined;
+    if (question) setDraft({ id: Date.now(), text: question });
   };
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
@@ -283,7 +282,16 @@ export default function Panel(
             </Button>
           </div>
         )}
-        <div role="log" aria-live="off" aria-label={t('aiTitle')} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
+        <div
+          role="log"
+          aria-live="off"
+          aria-label={t('aiTitle')}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4"
+          onScroll={(event) => {
+            const log = event.currentTarget;
+            pinned.current = log.scrollHeight - log.scrollTop - log.clientHeight < 96;
+          }}
+        >
           {chat.messages.length === 0 && (
             <div className="space-y-3 py-6">
               <p>{t('aiIntro')}</p>
@@ -384,7 +392,7 @@ export default function Panel(
           {announcement}
         </div>
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Composer lang={options.lang} busy={answering} send={send} stop={stop} />
+          <Composer lang={options.lang} busy={answering} send={send} stop={stop} draft={draft} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
           {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
         </footer>

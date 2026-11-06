@@ -1,10 +1,32 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
-import { useRef, useState } from 'react';
-export function Composer({ lang, busy, send, stop }: { lang?: string; busy: boolean; send: (question: string) => void; stop: () => void }) {
+import { useEffect, useRef, useState } from 'react';
+/** Text to put in the field for the reader to edit and send (a new `id` each time). */
+export interface ComposerDraft {
+  id: number;
+  text: string;
+}
+export function Composer({
+  lang,
+  busy,
+  send,
+  stop,
+  draft,
+}: {
+  lang?: string;
+  busy: boolean;
+  send: (question: string) => void;
+  stop: () => void;
+  draft?: ComposerDraft;
+}) {
   const [value, setValue] = useState('');
   const field = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (!draft) return;
+    setValue(draft.text);
+    field.current?.focus();
+  }, [draft]);
   const t = siteChatT(lang);
   const submit = () => {
     if (busy || value.trim().length < 2) return;

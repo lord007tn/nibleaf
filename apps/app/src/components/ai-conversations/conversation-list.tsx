@@ -7,13 +7,14 @@ import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tan
 import { useMemo } from 'react';
 import { useFormatters } from '@/lib/format';
 
-function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'noAnswer' | 'failed'> }) {
+function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'noAnswer' | 'failed' | 'cancelled'> }) {
   const t = useT();
   return (
     <div className="flex flex-wrap gap-1">
       {item.answered > 0 && <Badge variant="secondary">{t('dashboard.ai.answered')}</Badge>}
       {item.noAnswer > 0 && <Badge variant="outline">{t('dashboard.ai.no_answer')}</Badge>}
       {item.failed > 0 && <Badge variant="destructive">{t('dashboard.ai.failed')}</Badge>}
+      {item.cancelled > 0 && <Badge variant="outline">{t('dashboard.ai.cancelled')}</Badge>}
     </div>
   );
 }

@@ -3472,6 +3472,7 @@
   "site_ai_send": "Send",
   "site_ai_stop": "Stop generating",
   "site_ai_stopped": "You stopped this answer before it was finished.",
+  "site_ai_suggestions_added": "Suggested next questions added.",
   "site_ai_caution": "AI can make mistakes — check the sources.",
   "site_ai_privacy": "Questions are saved to help improve these docs. Please don't include personal details.",
   "site_ai_searching": "Looking through the docs…",

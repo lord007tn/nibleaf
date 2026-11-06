@@ -45,6 +45,7 @@ import { site_ai_stop } from './paraglide/messages/site_ai_stop.js';
 import { site_ai_stopped } from './paraglide/messages/site_ai_stopped.js';
 import { site_ai_subtitle } from './paraglide/messages/site_ai_subtitle.js';
 import { site_ai_suggestions } from './paraglide/messages/site_ai_suggestions.js';
+import { site_ai_suggestions_added } from './paraglide/messages/site_ai_suggestions_added.js';
 import { site_ai_summary } from './paraglide/messages/site_ai_summary.js';
 import { site_ai_support } from './paraglide/messages/site_ai_support.js';
 import { site_ai_thanks } from './paraglide/messages/site_ai_thanks.js';
@@ -84,6 +85,7 @@ const chatMessages = {
   aiSend: site_ai_send,
   aiStop: site_ai_stop,
   aiStopped: site_ai_stopped,
+  aiSuggestionsAdded: site_ai_suggestions_added,
   aiCaution: site_ai_caution,
   aiPrivacy: site_ai_privacy,
   aiSearching: site_ai_searching,

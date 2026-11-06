@@ -419,7 +419,9 @@ const topLevelJsonStrings = (text: string): string[] => {
  * off at the output cap. `unreadable` when there is no array, or a non-empty one
  * holds no strings: output the suggestions call does not accept. */
 export const parseFollowUpQuestions = (text: string, question: string, asked: string[] = []): { questions: string[]; unreadable: boolean } => {
-  const start = text.indexOf('[');
+  // Where a list of strings starts, past any bracket in prose before it.
+  const list = text.search(/\[\s*["\]]/);
+  const start = list >= 0 ? list : text.indexOf('[');
   const end = text.lastIndexOf(']');
   let items: unknown[] | undefined;
   try {
@@ -479,10 +481,14 @@ export const suggestFollowUps = async ({
         },
       ],
     });
+    // Output of a call stopped or timed out is not used.
+    signal?.throwIfAborted();
     const { questions, unreadable } = parseFollowUpQuestions(text, question, asked);
     return { questions, usage, ...(unreadable ? { failed: true as const } : {}) };
   } catch {
-    return { questions: [], usage, ...(signal?.aborted ? {} : { failed: true as const }) };
+    // Stopped with the turn is not a failure; timing out is.
+    const timedOut = (signal?.reason as { name?: string } | undefined)?.name === 'TimeoutError';
+    return { questions: [], usage, ...(signal?.aborted && !timedOut ? {} : { failed: true as const }) };
   } finally {
     signal?.removeEventListener('abort', abort);
   }

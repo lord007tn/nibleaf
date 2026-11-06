@@ -105,7 +105,7 @@ describe('chat panel', () => {
     expect(mocks.chat.sendMessage).toHaveBeenLastCalledWith('Can I install it offline?', expect.objectContaining({ whenBusy: 'interrupt' }));
   });
 
-  it('asks the refused question again in a new chat after the conversation limit', async () => {
+  it('puts the refused question in a new chat, to edit before sending, after the conversation limit', async () => {
     mocks.chat.messages = [];
     const render = await mount();
     const { question, conversationId } = await askStarter();
@@ -115,11 +115,42 @@ describe('chat panel', () => {
     // The notice's button, not the header's plain "New chat".
     expect(button('New chat')).toHaveLength(2);
     await act(async () => button('New chat').at(-1)?.click());
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(mocks.chat.clear).toHaveBeenCalledOnce();
+    // Not sent on its own: it may refer to the conversation the new chat lacks.
+    expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
+    const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]');
+    expect(field?.value).toBe(question);
+    expect(document.activeElement).toBe(field);
+    await act(async () => button('Send')[0]?.click());
     const [again, options] = mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: { conversationId: string } }];
     expect(again).toBe(question);
     expect(options.body.conversationId).not.toBe(conversationId);
+  });
+
+  it('announces suggestions that arrive after the answer, and keeps the reading position', async () => {
+    mocks.chat.messages = [];
+    const render = await mount();
+    const { question, conversationId } = await askStarter();
+    mocks.chat.isLoading = true;
+    mocks.chat.messages = [text('u1', 'user', question), text(ANSWER_ID, 'assistant', 'Run the installer. [S1]')];
+    await render();
+    await deliver('nibleaf.chat.final', finalFor(conversationId));
+    // The reader scrolls up to reread the answer.
+    const log = document.querySelector<HTMLElement>('[role="log"]');
+    if (!log) throw new Error('expected the message log');
+    Object.defineProperties(log, { scrollHeight: { value: 2000 }, clientHeight: { value: 400 }, scrollTop: { value: 100, writable: true } });
+    await act(async () => log.dispatchEvent(new Event('scroll')));
+    vi.mocked(Element.prototype.scrollIntoView).mockClear();
+    await deliver('nibleaf.chat.followups', { turnId: ANSWER_ID, questions: ['Can I install it offline?'] });
+    await render();
+    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Suggested next questions added.');
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+    // Back at the bottom, new content is followed again.
+    log.scrollTop = 1600;
+    await act(async () => log.dispatchEvent(new Event('scroll')));
+    await deliver('nibleaf.chat.followups', { turnId: ANSWER_ID, questions: ['Can I install it offline?', 'Is there a CLI?'] });
+    await render();
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it.each([

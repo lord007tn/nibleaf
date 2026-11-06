@@ -47,6 +47,7 @@ const item = {
   answered: 1,
   noAnswer: 1,
   failed: 0,
+  cancelled: 0,
   rating: null,
   pagePath: '/guide',
 } as const;
@@ -84,6 +85,15 @@ describe('AI dashboard', () => {
     expect(container.querySelectorAll('th')).toHaveLength(7);
     await act(() => container.querySelector('tbody tr')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
     expect(open).toHaveBeenCalledWith('chat');
+  });
+  it('labels a conversation whose only question was stopped', async () => {
+    const stopped = { ...item, conversationId: 'stopped', turns: 1, answered: 0, noAnswer: 0, cancelled: 1 };
+    const container = await render(<ConversationList items={[stopped, { ...item, cancelled: 1 }]} onOpen={vi.fn()} />);
+    const [first, second] = [...container.querySelectorAll('tbody tr')].map((row) => row.textContent ?? '');
+    expect(first).toContain('dashboard.ai.cancelled');
+    expect(first).not.toContain('dashboard.ai.answered');
+    expect(second).toContain('dashboard.ai.answered');
+    expect(second).toContain('dashboard.ai.cancelled');
   });
   it('keeps unknown cost distinct from zero and marks incomplete cost', () => {
     expect(renderToStaticMarkup(<CostValue usage={{ costUsd: null, costComplete: false, inputTokens: 30, outputTokens: 4 }} />)).toContain(

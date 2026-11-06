@@ -206,6 +206,7 @@ interface ConversationAggregate {
   answered: Count;
   noAnswer: Count;
   failed: Count;
+  cancelled: Count;
   rating: 'up' | 'down' | 'mixed' | null;
   pagePath: string | null;
 }
@@ -220,14 +221,14 @@ export const queryAiConversations = async (s: AiConversationScope, q: AiReadQuer
  SELECT conversation_id AS conversationId,min(occurred_at) AS startedAt,max(occurred_at) AS lastActivityAt,
  argMin(tuple(language,content_captured,question,page_path),tuple(occurred_at,turn_index)) AS first,
  count() AS turns,countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,
- countIf(status='failed') AS failed,countIf(status={status:String}) AS statusMatches,
+ countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,countIf(status={status:String}) AS statusMatches,
  countIf(content_captured=1 AND positionCaseInsensitiveUTF8(question,{search:String})>0) AS searchMatches
  FROM ai_conversation_turns FINAL WHERE ${turnsWhere} GROUP BY conversation_id
  ), feedback AS (
  SELECT conversation_id,countIf(rating='up') AS ups,countIf(rating='down') AS downs
  FROM (${feedbackSource}) GROUP BY conversation_id)
  SELECT conversationId,startedAt,lastActivityAt,first.1 AS language,turns,
- if(first.2=1,toNullable(first.3),NULL) AS firstQuestion,answered,noAnswer,failed,
+ if(first.2=1,toNullable(first.3),NULL) AS firstQuestion,answered,noAnswer,failed,cancelled,
  multiIf(ups>0 AND downs>0,'mixed',ups>0,'up',downs>0,'down',NULL) AS rating,nullIf(first.4,'') AS pagePath
  FROM conversations LEFT JOIN feedback ON conversationId=feedback.conversation_id
  WHERE ({status:String}='' OR statusMatches>0) AND ({search:String}='' OR searchMatches>0)
@@ -245,6 +246,7 @@ export const queryAiConversations = async (s: AiConversationScope, q: AiReadQuer
     answered: Number(r.answered),
     noAnswer: Number(r.noAnswer),
     failed: Number(r.failed),
+    cancelled: Number(r.cancelled),
   }));
   const last = items.at(-1);
   return {

@@ -386,8 +386,10 @@ questions of its own.
 Suggested next questions are asked for only after a checked answer, and read that
 answer with the question and the sources' topics, so they never ask what it already
 says. Readers get the answer first; the suggestions follow when they arrive, and a new
-question asked meanwhile takes their place. A suggestions call whose output holds no
-readable questions is recorded as a provider error (`follow_ups`).
+question asked meanwhile takes their place. A suggestions call that takes more than 15
+seconds, or whose output holds no readable questions, is recorded as a provider error
+(`follow_ups`). A turn's latency is the time until the reader had the checked answer,
+without the suggestions that follow it.
 
 `ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
 tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from

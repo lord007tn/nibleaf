@@ -349,12 +349,17 @@ describe('reader AI chat stream', () => {
     expect(first).toContain(AI_CHAT_EVENT.final);
     expect(first).not.toContain('RUN_FINISHED');
     expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ answer: 'Run the installer. [S1]' });
+    // Suggestions take a while; the answer time does not include them.
+    await new Promise((resolve) => setTimeout(resolve, 250));
     finish({ questions: [], failed: true });
     const rest = await readUntil(reader, () => false);
     expect(rest).toContain('RUN_FINISHED');
     expect(rest).not.toContain(AI_CHAT_EVENT.followUps);
-    await settle();
+    for (let i = 0; i < 3; i++) await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+    const latencyMs = Number(mocks.recordTurn.mock.calls.at(-1)?.[0].latencyMs);
+    expect(latencyMs).toBeLessThan(250);
+    expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', latencyMs });
   });
 
   it('asks for no suggestions after a declined answer', async () => {

@@ -279,6 +279,8 @@ export const aiConversationListItemSchema = z
     answered: z.number().int().min(0),
     noAnswer: z.number().int().min(0),
     failed: z.number().int().min(0),
+    /** Questions the reader stopped before a checked answer. */
+    cancelled: z.number().int().min(0),
     rating: z.enum(['up', 'down', 'mixed']).nullable(),
     pagePath: z.string().nullable(),
   })

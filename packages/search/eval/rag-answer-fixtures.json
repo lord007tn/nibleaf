@@ -184,5 +184,26 @@
         "content": "Self-hosted and cloud [S1]"
       }
     ]
+  },
+  {
+    "id": "ar-export-one-notebook",
+    "language": "ar",
+    "question": "كيف أصدر دفتراً واحداً بصيغة PDF؟",
+    "sources": [
+      {
+        "title": "تصدير ملاحظاتك",
+        "path": "export-notes",
+        "heading": "التصدير من التطبيق",
+        "content": "افتح دفتر ملاحظات، واختر **المزيد ← تصدير**، ثم حدّد الصيغة واضغط **تنزيل**. يمكن أن يتضمن التصدير الواحد حتى 500 ملاحظة."
+      },
+      {
+        "title": "تصدير ملاحظاتك",
+        "path": "export-notes",
+        "heading": "التصدير من سطر الأوامر",
+        "content": "شغّل `acme export --format markdown --out ./backup`. استخدم `--notebook <name>` لتصدير دفتر واحد فقط."
+      }
+    ],
+    "requiredClaims": ["المزيد", "PDF"],
+    "expectedNoAnswer": false
   }
 ]

@@ -175,11 +175,16 @@ interface TurnOutcome {
   /** Sources the answer read (fewer than retrieval found when the context or a
    * budget was full). */
   sourceCount?: number;
+  /** From the request to the checked answer reaching the reader: the answer
+   * time, without the suggestions that follow it. */
+  latencyMs?: number;
   errorCode?: AiChatErrorCode;
   /** From the request to the first visible text. */
   firstTokenMs?: number;
 }
 
+/** The longest a suggestions call may take once the answer is out. */
+const CHAT_SUGGESTIONS_TIMEOUT_MS = 15_000;
 const chatHistoryLimits = () => ({ maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS });
 
 /** What a turn's provider calls are built from, to size them before they run. */
@@ -512,7 +517,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           answer,
           chunks: sources,
           language,
-          signal: sideSignal,
+          // A slow suggestions call never holds the reader's run open for long.
+          signal: AbortSignal.any([sideSignal, AbortSignal.timeout(CHAT_SUGGESTIONS_TIMEOUT_MS)]),
           modelOptions,
           asked: history.filter((message) => message.role === 'user').map((message) => message.content),
         }).then((suggestions) => {
@@ -526,6 +532,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
     textStarted = false;
+    outcome.latencyMs = Math.round(performance.now() - started);
     yield custom(AI_CHAT_EVENT.final, {
       ...final,
       conversationId: body.conversationId,
@@ -560,7 +567,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         ...generation,
         output: Math.min(CHAT_OUTPUT_TOKEN_LIMITS.answer, estimateTokens(outcome.streamed) + 64),
       });
-    const latencyMs = Math.max(0, Math.round(performance.now() - started));
+    // The answer time when the reader got a checked answer; otherwise until the turn ended.
+    const latencyMs = Math.max(0, outcome.latencyMs ?? Math.round(performance.now() - started));
     void finishTurn({
       context,
       body,

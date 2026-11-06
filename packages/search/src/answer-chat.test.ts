@@ -514,6 +514,24 @@ describe('follow-up suggestions', () => {
     expect(parseFollowUpQuestions(`[${'"Can I? ", '.repeat(100_000)}`, 'How?').questions).toEqual(['Can I?']);
     expect(performance.now() - started).toBeLessThan(500);
   });
+  it('finds the list past a bracket in prose before it', async () => {
+    expect(parseFollowUpQuestions('Here are [two] ideas: ["Can I export?", "Is it free?"]', 'How?')).toEqual({
+      questions: ['Can I export?', 'Is it free?'],
+      unreadable: false,
+    });
+  });
+  it('counts a timed-out suggestions call as failed, but not one stopped with the turn', async () => {
+    const timedOut = await suggestFollowUps({
+      adapter: fakeText(),
+      question: 'How?',
+      chunks,
+      language: 'en',
+      signal: AbortSignal.abort(new DOMException('Timed out', 'TimeoutError')),
+    });
+    expect(timedOut).toMatchObject({ questions: [], failed: true });
+    const stopped = await suggestFollowUps({ adapter: fakeText(), question: 'How?', chunks, language: 'en', signal: AbortSignal.abort() });
+    expect(stopped.failed).toBeUndefined();
+  });
   it('reports a failed rewrite so the server can count it', async () => {
     const adapter = fakeText();
     adapter.setResponses([{ error: 'boom' }]);
