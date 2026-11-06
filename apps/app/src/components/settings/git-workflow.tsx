@@ -3,6 +3,7 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
 import type { GitOperationBody } from '@nibleaf/validators';
@@ -21,7 +22,6 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
@@ -37,6 +37,63 @@ import {
 import { localeTag } from '@/lib/format';
 
 type GitIdentity = { login: string; name: string | null };
+
+/**
+ * First load, shaped like the connection card (header, three-step progress,
+ * the current step's panel, back/next actions), so the real card replaces it
+ * without moving anything.
+ */
+function GitWorkflowSkeleton() {
+  const { t } = useLocale();
+  return (
+    <section aria-busy="true" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" data-slot="git-workflow-skeleton">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <div className="border-border border-b bg-muted/20 px-5 py-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <Skeleton className="size-10 shrink-0 rounded-xl" />
+            <div className="w-full max-w-2xl space-y-2">
+              <Skeleton className="h-5 w-48 max-w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        </div>
+        <div className="space-y-6 p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-3" data-slot="git-workflow-skeleton-steps">
+            {['authorize', 'repository', 'review'].map((step) => (
+              <div className="flex min-h-16 items-center gap-3 rounded-xl border border-border/80 p-3" key={step}>
+                <Skeleton className="size-7 shrink-0 rounded-full" />
+                <div className="w-full space-y-1.5">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-32 max-w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-border bg-background p-5 shadow-sm sm:p-6">
+            <div className="max-w-2xl space-y-5">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-col-reverse gap-3 border-border border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <Skeleton className="h-10 w-full rounded-md sm:w-24" />
+            <Skeleton className="h-10 w-full rounded-md sm:w-32" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
   status === 'FAILED' || status === 'CONFLICT' ? 'destructive' : status === 'SUCCEEDED' || status === 'READY' ? 'default' : 'secondary';
 
@@ -151,7 +208,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     setContentPath(connection.contentPath);
   }, [connection]);
 
-  if (query.isPending) return <SettingsFormSkeleton />;
+  if (query.isPending) return <GitWorkflowSkeleton />;
   if (query.isError) {
     return (
       <Alert variant="destructive">

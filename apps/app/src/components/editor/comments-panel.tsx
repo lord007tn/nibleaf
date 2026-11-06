@@ -212,12 +212,8 @@ export function CommentsPanel({
                 <div className="mt-2 flex items-center gap-1">
                   <Button
                     className={cn('h-6 gap-1 px-1.5 text-xs', comment.resolved ? 'text-primary' : 'text-muted-foreground')}
-                    onClick={() =>
-                      resolveComment.mutate(
-                        { id: comment.id, resolved: !comment.resolved },
-                        { onError: (err) => toast.error(friendlyErrorMessage(t, err, 'error.unexpected')) },
-                      )
-                    }
+                    // The hook reports every failed write itself (several may be queued).
+                    onClick={() => resolveComment.mutate({ id: comment.id, resolved: !comment.resolved })}
                     size="sm"
                     variant="ghost"
                   >
@@ -237,9 +233,7 @@ export function CommentsPanel({
                           destructive: true,
                         });
                         if (!ok) return;
-                        deleteComment.mutate(comment.id, {
-                          onError: (err) => toast.error(friendlyErrorMessage(t, err, 'editor.comments.deleteError')),
-                        });
+                        deleteComment.mutate(comment.id);
                       }}
                       size="icon-xs"
                       variant="ghost"

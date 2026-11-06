@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   runs: [] as unknown[],
   deployments: undefined as { status: string }[] | undefined,
+  project: undefined as { hasPublishedVersion?: boolean } | undefined,
   cancel: { isPending: false, variables: undefined as string | undefined, mutate: vi.fn() },
   locale: 'en' as 'en' | 'ar',
 }));
@@ -25,7 +26,7 @@ vi.mock('@nibleaf/i18n/react', async () => {
     }),
   };
 });
-vi.mock('@/hooks/api', () => ({ useDeployments: () => ({ data: mocks.deployments }) }));
+vi.mock('@/hooks/api', () => ({ useDeployments: () => ({ data: mocks.deployments }), useProject: () => ({ data: mocks.project }) }));
 vi.mock('@/hooks/api/exports', () => ({
   useListExportRuns: () => ({ data: mocks.runs }),
   useListExportSchedules: () => ({
@@ -65,6 +66,7 @@ describe('export schedule permissions', () => {
   beforeEach(() => {
     mocks.runs = [];
     mocks.deployments = [{ status: 'READY' }];
+    mocks.project = { hasPublishedVersion: true };
     mocks.cancel = { isPending: false, variables: undefined, mutate: vi.fn() };
     mocks.locale = 'en';
     container = document.createElement('div');
@@ -89,14 +91,47 @@ describe('export schedule permissions', () => {
 
   it('asks to publish first instead of offering an export of a site that was never published', async () => {
     mocks.deployments = [{ status: 'FAILED' }];
+    mocks.project = { hasPublishedVersion: false };
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
 
     expect(container.textContent).toContain('settings.exports.workflow.publishFirst');
-    expect(findButton('settings.exports.workflow.create')?.disabled).toBe(true);
+    // Unavailable but still reachable with Tab, and the reason is read with it.
+    const button = findButton('settings.exports.workflow.create');
+    expect(button?.disabled).toBe(false);
+    expect(button?.getAttribute('aria-disabled')).toBe('true');
+    const hint = document.getElementById(button?.getAttribute('aria-describedby') ?? '');
+    expect(hint?.textContent).toBe('settings.exports.workflow.publishFirst');
+    button?.focus();
+    expect(document.activeElement).toBe(button);
+    await act(async () => button?.click());
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('offers the export when the live version is older than the recent publish history', async () => {
+    // The newest 50 attempts all failed, but an older published version is still live.
+    mocks.deployments = Array.from({ length: 50 }, () => ({ status: 'FAILED' }));
+    mocks.project = { hasPublishedVersion: true };
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+
+    expect(container.textContent).not.toContain('settings.exports.workflow.publishFirst');
+    const button = findButton('settings.exports.workflow.create');
+    expect(button?.getAttribute('aria-disabled')).toBeNull();
+    await act(async () => button?.click());
+    expect(mocks.create).toHaveBeenCalledWith(['MARKDOWN'], expect.any(Object));
+  });
+
+  it('offers the export right after a first publish, before the site itself is reloaded', async () => {
+    mocks.deployments = [{ status: 'READY' }];
+    mocks.project = { hasPublishedVersion: false };
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+
+    expect(container.textContent).not.toContain('settings.exports.workflow.publishFirst');
+    expect(findButton('settings.exports.workflow.create')?.getAttribute('aria-disabled')).toBeNull();
   });
 
   it('explains a refused export of an unpublished site while its publish history is still loading', async () => {
     mocks.deployments = undefined;
+    mocks.project = undefined;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
@@ -106,12 +141,22 @@ describe('export schedule permissions', () => {
     expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.publishFirst');
   });
 
-  it('keeps the general message for a refused export once a version is live', async () => {
+  it("says the site is too large, not 'try again', when the live version is over the export limit", async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
     const options = mocks.create.mock.calls[0]?.[1];
     act(() => options.onError(new ApiResponseError('The published revision is larger than this instance allows.', 400)));
+
+    expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.tooLarge');
+  });
+
+  it('keeps the general message for an unexplained failure once a version is live', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.create')?.click());
+    const options = mocks.create.mock.calls[0]?.[1];
+    act(() => options.onError(new ApiResponseError('Internal error', 500)));
 
     expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.startError');
   });

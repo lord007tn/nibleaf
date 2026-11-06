@@ -1,5 +1,5 @@
 import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
-import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
@@ -157,19 +157,29 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
   });
 };
 
+/**
+ * One site, with `hasPublishedVersion`: whether a publish went live and kept
+ * its site copy — exactly what an export copies (see `createPublishedSnapshot`
+ * in ./exports), the sign-up starter's first publish included. Unlike the
+ * deployments list (newest 50), this isn't capped by history.
+ */
 export const getProject = async (organizationId: string, id: string) => {
-  const project = await prisma.project.findFirst({
-    where: { id, organizationId },
-    include: {
-      _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
-      languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
-    },
-  });
+  const [project, published] = await Promise.all([
+    prisma.project.findFirst({
+      where: { id, organizationId },
+      include: {
+        _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
+        languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
+      },
+    }),
+    prisma.deployment.findFirst({ where: { projectId: id, status: 'READY', snapshot: { not: Prisma.DbNull } }, select: { id: true } }),
+  ]);
   if (!project) {
     throw notFound('project', { id });
   }
   return {
     ...project,
+    hasPublishedVersion: published !== null,
     languages: project.languages.map(({ projectTranslations, ...language }) => ({
       ...language,
       translation: projectTranslations[0] ?? null,

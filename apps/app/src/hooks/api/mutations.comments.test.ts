@@ -1,18 +1,22 @@
 // @vitest-environment jsdom
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { useDeleteComment, useResolveComment } from './mutations';
 import { queryKeys } from './query-keys';
 import type { Comment } from './types';
 
-const mocks = vi.hoisted(() => ({ patch: vi.fn(), remove: vi.fn() }));
+const mocks = vi.hoisted(() => ({ patch: vi.fn(), remove: vi.fn(), toast: vi.fn() }));
 
 vi.mock('@/services/api', () => ({
   api: { app: { projects: { ':projectId': { comments: { ':id': { $patch: mocks.patch, $delete: mocks.remove } } } } } },
 }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+// The shared client toasts each failed mutation's `meta.errorMessage`.
+vi.mock('sonner', () => ({ toast: { error: mocks.toast } }));
 
 const projectId = 'project-a';
 const comment = (id: string, resolved = false): Comment => ({
@@ -35,7 +39,9 @@ describe('comment mutations update every cached list optimistically', () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
     document.body.append(container);
-    queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+    // The app's own client, so failures are toasted exactly as in the dashboard.
+    queryClient = createQueryClient();
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
     queryClient.setQueryData(siteKey, [comment('c1'), comment('c2')]);
     queryClient.setQueryData(pageKey, [comment('c1')]);
   });
@@ -43,6 +49,7 @@ describe('comment mutations update every cached list optimistically', () => {
   afterEach(() => {
     container.remove();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   async function render() {
@@ -79,6 +86,7 @@ describe('comment mutations update every cached list optimistically', () => {
     });
     expect(queryClient.getQueryData<Comment[]>(siteKey)?.[0]?.resolved).toBe(false);
     expect(queryClient.getQueryData<Comment[]>(pageKey)?.[0]?.resolved).toBe(false);
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('error.noPermission'));
     act(() => root.unmount());
   });
 
@@ -163,6 +171,75 @@ describe('comment mutations update every cached list optimistically', () => {
     act(() => root.unmount());
   });
 
+  /** Click Resolve/Reopen without waiting; `settled` resolves (never rejects) once that write has finished. */
+  async function click(hooks: { resolve?: ReturnType<typeof useResolveComment> }, id: string, resolved: boolean) {
+    let settled: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      settled = hooks.resolve?.mutateAsync({ id, resolved }).catch(() => undefined) ?? settled;
+    });
+    return { settled };
+  }
+  const answer = async (respond: ((response: Response) => void) | undefined, response: Response, write: { settled: Promise<unknown> }) =>
+    act(async () => {
+      respond?.(response);
+      await write.settled;
+    });
+  const resolvedOf = (key: readonly unknown[], id: string) => queryClient.getQueryData<Comment[]>(key)?.find((item) => item.id === id)?.resolved;
+
+  it('keeps the newest click on screen when an older one of three fails, and reports every failure', async () => {
+    const answers = deferPatches();
+    const { hooks, root } = await render();
+
+    // Resolve → Reopen → Resolve, all before the first write is answered.
+    const first = await click(hooks, 'c1', true);
+    const second = await click(hooks, 'c1', false);
+    const third = await click(hooks, 'c1', true);
+    expect(resolvedIn(siteKey)).toBe(true);
+
+    // The first write fails: the third click (Resolve) stays on screen.
+    await answer(answers[0], json(403, { error: { message: 'Forbidden' } }), first);
+    expect(resolvedIn(siteKey)).toBe(true);
+    expect(resolvedIn(pageKey)).toBe(true);
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(1));
+    expect(mocks.toast).toHaveBeenLastCalledWith('error.noPermission');
+
+    // The Reopen is saved; the newest click is still shown while its write waits.
+    await answer(answers[1], json(200, { data: comment('c1', false) }), second);
+    expect(mocks.patch.mock.calls.map(([request]) => request.json.resolved)).toEqual([true, false, true]);
+    expect(resolvedIn(siteKey)).toBe(true);
+
+    // The last write fails too: the comment shows what the server saved (reopened), and that failure is reported as well.
+    await answer(answers[2], json(500, { error: { message: 'Internal error' } }), third);
+    expect(resolvedIn(siteKey)).toBe(false);
+    expect(resolvedIn(pageKey)).toBe(false);
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledTimes(2));
+    expect(mocks.toast).toHaveBeenLastCalledWith('error.unexpected');
+    act(() => root.unmount());
+  });
+
+  it('reports a failure on one comment while another comment is resolved after it', async () => {
+    const answers = deferPatches();
+    const { hooks, root } = await render();
+
+    const onFirst = await click(hooks, 'c1', true);
+    const onSecond = await click(hooks, 'c2', true);
+    expect(resolvedOf(siteKey, 'c1')).toBe(true);
+    expect(resolvedOf(siteKey, 'c2')).toBe(true);
+
+    // The first comment's write fails although the second click was issued last.
+    await answer(answers[0], json(403, { error: { message: 'Forbidden' } }), onFirst);
+    expect(resolvedOf(siteKey, 'c1')).toBe(false);
+    expect(resolvedOf(pageKey, 'c1')).toBe(false);
+    expect(resolvedOf(siteKey, 'c2')).toBe(true);
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('error.noPermission'));
+
+    await answer(answers[1], json(200, { data: comment('c2', true) }), onSecond);
+    expect(resolvedOf(siteKey, 'c2')).toBe(true);
+    expect(resolvedOf(siteKey, 'c1')).toBe(false);
+    expect(mocks.toast).toHaveBeenCalledTimes(1);
+    act(() => root.unmount());
+  });
+
   it('removes a deleted comment from every list and restores it on failure', async () => {
     let fail: (response: Response) => void = () => undefined;
     mocks.remove.mockReturnValue(
@@ -185,6 +262,7 @@ describe('comment mutations update every cached list optimistically', () => {
     });
     expect(queryClient.getQueryData<Comment[]>(siteKey)?.map((item) => item.id)).toEqual(['c1', 'c2']);
     expect(queryClient.getQueryData<Comment[]>(pageKey)?.map((item) => item.id)).toEqual(['c1']);
+    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('editor.comments.deleteError'));
     act(() => root.unmount());
   });
 });

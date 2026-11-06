@@ -8,9 +8,9 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { toast } from 'sonner';
-import { useDeployments } from '@/hooks/api';
+import { useDeployments, useProject } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
   type ExportArtifact,
@@ -40,14 +40,24 @@ const formatDate = (date: string | null, locale: string) => (date ? new Date(dat
 
 /**
  * What a failed export start means. 409: too many exports running, or today's
- * limit reached. 400 before a live version is known: the site was never
- * published (once one is live, a 400 means it's too large, so the general
- * wording is kept).
+ * limit reached. 400 once a version is known to be live: that version is larger
+ * than this instance exports (retrying won't help); otherwise the site was
+ * never published.
  */
 const startStatusKeys = (hasLiveVersion: boolean | undefined): Partial<Record<number, MessageKey>> => ({
   409: 'settings.exports.workflow.limitReached',
-  ...(hasLiveVersion ? {} : { 400: 'settings.exports.workflow.publishFirst' }),
+  400: hasLiveVersion ? 'settings.exports.workflow.tooLarge' : 'settings.exports.workflow.publishFirst',
 });
+
+/**
+ * Whether the site has a published version to export. The site's own flag
+ * covers every publish however old; the deployments list (newest 50) catches a
+ * first publish that finished after the site was loaded. Unknown until both say.
+ */
+const liveVersionKnown = (projectHasOne: boolean | undefined, recentReady: boolean | undefined): boolean | undefined => {
+  if (projectHasOne || recentReady) return true;
+  return projectHasOne === false && recentReady === false ? false : undefined;
+};
 
 export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
@@ -60,9 +70,14 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
   const cancel = useCancelExport(projectId);
   const downloadMutation = useGetExportDownload(projectId);
   // Exports copy the live version, so a site that was never published has nothing to export yet.
+  const project = useProject(projectId);
   const deployments = useDeployments(projectId);
-  const hasLiveVersion = deployments.data ? deployments.data.some((deployment) => deployment.status === 'READY') : undefined;
+  const hasLiveVersion = liveVersionKnown(
+    project.data?.hasPublishedVersion,
+    deployments.data ? deployments.data.some((deployment) => deployment.status === 'READY') : undefined,
+  );
   const neverPublished = hasLiveVersion === false;
+  const createHintId = useId();
   const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
       const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
@@ -130,19 +145,23 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground text-xs" id={createHintId}>
                 {neverPublished ? t('settings.exports.workflow.publishFirst') : t('settings.exports.workflow.formatHint')}
               </p>
+              {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it. */}
               <Button
-                disabled={neverPublished}
+                aria-describedby={neverPublished ? createHintId : undefined}
+                aria-disabled={neverPublished || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
                 loading={create.isPending}
-                onClick={() =>
+                onClick={() => {
+                  if (neverPublished) return;
                   create.mutate(formats, {
                     onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
                     onError: (error) =>
                       toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
-                  })
-                }
+                  });
+                }}
               >
                 <FileArchive className="size-3.5" /> {t('settings.exports.workflow.create')}
               </Button>

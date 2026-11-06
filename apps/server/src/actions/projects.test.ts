@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
   deploymentGroupBy: vi.fn(),
+  deploymentFindFirst: vi.fn(),
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn() },
@@ -25,10 +26,11 @@ vi.mock('@nibleaf/auth/tenant-erasure', () => ({
 }));
 vi.mock('@nibleaf/database', () => ({
   assignDefaultUsagePlan: vi.fn(),
+  Prisma: { DbNull: 'DbNull' },
   prisma: {
     member: { findMany: mocks.memberFindMany },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
-    deployment: { groupBy: mocks.deploymentGroupBy },
+    deployment: { groupBy: mocks.deploymentGroupBy, findFirst: mocks.deploymentFindFirst },
     $transaction: (run: (tx: typeof mocks.tx) => Promise<unknown>) => run(mocks.tx),
   },
 }));
@@ -121,6 +123,19 @@ describe('project page counts', () => {
     );
     expect(project._count).toEqual({ pages: 58, deployments: 3, domains: 1 });
     expect(project.languages.map((language) => language.translation)).toEqual([{ name: 'Docs' }, null]);
+  });
+
+  it('says whether the site has a published version an export can copy, however old', async () => {
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-a', _count: { pages: 1, deployments: 80, domains: 0 }, languages: [] });
+    mocks.deploymentFindFirst.mockResolvedValueOnce({ id: 'deployment-1' }).mockResolvedValueOnce(null);
+
+    await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ hasPublishedVersion: true });
+    // The same rule as the export itself: any finished publish that kept its site copy, not just the newest 50 attempts.
+    expect(mocks.deploymentFindFirst).toHaveBeenCalledWith({
+      where: { projectId: 'project-a', status: 'READY', snapshot: { not: 'DbNull' } },
+      select: { id: true },
+    });
+    await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ hasPublishedVersion: false });
   });
 
   it('reports not-found for a project outside the organization', async () => {

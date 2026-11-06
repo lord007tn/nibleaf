@@ -48,6 +48,9 @@ export interface Project {
   livePublishes?: number;
   /** Sites list only: a publish is queued or being prepared right now. */
   publishing?: boolean;
+  /** One site only: a publish went live and kept its site copy (so it can be
+   *  exported), however long ago — the sign-up starter's first publish included. */
+  hasPublishedVersion?: boolean;
 }
 
 export interface ApiKey {

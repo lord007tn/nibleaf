@@ -1585,6 +1585,7 @@
   "settings_exports_workflow_downloaderror": "Tidak dapat mengunduh ekspor.",
   "settings_exports_workflow_starterror": "Ekspor tidak dapat dimulai. Coba lagi.",
   "settings_exports_workflow_publishfirst": "Terbitkan situs terlebih dahulu, lalu Anda dapat mengekspornya.",
+  "settings_exports_workflow_toolarge": "Situs ini terlalu besar untuk diekspor di sini. Minta administrator Anda menaikkan batas ekspor.",
   "settings_exports_workflow_limitreached": "Terlalu banyak ekspor saat ini. Tunggu yang sedang berjalan selesai, atau coba lagi besok.",
   "settings_exports_workflow_schedulelimit": "Situs ini sudah memiliki jadwal sebanyak yang diizinkan. Hapus satu untuk menambahkan yang lain.",
   "settings_exports_workflow_archiveschedules": "Jadwal arsip",

@@ -1646,6 +1646,7 @@
   "settings_exports_workflow_downloaderror": "تعذّر تنزيل التصدير.",
   "settings_exports_workflow_starterror": "تعذّر بدء التصدير. أعد المحاولة.",
   "settings_exports_workflow_publishfirst": "انشر الموقع أولًا، ثم يمكنك تصديره.",
+  "settings_exports_workflow_toolarge": "هذا الموقع أكبر من أن يُصدَّر هنا. اطلب من مسؤول النظام رفع حدّ التصدير.",
   "settings_exports_workflow_limitreached": "هناك عمليات تصدير كثيرة الآن. انتظر حتى تنتهي العمليات الجارية، أو أعد المحاولة غدًا.",
   "settings_exports_workflow_schedulelimit": "وصل هذا الموقع إلى الحد الأقصى من الجداول الزمنية. احذف جدولًا لإضافة آخر.",
   "settings_exports_workflow_archiveschedules": "جداول الأرشفة",
