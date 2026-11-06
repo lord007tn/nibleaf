@@ -1151,6 +1151,8 @@ export const MESSAGE_IDS = {
   'auth.otp.sendError': 'auth_otp_senderror',
   'auth.otp.invalid': 'auth_otp_invalid',
   'auth.otp.tooManyAttempts': 'auth_otp_toomanyattempts',
+  'auth.error.suspended': 'auth_error_suspended',
+  'auth.error.tryAgain': 'auth_error_tryagain',
   'auth.google.signIn': 'auth_google_signin',
   'auth.google.signUp': 'auth_google_signup',
   'auth.google.submitting': 'auth_google_submitting',

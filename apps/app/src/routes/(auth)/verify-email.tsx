@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AuthLayout } from '@/layouts/auth';
-import { friendlyAuthError } from '@/lib/auth-friendly-error';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
@@ -97,7 +97,7 @@ function VerifyEmailPage() {
     setVerifying(true);
     const result = await authClient.emailOtp.verifyEmail({ email, otp });
     if (result.error) {
-      setError(friendlyAuthError(result.error, { fallback: t('auth.verify.invalidCode'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
+      setError(friendlyAuthError(result.error, t, t('auth.verify.invalidCode')));
       setVerifying(false);
       return;
     }

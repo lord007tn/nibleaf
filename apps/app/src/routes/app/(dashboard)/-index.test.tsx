@@ -4,7 +4,22 @@ import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ projects: vi.fn(), analytics: vi.fn(), members: vi.fn(), refetch: vi.fn(), navigate: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  projects: vi.fn(),
+  analytics: vi.fn(),
+  members: vi.fn(),
+  refetch: vi.fn(),
+  navigate: vi.fn(),
+  /** Cached data per query key (joined with '/'), standing in for the deployments/pages requests. */
+  queryData: new Map<string, unknown>(),
+  userId: 'user-1' as string | undefined,
+}));
+vi.mock('@tanstack/react-query', () => ({
+  useQueries: ({ queries }: { queries: Array<{ queryKey: readonly unknown[] }> }) =>
+    queries.map((query) => ({ data: mocks.queryData.get(query.queryKey.join('/')) })),
+}));
+vi.mock('@/services/api', () => ({ api: {} }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: mocks.userId ? { user: { id: mocks.userId } } : null }) }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
 }));
@@ -59,6 +74,9 @@ describe('dashboard request recovery', () => {
       refetch: mocks.refetch,
     });
     mocks.members.mockReturnValue({ data: undefined });
+    mocks.queryData.clear();
+    mocks.queryData.set('deployments/project-1', [{ version: 1, status: 'READY', commitMessage: null, createdAt: '2026-11-03T00:00:00.000Z' }]);
+    mocks.userId = 'user-1';
     window.localStorage.clear();
     container = document.createElement('div');
     document.body.append(container);
@@ -144,6 +162,52 @@ describe('dashboard request recovery', () => {
 
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="overview.nudge.dismiss"]')?.click());
     expect(container.textContent).not.toContain('dashboard.start.title');
-    expect(window.localStorage.getItem('nibleaf.startHere.dismissed')).toBe('1');
+    expect(window.localStorage.getItem('nibleaf.startHere.dismissed.user-1')).toBe('1');
+  });
+
+  it('keeps a dismissal to the person who dismissed it', async () => {
+    window.localStorage.setItem('nibleaf.startHere.dismissed.someone-else', '1');
+    await act(async () => root.render(<DashboardPage />));
+    expect(container.textContent).toContain('dashboard.start.title');
+
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    window.localStorage.setItem('nibleaf.startHere.dismissed.user-1', '1');
+    await act(async () => root.render(<DashboardPage />));
+    expect(container.textContent).not.toContain('dashboard.start.title');
+  });
+
+  it('does not count a failed publish as publishing', async () => {
+    mocks.queryData.set('deployments/project-1', [{ version: 1, status: 'FAILED', commitMessage: null, createdAt: '2026-11-03T00:00:00.000Z' }]);
+    mocks.members.mockReturnValue({ data: { members: [{ id: 'owner' }], invitations: [] } });
+    await act(async () => root.render(<DashboardPage />));
+
+    // Writing is done (the site has pages); publishing is not, so no analytics yet.
+    expect(container.textContent).toContain('dashboard.start.progress {"done":1,"total":3}');
+    expect(container.querySelector('[data-testid="views-chart"]')).toBeNull();
+  });
+
+  it('ticks writing once the user edits the sample site', async () => {
+    mocks.projects.mockReturnValue({
+      isPending: false,
+      data: [
+        {
+          id: 'sample',
+          name: 'Documentation',
+          description: 'Your first documentation site.',
+          slug: 'docs',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          _count: { pages: 6, deployments: 1 },
+        },
+      ],
+      refetch: mocks.refetch,
+    });
+    mocks.queryData.set('deployments/sample', [
+      { version: 1, status: 'READY', commitMessage: 'Publish starter site', createdAt: '2026-11-01T00:00:02.000Z' },
+    ]);
+    mocks.queryData.set('pages/sample//', [{ updatedAt: '2026-11-01T00:00:01.000Z' }, { updatedAt: '2026-11-01T00:10:00.000Z' }]);
+    await act(async () => root.render(<DashboardPage />));
+
+    expect(container.textContent).toContain('dashboard.start.progress {"done":1,"total":3}');
   });
 });
