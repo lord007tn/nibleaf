@@ -87,6 +87,9 @@ export const insightsRollups = [
 ];
 
 export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
+  // Permanent project-level freshness; excluded from rebuilds so raw expiry cannot erase it.
+  { name: 'analytics_project_activity' },
+  { name: 'analytics_project_activity_mv', preserve: true },
   { name: 'analytics_events', time: 'occurred_at', retention: 'raw' },
   { name: 'analytics_sensitive_queries', time: 'occurred_at', retention: 'sensitive' },
   { name: 'analytics_deletion_tombstones', preserve: true },

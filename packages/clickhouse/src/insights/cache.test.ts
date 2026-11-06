@@ -24,6 +24,8 @@ describe('scoped insights cache', () => {
     const cached = await withInsightsCache(scope, 'overview/7d', load);
     expect(load).toHaveBeenCalledOnce();
     expect(query).toHaveBeenCalledOnce();
+    expect(query.mock.calls[0]?.[0].query).toContain('FROM analytics_project_activity FINAL');
+    expect(query.mock.calls[0]?.[0].query).not.toContain('FROM analytics_events');
     expect(cached.meta.lastEventAt).toBe('2026-11-06T00:00:00.000Z');
     await withInsightsCache({ ...scope, tenantId: 'another' }, 'overview/7d', load);
     expect(load).toHaveBeenCalledTimes(2);

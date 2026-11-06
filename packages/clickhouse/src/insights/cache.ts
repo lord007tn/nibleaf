@@ -11,13 +11,13 @@ export interface InsightsProjectStatus {
 export const readInsightsProjectStatus = async (scope: InsightsScope): Promise<InsightsProjectStatus> => {
   const result = await (scope.client ?? getClickHouseClient()).query({
     query: `SELECT (SELECT count() FROM analytics_deletion_tombstones FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}) AS deleted,
-      formatDateTime(maxOrNull(received_at), '%FT%T.%fZ', 'UTC') AS lastEventAt
-      FROM analytics_events FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String} AND actor_type = 'human'`,
+      formatDateTime(maxOrNull(last_human_event_at), '%FT%T.%fZ', 'UTC') AS lastEventAt
+      FROM analytics_project_activity FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}`,
     query_params: { tenant: scope.tenantId, project: scope.projectId },
     format: 'JSONEachRow',
   });
   const row = (await result.json<{ deleted: number; lastEventAt: string | null }>())[0];
-  return { deleted: Number(row?.deleted ?? 0) > 0, lastEventAt: row?.lastEventAt ?? null };
+  return { deleted: Number(row?.deleted ?? 0) > 0, lastEventAt: Number(row?.deleted ?? 0) > 0 ? null : (row?.lastEventAt ?? null) };
 };
 
 const cache = new Map<string, { tenantId: string; projectId: string; expires: number; value: { meta: InsightsMeta } }>();

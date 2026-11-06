@@ -2,6 +2,7 @@ import type { ClickHouseClient } from '@clickhouse/client';
 import { getClickHouseClient } from '../client';
 import { keys } from '../keys';
 import { type InsightsProjectStatus, readInsightsProjectStatus } from './cache';
+import { localMidnight } from './period';
 import type { InsightsMeta, SearchTermsVisibility } from './types';
 
 export const SEARCH_TERM_VISIBILITY_THRESHOLD = 2;
@@ -37,7 +38,10 @@ export class InsightsReader {
       show_terms: scope.visibility === 'visible' ? 1 : 0,
       k: SEARCH_TERM_VISIBILITY_THRESHOLD,
     };
-    this.bucket = `formatDateTime(toTimeZone(occurred_at, {timezone:String}), '${scope.meta.granularity === 'hour' ? '%FT%H:00' : '%F'}')`;
+    this.bucket =
+      scope.meta.granularity === 'hour'
+        ? `formatDateTime(toStartOfHour(toTimeZone(occurred_at, {timezone:String})), '%FT%H:%iZ', 'UTC')`
+        : `formatDateTime(toTimeZone(occurred_at, {timezone:String}), '%F')`;
     this.facts = `SELECT *, occurred_at >= parseDateTime64BestEffort({from:String}) AS current
       FROM analytics_events FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}
       AND occurred_at >= parseDateTime64BestEffort({start:String}) AND occurred_at < parseDateTime64BestEffort({to:String})`;
@@ -60,6 +64,52 @@ export class InsightsReader {
         clickhouse_settings: { output_format_json_quote_64bit_integers: 0, prefer_column_name_to_alias: 1 },
       })
       .then((result) => result.json<T>());
+  }
+
+  /** Fill counts only inside known raw coverage. Hour keys are UTC instants so
+   * repeated local DST hours remain distinct; daily steps use local midnights. */
+  grid<T extends object>(
+    rows: (NoInfer<T> & { bucket: string })[],
+    empty: T,
+    period: 'current' | 'previous' = 'current',
+    actor: 'human' | 'crawler' = 'human',
+  ): (T & { bucket: string })[] {
+    const range = this.scope.meta[period];
+    if (!range || !this.covered(period, actor)) return [];
+    const points = new Map(rows.map((row) => [row.bucket, row]));
+    const result: (T & { bucket: string })[] = [];
+    const dateKey = (instant: number) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: this.scope.meta.timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(instant));
+    const nextDay = (bucket: string) => new Date(Date.parse(bucket) + 86_400_000).toISOString().slice(0, 10);
+    const hourStart = (value: number) => {
+      const parts = new Intl.DateTimeFormat('en', { timeZone: this.scope.meta.timezone, minute: 'numeric', second: 'numeric' }).formatToParts(
+        new Date(value),
+      );
+      const part = (type: string) => Number(parts.find((item) => item.type === type)?.value ?? 0);
+      return value - part('minute') * 60_000 - part('second') * 1000 - (value % 1000);
+    };
+    const bucketCount = (from: string, to: string) =>
+      this.scope.meta.granularity === 'hour'
+        ? Math.ceil((Date.parse(to) - hourStart(Date.parse(from))) / 3_600_000)
+        : (Date.parse(dateKey(Date.parse(to) - 1)) - Date.parse(dateKey(Date.parse(from)))) / 86_400_000 + 1;
+    const other = this.scope.meta[period === 'current' ? 'previous' : 'current'];
+    // Equal rolling durations can touch different numbers of local dates at a
+    // DST boundary. Pad the shorter edge with a zero-overlap calendar bucket so
+    // all real buckets survive and comparison indices remain calendar offsets.
+    const count = Math.max(bucketCount(range.from, range.to), other ? bucketCount(other.from, other.to) : 0);
+    let instant = Date.parse(range.from);
+    if (this.scope.meta.granularity === 'hour') instant = hourStart(instant);
+    for (let index = 0; index < count; index += 1) {
+      const bucket = this.scope.meta.granularity === 'hour' ? `${new Date(instant).toISOString().slice(0, 16)}Z` : dateKey(instant);
+      result.push(points.get(bucket) ?? { ...empty, bucket });
+      instant = this.scope.meta.granularity === 'hour' ? instant + 3_600_000 : localMidnight(nextDay(bucket), this.scope.meta.timezone);
+    }
+    return result;
   }
 
   title(path: string): string | null {

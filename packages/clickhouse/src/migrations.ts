@@ -449,6 +449,24 @@ export const migrations: ClickHouseMigration[] = [
       WHERE actor_type = 'human' AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
     ],
   },
+  {
+    version: 2_026_110_605,
+    name: 'project_human_activity_watermark',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS analytics_project_activity (
+        tenant_id LowCardinality(String), project_id String, last_human_event_at DateTime64(3, 'UTC')
+      ) ENGINE = ReplacingMergeTree(last_human_event_at) ORDER BY (tenant_id, project_id)`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_project_activity_mv TO analytics_project_activity AS
+        SELECT tenant_id, project_id, max(received_at) AS last_human_event_at FROM analytics_events
+        WHERE actor_type = 'human' AND (tenant_id, project_id) NOT IN
+          (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
+        GROUP BY tenant_id, project_id`,
+      `INSERT INTO analytics_project_activity SELECT tenant_id, project_id, max(received_at)
+        FROM analytics_events FINAL WHERE actor_type = 'human' AND (tenant_id, project_id) NOT IN
+          (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
+        GROUP BY tenant_id, project_id`,
+    ],
+  },
 ];
 
 export interface MigrationOptions {

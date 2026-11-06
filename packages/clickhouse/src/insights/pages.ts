@@ -47,7 +47,7 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
       SELECT entry AS path, 'entry' AS kind FROM sessions UNION ALL SELECT exit AS path, 'exit' AS kind FROM sessions
     ) GROUP BY path`),
     reader.rows<{ path: string; requests: number }>(
-      `SELECT path, count() AS requests FROM (${reader.facts}) WHERE current AND event_name = 'crawler_request' AND actor_type = 'bot' GROUP BY path`,
+      `SELECT path, count() AS requests FROM (${reader.facts}) WHERE current AND event_name = 'crawler_request' AND actor_type = 'bot' AND startsWith(bot_category, 'ai_') GROUP BY path`,
     ),
     reader.rows<{ path: string; samples: number }>(
       `SELECT path, countIf(lcp_ms IS NOT NULL) AS samples FROM (${reader.human}) WHERE current AND event_name = 'web_vitals' GROUP BY path`,
@@ -99,12 +99,24 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
   };
 };
 
-export const readViewsSeries = (reader: InsightsReader, path?: string) =>
-  reader.rows<SeriesPoint & { current: number }>(
+export const readViewsSeries = async (reader: InsightsReader, path?: string) => {
+  const rows = await reader.rows<SeriesPoint & { current: number }>(
     `SELECT current, ${reader.bucket} AS bucket, count() AS value FROM (${reader.human}) WHERE event_name = 'page_view'
     ${path !== undefined ? 'AND path = {path:String}' : ''} GROUP BY current, bucket ORDER BY bucket`,
     { path },
   );
+  return [
+    ...reader.grid(
+      rows.filter((row) => row.current),
+      { current: 1, value: 0 },
+    ),
+    ...reader.grid(
+      rows.filter((row) => !row.current),
+      { current: 0, value: 0 },
+      'previous',
+    ),
+  ];
+};
 
 const vitalSelect = `count() AS samples,
   quantileExactOrNull(0.75)(lcp_ms) AS lcpP75Ms, quantileExactOrNull(0.75)(inp_ms) AS inpP75Ms,
@@ -139,6 +151,17 @@ export const readVitals = <T extends object = object>(reader: InsightsReader, di
     { path },
   );
 
+// A visit contributes once, using its first page view's arrival attribution.
+const arrivals = (reader: InsightsReader) => `SELECT
+  argMin(channel, tuple(occurred_at, event_id)) AS channel,
+  argMin(referrer_domain, tuple(occurred_at, event_id)) AS domain
+  FROM analytics_events FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}
+  AND actor_type = 'human' AND event_name = 'page_view' AND session_hash IN (
+    SELECT session_hash FROM (${reader.human}) WHERE current AND event_name = 'page_view' AND path = {path:String} AND session_hash IS NOT NULL
+  ) GROUP BY session_hash
+  UNION ALL SELECT channel, referrer_domain AS domain FROM (${reader.human})
+  WHERE current AND event_name = 'page_view' AND session_hash IS NULL AND path = {path:String}`;
+
 export const readPageDetail = async (reader: InsightsReader, path: string): Promise<PageDetailInsights> => {
   const [metrics, series, feedback, channels, referrers, devices, languages, vitals, bots, transitions, terms] = await Promise.all([
     reader.rows<PageMetrics & { exits: number }>(
@@ -163,11 +186,11 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
       { path },
     ),
     reader.rows<{ channel: PageDetailInsights['channels'][number]['channel']; visits: number }>(
-      `SELECT channel, uniqExact(session_hash) AS visits FROM (${reader.human}) WHERE current AND event_name = 'page_view' AND path = {path:String} GROUP BY channel ORDER BY visits DESC`,
+      `SELECT channel, count() AS visits FROM (${arrivals(reader)}) GROUP BY channel ORDER BY visits DESC`,
       { path },
     ),
     reader.rows<{ domain: string; visits: number }>(
-      `SELECT referrer_domain AS domain, uniqExact(session_hash) AS visits FROM (${reader.human}) WHERE current AND event_name = 'page_view' AND path = {path:String} AND referrer_domain != '' GROUP BY domain ORDER BY visits DESC LIMIT 50`,
+      `SELECT domain, count() AS visits FROM (${arrivals(reader)}) WHERE domain != '' GROUP BY domain ORDER BY visits DESC LIMIT 50`,
       { path },
     ),
     reader.rows<{ device: string; views: number }>(
@@ -216,7 +239,7 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
     },
     viewsSeries: series.filter((row) => row.current).map(({ current: _current, ...row }) => row),
     previousViewsSeries: series.filter((row) => !row.current).map(({ current: _current, ...row }) => row),
-    feedback: { helpful: current?.helpful ?? 0, notHelpful: current?.notHelpful ?? 0, series: feedback },
+    feedback: { helpful: current?.helpful ?? 0, notHelpful: current?.notHelpful ?? 0, series: reader.grid(feedback, { helpful: 0, notHelpful: 0 }) },
     channels,
     referrers,
     devices,

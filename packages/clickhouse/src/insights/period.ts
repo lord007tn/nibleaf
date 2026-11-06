@@ -27,7 +27,7 @@ const localParts = (date: Date, timezone: string) =>
 
 /** Resolve local midnight without assuming a fixed UTC offset. Iteration also
  * handles half-hour offsets and DST changes between the two endpoints. */
-const localMidnight = (day: string, timezone: string): number => {
+export const localMidnight = (day: string, timezone: string): number => {
   const wallTime = Date.parse(`${day}T00:00:00Z`);
   let instant = wallTime;
   for (let index = 0; index < 5; index += 1) {
@@ -54,12 +54,17 @@ export const resolveInsightsMeta = (query: InsightsQuery, now = new Date()): Ins
       ? localMidnight(query.from, timezone)
       : to - (query.range === '24h' ? 1 : Number.parseInt(query.range === 'custom' ? '30' : query.range, 10)) * dayMs;
   if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) throw new Error('Invalid insights period');
+  const calendarDays = query.range === 'custom' && query.from && query.to ? (Date.parse(query.to) - Date.parse(query.from)) / dayMs + 1 : null;
+  const previousFrom =
+    calendarDays !== null && query.from
+      ? localMidnight(new Date(Date.parse(query.from) - calendarDays * dayMs).toISOString().slice(0, 10), timezone)
+      : from - (to - from);
   return {
     availability: 'complete',
     lastEventAt: null,
     timezone,
     current: { from: new Date(from).toISOString(), to: new Date(to).toISOString() },
-    previous: query.compare === 'previous' ? { from: new Date(from - (to - from)).toISOString(), to: new Date(from).toISOString() } : null,
+    previous: query.compare === 'previous' ? { from: new Date(previousFrom).toISOString(), to: new Date(from).toISOString() } : null,
     granularity: query.range === '24h' ? 'hour' : 'day',
     generatedAt: now.toISOString(),
   };

@@ -71,13 +71,14 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
       FROM searches s LEFT JOIN (SELECT event_id, query_text FROM analytics_sensitive_queries FINAL
         WHERE tenant_id = {tenant:String} AND project_id = {project:String}) q ON s.query_event = toString(q.event_id)
       WHERE current AND s.term_id IS NOT NULL GROUP BY s.term_id  )`;
-  const [totals, series, terms, hidden, refinements] = await Promise.all([
-    reader.rows<SearchTotals>(`${cte} SELECT current, count() AS searches, uniqExact(visit) AS visits,
+  const [buckets, terms, hidden, refinements] = await Promise.all([
+    reader.rows<SearchTotals & { bucket: string; summary: number }>(`${cte} SELECT current,
+      ${reader.bucket} AS bucket, grouping(bucket) AS summary,
+      count() AS searches, uniqExact(visit) AS visits,
       countIf(result_known AND result_count = 0) AS zeros, countIf(clicked) AS clicked, countIf(refined) AS refined,
       sumIf(position_sum, clicked) / nullIf(sumIf(position_count, clicked), 0) AS averagePosition,
-      countIf(visit IS NULL OR NOT has_id OR NOT result_known) AS incomplete FROM searches GROUP BY current`),
-    reader.rows<{ bucket: string; searches: number; zeros: number }>(`${cte} SELECT ${reader.bucket} AS bucket,
-      count() AS searches, countIf(result_known AND result_count = 0) AS zeros FROM searches WHERE current GROUP BY bucket ORDER BY bucket`),
+      countIf(visit IS NULL OR NOT has_id OR NOT result_known) AS incomplete
+      FROM searches GROUP BY GROUPING SETS ((current), (current, bucket))`),
     reader.rows<SearchTermRow & { visible: number }>(
       `${termStatistics} SELECT * FROM term_statistics WHERE visible
       ${leadingPath === undefined ? '' : "AND termId IN (SELECT substring(ifNull(term_id, ''), 1, 24) FROM searches WHERE current AND clicked AND has(result_paths, {leading_path:String}))"}
@@ -96,6 +97,8 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
       INNER JOIN visible a ON ifNull(s.term_id, '') = a.id INNER JOIN visible b ON s.next_term = b.id
       WHERE s.current AND s.refined GROUP BY a.text, b.text ORDER BY visits DESC LIMIT 100`),
   ]);
+  const totals = buckets.filter((row) => row.summary);
+  const series = buckets.filter((row) => !row.summary && row.current);
   const current = totals.find((row) => row.current === 1);
   const previous = totals.find((row) => row.current === 0);
   const value = (row: SearchTotals | undefined, metric: string): number | null => {
@@ -123,8 +126,14 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
       refinementRate: compared('refinementRate'),
       averageClickPosition: compared('averageClickPosition'),
     },
-    searchesSeries: series.map((row) => ({ bucket: row.bucket, value: row.searches })),
-    zeroResultSeries: series.map((row) => ({ bucket: row.bucket, value: row.zeros })),
+    searchesSeries: reader.grid(
+      series.map((row) => ({ bucket: row.bucket, value: row.searches })),
+      { value: 0 },
+    ),
+    zeroResultSeries: reader.grid(
+      series.map((row) => ({ bucket: row.bucket, value: row.zeros })),
+      { value: 0 },
+    ),
     topTerms: visible.slice(0, 100),
     failedTerms: visible.filter((row) => row.zeroResultSearches > 0 || row.clickThroughRate === 0).slice(0, 100),
     refinements,

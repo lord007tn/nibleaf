@@ -4,6 +4,8 @@ import { demoAnalyticsEvents } from '../../scripts/demo-data';
 import { getClickHouseClient, insertAnalyticsEvents } from '../client';
 import { deleteProjectAnalytics } from '../privacy';
 import { refreshProjectInsightsRollups } from '../rollups';
+import { fixedAnalyticsEvent } from '../testing';
+import { readInsightsProjectStatus } from './cache';
 import { readPageDetail, readPages } from './pages';
 import { resolveInsightsMeta } from './period';
 import {
@@ -95,6 +97,81 @@ integration('insights over real deduplicated facts', () => {
     expect(performance.overall.clsP75).toBeGreaterThan(0);
     expect(performance.overall.rating?.poor).toBeCloseTo(0.25);
     expect((await queryOverviewInsights({ ...scope, tenantId: 'another-tenant' })).kpis.pageViews.value).toBe(0);
+  }, 60_000);
+  it('fills all count series and aligns empty previous buckets', async () => {
+    const overview = await queryOverviewInsights(scope);
+    expect(overview.pageViewsSeries.length).toBeGreaterThan(1);
+    expect(overview.previousPageViewsSeries).toHaveLength(overview.pageViewsSeries.length);
+    expect(overview.previousPageViewsSeries.every((point) => point.value === 0)).toBe(true);
+    expect(overview.pageViewsSeries.some((point) => point.value === 0)).toBe(true);
+    const page = await queryPageDetailInsights(scope, 'guides/api');
+    expect(page.viewsSeries).toHaveLength(overview.pageViewsSeries.length);
+    expect(page.feedback.series).toHaveLength(page.viewsSeries.length);
+    const search = await querySearchInsights(scope);
+    expect(search.searchesSeries).toHaveLength(page.viewsSeries.length);
+    expect(search.zeroResultSeries).toHaveLength(page.viewsSeries.length);
+    expect((await queryFeedbackInsights(scope)).series).toHaveLength(page.viewsSeries.length);
+    const ai = await queryAiVisibilityInsights(scope);
+    expect(ai.assistantReferralSeries).toHaveLength(page.viewsSeries.length);
+    expect(ai.crawlerSeries.every((series) => series.points.length === page.viewsSeries.length)).toBe(true);
+  }, 60_000);
+  it('uses visit arrival channels/referrers, filters non-AI bots and retains freshness after raw erasure', async () => {
+    const isolated = { ...scope, projectId: `${projectId}-regressions` };
+    const start = Date.now() - 3_600_000;
+    const event = (offset: number, overrides: Parameters<typeof fixedAnalyticsEvent>[0]) =>
+      fixedAnalyticsEvent({
+        tenantId: isolated.tenantId,
+        projectId: isolated.projectId,
+        eventId: randomUUID(),
+        occurredAt: new Date(start + offset).toISOString(),
+        receivedAt: new Date(start + offset).toISOString(),
+        ...overrides,
+      });
+    await insertAnalyticsEvents([
+      event(0, { sessionHash: 'a'.repeat(64), channel: 'search', payload: { name: 'page_view', path: 'landing', referrer: 'google.com' } }),
+      event(1000, { sessionHash: 'a'.repeat(64), payload: { name: 'page_view', path: 'target' } }),
+      event(2000, { sessionHash: 'a'.repeat(64), payload: { name: 'page_view', path: 'target' } }),
+      event(3000, { channel: 'referral', payload: { name: 'page_view', path: 'target', referrer: 'example.org' } }),
+      event(4000, {
+        actorType: 'bot',
+        botCategory: 'search_engine',
+        payload: { name: 'crawler_request', path: 'target', resource: 'page', statusCode: 200 },
+      }),
+      event(5000, {
+        actorType: 'bot',
+        botCategory: 'ai_search',
+        payload: { name: 'crawler_request', path: 'target', resource: 'page', statusCode: 200 },
+      }),
+    ]);
+    try {
+      const page = await readPageDetail(new InsightsReader(isolated), 'target');
+      expect(page.channels).toEqual(
+        expect.arrayContaining([
+          { channel: 'search', visits: 1 },
+          { channel: 'referral', visits: 1 },
+        ]),
+      );
+      expect(page.channels).not.toContainEqual(expect.objectContaining({ channel: 'direct' }));
+      expect(page.referrers).toEqual(
+        expect.arrayContaining([
+          { domain: 'google.com', visits: 1 },
+          { domain: 'example.org', visits: 1 },
+        ]),
+      );
+      expect((await readPages(new InsightsReader(isolated))).rows.find((row) => row.path === 'target')?.aiCrawlerRequests).toBe(1);
+      const before = await readInsightsProjectStatus(isolated);
+      expect(Date.parse(before.lastEventAt ?? '')).toBe(start + 3000);
+      await getClickHouseClient('writer').command({
+        query: 'ALTER TABLE analytics_events DELETE WHERE tenant_id = {t:String} AND project_id = {p:String}',
+        query_params: { t: isolated.tenantId, p: isolated.projectId },
+        clickhouse_settings: { mutations_sync: '1' },
+      });
+      expect(await readInsightsProjectStatus(isolated)).toEqual(before);
+      await deleteProjectAnalytics(isolated.tenantId, isolated.projectId);
+      expect(await readInsightsProjectStatus(isolated)).toEqual({ deleted: true, lastEventAt: null });
+    } finally {
+      await deleteProjectAnalytics(isolated.tenantId, isolated.projectId);
+    }
   }, 60_000);
   it('checks one tombstone per endpoint, returns unknown on failure/disabled reads', async () => {
     const client = getClickHouseClient();

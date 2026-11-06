@@ -121,12 +121,14 @@ export const classifyReferral = (
 };
 
 /** Redact before hashing as well as storing, so equivalent private values cannot
- * become a high-cardinality identifier. Locale-independent case folding. */
+ * become a high-cardinality identifier. Dotted domains are required: ordinary
+ * version tokens such as api@v2 remain searchable. Unicode and quoted local
+ * parts are conservatively treated as email-like, without validating mailboxes. */
 export const normalizeSearchTerm = (term: string): string =>
   term
     .normalize('NFKC')
     .toLowerCase()
-    .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/giu, '[email]')
+    .replace(/(?:"(?:[^"\\]|\\.)+"|[^\s@<>"(),;:]+)@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu, '[email]')
     .replace(/(?:https?:\/\/|www\.)[^\s]+/giu, '[url]')
     .replace(/\p{Nd}{6,}/gu, '[number]')
     .trim()

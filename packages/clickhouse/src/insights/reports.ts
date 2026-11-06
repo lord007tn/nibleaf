@@ -66,11 +66,16 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
         visits: row.visits,
         previousVisits: reader.covered('previous') ? (previousReferrals.get(row.source) ?? 0) : null,
       })),
-    assistantReferralSeries: series,
+    assistantReferralSeries: reader.grid(series, { value: 0 }),
     assistantLandingPages: landing.map((row) => ({ ...row, title: reader.title(row.path) })),
     crawlerSeries: [...new Set(crawlerSeries.map((row) => row.category))].map((category) => ({
       category,
-      points: crawlerSeries.filter((row) => row.category === category).map(({ bucket, value }) => ({ bucket, value })),
+      points: reader.grid(
+        crawlerSeries.filter((row) => row.category === category).map(({ bucket, value }) => ({ bucket, value })),
+        { value: 0 },
+        'current',
+        'crawler',
+      ),
     })),
   };
 };
@@ -105,7 +110,7 @@ export const readFeedback = async (reader: InsightsReader): Promise<FeedbackInsi
       helpfulRate: compared('helpfulRate'),
       responseRate: compared('responseRate'),
     },
-    series,
+    series: reader.grid(series, { helpful: 0, notHelpful: 0 }),
     pages: pages.map((row) => ({ ...row, title: reader.title(row.path), helpfulRate: ratio(row.helpful, row.helpful + row.notHelpful) })),
   };
 };
@@ -122,6 +127,7 @@ export const readPerformance = async (reader: InsightsReader): Promise<Performan
     overall: vitalSummary(overall[0]),
     byDevice: devices.map((row) => ({ device: row.device || 'unknown', ...vitalSummary(row) })),
     slowestPages: pages.map((row) => ({ path: row.path, title: reader.title(row.path), ...vitalSummary(row) })),
+    // No samples means unknown performance, never a measured zero latency.
     lcpP75Series: series
       .filter((row) => row.lcpP75Ms !== null)
       .map((row) => ({ bucket: row.bucket, value: row.lcpP75Ms ?? 0 }))

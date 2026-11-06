@@ -21,7 +21,9 @@ export const collectSiteWebVitals = (send: (vitals: Vitals) => void, documentLoa
   const observers: PerformanceObserver[] = [];
   const interactions = new Map<number, number>();
   let sent = false;
-  let inpOverflow = false;
+  let inpObserved = false;
+  let minInteractionId = Number.POSITIVE_INFINITY;
+  let maxInteractionId = 0;
   let clsWindowStart = 0;
   let clsLastShift = 0;
   let clsWindow = 0;
@@ -40,24 +42,26 @@ export const collectSiteWebVitals = (send: (vitals: Vitals) => void, documentLoa
         clsMax = Math.max(clsMax, clsWindow);
         vitals.clsMilli = Math.round(clsMax * 1000);
       }
-      if (entry.entryType === 'event' && entry.interactionId) {
-        // If the interaction buffer fills, INP becomes unknown rather than
-        // reporting a percentile from an incomplete sample.
-        if (interactions.size >= 2000 && !interactions.has(entry.interactionId)) {
-          inpOverflow = true;
-          continue;
-        }
+      if ((entry.entryType === 'event' || entry.entryType === 'first-input') && entry.interactionId) {
+        minInteractionId = Math.min(minInteractionId, entry.interactionId);
+        maxInteractionId = Math.max(maxInteractionId, entry.interactionId);
         interactions.set(entry.interactionId, Math.max(interactions.get(entry.interactionId) ?? 0, entry.duration));
+        // Only the ten longest interactions can affect the p98 estimate.
+        if (interactions.size > 10) {
+          const shortest = [...interactions].sort((a, b) => a[1] - b[1])[0];
+          if (shortest) interactions.delete(shortest[0]);
+        }
       }
     }
   };
   if (documentLoad && typeof PerformanceObserver !== 'undefined') {
-    for (const type of ['largest-contentful-paint', 'paint', 'layout-shift', 'event']) {
+    for (const type of ['largest-contentful-paint', 'paint', 'layout-shift', 'event', 'first-input']) {
       try {
         if (!PerformanceObserver.supportedEntryTypes.includes(type)) continue;
         const observer = new PerformanceObserver((list) => consume(list.getEntries()));
         observer.observe({ type, buffered: true, ...(type === 'event' ? { durationThreshold: 16 } : {}) });
         observers.push(observer);
+        if (type === 'event') inpObserved = true;
         if (type === 'layout-shift') vitals.clsMilli = 0;
       } catch {
         /* Older engines may reject a supported type's options. */
@@ -75,7 +79,12 @@ export const collectSiteWebVitals = (send: (vitals: Vitals) => void, documentLoa
       observer.disconnect();
     }
     const latencies = [...interactions.values()].sort((a, b) => b - a);
-    if (!inpOverflow && latencies.length) vitals.inpMs = Math.round(latencies[Math.floor(latencies.length / 50)] ?? 0);
+    // Chromium interaction ids advance by seven, including interactions below
+    // the event observer threshold. Prefer the browser's exact document count.
+    const count =
+      (performance as Performance & { interactionCount?: number }).interactionCount ??
+      (maxInteractionId ? (maxInteractionId - minInteractionId) / 7 + 1 : 0);
+    if (inpObserved && count > 0) vitals.inpMs = Math.round(latencies[Math.min(9, Math.floor(count / 50))] ?? 0);
     try {
       send(vitals);
     } catch {

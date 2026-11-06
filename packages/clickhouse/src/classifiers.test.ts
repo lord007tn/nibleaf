@@ -107,3 +107,13 @@ describe('server actor and referral classification', () => {
     expect(classifyCrawledResource('/sites/p/llms-full.txt?secret=x')).toBe('llms_full_txt');
   });
 });
+
+it.each(['\u7528\u6237@example.com', 'jos\u00e9.ni\u00f1o@correo.es', '"a b"@x.org', 'user@\u4f8b\u5b50.\u4e2d\u56fd'])(
+  'redacts international email-like tokens: %s',
+  (email) => {
+    expect(normalizeSearchTerm(`find ${email} please`)).toBe('find [email] please');
+  },
+);
+it('preserves ordinary version tokens without a dotted email domain', () => {
+  expect(normalizeSearchTerm('api@v2')).toBe('api@v2');
+});

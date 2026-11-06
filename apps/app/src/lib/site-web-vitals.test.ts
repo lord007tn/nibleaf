@@ -46,6 +46,48 @@ describe('native reader web vitals', () => {
     expect(disconnect).toHaveBeenCalledTimes(4);
     vi.restoreAllMocks();
   });
+  it.each([50, 100])('includes fast interactions in the INP denominator (%i interactions)', (interactionCount) => {
+    class Observer {
+      static supportedEntryTypes = ['event'];
+      constructor(readonly callback: (list: { getEntries: () => PerformanceEntry[] }) => void) {}
+      observe() {
+        this.callback({ getEntries: () => [{ entryType: 'event', interactionId: 7, duration: 800 }] as unknown as PerformanceEntry[] });
+      }
+      takeRecords() {
+        return [];
+      }
+      disconnect = vi.fn();
+    }
+    vi.stubGlobal('PerformanceObserver', Observer);
+    vi.stubGlobal('performance', { interactionCount, getEntriesByType: () => [] });
+    const send = vi.fn();
+    collectSiteWebVitals(send)();
+    expect(send).toHaveBeenCalledWith({ inpMs: 0 });
+  });
+  it('estimates total interaction count from interaction ids without the native count', () => {
+    class Observer {
+      static supportedEntryTypes = ['event'];
+      constructor(readonly callback: (list: { getEntries: () => PerformanceEntry[] }) => void) {}
+      observe() {
+        this.callback({
+          getEntries: () =>
+            [
+              { entryType: 'event', interactionId: 7, duration: 800 },
+              { entryType: 'event', interactionId: 700, duration: 40 },
+            ] as unknown as PerformanceEntry[],
+        });
+      }
+      takeRecords() {
+        return [];
+      }
+      disconnect = vi.fn();
+    }
+    vi.stubGlobal('PerformanceObserver', Observer);
+    vi.stubGlobal('performance', { getEntriesByType: () => [] });
+    const send = vi.fn();
+    collectSiteWebVitals(send)();
+    expect(send).toHaveBeenCalledWith({ inpMs: 0 });
+  });
   it('does not relabel navigation metrics as a soft-route load', () => {
     const send = vi.fn();
     const cleanup = collectSiteWebVitals(send, false);

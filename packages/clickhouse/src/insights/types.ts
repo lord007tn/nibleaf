@@ -8,6 +8,13 @@
  * "unknown" (not collected, unavailable, or not enough data) and must never be
  * rendered as zero.
  *
+ * Count series include every covered bucket, with zero for empty buckets;
+ * comparison arrays align by calendar-day/hour position from each period start.
+ * Rolling periods pad a shorter partial calendar edge with a zero-overlap bucket.
+ * Unknown coverage and performance buckets without samples remain absent.
+ * Hour buckets are UTC instants (Z) to distinguish repeated DST hours; day
+ * buckets are calendar dates in the requested timezone.
+ *
  * Human traffic only: every reader metric excludes classified bots. Crawler
  * traffic is reported separately under `AiVisibility`. Visits/sessions count
  * only identities permitted by granted/not_required consent. Content-free view
@@ -37,7 +44,7 @@ export interface InsightsMeta {
   availability: InsightsAvailability;
   timezone: string;
   current: InsightsPeriod;
-  /** The equally long period immediately before `current`; null when comparison is off. */
+  /** The preceding equal number of local dates (custom), or rolling duration (presets), before `current`; null when comparison is off. */
   previous: InsightsPeriod | null;
   /** Granularity of every timeseries in this response. */
   granularity: 'hour' | 'day';
@@ -53,7 +60,7 @@ export interface Compared {
 }
 
 export interface SeriesPoint {
-  /** `YYYY-MM-DD` (day) or `YYYY-MM-DDTHH:00` (hour), in the requested timezone. */
+  /** `YYYY-MM-DD` (day) or `YYYY-MM-DDTHH:mmZ` (hour instant). */
   bucket: string;
   value: number;
 }
