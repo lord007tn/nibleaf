@@ -10,7 +10,7 @@ import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
-import { SectionHeader, sortLanguagesDefaultFirst } from './shared';
+import { SectionHeader, SettingsListSkeleton, sortLanguagesDefaultFirst } from './shared';
 
 /** A small uppercase chip (direction / default / hidden badges). */
 function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 'muted' | 'primary' | 'warning' }) {
@@ -48,8 +48,8 @@ export function LanguagesSection({ project }: { project: Project }) {
     try {
       await update.mutateAsync({ id, body });
       toast.success(t('common.saved'));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+    } catch {
+      toast.error(t('settings.saveError'));
     }
   };
 
@@ -66,13 +66,13 @@ export function LanguagesSection({ project }: { project: Project }) {
     try {
       await remove.mutateAsync(language.id);
       toast.success(t('settings.languages.deleted'));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.languages.deleteError'));
+    } catch {
+      toast.error(t('settings.languages.deleteError'));
     }
   };
 
   if (query.isError && !languages) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
-  if (!languages) return <p role="status">{t('common.loading')}</p>;
+  if (query.isPending) return <SettingsListSkeleton />;
 
   return (
     <div>
@@ -137,6 +137,7 @@ export function LanguagesSection({ project }: { project: Project }) {
                 {!language.isDefault ? (
                   <Button
                     className="h-8 cursor-pointer rounded-md px-2.5 text-[12.5px]"
+                    loading={update.isPending && update.variables?.id === language.id}
                     onClick={() => void save(language.id, { isDefault: true })}
                     type="button"
                     variant="ghost"
@@ -154,6 +155,7 @@ export function LanguagesSection({ project }: { project: Project }) {
                   <Button
                     aria-label={t('settings.languages.delete')}
                     className="text-muted-foreground hover:text-destructive"
+                    loading={remove.isPending && remove.variables === language.id}
                     onClick={() => void onDelete(language)}
                     size="icon-xs"
                     type="button"

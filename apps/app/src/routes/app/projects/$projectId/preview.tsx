@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
@@ -13,12 +13,14 @@ import { Markdown } from '@/components/markdown';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
+import { pageQueryOptions } from '@/hooks/api/query-options';
+import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import type { PageNode } from '@/hooks/api/types';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
-  component: ProjectPreview,
   validateSearch: (search) =>
     z
       .object({
@@ -27,6 +29,14 @@ export const Route = createFileRoute('/app/projects/$projectId/preview')({
         pageId: z.string().min(1).optional().catch(undefined),
       })
       .parse(search),
+  loaderDeps: ({ search: { branchId, languageId, pageId } }) => ({ branchId, languageId, pageId }),
+  // The parent route prefetches the site, languages and branches; this adds the
+  // previewed page list and, for a deep link, the page itself.
+  loader: ({ context: { queryClient }, params: { projectId }, deps: { branchId, languageId, pageId } }) => {
+    prefetchScopedPages(queryClient, projectId, { branchId, languageId });
+    if (pageId) prefetchRouteData(queryClient, pageQueryOptions(projectId, pageId));
+  },
+  component: ProjectPreview,
 });
 
 const firstPage = (pages: PageNode[] | undefined): PageNode | undefined => pages?.find((page) => page.kind === 'PAGE' && !page.hidden);
@@ -45,12 +55,12 @@ function ProjectPreview() {
   const { data: project } = useProject(projectId);
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
-  const activeLanguageId = search.languageId ?? languages?.find((language) => language.isDefault)?.id ?? languages?.[0]?.id;
+  const activeLanguageId = search.languageId ?? defaultScopeId(languages);
   const activeLanguage = languages?.find((language) => language.id === activeLanguageId);
   // Content direction follows the previewed language (Arabic → RTL), mirroring
   // the published site so authors preview real layout, not always-LTR.
   const contentDir = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
-  const activeBranchId = search.branchId ?? branches?.find((branch) => branch.isDefault)?.id ?? branches?.[0]?.id;
+  const activeBranchId = search.branchId ?? defaultScopeId(branches);
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   const { data: pages, isPending: pagesPending } = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
   const selected = useMemo(() => pages?.find((page) => page.id === search.pageId) ?? firstPage(pages), [pages, search.pageId]);
@@ -140,12 +150,7 @@ function ProjectPreview() {
               <div className="max-h-[min(55vh,28rem)] overflow-y-auto border-border border-t p-3" id="mobile-preview-navigation">
                 <p className="mb-3 text-muted-foreground text-xs">{t('preview.description')}</p>
                 <div className="mb-3 grid gap-2">{scopeSelects}</div>
-                {pagesPending ? (
-                  <div className="space-y-2 p-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-10/12" />
-                  </div>
-                ) : null}
+                {pagesPending ? <PageListSkeleton rows={2} /> : null}
                 {(pages ?? []).map((item) => (
                   <button
                     className={cn(
@@ -183,13 +188,7 @@ function ProjectPreview() {
 
             <ScrollArea className="min-h-0 flex-1">
               <div className="p-3" data-theme-region="sidebar-content">
-                {pagesPending ? (
-                  <div className="space-y-2 p-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-10/12" />
-                    <Skeleton className="h-8 w-8/12" />
-                  </div>
-                ) : null}
+                {pagesPending ? <PageListSkeleton rows={3} /> : null}
                 {(pages ?? []).map((item) => (
                   <button
                     className={cn(
@@ -245,13 +244,24 @@ function ProjectPreview() {
             </div>
             {/* Same typography variables the published site sets on its chrome, so
             the preview reads exactly like production. */}
-            <article className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10" data-theme-region="article" dir={contentDir}>
+            <article
+              aria-busy={contentPending || undefined}
+              className="mx-auto max-w-4xl px-5 py-7 sm:px-8 md:px-10 md:py-10"
+              data-theme-region="article"
+              dir={contentDir}
+            >
               {contentPending ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-64" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-10/12" />
-                </div>
+                // Shaped like the page header (address, title) and its first paragraphs.
+                <>
+                  <p className="sr-only" role="status">
+                    {t('common.loading')}
+                  </p>
+                  <div aria-hidden className="mb-8 flex flex-col gap-3 border-border border-b pb-5">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-9 w-64 max-w-full" />
+                  </div>
+                  <SkeletonText lines={4} />
+                </>
               ) : page ? (
                 <>
                   <div className="mb-8 border-border border-b pb-5">
@@ -277,6 +287,19 @@ function ProjectPreview() {
         }
       />
     </DocumentationThemeProvider>
+  );
+}
+
+const SKELETON_ROW_WIDTHS = ['w-full', 'w-10/12', 'w-8/12'];
+
+/** Page-list rows while the list loads (the article announces the loading status). */
+function PageListSkeleton({ rows }: { rows: number }) {
+  return (
+    <div aria-busy="true" className="space-y-2 p-2">
+      {SKELETON_ROW_WIDTHS.slice(0, rows).map((width) => (
+        <Skeleton aria-hidden className={cn('h-8', width)} key={width} />
+      ))}
+    </div>
   );
 }
 

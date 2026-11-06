@@ -26,10 +26,11 @@ import type {
   UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
+import { friendlyErrorMessage } from './errors';
 import { applyPageReorder, isPageListKey } from './page-cache';
 import { queryKeys } from './query-keys';
 import type {
@@ -40,6 +41,7 @@ import type {
   Comment,
   Deployment,
   Language,
+  NotificationList,
   Page,
   PageNode,
   Project,
@@ -186,7 +188,11 @@ export const useDeleteProject = () => {
   return useMutation({
     mutationFn: async (projectId: string) =>
       mutateData(await api.app.projects[':id'].$delete({ param: { id: projectId } }), 'Could not delete the site.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+    onSuccess: (_data, projectId) => {
+      // Drop the deleted site's detail rather than refetching it into a "not found".
+      qc.removeQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
+      return qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+    },
   });
 };
 
@@ -290,6 +296,25 @@ export const useReorderPages = (projectId: string) => {
   });
 };
 
+/** Every read a publish or rollback changes: the publish list, the live version,
+ *  what the next publish would change and the sites list's publish summary. */
+const invalidatePublishState = (qc: QueryClient, projectId: string) => {
+  void qc.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+  void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+};
+
+/** List a just-queued publish at once: the editor then knows a publish is running
+ *  (a page's address stops following its title), and the poll that sees it go
+ *  READY can tell it was in flight. */
+const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deployment) => {
+  qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+    old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+  );
+  invalidatePublishState(qc, projectId);
+};
+
 export const usePublish = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
@@ -301,17 +326,7 @@ export const usePublish = (projectId: string) => {
         }),
         'Could not publish.',
       ),
-    onSuccess: (deployment) => {
-      // List the new publish right away: the editor then knows a publish is running
-      // (a page's address stops following its title), and the poll that sees it go
-      // READY can tell it was in flight.
-      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
-      );
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 
@@ -323,14 +338,7 @@ export const usePublishAnyway = (projectId: string) => {
         await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         'Could not publish.',
       ),
-    onSuccess: (deployment) => {
-      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
-      );
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 
@@ -342,11 +350,7 @@ export const useRollback = (projectId: string) => {
         await api.app.projects[':projectId'].deployments[':id'].rollback.$post({ param: { projectId, id: deploymentId } }),
         'Could not roll back.',
       ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
-    },
+    onSuccess: () => invalidatePublishState(qc, projectId),
   });
 };
 
@@ -505,35 +509,164 @@ export const useCancelProjectInvitation = (projectId: string) => {
   });
 };
 
+// ─── Overlapping writes ──────────────────────────────────────────────────────
+
+let lastWriteToken = 0;
+// A plain function keeps the counter out of hook bodies (the React Compiler can't analyse `++` on module state).
+const nextWriteToken = () => {
+  lastWriteToken += 1;
+  return lastWriteToken;
+};
+
+/**
+ * Bookkeeping shared by every caller of an optimistic hook whose writes can
+ * overlap: one record per query client, created on first use and dropped once
+ * the last write has finished. Each write gets a `token` so it can tell its own
+ * claims from the others'. See DATA_LOADING.md → "Overlapping writes".
+ */
+const overlappingWrites = <State>(create: () => State) => {
+  const states = new WeakMap<QueryClient, State>();
+  return {
+    of: (qc: QueryClient) => {
+      let state = states.get(qc);
+      if (!state) {
+        state = create();
+        states.set(qc, state);
+      }
+      return state;
+    },
+    peek: (qc: QueryClient) => states.get(qc),
+    drop: (qc: QueryClient) => states.delete(qc),
+    nextToken: nextWriteToken,
+  };
+};
+
 // ─── Comments ─────────────────────────────────────────────────────────────—
 
-export const useCreateComment = (projectId: string, pageId?: string) => {
+/** Optimistically edit every cached comment list of a site (site-wide and per
+ *  page); returns the previous lists so `onError` can roll them back. */
+const patchCommentLists = async (qc: QueryClient, projectId: string, update: (comments: Comment[]) => Comment[]) => {
+  const filter = { queryKey: queryKeys.comments.allForProject(projectId) };
+  await qc.cancelQueries(filter);
+  const previous = qc.getQueriesData<Comment[]>(filter);
+  qc.setQueriesData<Comment[]>(filter, (comments) => (comments ? update(comments) : comments));
+  return { previous };
+};
+
+// The site-wide list shows a new page comment too, so every list of the site is
+// refreshed (`pageId` stays in the signature for existing callers).
+export const useCreateComment = (projectId: string, _pageId?: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: CreateCommentBody) =>
       mutateData<Comment>(await api.app.projects[':projectId'].comments.$post({ param: { projectId }, json: body }), 'Could not post the comment.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.comments.all(projectId, pageId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
   });
 };
 
+/**
+ * Resolve/reopen intents per comment, per query client: the value the server
+ * last confirmed and every click still waiting for its write, in click order.
+ */
+type ResolveIntents = { confirmed: boolean | undefined; pending: { token: number; resolved: boolean }[] };
+const resolveIntents = overlappingWrites(() => new Map<string, ResolveIntents>());
+
+/**
+ * Resolve/reopen optimistically: flipping the flag has only one outcome.
+ *
+ * The server stores whatever `resolved` it is sent, so a quick Resolve → Reopen
+ * must reach it in click order. Every resolve write of a site shares one
+ * mutation scope, which runs them one after another (each optimistic update
+ * still shows at once), so the last click is what's saved.
+ *
+ * What a comment shows is always its newest click still in flight, or else the
+ * value the server last confirmed. A failed write is dropped from that list, so
+ * it can only change what's shown when it was the newest click — an older
+ * failure never undoes a later Resolve or Reopen, however many are queued.
+ * Every failure is reported (the message is in `meta`, which runs once per
+ * failed write), and the list is refetched once the last write has finished.
+ */
 export const useResolveComment = (projectId: string) => {
   const qc = useQueryClient();
+  const t = useT();
+  const mutationKey = ['comments', 'resolve', projectId];
+  const filter = { queryKey: queryKeys.comments.allForProject(projectId) };
+  const show = (id: string, entry: ResolveIntents) => {
+    const resolved = entry.pending.at(-1)?.resolved ?? entry.confirmed;
+    if (resolved === undefined) return;
+    qc.setQueriesData<Comment[]>(filter, (comments) =>
+      comments?.map((comment) => (comment.id === id && comment.resolved !== resolved ? { ...comment, resolved } : comment)),
+    );
+  };
   return useMutation({
+    mutationKey,
+    scope: { id: `comments.resolve.${projectId}` },
     mutationFn: async ({ id, resolved }: { id: string; resolved: boolean }) =>
       mutateData<Comment>(
         await api.app.projects[':projectId'].comments[':id'].$patch({ param: { projectId, id }, json: { resolved } }),
         'Could not update the comment.',
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
+    onMutate: async ({ id, resolved }) => {
+      // Registered before any await, so the list follows click order (the order the writes run in).
+      const key = `${projectId}:${id}`;
+      const intents = resolveIntents.of(qc);
+      const entry = intents.get(key) ?? { confirmed: undefined, pending: [] };
+      if (entry.pending.length === 0) {
+        entry.confirmed = qc
+          .getQueriesData<Comment[]>(filter)
+          .flatMap(([, comments]) => comments ?? [])
+          .find((comment) => comment.id === id)?.resolved;
+      }
+      const token = resolveIntents.nextToken();
+      entry.pending.push({ token, resolved });
+      intents.set(key, entry);
+      await qc.cancelQueries(filter);
+      show(id, entry);
+      return { token };
+    },
+    onSettled: (_data, error, { id, resolved }, context) => {
+      const key = `${projectId}:${id}`;
+      const intents = resolveIntents.of(qc);
+      const entry = intents.get(key);
+      if (entry && context) {
+        entry.pending = entry.pending.filter((intent) => intent.token !== context.token);
+        if (!error) entry.confirmed = resolved;
+        // Only a failure can change what's shown: success confirms a value already on screen or overtaken by a newer click.
+        if (error) show(id, entry);
+        if (entry.pending.length === 0) intents.delete(key);
+      }
+      // A refetch while a later write is still queued would briefly show the older answer.
+      return qc.isMutating({ mutationKey }) > 1 ? undefined : qc.invalidateQueries(filter);
+    },
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'error.unexpected') },
   });
 };
 
+/**
+ * Delete optimistically (the comment disappears at once); on failure only that
+ * comment comes back, where it was, and the failure is reported (from `meta`,
+ * so an earlier failure isn't lost when another delete started meanwhile).
+ */
 export const useDeleteComment = (projectId: string) => {
   const qc = useQueryClient();
+  const t = useT();
   return useMutation({
     mutationFn: async (id: string) =>
       mutateData(await api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }), 'Could not delete the comment.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', projectId] }),
+    onMutate: (id) => patchCommentLists(qc, projectId, (comments) => comments.filter((comment) => comment.id !== id)),
+    onError: (_error, id, context) => {
+      for (const [key, comments] of context?.previous ?? []) {
+        const index = comments?.findIndex((comment) => comment.id === id) ?? -1;
+        const removed = comments?.[index];
+        if (!removed) continue;
+        // Re-insert into the current list, so changes made to other comments meanwhile are kept.
+        qc.setQueryData<Comment[]>(key, (current) =>
+          current && !current.some((comment) => comment.id === id) ? [...current.slice(0, index), removed, ...current.slice(index)] : current,
+        );
+      }
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.comments.deleteError') },
   });
 };
 
@@ -686,7 +819,7 @@ export const useImportFromGit = (projectId: string) => {
       mutateData(await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }), 'Could not import from Git.'),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
-      qc.invalidateQueries({ queryKey: ['pages', projectId] });
+      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
     },
   });
 };
@@ -768,15 +901,110 @@ export const useImportFromGhost = (projectId: string) => {
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 
-/** Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`. */
+/** Mark-read writes still waiting for the server (see `overlappingWrites`). */
+interface MarkReadState {
+  /** Rows shown read only because of writes in flight: which writes claim each row, and the time shown for it. */
+  claims: Map<string, { tokens: Set<number>; readAt: string | null }>;
+  /** Rows a finished write made read: a later failure must not show them unread again. */
+  confirmed: Set<string>;
+}
+const markReads = overlappingWrites<MarkReadState>(() => ({ claims: new Map(), confirmed: new Set() }));
+
+/**
+ * Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`.
+ * Optimistic (marking read always succeeds unless the request fails): the rows
+ * and the bell's count change at once.
+ *
+ * Several writes can overlap (a row, then another, then "Mark all read"), so a
+ * failure never restores an old copy of the inbox: it shows unread again only
+ * the rows that no other write still in flight covers and no finished write
+ * made read.
+ *
+ * The count is never rolled back. The bell polls it on its own, so while writes
+ * are in flight the cached count may already be the server's answer, and that
+ * answer may or may not include a write that has not answered yet: an inverse
+ * change could be wrong either way. Instead, once the last write has finished,
+ * the inbox and the count are refetched, so the badge is the server's own number.
+ * After a failure the badge may read low until then.
+ */
 export const useMarkNotificationsRead = () => {
   const qc = useQueryClient();
+  const t = useT();
+  const mutationKey = ['notifications', 'markRead'];
+  const listKey = queryKeys.notifications.list();
+  const countKey = queryKeys.notifications.unreadCount();
   return useMutation({
+    mutationKey,
     mutationFn: async (body: MarkNotificationsReadBody) =>
       mutateData(await api.app.notifications.read.$post({ json: body }), 'Could not update notifications.'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.list() });
-      qc.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
+    onMutate: async (body) => {
+      await Promise.all([qc.cancelQueries({ queryKey: listKey, exact: true }), qc.cancelQueries({ queryKey: countKey, exact: true })]);
+      const state = markReads.of(qc);
+      const token = markReads.nextToken();
+      const list = qc.getQueryData<NotificationList>(listKey);
+      const readAt = new Date().toISOString();
+      const targets = body.all ? null : new Set(body.ids ?? []);
+      const claimed: string[] = [];
+      let newlyRead = 0;
+      const claim = (id: string, unread: boolean, shownReadAt: string | null) => {
+        let entry = state.claims.get(id);
+        if (!entry) {
+          if (!unread) return;
+          entry = { tokens: new Set(), readAt: shownReadAt };
+          state.claims.set(id, entry);
+          newlyRead += 1;
+        }
+        entry.tokens.add(token);
+        claimed.push(id);
+      };
+      const listed = new Set<string>();
+      for (const item of list?.items ?? []) {
+        listed.add(item.id);
+        if (targets === null || targets.has(item.id)) claim(item.id, item.readAt === null, readAt);
+      }
+      // Rows not in the loaded inbox are assumed unread, so the count never stays too high.
+      for (const id of targets ?? []) if (!listed.has(id)) claim(id, true, null);
+      if (list) {
+        qc.setQueryData<NotificationList>(listKey, {
+          ...list,
+          items: list.items.map((item) => (item.readAt === null && state.claims.has(item.id) ? { ...item, readAt } : item)),
+        });
+      }
+      qc.setQueryData<{ count: number }>(countKey, (current) =>
+        current ? { ...current, count: targets === null ? 0 : Math.max(0, current.count - newlyRead) } : current,
+      );
+      return { token, claimed };
     },
+    onSettled: (_data, error, _body, context) => {
+      const state = markReads.peek(qc);
+      if (state && context) {
+        // Rows this write was the last to claim, with the time shown for them (null: not in the loaded inbox).
+        const released = new Map<string, string | null>();
+        for (const id of context.claimed) {
+          const claim = state.claims.get(id);
+          if (!claim) continue;
+          claim.tokens.delete(context.token);
+          if (!error) state.confirmed.add(id);
+          if (claim.tokens.size > 0) continue;
+          state.claims.delete(id);
+          if (error && !state.confirmed.has(id)) released.set(id, claim.readAt);
+        }
+        const list = qc.getQueryData<NotificationList>(listKey);
+        // A row refetched meanwhile shows the server's answer, so only rows still showing our time go back to unread.
+        const restore = new Set(list?.items.filter((item) => released.has(item.id) && item.readAt === released.get(item.id)).map((item) => item.id));
+        if (list && restore.size > 0) {
+          qc.setQueryData<NotificationList>(listKey, {
+            ...list,
+            items: list.items.map((item) => (restore.has(item.id) ? { ...item, readAt: null } : item)),
+          });
+        }
+      }
+      // A refetch while another write is still in flight would briefly show the older answer.
+      if (qc.isMutating({ mutationKey }) > 1) return;
+      markReads.drop(qc);
+      void qc.invalidateQueries({ queryKey: listKey, exact: true });
+      void qc.invalidateQueries({ queryKey: countKey, exact: true });
+    },
+    meta: { errorMessage: t('notifications.markReadError') },
   });
 };

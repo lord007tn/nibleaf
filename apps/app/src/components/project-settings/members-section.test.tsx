@@ -30,7 +30,8 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(async () => false) }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: currentUserId } } }) }));
-vi.mock('@/hooks/api', () => ({
+vi.mock('@/hooks/api', async () => ({
+  friendlyErrorMessage: (await vi.importActual<typeof import('@/hooks/api/errors')>('@/hooks/api/errors')).friendlyErrorMessage,
   useProjectMembers: () => ({
     data: { members, invitations: [{ id: 'invite-a', email: 'invitee@example.com', role: 'member', expiresAt: '2030-01-01T00:00:00Z' }] },
     isPending: false,
@@ -114,7 +115,11 @@ describe('MembersSection destructive confirmations', () => {
   let root: ReturnType<typeof createRoot>;
 
   const dialogButton = (label: string) =>
-    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === label);
+    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => {
+      const visible = button.cloneNode(true) as HTMLElement;
+      for (const hidden of visible.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+      return visible.textContent === label;
+    });
 
   beforeEach(async () => {
     currentUserId = 'u-owner';
@@ -163,7 +168,7 @@ describe('MembersSection destructive confirmations', () => {
       failed.onError(new Error('Removal failed. Try again.'));
       failed.onSettled();
     });
-    expect(document.querySelector('[role="alertdialog"] [role="alert"]')?.textContent).toBe('Removal failed. Try again.');
+    expect(document.querySelector('[role="alertdialog"] [role="alert"]')?.textContent).toBe('settings.members.toast.removeError');
     expect(dialogButton('settings.members.remove')?.disabled).toBe(false);
     await act(async () => dialogButton('settings.members.remove')?.click());
     expect(mutation.mutate).toHaveBeenCalledTimes(2);
@@ -173,6 +178,35 @@ describe('MembersSection destructive confirmations', () => {
       succeeded.onSettled();
     });
     expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  });
+
+  it('spins only the row whose removal is running', async () => {
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="settings.members.remove"]')?.click());
+    await act(async () => dialogButton('settings.members.remove')?.click());
+
+    const rowButtons = [
+      ...container.querySelectorAll<HTMLButtonElement>('[aria-label="settings.members.remove"], [aria-label="settings.members.revokeInvite"]'),
+    ];
+    // Admin row, member row, then the invitation.
+    expect(rowButtons.map((button) => button.hasAttribute('data-loading'))).toEqual([true, false, false]);
+    const settled = mutation.mutate.mock.calls[0]?.[1];
+    await act(async () => {
+      settled.onSuccess();
+      settled.onSettled();
+    });
+  });
+
+  it('copies an invite link without flashing a spinner', async () => {
+    // The clipboard write is still in flight while the button is checked.
+    const writeText = vi.fn(() => new Promise<void>(() => undefined));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const copy = container.querySelector<HTMLButtonElement>('[aria-label="settings.members.copyInviteLink"]');
+    await act(async () => copy?.click());
+
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(copy?.hasAttribute('data-loading')).toBe(false);
+    expect(copy?.getAttribute('aria-busy')).not.toBe('true');
+    Reflect.deleteProperty(navigator, 'clipboard');
   });
 
   it('requires an explicit action before revoking the named invitation', async () => {

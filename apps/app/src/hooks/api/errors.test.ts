@@ -27,6 +27,18 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, new TypeError('fetch failed'), 'editor.createFailed')).toBe('t:error.network');
   });
 
+  it("lets an action say what a status means for it, so an invite's 409 isn't called a concurrent edit", () => {
+    const conflict = new ApiResponseError('That person is already a member of this workspace.', 409);
+    expect(friendlyErrorMessage(t, conflict, 'members.toast.inviteError', { 409: 'members.toast.alreadyMember' })).toBe(
+      't:members.toast.alreadyMember',
+    );
+    expect(friendlyErrorMessage(t, conflict, 'members.toast.inviteError')).toBe('t:error.conflict');
+    // Other statuses keep the shared wording.
+    expect(friendlyErrorMessage(t, new ApiResponseError('Forbidden', 403), 'members.toast.inviteError', { 409: 'members.toast.alreadyMember' })).toBe(
+      't:error.noPermission',
+    );
+  });
+
   it('falls back to the action message for anything else', () => {
     expect(friendlyErrorMessage(t, new Error('boom'), 'editor.createFailed')).toBe('t:editor.createFailed');
     expect(friendlyErrorMessage(t, 'weird', 'editor.createFailed')).toBe('t:editor.createFailed');

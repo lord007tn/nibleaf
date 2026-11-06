@@ -6,7 +6,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { useDeployments, useDomains, useRollback } from '@/hooks/api';
+import { friendlyErrorMessage, useDeployments, useDomains, useRollback } from '@/hooks/api';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase, type SiteUrlOptions, sitePageUrl } from '@/lib/site-seo';
@@ -148,7 +148,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
         toast.success(t('deploy.rollback.success', { version: previousReady.version }));
         onOpenChange(false);
       },
-      onError: () => toast.error(t('deploy.rollback.error')),
+      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
     });
   };
 
@@ -233,8 +233,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             ) : null}
             <details className="w-full text-sm text-muted-foreground">
               <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
-              <Button variant="outline" disabled={!previousReady || rollback.isPending} onClick={doRollback}>
-                {rollback.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+              <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
+                <RotateCcw className="size-3.5" />
                 {t('deploy.rollback')}
               </Button>
             </details>

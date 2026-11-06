@@ -12,8 +12,6 @@ const SAMPLE_DESCRIPTION = 'Your first documentation site.';
 const STARTER_PUBLISH_MESSAGE = 'Publish starter site';
 /** Without the starter publish's timestamp, give the sign-up seeding this long before a page change counts as the user's. */
 const SAMPLE_SEED_WINDOW_MS = 60_000;
-/** Most sites whose publish history the dashboard reads for the checklist (newest activity first). */
-export const START_HERE_MAX_SITES = 5;
 
 export const isSampleSite = (project: Pick<Project, 'name' | 'description'>) =>
   project.name === SAMPLE_NAME && project.description === SAMPLE_DESCRIPTION;
@@ -22,12 +20,12 @@ const isStarterPublish = (deployment: Pick<Deployment, 'version' | 'commitMessag
   deployment.version === 1 && deployment.commitMessage === STARTER_PUBLISH_MESSAGE;
 
 /**
- * What the dashboard loaded per site to judge progress. `deployments` is the
- * site's publish history; `pages` its page list (only read for the sample).
+ * What the dashboard loaded for the sample site to judge whether the user edited
+ * it: its publish history (for the starter publish's time) and its page list.
  * Missing means "not loaded" — never "none".
  */
 export interface SiteActivity {
-  deployments?: Pick<Deployment, 'status' | 'version' | 'commitMessage' | 'createdAt'>[];
+  deployments?: Pick<Deployment, 'version' | 'commitMessage' | 'createdAt'>[];
   pages?: Pick<PageNode, 'updatedAt'>[];
 }
 
@@ -40,6 +38,11 @@ export interface StartHereProgress {
   invited: boolean;
   done: number;
   total: 3;
+  /**
+   * Every step's answer has arrived. Until then the checklist stays hidden, so
+   * someone who finished it never sees it flash in with steps unticked.
+   */
+  known: boolean;
 }
 
 const newestFirst = (list: Project[]) => [...list].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -49,25 +52,39 @@ const focusSite = (projects: Project[]) => newestFirst(projects.filter((project)
 const ownPagesExist = (projects: Project[]) => projects.some((project) => !isSampleSite(project) && (project._count?.pages ?? 0) > 0);
 
 /**
- * Which sites' publish history and page lists the checklist needs.
- * Publish history: the focus site (its count can lag right after a publish) plus
- * every site that has ever started a publish, capped at {@link START_HERE_MAX_SITES}
- * in the server's most-recently-updated order. Pages: the sample, only while the
- * user hasn't written in a site of their own (otherwise step 1 is already done).
+ * Whether a publish went live on any of the user's sites. "Publish your site" is
+ * about the site being live, so a teammate's publish counts too (as their pages
+ * count for writing and their invites for the team). The sites list reports it
+ * per site (`livePublishes`, which leaves out the sample's automatic first
+ * publish), so no site's publish history has to be read and none can be missed.
+ * Undefined while a site lacks the summary.
+ */
+const livePublishState = (projects: Project[]): boolean | undefined => {
+  if (projects.some((project) => (project.livePublishes ?? 0) > 0)) return true;
+  return projects.every((project) => project.livePublishes !== undefined) ? false : undefined;
+};
+
+/**
+ * What the checklist still has to read: the sample's page list (and its publish
+ * history, for when the starter publish happened), only while writing isn't
+ * already settled by a page in the user's own site or by a live publish.
  */
 export function startHereRequests(projects: Project[]): { deploymentSiteIds: string[]; pageSiteIds: string[] } {
-  const focusId = focusSite(projects)?.id;
-  const deploymentSiteIds = projects
-    .filter((project) => project.id === focusId || (project._count?.deployments ?? 0) > 0)
-    .slice(0, START_HERE_MAX_SITES)
-    .map((project) => project.id);
-  const pageSiteIds = ownPagesExist(projects) ? [] : projects.filter(isSampleSite).map((project) => project.id);
-  return { deploymentSiteIds, pageSiteIds };
+  if (ownPagesExist(projects) || livePublishState(projects)) return { deploymentSiteIds: [], pageSiteIds: [] };
+  const samples = projects.filter(isSampleSite);
+  return {
+    deploymentSiteIds: samples.filter((project) => (project._count?.deployments ?? 0) > 0).map((project) => project.id),
+    pageSiteIds: samples.map((project) => project.id),
+  };
 }
 
-/** A publish that actually went live and that the user made: the sample's automatic first publish doesn't count. */
-const hasOwnLivePublish = (project: Project, activity: SiteActivity | undefined) =>
-  (activity?.deployments ?? []).some((deployment) => deployment.status === 'READY' && !(isSampleSite(project) && isStarterPublish(deployment)));
+/** The sample's publish history as far as it matters: known to be empty when it never published. */
+const sampleHistory = (project: Project, activity: SiteActivity | undefined) =>
+  activity?.deployments ?? ((project._count?.deployments ?? 0) === 0 ? [] : undefined);
+
+/** Whether everything needed to judge edits to the sample has loaded. */
+const sampleActivityLoaded = (project: Project, activity: SiteActivity | undefined) =>
+  Boolean(activity?.pages) && sampleHistory(project, activity) !== undefined;
 
 /**
  * Whether the user changed or added a page in the sample. Seeding finishes before
@@ -75,10 +92,9 @@ const hasOwnLivePublish = (project: Project, activity: SiteActivity | undefined)
  * never got queued, after a short seeding window) is the user's work.
  */
 const editedSample = (project: Project, activity: SiteActivity | undefined) => {
-  if (!activity?.pages) return false;
-  const knownHistory = activity.deployments ?? ((project._count?.deployments ?? 0) === 0 ? [] : undefined);
-  if (!knownHistory) return false;
-  const starter = knownHistory.find(isStarterPublish);
+  const history = sampleHistory(project, activity);
+  if (!activity?.pages || !history) return false;
+  const starter = history.find(isStarterPublish);
   const since = starter ? Date.parse(starter.createdAt) : Date.parse(project.createdAt) + SAMPLE_SEED_WINDOW_MS;
   return activity.pages.some((page) => Date.parse(page.updatedAt) > since);
 };
@@ -86,27 +102,31 @@ const editedSample = (project: Project, activity: SiteActivity | undefined) => {
 /**
  * Derive the first-run checklist from data the dashboard already has.
  * `teamSize` is the focus site's members + pending invitations (undefined while unknown).
- * `activity` holds what {@link startHereRequests} asked for, keyed by site id; until
- * it arrives a step stays open rather than being ticked on a guess.
+ * `activity` holds what {@link startHereRequests} asked for, keyed by site id. A
+ * step is never ticked on a guess, and `known` stays false until every answer is in.
  */
 export function startHereProgress(
   projects: Project[],
   teamSize: number | undefined,
   activity: ReadonlyMap<string, SiteActivity> = new Map(),
 ): StartHereProgress {
-  const published = projects.some((project) => hasOwnLivePublish(project, activity.get(project.id)));
+  const liveState = livePublishState(projects);
+  const published = liveState === true;
+  const samples = projects.filter(isSampleSite);
   // Publishing implies writing; otherwise a page in a site the user created, or a
   // change they made to the sample, counts.
-  const wrote =
-    published || ownPagesExist(projects) || projects.some((project) => isSampleSite(project) && editedSample(project, activity.get(project.id)));
+  const wroteSettled = published || ownPagesExist(projects);
+  const wrote = wroteSettled || samples.some((project) => editedSample(project, activity.get(project.id)));
+  const wroteKnown = wroteSettled || samples.every((project) => sampleActivityLoaded(project, activity.get(project.id)));
   const invited = (teamSize ?? 0) > 1;
   return {
     focus: focusSite(projects),
-    hasSample: projects.some(isSampleSite),
+    hasSample: samples.length > 0,
     wrote,
     published,
     invited,
     done: [wrote, published, invited].filter(Boolean).length,
     total: 3,
+    known: liveState !== undefined && teamSize !== undefined && wroteKnown,
   };
 }

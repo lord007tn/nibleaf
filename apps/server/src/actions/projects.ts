@@ -1,5 +1,5 @@
 import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
-import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
@@ -74,14 +74,48 @@ const uniqueProjectSlug = async (desired: string) => {
   return `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '') || 'docs'}${suffix}`;
 };
 
-/** List every site the user can reach — i.e. across all the orgs they belong to. */
+/** The commit message `publishStarterSite` (@nibleaf/auth) gives the sign-up
+ *  starter site's automatic first publish (always version 1). */
+const STARTER_PUBLISH_MESSAGE = 'Publish starter site';
+
+/** Every publish on a site, by any member, except the starter site's automatic
+ *  version 1. `not` skips NULLs in SQL, hence the explicit `null` branch. */
+const nonStarterPublishWhere: Prisma.DeploymentWhereInput = {
+  OR: [{ version: { not: 1 } }, { commitMessage: null }, { commitMessage: { not: STARTER_PUBLISH_MESSAGE } }],
+};
+
+/** List every site the user can reach — i.e. across all the orgs they belong to.
+ *  Each site also says how many publishes on it went live (`livePublishes`: any
+ *  member's, the sign-up starter publish excluded)
+ *  and whether one is queued or running now (`publishing`), so the dashboard's
+ *  first-run checklist is decided by this one request for any number of sites. */
 export const listProjects = async (userId: string) => {
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
   const organizationIds = memberships.map((m) => m.organizationId);
-  return prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     where: { organizationId: { in: organizationIds } },
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
+  });
+  const activity =
+    projects.length === 0
+      ? []
+      : await prisma.deployment.groupBy({
+          by: ['projectId', 'status'],
+          where: {
+            projectId: { in: projects.map((project) => project.id) },
+            status: { in: ['READY', 'PENDING', 'BUILDING'] },
+            ...nonStarterPublishWhere,
+          },
+          _count: { _all: true },
+        });
+  return projects.map((project) => {
+    const rows = activity.filter((row) => row.projectId === project.id);
+    return {
+      ...project,
+      livePublishes: rows.filter((row) => row.status === 'READY').reduce((sum, row) => sum + row._count._all, 0),
+      publishing: rows.some((row) => row.status !== 'READY' && row._count._all > 0),
+    };
   });
 };
 
@@ -123,19 +157,29 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
   });
 };
 
+/**
+ * One site, with `hasPublishedVersion`: whether a publish went live and kept
+ * its site copy — exactly what an export copies (see `createPublishedSnapshot`
+ * in ./exports), the sign-up starter's first publish included. Unlike the
+ * deployments list (newest 50), this isn't capped by history.
+ */
 export const getProject = async (organizationId: string, id: string) => {
-  const project = await prisma.project.findFirst({
-    where: { id, organizationId },
-    include: {
-      _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
-      languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
-    },
-  });
+  const [project, published] = await Promise.all([
+    prisma.project.findFirst({
+      where: { id, organizationId },
+      include: {
+        _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
+        languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
+      },
+    }),
+    prisma.deployment.findFirst({ where: { projectId: id, status: 'READY', snapshot: { not: Prisma.DbNull } }, select: { id: true } }),
+  ]);
   if (!project) {
     throw notFound('project', { id });
   }
   return {
     ...project,
+    hasPublishedVersion: published !== null,
     languages: project.languages.map(({ projectTranslations, ...language }) => ({
       ...language,
       translation: projectTranslations[0] ?? null,

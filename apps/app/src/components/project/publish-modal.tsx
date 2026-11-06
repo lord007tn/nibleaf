@@ -11,13 +11,14 @@ import {
 } from '@nibleaf/design-system/components/ui/dialog';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { ArrowLeft, FileText, Loader2, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
+import { ArrowLeft, FileText, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useDomains, usePendingChanges, usePublish } from '@/hooks/api';
+import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase } from '@/lib/site-seo';
@@ -93,8 +94,10 @@ function ChangeLines({ change }: { change: PendingChange }) {
         reviewRows(change.lines).map((row) => {
           if (row.kind === 'gap') {
             return (
-              <div aria-hidden className="border-border border-y bg-muted/60 text-center text-muted-foreground leading-5" key={row.key}>
-                ⋯
+              // Screen readers hear that lines were skipped, not a silent jump.
+              <div className="border-border border-y bg-muted/60 text-center text-muted-foreground leading-5" key={row.key}>
+                <span aria-hidden>⋯</span>
+                <span className="sr-only">{t('publish.unchangedHidden')}</span>
               </div>
             );
           }
@@ -235,7 +238,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
           onOpenChange(false);
           onPublished(deployment, firstPublishAttribution);
         },
-        onError: () => toast.error(t('publish.failed')),
+        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'publish.failed')),
         onSettled: () => {
           if (!isCurrentAttempt()) return;
           publishInFlight.current = false;
@@ -250,7 +253,9 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const checkingChanges = loadingChanges || refreshingChanges;
   // An empty article diff is not "nothing to publish": the preflight only compares
   // pages, while redirects and language settings also ship with a publish.
-  const publishBlocked = preparing || checkingChanges || preflightFailed || redirectIssues.length > 0;
+  const publishBlocked = checkingChanges || preflightFailed || redirectIssues.length > 0;
+  // Saving the draft, re-checking and sending the publish read as one action.
+  const publishing = preparing || publish.isPending;
   const hasBaseline = pending?.hasBaseline ?? true;
   const changeKey = useCallback((change: PendingChange) => `${change.id}:${change.status}`, []);
   const selectedChange = sorted.find((change) => changeKey(change) === selectedKey) ?? sorted[0] ?? null;
@@ -281,8 +286,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
               <Button variant="ghost" size="sm" className="-ms-2 h-8" onClick={() => setReviewing(false)}>
                 <ArrowLeft className="size-4 rtl:-scale-x-100" /> {t('publish.backToSummary')}
               </Button>
-              <Button size="sm" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
-                {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+              <Button size="sm" disabled={publishBlocked} loading={publishing} onClick={doPublish}>
+                <Rocket className="size-4" />
                 {t('publish.now')}
               </Button>
             </div>
@@ -406,7 +411,12 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">{t('publish.changes')}</span>
-                {!checkingChanges && count > 0 ? (
+                {refreshingChanges && !loadingChanges ? (
+                  // Re-checking a diff that is already on screen: a quiet note, not a skeleton.
+                  <span className="text-muted-foreground text-xs" role="status">
+                    {t('publish.checking')}
+                  </span>
+                ) : !checkingChanges && count > 0 ? (
                   <span className="text-muted-foreground text-xs">
                     {hasBaseline
                       ? pending?.lastVersion != null
@@ -417,9 +427,14 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                 ) : null}
               </div>
 
-              {checkingChanges ? (
-                <div className="flex items-center gap-2 rounded-xl border border-border border-dashed px-4 py-5 text-muted-foreground text-sm">
-                  <Loader2 className="size-4 animate-spin" /> {t('publish.checking')}
+              {loadingChanges ? (
+                <div aria-busy="true" className="rounded-xl border border-border px-3">
+                  <p className="sr-only" role="status">
+                    {t('publish.checking')}
+                  </p>
+                  {['a', 'b', 'c'].map((row) => (
+                    <SkeletonListRow className="min-h-11" key={row} />
+                  ))}
                 </div>
               ) : count === 0 ? (
                 <div className="rounded-xl border border-border border-dashed px-4 py-5 text-center">
@@ -427,7 +442,10 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   <p className="mt-0.5 text-muted-foreground text-xs">{t('publish.noneHint')}</p>
                 </div>
               ) : (
-                <ScrollArea className="max-h-52 rounded-xl border border-border">
+                <ScrollArea
+                  aria-busy={refreshingChanges || undefined}
+                  className={cn('max-h-52 rounded-xl border border-border transition-opacity', refreshingChanges && 'opacity-60')}
+                >
                   <ul className="divide-y divide-border">
                     {sorted.map((change) => {
                       const meta = STATUS_META[change.status];
@@ -489,8 +507,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
         {!reviewing ? (
           <DialogFooter className="gap-2.5 px-6 pt-0 pb-5 sm:justify-stretch">
             <DialogClose render={<Button variant="outline" className="h-[42px] flex-none px-4" />}>{t('common.cancel')}</DialogClose>
-            <Button className="h-[42px] flex-1" disabled={publish.isPending || publishBlocked} onClick={doPublish}>
-              {publish.isPending ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+            <Button className="h-[42px] flex-1" disabled={publishBlocked} loading={publishing} onClick={doPublish}>
+              <Rocket className="size-4" />
               {t('publish.now')}
             </Button>
           </DialogFooter>

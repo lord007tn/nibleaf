@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
+import { Skeleton, SkeletonListRow, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
@@ -25,6 +26,7 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfigUpdate }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
@@ -94,8 +96,9 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfigU
           toast.success(localizedFn('common.saved'));
           resolve();
         },
+        // Signed out, no permission, someone else saved first…: say which, not just "couldn't save".
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : localizedFn('settings.saveError'));
+          toast.error(friendlyErrorMessage(translateFn, error, 'settings.saveError'));
           resolve();
         },
       },
@@ -416,8 +419,8 @@ export function SaveBar({
   return (
     <div className="mt-2 flex justify-end">
       <DirtyStateReporter dirty={dirty ?? !disabled} values={values} defaults={defaults} extraDirty={extraDirty} />
-      <Button disabled={isSubmitting || saveDisabled} type="submit">
-        {isSubmitting ? t('common.saving') : t('common.save')}
+      <Button disabled={saveDisabled} loading={isSubmitting} type="submit" loadingText={t('common.saving')}>
+        {t('common.save')}
       </Button>
     </div>
   );
@@ -449,4 +452,46 @@ export function useDraftRowUndo() {
     toastId.current = toast(t('publish.removed'), { action: { label: t('settings.theme.undo'), onClick: restore } });
   };
   return { offerUndo, clearUndo };
+}
+
+/** A heading and labeled inputs matching the first load of a settings form. */
+export function SettingsFormSkeleton() {
+  const t = useT();
+  return (
+    <div aria-busy="true" className="flex flex-col gap-6">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <Skeleton className="mb-2 h-7 w-40" />
+        <SkeletonText lines={2} />
+      </div>
+      {['first', 'second', 'third'].map((field) => (
+        <div aria-hidden className="space-y-2" key={field}>
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function SettingsListSkeleton() {
+  const t = useT();
+  return (
+    <div aria-busy="true" className="space-y-4">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <Skeleton className="mb-2 h-7 w-40" />
+        <SkeletonText lines={2} />
+      </div>
+      <div className="divide-y divide-border">
+        <SkeletonListRow />
+        <SkeletonListRow />
+        <SkeletonListRow />
+      </div>
+    </div>
+  );
 }

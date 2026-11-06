@@ -399,8 +399,8 @@ export function PageSettingsDialog({
 
             <DialogFooter className="border-border border-t px-6 py-3">
               <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-              <Button type="button" onClick={save} disabled={update.isPending}>
-                {update.isPending ? t('common.saving') : t('editor.pageSettings.save')}
+              <Button type="button" onClick={save} loading={update.isPending} loadingText={t('common.saving')}>
+                {t('editor.pageSettings.save')}
               </Button>
             </DialogFooter>
           </div>

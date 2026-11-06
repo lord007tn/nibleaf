@@ -1,3 +1,4 @@
+import { SkeletonStatTile } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -73,10 +74,6 @@ const availabilityKeys: Record<UsageAvailability, MessageKey> = {
 
 const planLabelKeys: ReadonlyMap<string, MessageKey> = new Map([['free', 'settings.usage.plan.free']]);
 
-function UsageSkeleton() {
-  return <div aria-hidden className="h-36 animate-pulse rounded-xl border border-border bg-muted/40" />;
-}
-
 export function UsageTab({ project }: { project: Project }) {
   const t = useT();
   const { date, number } = useFormatters();
@@ -87,7 +84,12 @@ export function UsageTab({ project }: { project: Project }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div aria-busy={isPending} className="flex flex-col gap-6">
+      {isPending ? (
+        <p className="sr-only" role="status">
+          {t('common.loading')}
+        </p>
+      ) : null}
       <header className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -116,8 +118,8 @@ export function UsageTab({ project }: { project: Project }) {
         return (
           <SettingsSection description={t(group.description)} key={group.title} title={t(group.title)}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {isPending || !usage
-                ? group.keys.slice(0, 3).map((key) => <UsageSkeleton key={key} />)
+              {isPending
+                ? group.keys.map((key) => <SkeletonStatTile className="min-h-36" key={key} />)
                 : metrics.map((metric) => {
                     const presentation = meterPresentation[metric.key] ?? {
                       icon: Database,

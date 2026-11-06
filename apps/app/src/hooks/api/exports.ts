@@ -3,6 +3,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tansta
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
+import { listExportRunsQueryOptions, listExportSchedulesQueryOptions } from './query-options';
 
 export type ExportFormat = ExportFormatInput;
 export type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
@@ -46,19 +47,14 @@ export interface ExportSchedule {
 const invalidateExports = (queryClient: QueryClient, projectId: string) =>
   queryClient.invalidateQueries({ queryKey: queryKeys.exports.all(projectId) });
 
+/** Export history. Polls while a run is queued or running so its status updates on its own. */
 export const useListExportRuns = (projectId: string) =>
   useQuery({
-    queryKey: queryKeys.exports.runs(projectId),
-    queryFn: async () => getData<ExportRun[]>(await api.app.projects[':projectId'].exports.$get({ param: { projectId } }), 'export runs'),
+    ...listExportRunsQueryOptions(projectId),
     refetchInterval: (query) => (query.state.data?.some((run) => run.status === 'PENDING' || run.status === 'RUNNING') ? 2500 : false),
   });
 
-export const useListExportSchedules = (projectId: string) =>
-  useQuery({
-    queryKey: queryKeys.exports.schedules(projectId),
-    queryFn: async () =>
-      getData<ExportSchedule[]>(await api.app.projects[':projectId'].exports.schedules.$get({ param: { projectId } }), 'export schedules'),
-  });
+export const useListExportSchedules = (projectId: string) => useQuery(listExportSchedulesQueryOptions(projectId));
 
 export const useCreateExport = (projectId: string) => {
   const queryClient = useQueryClient();

@@ -1,35 +1,42 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api';
-import { getData } from './client-helpers';
 import { isDeploymentInFlight } from './deployment-cache';
-import { queryKeys } from './query-keys';
 import {
   apiKeysQueryOptions,
   branchesQueryOptions,
+  commentsQueryOptions,
   deploymentsQueryOptions,
+  domainsQueryOptions,
   languagesQueryOptions,
+  membersQueryOptions,
+  notificationsQueryOptions,
+  openApiConfigurationQueryOptions,
+  pageQueryOptions,
   pagesQueryOptions,
+  pendingChangesQueryOptions,
+  projectAddonsQueryOptions,
+  projectMembersQueryOptions,
   projectQueryOptions,
   projectsQueryOptions,
+  projectUsageQueryOptions,
+  unreadNotificationCountQueryOptions,
+  workspaceSettingsQueryOptions,
 } from './query-options';
-import type { Comment, Domain, NotificationList, OpenApiConfiguration, Page, ProjectAddon, WorkspaceSettings } from './types';
 
-const requireQueryValue = (value: string | undefined, label: string) => {
-  if (!value) {
-    throw new Error(`${label} is required`);
-  }
-  return value;
-};
+/*
+ * Thin hooks over the query factories in ./query-options (see
+ * apps/app/DATA_LOADING.md). Only per-screen options (polling, `enabled`) live here.
+ */
 
-export const useProjects = () => useQuery(projectsQueryOptions());
+/** `pollWhilePublishing`: re-read the list every few seconds while one of the sites is publishing. */
+export const useProjects = (options?: { pollWhilePublishing?: boolean }) =>
+  useQuery({
+    ...projectsQueryOptions(),
+    refetchInterval: options?.pollWhilePublishing ? (query) => (query.state.data?.some((project) => project.publishing) ? 2500 : false) : false,
+  });
 
 export const useProject = (projectId: string | undefined) => useQuery(projectQueryOptions(projectId));
 
-export const useProjectAddons = (projectId: string) =>
-  useQuery({
-    queryKey: queryKeys.addons.all(projectId),
-    queryFn: async () => getData<ProjectAddon[]>(await api.app.projects[':projectId'].addons.$get({ param: { projectId } }), 'project add-ons'),
-  });
+export const useProjectAddons = (projectId: string) => useQuery(projectAddonsQueryOptions(projectId));
 
 /** While `waiting` is set (a key was just created or rotated), poll until that
  *  key is used after `since`, so the page can say the assistant connected. */
@@ -49,18 +56,7 @@ export const useLanguages = (projectId: string | undefined) => useQuery(language
 
 export const useBranches = (projectId: string | undefined) => useQuery(branchesQueryOptions(projectId));
 
-export const usePage = (projectId: string | undefined, pageId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.pages.detail(projectId ?? '', pageId ?? ''),
-    enabled: Boolean(projectId && pageId),
-    queryFn: async () =>
-      getData<Page>(
-        await api.app.projects[':projectId'].pages[':id'].$get({
-          param: { projectId: requireQueryValue(projectId, 'Project ID'), id: requireQueryValue(pageId, 'Page ID') },
-        }),
-        'page',
-      ),
-  });
+export const usePage = (projectId: string | undefined, pageId: string | undefined) => useQuery(pageQueryOptions(projectId, pageId));
 
 // Publishing is async (worker builds the snapshot). Poll while a deployment is
 // in flight so the dashboard transitions PENDING/BUILDING → READY/FAILED on its
@@ -75,109 +71,33 @@ export const useDeployments = (projectId: string | undefined, options?: { enable
   });
 
 // What the next publish will change vs. the last deploy (Mintlify-style "show
-// changes"). Cheap to recompute, and the editor autosaves constantly, so keep it
-// fresh: refetch on mount/focus rather than trusting the default staleTime.
+// changes"). The factory keeps it always stale, so it refetches on every mount.
 export const usePendingChanges = (projectId: string | undefined, options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: queryKeys.deployments.changes(projectId ?? ''),
-    enabled: Boolean(projectId) && (options?.enabled ?? true),
-    staleTime: 0,
-    queryFn: async () =>
-      getData(
-        await api.app.projects[':projectId'].deployments.changes.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'changes',
-      ),
-  });
+  useQuery({ ...pendingChangesQueryOptions(projectId), enabled: options?.enabled ?? true });
 
-export const useDomains = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.domains.all(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Domain[]>(
-        await api.app.projects[':projectId'].domains.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'domains',
-      ),
-  });
+export const useDomains = (projectId: string | undefined) => useQuery(domainsQueryOptions(projectId));
 
-export const useOpenApiConfiguration = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.openapi.detail(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<OpenApiConfiguration | null>(
-        await api.app.projects[':projectId'].openapi.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'OpenAPI configuration',
-      ),
-  });
+export const useOpenApiConfiguration = (projectId: string | undefined) => useQuery(openApiConfigurationQueryOptions(projectId));
 
 /** Per-site usage counters (content, team, publish activity, traffic, storage)
  *  rendered as plan-limit meters on the settings Usage tab. */
-export const useProjectUsage = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.usage.forProject(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData(
-        await api.app.projects[':projectId'].settings.usage.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }),
-        'usage',
-      ),
-  });
+export const useProjectUsage = (projectId: string | undefined) => useQuery(projectUsageQueryOptions(projectId));
 
-export const useComments = (projectId: string | undefined, pageId?: string) =>
-  useQuery({
-    queryKey: queryKeys.comments.all(projectId ?? '', pageId),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData<Comment[]>(
-        await api.app.projects[':projectId'].comments.$get({
-          param: { projectId: requireQueryValue(projectId, 'Project ID') },
-          query: pageId ? { pageId } : {},
-        }),
-        'comments',
-      ),
-  });
+export const useComments = (projectId: string | undefined, pageId?: string) => useQuery(commentsQueryOptions(projectId, pageId));
 
 /** Workspace/site operational settings. Pass a projectId to read the SITE's own
  *  org settings (each site is its own workspace); omit it for the account view. */
-export const useWorkspaceSettings = (projectId?: string) =>
-  useQuery({
-    queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings(),
-    queryFn: async () =>
-      projectId
-        ? getData<WorkspaceSettings>(await api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
-        : getData<WorkspaceSettings>(await api.app.workspace.$get(), 'workspace settings'),
-  });
+export const useWorkspaceSettings = (projectId?: string) => useQuery(workspaceSettingsQueryOptions(projectId));
 
-export const useMembers = () =>
-  useQuery({
-    queryKey: queryKeys.members.all(),
-    queryFn: async () => getData(await api.app.members.$get(), 'members'),
-  });
+export const useMembers = () => useQuery(membersQueryOptions());
 
 /** Members + pending invitations for a single site (its own organization). */
-export const useProjectMembers = (projectId: string | undefined) =>
-  useQuery({
-    queryKey: queryKeys.members.forProject(projectId ?? ''),
-    enabled: Boolean(projectId),
-    queryFn: async () =>
-      getData(await api.app.projects[':projectId'].members.$get({ param: { projectId: requireQueryValue(projectId, 'Project ID') } }), 'members'),
-  });
+export const useProjectMembers = (projectId: string | undefined) => useQuery(projectMembersQueryOptions(projectId));
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 
 /** The first inbox page (newest 50). Pass `enabled: false` until the popover opens. */
-export const useNotifications = (options?: { enabled?: boolean }) =>
-  useQuery({
-    queryKey: queryKeys.notifications.list(),
-    enabled: options?.enabled ?? true,
-    queryFn: async () => getData<NotificationList>(await api.app.notifications.$get({ query: {} }), 'notifications'),
-  });
+export const useNotifications = (options?: { enabled?: boolean }) => useQuery({ ...notificationsQueryOptions(), enabled: options?.enabled ?? true });
 
 /** Unread badge count for the header bell. Polls every 60s. */
-export const useUnreadNotificationCount = () =>
-  useQuery({
-    queryKey: queryKeys.notifications.unreadCount(),
-    refetchInterval: 60_000,
-    queryFn: async () => getData(await api.app.notifications['unread-count'].$get(), 'notifications'),
-  });
+export const useUnreadNotificationCount = () => useQuery({ ...unreadNotificationCountQueryOptions(), refetchInterval: 60_000 });

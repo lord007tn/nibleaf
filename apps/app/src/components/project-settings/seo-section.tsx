@@ -134,8 +134,8 @@ function LanguageSeoForm({ project, language, onDirtyChange }: { project: Projec
         try {
           await update.mutateAsync({ id: language.id, body: { config } });
           toast.success(t('common.saved'));
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+        } catch {
+          toast.error(t('settings.saveError'));
         }
       }}
       project={project}
@@ -243,9 +243,9 @@ function SeoScopeForm({
                         setUploading(false);
                         toast.success(t('settings.seo.uploaded'));
                       },
-                      onError: (error) => {
+                      onError: (_error) => {
                         setUploading(false);
-                        toast.error(error instanceof Error ? error.message : t('settings.seo.uploadError'));
+                        toast.error(t('settings.seo.uploadError'));
                       },
                     });
                   }
@@ -254,7 +254,7 @@ function SeoScopeForm({
                 ref={fileRef}
                 type="file"
               />
-              <Button className="cursor-pointer" disabled={uploading} onClick={() => fileRef.current?.click()} type="button" variant="outline">
+              <Button className="cursor-pointer" loading={uploading} onClick={() => fileRef.current?.click()} type="button" variant="outline">
                 <Upload className="size-4" /> {t('settings.seo.upload')}
               </Button>
             </div>
