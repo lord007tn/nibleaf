@@ -2906,6 +2906,7 @@
   "site_ai_suggestions": "These articles might help:",
   "site_ai_rephrase": "Try asking in a different way",
   "site_ai_sources": "Sources:",
+  "site_ai_source": "Source",
   "site_ai_copy": "Copy answer",
   "site_ai_copied": "Answer copied",
   "site_ai_copyfailed": "Could not copy the answer. Please try again.",

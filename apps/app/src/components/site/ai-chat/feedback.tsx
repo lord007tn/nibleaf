@@ -2,7 +2,8 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { siteT } from '@nibleaf/i18n/site';
 import type { AiChatConsent, AiChatFeedbackReason, AiChatFinalEvent } from '@nibleaf/validators';
-import { useState } from 'react';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 import { submitChatFeedbackFn } from '@/functions/site-chat';
 
 const reasons = [
@@ -13,7 +14,20 @@ const reasons = [
   ['outdated', 'aiOutdated'],
   ['other', 'aiOther'],
 ] as const;
-export function Feedback({ final, projectId, lang, consent }: { final: AiChatFinalEvent; projectId: string; lang?: string; consent: AiChatConsent }) {
+const pressed = 'aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary';
+export function Feedback({
+  final,
+  projectId,
+  lang,
+  consent,
+  leading,
+}: {
+  final: AiChatFinalEvent;
+  projectId: string;
+  lang?: string;
+  consent: AiChatConsent;
+  leading?: ReactNode;
+}) {
   const t = siteT(lang);
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [reason, setReason] = useState<AiChatFeedbackReason>();
@@ -42,13 +56,26 @@ export function Feedback({ final, projectId, lang, consent }: { final: AiChatFin
   };
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" aria-pressed={rating === 'up'} disabled={state === 'saving'} onClick={() => void save('up')}>
-          {t('aiUp')}
+      <div className="flex items-center gap-1">
+        {leading}
+        <Button
+          size="icon"
+          variant="ghost"
+          className={pressed}
+          aria-label={t('aiUp')}
+          title={t('aiUp')}
+          aria-pressed={rating === 'up'}
+          disabled={state === 'saving'}
+          onClick={() => void save('up')}
+        >
+          <ThumbsUp aria-hidden className="size-4" />
         </Button>
         <Button
-          size="sm"
-          variant="outline"
+          size="icon"
+          variant="ghost"
+          className={pressed}
+          aria-label={t('aiDown')}
+          title={t('aiDown')}
           aria-pressed={rating === 'down'}
           disabled={state === 'saving'}
           onClick={() => {
@@ -56,7 +83,7 @@ export function Feedback({ final, projectId, lang, consent }: { final: AiChatFin
             setState('idle');
           }}
         >
-          {t('aiDown')}
+          <ThumbsDown aria-hidden className="size-4" />
         </Button>
       </div>
       {rating === 'down' && (
@@ -67,6 +94,7 @@ export function Feedback({ final, projectId, lang, consent }: { final: AiChatFin
                 key={value}
                 size="sm"
                 variant="outline"
+                className={pressed}
                 aria-pressed={reason === value}
                 onClick={() => {
                   setReason(value);

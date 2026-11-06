@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteT } from '@nibleaf/i18n/site';
 import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
+import { Copy } from 'lucide-react';
 import { Children, cloneElement, isValidElement, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -36,7 +37,7 @@ export function ChatMessage({
               type="button"
               className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
               key={part.key}
-              aria-label={`${t('aiSources')} ${part.source.slice(1)}`}
+              aria-label={`${t('aiSource')} ${part.source.slice(1)}`}
               onClick={() => {
                 const card = document.getElementById(`${prefix}-${part.source}`);
                 card?.scrollIntoView({ block: 'nearest' });
@@ -113,25 +114,32 @@ export function ChatMessage({
         </div>
       )}
       {final?.status === 'answered' && (
-        <>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  `${final.answer}\n\n${t('aiSources')}\n${final.citations.map((source) => `${source.title}: ${new URL(href(source), window.location.origin).href}`).join('\n')}`,
-                );
-                toast.success(t('aiCopied'));
-              } catch {
-                toast.error(t('aiCopyFailed'));
-              }
-            }}
-          >
-            {t('aiCopy')}
-          </Button>
-          <Feedback final={final} projectId={options.projectId} lang={options.lang} consent={consent} />
-        </>
+        <Feedback
+          final={final}
+          projectId={options.projectId}
+          lang={options.lang}
+          consent={consent}
+          leading={
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('aiCopy')}
+              title={t('aiCopy')}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${final.answer}\n\n${t('aiSources')}\n${final.citations.map((source) => `${source.title}: ${new URL(href(source), window.location.origin).href}`).join('\n')}`,
+                  );
+                  toast.success(t('aiCopied'));
+                } catch {
+                  toast.error(t('aiCopyFailed'));
+                }
+              }}
+            >
+              <Copy aria-hidden className="size-4" />
+            </Button>
+          }
+        />
       )}
     </div>
   );

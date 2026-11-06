@@ -32,7 +32,7 @@ describe('reader chat messages', () => {
     await act(async () => root.render(render(final)));
     expect(container.textContent).toContain('Verified answer');
     expect(container.textContent).not.toContain('Unverified draft');
-    const chip = container.querySelector<HTMLButtonElement>('button[aria-label="Sources: 1"]');
+    const chip = container.querySelector<HTMLButtonElement>('button[aria-label="Source 1"]');
     expect(chip).not.toBeNull();
     HTMLElement.prototype.scrollIntoView = vi.fn();
     chip?.click();

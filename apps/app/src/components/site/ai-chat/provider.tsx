@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteT } from '@nibleaf/i18n/site';
+import { Sparkles } from 'lucide-react';
 import { type ComponentProps, createContext, lazy, type ReactNode, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
 import type { ProjectConfig } from '@/hooks/api/types';
@@ -72,6 +73,7 @@ export function SiteChatProvider({
               className="fixed end-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-full shadow-lg"
               onClick={() => openChat()}
             >
+              <Sparkles aria-hidden className="size-4" />
               {t('aiTitle')}
             </Button>
           )}
