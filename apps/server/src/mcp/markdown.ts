@@ -3,9 +3,9 @@ import { AppError } from '@/errors';
 
 /**
  * Largest Markdown document (UTF-8 bytes, after normalization) a write tool
- * accepts. JSON-escaping newlines and quotes grows the text, so the cap leaves
- * a third of the 192 KiB MCP request body (MAX_MCP_REQUEST_BODY_BYTES) for that
- * escaping and the JSON-RPC envelope; a test pins the relationship.
+ * accepts. JSON-escaping newlines, quotes and backslashes can double the text,
+ * so the MCP request body limit (MAX_MCP_REQUEST_BODY_BYTES) allows twice this
+ * plus the JSON-RPC envelope; a test pins the relationship.
  */
 export const MAX_MCP_MARKDOWN_BYTES = 128 * 1024;
 

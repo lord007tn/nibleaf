@@ -135,7 +135,45 @@ describe('MCP HTTP transport boundary', () => {
     );
     // Nothing about the arguments' content is recorded.
     expect(JSON.stringify(mocks.audit.mock.calls)).not.toContain('Hi');
-    expect(response.status).not.toBe(503);
+    // The protocol handler still answers the call itself: the tool does not exist for this key.
+    expect(response.status).toBe(200);
+    // Streamable HTTP may frame the reply as SSE; read its data line either way.
+    const raw = await response.text();
+    const json = raw.trimStart().startsWith('{')
+      ? raw
+      : (raw
+          .split(/\r?\n/u)
+          .find((line) => line.startsWith('data:'))
+          ?.slice(5) ?? '{}');
+    const answer = JSON.parse(json) as {
+      id?: number;
+      result?: { isError?: boolean; content?: Array<{ text?: string }> };
+      error?: { message?: string };
+    };
+    expect(answer.id).toBe(2);
+    const text = answer.error?.message ?? answer.result?.content?.map((item) => item.text).join(' ') ?? '';
+    expect(answer.error !== undefined || answer.result?.isError === true).toBe(true);
+    expect(text).toMatch(/update_page/);
+    expect(text).toMatch(/not found|unknown/i);
+  });
+
+  it('refuses an oversized batch before auditing any of it', async () => {
+    mocks.authenticate.mockResolvedValue({
+      ...principal,
+      credential: { ...principal.credential, scopes: ['mcp:connect', 'pages:read'] },
+      actor: { userId: 'user-1', role: 'member' },
+    });
+    const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };
+    const batch = Array.from({ length: 17 }, (_, index) => ({
+      jsonrpc: '2.0',
+      id: index + 10,
+      method: 'tools/call',
+      params: { name: 'update_page', arguments: { pageId: `page-${index}`, expectedRevision: 'x', title: 'Hi' } },
+    }));
+    const response = await request(headers, JSON.stringify(batch));
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain('at most 16 JSON-RPC messages');
+    expect(mocks.audit).not.toHaveBeenCalled();
   });
 
   it('does not audit read calls or permitted tools as denied writes', async () => {
@@ -258,6 +296,23 @@ describe('MCP write payload sizing', () => {
       },
     });
     expect(Buffer.byteLength(markdown)).toBeLessThanOrEqual(MAX_MCP_MARKDOWN_BYTES);
+    expect(Buffer.byteLength(body)).toBeLessThan(MAX_MCP_REQUEST_BODY_BYTES);
+  });
+
+  it('fits a maximum-size page made of quotes, backslashes and newlines once JSON-escaped', () => {
+    const markdown = '"\\\n'.repeat(Math.floor(MAX_MCP_MARKDOWN_BYTES / 3));
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'update_page',
+        arguments: { pageId: 'c'.repeat(25), expectedRevision: '2026-11-06T00:00:00.000Z', markdown, clientRequestId: 'r'.repeat(128) },
+      },
+    });
+    expect(Buffer.byteLength(markdown)).toBeLessThanOrEqual(MAX_MCP_MARKDOWN_BYTES);
+    // Every character escapes to two bytes, so the body is about twice the page.
+    expect(Buffer.byteLength(body)).toBeGreaterThan(2 * MAX_MCP_MARKDOWN_BYTES - 1024);
     expect(Buffer.byteLength(body)).toBeLessThan(MAX_MCP_REQUEST_BODY_BYTES);
   });
 });

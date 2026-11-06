@@ -11,6 +11,11 @@ const requestIdShaped = /^[A-Za-z0-9._:-]{8,128}$/;
 
 type JsonRpcCall = { method?: unknown; params?: { name?: unknown; arguments?: unknown } };
 
+/** JSON-RPC messages one request may carry. Clients send one at a time; a
+ *  larger batch is refused before anything is audited, so a key cannot turn
+ *  one rate-limited request into thousands of audit rows. */
+export const MAX_MCP_MESSAGES_PER_REQUEST = 16;
+
 const targetOf = (args: unknown, principal: McpPrincipal): McpAuditTarget => {
   const raw = (args && typeof args === 'object' ? args : {}) as Record<string, unknown>;
   for (const key of ['pageId', 'sourcePageId']) {
@@ -61,15 +66,20 @@ export const bufferMcpRequest = async (request: Request, maxBytes: number): Prom
  * still belong in the audit trail: record one failed row per denied write call
  * (actor, target, client request id; never the arguments themselves).
  */
-export const auditDeniedWriteCalls = async (ctx: Context<HonoEnv>, principal: McpPrincipal, bodyText: string | null) => {
-  if (bodyText === null) return;
+export const auditDeniedWriteCalls = async (
+  ctx: Context<HonoEnv>,
+  principal: McpPrincipal,
+  bodyText: string | null,
+): Promise<'audited' | 'too_many_messages'> => {
+  if (bodyText === null) return 'audited';
   let body: unknown;
   try {
     body = JSON.parse(bodyText);
   } catch {
-    return;
+    return 'audited';
   }
   const calls = (Array.isArray(body) ? body : [body]) as JsonRpcCall[];
+  if (calls.length > MAX_MCP_MESSAGES_PER_REQUEST) return 'too_many_messages';
   for (const call of calls) {
     if (call?.method !== 'tools/call' || typeof call.params?.name !== 'string') continue;
     const scope = writeToolScopes.get(call.params.name);
@@ -87,4 +97,5 @@ export const auditDeniedWriteCalls = async (ctx: Context<HonoEnv>, principal: Mc
       durationMs: 0,
     });
   }
+  return 'audited';
 };

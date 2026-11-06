@@ -7,15 +7,18 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { recordMcpAudit } from './audit';
 import { authenticateMcpRequest, mcpAuthInfo } from './auth';
 import { mcpCredentialKey } from './credential';
-import { auditDeniedWriteCalls, bufferMcpRequest, mayMakeDeniedWriteCalls } from './denied-calls';
+import { auditDeniedWriteCalls, bufferMcpRequest, MAX_MCP_MESSAGES_PER_REQUEST, mayMakeDeniedWriteCalls } from './denied-calls';
+import { MAX_MCP_MARKDOWN_BYTES } from './markdown';
 import { checkMcpRateLimit, finalizeMcpRateLimitRejectionAudit } from './rate-limit';
 import { createNibleafMcpServer } from './server';
 
 const log = createLogger({ module: 'mcp-transport' });
 
-/** Room for the largest theme template in `preview_theme_import`, its JSON
- * whitespace, and the JSON-RPC envelope. The SDK's own default is 4 MiB. */
-export const MAX_MCP_REQUEST_BODY_BYTES = MAX_THEME_TEMPLATE_BYTES + 64 * 1024;
+/** Room for the largest Markdown page (write tools) or theme template
+ * (`preview_theme_import`) once JSON-escaped, plus the JSON-RPC envelope.
+ * Escaping turns each quote, backslash and newline into two bytes, so allow
+ * twice the text. The SDK's own default is 4 MiB. */
+export const MAX_MCP_REQUEST_BODY_BYTES = 2 * Math.max(MAX_THEME_TEMPLATE_BYTES, MAX_MCP_MARKDOWN_BYTES) + 64 * 1024;
 
 const transportError = (status: 400 | 403, message: string) =>
   new Response(JSON.stringify({ error: { code: 'mcp:invalid_request', message } }), {
@@ -170,11 +173,14 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
   if (mayMakeDeniedWriteCalls(authenticated)) {
     const buffered = await bufferMcpRequest(request, MAX_MCP_REQUEST_BODY_BYTES);
     forwarded = buffered.request;
+    let verdict: Awaited<ReturnType<typeof auditDeniedWriteCalls>>;
     try {
-      await auditDeniedWriteCalls(ctx, authenticated, buffered.text);
+      verdict = await auditDeniedWriteCalls(ctx, authenticated, buffered.text);
     } catch {
       return auditUnavailableResponse();
     }
+    if (verdict === 'too_many_messages')
+      return withTransportHeaders(transportError(400, `Send at most ${MAX_MCP_MESSAGES_PER_REQUEST} JSON-RPC messages per request.`), limit);
   }
 
   const handler = createMcpHandler(() => createNibleafMcpServer(ctx, authenticated), {
