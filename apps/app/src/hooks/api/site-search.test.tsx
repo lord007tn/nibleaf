@@ -39,6 +39,10 @@ const render = (query: string) =>
   });
 
 const settle = () => act(async () => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+/** The query publishes results a few ticks after a fetch settles; wait (bounded) for the state under test. */
+const until = async (ready: () => boolean) => {
+  for (let attempt = 0; attempt < 100 && !ready(); attempt += 1) await settle();
+};
 
 const deferred = <T,>() => {
   let resolve: (value: T) => void = () => undefined;
@@ -67,7 +71,7 @@ describe('useSiteSearch with a real QueryClient', () => {
     const first = [{ id: 'a' }];
     mocks.search.mockResolvedValueOnce(first);
     await render('setup');
-    await settle();
+    await until(() => latest?.data === first);
     expect(latest?.data).toBe(first);
     mocks.search.mockReturnValueOnce(new Promise(() => undefined));
     await render('setup guide');
@@ -82,7 +86,7 @@ describe('useSiteSearch with a real QueryClient', () => {
     expect(signal).toBeInstanceOf(AbortSignal);
     mocks.search.mockReturnValueOnce(new Promise(() => undefined));
     await render('setup');
-    await settle();
+    await until(() => signal.aborted);
     expect(signal.aborted).toBe(true);
     expect(mocks.search.mock.calls[1]?.[0]).toMatchObject({ data: { projectId: 'docs', query: 'setup' } });
   });
@@ -90,38 +94,38 @@ describe('useSiteSearch with a real QueryClient', () => {
   it('returns a search that never loaded to pending, without its error, when it is retried', async () => {
     mocks.search.mockRejectedValueOnce(new Error('Network unavailable'));
     await render('setup');
-    await settle();
+    await until(() => latest?.error instanceof Error);
     expect(latest?.error).toBeInstanceOf(Error);
     const retry = deferred<unknown[]>();
     mocks.search.mockReturnValueOnce(retry.promise);
     await act(async () => {
       void latest?.refetch();
     });
-    await settle();
+    await until(() => latest?.status === 'pending');
     // The dialog shows result skeletons here, not the error and its Retry button.
     expect(latest?.status).toBe('pending');
     expect(latest?.error).toBeNull();
     expect(latest?.isFetching).toBe(true);
     retry.resolve([]);
-    await settle();
+    await until(() => latest?.data !== undefined);
     expect(latest?.data).toEqual([]);
   });
 
   it('keeps the error of a failed refresh while it is retried, so Retry can show it is busy', async () => {
     mocks.search.mockResolvedValueOnce([{ id: 'a' }]);
     await render('setup');
-    await settle();
+    await until(() => latest?.data !== undefined);
     mocks.search.mockRejectedValueOnce(new Error('Network unavailable'));
     await act(async () => {
       void latest?.refetch();
     });
-    await settle();
+    await until(() => latest?.error instanceof Error);
     expect(latest?.error).toBeInstanceOf(Error);
     mocks.search.mockReturnValueOnce(new Promise(() => undefined));
     await act(async () => {
       void latest?.refetch();
     });
-    await settle();
+    await until(() => latest?.isFetching === true);
     expect(latest?.error).toBeInstanceOf(Error);
     expect(latest?.isFetching).toBe(true);
   });
