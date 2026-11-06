@@ -64,11 +64,18 @@ export function ChatMessage({
       ) : (
         <div className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
           <ReactMarkdown
-            allowedElements={['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
+            allowedElements={['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
             skipHtml
             unwrapDisallowed
             components={{
               p: ({ children }) => <p>{cite(children)}</p>,
+              // Answer headings stay compact labels inside the chat bubble.
+              ...Object.fromEntries(
+                (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const).map((tag) => [
+                  tag,
+                  ({ children }: { children?: ReactNode }) => <p className="mt-3 font-semibold first:mt-0">{cite(children)}</p>,
+                ]),
+              ),
               li: ({ children }) => <li>{cite(children)}</li>,
               pre: ({ children }) => (
                 <pre dir="ltr" className="overflow-x-auto rounded bg-muted p-3 text-start text-xs">
@@ -84,7 +91,7 @@ export function ChatMessage({
       )}
       {sources.length > 0 && (
         <div className="space-y-2">
-          <p className="font-medium text-xs">{t('aiSources')}</p>
+          {final?.status === 'no_answer' ? null : <p className="font-medium text-xs">{t('aiSources')}</p>}
           {sources.map((source) => (
             <a
               key={source.id}

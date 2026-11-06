@@ -77,6 +77,9 @@ export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query
       if (heading(block) || code(block)) return false;
       const next = blocks[index + 1];
       if (block.length <= 200 && block.endsWith(':') && next && (idsIn(next).length || code(next) || list(next))) return false;
+      // Models often cite a list of steps in the sentence right after it
+      // ("…up to 500 notes. [S1]"). That adjacent citation covers the list.
+      if (list(block) && !idsIn(block).length && next && !heading(next) && idsIn(next).length) return false;
       return true;
     });
     const first = substantive.findIndex(Boolean);

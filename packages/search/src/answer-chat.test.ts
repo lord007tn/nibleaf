@@ -63,6 +63,13 @@ describe('chat citation policy', () => {
   it.each(['Unsupported\n\nLast [S1]', 'First [S1]\n\nUnsupported', 'No markers'])('rejects unsupported claims: %s', (text) =>
     expect(validate(text)).toEqual({ status: 'no_answer', reason: 'uncited' }),
   );
+  it('lets the sentence right after a list of steps cite that list (live model output)', () => {
+    const text =
+      '## From the app\n\n1. Open a notebook.\n2. Select **More → Export**.\n3. Select **Download**.\n\nOne export can include up to 500 notes. [S1][S2]\n\n## From the CLI\n\n```bash\nacme export --format markdown\n```\n\nTo export one notebook, add `--notebook <name>`. [S2]';
+    expect(validate(text)).toMatchObject({ status: 'answered', answer: text, droppedParagraphs: 0 });
+  });
+  it('does not let a list borrow a citation across a heading', () =>
+    expect(validate('- Uncited step\n\n## Next\n\nCited [S1]')).toEqual({ status: 'no_answer', reason: 'uncited' }));
   it('does not exempt ordinary colon prose without a supported successor', () =>
     expect(validate('First [S1]\n\nUnproven:\n\nUnsupported')).toMatchObject({ status: 'no_answer' }));
   it('strict policy retains headings and code paragraph requirements', () =>
