@@ -65,6 +65,7 @@ export default function SiteSearchDialog({
   versions = [],
   versionFilterEnabled = true,
   aiAnswers,
+  onAskAi,
 }: {
   projectId: string;
   open: boolean;
@@ -86,6 +87,7 @@ export default function SiteSearchDialog({
   /** Shows the "Ask AI" mode: the site enables AI answers and the instance
    * can serve them. The answer endpoint still enforces both server-side. */
   aiAnswers?: boolean;
+  onAskAi?: (question: string) => void;
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
@@ -123,6 +125,11 @@ export default function SiteSearchDialog({
   const ask = () => {
     const q = query.trim();
     if (q.length < 2 || answerMutation.isPending) return;
+    if (onAskAi) {
+      onOpenChange(false);
+      onAskAi(q);
+      return;
+    }
     answerMutation.mutate({
       projectId,
       query: q,

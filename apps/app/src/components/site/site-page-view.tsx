@@ -3,6 +3,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { CalendarClock, Check, ChevronLeft, ChevronRight, CircleAlert, Clock3, Image, PencilLine, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
+import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
 import { TableOfContents } from '@/components/site/toc';
@@ -224,6 +225,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         </Suspense>
       </div>
 
+      <SiteChatPageAction title={page.title} path={page.path} lang={language} />
       {readerActionsAfterNavigation ? null : (
         <ReaderActions
           key={JSON.stringify([projectId, page.path, language, data.activeVersion])}

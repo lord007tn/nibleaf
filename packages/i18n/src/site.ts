@@ -8,6 +8,52 @@ import { marketing_arabicplatforms_breadcrumb } from './paraglide/messages/marke
 import { marketing_arabicplatforms_description } from './paraglide/messages/marketing_arabicplatforms_description.js';
 import { marketing_arabicplatforms_imagealt } from './paraglide/messages/marketing_arabicplatforms_imagealt.js';
 import { marketing_arabicplatforms_title } from './paraglide/messages/marketing_arabicplatforms_title.js';
+import { site_ai_about } from './paraglide/messages/site_ai_about.js';
+import { site_ai_caution } from './paraglide/messages/site_ai_caution.js';
+import { site_ai_checking } from './paraglide/messages/site_ai_checking.js';
+import { site_ai_close } from './paraglide/messages/site_ai_close.js';
+import { site_ai_comment } from './paraglide/messages/site_ai_comment.js';
+import { site_ai_copied } from './paraglide/messages/site_ai_copied.js';
+import { site_ai_copy } from './paraglide/messages/site_ai_copy.js';
+import { site_ai_copyfailed } from './paraglide/messages/site_ai_copyfailed.js';
+import { site_ai_down } from './paraglide/messages/site_ai_down.js';
+import { site_ai_failed } from './paraglide/messages/site_ai_failed.js';
+import { site_ai_find } from './paraglide/messages/site_ai_find.js';
+import { site_ai_hard } from './paraglide/messages/site_ai_hard.js';
+import { site_ai_incomplete } from './paraglide/messages/site_ai_incomplete.js';
+import { site_ai_incorrect } from './paraglide/messages/site_ai_incorrect.js';
+import { site_ai_intro } from './paraglide/messages/site_ai_intro.js';
+import { site_ai_invalid } from './paraglide/messages/site_ai_invalid.js';
+import { site_ai_limit } from './paraglide/messages/site_ai_limit.js';
+import { site_ai_new } from './paraglide/messages/site_ai_new.js';
+import { site_ai_noanswer } from './paraglide/messages/site_ai_noanswer.js';
+import { site_ai_notrelevant } from './paraglide/messages/site_ai_notrelevant.js';
+import { site_ai_offline } from './paraglide/messages/site_ai_offline.js';
+import { site_ai_other } from './paraglide/messages/site_ai_other.js';
+import { site_ai_outdated } from './paraglide/messages/site_ai_outdated.js';
+import { site_ai_page } from './paraglide/messages/site_ai_page.js';
+import { site_ai_privacy } from './paraglide/messages/site_ai_privacy.js';
+import { site_ai_question } from './paraglide/messages/site_ai_question.js';
+import { site_ai_quota } from './paraglide/messages/site_ai_quota.js';
+import { site_ai_rate } from './paraglide/messages/site_ai_rate.js';
+import { site_ai_ready } from './paraglide/messages/site_ai_ready.js';
+import { site_ai_remove } from './paraglide/messages/site_ai_remove.js';
+import { site_ai_rephrase } from './paraglide/messages/site_ai_rephrase.js';
+import { site_ai_retry } from './paraglide/messages/site_ai_retry.js';
+import { site_ai_searching } from './paraglide/messages/site_ai_searching.js';
+import { site_ai_send } from './paraglide/messages/site_ai_send.js';
+import { site_ai_sources } from './paraglide/messages/site_ai_sources.js';
+import { site_ai_start } from './paraglide/messages/site_ai_start.js';
+import { site_ai_steps } from './paraglide/messages/site_ai_steps.js';
+import { site_ai_stop } from './paraglide/messages/site_ai_stop.js';
+import { site_ai_subtitle } from './paraglide/messages/site_ai_subtitle.js';
+import { site_ai_suggestions } from './paraglide/messages/site_ai_suggestions.js';
+import { site_ai_summary } from './paraglide/messages/site_ai_summary.js';
+import { site_ai_thanks } from './paraglide/messages/site_ai_thanks.js';
+import { site_ai_title } from './paraglide/messages/site_ai_title.js';
+import { site_ai_unavailable } from './paraglide/messages/site_ai_unavailable.js';
+import { site_ai_up } from './paraglide/messages/site_ai_up.js';
+import { site_ai_writing } from './paraglide/messages/site_ai_writing.js';
 import { site_analyticsconsentaccept } from './paraglide/messages/site_analyticsconsentaccept.js';
 import { site_analyticsconsentbody } from './paraglide/messages/site_analyticsconsentbody.js';
 import { site_analyticsconsentdecline } from './paraglide/messages/site_analyticsconsentdecline.js';
@@ -89,6 +135,53 @@ import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
 const siteMessages = {
+  aiTitle: site_ai_title,
+  aiSubtitle: site_ai_subtitle,
+  aiNew: site_ai_new,
+  aiClose: site_ai_close,
+  aiIntro: site_ai_intro,
+  aiStart: site_ai_start,
+  aiFind: site_ai_find,
+  aiSummary: site_ai_summary,
+  aiSteps: site_ai_steps,
+  aiAbout: site_ai_about,
+  aiRemove: site_ai_remove,
+  aiPage: site_ai_page,
+  aiQuestion: site_ai_question,
+  aiSend: site_ai_send,
+  aiStop: site_ai_stop,
+  aiCaution: site_ai_caution,
+  aiPrivacy: site_ai_privacy,
+  aiSearching: site_ai_searching,
+  aiWriting: site_ai_writing,
+  aiChecking: site_ai_checking,
+  aiReady: site_ai_ready,
+  aiNoAnswer: site_ai_noanswer,
+  aiSuggestions: site_ai_suggestions,
+  aiRephrase: site_ai_rephrase,
+  aiSources: site_ai_sources,
+  aiCopy: site_ai_copy,
+  aiCopied: site_ai_copied,
+  aiCopyFailed: site_ai_copyfailed,
+  aiUp: site_ai_up,
+  aiDown: site_ai_down,
+  aiComment: site_ai_comment,
+  aiThanks: site_ai_thanks,
+  aiRetry: site_ai_retry,
+  aiQuota: site_ai_quota,
+  aiRate: site_ai_rate,
+  aiLimit: site_ai_limit,
+  aiUnavailable: site_ai_unavailable,
+  aiInvalid: site_ai_invalid,
+  aiFailed: site_ai_failed,
+  aiOffline: site_ai_offline,
+  aiIncorrect: site_ai_incorrect,
+  aiIncomplete: site_ai_incomplete,
+  aiNotRelevant: site_ai_notrelevant,
+  aiHard: site_ai_hard,
+  aiOutdated: site_ai_outdated,
+  aiOther: site_ai_other,
+
   closeSearch: site_closesearch,
   docs: site_docs,
   changelog: site_changelog,

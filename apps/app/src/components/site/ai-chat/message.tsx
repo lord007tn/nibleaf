@@ -1,0 +1,131 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { siteT } from '@nibleaf/i18n/site';
+import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
+import { Children, cloneElement, isValidElement, type ReactNode } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
+import { siteHref } from '@/lib/site-paths';
+import { Feedback } from './feedback';
+import { answerText, citationParts } from './helpers';
+import type { ChatOptions } from './provider';
+
+export function ChatMessage({
+  text,
+  final,
+  options,
+  busy,
+  consent,
+  close,
+}: {
+  text: string;
+  final?: AiChatFinalEvent;
+  options: ChatOptions;
+  busy: boolean;
+  consent: AiChatConsent;
+  close: () => void;
+}) {
+  const t = siteT(options.lang);
+  const prefix = final?.turnId ?? 'draft';
+  const href = (source: AiChatSource) => siteHref(options.projectId, source.path, { lang: options.lang, version: options.version });
+  const cite = (children: ReactNode): ReactNode =>
+    Children.map(children, (child) => {
+      if (typeof child === 'string')
+        return citationParts(child).map((part) =>
+          part.source && final?.citations.some((source) => source.id === part.source) ? (
+            <button
+              type="button"
+              className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
+              key={part.key}
+              aria-label={`${t('aiSources')} ${part.source.slice(1)}`}
+              onClick={() => {
+                const card = document.getElementById(`${prefix}-${part.source}`);
+                card?.scrollIntoView({ block: 'nearest' });
+                card?.focus();
+              }}
+            >
+              {part.source.slice(1)}
+            </button>
+          ) : (
+            part.text
+          ),
+        );
+      if (isValidElement<{ children?: ReactNode }>(child)) return cloneElement(child, {}, cite(child.props.children));
+      return child;
+    });
+  const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
+  return (
+    <div aria-busy={busy} className="space-y-3 rounded-xl border p-4">
+      {final?.status === 'no_answer' ? (
+        <>
+          <p className="font-medium">{t('aiNoAnswer')}</p>
+          <p>{t('aiRephrase')}</p>
+          {sources.length > 0 && <p>{t('aiSuggestions')}</p>}
+        </>
+      ) : (
+        <div className="min-w-0 break-words text-sm leading-7 [&_li]:ms-5 [&_ul]:list-disc [&_ol]:list-decimal">
+          <ReactMarkdown
+            allowedElements={['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
+            skipHtml
+            unwrapDisallowed
+            components={{
+              p: ({ children }) => <p>{cite(children)}</p>,
+              li: ({ children }) => <li>{cite(children)}</li>,
+              pre: ({ children }) => (
+                <pre dir="ltr" className="overflow-x-auto rounded bg-muted p-3 text-start text-xs">
+                  {children}
+                </pre>
+              ),
+              code: ({ children }) => <code dir="ltr">{children}</code>,
+            }}
+          >
+            {answerText(text, final)}
+          </ReactMarkdown>
+        </div>
+      )}
+      {sources.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-medium text-xs">{t('aiSources')}</p>
+          {sources.map((source) => (
+            <a
+              key={source.id}
+              id={`${prefix}-${source.id}`}
+              dir={source.direction}
+              href={href(source)}
+              className="block rounded-lg border p-3 text-start focus-visible:ring-2"
+              onClick={() => {
+                if (window.matchMedia('(max-width: 767px)').matches) close();
+              }}
+            >
+              <span className="font-medium">
+                {source.id.replace(/^[SP]/, '')}. {source.title}
+              </span>
+              {source.heading && <span className="ms-2 text-muted-foreground">{source.heading}</span>}
+              <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">{source.snippet}</span>
+            </a>
+          ))}
+        </div>
+      )}
+      {final?.status === 'answered' && (
+        <>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(
+                  `${final.answer}\n\n${t('aiSources')}\n${final.citations.map((source) => `${source.title}: ${new URL(href(source), window.location.origin).href}`).join('\n')}`,
+                );
+                toast.success(t('aiCopied'));
+              } catch {
+                toast.error(t('aiCopyFailed'));
+              }
+            }}
+          >
+            {t('aiCopy')}
+          </Button>
+          <Feedback final={final} projectId={options.projectId} lang={options.lang} consent={consent} />
+        </>
+      )}
+    </div>
+  );
+}
