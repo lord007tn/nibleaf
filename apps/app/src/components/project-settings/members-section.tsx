@@ -34,7 +34,7 @@ import {
 import { email as validateEmail } from '@/lib/form';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { useSession } from '@/services/auth-client';
-import { SectionHeader } from './shared';
+import { DirtyStateReporter, SectionHeader } from './shared';
 
 /** A small button that copies an invite link to the clipboard with feedback. */
 function CopyLinkButton({ link, label }: { link: string; label: string }) {
@@ -90,7 +90,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const currentMember = members.find((member) => member.user.id === currentUserId);
   const isCurrentOwner = currentMember?.role === 'owner';
   const canManageMembers = canAdminister(currentMember?.role ?? '');
-  const [lastInvite, setLastInvite] = useState<{ email: string; link: string } | null>(null);
+  const [lastInvite, setLastInvite] = useState<{ email: string; link: string; role: AssignableRole } | null>(null);
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
@@ -148,7 +148,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
           { email: invited, role: value.role },
           {
             onSuccess: (created) => {
-              setLastInvite({ email: invited, link: inviteAcceptUrl(created.id) });
+              setLastInvite({ email: invited, link: inviteAcceptUrl(created.id), role: value.role });
               toast.success(t('settings.members.inviteCreated', { email: invited }));
               form.reset();
               resolve();
@@ -175,6 +175,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
             form.handleSubmit();
           }}
         >
+          <form.Subscribe selector={(state) => !state.isDefaultValue}>{(dirty) => <DirtyStateReporter dirty={dirty} />}</form.Subscribe>
           <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
             {(field) => (
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -184,13 +185,15 @@ export function MembersSection({ projectId }: { projectId: string }) {
                 <Input
                   className="bg-background"
                   id="project-member-email"
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={field.state.meta.errors.length ? 'project-member-email-error' : undefined}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="teammate@company.com"
                   type="email"
                   value={field.state.value}
                 />
-                <FieldError errors={field.state.meta.errors} />
+                <FieldError id="project-member-email-error" errors={field.state.meta.errors} />
               </div>
             )}
           </form.Field>
@@ -222,6 +225,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
         </form>
       )}
 
+      {canManageMembers ? <p className="mb-4 text-muted-foreground text-sm">{t('settings.members.rolesHint')}</p> : null}
       {canManageMembers && lastInvite ? (
         <div className="mb-5 rounded-xl border border-primary/30 bg-primary/5 p-3.5">
           <div className="mb-2 flex items-center justify-between gap-2">
@@ -236,6 +240,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
               className="flex-1 font-mono text-sm"
               onFocus={(event) => event.currentTarget.select()}
               readOnly
+              dir="ltr"
               value={lastInvite.link}
             />
             <Button
@@ -248,6 +253,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
               <Copy className="size-4" /> {t('settings.members.copyLink')}
             </Button>
           </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            {t('settings.members.invitedAs', { role: t(ROLE_LABEL_KEYS[lastInvite.role] ?? 'settings.members.role.member') })}
+          </p>
           <p className="mt-2 text-[12px] text-muted-foreground">{t('settings.members.inviteLinkHint')}</p>
         </div>
       ) : null}

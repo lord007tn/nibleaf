@@ -22,6 +22,7 @@ import {
   saveConfigSection,
   sortLanguagesDefaultFirst,
   ToggleRow,
+  useDraftRowUndo,
   useScopeDirtyGuard,
 } from './shared';
 
@@ -244,6 +245,7 @@ function NavbarScopeForm({
 }) {
   const t = useT();
   const defaultValues = initial;
+  const { offerUndo, clearUndo } = useDraftRowUndo();
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
@@ -255,6 +257,7 @@ function NavbarScopeForm({
     <form
       onSubmit={(event) => {
         event.preventDefault();
+        clearUndo();
         form.handleSubmit();
       }}
     >
@@ -326,7 +329,12 @@ function NavbarScopeForm({
                     <Button
                       aria-label={t('settings.navbar.links.remove')}
                       className="text-muted-foreground"
-                      onClick={() => field.removeValue(index)}
+                      onClick={() => {
+                        const removed = field.state.value[index];
+                        if (!removed) return;
+                        field.removeValue(index);
+                        offerUndo(() => field.insertValue(index, removed));
+                      }}
                       size="icon-xs"
                       type="button"
                       variant="ghost"
@@ -384,7 +392,12 @@ function NavbarScopeForm({
                     <Button
                       aria-label={t('settings.navbar.tabs.remove')}
                       className="text-muted-foreground"
-                      onClick={() => field.removeValue(index)}
+                      onClick={() => {
+                        const removed = field.state.value[index];
+                        if (!removed) return;
+                        field.removeValue(index);
+                        offerUndo(() => field.insertValue(index, removed));
+                      }}
                       size="icon-xs"
                       type="button"
                       variant="ghost"
@@ -453,7 +466,12 @@ function NavbarScopeForm({
                     <Button
                       aria-label={t('settings.navbar.anchors.remove')}
                       className="text-muted-foreground"
-                      onClick={() => field.removeValue(index)}
+                      onClick={() => {
+                        const removed = field.state.value[index];
+                        if (!removed) return;
+                        field.removeValue(index);
+                        offerUndo(() => field.insertValue(index, removed));
+                      }}
                       size="icon-xs"
                       type="button"
                       variant="ghost"

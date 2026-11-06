@@ -1,3 +1,4 @@
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
@@ -53,4 +54,10 @@ describe('SaveBar', () => {
     const markup = renderToStaticMarkup(<SaveBar values={{ title: 'A' }} defaults={{ title: 'B' }} isSubmitting={false} />);
     expect(markup).not.toMatch(/<button[^>]* disabled=""/);
   });
+});
+
+it('keeps shared field errors quiet unless the caller requests a live region', () => {
+  const errors = ['Required'];
+  expect(renderToStaticMarkup(<FieldError errors={errors} id="name-error" />)).not.toContain('role=');
+  expect(renderToStaticMarkup(<FieldError errors={errors} role="status" />)).toContain('role="status"');
 });

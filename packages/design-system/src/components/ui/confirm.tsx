@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 import { Input } from './input';
@@ -12,6 +12,8 @@ interface ConfirmOptions {
   destructive?: boolean;
 }
 interface PromptOptions {
+  validate?: (value: string) => string | undefined;
+  destructive?: boolean;
   title: string;
   description?: string;
   label?: string;
@@ -42,11 +44,13 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
   const [confirmState, setConfirmState] = useState<{ options: ConfirmOptions; resolve: (value: boolean) => void } | null>(null);
   const [promptState, setPromptState] = useState<{ options: PromptOptions; resolve: (value: string | null) => void } | null>(null);
   const [promptValue, setPromptValue] = useState('');
+  const returnFocus = useRef<HTMLElement | null>(null);
 
-  const confirm = useCallback<ConfirmFn>((options) => new Promise<boolean>((resolve) => setConfirmState({ options, resolve })), []);
+  const confirm = useCallback<ConfirmFn>((options) => new Promise<boolean>((resolve) => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setConfirmState({ options, resolve }); }), []);
   const prompt = useCallback<PromptFn>(
     (options) =>
       new Promise<string | null>((resolve) => {
+        returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         setPromptValue(options.initialValue ?? '');
         setPromptState({ options, resolve });
       }),
@@ -66,6 +70,10 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
 
   const confirmValue = useMemo(() => confirm, [confirm]);
   const promptFnValue = useMemo(() => prompt, [prompt]);
+  const promptError = promptState?.options.validate?.(promptValue.trim());
+  // Only explain a validation problem once the person has typed something; an
+  // empty field just keeps the submit button disabled.
+  const visiblePromptError = promptValue.trim() ? promptError : undefined;
   const c = confirmState?.options;
   const p = promptState?.options;
 
@@ -75,7 +83,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         {children}
 
         <Dialog open={Boolean(confirmState)} onOpenChange={(open) => !open && settleConfirm(false)}>
-          <DialogContent className="max-w-sm">
+          <DialogContent className="max-w-sm" closeLabel={labels?.cancel ?? 'Close'} finalFocus={returnFocus}>
             <DialogHeader>
               <DialogTitle>{c?.title}</DialogTitle>
               {c?.description ? <DialogDescription>{c.description}</DialogDescription> : null}
@@ -92,10 +100,11 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         </Dialog>
 
         <Dialog open={Boolean(promptState)} onOpenChange={(open) => !open && settlePrompt(null)}>
-          <DialogContent className="max-w-sm">
+          <DialogContent className="max-w-sm" closeLabel={labels?.cancel ?? 'Close'} finalFocus={returnFocus}>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
+                if (promptError) return;
                 settlePrompt(promptValue.trim() ? promptValue.trim() : null);
               }}
             >
@@ -107,17 +116,21 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
                 {p?.label ? <Label htmlFor="prompt-input">{p.label}</Label> : null}
                 <Input
                   autoFocus
+                  aria-invalid={Boolean(visiblePromptError)}
+                  aria-describedby={visiblePromptError ? "prompt-error" : undefined}
+                  dir="auto"
                   id="prompt-input"
                   onChange={(event) => setPromptValue(event.target.value)}
                   placeholder={p?.placeholder}
                   value={promptValue}
                 />
+                {visiblePromptError ? <p id="prompt-error" role="status" className="text-destructive text-xs">{visiblePromptError}</p> : null}
               </div>
               <DialogFooter>
                 <Button onClick={() => settlePrompt(null)} type="button" variant="outline">
                   {labels?.cancel ?? 'Cancel'}
                 </Button>
-                <Button type="submit">{p?.confirmLabel ?? labels?.save ?? 'Save'}</Button>
+                <Button type="submit" disabled={Boolean(promptError)} variant={p?.destructive ? 'destructive' : 'default'}>{p?.confirmLabel ?? labels?.save ?? 'Save'}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
