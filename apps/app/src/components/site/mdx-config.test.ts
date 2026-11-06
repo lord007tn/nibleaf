@@ -33,6 +33,41 @@ describe('normalizeMdxBlocks', () => {
     expect(normalizeMdxBlocks('<Note>\ntext\n</Note>')).toBe('<Note>\n\ntext\n\n</Note>');
     expect(normalizeMdxBlocks('<Callout type="tip">\n**text**\n</Callout>')).toBe('<Callout type="tip">\n\n**text**\n\n</Callout>');
   });
+  it('gives one-line block components block form so they never land inside a paragraph', () => {
+    expect(normalizeMdxBlocks('Intro.\n\n<Callout type="tip">Upgrading is **instant**.</Callout>\n\nAfter.')).toBe(
+      'Intro.\n\n<Callout type="tip">\n\nUpgrading is **instant**.\n\n</Callout>\n\nAfter.',
+    );
+    expect(normalizeMdxBlocks('  <Accordion title="Why?">Because.</Accordion>')).toBe('<Accordion title="Why?">\n\nBecause.\n\n</Accordion>');
+    expect(normalizeMdxBlocks('```mdx\n<Note>Example</Note>\n```')).toBe('```mdx\n<Note>Example</Note>\n```');
+    expect(normalizeMdxBlocks('Use <Tooltip tip="x">this</Tooltip> inline.')).toBe('Use <Tooltip tip="x">this</Tooltip> inline.');
+    const once = normalizeMdxBlocks('<Note>Text</Note>');
+    expect(normalizeMdxBlocks(once)).toBe(once);
+  });
+  it('never rewrites code samples, including nested and mixed fences', () => {
+    const nested = '````md\n```mdx\n<Note>Example</Note>\n```\n<Frame>\nimg\n</Frame>\n````';
+    expect(normalizeMdxBlocks(nested)).toBe(nested);
+    const mixed = '~~~\n<Note>Inside tildes</Note>\n```\n<Card title="x" />\n~~~';
+    expect(normalizeMdxBlocks(mixed)).toBe(mixed);
+    const block = '```mdx\n<Note>\ntext\n</Note>\n```';
+    expect(normalizeMdxBlocks(block)).toBe(block);
+    // Prose after a closed fence is still normalized.
+    expect(normalizeMdxBlocks('````\n```\n````\n<Note>After</Note>')).toBe('````\n```\n````\n<Note>\n\nAfter\n\n</Note>');
+  });
+  it('leaves fenced samples inside list items and blockquotes, and inline code, untouched', () => {
+    const inList = '- Example:\n  ```mdx\n  <Note>Example</Note>\n  ```';
+    expect(normalizeMdxBlocks(inList)).toBe(inList);
+    const inQuote = '> ```mdx\n> <Frame>\n> img\n> </Frame>\n> ```';
+    expect(normalizeMdxBlocks(inQuote)).toBe(inQuote);
+    expect(normalizeMdxBlocks('Use `<Frame>` or `<Icon icon="x" />` in prose.')).toBe('Use `<Frame>` or `<Icon icon="x" />` in prose.');
+    expect(normalizeMdxBlocks('<Frame>\nimg\n</Frame> and `<Frame>`')).toBe('<mdxframe>\n\nimg\n</mdxframe> and `<Frame>`');
+  });
+  it('expands nested one-line block components level by level and leaves same-tag siblings alone', () => {
+    expect(normalizeMdxBlocks('<CardGroup cols="2"><Card title="A">Body</Card></CardGroup>')).toBe(
+      '<CardGroup cols="2">\n\n<Card title="A">\n\nBody\n\n</Card>\n\n</CardGroup>',
+    );
+    const siblings = '<Card title="A">a</Card><Card title="B">b</Card>';
+    expect(normalizeMdxBlocks(siblings)).toBe(siblings);
+  });
   it('is idempotent', () => {
     const once = normalizeMdxBlocks('<Card title="x">\nbody\n</Card>');
     expect(normalizeMdxBlocks(once)).toBe(once);

@@ -11,15 +11,18 @@ describe('ClickHouse lifecycle initialization', () => {
     mocks.warn.mockClear();
   });
 
-  it('warns in production when the reader-identifier salt is missing', async () => {
-    vi.stubEnv('ANALYTICS_MODE', 'disabled');
-    vi.stubEnv('NODE_ENV', 'production');
+  it('warns that enabled analytics drops events without a salt, including development', async () => {
     vi.stubEnv('ANALYTICS_HASH_SALT', '');
-    await initializeClickHouseFn();
-    expect(mocks.warn).toHaveBeenCalledWith(expect.stringContaining('ANALYTICS_HASH_SALT is not set'));
+    const options = { clientForRole: () => ({ query: async () => ({ json: async () => [] }) }) as never };
+    await initializeClickHouseFn(options);
+    expect(mocks.warn).toHaveBeenCalledWith(expect.stringContaining('analytics events are dropped'));
     mocks.warn.mockClear();
-    vi.stubEnv('ANALYTICS_HASH_SALT', 'random-salt');
-    await initializeClickHouseFn();
+    vi.stubEnv('ANALYTICS_MODE', 'disabled');
+    await initializeClickHouseFn(options);
+    expect(mocks.warn).not.toHaveBeenCalled();
+    vi.stubEnv('ANALYTICS_MODE', 'dual_write');
+    vi.stubEnv('ANALYTICS_HASH_SALT', 'existing-salt');
+    await initializeClickHouseFn(options);
     expect(mocks.warn).not.toHaveBeenCalled();
   });
 

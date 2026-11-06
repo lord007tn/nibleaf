@@ -51,3 +51,5 @@ export const analyticsIngestJobId = (event: Pick<AnalyticsEventEnvelope, 'eventI
 /** Discriminated union of every job the ANALYTICS queue carries. Rollup jobs
  *  have no payload, so discriminate on the presence of `kind`. */
 export type AnalyticsJobData = IngestUsageJobData | RollupAnalyticsJobData | TrackAnalyticsEventJobData | LegacyTrackAnalyticsEventJobData;
+
+export { analyticsEventJobOptions, shouldShedAnalyticsEvent } from './analytics-policy';

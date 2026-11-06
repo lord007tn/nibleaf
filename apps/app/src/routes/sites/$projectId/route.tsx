@@ -5,18 +5,19 @@ import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { DocumentationReaderLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
-import { MobileNav } from '@/components/site/mobile-nav';
+import { MobileNav, type MobileNavChoice } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
-import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
-import { SiteSearch } from '@/components/site/site-search';
+import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
+import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
+import { preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -251,6 +252,17 @@ function SiteChrome() {
   // its head(), so there's no client-side title patching here.)
 
   const pageAlternatesContext = useMemo(() => ({ alternates: pageAlternates, setAlternates: setPageAlternates }), [pageAlternates]);
+  // Search is on by default; only an explicit `false` hides it.
+  const showSearch = config?.navbar?.showSearch !== false;
+  // Outlet content (the site 404) links home and opens search through this.
+  const readerLanguage = activeLanguage?.code;
+  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix });
+  // React Compiler memoizes this value; a manual useMemo here blocks compilation.
+  const readerContext: SiteReaderContextValue = {
+    lang: readerLanguage,
+    homeHref: readerHomeHref,
+    openSearch: showSearch ? () => setSearchOpen(true) : undefined,
+  };
 
   if (!site) {
     return (
@@ -265,8 +277,6 @@ function SiteChrome() {
   }
 
   const resolvedTheme = resolveProjectTheme(config);
-  // Search is on by default; only an explicit `false` hides it.
-  const showSearch = config?.navbar?.showSearch !== false;
   const searchHotkey = config?.search?.hotkey;
   const navLinks = config?.navbar?.links ?? [];
   const navTabs = config?.navbar?.tabs ?? [];
@@ -285,7 +295,7 @@ function SiteChrome() {
   const logoHref = branding?.logoHref?.trim() || undefined;
 
   // --site-header-h drives every sticky offset (sidebar, TOC, heading scroll
-  // margins), including wrapped mobile controls and the optional tab row.
+  // margins), including the optional tab row.
   const headerHeight = measuredHeaderHeight === undefined ? (navTabs.length > 0 ? '6.75rem' : '4rem') : `${measuredHeaderHeight}px`;
   const chromeStyle = {
     ...projectThemeStyle(config),
@@ -299,15 +309,19 @@ function SiteChrome() {
     <>
       {logo ? (
         <>
-          <img src={logo.src} alt={siteName ?? 'Logo'} className={cn('object-contain', logo.markOnly ? 'size-7 shrink-0' : 'h-6 w-auto')} />
-          {logo.markOnly ? null : <span className="truncate">{siteName ?? 'Documentation'}</span>}
+          <img
+            src={logo.src}
+            alt={siteName ?? t('logo')}
+            className={cn('object-contain', logo.markOnly ? 'size-7 shrink-0' : 'h-6 w-auto max-w-full')}
+          />
+          {logo.markOnly ? null : <span className="truncate">{siteName ?? t('documentation')}</span>}
         </>
       ) : (
         <>
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary font-semibold text-primary-foreground text-sm">
-            {siteName?.[0] ?? 'D'}
+            {(siteName || t('documentation'))[0]}
           </span>
-          <span className="truncate">{siteName ?? 'Documentation'}</span>
+          <span className="truncate">{siteName ?? t('documentation')}</span>
         </>
       )}
     </>
@@ -330,6 +344,44 @@ function SiteChrome() {
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
   const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
+  const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({
+    title: node.title,
+    path: node.path,
+    icon: node.icon,
+    versionIndependent: isVersionIndependentNavNode(node),
+  }));
+  // Phones keep the header to one row, so these switchers live in the drawer there.
+  const mobileChoices: MobileNavChoice[] = [
+    {
+      id: 'language',
+      label: t('language'),
+      value: activeLanguage?.code ?? '',
+      options: languages.map((language) => ({
+        value: language.code,
+        label: language.label,
+        lang: language.code,
+        dir: language.direction === 'RTL' ? 'rtl' : 'ltr',
+      })),
+      onChange: changeLanguage,
+    },
+    {
+      id: 'version',
+      label: t('version'),
+      value: activeVersion,
+      options: versions.map((version) => ({
+        value: version.slug,
+        label: version.isDefault ? `${version.name} (${t('defaultVersion')})` : version.name,
+      })),
+      onChange: changeVersion,
+    },
+  ];
+  const skipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
+    // Move focus without a hash navigation, which the router would treat as a visit.
+    const target = document.getElementById('site-content');
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  };
 
   // Only configured navigation renders — the chrome imposes no IA of its own.
   // Root-relative hrefs are site-internal: resolve them to the site base (and
@@ -374,271 +426,306 @@ function SiteChrome() {
         style={chromeStyle}
         theme={resolvedTheme}
       >
-        <DocumentationReaderLayout
-          banner={<SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} />}
-          header={
-            // Header block (main row + optional tab row) sticks as one unit.
-            <div
-              ref={observeHeader}
-              className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md"
-              data-theme-region="header-shell"
-            >
-              <header
-                className="mx-auto flex min-h-16 max-w-[90rem] flex-wrap items-center gap-2 px-4 py-3 sm:h-16 sm:flex-nowrap sm:gap-3 sm:px-6 sm:py-0"
-                data-theme-region="header"
+        {/* First focusable element: keyboard readers can jump past the header and sidebar. */}
+        {/* biome-ignore lint/a11y/useValidAnchor: a real in-page link that works without JavaScript; the handler only skips the router hash visit. */}
+        <a
+          href="#site-content"
+          onClick={skipToContent}
+          data-theme-region="skip-link"
+          className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-lg focus:border focus:border-border focus:bg-background focus:px-4 focus:font-medium focus:text-foreground focus:text-sm focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {t('skipToContent')}
+        </a>
+        <SiteReaderContext.Provider value={readerContext}>
+          <DocumentationReaderLayout
+            banner={<SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} nonce={router.options.ssr?.nonce} />}
+            header={
+              // Header block (main row + optional tab row) sticks as one unit.
+              <div
+                ref={observeHeader}
+                className="sticky top-0 z-30 border-border/70 border-b bg-background/80 backdrop-blur-md"
+                data-theme-region="header-shell"
               >
-                <MobileNav
-                  nodes={site?.nav ?? []}
+                {/* One row at every width: phones get [menu] [logo] … [search] [theme]; the
+                  language and version switchers move into the drawer below `sm`. */}
+                <header className="mx-auto flex h-16 max-w-[90rem] flex-nowrap items-center gap-1 px-4 sm:gap-3 sm:px-6" data-theme-region="header">
+                  <MobileNav
+                    nodes={site?.nav ?? []}
+                    projectId={projectId}
+                    currentPath={effectiveCurrentPath}
+                    lang={navigationLanguage}
+                    version={activeVersionPrefix}
+                    label={t('menu')}
+                    triggerLabel={t('openMenu')}
+                    navLabel={t('docsPages')}
+                    choices={mobileChoices}
+                    closeLabel={deploy_close(undefined, { locale: resolveLocale(activeLanguage?.code) ?? 'en' })}
+                    toggleLabel={t('toggleSubpages')}
+                    isRtl={isRtl}
+                    links={headerLinks}
+                    anchors={navAnchors.map((anchor) => ({
+                      label: anchor.label,
+                      href: resolveNavHref(anchor.href),
+                      active: !anchor.external && isNavActive(anchor.href),
+                      external: Boolean(anchor.external),
+                    }))}
+                    cta={ctaLabel && ctaUrl ? { label: ctaLabel, href: resolveNavHref(ctaUrl) } : undefined}
+                  />
+                  {logoHref ? (
+                    <a
+                      href={logoHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial"
+                    >
+                      {brandInner}
+                    </a>
+                  ) : (
+                    <a href={sitePath()} className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial">
+                      {brandInner}
+                    </a>
+                  )}
+
+                  {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
+                  <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex">
+                    {showSearch ? (
+                      <button
+                        className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted pointer-coarse:h-11 sm:flex"
+                        onClick={() => setSearchOpen(true)}
+                        onFocus={preloadSiteSearch}
+                        onPointerEnter={preloadSiteSearch}
+                        onTouchStart={preloadSiteSearch}
+                        aria-keyshortcuts={searchHotkey === 'slash' ? '/' : 'Control+K Meta+K'}
+                        data-theme-region="search-trigger"
+                        type="button"
+                      >
+                        <Search className="size-3.5 shrink-0" aria-hidden />
+                        <span className="truncate">{config?.search?.placeholder ?? t('searchPlaceholder')}</span>
+                        {/* Keyboard shortcuts read left-to-right even inside an RTL header. */}
+                        <kbd
+                          className="ms-auto hidden shrink-0 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] md:inline-flex"
+                          dir="ltr"
+                          aria-hidden
+                        >
+                          {searchHotkey === 'slash' ? '/' : searchShortcut}
+                        </kbd>
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {showSearch ? (
+                    <button
+                      className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
+                      onClick={() => setSearchOpen(true)}
+                      onFocus={preloadSiteSearch}
+                      onPointerEnter={preloadSiteSearch}
+                      onTouchStart={preloadSiteSearch}
+                      type="button"
+                      aria-label={t('searchDocumentation')}
+                    >
+                      <Search className="size-5" aria-hidden />
+                    </button>
+                  ) : null}
+
+                  {headerLinks.length > 0 ? (
+                    <nav className="hidden shrink-0 items-center gap-5 text-sm lg:flex" aria-label={t('siteLinks')}>
+                      {headerLinks.map((link) => (
+                        <a
+                          key={`${link.label}-${link.href}`}
+                          href={link.href}
+                          target={link.external ? '_blank' : undefined}
+                          rel={link.external ? 'noreferrer' : undefined}
+                          aria-current={link.active ? 'page' : undefined}
+                          className={cn(
+                            'inline-flex items-center gap-1 transition-colors',
+                            link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {link.label}
+                          {link.external ? <ExternalLink className="size-3" aria-hidden /> : null}
+                        </a>
+                      ))}
+                    </nav>
+                  ) : null}
+
+                  <div className="ms-auto flex shrink-0 items-center justify-end gap-1 sm:gap-1.5">
+                    <div className="hidden items-center gap-1.5 sm:flex">
+                      <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
+                      <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} lang={activeLanguage?.code} />
+                    </div>
+                    <button
+                      // 44px on phones and touch screens; the compact 36px only for a mouse or trackpad.
+                      className="-me-2 grid size-11 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:me-0 sm:pointer-fine:size-9"
+                      onClick={toggleSiteTheme}
+                      type="button"
+                      aria-label={t('toggleTheme')}
+                    >
+                      {siteTheme === 'dark' ? <Sun className="size-5 sm:size-4" aria-hidden /> : <Moon className="size-5 sm:size-4" aria-hidden />}
+                    </button>
+                    {ctaLabel && ctaUrl ? (
+                      <a
+                        href={resolveNavHref(ctaUrl)}
+                        data-analytics-cta
+                        data-analytics-placement="navbar"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90 sm:inline-flex"
+                      >
+                        {ctaLabel}
+                      </a>
+                    ) : null}
+                  </div>
+                </header>
+
+                {navTabs.length > 0 ? (
+                  <nav
+                    className="mx-auto flex h-11 max-w-[90rem] items-center gap-1 overflow-x-auto px-4 sm:px-6"
+                    data-theme-region="tabs"
+                    aria-label={t('docsSections')}
+                  >
+                    {navTabs.map((tab) => {
+                      const active = !tab.external && isNavActive(tab.href);
+                      return (
+                        <a
+                          key={`${tab.label}-${tab.href}`}
+                          href={resolveNavHref(tab.href)}
+                          target={tab.external ? '_blank' : undefined}
+                          rel={tab.external ? 'noreferrer' : undefined}
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            'relative inline-flex h-full shrink-0 items-center px-3 text-sm transition-colors',
+                            active
+                              ? 'font-medium text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
+                              : 'text-muted-foreground hover:text-foreground',
+                          )}
+                        >
+                          {tab.label}
+                        </a>
+                      );
+                    })}
+                  </nav>
+                ) : null}
+              </div>
+            }
+            navigation={
+              <>
+                {navAnchors.length > 0 ? (
+                  <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                    {navAnchors.map((anchor) => (
+                      <li key={`${anchor.label}-${anchor.href}`}>
+                        <a
+                          href={resolveNavHref(anchor.href)}
+                          target={anchor.external ? '_blank' : undefined}
+                          rel={anchor.external ? 'noreferrer' : undefined}
+                          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                        >
+                          <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                            {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                          </span>
+                          <span className="truncate">{anchor.label}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <SiteNav
+                  nodes={site.nav ?? []}
                   projectId={projectId}
                   currentPath={effectiveCurrentPath}
                   lang={navigationLanguage}
                   version={activeVersionPrefix}
-                  label={t('docs')}
-                  closeLabel={deploy_close(undefined, { locale: resolveLocale(activeLanguage?.code) ?? 'en' })}
                   toggleLabel={t('toggleSubpages')}
-                  isRtl={isRtl}
-                  links={headerLinks}
-                  anchors={navAnchors.map((anchor) => ({
-                    label: anchor.label,
-                    href: resolveNavHref(anchor.href),
-                    active: !anchor.external && isNavActive(anchor.href),
-                    external: Boolean(anchor.external),
-                  }))}
-                  cta={ctaLabel && ctaUrl ? { label: ctaLabel, href: resolveNavHref(ctaUrl) } : undefined}
+                  label={t('docsPages')}
                 />
-                {logoHref ? (
-                  <a
-                    href={logoHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial"
-                  >
-                    {brandInner}
-                  </a>
-                ) : (
-                  <a href={sitePath()} className="flex min-w-7 flex-1 items-center gap-2.5 font-semibold tracking-tight sm:flex-initial">
-                    {brandInner}
-                  </a>
-                )}
-
-                {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
-                <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex">
-                  {showSearch ? (
-                    <button
-                      className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted sm:flex"
-                      onClick={() => setSearchOpen(true)}
-                      type="button"
+              </>
+            }
+            content={
+              // Skip-link target; focusable by script only, without a focus ring on click.
+              <main id="site-content" tabIndex={-1} className="min-w-0 outline-none">
+                <SitePageAlternatesContext.Provider value={pageAlternatesContext}>
+                  <Outlet />
+                </SitePageAlternatesContext.Provider>
+              </main>
+            }
+            footer={
+              hasFooterContent || showBadge ? (
+                <footer className="mt-auto border-border/60 border-t">
+                  {hasFooterContent && footer ? (
+                    <div
+                      className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
+                      data-theme-region="footer"
                     >
-                      <Search className="size-3.5 shrink-0" />
-                      <span className="truncate">{config?.search?.placeholder ?? t('search')}</span>
-                      {/* Keyboard shortcuts read left-to-right even inside an RTL header. */}
-                      <kbd
-                        className="ms-auto hidden shrink-0 rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-[11px] md:inline-flex"
-                        dir="ltr"
-                      >
-                        {searchHotkey === 'slash' ? '/' : searchShortcut}
-                      </kbd>
-                    </button>
-                  ) : null}
-                </div>
-
-                {showSearch ? (
-                  <button
-                    className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:hidden"
-                    onClick={() => setSearchOpen(true)}
-                    type="button"
-                    aria-label={t('search')}
-                  >
-                    <Search className="size-4" />
-                  </button>
-                ) : null}
-
-                <nav className="hidden shrink-0 items-center gap-5 text-sm lg:flex">
-                  {headerLinks.map((link) => (
-                    <a
-                      key={`${link.label}-${link.href}`}
-                      href={link.href}
-                      target={link.external ? '_blank' : undefined}
-                      rel={link.external ? 'noreferrer' : undefined}
-                      aria-current={link.active ? 'page' : undefined}
-                      className={cn(
-                        'inline-flex items-center gap-1 transition-colors',
-                        link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {link.label}
-                      {link.external ? <ExternalLink className="size-3" /> : null}
-                    </a>
-                  ))}
-                </nav>
-
-                <div className="ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:flex-nowrap">
-                  <LanguageSwitcher languages={languages} activeCode={activeLanguage?.code ?? ''} onChange={changeLanguage} />
-                  <VersionSwitcher versions={versions} activeSlug={activeVersion} onChange={changeVersion} lang={activeLanguage?.code} />
-                  <button
-                    className="grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    onClick={toggleSiteTheme}
-                    type="button"
-                    aria-label={t('toggleTheme')}
-                  >
-                    {siteTheme === 'dark' ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                  </button>
-                  {ctaLabel && ctaUrl ? (
-                    <a
-                      href={resolveNavHref(ctaUrl)}
-                      data-analytics-cta
-                      data-analytics-placement="navbar"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90 sm:inline-flex"
-                    >
-                      {ctaLabel}
-                    </a>
-                  ) : null}
-                </div>
-              </header>
-
-              {navTabs.length > 0 ? (
-                <nav className="mx-auto flex h-11 max-w-[90rem] items-center gap-1 overflow-x-auto px-4 sm:px-6" data-theme-region="tabs">
-                  {navTabs.map((tab) => {
-                    const active = !tab.external && isNavActive(tab.href);
-                    return (
-                      <a
-                        key={`${tab.label}-${tab.href}`}
-                        href={resolveNavHref(tab.href)}
-                        target={tab.external ? '_blank' : undefined}
-                        rel={tab.external ? 'noreferrer' : undefined}
-                        aria-current={active ? 'page' : undefined}
-                        className={cn(
-                          'relative inline-flex h-full shrink-0 items-center px-3 text-sm transition-colors',
-                          active
-                            ? 'font-medium text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
-                            : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {tab.label}
-                      </a>
-                    );
-                  })}
-                </nav>
-              ) : null}
-            </div>
-          }
-          navigation={
-            <>
-              {navAnchors.length > 0 ? (
-                <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                  {navAnchors.map((anchor) => (
-                    <li key={`${anchor.label}-${anchor.href}`}>
-                      <a
-                        href={resolveNavHref(anchor.href)}
-                        target={anchor.external ? '_blank' : undefined}
-                        rel={anchor.external ? 'noreferrer' : undefined}
-                        className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                      >
-                        <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                          {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                        </span>
-                        <span className="truncate">{anchor.label}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <SiteNav
-                nodes={site.nav ?? []}
-                projectId={projectId}
-                currentPath={effectiveCurrentPath}
-                lang={navigationLanguage}
-                version={activeVersionPrefix}
-                toggleLabel={t('toggleSubpages')}
-              />
-            </>
-          }
-          content={
-            <main className="min-w-0">
-              <SitePageAlternatesContext.Provider value={pageAlternatesContext}>
-                <Outlet />
-              </SitePageAlternatesContext.Provider>
-            </main>
-          }
-          footer={
-            hasFooterContent || showBadge ? (
-              <footer className="mt-auto border-border/60 border-t">
-                {hasFooterContent && footer ? (
-                  <div
-                    className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
-                    data-theme-region="footer"
-                  >
-                    <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
-                    <div className="flex items-center gap-1">
-                      {footer.github ? (
-                        <a
-                          href={footer.github}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label="GitHub"
-                          className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <GithubIcon className="size-4" />
-                        </a>
-                      ) : null}
-                      {footer.x ? (
-                        <a
-                          href={footer.x}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label="X"
-                          className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <XIcon className="size-4" />
-                        </a>
-                      ) : null}
-                      {footer.linkedin ? (
-                        <a
-                          href={footer.linkedin}
-                          target="_blank"
-                          rel="noreferrer"
-                          aria-label="LinkedIn"
-                          className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <LinkedinIcon className="size-4" />
-                        </a>
-                      ) : null}
+                      <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
+                      <div className="flex items-center gap-1">
+                        {footer.github ? (
+                          <a
+                            href={footer.github}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="GitHub"
+                            className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <GithubIcon className="size-4" />
+                          </a>
+                        ) : null}
+                        {footer.x ? (
+                          <a
+                            href={footer.x}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="X"
+                            className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <XIcon className="size-4" />
+                          </a>
+                        ) : null}
+                        {footer.linkedin ? (
+                          <a
+                            href={footer.linkedin}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="LinkedIn"
+                            className="cursor-pointer rounded-md p-2 transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <LinkedinIcon className="size-4" />
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
+                  ) : null}
+                  {showBadge ? (
+                    <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
+                      <MadeWithBadge lang={activeLanguage?.code} />
+                    </div>
+                  ) : null}
+                </footer>
+              ) : null
+            }
+            overlays={
+              <>
+                {showSearch ? (
+                  <SiteSearch
+                    projectId={projectId}
+                    open={searchOpen}
+                    onOpenChange={setSearchOpen}
+                    lang={activeLanguage?.code}
+                    defaultLanguage={defaultLanguage}
+                    direction={isRtl ? 'rtl' : 'ltr'}
+                    version={activeVersionPrefix}
+                    placeholder={config?.search?.placeholder}
+                    hotkey={searchHotkey}
+                    maxResults={config?.search?.maxResults}
+                    versions={versions}
+                    versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
+                    aiAnswers={site?.capabilities?.answer === true}
+                    suggestions={searchSuggestions}
+                  />
                 ) : null}
-                {showBadge ? (
-                  <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
-                    <MadeWithBadge lang={activeLanguage?.code} />
-                  </div>
-                ) : null}
-              </footer>
-            ) : null
-          }
-          overlays={
-            <>
-              {showSearch ? (
-                <SiteSearch
-                  projectId={projectId}
-                  open={searchOpen}
-                  onOpenChange={setSearchOpen}
-                  lang={activeLanguage?.code}
-                  defaultLanguage={defaultLanguage}
-                  direction={isRtl ? 'rtl' : 'ltr'}
-                  version={activeVersionPrefix}
-                  placeholder={config?.search?.placeholder}
-                  hotkey={searchHotkey}
-                  maxResults={config?.search?.maxResults}
-                  versions={versions}
-                  versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
-                  aiAnswers={site?.capabilities?.answer === true}
-                />
-              ) : null}
-              <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />
-            </>
-          }
-        />
+                <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />
+              </>
+            }
+          />
+        </SiteReaderContext.Provider>
       </DocumentationThemeProvider>
     </SiteAnalyticsProvider>
   );

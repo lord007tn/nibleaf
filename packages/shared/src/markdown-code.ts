@@ -15,6 +15,29 @@ export const closesMarkdownFence = (line: string, fence: MarkdownFence, maxInden
   return Boolean(match && (match[1]?.length ?? 0) <= maxIndent && match[2]?.[0] === fence.marker && match[2].length >= fence.length);
 };
 
+/** Blockquote markers and one list-item marker that may come before a fence. */
+const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/;
+
+/**
+ * Flags each line that belongs to fenced code, fence lines included: same marker,
+ * closing at least as long (CommonMark), also when the fence sits in a list item
+ * or blockquote. Indentation is allowed because authors indent inside components.
+ * Shared by the reader's MDX normalizer, heading extraction and search sections,
+ * so all three agree on what is code.
+ */
+export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => {
+  let fence: MarkdownFence | undefined;
+  return lines.map((line) => {
+    const content = line.replace(CONTAINER_PREFIX, '');
+    if (fence) {
+      if (closesMarkdownFence(content, fence, Number.POSITIVE_INFINITY)) fence = undefined;
+      return true;
+    }
+    fence = openingMarkdownFence(content, Number.POSITIVE_INFINITY);
+    return Boolean(fence);
+  });
+};
+
 /** Hide literal code from regex-based import passes, then restore exact bytes.
  * Mintlify passes may opt into structural JSX indentation before normalization.
  * The normalizer itself keeps fences visible so it can remove only that indent. */

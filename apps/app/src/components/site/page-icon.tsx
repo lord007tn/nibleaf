@@ -27,6 +27,7 @@ import {
   Info,
   Key,
   Layers,
+  LifeBuoy,
   Lightbulb,
   Link as LinkIcon,
   Lock,
@@ -94,6 +95,11 @@ const ICONS: Record<string, LucideIcon> = {
   key: Key,
   layers: Layers,
   lightbulb: Lightbulb,
+  'life-buoy': LifeBuoy,
+  lifebuoy: LifeBuoy,
+  'circle-help': HelpCircle,
+  house: Home,
+  'link-2': LinkIcon,
   link: LinkIcon,
   lock: Lock,
   mail: Mail,
@@ -126,6 +132,7 @@ const ICONS: Record<string, LucideIcon> = {
 const normalize = (name: string): string =>
   name
     .trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .toLowerCase()
     .replace(/[\s_]+/g, '-');
 

@@ -18,11 +18,14 @@ export function MadeWithBadge({ lang }: { lang?: string }) {
         href="https://nibleaf.com/?utm_source=badge"
         target="_blank"
         rel="noreferrer"
+        // Spell the name out: some screen readers join inline spans and read "Made withNibleaf".
+        aria-label={`${t('madeWith')} Nibleaf`}
         className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
       >
         <NibleafMark className="size-3.5" aria-hidden />
         <span>
-          {t('madeWith')} <span className="font-semibold">Nibleaf</span>
+          {`${t('madeWith')} `}
+          <span className="font-semibold">Nibleaf</span>
         </span>
       </a>
       <span aria-hidden>·</span>

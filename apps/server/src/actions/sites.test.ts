@@ -16,7 +16,10 @@ vi.mock('@nibleaf/database', () => ({
     deployment: { findFirst: mocks.deploymentFindFirst, findUnique: mocks.deploymentFindUnique },
   },
 }));
-vi.mock('@nibleaf/search', () => ({ searchDocs: mocks.searchDocs }));
+vi.mock('@nibleaf/search', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nibleaf/search')>()),
+  searchDocs: mocks.searchDocs,
+}));
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
@@ -26,7 +29,7 @@ vi.mock('@/lib/ai-search/runtime', () => ({
   runPublishedSearch: mocks.runPublishedSearch,
 }));
 vi.mock('@/lib/search-cache', () => ({ getCachedIndex: mocks.getCachedIndex }));
-vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn() }));
+vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: vi.fn(async () => undefined) }));
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
@@ -246,7 +249,14 @@ describe('searchSite multilingual scope', () => {
       ],
     },
     pages: [
-      page({ id: 'page-en', path: 'authentication', position: 0, languageCode: 'en', title: 'Authentication' }),
+      page({
+        id: 'page-en',
+        path: 'authentication',
+        position: 0,
+        languageCode: 'en',
+        title: 'Authentication',
+        content: ['Sign requests.', '', '## API keys', '', 'Create a token in the dashboard.'].join('\n'),
+      }),
       page({ id: 'page-ar', path: 'authentication', position: 0, languageCode: 'ar', title: 'المصادقة' }),
     ],
   };
@@ -298,6 +308,15 @@ describe('searchSite multilingual scope', () => {
       expect.objectContaining({ id: 'page-ar', language: 'ar' }),
       expect.objectContaining({ id: 'page-en', language: 'en' }),
     ]);
+  });
+
+  it('points a hit at the section that matched, with a preview from that section', async () => {
+    const result = await searchSite('project-1', 'token');
+    expect(result.hits.find((hit) => hit.id === 'page-en')).toMatchObject({
+      section: { id: 'api-keys', title: 'API keys' },
+      snippet: 'Create a token in the dashboard.',
+    });
+    expect(result.hits.find((hit) => hit.id === 'page-ar')).not.toHaveProperty('section');
   });
 
   it('keeps an explicit language scope for API clients', async () => {

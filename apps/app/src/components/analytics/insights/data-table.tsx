@@ -1,0 +1,70 @@
+import { SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
+import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
+import type { ReactNode } from 'react';
+
+export interface SimpleColumn<Row> {
+  key: string;
+  header: ReactNode;
+  cell: (row: Row) => ReactNode;
+  /** Numbers align to the end edge (right in LTR, left in RTL). */
+  numeric?: boolean;
+  className?: string;
+}
+
+/**
+ * A small read-only data table (bots, devices, slowest pages…). Real table
+ * markup with a caption; it scrolls inside its card rather than the page.
+ */
+export function SimpleTable<Row>({
+  rows,
+  columns,
+  rowKey,
+  caption,
+  empty,
+  loading,
+  unknown,
+}: {
+  rows: Row[];
+  columns: SimpleColumn<Row>[];
+  rowKey: (row: Row) => string;
+  caption: string;
+  /** Text, or a richer explanation (e.g. why search terms are hidden). */
+  empty: ReactNode;
+  loading?: boolean;
+  unknown?: boolean;
+}) {
+  const t = useT();
+  if (!loading && (unknown || rows.length === 0)) {
+    if (!unknown && typeof empty !== 'string') return empty;
+    return <p className="py-6 text-center text-muted-foreground text-sm">{unknown ? t('analytics.state.unknown') : empty}</p>;
+  }
+  return (
+    <Table>
+      <TableCaption className="sr-only">{caption}</TableCaption>
+      <TableHeader>
+        <TableRow>
+          {columns.map((column) => (
+            <TableHead className={cn(column.numeric && 'text-end', column.className)} key={column.key} scope="col">
+              {column.header}
+            </TableHead>
+          ))}
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {/* First load: placeholder rows inside the real table, same columns and row height. */}
+        {loading ? <SkeletonTableRows columns={columns.length} rows={4} /> : null}
+        {(loading ? [] : rows).map((row) => (
+          <TableRow key={rowKey(row)}>
+            {columns.map((column) => (
+              <TableCell className={cn(column.numeric && 'text-end tabular-nums', column.className)} key={column.key}>
+                {column.cell(row)}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

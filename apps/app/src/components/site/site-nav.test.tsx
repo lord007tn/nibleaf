@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NavNode } from '@/hooks/api';
-import { isVersionIndependentNavNode, SiteNav } from './site-nav';
+import { isVersionIndependentNavNode, revealCurrentNavLink, SiteNav } from './site-nav';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -116,5 +116,93 @@ describe('SiteNav page subtrees', () => {
     await rerender('configure');
     expect(toggleFor(container, 'guide')?.getAttribute('aria-expanded')).toBe('true');
     expect(visibleTitles(container)).toContain('configure');
+  });
+});
+
+const group = (id: string, children: NavNode[]): NavNode => ({ id, kind: 'GROUP', title: id, path: '', icon: null, tag: null, children });
+
+describe('SiteNav sections', () => {
+  const sections: NavNode[] = [group('Basics', [page('intro'), page('setup')]), group('Advanced', [page('tuning')])];
+
+  it('reopens a collapsed top-level section when navigation enters it', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const render = (path: string) =>
+      act(async () => root.render(<SiteNav nodes={sections} projectId="docs" currentPath={path} toggleLabel="Toggle subpages" />));
+    await render('intro');
+    const advanced = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Advanced');
+    await act(async () => advanced?.click());
+    expect(advanced?.getAttribute('aria-expanded')).toBe('false');
+    expect(visibleTitles(container)).not.toContain('tuning');
+
+    await render('tuning');
+    expect(advanced?.getAttribute('aria-expanded')).toBe('true');
+    expect(visibleTitles(container)).toContain('tuning');
+    // Navigating elsewhere leaves a section the reader collapsed alone.
+    const basics = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Basics');
+    await act(async () => basics?.click());
+    await render('tuning');
+    expect(basics?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('names the page list so it is distinct from the header links', () => {
+    const html = renderToString(
+      <SiteNav nodes={sections} projectId="docs" currentPath="intro" toggleLabel="Toggle subpages" label="Documentation pages" />,
+    );
+    expect(html).toContain('aria-label="Documentation pages"');
+  });
+
+  it('gives touch screens 44px rows and toggles', async () => {
+    const { container } = await renderNav('faq');
+    expect(toggleFor(container, 'guide')?.className).toContain('pointer-coarse:size-11');
+    expect(container.querySelector('a')?.className).toContain('pointer-coarse:min-h-11');
+  });
+});
+
+describe('revealCurrentNavLink', () => {
+  const rect = (top: number, bottom: number) => ({
+    top,
+    bottom,
+    left: 0,
+    right: 0,
+    width: 0,
+    height: bottom - top,
+    x: 0,
+    y: top,
+    toJSON: () => ({}),
+  });
+
+  function layout(linkTop: number) {
+    const viewport = document.createElement('div');
+    viewport.style.overflowY = 'auto';
+    const nav = document.createElement('nav');
+    nav.innerHTML = '<a href="#a">a</a><a href="#b" aria-current="page">b</a>';
+    viewport.append(nav);
+    document.body.append(viewport);
+    Object.defineProperty(viewport, 'scrollHeight', { value: 2000 });
+    Object.defineProperty(viewport, 'clientHeight', { value: 400 });
+    viewport.getBoundingClientRect = () => rect(100, 500) as DOMRect;
+    const link = nav.querySelector<HTMLElement>('[aria-current="page"]');
+    if (link) link.getBoundingClientRect = () => rect(linkTop, linkTop + 32) as DOMRect;
+    return { viewport, nav };
+  }
+
+  it('scrolls only the nav viewport, by the least amount, when the current link is out of view', () => {
+    const page = vi.spyOn(window, 'scrollTo');
+    const { viewport, nav } = layout(900);
+    viewport.scrollTop = 0;
+    revealCurrentNavLink(nav);
+    // 932 (link bottom) - 500 (viewport bottom) + 24 margin.
+    expect(viewport.scrollTop).toBe(456);
+    expect(page).not.toHaveBeenCalled();
+  });
+
+  it('leaves a visible current link where it is', () => {
+    const { viewport, nav } = layout(200);
+    viewport.scrollTop = 40;
+    revealCurrentNavLink(nav);
+    expect(viewport.scrollTop).toBe(40);
   });
 });

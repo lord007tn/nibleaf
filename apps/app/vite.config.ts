@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import mdx from '@mdx-js/rollup';
 import { createEnv } from '@t3-oss/env-core';
@@ -21,6 +22,19 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'SAMEORIGIN',
 };
+
+/** Message files only the published reader's lazily loaded search dialog and article
+ * renderer import, read from those translators' own imports so the list can't drift
+ * (packages/i18n/src/site-search.ts and site-content.ts). */
+const LAZY_SITE_MESSAGES = new RegExp(
+  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts']
+    .flatMap((file) =>
+      [...readFileSync(new URL(`../../packages/i18n/src/${file}`, import.meta.url), 'utf8').matchAll(/paraglide\/messages\/site_(\w+)\.js/g)].map(
+        (match) => match[1],
+      ),
+    )
+    .join('|')})\\.js$`,
+);
 
 export default defineConfig(({ mode }) => {
   const configEnv = createEnv({
@@ -49,8 +63,15 @@ export default defineConfig(({ mode }) => {
                   },
                   {
                     name: 'public-site-i18n',
-                    test: (id) =>
-                      /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),
+                    // Messages of the lazily loaded search dialog and article renderer load
+                    // with those chunks instead of every published page's first load.
+                    test: (id) => {
+                      const path = id.replaceAll('\\', '/');
+                      return (
+                        /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(path) &&
+                        !LAZY_SITE_MESSAGES.test(path)
+                      );
+                    },
                   },
                   {
                     name: 'standalone-i18n',
