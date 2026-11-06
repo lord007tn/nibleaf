@@ -1,5 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteChatT } from '@nibleaf/i18n/site-chat';
 import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
 import { Copy, LifeBuoy } from 'lucide-react';
 import { Children, cloneElement, isValidElement, type ReactNode } from 'react';
@@ -38,7 +38,7 @@ export function ChatMessage({
   onSourceOpen?: (source: AiChatSource, position: number) => void;
   onCopy?: () => void;
 }) {
-  const t = siteT(options.lang);
+  const t = siteChatT(options.lang);
   const prefix = final?.turnId ?? 'draft';
   const href = (source: AiChatSource) => sourceHref(options, source);
   const cite = (children: ReactNode): ReactNode =>

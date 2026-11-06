@@ -327,6 +327,23 @@ export function stripMarkdown(src: string): string {
     .trim();
 }
 
+/** Cut a snippet on whole words so it never starts or ends mid-word ("…ying for")
+ * while always keeping the matched text at `anchor`. Scripts without spaces keep
+ * the character window. */
+function snippetWindow(haystack: string, start: number, end: number, anchor: number, anchorEnd: number): string {
+  let from = start;
+  if (from > 0 && /\S/.test(haystack[from - 1] ?? '')) {
+    const space = haystack.indexOf(' ', from);
+    if (space !== -1 && space < anchor) from = space + 1;
+  }
+  let to = end;
+  if (to < haystack.length && /\S/.test(haystack[to] ?? '')) {
+    const space = haystack.lastIndexOf(' ', to);
+    if (space >= anchorEnd) to = space;
+  }
+  return `${from > 0 ? '…' : ''}${haystack.slice(from, to).trim()}${to < haystack.length ? '…' : ''}`;
+}
+
 /** Build a short snippet centered on the first occurrence of the query. */
 function makeSnippet(content: string, query: string, arabic = false): string {
   const haystack = stripMarkdown(content);
@@ -340,7 +357,9 @@ function makeSnippet(content: string, query: string, arabic = false): string {
       const normalizedEnd = Math.min(normalized.value.length, normalizedIndex + SNIPPET_RADIUS);
       const start = normalized.offsets[normalizedStart] ?? 0;
       const end = normalized.offsets[normalizedEnd] ?? haystack.length;
-      return `${start > 0 ? '…' : ''}${haystack.slice(start, end)}${end < haystack.length ? '…' : ''}`;
+      const anchor = normalized.offsets[normalizedIndex] ?? start;
+      const anchorEnd = normalized.offsets[normalizedIndex + normalizedTerm.length] ?? anchor;
+      return snippetWindow(haystack, start, end, anchor, anchorEnd);
     }
 
     const queryWord = firstTerm.match(ARABIC_SNIPPET_WORD)?.[0];
@@ -351,17 +370,17 @@ function makeSnippet(content: string, query: string, arabic = false): string {
         const index = match.index;
         const start = Math.max(0, index - SNIPPET_RADIUS);
         const end = Math.min(haystack.length, index + SNIPPET_RADIUS);
-        return `${start > 0 ? '…' : ''}${haystack.slice(start, end)}${end < haystack.length ? '…' : ''}`;
+        return snippetWindow(haystack, start, end, index, index + match[0].length);
       }
     }
   }
   const idx = haystack.toLowerCase().indexOf(firstTerm);
   if (idx === -1) {
-    return haystack.slice(0, SNIPPET_RADIUS * 2);
+    return snippetWindow(haystack, 0, Math.min(haystack.length, SNIPPET_RADIUS * 2), 0, 0);
   }
   const start = Math.max(0, idx - SNIPPET_RADIUS);
   const end = Math.min(haystack.length, idx + SNIPPET_RADIUS);
-  return `${start > 0 ? '…' : ''}${haystack.slice(start, end)}${end < haystack.length ? '…' : ''}`;
+  return snippetWindow(haystack, start, end, idx, idx + firstTerm.length);
 }
 
 /** Normalize Arabic while retaining each normalized character's source offset,

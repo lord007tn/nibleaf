@@ -6,7 +6,7 @@ import { lazy, Suspense, startTransition, useEffect, useState } from 'react';
 import { SiteChatPageAction } from '@/components/site/ai-chat/provider';
 import { DocumentationPageLayout } from '@/components/site/documentation-theme-provider';
 import { useSitePageAlternates } from '@/components/site/page-alternates-context';
-import { TableOfContents } from '@/components/site/toc';
+import { MobileTableOfContents, TableOfContents } from '@/components/site/toc';
 import type { ProjectConfig, SitePage } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { siteHref } from '@/lib/site-paths';
@@ -24,6 +24,14 @@ const applyUrlTemplate = (template: string | undefined, path: string, fallbackUr
     .replaceAll('{path}', pagePath)
     .replaceAll('{encodedPath}', encodeURIComponent(pagePath))
     .replaceAll('{url}', encodeURIComponent(fallbackUrl));
+};
+
+/** The dark-mode twin of a light/dark image pair (`hidden dark:block`): the
+ *  reader sees one screenshot, not two. */
+const isDarkModeTwin = (image: string): boolean => {
+  // class="…", className="…" or className={"…"}
+  const classes = image.match(/\bclass(?:Name)?=\{?["']([^"']*)["']\}?/)?.[1]?.split(/\s+/) ?? [];
+  return classes.includes('hidden') && classes.some((name) => name.startsWith('dark:') && name !== 'dark:hidden');
 };
 
 /** "Was this page helpful?" + edit/issue links, rendered at the end of the
@@ -66,36 +74,39 @@ function ReaderActions({
         'flex flex-col gap-4 text-sm sm:flex-row sm:items-center sm:justify-between',
         presentation === 'card' ? 'mt-8 rounded-xl border border-border bg-muted/30 p-4 sm:p-5' : 'mt-14 border-border/70 border-t pt-6',
       )}
+      data-theme-region="reader-actions"
     >
       {showFeedback ? (
         <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
-          {sentiment ? (
-            <span className="inline-flex items-center gap-1.5 text-foreground">
-              <Check className="size-4 text-primary" /> {t('feedbackThanks')}
-            </span>
-          ) : (
-            <>
-              <span>{t('feedbackQuestion')}</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  onClick={() => sendFeedback('helpful')}
-                  type="button"
-                  aria-label={t('feedbackYes')}
-                >
-                  <ThumbsUp className="size-3.5" />
-                </button>
-                <button
-                  className="grid size-8 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  onClick={() => sendFeedback('not_helpful')}
-                  type="button"
-                  aria-label={t('feedbackNo')}
-                >
-                  <ThumbsDown className="size-3.5" />
-                </button>
-              </div>
-            </>
-          )}
+          <span>{t('feedbackQuestion')}</span>
+          <div className="flex items-center gap-1.5">
+            <button
+              className="grid size-11 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary aria-pressed:border-primary aria-pressed:text-primary"
+              onClick={() => sendFeedback('helpful')}
+              type="button"
+              aria-label={t('feedbackYes')}
+              aria-pressed={sentiment === 'helpful'}
+            >
+              <ThumbsUp className="size-4" aria-hidden />
+            </button>
+            <button
+              className="grid size-11 cursor-pointer place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:text-primary aria-pressed:border-primary aria-pressed:text-primary"
+              onClick={() => sendFeedback('not_helpful')}
+              type="button"
+              aria-label={t('feedbackNo')}
+              aria-pressed={sentiment === 'not_helpful'}
+            >
+              <ThumbsDown className="size-4" aria-hidden />
+            </button>
+          </div>
+          <span role="status" className="inline-flex min-h-6 items-center gap-1.5 text-foreground">
+            {sentiment ? (
+              <>
+                <Check className="size-4 text-primary" aria-hidden />
+                {t('feedbackThanks')}
+              </>
+            ) : null}
+          </span>
         </div>
       ) : (
         <div />
@@ -169,10 +180,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/[`#*_>[\](){}|~-]/g, ' ');
   const readingMinutes = Math.max(1, Math.ceil(readableText.split(/\s+/).filter(Boolean).length / 220));
-  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b/gi) ?? []).length;
+  const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
+    (image) => !isDarkModeTwin(image),
+  ).length;
   const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
   const article = (
-    <article className={cn('w-full min-w-0', mode === 'wide' ? '' : 'mx-auto max-w-[46rem]')} data-theme-region="article">
+    <article
+      className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
+      data-theme-region="article"
+    >
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
@@ -219,6 +235,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           ))}
         </ul>
       ) : null}
+      {/* Below the wide breakpoint the outline sits after the page header, where readers look for it. */}
+      {showToc ? (
+        <div className="mt-6">
+          <MobileTableOfContents headings={page.headings} label={tArticle('onThisPage')} />
+        </div>
+      ) : null}
       <div className="mt-8">
         <Suspense fallback={null}>
           <Markdown content={page.content} site={{ projectId, lang: language, defaultLanguage, version: versionPrefix }} />
@@ -242,15 +264,19 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             'flex items-center justify-between gap-6 text-sm',
             hasReaderActions && !readerActionsAfterNavigation ? 'mt-8' : 'mt-14 border-border/70 border-t pt-6',
           )}
+          data-theme-region="pager"
           aria-label={`${tArticle('previous')} / ${tArticle('next')}`}
         >
           {prev ? (
             <a
               href={siteHref(projectId, prev.path, { lang: navigationLanguage, version: versionPrefix })}
-              className="group inline-flex min-w-0 items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               <ChevronLeft className="size-4 shrink-0 rtl:-scale-x-100" />
-              <span className="truncate">{prev.title}</span>
+              <span className="min-w-0">
+                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('previous')}</span>
+                <span className="line-clamp-2 break-words">{prev.title}</span>
+              </span>
             </a>
           ) : (
             <span />
@@ -258,9 +284,12 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           {next ? (
             <a
               href={siteHref(projectId, next.path, { lang: navigationLanguage, version: versionPrefix })}
-              className="group inline-flex min-w-0 items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="group inline-flex min-h-11 min-w-0 max-w-[48%] items-center gap-1.5 text-end font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              <span className="truncate">{next.title}</span>
+              <span className="min-w-0">
+                <span className="mb-1 block text-muted-foreground text-xs">{tArticle('next')}</span>
+                <span className="line-clamp-2 break-words">{next.title}</span>
+              </span>
               <ChevronRight className="size-4 shrink-0 rtl:-scale-x-100" />
             </a>
           ) : (
@@ -280,12 +309,10 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     </article>
   );
 
-  if (mode === 'center') {
-    return <div className="mx-auto min-w-0 max-w-[42rem] py-9 lg:py-12">{article}</div>;
-  }
-  if (!showToc) {
-    return <div className="min-w-0 py-9 lg:py-12">{article}</div>;
-  }
-
-  return <DocumentationPageLayout article={article} tableOfContents={<TableOfContents headings={page.headings} label={tArticle('onThisPage')} />} />;
+  return (
+    <DocumentationPageLayout
+      article={article}
+      tableOfContents={showToc ? <TableOfContents headings={page.headings} label={tArticle('onThisPage')} /> : undefined}
+    />
+  );
 }

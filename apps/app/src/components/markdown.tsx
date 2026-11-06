@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, type FunctionComponent, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -50,6 +50,7 @@ import {
   sanitizeSchema,
 } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
+import { announce, ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -96,7 +97,8 @@ function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefi
 function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
-  const t = siteT(locale);
+  const [failed, setFailed] = useState(false);
+  const t = siteContentT(locale);
   // Language + optional title come from the fence meta. mdast→hast may attach
   // them to this <pre> or to the child <code>, so check both.
   const ownProps = props as ComponentProps<'pre'> & { 'data-title'?: string; 'data-lang'?: string };
@@ -104,15 +106,18 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
   const cls = child?.props?.className ?? '';
   const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
   const title = ownProps['data-title'] ?? child?.props?.['data-title'];
-  const copy = () => {
-    const text = ref.current?.innerText ?? '';
-    navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => undefined);
+  const copy = async () => {
+    setCopied(false);
+    setFailed(false);
+    try {
+      await navigator.clipboard.writeText(ref.current?.textContent ?? '');
+      setCopied(true);
+      announce(t('copied'));
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setFailed(true);
+      announce(t('copyFailed'));
+    }
   };
   const copyButton = (
     <button
@@ -122,7 +127,7 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
       className={cn(
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
-        'grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
+        'reader-code-copy reader-control grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
         title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
       )}
     >
@@ -156,7 +161,14 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
           {copyButton}
         </>
       )}
-      <pre ref={ref} className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && lang && 'pt-9')} {...props} />
+      {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
+      {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
+      <pre
+        dir="ltr"
+        ref={ref}
+        className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && 'reader-code-untitled', !title && lang && 'pt-9')}
+        {...props}
+      />
     </div>
   );
 }
@@ -466,6 +478,32 @@ export function MarkdownRenderer({
     };
     const mergedComponents: Components = {
       ...htmlComponents,
+      ...(site
+        ? ({
+            h2: ({ node: _node, ...props }) => (
+              <div className="reader-heading">
+                <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />
+                {props.id && <SectionLink id={props.id} language={site.lang} />}
+              </div>
+            ),
+            h3: ({ node: _node, ...props }) => (
+              <div className="reader-heading">
+                <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />
+                {props.id && <SectionLink id={props.id} language={site.lang} />}
+              </div>
+            ),
+            h4: ({ node: _node, ...props }) => (
+              <div className="reader-heading">
+                <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />
+                {props.id && <SectionLink id={props.id} language={site.lang} />}
+              </div>
+            ),
+            // Authored classes (e.g. light/dark image pairs) must keep winning over the default frame.
+            img: ({ node: _node, ...props }) => (
+              <ContentImage {...props} className={cn('rounded-xl border border-border', props.className)} language={site.lang} />
+            ),
+          } satisfies Components)
+        : {}),
       pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
       a: anchorRenderer(site),
       ...localizedMdxComponents,

@@ -1,7 +1,5 @@
 import type { AiChatConsent, AiChatErrorCode, AiChatFinalEvent, AiChatHistoryMessage } from '@nibleaf/validators';
-import { z } from 'zod';
 
-export const askSearchSchema = z.string().trim().min(2).max(500).optional().catch(undefined);
 export function deriveConsent(required: boolean, stored: string | null): AiChatConsent {
   if (!required) return 'not_required';
   return stored === 'accepted' ? 'granted' : stored === 'declined' ? 'denied' : 'unknown';

@@ -1,10 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { useState } from 'react';
 export function Composer({ lang, busy, send, stop }: { lang?: string; busy: boolean; send: (question: string) => void; stop: () => void }) {
   const [value, setValue] = useState('');
-  const t = siteT(lang);
+  const t = siteChatT(lang);
   const submit = () => {
     if (busy || value.trim().length < 2) return;
     send(value.trim());

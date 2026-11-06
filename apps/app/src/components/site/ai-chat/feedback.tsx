@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteChatT } from '@nibleaf/i18n/site-chat';
 import type { AiChatConsent, AiChatFeedbackRating, AiChatFeedbackReason, AiChatFinalEvent } from '@nibleaf/validators';
 import { useMutation } from '@tanstack/react-query';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
@@ -40,7 +40,7 @@ export function Feedback({
   consent: AiChatConsent;
   leading?: ReactNode;
 }) {
-  const t = siteT(lang);
+  const t = siteChatT(lang);
   const [rating, setRating] = useState<Rating>(null);
   // The rating the server last confirmed, sent as `previousRating`.
   const saved = useRef<Rating>(null);

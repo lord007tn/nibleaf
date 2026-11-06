@@ -78,14 +78,6 @@ export const queryKeys = {
   integrations: {
     all: (projectId: string) => ['integrations', projectId] as const,
   },
-  aiConversations: {
-    all: (projectId: string) => ['ai-conversations', projectId] as const,
-    list: (projectId: string, filters: Record<string, string | undefined>) => ['ai-conversations', projectId, 'list', filters] as const,
-    summary: (projectId: string, range: string, language: string | undefined, timezone: string) =>
-      ['ai-conversations', projectId, 'summary', range, language ?? null, timezone] as const,
-    gaps: (projectId: string, range: string, language?: string) => ['ai-conversations', projectId, 'gaps', range, language ?? null] as const,
-    detail: (projectId: string, conversation: string) => ['ai-conversations', projectId, 'detail', conversation] as const,
-  },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
     page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,

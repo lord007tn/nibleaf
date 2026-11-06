@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteChatT } from '@nibleaf/i18n/site-chat';
 import {
   AI_CHAT_EVENT,
   type AiChatClientEvent,
@@ -58,7 +58,7 @@ export default function Panel(
     requiresConsent: boolean;
   },
 ) {
-  const t = siteT(options.lang);
+  const t = siteChatT(options.lang);
   const viewport = useChatViewport(options.open);
   const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
   const [finals, setFinals] = useState<Record<string, AiChatFinalEvent>>({});

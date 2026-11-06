@@ -43,6 +43,13 @@ describe('extractHeadings', () => {
     const hs = extractHeadings('# Real\n```\n# Not a heading\n```\n## Also real');
     expect(hs.map((h) => h.text)).toEqual(['Real', 'Also real']);
   });
+  it('ignores headings in tilde, longer and list-item fences, so anchor ids stay aligned', () => {
+    const source = ['## A', '~~~', '## A', '~~~', '````md', '```', '## B', '```', '````', '- item', '  ```', '  ## C', '  ```', '## A'].join('\n');
+    expect(extractHeadings(source).map((h) => [h.text, h.id])).toEqual([
+      ['A', 'a'],
+      ['A', 'a-1'],
+    ]);
+  });
   it('produces a non-empty github-slugger id for an Arabic heading', () => {
     const [h] = extractHeadings('# مقدمة');
     expect(h?.text).toBe('مقدمة');

@@ -1,6 +1,6 @@
 import type { AiChatFinalEvent } from '@nibleaf/validators';
 import { describe, expect, it } from 'vitest';
-import { answerText, askSearchSchema, buildHistory, citationParts, deriveConsent, errorKey, errorSse, upstreamError } from './helpers';
+import { answerText, buildHistory, citationParts, deriveConsent, errorKey, errorSse, upstreamError } from './helpers';
 
 const final = { answer: 'Verified [S1]' } as AiChatFinalEvent;
 describe('reader chat boundaries', () => {
@@ -43,10 +43,6 @@ describe('reader chat boundaries', () => {
         .filter((part) => part.source)
         .map((part) => part.source),
     ).toEqual(['S1', 'S2']);
-  });
-  it('parses bounded deep links without breaking the route', () => {
-    expect(askSearchSchema.parse('  How?  ')).toBe('How?');
-    for (const value of ['', 'x', 'a'.repeat(501), 42, []]) expect(askSearchSchema.parse(value)).toBeUndefined();
   });
   it('maps errors to plain language keys', () => {
     expect(errorKey('budget_exhausted')).toBe('aiQuota');

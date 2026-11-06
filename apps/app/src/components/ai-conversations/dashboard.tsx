@@ -9,12 +9,12 @@ import { useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { RangeTabs } from '@/components/analytics/range-tabs';
-import { useAiContentGaps, useAiConversationSummary, useAiConversations } from '@/hooks/api/ai-conversations';
+import { conversationFilters, useAiContentGaps, useAiConversationSummary, useAiConversations } from '@/hooks/api/ai-conversations';
 import { ConversationList } from './conversation-list';
 import { ConversationDetail } from './detail';
 import { ContentGaps } from './gaps';
 import { Overview } from './overview';
-import { type AiDashboardSearch, conversationFilters } from './search';
+import type { AiDashboardSearch } from './search';
 
 const SKELETON_TILES = ['questions', 'answered', 'helpful', 'gaps'];
 const SKELETON_ROWS = ['a', 'b', 'c', 'd', 'e', 'f'];

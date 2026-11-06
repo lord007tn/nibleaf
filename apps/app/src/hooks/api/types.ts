@@ -352,16 +352,6 @@ export interface SitePage {
   next: { title: string; path: string } | null;
 }
 
-interface SearchCitation {
-  id: string;
-  pageId: string;
-  title: string;
-  path: string;
-  heading?: string;
-  snippet: string;
-  direction: 'ltr' | 'rtl';
-}
-
 export interface SiteSearchHit {
   id: string;
   title: string;
@@ -372,14 +362,9 @@ export interface SiteSearchHit {
   score: number;
   /** Language of the matched published page; used to build its localized URL. */
   language: string;
-}
-
-export interface SearchAnswer {
-  status: 'answered' | 'no_answer';
-  answer: string;
-  confidence: number;
-  citations: SearchCitation[];
-  model?: string;
-  cacheHit: boolean;
-  quotaRemaining: number;
+  /** The heading whose section matched the query, when the match is inside a
+   * section rather than the page title. `id` is the heading's DOM anchor. */
+  section?: { id: string; title: string };
+  /** The search that returned this hit, so a click is attributed to it in analytics. */
+  searchId?: string;
 }

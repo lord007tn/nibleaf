@@ -3,17 +3,22 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { conversationFilters } from '@/hooks/api/ai-conversations';
 import { ConversationList } from './conversation-list';
 import { DeleteConversationButton } from './detail';
 import { GapList } from './gaps';
 import { CostValue, Engagement } from './overview';
-import { aiDashboardSearch, conversationFilters } from './search';
+import { aiDashboardSearch } from './search';
 
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, variables?: Record<string, string>) => `${key}${variables ? JSON.stringify(variables) : ''}`,
 }));
 vi.mock('@/hooks/api', () => ({ useProjectMembers: vi.fn() }));
-vi.mock('@/hooks/api/ai-conversations', () => ({ useAiConversation: vi.fn(), useDeleteAiConversation: vi.fn() }));
+vi.mock('@/hooks/api/ai-conversations', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/api/ai-conversations')>()),
+  useAiConversation: vi.fn(),
+  useDeleteAiConversation: vi.fn(),
+}));
 vi.mock('@/services/auth-client', () => ({ useSession: vi.fn() }));
 vi.mock('@/lib/format', () => ({
   useFormatters: () => ({ number: String, currency: (value: number) => `$${value}`, dateTime: String, relativeTime: () => 'recently' }),

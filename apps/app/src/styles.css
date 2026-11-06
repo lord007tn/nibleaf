@@ -781,3 +781,108 @@
     }
   }
 }
+
+@layer components {
+  .documentation-manuscript-reader-navigation {
+    max-block-size: min(35dvh, 20rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .nibleaf-site-chrome
+    [data-theme-region="mobile-toc"]
+    [data-theme-region="toc-link"] {
+    min-block-size: 2.75rem;
+    padding-block: 0.75rem;
+  }
+}
+
+/* Portaled controls live outside the reader theme wrapper. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="sheet-content"],
+  [data-slot="sheet-overlay"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="select-content"],
+  [data-slot="dialog-content"],
+  [data-slot="dialog-overlay"] {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .nibleaf-site-chrome {
+    color-scheme: light;
+    --theme-canvas: white;
+    --theme-surface: white;
+    --theme-foreground: black;
+    --theme-muted-foreground: black;
+    --theme-muted: white;
+    --background: white;
+    --foreground: black;
+    --muted-foreground: black;
+    background: white !important;
+    color: black !important;
+  }
+  .nibleaf-site-chrome
+    :is(
+      [data-theme-region="header-shell"],
+      [data-theme-region="sidebar"],
+      [data-theme-region="toc"],
+      [data-theme-region="mobile-toc"],
+      [data-theme-region="banner"],
+      [data-theme-region="reader-actions"],
+      [data-theme-region="pager"],
+      [data-theme-region="overlays"],
+      [data-theme-region="footer"],
+      [data-theme-region="search-trigger"],
+      .fixed,
+      a[href="#main-content"],
+      [data-theme-region="skip-link"],
+      .sr-only,
+      footer
+    ) {
+    display: none !important;
+  }
+  .nibleaf-site-chrome *,
+  .nibleaf-site-chrome *::before,
+  .nibleaf-site-chrome *::after {
+    position: static !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    color: black !important;
+  }
+  .nibleaf-site-chrome
+    :is([data-theme-region="content-shell"], [data-theme-region="page-shell"]) {
+    display: block !important;
+    padding: 0 !important;
+  }
+  .nibleaf-site-chrome
+    :is(
+      [data-theme-region="article"],
+      .documentation-manuscript-paper,
+      .documentation-signal-article
+    ) {
+    max-inline-size: none !important;
+    inline-size: 100% !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: white !important;
+  }
+}
+
+@media print {
+  body:has(.nibleaf-site-chrome[data-theme-context="reader"])
+    :is(
+      [data-slot="sheet-content"],
+      [data-slot="sheet-overlay"],
+      [data-slot="dropdown-menu-content"],
+      [data-slot="dropdown-menu-sub-content"],
+      [data-slot="select-content"],
+      [data-slot="dialog-content"],
+      [data-slot="dialog-overlay"]
+    ) {
+    display: none !important;
+  }
+}

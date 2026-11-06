@@ -27,6 +27,24 @@ describe('published theme projection', () => {
     expect(projectThemeCss(config)).toContain("font-family:'Geist Mono'");
   });
 
+  it('fills the kebab-case variable names that reader styles read for multi-word tokens', () => {
+    const config = { theme: { preset: 'signal' as const } };
+    const theme = resolveProjectTheme(config);
+    const variables = projectThemeVariables(config, 'light') as Record<string, string>;
+    const css = projectThemeCss(config);
+    for (const [kebab, camel, value] of [
+      ['--theme-code-foreground', '--theme-codeForeground', theme.colors.light.codeForeground],
+      ['--theme-muted-foreground', '--theme-mutedForeground', theme.colors.light.mutedForeground],
+      ['--theme-surface-raised', '--theme-surfaceRaised', theme.colors.light.surfaceRaised],
+      ['--theme-accent-foreground', '--theme-accentForeground', theme.colors.light.accentForeground],
+    ] as const) {
+      expect(variables[kebab]).toBe(value);
+      expect(variables[camel]).toBe(value);
+      expect(css).toContain(`${kebab}:${value}`);
+    }
+    expect(css).toContain(`--theme-code-foreground:${theme.colors.dark.codeForeground}`);
+  });
+
   it('does not interpolate an unsafe font into CSS', () => {
     const css = projectThemeCss({ typography: { headingFont: "Inter';}body{display:none}/*" } });
     expect(css).not.toContain('display:none');

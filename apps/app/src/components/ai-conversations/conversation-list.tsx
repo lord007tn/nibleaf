@@ -18,6 +18,9 @@ function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'no
   );
 }
 export function ConversationList({ items, onOpen }: { items: AiConversationListItem[]; onOpen: (id: string) => void }) {
+  // TanStack Table v8 returns a stable table instance whose methods read
+  // internal state; the React Compiler would memoize those reads away.
+  'use no memo';
   const t = useT();
   const f = useFormatters();
   // Stable columns: the table only rebuilds them when the locale or formatter changes.
@@ -56,6 +59,7 @@ export function ConversationList({ items, onOpen }: { items: AiConversationListI
     ],
     [t, f, onOpen],
   );
+  // react-doctor-disable-next-line react-hooks-js/incompatible-library -- this component opts out of the compiler ('use no memo') for exactly this reason.
   const table = useReactTable({ data: items, columns, getCoreRowModel: getCoreRowModel(), getRowId: (row) => row.conversationId });
   return (
     <>

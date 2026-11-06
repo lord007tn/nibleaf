@@ -9,6 +9,3 @@ export const aiDashboardSearch = z.object({
   conversation: z.string().min(1).max(256).optional().catch(undefined),
 });
 export type AiDashboardSearch = z.infer<typeof aiDashboardSearch>;
-export function conversationFilters(search: AiDashboardSearch) {
-  return { range: search.range, language: search.language, rating: search.rating, status: search.status, q: search.q };
-}
