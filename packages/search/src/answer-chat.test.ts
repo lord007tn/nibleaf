@@ -8,6 +8,7 @@ import {
   NO_ANSWER_SENTINEL,
   streamGroundedChat,
   suggestedArticles,
+  suggestFollowUps,
 } from './answer-chat';
 import { validateCitedAnswer } from './answer-validation';
 import type { SearchChunk } from './hybrid';
@@ -207,5 +208,40 @@ describe('history and follow-up queries', () => {
       { id: 'P1', pageId: 'p' },
       { id: 'P2', pageId: 'p2' },
     ]);
+  });
+});
+
+describe('follow-up suggestions', () => {
+  it('returns up to three sanitized, deduplicated questions from a JSON array', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([
+      { text: 'Sure: ["How do I change storage? [S1]", "how?", "How do I change storage?", "Can I use local disk?", "Is S3 required?", "Extra"]' },
+    ]);
+    const result = await suggestFollowUps({ adapter, question: 'How?', answer: 'Use s3 [S1]', chunks, language: 'en' });
+    expect(result.questions).toEqual(['How do I change storage?', 'Can I use local disk?', 'Is S3 required?']);
+  });
+  it.each([
+    [{ error: 'boom' }, true],
+    [{ text: 'not json' }, undefined],
+    [{ text: '["broken' }, undefined],
+  ] as const)('yields none when the model fails or answers badly (%j)', async (response, failed) => {
+    const adapter = fakeText();
+    adapter.setResponses([response]);
+    const result = await suggestFollowUps({ adapter, question: 'How?', chunks, language: 'en' });
+    expect(result.questions).toEqual([]);
+    expect(result.failed).toBe(failed);
+  });
+  it('reports a failed rewrite so the server can count it', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ error: 'boom' }]);
+    expect(await condenseFollowUp({ adapter, question: 'How?', history: [{ role: 'user', content: 'storage' }], language: 'en' })).toMatchObject({
+      query: 'How?',
+      failed: true,
+    });
+  });
+  it('makes no call without sources', async () => {
+    const adapter = fakeText();
+    expect(await suggestFollowUps({ adapter, question: 'How?', answer: '', chunks: [], language: 'en' })).toEqual({ questions: [] });
+    expect(adapter.state.callCount).toBe(0);
   });
 });
