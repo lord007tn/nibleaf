@@ -2,7 +2,7 @@ import './lib/serialize-bigint';
 
 import { type ServerType, serve } from '@hono/node-server';
 import { closeQueues, scheduleAnalyticsRollup } from '@nibleaf/bullmq';
-import { clickHouseHealth, closeClickHouseClients, initializeClickHouseFn } from '@nibleaf/clickhouse';
+import { closeClickHouseClients, getAnalyticsHealth, initializeClickHouseFn } from '@nibleaf/clickhouse';
 import { logger } from '@nibleaf/logger';
 import { configureUploadCors, ensureBucket } from '@nibleaf/storage';
 import { Scalar } from '@scalar/hono-api-reference';
@@ -39,7 +39,7 @@ app.get(
 app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', title: 'Nibleaf API' }] }));
 
 app.get('/health', async (ctx) => {
-  const analytics = await clickHouseHealth();
+  const analytics = await getAnalyticsHealth();
   const status = shuttingDown ? 'shutting_down' : ready ? 'ok' : 'starting';
   return ctx.json(
     { status, service: env.SERVICE_NAME, revision: process.env.NIBLEAF_REVISION ?? 'development', analytics },
@@ -48,7 +48,7 @@ app.get('/health', async (ctx) => {
 });
 
 async function main() {
-  await initializeClickHouseFn({ roles: ['reader'] });
+  void initializeClickHouseFn({ roles: ['reader'] });
   server = serve({ port: env.API_PORT, fetch: app.fetch }, (info) => {
     logger.info(`Nibleaf API on http://localhost:${info.port}`);
     logger.info(`  docs   → http://localhost:${info.port}/docs`);

@@ -26,6 +26,7 @@ export const keys = () =>
       CLICKHOUSE_FLUSH_INTERVAL_MS: z.coerce.number().int().min(25).max(30_000).default(1000),
       CLICKHOUSE_RAW_RETENTION_DAYS: z.coerce.number().int().min(7).max(730).default(180),
       CLICKHOUSE_ROLLUP_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(730),
+      CLICKHOUSE_MIGRATE_ON_BOOT: z.stringbool().default(true),
       CLICKHOUSE_SENSITIVE_RETENTION_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     },
     runtimeEnv: process.env,
