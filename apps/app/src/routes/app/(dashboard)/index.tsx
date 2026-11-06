@@ -17,6 +17,8 @@ import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/a
 import { getData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import type { Deployment, PageNode } from '@/hooks/api/types';
+import { projectsQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { useFormatters, viewsTrend } from '@/lib/format';
 import { type SiteActivity, type StartHereProgress, startHereProgress, startHereRequests } from '@/lib/start-here';
@@ -24,11 +26,12 @@ import { api } from '@/services/api';
 import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/(dashboard)/')({
-  component: ProjectsPage,
   validateSearch: (search: Record<string, unknown>): { firstPublish?: boolean; newSite?: boolean } => ({
     ...(search.firstPublish === true || search.firstPublish === 'true' ? { firstPublish: true } : {}),
     ...(search.newSite === true || search.newSite === 'true' ? { newSite: true } : {}),
   }),
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, projectsQueryOptions()),
+  component: ProjectsPage,
 });
 
 const subscribeToHydration = () => () => undefined;

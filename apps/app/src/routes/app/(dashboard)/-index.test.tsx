@@ -44,6 +44,8 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
 }));
+vi.mock('@/hooks/api/query-options', () => ({ projectsQueryOptions: () => ({ queryKey: ['projects'] }) }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/hooks/api', () => ({
   useProjects: mocks.projects,
   useWorkspaceAnalytics: mocks.analytics,

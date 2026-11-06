@@ -76,8 +76,8 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
             </Button>
             <form.Subscribe selector={(state) => [state.isSubmitting, state.values.name] as const}>
               {([isSubmitting, name]) => (
-                <Button disabled={isSubmitting || !name.trim()} type="submit">
-                  {isSubmitting ? t('newSite.creating') : t('newSite.create')}
+                <Button disabled={!name.trim()} loading={isSubmitting} loadingText={t('newSite.creating')} type="submit">
+                  {t('newSite.create')}
                 </Button>
               )}
             </form.Subscribe>
