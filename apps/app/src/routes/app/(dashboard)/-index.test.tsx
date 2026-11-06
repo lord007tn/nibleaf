@@ -59,6 +59,11 @@ vi.mock('@/hooks/api/query-options', () => ({
   pagesQueryOptions: (projectId: string) => ({ queryKey: ['pages', projectId, null, null] }),
 }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
+vi.mock('@/hooks/api/analytics/query-options', () => ({
+  analyticsTimezone: () => 'Asia/Riyadh',
+  // Same key as the real factory (queryKeys.analytics.workspace).
+  workspaceAnalyticsQueryOptions: (range: string, timezone: string) => ({ queryKey: ['analytics', 'workspace', range, timezone] }),
+}));
 vi.mock('@/hooks/api', () => ({
   useProjects: mocks.projects,
   useWorkspaceAnalytics: mocks.analytics,
@@ -68,6 +73,7 @@ vi.mock('@/hooks/api', () => ({
 vi.mock('@/components/analytics/views-area-chart', () => ({ ViewsAreaChart: () => <div data-testid="views-chart" /> }));
 vi.mock('@/lib/first-publish-activation', () => ({ recordFirstPublishStage: vi.fn() }));
 
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { Route } from './index';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -117,6 +123,15 @@ describe('dashboard request recovery', () => {
     expect(container.querySelector('[data-testid="views-chart"]')).toBeNull();
     await act(async () => container.querySelector<HTMLButtonElement>('[role="alert"] button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
+  });
+
+  it('prefetches the workspace analytics the page opens with, in the loader', async () => {
+    const queryClient = {};
+    (Route.options.loader as (context: { context: { queryClient: unknown } }) => void)({ context: { queryClient } });
+    expect(prefetchRouteData).toHaveBeenCalledWith(queryClient, { queryKey: ['analytics', 'workspace', '30d', 'Asia/Riyadh'] });
+    await act(async () => root.render(<DashboardPage />));
+    // The page reads the same range (the hook adds the same browser timezone).
+    expect(mocks.analytics).toHaveBeenCalledWith('30d');
   });
 
   it('uses a native link so a site is reachable by keyboard and browser link actions', async () => {

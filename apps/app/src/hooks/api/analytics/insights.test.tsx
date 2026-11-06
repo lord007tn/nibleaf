@@ -10,8 +10,8 @@ vi.mock('@/services/api', () => ({
   api: { app: { projects: { ':projectId': { analytics: { insights: { overview: { $get: mocks.overview }, page: { $get: mocks.page } } } } } } },
 }));
 
+import { queryKeys } from '../query-keys';
 import { overviewInsightsQueryOptions, pageInsightsQueryOptions, useOverviewInsights, usePageInsights } from './insights';
-import { analyticsQueryKeys } from './query-keys';
 
 const respond = (data: unknown) => ({ ok: true, status: 200, json: async () => ({ data }) });
 const never = () => new Promise<never>(() => undefined);
@@ -60,13 +60,13 @@ const show = async (element: React.ReactElement) => {
 };
 
 describe('insights query factories', () => {
-  it('key every endpoint and filter with analyticsQueryKeys and keep the 30 s default freshness', () => {
+  it('key every endpoint and filter with queryKeys.analytics and keep the 30 s default freshness', () => {
     const options = overviewInsightsQueryOptions('p1', query('7d'));
-    expect(options.queryKey).toEqual(analyticsQueryKeys.insights('p1', 'overview', query('7d')));
-    expect(options.queryKey.slice(0, 3)).toEqual([...analyticsQueryKeys.insightsForProject('p1')]);
+    expect(options.queryKey).toEqual(queryKeys.analytics.insights('p1', 'overview', query('7d')));
+    expect(options.queryKey.slice(0, 3)).toEqual([...queryKeys.analytics.insightsForProject('p1')]);
     // No per-query override: the server caches insights for 30 s, the client default.
     expect(options.staleTime).toBeUndefined();
-    expect(pageInsightsQueryOptions('p1', query('7d'), 'guide').queryKey).toEqual(analyticsQueryKeys.insights('p1', 'page', query('7d'), 'guide'));
+    expect(pageInsightsQueryOptions('p1', query('7d'), 'guide').queryKey).toEqual(queryKeys.analytics.insights('p1', 'page', query('7d'), 'guide'));
   });
 
   it('does not fetch a page drill-down without a path', async () => {

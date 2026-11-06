@@ -2825,6 +2825,7 @@
   "analytics_status_unavailable_title": "التحليلات في استراحة قصيرة",
   "analytics_status_unavailable_body": "موقع التوثيق يعمل كالمعتاد، وستعود الأرقام من تلقاء نفسها. وحتى ذلك الحين، تعني علامة «—» أن القيمة غير معروفة، لا أنها صفر.",
   "analytics_status_retry": "حاول مرة أخرى",
+  "analytics_projectsummary_loadfailed": "تعذّر تحميل مشاهدات صفحات هذا الموقع الآن. بقية الصفحة تعمل كالمعتاد.",
   "analytics_status_partial_title": "بعض الأرقام غير مكتملة",
   "analytics_status_partial_body": "نعرض ما توفّر من بيانات، وتظهر المقاييس التي تعذّر حسابها بعلامة «—».",
   "analytics_status_notconfigured_title": "التحليلات التفصيلية غير مفعّلة على هذا الخادم",

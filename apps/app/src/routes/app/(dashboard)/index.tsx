@@ -14,6 +14,7 @@ import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
+import { analyticsTimezone, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { deploymentsQueryOptions, pagesQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
@@ -23,12 +24,18 @@ import { useSession } from '@/services/auth-client';
 
 const SITES_SKELETON_ROWS = 3;
 
+const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
+
 export const Route = createFileRoute('/app/(dashboard)/')({
   validateSearch: (search: Record<string, unknown>): { firstPublish?: boolean; newSite?: boolean } => ({
     ...(search.firstPublish === true || search.firstPublish === 'true' ? { firstPublish: true } : {}),
     ...(search.newSite === true || search.newSite === 'true' ? { newSite: true } : {}),
   }),
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, projectsQueryOptions()),
+  loader: ({ context: { queryClient } }) => {
+    prefetchRouteData(queryClient, projectsQueryOptions());
+    // Same range and timezone as the page's first render, so the prefetch lands in the entry it reads.
+    prefetchRouteData(queryClient, workspaceAnalyticsQueryOptions(DEFAULT_ANALYTICS_RANGE, analyticsTimezone()));
+  },
   component: ProjectsPage,
 });
 
@@ -86,7 +93,7 @@ function ProjectsPage() {
     () => false,
   );
   const projectsLoading = !hydrated || isPending;
-  const [range, setRange] = useState<AnalyticsRange>('30d');
+  const [range, setRange] = useState<AnalyticsRange>(DEFAULT_ANALYTICS_RANGE);
   const {
     data: analytics,
     isPending: analyticsPending,

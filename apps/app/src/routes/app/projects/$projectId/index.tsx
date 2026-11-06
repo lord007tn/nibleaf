@@ -32,10 +32,13 @@ import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import { friendlyErrorMessage, useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
+import { analyticsTimezone, projectAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
+
+const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 
 export const Route = createFileRoute('/app/projects/$projectId/')({
   // The site layout's loader already starts the site, pages and publishes; add
@@ -43,6 +46,7 @@ export const Route = createFileRoute('/app/projects/$projectId/')({
   loader: ({ context: { queryClient }, params: { projectId } }) => {
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
     prefetchRouteData(queryClient, domainsQueryOptions(projectId));
+    prefetchRouteData(queryClient, projectAnalyticsQueryOptions(projectId, DEFAULT_ANALYTICS_RANGE, analyticsTimezone()));
   },
   component: SiteOverviewPage,
 });
@@ -60,13 +64,14 @@ function SiteOverviewPage() {
   const { projectId } = Route.useParams();
   const t = useT();
   const { date } = useFormatters();
-  const [range, setRange] = useState<AnalyticsRange>('30d');
+  const [range, setRange] = useState<AnalyticsRange>(DEFAULT_ANALYTICS_RANGE);
   const { data: project, isPending: projectPending } = useProject(projectId);
   const { data: pages, isPending: pagesPending } = usePages(projectId);
   const { data: members, isPending: membersPending } = useProjectMembers(projectId);
   const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
   const { data: domains } = useDomains(projectId);
-  const { data: analytics, isPending: analyticsPending } = useProjectAnalytics(projectId, range);
+  const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
+  const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const memberCount = members?.members.length ?? 0;
@@ -232,7 +237,7 @@ function SiteOverviewPage() {
         <SectionCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} loading={deploymentsPending} />
         <SectionCard
           label={t('overview.stats.pageviews')}
-          value={analytics?.totalViews ?? 0}
+          value={analytics?.totalViews ?? null}
           icon={<BarChart3 className="size-4" />}
           trend={trend}
           hint={trend ? t('analytics.vsPrevious') : undefined}
@@ -249,6 +254,7 @@ function SiteOverviewPage() {
           range={range}
           onRangeChange={setRange}
           loading={analyticsPending}
+          unavailable={analyticsUnknown}
         />
       </div>
 

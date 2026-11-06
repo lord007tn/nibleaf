@@ -1,3 +1,8 @@
+import type { AnalyticsInsightsQuery, AnalyticsRange } from '@nibleaf/validators';
+
+/** Insights endpoints under /app/projects/:projectId/analytics/insights. */
+type InsightsEndpoint = 'overview' | 'pages' | 'page' | 'search' | 'feedback' | 'ai' | 'performance';
+
 export const queryKeys = {
   projects: {
     all: () => ['projects'] as const,
@@ -98,5 +103,27 @@ export const queryKeys = {
     /** Prefix of every reader search for one site, for invalidation. */
     allSearch: (id: string) => ['site', id, 'search'] as const,
     changelog: (id: string) => ['site', id, 'changelog'] as const,
+  },
+  analytics: {
+    /** Project home: page views and trend for one site. */
+    project: (projectId: string, range: AnalyticsRange, timezone: string) => ['analytics', 'project', projectId, range, timezone] as const,
+    /** Workspace home and workspace analytics: every site the person can reach. */
+    workspace: (range: AnalyticsRange, timezone: string) => ['analytics', 'workspace', range, timezone] as const,
+    /** Broad prefix matching every insights query of one site (all endpoints and filters) — use for invalidation. */
+    insightsForProject: (projectId: string) => ['analytics', 'insights', projectId] as const,
+    /** Every filter value is part of the key, so a range/compare/timezone change is a new cache entry. */
+    insights: (projectId: string, endpoint: InsightsEndpoint, query: AnalyticsInsightsQuery, path?: string) =>
+      [
+        'analytics',
+        'insights',
+        projectId,
+        endpoint,
+        query.range,
+        query.from ?? '',
+        query.to ?? '',
+        query.compare,
+        query.timezone,
+        ...(path === undefined ? [] : [path]),
+      ] as const,
   },
 } as const;

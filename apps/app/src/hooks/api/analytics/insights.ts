@@ -2,7 +2,7 @@ import type { AnalyticsInsightsQuery } from '@nibleaf/validators';
 import { keepPreviousData, queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from '../client-helpers';
-import { analyticsQueryKeys } from './query-keys';
+import { queryKeys } from '../query-keys';
 
 const insights = () => api.app.projects[':projectId'].analytics.insights;
 
@@ -59,28 +59,28 @@ export type AiAssistantSource = AiVisibilityInsights['assistantReferrals'][numbe
  */
 
 export const overviewInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'overview', query), queryFn: () => fetchOverview(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'overview', query), queryFn: () => fetchOverview(projectId, query) });
 
 export const pagesInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'pages', query), queryFn: () => fetchPages(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'pages', query), queryFn: () => fetchPages(projectId, query) });
 
 export const pageInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery, path: string) =>
   queryOptions({
-    queryKey: analyticsQueryKeys.insights(projectId, 'page', query, path),
+    queryKey: queryKeys.analytics.insights(projectId, 'page', query, path),
     queryFn: path.length > 0 ? () => fetchPage(projectId, query, path) : skipToken,
   });
 
 export const searchInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'search', query), queryFn: () => fetchSearch(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'search', query), queryFn: () => fetchSearch(projectId, query) });
 
 export const feedbackInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'feedback', query), queryFn: () => fetchFeedback(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'feedback', query), queryFn: () => fetchFeedback(projectId, query) });
 
 export const aiVisibilityInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'ai', query), queryFn: () => fetchAi(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'ai', query), queryFn: () => fetchAi(projectId, query) });
 
 export const performanceInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
-  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'performance', query), queryFn: () => fetchPerformance(projectId, query) });
+  queryOptions({ queryKey: queryKeys.analytics.insights(projectId, 'performance', query), queryFn: () => fetchPerformance(projectId, query) });
 
 // Filters are a filtered view: keep the previous range on screen while the next one loads.
 export const useOverviewInsights = (projectId: string, query: AnalyticsInsightsQuery) =>

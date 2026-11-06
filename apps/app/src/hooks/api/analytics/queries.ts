@@ -1,28 +1,20 @@
+import { useT } from '@nibleaf/i18n/react';
 import type { AnalyticsRange } from '@nibleaf/validators';
-import { queryOptions, skipToken, useQuery } from '@tanstack/react-query';
-import { api } from '@/services/api';
-import { getData } from '../client-helpers';
-import { analyticsQueryKeys } from './query-keys';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsTimezone, projectAnalyticsQueryOptions, workspaceAnalyticsQueryOptions } from './query-options';
 
-const browserTimezoneFn = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// Module-private until the project home and workspace routes prefetch them in a loader.
-const projectAnalyticsQueryOptions = (projectId: string | undefined, range: AnalyticsRange, timezone: string) =>
-  queryOptions({
-    queryKey: analyticsQueryKeys.project(projectId ?? '', range, timezone),
-    queryFn: projectId
-      ? async () => getData(await api.app.projects[':projectId'].analytics.$get({ param: { projectId }, query: { range, timezone } }), 'analytics')
-      : skipToken,
+/** The project home shows page views without an error state of its own, so a
+ *  failure is reported once, in plain language, by the shared query cache. */
+export const useProjectAnalytics = (projectId: string | undefined, range: AnalyticsRange, options?: { enabled?: boolean; timezone?: string }) => {
+  const t = useT();
+  return useQuery({
+    ...projectAnalyticsQueryOptions(projectId, range, options?.timezone ?? analyticsTimezone()),
+    enabled: options?.enabled ?? true,
+    meta: { errorMessage: t('analytics.projectSummary.loadFailed') },
   });
+};
 
-const workspaceAnalyticsQueryOptions = (range: AnalyticsRange, timezone: string) =>
-  queryOptions({
-    queryKey: analyticsQueryKeys.workspace(range, timezone),
-    queryFn: async () => getData(await api.app.workspace.analytics.$get({ query: { range, timezone } }), 'workspace analytics'),
-  });
-
-export const useProjectAnalytics = (projectId: string | undefined, range: AnalyticsRange, options?: { enabled?: boolean; timezone?: string }) =>
-  useQuery({ ...projectAnalyticsQueryOptions(projectId, range, options?.timezone ?? browserTimezoneFn()), enabled: options?.enabled ?? true });
-
+/** Its screens (workspace home, workspace analytics) show their own unavailable
+ *  state with a retry, so no toast. */
 export const useWorkspaceAnalytics = (range: AnalyticsRange, options?: { enabled?: boolean; timezone?: string }) =>
-  useQuery({ ...workspaceAnalyticsQueryOptions(range, options?.timezone ?? browserTimezoneFn()), enabled: options?.enabled ?? true });
+  useQuery({ ...workspaceAnalyticsQueryOptions(range, options?.timezone ?? analyticsTimezone()), enabled: options?.enabled ?? true });
