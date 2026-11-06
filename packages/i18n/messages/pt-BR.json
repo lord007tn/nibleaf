@@ -1585,7 +1585,7 @@
   "settings_exports_workflow_downloaderror": "Não foi possível baixar a exportação.",
   "settings_exports_workflow_starterror": "Não foi possível iniciar a exportação. Tente novamente.",
   "settings_exports_workflow_publishfirst": "Publique o site primeiro e depois você poderá exportá-lo.",
-  "settings_exports_workflow_toolarge": "Este site é grande demais para ser exportado aqui. Peça ao seu administrador para aumentar o limite de exportação.",
+  "settings_exports_workflow_toolarge": "Este site é grande demais para ser exportado. Peça a quem administra o Nibleaf para você (sua equipe de TI ou o suporte do Nibleaf) que aumente o limite.",
   "settings_exports_workflow_limitreached": "Há exportações demais no momento. Aguarde as que estão em andamento terminarem ou tente novamente amanhã.",
   "settings_exports_workflow_schedulelimit": "Este site já tem o máximo de agendamentos permitidos. Remova um para adicionar outro.",
   "settings_exports_workflow_archiveschedules": "Arquivar programações",

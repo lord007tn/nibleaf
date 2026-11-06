@@ -21,7 +21,7 @@ import { GitWorkflow } from './git-workflow';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
-it('first loads as the connection card with its three steps, not as a generic form', async () => {
+it('first loads as the shell both the connect and the connected screens share, not as either one', async () => {
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -32,7 +32,11 @@ it('first loads as the connection card with its three steps, not as a generic fo
     expect(skeleton?.tagName).toBe('SECTION');
     expect(skeleton?.getAttribute('aria-busy')).toBe('true');
     expect(host.querySelectorAll('[role="status"]')).toHaveLength(1);
-    expect(host.querySelector('[data-slot="git-workflow-skeleton-steps"]')?.children).toHaveLength(3);
+    expect(host.querySelector('[data-slot="git-workflow-skeleton-header"]')).not.toBeNull();
+    expect(host.querySelector('[data-slot="git-workflow-skeleton-body"]')).not.toBeNull();
+    // Whether the site is connected isn't known yet: no three connect steps, no four connected actions.
+    expect(host.querySelector('[data-slot="git-workflow-skeleton-steps"]')).toBeNull();
+    expect(host.querySelector('[class*="grid-cols-3"], [class*="grid-cols-4"], nav')).toBeNull();
     // Placeholder blocks are hidden from assistive tech; the status above announces the load.
     expect(host.querySelector('[data-slot="skeleton"]')?.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(host.querySelector('input')).toBeNull();

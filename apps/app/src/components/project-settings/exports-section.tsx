@@ -148,11 +148,12 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
               <p className="text-muted-foreground text-xs" id={createHintId}>
                 {neverPublished ? t('settings.exports.workflow.publishFirst') : t('settings.exports.workflow.formatHint')}
               </p>
-              {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it. */}
+              {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it.
+                  It looks like a disabled button too: dimmed, and no hover darkening or press movement. */}
               <Button
                 aria-describedby={neverPublished ? createHintId : undefined}
                 aria-disabled={neverPublished || undefined}
-                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary aria-disabled:active:not-aria-[haspopup]:translate-y-0"
                 loading={create.isPending}
                 onClick={() => {
                   if (neverPublished) return;

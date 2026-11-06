@@ -1585,7 +1585,7 @@
   "settings_exports_workflow_downloaderror": "Der Export konnte nicht heruntergeladen werden.",
   "settings_exports_workflow_starterror": "Der Export konnte nicht gestartet werden. Versuchen Sie es erneut.",
   "settings_exports_workflow_publishfirst": "Veröffentlichen Sie die Website zuerst, dann können Sie sie exportieren.",
-  "settings_exports_workflow_toolarge": "Diese Website ist zu groß, um sie hier zu exportieren. Bitten Sie Ihren Administrator, das Exportlimit zu erhöhen.",
+  "settings_exports_workflow_toolarge": "Diese Website ist zu groß für einen Export. Bitten Sie diejenigen, die Nibleaf für Sie betreiben (Ihr IT-Team oder den Nibleaf-Support), das Limit zu erhöhen.",
   "settings_exports_workflow_limitreached": "Gerade laufen zu viele Exporte. Warten Sie, bis die laufenden fertig sind, oder versuchen Sie es morgen erneut.",
   "settings_exports_workflow_schedulelimit": "Diese Site hat bereits die maximale Anzahl an Zeitplänen. Entfernen Sie einen, um einen neuen hinzuzufügen.",
   "settings_exports_workflow_archiveschedules": "Archivpläne",

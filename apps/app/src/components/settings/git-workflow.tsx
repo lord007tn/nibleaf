@@ -39,56 +39,38 @@ import { localeTag } from '@/lib/format';
 type GitIdentity = { login: string; name: string | null };
 
 /**
- * First load, shaped like the connection card (header, three-step progress,
- * the current step's panel, back/next actions), so the real card replaces it
- * without moving anything.
+ * First load. Whether the site is connected is only known once this load
+ * answers (the import settings above can't tell), and both answers are common:
+ * new sites aren't connected, while connected sites are the usual revisit. So
+ * the placeholder is the part both screens share — a header (icon, title and a
+ * line under it) over one plain panel — and never shows the three connect steps
+ * (a connected writer would read them as "my repository was disconnected") or
+ * the four connected actions (which a new site never has).
  */
 function GitWorkflowSkeleton() {
   const { t } = useLocale();
   return (
-    <section aria-busy="true" className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" data-slot="git-workflow-skeleton">
+    <section aria-busy="true" className="flex flex-col gap-6" data-slot="git-workflow-skeleton">
       <p className="sr-only" role="status">
         {t('common.loading')}
       </p>
-      <div aria-hidden>
-        <div className="border-border border-b bg-muted/20 px-5 py-5 sm:px-6">
+      <div aria-hidden className="flex flex-col gap-6">
+        <div className="rounded-xl border border-border bg-muted/20 p-5" data-slot="git-workflow-skeleton-header">
           <div className="flex items-start gap-3">
             <Skeleton className="size-10 shrink-0 rounded-xl" />
             <div className="w-full max-w-2xl space-y-2">
               <Skeleton className="h-5 w-48 max-w-full" />
               <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
             </div>
           </div>
         </div>
-        <div className="space-y-6 p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-3" data-slot="git-workflow-skeleton-steps">
-            {['authorize', 'repository', 'review'].map((step) => (
-              <div className="flex min-h-16 items-center gap-3 rounded-xl border border-border/80 p-3" key={step}>
-                <Skeleton className="size-7 shrink-0 rounded-full" />
-                <div className="w-full space-y-1.5">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-3 w-32 max-w-full" />
-                </div>
-              </div>
-            ))}
+        <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6" data-slot="git-workflow-skeleton-body">
+          <div className="max-w-2xl space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
           </div>
-          <div className="rounded-xl border border-border bg-background p-5 shadow-sm sm:p-6">
-            <div className="max-w-2xl space-y-5">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-4 w-full" />
-              </div>
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col-reverse gap-3 border-border border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <Skeleton className="h-10 w-full rounded-md sm:w-24" />
-            <Skeleton className="h-10 w-full rounded-md sm:w-32" />
-          </div>
+          <Skeleton className="mt-5 h-10 w-full rounded-md sm:w-40" />
         </div>
       </div>
     </section>

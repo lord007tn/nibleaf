@@ -173,4 +173,46 @@ describe('useMarkNotificationsRead', () => {
     expect(count()).toBe(0);
     act(() => root.unmount());
   });
+
+  /** The bell's own poll (or a reconnect) answering while a write is in flight: the server hasn't marked anything yet. */
+  const pollCount = (serverCount: number) =>
+    act(async () => {
+      await queryClient.fetchQuery({ queryKey: countKey, queryFn: async () => ({ count: serverCount }), staleTime: 0 });
+    });
+
+  it('does not add a failed row back on top of a count the bell refetched meanwhile', async () => {
+    const { hooks, root } = await render();
+    const marking = await startMarking(hooks, { ids: ['n1'] });
+    expect(count()).toBe(1);
+
+    await pollCount(2);
+    expect(count()).toBe(2);
+
+    // Nothing refetches afterwards (no bell is mounted), so this is what stays on screen until the next poll.
+    await marking.respond(failure());
+    expect(readIds()).toEqual(['n3']);
+    expect(count()).toBe(2);
+    act(() => root.unmount());
+  });
+
+  it('keeps the count right when "Mark all read" fails after a refetch and a later row write', async () => {
+    const { hooks, root } = await render();
+    const all = await startMarking(hooks, { all: true });
+    expect(count()).toBe(0);
+
+    await pollCount(2);
+    // A row marked after the refetch comes off the fresh count.
+    const row = await startMarking(hooks, { ids: ['n2'] });
+    expect(count()).toBe(1);
+
+    // n1 goes back to unread; n2 is still covered by the row write, so the count stays one below the server's.
+    await all.respond(failure());
+    expect(readIds()).toEqual(['n2', 'n3']);
+    expect(count()).toBe(1);
+
+    await row.respond(failure());
+    expect(readIds()).toEqual(['n3']);
+    expect(count()).toBe(2);
+    act(() => root.unmount());
+  });
 });

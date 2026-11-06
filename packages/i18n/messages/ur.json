@@ -1585,7 +1585,7 @@
   "settings_exports_workflow_downloaderror": "برآمد کو ڈاؤن لوڈ نہیں کیا جا سکا۔",
   "settings_exports_workflow_starterror": "ایکسپورٹ شروع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
   "settings_exports_workflow_publishfirst": "پہلے سائٹ شائع کریں، پھر آپ اسے ایکسپورٹ کر سکیں گے۔",
-  "settings_exports_workflow_toolarge": "یہ سائٹ یہاں ایکسپورٹ کرنے کے لیے بہت بڑی ہے۔ ایکسپورٹ کی حد بڑھانے کے لیے اپنے ایڈمنسٹریٹر سے کہیں۔",
+  "settings_exports_workflow_toolarge": "یہ سائٹ ایکسپورٹ کرنے کے لیے بہت بڑی ہے۔ جو آپ کے لیے Nibleaf چلاتے ہیں (آپ کی آئی ٹی ٹیم یا Nibleaf سپورٹ)، ان سے حد بڑھانے کے لیے کہیں۔",
   "settings_exports_workflow_limitreached": "اس وقت بہت زیادہ ایکسپورٹ جاری ہیں۔ جاری ایکسپورٹ مکمل ہونے کا انتظار کریں، یا کل دوبارہ کوشش کریں۔",
   "settings_exports_workflow_schedulelimit": "اس سائٹ پر پہلے سے زیادہ سے زیادہ اجازت شدہ شیڈول موجود ہیں۔ نیا شامل کرنے کے لیے ایک ہٹائیں۔",
   "settings_exports_workflow_archiveschedules": "آرکائیو کے نظام الاوقات",

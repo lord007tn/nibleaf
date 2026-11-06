@@ -156,4 +156,57 @@ export const useRenamePage = (projectId: string) => {
 - Invalidate with the broad `queryKeys` prefix that covers every variant you touched (`allForProject`, not one
   language/branch key).
 - `meta.errorMessage` (already translated) is toasted by the shared caches for queries and mutations that don't show
-  their own error. Never show raw server messages.
+  their own error. Never show raw server messages. On a mutation it may also be a function of the error, to word the
+  message from what went wrong; it runs once for every failed call:
+
+  ```ts
+  meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'error.unexpected') },
+  ```
+
+- The whole-snapshot rollback above is right only when one write of that data can be in flight at a time. If writes
+  can overlap, see the next section.
+
+### Overlapping writes
+
+When one person can fire several writes of the same data before the first answers (Resolve then Reopen on a comment,
+marking rows read one after another, then "Mark all read"), the recipe above breaks:
+
+- **A snapshot rollback undoes newer clicks.** Write A's snapshot was taken before write B's optimistic change, so A
+  failing restores the data from before B too. Roll back **per item, by intent**, instead.
+- **Per-call callbacks run only for the latest call.** `mutate(vars, { onError })` on a hook whose earlier call is still
+  in flight drops the earlier call's callbacks, so its failure goes unreported. Report errors from `meta.errorMessage`
+  (string or function), which runs for every failed call, and keep rollback in the hook's own `onError`/`onSettled`.
+- **Order matters when the server stores what it is sent.** Give the writes a shared `scope: { id }`, so they run one
+  after another in click order (each optimistic update still shows at once) and the last click is what's saved.
+- **Refetch once, at the end.** An invalidation while a later write is still queued would briefly show the older answer:
+  in `onSettled`, skip it while `queryClient.isMutating({ mutationKey }) > 1`.
+
+Per-item rollback keeps a small record of what each write in flight claims, shared by every caller of the hook
+(`overlappingWrites()` in `src/hooks/api/mutations.ts` holds one per query client, plus a `token` per write):
+
+```ts
+onMutate: async ({ id, resolved }) => {
+  const entry = intents.of(queryClient).get(id) ?? { confirmed: currentValue(id), pending: [] };
+  const token = intents.nextToken();
+  entry.pending.push({ token, resolved }); // before any await, so the list follows click order
+  // …cancel queries, then show the newest pending value (or `confirmed`)
+  return { token };
+},
+onSettled: (_data, error, { id, resolved }, context) => {
+  // Drop this write; a success becomes the confirmed value. Only a failure can change what's shown,
+  // and only if it was the newest click: show the newest pending value again, else the confirmed one.
+},
+```
+
+The two reference hooks:
+
+- `useResolveComment`: one boolean per comment. Shows the newest click still in flight, else the value the server last
+  confirmed, so an older failure never undoes a later Resolve or Reopen.
+- `useMarkNotificationsRead`: rows claimed by several writes, plus a count. A failed row goes back to unread only when no
+  other write still claims it and no finished write made it read. A cached value that something else refetched
+  meanwhile (the bell polls its count) is the server's answer and no longer contains your optimistic change, so never
+  add a rollback on top of it: remember the query's `dataUpdateCount` after you write it, and only undo what is still
+  there.
+
+If the outcome is monotonic and nothing depends on a local rollback, the simpler correct option is no rollback at all:
+on failure, toast and invalidate.

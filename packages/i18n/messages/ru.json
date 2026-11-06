@@ -1585,7 +1585,7 @@
   "settings_exports_workflow_downloaderror": "Не удалось загрузить экспорт.",
   "settings_exports_workflow_starterror": "Не удалось начать экспорт. Повторите попытку.",
   "settings_exports_workflow_publishfirst": "Сначала опубликуйте сайт — после этого его можно будет экспортировать.",
-  "settings_exports_workflow_toolarge": "Этот сайт слишком велик для экспорта здесь. Попросите администратора увеличить лимит экспорта.",
+  "settings_exports_workflow_toolarge": "Этот сайт слишком велик для экспорта. Попросите тех, кто обслуживает Nibleaf для вас (ваш ИТ-отдел или поддержку Nibleaf), увеличить лимит.",
   "settings_exports_workflow_limitreached": "Сейчас слишком много экспортов. Дождитесь завершения текущих или повторите попытку завтра.",
   "settings_exports_workflow_schedulelimit": "У этого сайта уже максимальное число расписаний. Удалите одно, чтобы добавить новое.",
   "settings_exports_workflow_archiveschedules": "Архив расписаний",

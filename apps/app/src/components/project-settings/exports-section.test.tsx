@@ -99,6 +99,15 @@ describe('export schedule permissions', () => {
     const button = findButton('settings.exports.workflow.create');
     expect(button?.disabled).toBe(false);
     expect(button?.getAttribute('aria-disabled')).toBe('true');
+    // It looks disabled too: dimmed, a not-allowed cursor, and no hover darkening or press movement.
+    for (const style of [
+      'aria-disabled:opacity-50',
+      'aria-disabled:cursor-not-allowed',
+      'aria-disabled:hover:bg-primary',
+      'aria-disabled:active:not-aria-[haspopup]:translate-y-0',
+    ]) {
+      expect(button?.classList.contains(style)).toBe(true);
+    }
     const hint = document.getElementById(button?.getAttribute('aria-describedby') ?? '');
     expect(hint?.textContent).toBe('settings.exports.workflow.publishFirst');
     button?.focus();
