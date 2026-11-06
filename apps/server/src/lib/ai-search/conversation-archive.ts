@@ -70,7 +70,7 @@ const hash = (value: string) => {
   if (!salt) throw new Error('archive hash configuration');
   return createHmac('sha256', salt).update(value).digest('hex');
 };
-export const normalizeConversationQuestion = (value: string) =>
+const normalizeConversationQuestion = (value: string) =>
   normalizeArabicSearchText(value.normalize('NFKC').toLowerCase())
     .replace(/[\p{P}\p{S}]/gu, ' ')
     .replace(/\s+/gu, ' ')

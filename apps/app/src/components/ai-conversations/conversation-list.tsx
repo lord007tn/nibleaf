@@ -5,7 +5,8 @@ import { useT } from '@nibleaf/i18n/react';
 import type { AiConversationListItem } from '@nibleaf/validators';
 import { type ColumnDef, flexRender, useTable } from '@tanstack/react-table';
 import { useFormatters } from '@/lib/format';
-export function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'noAnswer' | 'failed'> }) {
+
+function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'noAnswer' | 'failed'> }) {
   const t = useT();
   return (
     <div className="flex flex-wrap gap-1">

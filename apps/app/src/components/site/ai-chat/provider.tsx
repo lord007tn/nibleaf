@@ -10,7 +10,7 @@ const Panel = lazy(() => import('./panel'));
 export type PageContext = { title: string; path: string };
 type ChatContext = { openChat: (question?: string, page?: PageContext) => void };
 const Context = createContext<ChatContext | null>(null);
-export const useSiteChat = () => useContext(Context);
+const useSiteChat = () => useContext(Context);
 export type ChatOptions = {
   projectId: string;
   lang?: string;

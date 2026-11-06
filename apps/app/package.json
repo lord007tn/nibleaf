@@ -32,7 +32,6 @@
     "@t3-oss/env-core": "^0.13.11",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/ai": "1.0.0",
-    "@tanstack/ai-client": "1.0.0",
     "@tanstack/ai-react": "1.0.0",
     "@tanstack/react-form": "1.33.5",
     "@tanstack/react-pacer": "^0.24.1",
