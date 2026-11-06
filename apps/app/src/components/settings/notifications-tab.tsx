@@ -4,10 +4,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { Bell } from 'lucide-react';
 import { useId } from 'react';
 import { toast } from 'sonner';
+import { SettingsListSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
 import { useSession } from '@/services/auth-client';
-import { SettingsListSkeleton } from '../project-settings/shared';
 import { SettingsSection } from './section';
 
 interface NotifItem {

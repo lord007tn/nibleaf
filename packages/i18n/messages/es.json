@@ -1584,6 +1584,7 @@
   "settings_exports_workflow_cancelerror": "No se pudo cancelar la exportación.",
   "settings_exports_workflow_downloaderror": "No se pudo descargar la exportación.",
   "settings_exports_workflow_starterror": "No se pudo iniciar la exportación. Inténtalo de nuevo.",
+  "settings_exports_workflow_publishfirst": "Publica el sitio primero y después podrás exportarlo.",
   "settings_exports_workflow_limitreached": "Hay demasiadas exportaciones ahora mismo. Espera a que terminen las que están en curso o inténtalo de nuevo mañana.",
   "settings_exports_workflow_schedulelimit": "Este sitio ya tiene el máximo de programaciones permitidas. Elimina una para añadir otra.",
   "settings_exports_workflow_archiveschedules": "Horarios de archivo",

@@ -1584,6 +1584,7 @@
   "settings_exports_workflow_cancelerror": "برآمد کو منسوخ نہیں کیا جا سکا۔",
   "settings_exports_workflow_downloaderror": "برآمد کو ڈاؤن لوڈ نہیں کیا جا سکا۔",
   "settings_exports_workflow_starterror": "ایکسپورٹ شروع نہیں ہو سکا۔ دوبارہ کوشش کریں۔",
+  "settings_exports_workflow_publishfirst": "پہلے سائٹ شائع کریں، پھر آپ اسے ایکسپورٹ کر سکیں گے۔",
   "settings_exports_workflow_limitreached": "اس وقت بہت زیادہ ایکسپورٹ جاری ہیں۔ جاری ایکسپورٹ مکمل ہونے کا انتظار کریں، یا کل دوبارہ کوشش کریں۔",
   "settings_exports_workflow_schedulelimit": "اس سائٹ پر پہلے سے زیادہ سے زیادہ اجازت شدہ شیڈول موجود ہیں۔ نیا شامل کرنے کے لیے ایک ہٹائیں۔",
   "settings_exports_workflow_archiveschedules": "آرکائیو کے نظام الاوقات",

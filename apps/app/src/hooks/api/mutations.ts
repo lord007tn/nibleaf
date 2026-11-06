@@ -511,34 +511,64 @@ export const useCreateComment = (projectId: string, _pageId?: string) => {
   });
 };
 
-/** Resolve/reopen optimistically: flipping the flag has only one outcome. Rolls
- *  back if the server refuses (the caller shows the error). */
+/**
+ * Resolve/reopen optimistically: flipping the flag has only one outcome.
+ *
+ * The server stores whatever `resolved` it is sent, so a quick Resolve → Reopen
+ * must reach it in click order. Every resolve write of a site shares one
+ * mutation scope, which runs them one after another (each optimistic update
+ * still shows at once), so the last click is what's saved. A failure rolls back
+ * only that comment, and only if no later click changed it since; the list is
+ * refetched once the last write has finished.
+ */
 export const useResolveComment = (projectId: string) => {
   const qc = useQueryClient();
+  const mutationKey = ['comments', 'resolve', projectId];
+  const filter = { queryKey: queryKeys.comments.allForProject(projectId) };
   return useMutation({
+    mutationKey,
+    scope: { id: `comments.resolve.${projectId}` },
     mutationFn: async ({ id, resolved }: { id: string; resolved: boolean }) =>
       mutateData<Comment>(
         await api.app.projects[':projectId'].comments[':id'].$patch({ param: { projectId, id }, json: { resolved } }),
         'Could not update the comment.',
       ),
-    onMutate: ({ id, resolved }) =>
-      patchCommentLists(qc, projectId, (comments) => comments.map((comment) => (comment.id === id ? { ...comment, resolved } : comment))),
-    onError: (_error, _variables, context) => {
-      for (const [key, comments] of context?.previous ?? []) qc.setQueryData(key, comments);
+    onMutate: async ({ id, resolved }) => {
+      const { previous } = await patchCommentLists(qc, projectId, (comments) =>
+        comments.map((comment) => (comment.id === id ? { ...comment, resolved } : comment)),
+      );
+      const before = previous.flatMap(([, comments]) => comments ?? []).find((comment) => comment.id === id);
+      return { previousResolved: before?.resolved };
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
+    onError: (_error, { id, resolved }, context) => {
+      const previousResolved = context?.previousResolved;
+      if (previousResolved === undefined) return;
+      qc.setQueriesData<Comment[]>(filter, (comments) =>
+        comments?.map((comment) => (comment.id === id && comment.resolved === resolved ? { ...comment, resolved: previousResolved } : comment)),
+      );
+    },
+    // A refetch while a later write is still queued would briefly show the older answer.
+    onSettled: () => (qc.isMutating({ mutationKey }) > 1 ? undefined : qc.invalidateQueries(filter)),
   });
 };
 
-/** Delete optimistically (the comment disappears at once); restored on failure. */
+/** Delete optimistically (the comment disappears at once); on failure only that comment comes back, where it was. */
 export const useDeleteComment = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) =>
       mutateData(await api.app.projects[':projectId'].comments[':id'].$delete({ param: { projectId, id } }), 'Could not delete the comment.'),
     onMutate: (id) => patchCommentLists(qc, projectId, (comments) => comments.filter((comment) => comment.id !== id)),
-    onError: (_error, _id, context) => {
-      for (const [key, comments] of context?.previous ?? []) qc.setQueryData(key, comments);
+    onError: (_error, id, context) => {
+      for (const [key, comments] of context?.previous ?? []) {
+        const index = comments?.findIndex((comment) => comment.id === id) ?? -1;
+        const removed = comments?.[index];
+        if (!removed) continue;
+        // Re-insert into the current list, so changes made to other comments meanwhile are kept.
+        qc.setQueryData<Comment[]>(key, (current) =>
+          current && !current.some((comment) => comment.id === id) ? [...current.slice(0, index), removed, ...current.slice(index)] : current,
+        );
+      }
     },
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.comments.allForProject(projectId) }),
   });

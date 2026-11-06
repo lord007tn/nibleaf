@@ -1584,6 +1584,7 @@
   "settings_exports_workflow_cancelerror": "无法取消导出。",
   "settings_exports_workflow_downloaderror": "无法下载导出。",
   "settings_exports_workflow_starterror": "无法开始导出。请重试。",
+  "settings_exports_workflow_publishfirst": "请先发布站点，然后即可导出。",
   "settings_exports_workflow_limitreached": "当前导出任务过多。请等待正在进行的导出完成，或明天再试。",
   "settings_exports_workflow_schedulelimit": "该站点的计划数量已达上限。请删除一个后再添加。",
   "settings_exports_workflow_archiveschedules": "存档时间表",

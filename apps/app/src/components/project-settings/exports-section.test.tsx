@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   download: vi.fn(),
   error: vi.fn(),
   runs: [] as unknown[],
+  deployments: undefined as { status: string }[] | undefined,
+  cancel: { isPending: false, variables: undefined as string | undefined, mutate: vi.fn() },
   locale: 'en' as 'en' | 'ar',
 }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error } }));
@@ -23,6 +25,7 @@ vi.mock('@nibleaf/i18n/react', async () => {
     }),
   };
 });
+vi.mock('@/hooks/api', () => ({ useDeployments: () => ({ data: mocks.deployments }) }));
 vi.mock('@/hooks/api/exports', () => ({
   useListExportRuns: () => ({ data: mocks.runs }),
   useListExportSchedules: () => ({
@@ -41,13 +44,14 @@ vi.mock('@/hooks/api/exports', () => ({
     ],
   }),
   useCreateExport: () => ({ mutate: mocks.create }),
-  useCancelExport: () => ({ mutate: vi.fn() }),
+  useCancelExport: () => mocks.cancel,
   useGetExportDownload: () => ({ mutateAsync: mocks.download }),
   useCreateExportSchedule: () => ({ mutate: mocks.scheduleMutation }),
   useUpdateExportSchedule: () => ({ mutate: mocks.scheduleMutation }),
   useRunExportSchedule: () => ({ mutate: mocks.scheduleMutation }),
 }));
 
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { ExportsSection } from './exports-section';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -60,6 +64,8 @@ describe('export schedule permissions', () => {
 
   beforeEach(() => {
     mocks.runs = [];
+    mocks.deployments = [{ status: 'READY' }];
+    mocks.cancel = { isPending: false, variables: undefined, mutate: vi.fn() };
     mocks.locale = 'en';
     container = document.createElement('div');
     document.body.append(container);
@@ -79,6 +85,54 @@ describe('export schedule permissions', () => {
 
     expect(mocks.create).toHaveBeenCalledWith(['MARKDOWN'], expect.any(Object));
     expect(mocks.scheduleMutation).not.toHaveBeenCalled();
+  });
+
+  it('asks to publish first instead of offering an export of a site that was never published', async () => {
+    mocks.deployments = [{ status: 'FAILED' }];
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+
+    expect(container.textContent).toContain('settings.exports.workflow.publishFirst');
+    expect(findButton('settings.exports.workflow.create')?.disabled).toBe(true);
+  });
+
+  it('explains a refused export of an unpublished site while its publish history is still loading', async () => {
+    mocks.deployments = undefined;
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.create')?.click());
+    const options = mocks.create.mock.calls[0]?.[1];
+    act(() => options.onError(new ApiResponseError('Publish the site before creating an export.', 400)));
+
+    expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.publishFirst');
+  });
+
+  it('keeps the general message for a refused export once a version is live', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.create')?.click());
+    const options = mocks.create.mock.calls[0]?.[1];
+    act(() => options.onError(new ApiResponseError('The published revision is larger than this instance allows.', 400)));
+
+    expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.startError');
+  });
+
+  it('spins only the export being cancelled', async () => {
+    const running = (id: string) => ({
+      id,
+      formats: ['MARKDOWN'],
+      status: 'RUNNING',
+      trigger: 'MANUAL',
+      createdAt: '2026-10-16T00:00:00Z',
+      snapshot: { deploymentVersion: 4, pagesCount: 3 },
+      artifacts: [],
+    });
+    mocks.runs = [running('run-1'), running('run-2')];
+    mocks.cancel = { isPending: true, variables: 'run-2', mutate: vi.fn() };
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.history')?.click());
+
+    const cancels = [...container.querySelectorAll('button')].filter((button) => button.textContent?.includes('common.cancel'));
+    expect(cancels.map((button) => button.hasAttribute('data-loading'))).toEqual([false, true]);
   });
 
   it('lets an editor read schedules while hiding every administrator mutation control', async () => {

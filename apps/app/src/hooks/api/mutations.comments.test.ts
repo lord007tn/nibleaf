@@ -82,6 +82,87 @@ describe('comment mutations update every cached list optimistically', () => {
     act(() => root.unmount());
   });
 
+  /** Queue PATCH responses: each call waits until the test answers it. */
+  function deferPatches() {
+    const answers: Array<(response: Response) => void> = [];
+    mocks.patch.mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          answers.push(resolve);
+        }),
+    );
+    return answers;
+  }
+  const resolvedIn = (key: readonly unknown[]) => queryClient.getQueryData<Comment[]>(key)?.[0]?.resolved;
+
+  it('saves the last click when Resolve and Reopen overlap', async () => {
+    const answers = deferPatches();
+    const { hooks, root } = await render();
+
+    let first: Promise<unknown> = Promise.resolve();
+    let second: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      first = hooks.resolve?.mutateAsync({ id: 'c1', resolved: true }) ?? first;
+    });
+    await act(async () => {
+      second = hooks.resolve?.mutateAsync({ id: 'c1', resolved: false }) ?? second;
+    });
+    // The Reopen shows at once, but its write waits for the Resolve to finish…
+    expect(resolvedIn(siteKey)).toBe(false);
+    expect(mocks.patch).toHaveBeenCalledTimes(1);
+    expect(mocks.patch.mock.calls[0]?.[0]).toMatchObject({ json: { resolved: true } });
+
+    await act(async () => {
+      answers[0]?.(json(200, { data: comment('c1', true) }));
+      await first;
+    });
+    // …so the server receives Reopen last, and the older answer doesn't flip the list back.
+    expect(mocks.patch).toHaveBeenCalledTimes(2);
+    expect(mocks.patch.mock.calls[1]?.[0]).toMatchObject({ json: { resolved: false } });
+    expect(resolvedIn(siteKey)).toBe(false);
+
+    await act(async () => {
+      answers[1]?.(json(200, { data: comment('c1', false) }));
+      await second;
+    });
+    expect(resolvedIn(siteKey)).toBe(false);
+    expect(resolvedIn(pageKey)).toBe(false);
+    act(() => root.unmount());
+  });
+
+  it("doesn't let a failed earlier click undo a later one", async () => {
+    const answers = deferPatches();
+    const { hooks, root } = await render();
+
+    let first: Promise<unknown> = Promise.resolve();
+    let second: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      first = hooks.resolve?.mutateAsync({ id: 'c1', resolved: true }).catch(() => undefined) ?? first;
+    });
+    await act(async () => {
+      second = hooks.resolve?.mutateAsync({ id: 'c1', resolved: false }) ?? second;
+    });
+    // Meanwhile another comment changes: a rollback must not overwrite it.
+    act(() => {
+      queryClient.setQueryData<Comment[]>(siteKey, (comments) => comments?.map((item) => (item.id === 'c2' ? { ...item, resolved: true } : item)));
+    });
+
+    await act(async () => {
+      answers[0]?.(json(403, { error: { message: 'Forbidden' } }));
+      await first;
+    });
+    expect(resolvedIn(siteKey)).toBe(false);
+    expect(queryClient.getQueryData<Comment[]>(siteKey)?.[1]?.resolved).toBe(true);
+
+    await act(async () => {
+      answers[1]?.(json(200, { data: comment('c1', false) }));
+      await second;
+    });
+    expect(mocks.patch.mock.calls[1]?.[0]).toMatchObject({ json: { resolved: false } });
+    expect(resolvedIn(siteKey)).toBe(false);
+    act(() => root.unmount());
+  });
+
   it('removes a deleted comment from every list and restores it on failure', async () => {
     let fail: (response: Response) => void = () => undefined;
     mocks.remove.mockReturnValue(

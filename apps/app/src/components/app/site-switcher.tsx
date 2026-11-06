@@ -8,11 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
+import { InlineSkeleton } from '@/components/inline-skeleton';
 import { useProjects } from '@/hooks/api';
 
 const subscribeToHydration = () => () => undefined;
@@ -45,8 +45,8 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
               {nameLoading ? (
                 <span className="flex flex-col gap-1.5">
                   <span className="sr-only">{t('common.loading')}</span>
-                  <Skeleton aria-hidden className="h-4 w-3/4" />
-                  <Skeleton aria-hidden className="h-3 w-1/3" />
+                  <InlineSkeleton className="h-4 w-3/4" />
+                  <InlineSkeleton className="h-3 w-1/3" />
                 </span>
               ) : (
                 <>

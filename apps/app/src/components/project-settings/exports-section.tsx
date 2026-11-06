@@ -10,6 +10,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useDeployments } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
   type ExportArtifact,
@@ -37,6 +38,17 @@ const labelKeys: Record<ExportFormat, MessageKey> = {
 };
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
+/**
+ * What a failed export start means. 409: too many exports running, or today's
+ * limit reached. 400 before a live version is known: the site was never
+ * published (once one is live, a 400 means it's too large, so the general
+ * wording is kept).
+ */
+const startStatusKeys = (hasLiveVersion: boolean | undefined): Partial<Record<number, MessageKey>> => ({
+  409: 'settings.exports.workflow.limitReached',
+  ...(hasLiveVersion ? {} : { 400: 'settings.exports.workflow.publishFirst' }),
+});
+
 export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
   const { locale, t } = useLocale();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
@@ -47,6 +59,10 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
   const create = useCreateExport(projectId);
   const cancel = useCancelExport(projectId);
   const downloadMutation = useGetExportDownload(projectId);
+  // Exports copy the live version, so a site that was never published has nothing to export yet.
+  const deployments = useDeployments(projectId);
+  const hasLiveVersion = deployments.data ? deployments.data.some((deployment) => deployment.status === 'READY') : undefined;
+  const neverPublished = hasLiveVersion === false;
   const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
     try {
       const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
@@ -114,17 +130,17 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.formatHint')}</p>
+              <p className="text-muted-foreground text-xs">
+                {neverPublished ? t('settings.exports.workflow.publishFirst') : t('settings.exports.workflow.formatHint')}
+              </p>
               <Button
+                disabled={neverPublished}
                 loading={create.isPending}
                 onClick={() =>
                   create.mutate(formats, {
                     onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
-                    // 409: too many exports running, or today's limit reached.
                     onError: (error) =>
-                      toast.error(
-                        friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', { 409: 'settings.exports.workflow.limitReached' }),
-                      ),
+                      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
                   })
                 }
               >
@@ -157,7 +173,13 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
               </div>
             ) : null}
             {schedules.data?.map((schedule) => (
-              <ScheduleRow canManage={canManageSchedules} key={schedule.id} projectId={projectId} schedule={schedule} />
+              <ScheduleRow
+                canManage={canManageSchedules}
+                hasLiveVersion={hasLiveVersion}
+                key={schedule.id}
+                projectId={projectId}
+                schedule={schedule}
+              />
             ))}
             {!schedules.isPending && !schedules.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
@@ -201,7 +223,12 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                     </div>
                   </div>
                   {run.status === 'PENDING' || run.status === 'RUNNING' ? (
-                    <Button loading={cancel.isPending} onClick={() => cancel.mutate(run.id)} size="sm" variant="outline">
+                    <Button
+                      loading={cancel.isPending && cancel.variables === run.id}
+                      onClick={() => cancel.mutate(run.id)}
+                      size="sm"
+                      variant="outline"
+                    >
                       <Ban className="size-3.5" /> {t('common.cancel')}
                     </Button>
                   ) : null}
@@ -483,7 +510,17 @@ function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: 
   );
 }
 
-function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; schedule: ExportSchedule; canManage: boolean }) {
+function ScheduleRow({
+  projectId,
+  schedule,
+  canManage,
+  hasLiveVersion,
+}: {
+  projectId: string;
+  schedule: ExportSchedule;
+  canManage: boolean;
+  hasLiveVersion: boolean | undefined;
+}) {
   const { locale, t } = useLocale();
   const update = useUpdateExportSchedule(projectId, schedule.id);
   const run = useRunExportSchedule(projectId, schedule.id);
@@ -516,9 +553,7 @@ function ScheduleRow({ projectId, schedule, canManage }: { projectId: string; sc
               run.mutate(undefined, {
                 onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
                 onError: (error) =>
-                  toast.error(
-                    friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', { 409: 'settings.exports.workflow.limitReached' }),
-                  ),
+                  toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
               })
             }
             size="sm"

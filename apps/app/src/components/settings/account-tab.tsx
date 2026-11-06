@@ -10,11 +10,10 @@ import { Mail } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
-import { DirtyStateReporter } from '@/components/project-settings/shared';
+import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { friendlyEmailChangeError, isSameEmail } from '@/lib/auth-errors';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
-import { SettingsFormSkeleton } from '../project-settings/shared';
 import { GradientAvatar, SettingsSection } from './section';
 
 const subscribeToHydration = () => () => undefined;

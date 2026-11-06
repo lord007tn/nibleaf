@@ -3,6 +3,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/de
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -15,7 +16,46 @@ import type { Project } from '@/hooks/api';
 import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
-import { DirtyStateReporter, FIELD_MONO, SectionHeader, SettingsFormSkeleton } from './shared';
+import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
+
+const DOMAIN_SKELETON_CARDS = ['first', 'second'];
+
+/** The section's first load: heading, the three guide steps, the add row and domain cards, so nothing moves on arrival. */
+function DomainSectionSkeleton() {
+  const t = useT();
+  return (
+    <div aria-busy="true">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <div className="mb-6 border-border border-b pb-3">
+          <Skeleton className="h-7 w-40" />
+        </div>
+        <div className="mb-4 space-y-2 ps-5">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Skeleton className="h-10 min-w-0 flex-1" />
+          <Skeleton className="h-10 w-28 rounded-[10px]" />
+        </div>
+        <div className="mt-4 space-y-3">
+          {DOMAIN_SKELETON_CARDS.map((card) => (
+            <div className="rounded-xl border border-border p-3.5" key={card}>
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="h-5 w-48 max-w-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="mt-3 h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
@@ -56,7 +96,7 @@ export function DomainSection({ project }: { project: Project }) {
   };
 
   if (query.isError && !domains) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
-  if (query.isPending) return <SettingsFormSkeleton />;
+  if (query.isPending) return <DomainSectionSkeleton />;
   return (
     <div>
       {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}

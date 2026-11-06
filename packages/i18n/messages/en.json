@@ -1645,6 +1645,7 @@
   "settings_exports_workflow_cancelerror": "Could not cancel the export.",
   "settings_exports_workflow_downloaderror": "Could not download the export.",
   "settings_exports_workflow_starterror": "Couldn't start the export. Try again.",
+  "settings_exports_workflow_publishfirst": "Publish the site first, then you can export it.",
   "settings_exports_workflow_limitreached": "Too many exports right now. Wait for the running ones to finish, or try again tomorrow.",
   "settings_exports_workflow_schedulelimit": "This site already has the most schedules allowed. Remove one to add another.",
   "settings_exports_workflow_archiveschedules": "Archive schedules",

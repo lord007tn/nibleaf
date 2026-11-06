@@ -186,6 +186,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'exports':
         prefetchRouteData(queryClient, listExportRunsQueryOptions(projectId));
         prefetchRouteData(queryClient, listExportSchedulesQueryOptions(projectId));
+        prefetchRouteData(queryClient, deploymentsQueryOptions(projectId));
         break;
       default:
         break;

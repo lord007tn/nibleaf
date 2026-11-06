@@ -50,8 +50,8 @@ const NO_REQUESTS = { deploymentSiteIds: [], pageSiteIds: [] };
  * The sample's publish history and page list, which the checklist reads to tell
  * whether the user edited it (publishing comes from the sites list itself). The
  * shared factories are spread as-is, so these reads share cache entries and the
- * publish-receipt check with the editor. A failed read counts as "nothing found"
- * so the checklist can still settle.
+ * publish-receipt check with the editor. A failed read stays unknown (never
+ * "nothing found"), so it can't untick a step the user already finished.
  */
 function useStartHereActivity(deploymentSiteIds: string[], pageSiteIds: string[]): ReadonlyMap<string, SiteActivity> {
   const deploymentResults = useQueries({ queries: deploymentSiteIds.map((projectId) => deploymentsQueryOptions(projectId)) });
@@ -59,11 +59,11 @@ function useStartHereActivity(deploymentSiteIds: string[], pageSiteIds: string[]
   const activity = new Map<string, SiteActivity>();
   deploymentSiteIds.forEach((projectId, index) => {
     const result = deploymentResults[index];
-    activity.set(projectId, { ...activity.get(projectId), deployments: result?.data ?? (result?.isError ? [] : undefined) });
+    activity.set(projectId, { ...activity.get(projectId), deployments: result?.data });
   });
   pageSiteIds.forEach((projectId, index) => {
     const result = pageResults[index];
-    activity.set(projectId, { ...activity.get(projectId), pages: result?.data ?? (result?.isError ? [] : undefined) });
+    activity.set(projectId, { ...activity.get(projectId), pages: result?.data });
   });
   return activity;
 }
@@ -111,9 +111,10 @@ function ProjectsPage() {
   const siteList = useMemo(() => projects ?? [], [projects]);
   const focusId = useMemo(() => startHereProgress(siteList, undefined).focus?.id, [siteList]);
   // A dismissed checklist reads nothing beyond the sites list.
-  const { data: team, isError: teamError } = useProjectMembers(dismissed ? undefined : focusId);
-  // If the team can't be read, leave "invite" open rather than hiding the checklist.
-  const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : teamError ? 1 : undefined;
+  const { data: team } = useProjectMembers(dismissed ? undefined : focusId);
+  // Unknown until the team is read. A failed read keeps the checklist hidden
+  // rather than showing "invite" unticked for someone who already invited.
+  const teamSize = team ? team.members.length + (team.invitations?.length ?? 0) : undefined;
   const requests = useMemo(() => (dismissed ? NO_REQUESTS : startHereRequests(siteList)), [dismissed, siteList]);
   const activity = useStartHereActivity(requests.deploymentSiteIds, requests.pageSiteIds);
   const progress = startHereProgress(siteList, teamSize, activity);

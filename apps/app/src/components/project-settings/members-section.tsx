@@ -37,22 +37,19 @@ import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { useSession } from '@/services/auth-client';
 import { DirtyStateReporter, SectionHeader } from './shared';
 
-/** A small button that copies an invite link to the clipboard with feedback. */
+/** A small button that copies an invite link to the clipboard with feedback.
+ *  Copying is instant, so it shows a tick afterwards rather than a spinner. */
 function CopyLinkButton({ link, label }: { link: string; label: string }) {
   const t = useT();
   const [copied, setCopied] = useState(false);
-  const [copying, setCopying] = useState(false);
   return (
     <Button
       size="icon-sm"
       variant="ghost"
-      loading={copying}
       title={label}
       aria-label={label}
       onClick={async () => {
-        setCopying(true);
         const ok = await copyToClipboard(link);
-        setCopying(false);
         if (ok) {
           setCopied(true);
           toast.success(t('settings.members.linkCopied'));
@@ -99,7 +96,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
-  const [copyingInvite, setCopyingInvite] = useState(false);
+  /** Only the row whose remove/revoke is being confirmed spins. */
+  const actionRunning = (kind: MemberAction['kind'], id: string) => actionPending && memberAction?.kind === kind && memberAction.id === id;
   const actionInFlight = useRef(false);
 
   const requestMemberAction = (action: MemberAction) => {
@@ -248,11 +246,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
               value={lastInvite.link}
             />
             <Button
-              loading={copyingInvite}
               onClick={async () => {
-                setCopyingInvite(true);
                 const ok = await copyToClipboard(lastInvite.link);
-                setCopyingInvite(false);
                 toast[ok ? 'success' : 'error'](t(ok ? 'settings.members.linkCopied' : 'settings.members.copyFailed'));
               }}
               type="button"
@@ -309,7 +304,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         variant="ghost"
                         aria-label={t('settings.members.transferOwnership')}
                         title={t('settings.members.transferOwnership')}
-                        loading={transfer.isPending}
+                        loading={transfer.isPending && transfer.variables?.memberId === member.id}
                         onClick={async () => {
                           const ok = await confirm({
                             title: t('settings.members.transferOwnership'),
@@ -369,7 +364,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                       variant="ghost"
                       aria-label={t('settings.members.remove')}
                       title={t('settings.members.remove')}
-                      loading={actionPending || remove.isPending || cancelInvite.isPending}
+                      loading={actionRunning('remove', member.id)}
                       onClick={() => requestMemberAction({ kind: 'remove', id: member.id, name: member.user.name || member.user.email })}
                     >
                       <Trash2 className="size-4" />
@@ -401,7 +396,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <div className="ms-auto flex items-center gap-1">
                       <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
                       <Button
-                        loading={actionPending || remove.isPending || cancelInvite.isPending}
+                        loading={actionRunning('revoke', inv.id)}
                         onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
                         size="icon-sm"
                         variant="ghost"

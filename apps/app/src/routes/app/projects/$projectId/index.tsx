@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
+import { InlineSkeleton } from '@/components/inline-skeleton';
 import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import { friendlyErrorMessage, useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
@@ -91,6 +92,12 @@ function SiteOverviewPage() {
 
   return (
     <div className="w-full px-6 py-8 xl:px-10">
+      {/* One announcement for the page; the regions still loading are only marked aria-busy. */}
+      {projectPending || deploymentsPending || pagesPending ? (
+        <p className="sr-only" role="status">
+          {t('common.loading')}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {/* The site name, not a generic "Overview" that flips to the name a moment later. */}
@@ -98,7 +105,7 @@ function SiteOverviewPage() {
             {projectPending ? (
               <>
                 <span className="sr-only">{t('overview.title')}</span>
-                <Skeleton aria-hidden className="h-8 w-48" />
+                <InlineSkeleton className="h-8 w-48" />
               </>
             ) : (
               (project?.name ?? t('overview.title'))
@@ -185,9 +192,6 @@ function SiteOverviewPage() {
           <div aria-busy={deploymentsPending || undefined} className="flex flex-col gap-2">
             {deploymentsPending ? (
               <>
-                <p className="sr-only" role="status">
-                  {t('common.loading')}
-                </p>
                 {/* Shaped like an activity line: version, message, date. */}
                 {ACTIVITY_SKELETON_ROWS.map((row) => (
                   <div aria-hidden className="flex h-5 items-center justify-between gap-3" key={row}>
@@ -263,9 +267,6 @@ function SiteOverviewPage() {
           </div>
           {pagesPending ? (
             <div aria-busy="true">
-              <p className="sr-only" role="status">
-                {t('common.loading')}
-              </p>
               <Table aria-hidden>
                 <TableHeader>
                   <TableRow>

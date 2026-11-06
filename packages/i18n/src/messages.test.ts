@@ -144,11 +144,60 @@ describe('Paraglide message catalogs', () => {
 
   it('addresses German readers formally (Sie), never with du', () => {
     const german = loadCatalog('de');
+    // Informal (du-form) imperatives opening a sentence or a short label such as "Gehe zu".
+    // Formal copy says "Gehen Sie …" or uses an infinitive ("Wechseln zu"). Nouns that look
+    // like these verbs ("Suche", "Stelle") are left out, so only "Suche nach" counts.
+    const imperatives = [
+      'Aktiviere',
+      'Aktualisiere',
+      'Bearbeite',
+      'Benenne',
+      'Bestätige',
+      'Deaktiviere',
+      'Entferne',
+      'Erstelle',
+      'Füge',
+      'Gehe',
+      'Gib',
+      'Halte',
+      'Klicke',
+      'Kopiere',
+      'Lade',
+      'Lass',
+      'Lege',
+      'Lies',
+      'Lösche',
+      'Mach',
+      'Melde',
+      'Nimm',
+      'Nutze',
+      'Öffne',
+      'Prüfe',
+      'Richte',
+      'Schau',
+      'Schreibe',
+      'Sende',
+      'Sieh',
+      'Speichere',
+      'Starte',
+      'Suche nach',
+      'Teile',
+      'Trage',
+      'Überprüfe',
+      'Verwende',
+      'Veröffentliche',
+      'Versuche',
+      'Wähle',
+      'Warte',
+      'Wechsle',
+      'Wiederhole',
+      'Ziehe',
+      'Ändere',
+    ];
+    const informalImperative = new RegExp(`(^|[.!?:] )(${imperatives.join('|')})(?=[\\s.,!?]|$)`);
     // Blog articles are English-only source copy; everything else is interface text.
     const informal = Object.entries(german).filter(
-      ([key, value]) =>
-        !key.startsWith('blog_') &&
-        (/\b(du|dich|dein\w*)\b/i.test(value) || /(^|[.!?] )(Lade|Wähle|Teile|Speichere|Schreibe|Versuche|Suche nach) /.test(value)),
+      ([key, value]) => !key.startsWith('blog_') && (/\b(du|dich|dir|dein\w*|euch|euer\w*)\b/i.test(value) || informalImperative.test(value)),
     );
     expect(informal.map(([key]) => key)).toEqual([]);
   });

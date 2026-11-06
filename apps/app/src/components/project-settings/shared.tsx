@@ -26,6 +26,7 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 
 type ConfigMutation = {
   mutate: (vars: { config: ProjectConfigUpdate }, opts?: { onSuccess?: () => void; onError?: (error: unknown) => void }) => void;
@@ -95,8 +96,9 @@ export function saveConfigSection(update: ConfigMutation, config: ProjectConfigU
           toast.success(localizedFn('common.saved'));
           resolve();
         },
-        onError: (_error) => {
-          toast.error(localizedFn('settings.saveError'));
+        // Signed out, no permission, someone else saved first…: say which, not just "couldn't save".
+        onError: (error) => {
+          toast.error(friendlyErrorMessage(translateFn, error, 'settings.saveError'));
           resolve();
         },
       },

@@ -52,10 +52,12 @@ const focusSite = (projects: Project[]) => newestFirst(projects.filter((project)
 const ownPagesExist = (projects: Project[]) => projects.some((project) => !isSampleSite(project) && (project._count?.pages ?? 0) > 0);
 
 /**
- * Whether one of the user's publishes went live, on any site. The sites list
- * reports it per site (`livePublishes`, which leaves out the sample's automatic
- * first publish), so no site's publish history has to be read and none can be
- * missed. Undefined while a site lacks the summary.
+ * Whether a publish went live on any of the user's sites. "Publish your site" is
+ * about the site being live, so a teammate's publish counts too (as their pages
+ * count for writing and their invites for the team). The sites list reports it
+ * per site (`livePublishes`, which leaves out the sample's automatic first
+ * publish), so no site's publish history has to be read and none can be missed.
+ * Undefined while a site lacks the summary.
  */
 const livePublishState = (projects: Project[]): boolean | undefined => {
   if (projects.some((project) => (project.livePublishes ?? 0) > 0)) return true;

@@ -61,7 +61,7 @@ describe('project page counts', () => {
     expect(projects[0]?._count).toEqual({ pages: 58, deployments: 3 });
   });
 
-  it("tells each site how many of the user's own publishes went live and whether one is running, in one query", async () => {
+  it('tells each site how many of its publishes went live (starter excluded) and whether one is running, in one query', async () => {
     mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a' }]);
     mocks.projectFindMany.mockResolvedValue([
       { id: 'live', _count: { pages: 2, deployments: 3 } },

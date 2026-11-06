@@ -11,7 +11,7 @@ import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, Git
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { DirtyStateReporter } from '@/components/project-settings/shared';
+import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Deployment } from '@/hooks/api';
 import {
@@ -25,7 +25,6 @@ import {
 } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
-import { SettingsFormSkeleton } from '../project-settings/shared';
 import { GitWorkflow } from './git-workflow';
 import { SettingsSection } from './section';
 

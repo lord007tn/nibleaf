@@ -43,8 +43,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   _count?: { pages: number; deployments: number; domains?: number };
-  /** Sites list only: how many publishes the user started went live (the sign-up
-   *  starter site's automatic first publish isn't counted). */
+  /** Sites list only: how many publishes on this site went live, by any member
+   *  (the sign-up starter site's automatic first publish isn't counted). */
   livePublishes?: number;
   /** Sites list only: a publish is queued or being prepared right now. */
   publishing?: boolean;

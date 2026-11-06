@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   /** Cached data per query key (joined with '/'), standing in for the deployments/pages requests. */
   queryData: new Map<string, unknown>(),
+  /** Query keys (joined with '/') whose request failed after retries, with nothing cached. */
+  failed: new Set<string>(),
   /** Every key the page asked `useQueries` for, across renders. */
   requested: new Set<string>(),
   userId: 'user-1' as string | undefined,
@@ -20,7 +22,8 @@ vi.mock('@tanstack/react-query', () => ({
   useQueries: ({ queries }: { queries: Array<{ queryKey: readonly unknown[] }> }) =>
     queries.map((query) => {
       mocks.requested.add(query.queryKey.join('/'));
-      return { data: mocks.queryData.get(query.queryKey.join('/')) };
+      const key = query.queryKey.join('/');
+      return { data: mocks.queryData.get(key), isError: mocks.failed.has(key) };
     }),
 }));
 vi.mock('@/services/api', () => ({ api: {} }));
@@ -87,6 +90,7 @@ describe('dashboard request recovery', () => {
     });
     mocks.members.mockReturnValue({ data: { members: [{ id: 'owner' }], invitations: [] } });
     mocks.queryData.clear();
+    mocks.failed.clear();
     mocks.requested.clear();
     mocks.userId = 'user-1';
     window.localStorage.clear();
@@ -244,6 +248,34 @@ describe('dashboard request recovery', () => {
     expect(container.querySelector('[data-testid="views-chart"]')).not.toBeNull();
     // Publishing is settled by the sites list, so no publish history is read.
     expect([...mocks.requested].filter((key) => key.startsWith('deployments/'))).toEqual([]);
+  });
+
+  it('keeps a finished checklist closed when the team cannot be read', async () => {
+    // Published and written (from the sites list); the team read failed, so "invited" is unknown, not "no".
+    mocks.members.mockReturnValue({ data: undefined, isPending: false, isError: true });
+    await act(async () => root.render(<DashboardPage />));
+    expect(container.textContent).not.toContain('dashboard.start.title');
+  });
+
+  it("doesn't treat a failed read of the sample's pages as no edits", async () => {
+    mocks.projects.mockReturnValue({
+      isPending: false,
+      data: [
+        {
+          id: 'sample',
+          name: 'Documentation',
+          description: 'Your first documentation site.',
+          slug: 'docs',
+          createdAt: '2026-11-01T00:00:00.000Z',
+          _count: { pages: 6, deployments: 0 },
+          livePublishes: 0,
+        },
+      ],
+      refetch: mocks.refetch,
+    });
+    mocks.failed.add('pages/sample//');
+    await act(async () => root.render(<DashboardPage />));
+    expect(container.textContent).not.toContain('dashboard.start.title');
   });
 
   it('remembers a live publish on any site, however many the account has', async () => {

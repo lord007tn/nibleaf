@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
@@ -34,7 +35,6 @@ import {
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
-import { SettingsFormSkeleton } from '../project-settings/shared';
 
 type GitIdentity = { login: string; name: string | null };
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
