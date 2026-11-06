@@ -1829,6 +1829,7 @@
   "site_articledetails": "Detail artikel",
   "site_copycode": "Salin kode",
   "site_copied": "Disalin",
+  "site_viewfullsizeof": "Lihat ukuran penuh: {alt}",
   "site_copyfailed": "Tidak dapat menyalin. Pilih teks dan salin secara manual.",
   "site_copysectionlink": "Salin tautan ke bagian ini",
   "site_viewfullsize": "Lihat ukuran penuh",

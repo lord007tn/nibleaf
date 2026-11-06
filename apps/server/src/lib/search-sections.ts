@@ -1,4 +1,5 @@
 import { normalizeArabicSearchText, stripMarkdown } from '@nibleaf/search';
+import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { extractHeadings, type Heading } from '@nibleaf/shared/site';
 import { LruCache } from './lru';
 
@@ -71,16 +72,16 @@ function parseSections(content: string): ParsedSection[] {
   const headings = extractHeadings(content);
   const sections: Array<{ heading: Heading; lines: string[] }> = [];
   let index = 0;
-  let inFence = false;
-  for (const line of content.split('\n')) {
-    const fence = line.trimStart().startsWith('```');
-    if (!(inFence || fence) && HEADING_LINE.test(line) && index < headings.length) {
+  const lines = content.split('\n');
+  // The same fence rules as extractHeadings, so a `#` line in code never becomes a section.
+  const fenced = fencedMarkdownLines(lines);
+  for (const [lineIndex, line] of lines.entries()) {
+    if (!fenced[lineIndex] && HEADING_LINE.test(line) && index < headings.length) {
       const heading = headings[index];
       index += 1;
       if (heading) sections.push({ heading, lines: [] });
       continue;
     }
-    if (fence) inFence = !inFence;
     sections.at(-1)?.lines.push(line);
   }
   return sections.map((section) => ({

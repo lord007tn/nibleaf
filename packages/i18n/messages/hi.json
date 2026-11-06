@@ -1829,6 +1829,7 @@
   "site_articledetails": "आलेख विवरण",
   "site_copycode": "कोड कॉपी करें",
   "site_copied": "नकल की गई",
+  "site_viewfullsizeof": "पूरे आकार में देखें: {alt}",
   "site_copyfailed": "कॉपी नहीं हुआ। टेक्स्ट चुनकर खुद कॉपी करें।",
   "site_copysectionlink": "इस अनुभाग का लिंक कॉपी करें",
   "site_viewfullsize": "पूरे आकार में देखें",

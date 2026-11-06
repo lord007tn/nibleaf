@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { Search } from 'lucide-react';
-import { type ComponentProps, lazy, Suspense, useEffect, useState } from 'react';
+import { type ComponentProps, type KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { resolveReaderDirection } from '@/lib/text-direction';
 
 const loadSiteSearchDialog = () => import('./site-search-dialog');
 const SiteSearchDialog = lazy(loadSiteSearchDialog);
@@ -11,10 +12,27 @@ export const preloadSiteSearch = (): void => {
   void loadSiteSearchDialog();
 };
 
+/** Keep Tab inside the shell: it is modal until the real dialog replaces it. */
+const containFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+  if (event.key !== 'Tab') return;
+  const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('input, button')].filter((element) => element.getClientRects().length > 0);
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  if (!first || !last) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
 /**
- * Stand-in shown only while the dialog's code is still downloading. It renders
- * the same input immediately and keeps whatever the reader types, which the
- * dialog then picks up, so the first letters after ⌘K are never lost.
+ * Stand-in shown only while the dialog's code is still downloading. It is a
+ * small modal of its own (named, Esc / Cancel / outside tap to close, focus kept
+ * inside) that keeps whatever the reader types, which the dialog then picks up,
+ * so the first letters after ⌘K are never lost.
  */
 export function SearchShell({
   value,
@@ -22,6 +40,7 @@ export function SearchShell({
   onClose,
   placeholder,
   label,
+  cancelLabel,
   rtl,
 }: {
   value: string;
@@ -29,13 +48,23 @@ export function SearchShell({
   onClose: () => void;
   placeholder: string;
   label: string;
+  cancelLabel: string;
   rtl: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50" data-search-shell="">
-      <div className="absolute inset-0 bg-black/10 supports-backdrop-filter:backdrop-blur-xs" aria-hidden />
+      {/* Tap outside closes; Esc and Cancel close it from the keyboard. */}
+      <div className="absolute inset-0 bg-black/10 supports-backdrop-filter:backdrop-blur-xs" aria-hidden onClick={onClose} />
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: a modal dialog handles Esc and keeps Tab inside itself. */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
         dir={rtl ? 'rtl' : 'ltr'}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onClose();
+          containFocus(event);
+        }}
         className="absolute inset-0 flex flex-col bg-popover text-popover-foreground sm:inset-auto sm:start-1/2 sm:top-[12vh] sm:w-full sm:max-w-2xl sm:-translate-x-1/2 sm:rounded-xl sm:shadow-2xl sm:ring-1 sm:ring-foreground/10 sm:rtl:translate-x-1/2"
       >
         <div className="flex h-14 items-center gap-1 border-border/70 border-b ps-4 pe-2 pt-[env(safe-area-inset-top)]">
@@ -47,25 +76,41 @@ export function SearchShell({
             placeholder={placeholder}
             maxLength={300}
             onChange={(event) => onChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') onClose();
-            }}
             className="h-14 min-w-0 flex-1 bg-transparent px-2 text-base outline-none placeholder:text-muted-foreground/80 sm:text-[15px]"
           />
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 shrink-0 cursor-pointer items-center rounded-md px-3 font-medium text-primary text-sm focus-visible:outline-2 focus-visible:outline-ring sm:hidden pointer-coarse:inline-flex!"
+          >
+            {cancelLabel}
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
+export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'initialQuery' | 'returnFocus'>) {
   const { open, onOpenChange, hotkey, lang, direction, placeholder } = props;
   const [activated, setActivated] = useState(open);
   const [pendingQuery, setPendingQuery] = useState('');
+  // Where focus returns when search closes: the last element focused outside it.
+  const returnFocus = useRef<HTMLElement | null>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
   // Preserve the dialog's selected mode and query after its first opening.
   useEffect(() => {
     if (open) setActivated(true);
   }, [open]);
+
+  useEffect(() => {
+    const remember = (event: FocusEvent) => {
+      if (!openRef.current && event.target instanceof HTMLElement && event.target !== document.body) returnFocus.current = event.target;
+    };
+    document.addEventListener('focusin', remember);
+    return () => document.removeEventListener('focusin', remember);
+  }, []);
 
   useEffect(() => {
     // Warm the chunk once the page is idle so the first open is usually instant.
@@ -82,7 +127,7 @@ export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
       const tag = node.tagName;
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || node.isContentEditable;
     };
-    const onKey = (event: KeyboardEvent) => {
+    const onKey = (event: globalThis.KeyboardEvent) => {
       if (hotkey === 'slash' && event.key === '/' && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
         event.preventDefault();
         preloadSiteSearch();
@@ -104,12 +149,20 @@ export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
     <SearchShell
       value={pendingQuery}
       onChange={setPendingQuery}
-      onClose={() => onOpenChange(false)}
+      onClose={() => {
+        onOpenChange(false);
+        returnFocus.current?.focus();
+      }}
       placeholder={placeholder?.trim() || t('searchPlaceholder')}
       label={t('searchDocumentation')}
-      rtl={direction === 'rtl'}
+      cancelLabel={t('searchCancel')}
+      rtl={resolveReaderDirection(direction, lang) === 'rtl'}
     />
   ) : null;
 
-  return <Suspense fallback={shell}>{open || activated ? <SiteSearchDialog {...props} initialQuery={pendingQuery} /> : null}</Suspense>;
+  return (
+    <Suspense fallback={shell}>
+      {open || activated ? <SiteSearchDialog {...props} initialQuery={pendingQuery} returnFocus={returnFocus} /> : null}
+    </Suspense>
+  );
 }

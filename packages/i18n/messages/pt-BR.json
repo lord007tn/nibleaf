@@ -1829,6 +1829,7 @@
   "site_articledetails": "Detalhes do artigo",
   "site_copycode": "Copiar código",
   "site_copied": "Copiado",
+  "site_viewfullsizeof": "Ver em tamanho real: {alt}",
   "site_copyfailed": "Não foi possível copiar. Selecione o texto e copie manualmente.",
   "site_copysectionlink": "Copiar link desta seção",
   "site_viewfullsize": "Ver em tamanho real",

@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { closesMarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+import { closesMarkdownFence, fencedMarkdownLines, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+
+describe('fencedMarkdownLines', () => {
+  it('follows CommonMark fence pairing, also inside list items and blockquotes', () => {
+    const lines = [
+      'text',
+      '````md',
+      '```',
+      'still code',
+      '````',
+      '> ~~~',
+      '> quoted code',
+      '> ~~~',
+      '1. step',
+      '   ```js',
+      '   code',
+      '   ```',
+      'after',
+    ];
+    expect(fencedMarkdownLines(lines)).toEqual([false, true, true, true, true, true, true, true, false, true, true, true, false]);
+  });
+  it('treats a backtick run with backticks after it as inline code, not a fence', () => {
+    expect(fencedMarkdownLines(['``` `inline` ```', 'text'])).toEqual([false, false]);
+  });
+});
 
 describe('import Markdown code boundaries', () => {
   it.each(['$&', '$$', "$'", '$`'])('restores replacement metacharacters literally in inline and fenced code: %s', (token) => {

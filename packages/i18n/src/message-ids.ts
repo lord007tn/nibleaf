@@ -2019,6 +2019,7 @@ export const MESSAGE_IDS = {
   'site.articleDetails': 'site_articledetails',
   'site.copyCode': 'site_copycode',
   'site.copied': 'site_copied',
+  'site.viewFullSizeOf': 'site_viewfullsizeof',
   'site.copyFailed': 'site_copyfailed',
   'site.copySectionLink': 'site_copysectionlink',
   'site.viewFullSize': 'site_viewfullsize',

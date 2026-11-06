@@ -49,27 +49,39 @@ export function SectionLink({ id, language }: { id: string; language?: string })
 const isZoomable = (image: HTMLImageElement) =>
   !image.closest('a') && image.naturalWidth > 96 && image.naturalHeight > 96 && image.width > 64 && image.height > 64;
 
-// Display utilities, with any variants (`dark:hidden`, `md:block`).
-const DISPLAY_CLASS = /^(?:[\w-]+:)*(?:hidden|block|inline|inline-block|flex|inline-flex|grid|contents)$/;
+// Display and auto-margin utilities, with any variants (`dark:hidden`, `md:block`, `mx-auto`).
+const WRAPPER_CLASS = /^(?:[\w-]+:)*(?:hidden|block|inline|inline-block|flex|inline-flex|grid|contents|mx-auto|ms-auto|me-auto)$/;
 
 /** The sibling trigger keeps images valid inside paragraphs and avoids nested links. */
 export function ContentImage({ language, className, ...props }: ComponentProps<'img'> & { language?: string }) {
-  // Visibility classes (light/dark image pairs) go on the wrapper, so the zoom
-  // button disappears together with its image.
-  const classes = (className ?? '').split(/\s+/).filter(Boolean);
-  const display = classes.filter((name) => DISPLAY_CLASS.test(name)).join(' ');
-  const imageClassName = classes.filter((name) => !DISPLAY_CLASS.test(name)).join(' ');
+  // The image keeps every authored class. The wrapper copies its display and
+  // auto-margin classes, so a light/dark image pair hides its zoom button too and
+  // `block mx-auto` still centers (the wrapper shrinks to the image and centers).
+  const wrapperClassName = (className ?? '')
+    .split(/\s+/)
+    .filter((name) => WRAPPER_CLASS.test(name))
+    .join(' ');
   const [zoomable, setZoomable] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const t = siteT(language);
-  // Server-rendered and cached images often finish loading before hydration,
-  // when React's onLoad never fires; measure those on mount instead.
+  // Server-rendered and cached images often finish loading before hydration, when
+  // React's onLoad never fires, and an image hidden for the other appearance only
+  // gets a size once revealed; measure on mount and whenever its size changes.
   useEffect(() => {
     const element = image.current;
-    if (element?.complete && element.naturalWidth > 0) setZoomable(isZoomable(element));
+    if (!element) return;
+    const measure = () => {
+      if (element.complete && element.naturalWidth > 0) setZoomable(isZoomable(element));
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
+  const alt = props.alt?.trim();
   const openFullSize = () => {
     const modal = dialog.current;
     const source = trigger.current;
@@ -81,11 +93,11 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     modal.showModal();
   };
   return (
-    <span className={cn('reader-image relative inline-block max-w-full', display)}>
+    <span className={cn('reader-image relative inline-block max-w-full', wrapperClassName, wrapperClassName && 'w-fit')}>
       {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: load measures dimensions; interaction uses a separate button. */}
       <img
         {...props}
-        className={imageClassName || undefined}
+        className={className}
         ref={image}
         alt={props.alt ?? ''}
         onLoad={(event) => {
@@ -95,7 +107,13 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
       />
       {zoomable ? (
         <>
-          <button ref={trigger} type="button" className="reader-image-zoom reader-control" aria-label={t('viewFullSize')} onClick={openFullSize}>
+          <button
+            ref={trigger}
+            type="button"
+            className="reader-image-zoom reader-control"
+            aria-label={alt ? t('viewFullSizeOf', { alt }) : t('viewFullSize')}
+            onClick={openFullSize}
+          >
             <ZoomIn className="size-4" aria-hidden />
           </button>
           {/* A dialog is not phrasing content, so it must not live inside the image's paragraph. */}
@@ -104,7 +122,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
             <dialog
               ref={dialog}
               className="reader-image-dialog"
-              aria-label={props.alt?.trim() || t('viewFullSize')}
+              aria-label={alt || t('viewFullSize')}
               onCancel={(event) => {
                 event.preventDefault();
                 dialog.current?.close();

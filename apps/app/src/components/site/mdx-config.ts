@@ -1,4 +1,5 @@
 import { normalizeType } from '@nibleaf/shared/callouts';
+import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import type { Root } from 'mdast';
 import { defaultSchema, type Options as SanitizeOptions } from 'rehype-sanitize';
 
@@ -60,30 +61,8 @@ const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
 const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b[^>]*>\\s*$`, 'i');
 // A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
 const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b((?:[^>]*[^/>])?)>(.*\\S.*)</\\2>\\s*$`, 'i');
-// Fenced code: 3+ backticks or tildes. A fence closes only with the same character,
-// at least as long, and nothing after it (CommonMark), so a ```` sample that shows
-// ``` inside stays one block. Indentation is allowed, as authors indent inside components.
-const FENCE_OPEN = /^\s*(`{3,}|~{3,})(.*)$/;
-const FENCE_CLOSE = /^\s*(`{3,}|~{3,})\s*$/;
-
-/** Marks every line that belongs to fenced code (fence lines included). */
-function fencedLines(lines: string[]): boolean[] {
-  let open = '';
-  return lines.map((line) => {
-    if (open) {
-      const close = FENCE_CLOSE.exec(line)?.[1];
-      if (close && close[0] === open[0] && close.length >= open.length) open = '';
-      return true;
-    }
-    const [, fence = '', info = ''] = FENCE_OPEN.exec(line) ?? [];
-    // A backtick fence's info string cannot contain backticks (that is inline code).
-    if (fence && !(fence[0] === '`' && info.includes('`'))) {
-      open = fence;
-      return true;
-    }
-    return false;
-  });
-}
+// Inline code spans (`<Frame>` written as an example) are code too.
+const INLINE_CODE = /(`+)[\s\S]*?\1/g;
 
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
@@ -105,9 +84,9 @@ export function normalizeMdxBlocks(src: string): string {
   };
   // Code samples are never rewritten: every step below skips fenced lines.
   const authored = src.split('\n');
-  const authoredFences = fencedLines(authored);
+  const authoredFences = fencedMarkdownLines(authored);
   const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
-  const fenced = fencedLines(lines);
+  const fenced = fencedMarkdownLines(lines);
   const out: string[] = [];
   const outFenced: boolean[] = [];
   const push = (line: string, inCode = false) => {
@@ -142,12 +121,22 @@ export function normalizeMdxBlocks(src: string): string {
   // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
   // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
   // group 1 is only the optional closing slash) so the tag stays well-formed.
-  const prose = (text: string) =>
+  const rename = (text: string) =>
     text
       .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
       // HTML parsers do not honor XML self-closing syntax for unknown elements.
       // Expand authored atoms so sibling File/RelatedCard nodes cannot nest.
       .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+  // Rename outside inline code spans only, so component reference pages keep their examples.
+  const prose = (text: string) => {
+    let output = '';
+    let cursor = 0;
+    for (const match of text.matchAll(INLINE_CODE)) {
+      output += rename(text.slice(cursor, match.index)) + match[0];
+      cursor = match.index + match[0].length;
+    }
+    return output + rename(text.slice(cursor));
+  };
   // Renames apply to runs of prose only (a tag may span lines), never inside code.
   const segments: string[] = [];
   let start = 0;

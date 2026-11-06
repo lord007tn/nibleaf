@@ -1869,6 +1869,7 @@
   "site_articledetails": "Article details",
   "site_copycode": "Copy code",
   "site_copied": "Copied",
+  "site_viewfullsizeof": "View full size: {alt}",
   "site_copyfailed": "Couldn't copy. Select the text and copy it manually.",
   "site_copysectionlink": "Copy link to this section",
   "site_viewfullsize": "View full size",

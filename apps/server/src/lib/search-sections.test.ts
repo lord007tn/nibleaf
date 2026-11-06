@@ -59,6 +59,15 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
     expect(snippet).toContain('إِلْغَاءُ الاشتراك');
   });
 
+  it('never treats a heading-like line in tilde, longer or list fences as a section', () => {
+    const page = {
+      title: 'Guide',
+      content: ['## Setup', '', '~~~md', '## Fake', 'needle', '~~~', '', '- step', '  ````', '  ## Also fake', '  ````'].join('\n'),
+    };
+    expect(matchedSearchSection(page, 'needle')?.section).toEqual({ id: 'setup', title: 'Setup' });
+    expect(matchedSearchSection(page, 'fake')?.section.id).toBe('setup');
+  });
+
   it('parses a published page once per cache key', () => {
     const first = matchedSearchSection(billing, 'mistake', 'deployment-1:billing');
     // Same key, different body: the cached sections are reused rather than re-parsed.

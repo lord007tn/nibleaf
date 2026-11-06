@@ -6,13 +6,14 @@ import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, ArrowLeft, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
-import { Fragment, lazy, type ReactNode, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { Fragment, lazy, type ReactNode, type RefObject, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
+import { resolveReaderDirection } from '@/lib/text-direction';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const SiteSearchAnswer = lazy(() => import('./site-search-answer'));
@@ -44,6 +45,7 @@ export interface SiteSearchSuggestion {
 // drop out, alef forms and alef maqsura fold, so the words search matched on the
 // server are the words highlighted here (e.g. "الغاء" marks "إلغاء").
 const ARABIC_MARKS = /[\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/;
+const ARABIC_LETTER = /[\u0621-\u064a\u0671-\u06d3]/;
 const foldChar = (char: string): string =>
   ARABIC_MARKS.test(char)
     ? ''
@@ -77,10 +79,17 @@ function Highlight({ text, query }: { text: string; query: string }) {
   const ranges: Array<[number, number]> = [];
   for (const token of tokens) {
     for (let at = folded.indexOf(token); at !== -1; at = folded.indexOf(token, at + token.length)) {
+      let start = origin[at] ?? 0;
       let end = (origin[at + token.length - 1] ?? text.length - 1) + 1;
       // Keep trailing diacritics with their letter.
       while (end < text.length && ARABIC_MARKS.test(text[end] ?? '')) end += 1;
-      ranges.push([origin[at] ?? 0, end]);
+      // Arabic letters join: a mark inside a word (اشتراك in الاشتراك) would break the
+      // lam-alef ligature and letter joining, so Arabic matches cover the whole word.
+      if (ARABIC_LETTER.test(text[start] ?? '')) {
+        while (start > 0 && (ARABIC_LETTER.test(text[start - 1] ?? '') || ARABIC_MARKS.test(text[start - 1] ?? ''))) start -= 1;
+        while (end < text.length && (ARABIC_LETTER.test(text[end] ?? '') || ARABIC_MARKS.test(text[end] ?? ''))) end += 1;
+      }
+      ranges.push([start, end]);
     }
   }
   if (ranges.length === 0) {
@@ -153,7 +162,10 @@ function RowIcon({ children, className }: { children: ReactNode; className?: str
 }
 
 /** Queries phrased as questions default to "Ask AI"; keywords default to the best page. */
-const QUESTION = /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will|كيف|ماذا|لماذا|هل|متى|أين|اين|ما|من)\s/i;
+// Arabic ما / من alone also start ordinary titles ("من نحن", About us), so only
+// ما هو/هي and من هو/هي count as question openers.
+const QUESTION =
+  /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will|كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s/i;
 
 const ROW = 'group/command-item min-h-11 gap-3 rounded-lg px-2.5 py-2 text-foreground data-selected:text-foreground';
 const GROUP = 'p-1.5 **:[[cmdk-group-heading]]:px-2.5 **:[[cmdk-group-heading]]:pt-2 **:[[cmdk-group-heading]]:pb-1.5';
@@ -174,6 +186,7 @@ export default function SiteSearchDialog({
   onAskAi,
   suggestions = [],
   initialQuery = '',
+  returnFocus,
 }: {
   projectId: string;
   open: boolean;
@@ -204,6 +217,8 @@ export default function SiteSearchDialog({
   suggestions?: SiteSearchSuggestion[];
   /** Text typed into the lightweight input shown while this dialog's code loaded. */
   initialQuery?: string;
+  /** Where focus goes when search closes (the element focused before it opened). */
+  returnFocus?: RefObject<HTMLElement | null>;
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
@@ -233,7 +248,7 @@ export default function SiteSearchDialog({
   const [recent, setRecent] = useState<string[]>([]);
   const [activeItem, setActiveItem] = useState('');
   const baseLanguage = lang?.toLowerCase().split(/[-_]/)[0];
-  const rtl = direction ? direction === 'rtl' : (LANGUAGE_CATALOG.find((language) => language.code === baseLanguage)?.rtl ?? false);
+  const rtl = resolveReaderDirection(direction, lang) === 'rtl';
   const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
   const showVersionFilter = mode === 'search' && versionFilterEnabled && versions.length > 1;
   // Debounce the typed query before it feeds the search request, so we don't fire a
@@ -447,6 +462,7 @@ export default function SiteSearchDialog({
         data-theme-surface="search"
         dir={rtl ? 'rtl' : 'ltr'}
         showCloseButton={false}
+        finalFocus={returnFocus ?? true}
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
@@ -544,7 +560,11 @@ export default function SiteSearchDialog({
                   <p className="text-sm">{t('searchFailed')}</p>
                   <button
                     type="button"
-                    onClick={() => void hitsQuery.refetch?.()}
+                    onClick={() => {
+                      // The button unmounts while the search reloads; keep focus in the field.
+                      inputRef.current?.focus();
+                      void hitsQuery.refetch?.();
+                    }}
                     className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 font-medium text-sm transition-colors hover:bg-muted pointer-coarse:h-11"
                   >
                     <RotateCcw aria-hidden className="size-3.5" />

@@ -143,7 +143,7 @@ describe('reader content ergonomics', () => {
     if (!image) throw new Error('Missing image');
     Object.defineProperties(image, { naturalWidth: { value: 800 }, naturalHeight: { value: 600 }, width: { value: 400 }, height: { value: 300 } });
     act(() => image.dispatchEvent(new Event('load')));
-    const button = container.querySelector<HTMLButtonElement>('button[aria-label="View full size"]');
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="View full size: Diagram"]');
     if (!button) throw new Error('Missing image trigger');
     act(() => {
       button.focus();
@@ -171,12 +171,35 @@ describe('reader content ergonomics', () => {
         />,
       ),
     );
-    // Visibility classes move to the wrapper, so the image and its zoom button hide together.
+    // The wrapper copies the visibility classes, so the image and its zoom button hide together;
+    // the image itself keeps every authored class.
     const wrapper = container.querySelector('.reader-image');
     expect(wrapper?.className).toContain('dark:hidden');
     expect(wrapper?.className).toContain('block');
     expect(wrapper?.className).not.toContain('inline-block');
-    expect(container.querySelector('img')?.className).toBe('rounded-xl border border-border');
+    expect(container.querySelector('img')?.className).toBe('rounded-xl border border-border block dark:hidden');
+  });
+  it('keeps centered images centered and lets a Frame hold a light/dark image pair', async () => {
+    await act(async () =>
+      root.render(
+        <MarkdownRenderer
+          content={
+            '<img src="/centered.png" alt="Centered" class="block mx-auto" />\n\n<Frame>\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n<img src="/dark.png" alt="Dark" class="hidden dark:block" />\n\n</Frame>'
+          }
+          site={{ projectId: 'test', lang: 'en' }}
+          extraRehypePlugins={[rehypeRaw]}
+        />,
+      ),
+    );
+    const [centered, light, dark] = [...container.querySelectorAll<HTMLElement>('.reader-image')];
+    // The wrapper shrinks to the image and centers, so `mx-auto` keeps working.
+    expect(centered?.className).toContain('mx-auto');
+    expect(centered?.className).toContain('w-fit');
+    expect(centered?.querySelector('img')?.className).toContain('mx-auto');
+    // The Frame sizes the wrapper but never forces it visible.
+    expect(light?.className).toContain('dark:hidden');
+    expect(dark?.className).toContain('hidden');
+    expect(dark?.parentElement?.className).not.toContain('[&>.reader-image]:block');
   });
   it('does not offer zoom for linked images or tiny icons', async () => {
     await act(async () =>

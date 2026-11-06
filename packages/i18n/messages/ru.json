@@ -1829,6 +1829,7 @@
   "site_articledetails": "Подробности статьи",
   "site_copycode": "Скопировать код",
   "site_copied": "Скопировано",
+  "site_viewfullsizeof": "Открыть в полном размере: {alt}",
   "site_copyfailed": "Не удалось скопировать. Выделите текст и скопируйте вручную.",
   "site_copysectionlink": "Скопировать ссылку на этот раздел",
   "site_viewfullsize": "Открыть в полном размере",

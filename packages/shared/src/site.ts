@@ -1,5 +1,6 @@
 import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
+import { fencedMarkdownLines } from './markdown-code';
 import { excerpt, stripMarkdownLinks } from './utils';
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
@@ -442,13 +443,12 @@ const parseHeading = (line: string): { depth: number; text: string } | null => {
 export const extractHeadings = (markdown: string): Heading[] => {
   const headings: Heading[] = [];
   const slugger = new GithubSlugger();
-  let inFence = false;
-  for (const line of markdown.split('\n')) {
-    if (line.trimStart().startsWith('```')) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
+  const lines = markdown.split('\n');
+  // Any fenced code (``` or ~~~, longer fences, inside lists or quotes) renders as
+  // code, so a `#` line there is not a heading and must not shift anchor ids.
+  const fenced = fencedMarkdownLines(lines);
+  for (const [index, line] of lines.entries()) {
+    if (fenced[index]) {
       continue;
     }
     const heading = parseHeading(line);

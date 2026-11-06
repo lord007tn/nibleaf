@@ -376,12 +376,24 @@ describe('published reader search', () => {
     roots.push(root);
     await act(async () =>
       root.render(
-        <SearchShell value="" onChange={onChange} onClose={onClose} placeholder="Search documentation…" label="Search documentation" rtl />,
+        <SearchShell
+          value=""
+          onChange={onChange}
+          onClose={onClose}
+          placeholder="Search documentation…"
+          label="Search documentation"
+          cancelLabel="Cancel"
+          rtl
+        />,
       ),
     );
     const field = container.querySelector('input');
     expect(document.activeElement).toBe(field);
-    expect(container.querySelector('[dir="rtl"]')).not.toBeNull();
+    // It is a named modal of its own while the dialog code loads.
+    const shellDialog = container.querySelector('[role="dialog"]');
+    expect(shellDialog?.getAttribute('aria-modal')).toBe('true');
+    expect(shellDialog?.getAttribute('aria-label')).toBe('Search documentation');
+    expect(shellDialog?.getAttribute('dir')).toBe('rtl');
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, 'r');
       field?.dispatchEvent(new Event('input', { bubbles: true }));
@@ -389,6 +401,9 @@ describe('published reader search', () => {
     expect(onChange).toHaveBeenCalledWith('r');
     await act(async () => field?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     expect(onClose).toHaveBeenCalledOnce();
+    const cancel = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Cancel');
+    await act(async () => cancel?.click());
+    expect(onClose).toHaveBeenCalledTimes(2);
   });
 
   it('labels a result from another published language', async () => {

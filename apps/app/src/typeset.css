@@ -587,13 +587,14 @@
   font-weight: 600;
 }
 /* The scrollbar follows the theme's code surface (warm in Manuscript, author-set
- * anywhere), falling back to the default dark panel. */
+ * anywhere), falling back to the default dark panel. A transparent track blends
+ * with every code surface, including the "dim" mix. */
 [data-theme-component="code"] {
-  --code-scrollbar-track: var(--theme-code, #0d1117);
+  --code-scrollbar-track: transparent;
   --code-scrollbar-thumb: color-mix(
     in oklab,
     var(--theme-code-foreground, #e2e8f0) 35%,
-    var(--code-scrollbar-track)
+    var(--theme-code, #0d1117)
   );
 }
 [data-theme-component="code"] pre {

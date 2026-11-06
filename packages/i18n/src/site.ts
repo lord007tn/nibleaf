@@ -123,6 +123,7 @@ import { site_version } from './paraglide/messages/site_version.js';
 import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewfullsize } from './paraglide/messages/site_viewfullsize.js';
+import { site_viewfullsizeof } from './paraglide/messages/site_viewfullsizeof.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
 /** Messages with {variables} keep Paraglide's generated input types, so a caller
@@ -133,6 +134,7 @@ const siteVariableMessages = {
   searchResultCount: site_searchresultcount,
   languageCurrent: site_languagecurrent,
   versionCurrent: site_versioncurrent,
+  viewFullSizeOf: site_viewfullsizeof,
 };
 
 const siteMessages = {

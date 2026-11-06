@@ -1829,6 +1829,7 @@
   "site_articledetails": "文章详情",
   "site_copycode": "复制代码",
   "site_copied": "已复制",
+  "site_viewfullsizeof": "查看原图：{alt}",
   "site_copyfailed": "无法复制。请选择文本并手动复制。",
   "site_copysectionlink": "复制此章节链接",
   "site_viewfullsize": "查看原图",

@@ -53,6 +53,14 @@ describe('normalizeMdxBlocks', () => {
     // Prose after a closed fence is still normalized.
     expect(normalizeMdxBlocks('````\n```\n````\n<Note>After</Note>')).toBe('````\n```\n````\n<Note>\n\nAfter\n\n</Note>');
   });
+  it('leaves fenced samples inside list items and blockquotes, and inline code, untouched', () => {
+    const inList = '- Example:\n  ```mdx\n  <Note>Example</Note>\n  ```';
+    expect(normalizeMdxBlocks(inList)).toBe(inList);
+    const inQuote = '> ```mdx\n> <Frame>\n> img\n> </Frame>\n> ```';
+    expect(normalizeMdxBlocks(inQuote)).toBe(inQuote);
+    expect(normalizeMdxBlocks('Use `<Frame>` or `<Icon icon="x" />` in prose.')).toBe('Use `<Frame>` or `<Icon icon="x" />` in prose.');
+    expect(normalizeMdxBlocks('<Frame>\nimg\n</Frame> and `<Frame>`')).toBe('<mdxframe>\n\nimg\n</mdxframe> and `<Frame>`');
+  });
   it('expands nested one-line block components level by level and leaves same-tag siblings alone', () => {
     expect(normalizeMdxBlocks('<CardGroup cols="2"><Card title="A">Body</Card></CardGroup>')).toBe(
       '<CardGroup cols="2">\n\n<Card title="A">\n\nBody\n\n</Card>\n\n</CardGroup>',

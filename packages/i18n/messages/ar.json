@@ -1869,6 +1869,7 @@
   "site_articledetails": "تفاصيل المقالة",
   "site_copycode": "نسخ الشيفرة",
   "site_copied": "تم النسخ",
+  "site_viewfullsizeof": "عرض بالحجم الكامل: {alt}",
   "site_copyfailed": "تعذّر النسخ. حدّد النص وانسخه يدويًا.",
   "site_copysectionlink": "نسخ رابط هذا القسم",
   "site_viewfullsize": "عرض بالحجم الكامل",
