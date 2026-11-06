@@ -19,6 +19,7 @@ export function ViewsAreaChart({
   range,
   onRangeChange,
   loading,
+  unavailable,
 }: {
   title: string;
   description: string;
@@ -26,6 +27,8 @@ export function ViewsAreaChart({
   range: AnalyticsRange;
   onRangeChange: (range: AnalyticsRange) => void;
   loading?: boolean;
+  /** The views couldn't be loaded or aren't known: say so instead of "no traffic yet". */
+  unavailable?: boolean;
 }) {
   const t = useT();
   const hasData = data.some((d) => d.views > 0);
@@ -42,6 +45,8 @@ export function ViewsAreaChart({
       <div className="px-2 pb-4 sm:px-6">
         {loading ? (
           <Skeleton className="h-[240px] w-full" />
+        ) : unavailable ? (
+          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</div>
         ) : hasData ? (
           <ViewsTimeseriesChart data={data} />
         ) : (

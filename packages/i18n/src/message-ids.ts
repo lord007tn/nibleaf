@@ -2868,6 +2868,7 @@ export const MESSAGE_IDS = {
   'analytics.status.unavailable.title': 'analytics_status_unavailable_title',
   'analytics.status.unavailable.body': 'analytics_status_unavailable_body',
   'analytics.status.retry': 'analytics_status_retry',
+  'analytics.projectSummary.loadFailed': 'analytics_projectsummary_loadfailed',
   'analytics.status.partial.title': 'analytics_status_partial_title',
   'analytics.status.partial.body': 'analytics_status_partial_body',
   'analytics.status.notConfigured.title': 'analytics_status_notconfigured_title',

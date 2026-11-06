@@ -2832,6 +2832,7 @@
   "analytics_status_unavailable_title": "Analytics is taking a break",
   "analytics_status_unavailable_body": "Your docs site works normally; figures will come back on their own. Until then, “—” means not known, not zero.",
   "analytics_status_retry": "Try again",
+  "analytics_projectsummary_loadfailed": "We couldn't load this site's page views right now. The rest of this page still works.",
   "analytics_status_partial_title": "Some figures are incomplete",
   "analytics_status_partial_body": "We show what we have; metrics we couldn't calculate show as “—”.",
   "analytics_status_notconfigured_title": "Detailed analytics isn't set up on this server",
