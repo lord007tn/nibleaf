@@ -54,9 +54,20 @@ interface SearchTotals {
   zeros: number;
   clicked: number;
   refined: number;
+  zeroBase: number;
+  clickBase: number;
+  refineBase: number;
   averagePosition: number | null;
   incomplete: number;
 }
+
+/** Each rate is computed over the searches that can support it, so one search
+ * from a reader without analytics identity (no consent yet) doesn't blank the
+ * whole period: clicks join on the visit + search id, refinements need a visit,
+ * zero results only need the server's result count. `incomplete` still marks
+ * the response partial. */
+const CLICK_BASE = 'visit IS NOT NULL AND has_id AND result_known';
+const REFINE_BASE = 'visit IS NOT NULL AND has_id';
 
 export const readSearch = async (reader: InsightsReader, leadingPath?: string): Promise<SearchInsights> => {
   const cte = searchFacts();
@@ -64,8 +75,8 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
       if({show_terms:UInt8} AND uniqExact(s.visit) >= {k:UInt8} AND countIf(q.query_text != '') > 0, anyIf(q.query_text, q.query_text != ''), NULL) AS term,
       substring(ifNull(s.term_id, ''), 1, 24) AS termId, count() AS searches, uniqExact(s.visit) AS visits,
       countIf(result_known AND result_count = 0) AS zeroResultSearches,
-      if(countIf(s.visit IS NULL OR NOT has_id OR NOT result_known) > 0, NULL, countIf(clicked) / count()) AS clickThroughRate,
-      if(countIf(s.visit IS NULL OR NOT has_id OR NOT result_known) > 0, NULL, countIf(refined) / count()) AS refinementRate,
+      countIf(clicked AND ${CLICK_BASE}) / nullIf(countIf(${CLICK_BASE}), 0) AS clickThroughRate,
+      countIf(refined AND ${REFINE_BASE}) / nullIf(countIf(${REFINE_BASE}), 0) AS refinementRate,
       sumIf(position_sum, clicked) / nullIf(sumIf(position_count, clicked), 0) AS averageClickPosition,
       nullIf(topKArrayIf(1)(result_paths, clicked)[1], '') AS topResultPath, term IS NOT NULL AS visible
       FROM searches s LEFT JOIN (SELECT event_id, query_text FROM analytics_sensitive_queries FINAL
@@ -75,7 +86,9 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
     reader.rows<SearchTotals & { bucket: string; summary: number }>(`${cte} SELECT current,
       ${reader.bucket} AS bucket, grouping(bucket) AS summary,
       count() AS searches, uniqExact(visit) AS visits,
-      countIf(result_known AND result_count = 0) AS zeros, countIf(clicked) AS clicked, countIf(refined) AS refined,
+      countIf(result_known AND result_count = 0) AS zeros, countIf(result_known) AS zeroBase,
+      countIf(clicked AND ${CLICK_BASE}) AS clicked, countIf(${CLICK_BASE}) AS clickBase,
+      countIf(refined AND ${REFINE_BASE}) AS refined, countIf(${REFINE_BASE}) AS refineBase,
       sumIf(position_sum, clicked) / nullIf(sumIf(position_count, clicked), 0) AS averagePosition,
       countIf(visit IS NULL OR NOT has_id OR NOT result_known) AS incomplete
       FROM searches GROUP BY GROUPING SETS ((current), (current, bucket))`),
@@ -106,8 +119,9 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
     if (metric === 'searchVisits') return row?.visits ?? 0;
     if (!row) return null;
     if (metric === 'averageClickPosition') return row.averagePosition;
-    if (row.incomplete > 0) return null;
-    return ratio(metric === 'zeroResultRate' ? row.zeros : metric === 'clickThroughRate' ? row.clicked : row.refined, row.searches);
+    if (metric === 'zeroResultRate') return ratio(row.zeros, row.zeroBase);
+    if (metric === 'clickThroughRate') return ratio(row.clicked, row.clickBase);
+    return ratio(row.refined, row.refineBase);
   };
   const compared = (metric: string) => ({
     value: reader.covered('current') ? value(current, metric) : null,

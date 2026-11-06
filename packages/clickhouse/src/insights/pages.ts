@@ -23,7 +23,7 @@ const attention = (row: PageRow, vitalSamples: number): PageAttentionReason[] =>
   const reasons: PageAttentionReason[] = [];
   if (row.helpful + row.notHelpful >= 5 && (row.helpfulRate ?? 1) < 0.6) reasons.push('low_helpfulness');
   if (row.views >= 10 && (row.exitRate ?? 0) > 0.8) reasons.push('high_exit');
-  if (row.views >= 10 && row.avgEngagedMs !== null && row.avgEngagedMs < 10_000 && row.avgScrollDepth !== null && row.avgScrollDepth < 25)
+  if (row.views >= 10 && row.avgEngagedMs !== null && row.avgEngagedMs < 10_000 && row.avgScrollDepth !== null && row.avgScrollDepth < 0.25)
     reasons.push('low_engagement');
   if (vitalSamples >= 5 && (row.lcpP75Ms ?? 0) > 4000) reasons.push('slow');
   return reasons;
@@ -35,7 +35,7 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
       uniqExactIf(session_hash, event_name = 'page_view') AS visits,
       countIf(event_name = 'page_engaged') AS engaged,
       avgOrNullIf(engagement_ms, event_name = 'page_engaged') AS engagement,
-      avgOrNullIf(scroll_depth, event_name = 'page_engaged') AS scroll,
+      avgOrNullIf(scroll_depth, event_name = 'page_engaged') / 100 AS scroll,
       countIf(feedback = 'helpful' AND feedback_target = 'page') AS helpful,
       countIf(feedback = 'not_helpful' AND feedback_target = 'page') AS notHelpful,
       quantileExactOrNullIf(0.75)(lcp_ms, event_name = 'web_vitals' AND lcp_ms IS NOT NULL) AS lcp
@@ -171,7 +171,7 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
     ), exits_by_period AS (SELECT current, countIf(exit = {path:String}) AS exits_count FROM views GROUP BY current)
     SELECT e.current AS current, e.path AS path, countIf(event_name = 'page_view') AS views, uniqExactIf(session_hash, event_name = 'page_view') AS visits,
       countIf(event_name = 'page_engaged') AS engaged, avgOrNullIf(engagement_ms, event_name = 'page_engaged') AS engagement,
-      avgOrNullIf(scroll_depth, event_name = 'page_engaged') AS scroll,
+      avgOrNullIf(scroll_depth, event_name = 'page_engaged') / 100 AS scroll,
       countIf(feedback = 'helpful' AND feedback_target = 'page') AS helpful, countIf(feedback = 'not_helpful' AND feedback_target = 'page') AS notHelpful,
       any(x.exits_count) AS exits
       FROM (${reader.human}) e LEFT JOIN exits_by_period x ON e.current = x.current

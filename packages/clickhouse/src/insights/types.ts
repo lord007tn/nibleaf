@@ -137,6 +137,7 @@ export interface OverviewInsights {
     pageViews: Compared;
     visits: Compared;
     avgEngagedMs: Compared;
+    /** Average share of a page readers scrolled through, 0..1. */
     avgScrollDepth: Compared;
     searches: Compared;
     /** Searches that got a click / searches. */
@@ -164,6 +165,7 @@ export interface PageRow {
   previousViews: number | null;
   visits: number;
   avgEngagedMs: number | null;
+  /** 0..1 */
   avgScrollDepth: number | null;
   entries: number;
   exits: number;

@@ -149,7 +149,7 @@ export const readOverview = async (reader: InsightsReader): Promise<OverviewInsi
     }>(`SELECT current,
       countIf(event_name = 'page_view') AS views, uniqExactIf(session_hash, event_name = 'page_view') AS visits,
       countIf(event_name = 'page_engaged') AS engaged, avgOrNullIf(engagement_ms, event_name = 'page_engaged') AS engagement,
-      avgOrNullIf(scroll_depth, event_name = 'page_engaged') AS scroll, countIf(feedback = 'helpful' AND feedback_target = 'page') AS helpful,
+      avgOrNullIf(scroll_depth, event_name = 'page_engaged') / 100 AS scroll, countIf(feedback = 'helpful' AND feedback_target = 'page') AS helpful,
       countIf(feedback = 'not_helpful' AND feedback_target = 'page') AS notHelpful FROM (${reader.human}) GROUP BY current`),
     readViewsSeries(reader),
     readPages(reader),
