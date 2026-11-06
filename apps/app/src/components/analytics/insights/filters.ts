@@ -48,6 +48,25 @@ export function toInsightsQuery(search: InsightsSearch, timezone: string): Analy
   return { range: isPreset(search.range) ? search.range : DEFAULT_INSIGHTS_RANGE, timezone, compare };
 }
 
+/** The viewer's IANA timezone; every insights query is bucketed in it. */
+export function browserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  } catch {
+    return 'UTC';
+  }
+}
+
+/**
+ * The API query for a route's raw search params: the same validation and
+ * mapping `useInsightsFilters` applies, so an analytics route loader prefetches
+ * exactly the entry its section then reads. Prefetching is browser-only, so the
+ * browser timezone is the one the section uses too.
+ */
+export function insightsQueryForSearch(search: Record<string, unknown>): AnalyticsInsightsQuery {
+  return toInsightsQuery(validateInsightsSearch(search), browserTimezone());
+}
+
 /** `YYYY-MM-DD` for a local calendar day (date inputs speak local days, not UTC). */
 export function localIsoDay(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');

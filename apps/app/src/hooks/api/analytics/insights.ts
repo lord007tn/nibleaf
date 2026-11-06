@@ -1,5 +1,5 @@
 import type { AnalyticsInsightsQuery } from '@nibleaf/validators';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from '../client-helpers';
 import { analyticsQueryKeys } from './query-keys';
@@ -49,38 +49,61 @@ export type CrawlerCategory = AiVisibilityInsights['crawlerSeries'][number]['cat
 export type CrawledResource = AiVisibilityInsights['resources'][number]['resource'];
 export type AiAssistantSource = AiVisibilityInsights['assistantReferrals'][number]['source'];
 
-/** Aggregates change at most once a minute; keep the previous range on screen while the next one loads. */
-const INSIGHTS_STALE_TIME = 60_000;
-const shared = { staleTime: INSIGHTS_STALE_TIME, placeholderData: keepPreviousData } as const;
+/*
+ * One `queryOptions()` factory per insights endpoint (apps/app/DATA_LOADING.md):
+ * the section hooks and the analytics route loaders both build their query
+ * from these, so a loader always prefetches the exact entry its section reads.
+ * The 30 s default staleTime matches the server's insights cache, so no
+ * override here. This module stays light (no i18n or components): route
+ * loaders import it.
+ */
 
+export const overviewInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'overview', query), queryFn: () => fetchOverview(projectId, query) });
+
+export const pagesInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'pages', query), queryFn: () => fetchPages(projectId, query) });
+
+export const pageInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery, path: string) =>
+  queryOptions({
+    queryKey: analyticsQueryKeys.insights(projectId, 'page', query, path),
+    queryFn: path.length > 0 ? () => fetchPage(projectId, query, path) : skipToken,
+  });
+
+export const searchInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'search', query), queryFn: () => fetchSearch(projectId, query) });
+
+export const feedbackInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'feedback', query), queryFn: () => fetchFeedback(projectId, query) });
+
+export const aiVisibilityInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'ai', query), queryFn: () => fetchAi(projectId, query) });
+
+export const performanceInsightsQueryOptions = (projectId: string, query: AnalyticsInsightsQuery) =>
+  queryOptions({ queryKey: analyticsQueryKeys.insights(projectId, 'performance', query), queryFn: () => fetchPerformance(projectId, query) });
+
+// Filters are a filtered view: keep the previous range on screen while the next one loads.
 export const useOverviewInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({ ...shared, queryKey: analyticsQueryKeys.insights(projectId, 'overview', query), queryFn: () => fetchOverview(projectId, query) });
+  useQuery({ ...overviewInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });
 
 export const usePagesInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({ ...shared, queryKey: analyticsQueryKeys.insights(projectId, 'pages', query), queryFn: () => fetchPages(projectId, query) });
+  useQuery({ ...pagesInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });
 
 export const usePageInsights = (projectId: string, query: AnalyticsInsightsQuery, path: string) =>
   useQuery({
-    ...shared,
-    queryKey: analyticsQueryKeys.insights(projectId, 'page', query, path),
-    queryFn: () => fetchPage(projectId, query, path),
+    ...pageInsightsQueryOptions(projectId, query, path),
     // Keep the previous range on screen only for the same page: another page's numbers would mislead.
     placeholderData: (previous, previousQuery) => (previousQuery?.queryKey.at(-1) === path ? previous : undefined),
-    enabled: path.length > 0,
   });
 
 export const useSearchInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({ ...shared, queryKey: analyticsQueryKeys.insights(projectId, 'search', query), queryFn: () => fetchSearch(projectId, query) });
+  useQuery({ ...searchInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });
 
 export const useFeedbackInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({ ...shared, queryKey: analyticsQueryKeys.insights(projectId, 'feedback', query), queryFn: () => fetchFeedback(projectId, query) });
+  useQuery({ ...feedbackInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });
 
 export const useAiVisibilityInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({ ...shared, queryKey: analyticsQueryKeys.insights(projectId, 'ai', query), queryFn: () => fetchAi(projectId, query) });
+  useQuery({ ...aiVisibilityInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });
 
 export const usePerformanceInsights = (projectId: string, query: AnalyticsInsightsQuery) =>
-  useQuery({
-    ...shared,
-    queryKey: analyticsQueryKeys.insights(projectId, 'performance', query),
-    queryFn: () => fetchPerformance(projectId, query),
-  });
+  useQuery({ ...performanceInsightsQueryOptions(projectId, query), placeholderData: keepPreviousData });

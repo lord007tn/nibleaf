@@ -1,16 +1,8 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { type InsightsSearch, toInsightsQuery, validateInsightsSearch } from './filters';
+import { browserTimezone, type InsightsSearch, toInsightsQuery, validateInsightsSearch } from './filters';
 
 const analyticsRoute = getRouteApi('/app/projects/$projectId/analytics');
-
-const browserTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-};
 
 /**
  * The analytics filters, owned by the URL (`?range=7d&compare=none`, or
