@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteT } from '@nibleaf/i18n/site';
+import type { AiChatOpenSource } from '@nibleaf/validators';
 import { Sparkles } from 'lucide-react';
 import { type ComponentProps, createContext, lazy, type ReactNode, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { DocumentationReaderLayout } from '@/components/site/documentation-theme-provider';
@@ -8,7 +9,9 @@ import { analyticsDeliveryMode, analyticsScripts } from '@/lib/site-seo';
 
 const Panel = lazy(() => import('./panel'));
 export type PageContext = { title: string; path: string };
-type ChatContext = { openChat: (question?: string, page?: PageContext) => void };
+/** Where the reader opened the chat from, for the `chat_opened` event. */
+export type ChatOpenRequest = { question?: string; page?: PageContext; source: AiChatOpenSource };
+type ChatContext = { openChat: (request: ChatOpenRequest) => void };
 const Context = createContext<ChatContext | null>(null);
 const useSiteChat = () => useContext(Context);
 export type ChatOptions = {
@@ -28,7 +31,7 @@ export function SiteChatProvider({
 }: ChatOptions & { children: ReactNode; available: boolean; ask?: string; onAskConsumed: () => void }) {
   const [open, setOpen] = useState(false);
   const [activated, setActivated] = useState(false);
-  const [request, setRequest] = useState<{ id: number; question?: string; page?: PageContext }>();
+  const [request, setRequest] = useState<ChatOpenRequest & { id: number }>();
   const trigger = useRef<HTMLElement | null>(null);
   const launcher = useRef<HTMLButtonElement | null>(null);
   const consumed = useRef<string | undefined>(undefined);
@@ -46,9 +49,9 @@ export function SiteChatProvider({
     update();
     return () => observer.disconnect();
   }, [required, t]);
-  const openChat = useCallback((question?: string, page?: PageContext) => {
+  const openChat = useCallback((next: ChatOpenRequest) => {
     trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setRequest({ id: Date.now(), question, page });
+    setRequest({ ...next, id: Date.now() });
     setActivated(true);
     setOpen(true);
   }, []);
@@ -59,7 +62,7 @@ export function SiteChatProvider({
     }
     if (!available || consumed.current === ask) return;
     consumed.current = ask;
-    openChat(ask);
+    openChat({ question: ask, source: 'deep_link' });
     onAskConsumed();
   }, [ask, available, onAskConsumed, openChat]);
   return (
@@ -71,7 +74,7 @@ export function SiteChatProvider({
             <Button
               ref={launcher}
               className="fixed end-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 rounded-full shadow-lg"
-              onClick={() => openChat()}
+              onClick={() => openChat({ source: 'launcher' })}
             >
               <Sparkles aria-hidden className="size-4" />
               {t('aiTitle')}
@@ -121,7 +124,7 @@ export function SiteChatPageAction({ title, path, lang }: PageContext & { lang?:
         <p className="font-semibold text-base">{t('aiPageTitle')}</p>
         <p className="mt-1 text-muted-foreground text-sm">{t('aiPageBody')}</p>
       </div>
-      <Button className="w-full shrink-0 sm:w-auto" onClick={() => chat.openChat(undefined, { title, path })}>
+      <Button className="w-full shrink-0 sm:w-auto" onClick={() => chat.openChat({ page: { title, path }, source: 'page_button' })}>
         <Sparkles aria-hidden className="size-4" />
         {t('aiPage')}
       </Button>
@@ -130,7 +133,7 @@ export function SiteChatPageAction({ title, path, lang }: PageContext & { lang?:
 }
 export function ChatSearchBridge({ children }: { children: (onAskAi?: (question: string) => void) => ReactNode }) {
   const chat = useSiteChat();
-  return children(chat ? (question) => chat.openChat(question) : undefined);
+  return children(chat ? (question) => chat.openChat({ question, source: 'search_handoff' }) : undefined);
 }
 
 export function SiteChatReaderLayout({

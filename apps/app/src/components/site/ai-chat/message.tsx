@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteT } from '@nibleaf/i18n/site';
 import type { AiChatConsent, AiChatFinalEvent, AiChatSource } from '@nibleaf/validators';
-import { Copy } from 'lucide-react';
+import { Copy, LifeBuoy } from 'lucide-react';
 import { Children, cloneElement, isValidElement, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -10,6 +10,10 @@ import { Feedback } from './feedback';
 import { answerText, citationParts } from './helpers';
 import type { ChatOptions } from './provider';
 
+/** Article link, opening the cited section when the source names one. */
+const sourceHref = (options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>, source: Pick<AiChatSource, 'path' | 'anchor'>) =>
+  `${siteHref(options.projectId, source.path, { lang: options.lang, version: options.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+
 export function ChatMessage({
   text,
   final,
@@ -17,6 +21,10 @@ export function ChatMessage({
   busy,
   consent,
   close,
+  followUps = [],
+  onFollowUp,
+  onSourceOpen,
+  onCopy,
 }: {
   text: string;
   final?: AiChatFinalEvent;
@@ -24,10 +32,15 @@ export function ChatMessage({
   busy: boolean;
   consent: AiChatConsent;
   close: () => void;
+  /** Suggested next questions; shown for the latest answer only. */
+  followUps?: string[];
+  onFollowUp?: (question: string, position: number) => void;
+  onSourceOpen?: (source: AiChatSource, position: number) => void;
+  onCopy?: () => void;
 }) {
   const t = siteT(options.lang);
   const prefix = final?.turnId ?? 'draft';
-  const href = (source: AiChatSource) => siteHref(options.projectId, source.path, { lang: options.lang, version: options.version });
+  const href = (source: AiChatSource) => sourceHref(options, source);
   const cite = (children: ReactNode): ReactNode =>
     Children.map(children, (child) => {
       if (typeof child === 'string')
@@ -54,6 +67,8 @@ export function ChatMessage({
       return child;
     });
   const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
+  const supportUrl = final?.status === 'no_answer' ? final.supportUrl : undefined;
+  const external = supportUrl ? /^https?:/i.test(supportUrl) : false;
   return (
     <div aria-busy={busy} className="space-y-3 rounded-xl border p-4">
       {final?.status === 'no_answer' ? (
@@ -93,7 +108,7 @@ export function ChatMessage({
       {sources.length > 0 && (
         <div className="space-y-2">
           {final?.status === 'no_answer' ? null : <p className="font-medium text-xs">{t('aiSources')}</p>}
-          {sources.map((source) => (
+          {sources.map((source, index) => (
             <a
               key={source.id}
               id={`${prefix}-${source.id}`}
@@ -101,6 +116,7 @@ export function ChatMessage({
               href={href(source)}
               className="block rounded-lg border p-3 text-start focus-visible:ring-2"
               onClick={() => {
+                onSourceOpen?.(source, index + 1);
                 if (window.matchMedia('(max-width: 767px)').matches) close();
               }}
             >
@@ -112,6 +128,16 @@ export function ChatMessage({
             </a>
           ))}
         </div>
+      )}
+      {supportUrl && (
+        <a
+          href={supportUrl}
+          {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 font-medium text-primary text-sm hover:bg-primary/5 focus-visible:ring-2"
+        >
+          <LifeBuoy aria-hidden className="size-4" />
+          {t('aiSupport')}
+        </a>
       )}
       {final?.status === 'answered' && (
         <Feedback
@@ -130,6 +156,7 @@ export function ChatMessage({
                   await navigator.clipboard.writeText(
                     `${final.answer}\n\n${t('aiSources')}\n${final.citations.map((source) => `${source.title}: ${new URL(href(source), window.location.origin).href}`).join('\n')}`,
                   );
+                  onCopy?.();
                   toast.success(t('aiCopied'));
                 } catch {
                   toast.error(t('aiCopyFailed'));
@@ -140,6 +167,25 @@ export function ChatMessage({
             </Button>
           }
         />
+      )}
+      {followUps.length > 0 && (
+        <div className="space-y-2 border-t pt-3">
+          <p className="font-medium text-xs">{t('aiFollowUps')}</p>
+          <div className="flex flex-col gap-2">
+            {followUps.map((question, index) => (
+              <Button
+                key={question}
+                size="sm"
+                variant="outline"
+                dir="auto"
+                className="h-auto justify-start whitespace-normal py-2 text-start"
+                onClick={() => onFollowUp?.(question, index + 1)}
+              >
+                {question}
+              </Button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

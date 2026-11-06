@@ -2,27 +2,59 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { siteT } from '@nibleaf/i18n/site';
 import {
+  AI_CHAT_EVENT,
+  type AiChatClientEvent,
   type AiChatErrorCode,
   type AiChatFinalEvent,
   aiChatErrorEventSchema,
   aiChatFinalEventSchema,
+  aiChatFollowUpsEventSchema,
   aiChatStatusEventSchema,
   siteChatBody,
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { chatSiteFn } from '@/functions/site-chat';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
 import { Composer } from './composer';
+import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey } from './helpers';
 import { ChatMessage } from './message';
-import type { ChatOptions, PageContext } from './provider';
+import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
 import { useChatViewport } from './use-chat-viewport';
+
+const readerSession = (): string | undefined => {
+  try {
+    const id = sessionStorage.getItem('nibleaf.chat.session') ?? crypto.randomUUID();
+    sessionStorage.setItem('nibleaf.chat.session', id);
+    return id;
+  } catch {
+    // Storage may be blocked; keep the session ephemeral.
+    return undefined;
+  }
+};
+
+function Typing({ label, phase }: { label: string; phase: string }) {
+  return (
+    <div role="status" aria-label={label} className="flex items-center gap-3 rounded-xl border p-4 text-muted-foreground text-sm">
+      <span aria-hidden className="flex gap-1">
+        {[0, 1, 2].map((dot) => (
+          <span
+            key={dot}
+            className="size-1.5 animate-bounce rounded-full bg-current motion-reduce:animate-none"
+            style={{ animationDelay: `${dot * 150}ms` }}
+          />
+        ))}
+      </span>
+      <span aria-hidden>{phase}</span>
+    </div>
+  );
+}
 
 export default function Panel(
   options: ChatOptions & {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    request?: { id: number; question?: string; page?: PageContext };
+    request?: ChatOpenRequest & { id: number };
     requiresConsent: boolean;
   },
 ) {
@@ -30,6 +62,7 @@ export default function Panel(
   const viewport = useChatViewport(options.open);
   const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
   const [finals, setFinals] = useState<Record<string, AiChatFinalEvent>>({});
+  const [followUps, setFollowUps] = useState<Record<string, string[]>>({});
   const [phase, setPhase] = useState<'searching' | 'writing' | 'checking'>('searching');
   const [code, setCode] = useState<AiChatErrorCode | 'offline'>();
   const [announcement, setAnnouncement] = useState('');
@@ -48,28 +81,45 @@ export default function Panel(
     }
     return deriveConsent(options.requiresConsent, stored);
   };
+  // Content-free interaction events, batched and flushed when the reader leaves.
+  const events = useMemo(
+    () => createChatEventQueue((body) => trackChatEventsFn({ data: { projectId: options.projectId, ...body } })),
+    [options.projectId],
+  );
+  const track = (event: AiChatClientEvent) => {
+    const sessionId = readerSession();
+    events.track(event, { consent: consent(), ...(sessionId ? { sessionId } : {}), ...(options.lang ? { lang: options.lang } : {}) });
+  };
+  useEffect(() => () => events.flush(), [events]);
+  useEffect(() => {
+    if (!options.open) events.flush();
+  }, [options.open, events]);
   const chat = useChat({
     threadId: conversationId,
     fetcher: ({ data }, { signal }) => chatSiteFn({ data: { projectId: options.projectId, ...siteChatBody.parse(data) }, signal }),
     onCustomEvent: (name, value) => {
-      if (name === 'nibleaf.chat.status') {
+      if (name === AI_CHAT_EVENT.status) {
         const result = aiChatStatusEventSchema.safeParse(value);
         if (result.success) setPhase(result.data.phase);
       }
-      if (name === 'nibleaf.chat.error') {
+      if (name === AI_CHAT_EVENT.error) {
         const result = aiChatErrorEventSchema.safeParse(value);
         if (result.success) {
           setCode(result.data.code);
           setAnnouncement(t(errorKey(result.data.code)));
         }
       }
-      if (name === 'nibleaf.chat.final') {
+      if (name === AI_CHAT_EVENT.final) {
         const result = aiChatFinalEventSchema.safeParse(value);
         if (result.success && result.data.conversationId === conversationId) {
           questions.current[result.data.turnId] = pendingQuestion.current;
           setFinals((previous) => ({ ...previous, [result.data.turnId]: result.data }));
           setAnnouncement(t(result.data.status === 'answered' ? 'aiReady' : 'aiNoAnswer'));
         }
+      }
+      if (name === AI_CHAT_EVENT.followUps) {
+        const result = aiChatFollowUpsEventSchema.safeParse(value);
+        if (result.success) setFollowUps((previous) => ({ ...previous, [result.data.turnId]: result.data.questions }));
       }
     },
   });
@@ -85,13 +135,7 @@ export default function Panel(
       return;
     }
     pendingQuestion.current = question;
-    let sessionId: string | undefined;
-    try {
-      sessionId = sessionStorage.getItem('nibleaf.chat.session') ?? crypto.randomUUID();
-      sessionStorage.setItem('nibleaf.chat.session', sessionId);
-    } catch {
-      // Storage may be blocked; keep consent unknown and the session ephemeral.
-    }
+    const sessionId = readerSession();
     void chat.sendMessage(question, {
       body: {
         conversationId,
@@ -106,6 +150,7 @@ export default function Panel(
     });
   };
   const sendRequest = useEffectEvent(send);
+  const trackOpen = useEffectEvent((source: ChatOpenRequest['source']) => track({ name: 'chat_opened', source, conversationId }));
   useEffect(() => {
     const request = options.request;
     if (!request || request.id === lastRequest.current || (request.question && chat.isLoading)) return;
@@ -114,6 +159,7 @@ export default function Panel(
     // only mark the request consumed once it is actually sent.
     const timer = window.setTimeout(() => {
       lastRequest.current = request.id;
+      trackOpen(request.source);
       setPage(request.page);
       if (request.question) sendRequest(request.question, request.page ?? null);
     }, 0);
@@ -125,14 +171,20 @@ export default function Panel(
       setAnnouncement(t(navigator.onLine ? 'aiFailed' : 'aiOffline'));
     }
   }, [chat.error, code, t]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when message content or final sources change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when message content, sources or suggestions change.
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'nearest' });
-  }, [chat.messages, finals]);
+  }, [chat.messages, finals, followUps]);
+  const stop = () => {
+    chat.stop();
+    track({ name: 'stop', conversationId });
+  };
   const reset = () => {
+    if (chat.messages.length) track({ name: 'new_chat', conversationId });
     chat.stop();
     chat.clear();
     setFinals({});
+    setFollowUps({});
     questions.current = {};
     setCode(undefined);
     setAnnouncement('');
@@ -144,6 +196,15 @@ export default function Panel(
         0,
         4,
       );
+  const phaseLabel = t(phase === 'searching' ? 'aiSearching' : phase === 'writing' ? 'aiWriting' : 'aiChecking');
+  const textOf = (message: (typeof chat.messages)[number]) =>
+    message.parts
+      .filter((part) => part.type === 'text')
+      .map((part) => part.content)
+      .join('');
+  const last = chat.messages.at(-1);
+  const streaming = Boolean(last && last.role !== 'user' && textOf(last));
+  const latestAnswer = [...chat.messages].reverse().find((message) => message.role !== 'user' && finals[message.id]?.status === 'answered');
   return (
     <Sheet open={options.open} onOpenChange={options.onOpenChange}>
       <SheetContent
@@ -195,33 +256,46 @@ export default function Panel(
             </div>
           )}
           {chat.messages.map((message) => {
-            const text = message.parts
-              .filter((part) => part.type === 'text')
-              .map((part) => part.content)
-              .join('');
-            // A refused run (quota, limits) can leave an empty assistant shell.
-            if (message.role !== 'user' && !text && !finals[message.id] && !chat.isLoading) return null;
+            const text = textOf(message);
+            const final = finals[message.id];
+            // Before the first token the typing indicator stands in; a refused
+            // run (quota, limits) leaves an empty assistant shell.
+            if (message.role !== 'user' && !text && !final) return null;
             return message.role === 'user' ? (
-              <div key={message.id} className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
+              <div key={message.id} dir="auto" className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
                 {text}
               </div>
             ) : (
               <ChatMessage
                 key={message.id}
                 text={text}
-                final={finals[message.id]}
+                final={final}
                 options={options}
-                busy={chat.isLoading && !finals[message.id]}
+                busy={chat.isLoading && !final}
                 consent={consent()}
                 close={() => options.onOpenChange(false)}
+                followUps={!chat.isLoading && message.id === latestAnswer?.id ? followUps[message.id] : undefined}
+                onFollowUp={(question, position) => {
+                  track({ name: 'follow_up_clicked', conversationId, turnId: message.id, position });
+                  send(question);
+                }}
+                onSourceOpen={(source, position) => {
+                  track({ name: 'citation_clicked', conversationId, turnId: message.id, citationId: source.id, position });
+                  // Navigating away: send what is queued now.
+                  events.flush();
+                }}
+                onCopy={() => track({ name: 'copy', conversationId, turnId: message.id })}
               />
             );
           })}
-          {chat.isLoading && (
-            <p aria-hidden className="text-muted-foreground text-sm">
-              {t(phase === 'searching' ? 'aiSearching' : phase === 'writing' ? 'aiWriting' : 'aiChecking')}
-            </p>
-          )}
+          {chat.isLoading &&
+            (streaming ? (
+              <p aria-hidden className="text-muted-foreground text-sm">
+                {phaseLabel}
+              </p>
+            ) : (
+              <Typing label={t('aiTyping')} phase={phaseLabel} />
+            ))}
           {code && (
             <div className="space-y-2 rounded-lg bg-muted p-3">
               <p>{t(errorKey(code))}</p>
@@ -242,7 +316,7 @@ export default function Panel(
           {announcement}
         </div>
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Composer lang={options.lang} busy={chat.isLoading} send={send} stop={chat.stop} />
+          <Composer lang={options.lang} busy={chat.isLoading} send={send} stop={stop} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
           {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
         </footer>

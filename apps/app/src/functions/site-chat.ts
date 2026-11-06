@@ -1,4 +1,4 @@
-import { siteChatBody, siteChatFeedbackBody } from '@nibleaf/validators';
+import { siteChatBody, siteChatEventsBody, siteChatFeedbackBody } from '@nibleaf/validators';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { z } from 'zod';
@@ -35,4 +35,20 @@ export const submitChatFeedbackFn = createServerFn({ method: 'POST' })
     });
     if (!result.ok) throw new Error('Feedback unavailable');
     return { saved: true };
+  });
+
+export const trackChatEventsFn = createServerFn({ method: 'POST' })
+  .validator(siteChatEventsBody.extend(project))
+  .handler(async ({ data }) => {
+    try {
+      const { projectId, ...body } = data;
+      const result = await fetch(`${apiOrigin()}/api/public/sites/${encodeURIComponent(projectId)}/chat/events`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      await result.body?.cancel();
+    } catch {
+      /* Reader telemetry is best effort. */
+    }
   });

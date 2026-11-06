@@ -1,9 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { siteT } from '@nibleaf/i18n/site';
-import type { AiChatConsent, AiChatFeedbackReason, AiChatFinalEvent } from '@nibleaf/validators';
+import type { AiChatConsent, AiChatFeedbackRating, AiChatFeedbackReason, AiChatFinalEvent } from '@nibleaf/validators';
+import { useMutation } from '@tanstack/react-query';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { submitChatFeedbackFn } from '@/functions/site-chat';
 
 const reasons = [
@@ -15,6 +16,17 @@ const reasons = [
   ['other', 'aiOther'],
 ] as const;
 const pressed = 'aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary';
+
+type Rating = AiChatFeedbackRating | null;
+interface FeedbackInput {
+  rating: Rating;
+  reason?: AiChatFeedbackReason;
+  comment?: string;
+}
+
+/** Thumbs show the reader's choice at once and roll back if saving fails.
+ * Pressing the active thumb withdraws the rating; a thumbs-down can add a
+ * reason and comment afterwards. */
 export function Feedback({
   final,
   projectId,
@@ -29,30 +41,52 @@ export function Feedback({
   leading?: ReactNode;
 }) {
   const t = siteT(lang);
-  const [rating, setRating] = useState<'up' | 'down' | null>(null);
+  const [rating, setRating] = useState<Rating>(null);
+  // The rating the server last confirmed, sent as `previousRating`.
+  const saved = useRef<Rating>(null);
   const [reason, setReason] = useState<AiChatFeedbackReason>();
   const [comment, setComment] = useState('');
-  const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const save = async (next: 'up' | 'down') => {
-    setState('saving');
-    try {
-      await submitChatFeedbackFn({
+  const [details, setDetails] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+  // Which control started the save in flight, for its loading state.
+  const [origin, setOrigin] = useState<AiChatFeedbackRating | 'details'>();
+  const mutation = useMutation({
+    mutationFn: (input: FeedbackInput) =>
+      submitChatFeedbackFn({
         data: {
           projectId,
           conversationId: final.conversationId,
           turnId: final.turnId,
           token: final.feedbackToken,
-          rating: next,
-          ...(next === 'down' ? { reason, comment } : {}),
+          rating: input.rating,
+          ...(input.reason ? { reason: input.reason } : {}),
+          ...(input.comment ? { comment: input.comment } : {}),
+          ...(saved.current ? { previousRating: saved.current } : {}),
           consent,
           lang,
         },
-      });
-      setRating(next);
-      setState('saved');
-    } catch {
-      setState('error');
-    }
+      }),
+    onMutate: (input) => {
+      const rollback = { rating, details };
+      setRating(input.rating);
+      setStatus('idle');
+      return rollback;
+    },
+    onError: (_error, _input, rollback) => {
+      setRating(rollback?.rating ?? null);
+      setDetails(rollback?.details ?? false);
+      setStatus('error');
+    },
+    onSuccess: (_result, input) => {
+      saved.current = input.rating;
+      setStatus(input.rating ? 'saved' : 'idle');
+    },
+  });
+  const rate = (next: AiChatFeedbackRating) => {
+    const target = rating === next ? null : next;
+    setDetails(target === 'down');
+    setOrigin(next);
+    mutation.mutate({ rating: target });
   };
   return (
     <div className="space-y-2">
@@ -65,8 +99,9 @@ export function Feedback({
           aria-label={t('aiUp')}
           title={t('aiUp')}
           aria-pressed={rating === 'up'}
-          disabled={state === 'saving'}
-          onClick={() => void save('up')}
+          loading={mutation.isPending && origin === 'up'}
+          disabled={mutation.isPending}
+          onClick={() => rate('up')}
         >
           <ThumbsUp aria-hidden className="size-4" />
         </Button>
@@ -77,16 +112,14 @@ export function Feedback({
           aria-label={t('aiDown')}
           title={t('aiDown')}
           aria-pressed={rating === 'down'}
-          disabled={state === 'saving'}
-          onClick={() => {
-            setRating('down');
-            setState('idle');
-          }}
+          loading={mutation.isPending && origin === 'down'}
+          disabled={mutation.isPending}
+          onClick={() => rate('down')}
         >
           <ThumbsDown aria-hidden className="size-4" />
         </Button>
       </div>
-      {rating === 'down' && (
+      {details && rating === 'down' && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {reasons.map(([value, key]) => (
@@ -96,10 +129,7 @@ export function Feedback({
                 variant="outline"
                 className={pressed}
                 aria-pressed={reason === value}
-                onClick={() => {
-                  setReason(value);
-                  setState('idle');
-                }}
+                onClick={() => setReason(reason === value ? undefined : value)}
               >
                 {t(key)}
               </Button>
@@ -110,18 +140,23 @@ export function Feedback({
             aria-label={t('aiComment')}
             placeholder={t('aiComment')}
             value={comment}
-            onChange={(event) => {
-              setComment(event.target.value);
-              setState('idle');
-            }}
+            onChange={(event) => setComment(event.target.value)}
           />
-          <Button size="sm" disabled={state === 'saving'} onClick={() => void save('down')}>
+          <Button
+            size="sm"
+            disabled={!reason && !comment.trim()}
+            loading={mutation.isPending && origin === 'details'}
+            onClick={() => {
+              setOrigin('details');
+              mutation.mutate({ rating: 'down', reason, comment: comment.trim() || undefined }, { onSuccess: () => setDetails(false) });
+            }}
+          >
             {t('aiSend')}
           </Button>
         </div>
       )}
-      {state === 'saved' && <p role="status">{t('aiThanks')}</p>}
-      {state === 'error' && <p role="alert">{t('aiFailed')}</p>}
+      {status === 'saved' && <p role="status">{t('aiThanks')}</p>}
+      {status === 'error' && <p role="alert">{t('aiFailed')}</p>}
     </div>
   );
 }
