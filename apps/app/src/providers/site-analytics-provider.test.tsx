@@ -163,7 +163,10 @@ it('keeps the page view and engagement timer when equivalent shell config is ref
   now = 2300;
   await act(async () => roots[0]?.unmount());
   roots.splice(0);
-  expect(mocks.createEvent.mock.lastCall?.[0].payload).toMatchObject({ name: 'page_engaged', engagementMs: 2300 });
+  expect(mocks.createEvent.mock.calls.findLast(([event]) => event.payload.name === 'page_engaged')?.[0].payload).toMatchObject({
+    name: 'page_engaged',
+    engagementMs: 2300,
+  });
 });
 
 it('uses the latest consent config without restarting the page lifecycle', async () => {
@@ -179,4 +182,11 @@ it('uses the latest consent config without restarting the page lifecycle', async
   await act(async () => container.querySelector('button')?.click());
   expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe('denied');
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);
+});
+
+it.each(['declined', 'unset'])('does not create session identity while consent is %s', async (choice) => {
+  if (choice === 'declined') window.localStorage.setItem('nibleaf.analytics.consent.docs', choice);
+  await render({ analytics: { cookieConsent: true } });
+  expect(window.sessionStorage.getItem('nibleaf.sid')).toBeNull();
+  expect(mocks.createEvent.mock.calls[0]?.[0].sessionId).toBeUndefined();
 });

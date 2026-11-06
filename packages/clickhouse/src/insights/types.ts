@@ -9,7 +9,9 @@
  * rendered as zero.
  *
  * Human traffic only: every reader metric excludes classified bots. Crawler
- * traffic is reported separately under `AiVisibility`.
+ * traffic is reported separately under `AiVisibility`. Visits/sessions count
+ * only identities permitted by granted/not_required consent. Content-free view
+ * and search totals also include denied/unknown consent without identities.
  */
 
 export type InsightsAvailability =
@@ -40,7 +42,7 @@ export interface InsightsMeta {
   /** Granularity of every timeseries in this response. */
   granularity: 'hour' | 'day';
   generatedAt: string;
-  /** Newest human event received for the project (any time), ISO-8601; null when none was ever received or unknown. */
+  /** Newest human event received for this project across all periods. */
   lastEventAt: string | null;
 }
 

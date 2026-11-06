@@ -18,6 +18,7 @@ import { serverEnv } from '@/env.server';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
+import { observeCrawlerResponse } from '@/lib/crawler-hits';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
 import { marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
@@ -203,6 +204,7 @@ interface PublishedRequestAuth {
   ip: string | null;
   cookie: string | null;
   authorization: string | null;
+  userAgent?: string;
 }
 const publishedRequestAuth = new AsyncLocalStorage<PublishedRequestAuth>();
 
@@ -245,12 +247,13 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
       // Always overwrite: an inbound (possibly attacker-supplied) value must
       // never ride along on our authenticated internal hint.
       if (requestAuth.ip) headers.set('x-nibleaf-client-ip', requestAuth.ip);
-      if (requestAuth.ip && INTERNAL_API_SECRET) {
+      if (INTERNAL_API_SECRET) {
         headers.set('x-nibleaf-internal', INTERNAL_API_SECRET);
       }
       // SSR loaders and edge metadata/SEO fetches must make the same access
       // decision as the browser request. Forward only credentials, never the
       // full inbound header bag.
+      if (requestAuth.userAgent) headers.set('user-agent', requestAuth.userAgent);
       if (requestAuth.cookie) headers.set('cookie', requestAuth.cookie);
       if (requestAuth.authorization) headers.set('authorization', requestAuth.authorization);
       return baseFetch(input, { ...init, headers });
@@ -263,7 +266,7 @@ const internalRequestHeaders = () => {
   const requestAuth = publishedRequestAuth.getStore();
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
-    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
     ...(requestAuth?.cookie ? { cookie: requestAuth.cookie } : {}),
     ...(requestAuth?.authorization ? { authorization: requestAuth.authorization } : {}),
   };
@@ -274,7 +277,7 @@ const publicMachineRequestHeaders = () => {
   const requestAuth = publishedRequestAuth.getStore();
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
-    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
   };
 };
 
@@ -1140,8 +1143,20 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
     ip: clientIpFromForwardedFor(request.headers.get('x-forwarded-for')),
     cookie: request.headers.get('cookie'),
     authorization: request.headers.get('authorization'),
+    userAgent: request.headers.get('user-agent') ?? undefined,
   };
   return publishedRequestAuth.run(requestAuth, serve);
+};
+
+const crawlerProjectForRequest = async (request: Request): Promise<string | null> => {
+  const url = new URL(request.url);
+  const host = effectiveRequestHost(request, url);
+  const bare = host.split(':')[0] ?? '';
+  const ownOrigin = ownHosts.has(host) || ownHosts.has(bare);
+  const site = /^\/sites\/([^/]+)(?:\/|$)/u.exec(url.pathname);
+  if (ownOrigin) return site?.[1] ?? null;
+  if (isAppOwnedPath(url.pathname) && !DOMAIN_SEO_FILE.test(url.pathname)) return null;
+  return resolveHost(bare);
 };
 
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
@@ -1167,7 +1182,9 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     }
   }
   const nonce = randomBytes(18).toString('base64');
-  return ssrNonce.run(nonce, () => withSecurityHeaders(handleRequestInner(request, ...rest), nonce));
+  return ssrNonce.run(nonce, () =>
+    withSecurityHeaders(observeCrawlerResponse(request, handleRequestInner(request, ...rest), crawlerProjectForRequest), nonce),
+  );
 };
 
 export default createServerEntry({ fetch: handleRequest });

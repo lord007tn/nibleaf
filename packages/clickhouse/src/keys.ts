@@ -24,6 +24,7 @@ export const keys = () =>
       CLICKHOUSE_MAX_BATCH_SIZE: z.coerce.number().int().min(1).max(10_000).default(500),
       CLICKHOUSE_MAX_BUFFERED_EVENTS: z.coerce.number().int().min(100).max(100_000).default(10_000),
       CLICKHOUSE_FLUSH_INTERVAL_MS: z.coerce.number().int().min(25).max(30_000).default(1000),
+      CLICKHOUSE_CRAWLER_RETENTION_DAYS: z.coerce.number().int().min(7).max(730).default(90),
       CLICKHOUSE_RAW_RETENTION_DAYS: z.coerce.number().int().min(7).max(730).default(180),
       CLICKHOUSE_ROLLUP_RETENTION_DAYS: z.coerce.number().int().min(30).max(3650).default(730),
       CLICKHOUSE_MIGRATE_ON_BOOT: z.stringbool().default(true),
