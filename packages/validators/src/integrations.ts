@@ -120,7 +120,9 @@ const integrationPublicConfigSchema = z.discriminatedUnion('providerId', [
   z.object({ providerId: z.literal('google-analytics'), measurementId: z.string() }).strict(),
   z.object({ providerId: z.literal('plausible'), domain: z.string() }).strict(),
   z.object({ providerId: z.enum(['slack', 'discord', 'zapier']), label: z.string().nullable() }).strict(),
-  z.object({ providerId: z.literal('openrouter'), draftModel: z.string(), embeddingModel: z.string(), answerModel: z.string() }).strict(),
+  z
+    .object({ providerId: z.enum(['openrouter', 'openai']), draftModel: z.string().optional(), embeddingModel: z.string(), answerModel: z.string() })
+    .strict(),
   z.object({ providerId: z.literal('qdrant'), collectionAlias: z.string(), searchRuntime: z.enum(['legacy', 'shadow', 'hybrid']) }).strict(),
   z.object({ providerId: z.literal('clickhouse'), mode: z.enum(['disabled', 'dual_write', 'shadow_read', 'clickhouse']) }).strict(),
   z.object({ providerId: z.literal('postmark'), messageStream: z.string().nullable() }).strict(),

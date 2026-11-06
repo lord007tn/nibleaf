@@ -31,6 +31,7 @@ vi.mock('@/components/project-settings/members-section', () => ({ MembersSection
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/plan-section', () => ({ PlanSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
+vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
 vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
@@ -61,13 +62,16 @@ describe('site settings permissions', () => {
     vi.clearAllMocks();
   });
 
-  it('explains a restricted direct link and provides working alternatives to an editor', async () => {
-    mocks.section = 'danger';
+  it.each([
+    { section: 'danger', testId: 'danger-settings' },
+    { section: 'smartAi', testId: 'smart-ai-settings' },
+  ])('explains a restricted $section direct link and provides working alternatives to an editor', async ({ section, testId }) => {
+    mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
 
-    expect(container.querySelector('[data-testid="danger-settings"]')).toBeNull();
+    expect(container.querySelector(`[data-testid="${testId}"]`)).toBeNull();
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.permissions.title');
-    expect(container.querySelector('nav')?.textContent).not.toContain('settings.danger');
+    expect(container.querySelector('nav')?.textContent).not.toContain(`settings.${section}`);
     expect(container.querySelector('a[href="/app/projects/project-1/editor"]')).not.toBeNull();
     const usage = container.querySelector<HTMLButtonElement>('[role="status"] button');
     await act(async () => usage?.click());
@@ -82,11 +86,15 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[role="status"]')).toBeNull();
   });
 
-  it('keeps administrator settings available to a site administrator', async () => {
+  it.each([
+    { section: 'general', testId: 'general-settings' },
+    { section: 'smartAi', testId: 'smart-ai-settings' },
+  ])('keeps $section settings available to a site administrator', async ({ section, testId }) => {
+    mocks.section = section;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
 
-    expect(container.querySelector('[data-testid="general-settings"]')).not.toBeNull();
+    expect(container.querySelector(`[data-testid="${testId}"]`)).not.toBeNull();
     expect(container.querySelector('nav')?.textContent).toContain('settings.danger');
   });
 

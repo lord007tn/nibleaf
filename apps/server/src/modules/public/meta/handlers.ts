@@ -10,11 +10,11 @@ import metaRoutes from './routes';
 /** Public instance metadata. AI flags report instance capability only, never provider keys. OAuth credentials never cross this boundary.
  *  GTM and GA4 identifiers are intentionally public, but remain inert until
  *  the visitor consents. GTM suppresses the direct GA4 fallback when present. */
-const app = new Hono<HonoEnv>().get('/', ...metaRoutes.meta, (ctx) =>
+const app = new Hono<HonoEnv>().get('/', ...metaRoutes.meta, async (ctx) =>
   ctx.json(
     {
       data: {
-        ai: { draft: aiDraftAvailable(), answers: answerSearchAvailable() },
+        ai: { draft: aiDraftAvailable(), answers: await answerSearchAvailable() },
         marketingAnalytics: {
           consentRequired: true as const,
           // GTM owns loading; its destination ID also enables browser opt-out.
