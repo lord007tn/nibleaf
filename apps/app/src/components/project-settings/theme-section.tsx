@@ -324,10 +324,7 @@ export function ThemeSection({ project }: { project: Project }) {
             toast.success(t('settings.theme.import.applied'));
           }
         },
-        onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : apply ? t('settings.theme.import.applyError') : t('settings.theme.import.previewError'),
-          ),
+        onError: (_error) => toast.error(apply ? t('settings.theme.import.applyError') : t('settings.theme.import.previewError')),
       },
     );
   };
@@ -652,7 +649,7 @@ export function ThemeSection({ project }: { project: Project }) {
             <FileJson className="size-5 text-primary" />
             <h3 className="mt-3 font-semibold">{t('settings.theme.exportTitle')}</h3>
             <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.exportHint')}</p>
-            <Button className="mt-4" disabled={exportProjectTheme.isPending} onClick={exportTheme} type="button">
+            <Button className="mt-4" loading={exportProjectTheme.isPending} onClick={exportTheme} type="button">
               <Download className="size-4" /> {t('settings.theme.export')}
             </Button>
           </div>
@@ -691,7 +688,7 @@ export function ThemeSection({ project }: { project: Project }) {
             ]}
             value={importMode}
           />
-          <Button disabled={!importText.trim() || importProjectTheme.isPending} onClick={parseImportText} type="button" variant="outline">
+          <Button disabled={!importText.trim()} loading={importProjectTheme.isPending} onClick={parseImportText} type="button" variant="outline">
             {t('settings.theme.previewImport')}
           </Button>
         </div>
@@ -725,7 +722,8 @@ export function ThemeSection({ project }: { project: Project }) {
             </div>
             <Button
               className="mt-3"
-              disabled={!importTemplate || importPreview.changes.length === 0 || importProjectTheme.isPending}
+              disabled={!importTemplate || importPreview.changes.length === 0}
+              loading={importProjectTheme.isPending}
               onClick={() => importTemplate && importTheme(importTemplate, true)}
               type="button"
             >

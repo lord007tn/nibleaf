@@ -52,7 +52,7 @@ function UploadField({
         ref={inputRef}
         type="file"
       />
-      <Button className="cursor-pointer" disabled={uploading} onClick={() => inputRef.current?.click()} type="button" variant="outline">
+      <Button className="cursor-pointer" loading={uploading} onClick={() => inputRef.current?.click()} type="button" variant="outline">
         <Upload className="size-4" /> {t('settings.branding.upload')}
       </Button>
     </div>
@@ -94,9 +94,9 @@ export function BrandingSection({ project }: { project: Project }) {
         setUploadingField(null);
         toast.success(t('settings.branding.uploaded'));
       },
-      onError: (error) => {
+      onError: (_error) => {
         setUploadingField(null);
-        toast.error(error instanceof Error ? error.message : t('settings.branding.uploadError'));
+        toast.error(t('settings.branding.uploadError'));
       },
     });
   };

@@ -11,7 +11,8 @@ import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, Git
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { DirtyStateReporter } from '@/components/project-settings/shared';
+import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Deployment } from '@/hooks/api';
 import {
   useBranches,
@@ -168,9 +169,9 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
           label={t('settings.git.pipeline.import')}
           detail={importDetail}
           action={
-            <Button size="sm" type="button" variant="outline" disabled={importing} onClick={onImport}>
-              {importing ? <Loader2 className="size-3.5 animate-spin" /> : <DownloadCloud className="size-3.5" />}
-              {importing ? t('settings.git.import.importing') : t('settings.git.import.now')}
+            <Button size="sm" type="button" variant="outline" loading={importing} onClick={onImport} loadingText={t('settings.git.import.importing')}>
+              <DownloadCloud className="size-3.5" />
+              {t('settings.git.import.now')}
             </Button>
           }
         />
@@ -246,13 +247,17 @@ function DeployOnPush({
   const t = useT();
   const rotateSecret = useRotateGitWebhookSecret(projectId);
   const [revealed, setRevealed] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [webhookOrigin, setWebhookOrigin] = useState('');
   useEffect(() => setWebhookOrigin(window.location.origin), []);
   const webhookUrl = `${webhookOrigin}/api/public/git/webhook/${projectId}`;
   const secret = git.webhookSecret ?? '';
 
   const copy = async (text: string) => {
-    if (await copyToClipboard(text)) {
+    setCopying(true);
+    const ok = await copyToClipboard(text);
+    setCopying(false);
+    if (ok) {
       toast.success(t('settings.git.webhook.copied'));
     } else {
       toast.error(t('settings.git.webhook.copyError'));
@@ -265,7 +270,7 @@ function DeployOnPush({
         setRevealed(true);
         toast.success(t('settings.git.webhook.rotated'));
       },
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.webhook.rotateError')),
+      onError: (_error) => toast.error(t('settings.git.webhook.rotateError')),
     });
 
   const instructions =
@@ -296,7 +301,14 @@ function DeployOnPush({
                 <Label htmlFor="git-webhook-url">{t('settings.git.webhook.url')}</Label>
                 <div className="flex gap-2">
                   <Input className="font-mono" dir="ltr" id="git-webhook-url" readOnly value={webhookUrl} />
-                  <Button aria-label={t('settings.git.webhook.copy')} onClick={() => copy(webhookUrl)} size="icon" type="button" variant="outline">
+                  <Button
+                    aria-label={t('settings.git.webhook.copy')}
+                    loading={copying}
+                    onClick={() => copy(webhookUrl)}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
                     <Copy className="size-4" />
                   </Button>
                 </div>
@@ -315,18 +327,25 @@ function DeployOnPush({
                     >
                       {revealed ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </Button>
-                    <Button aria-label={t('settings.git.webhook.copy')} onClick={() => copy(secret)} size="icon" type="button" variant="outline">
+                    <Button
+                      aria-label={t('settings.git.webhook.copy')}
+                      loading={copying}
+                      onClick={() => copy(secret)}
+                      size="icon"
+                      type="button"
+                      variant="outline"
+                    >
                       <Copy className="size-4" />
                     </Button>
-                    <Button disabled={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
-                      {rotateSecret.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                      <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.rotate')}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <Button disabled={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
-                      {rotateSecret.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                      <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.generate')}
                     </Button>
                     <span className="text-muted-foreground text-xs">{t('settings.git.webhook.noSecret')}</span>
@@ -360,7 +379,8 @@ function DeployOnPush({
 
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const { data } = useWorkspaceSettings(projectId);
+  const settings = useWorkspaceSettings(projectId);
+  const { data } = settings;
   const update = useUpdateWorkspaceSettings(projectId);
   const importFromGit = useImportFromGit(projectId ?? '');
   const { data: branches } = useBranches(projectId);
@@ -400,14 +420,14 @@ export function GitTab({ projectId }: { projectId?: string }) {
       },
       {
         onSuccess: () => message && toast.success(message),
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.saveError')),
+        onError: (_error) => toast.error(t('settings.git.saveError')),
       },
     );
 
   const runImport = () =>
     importFromGit.mutate(undefined, {
       onSuccess: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
-      onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.git.import.error')),
+      onError: (_error) => toast.error(t('settings.git.import.error')),
     });
 
   const form = useForm({
@@ -449,6 +469,9 @@ export function GitTab({ projectId }: { projectId?: string }) {
       importLanguageId: git.importLanguageId,
     });
   }, [form, git.branch, git.cloneUrl, git.importBranchId, git.importLanguageId, git.instanceUrl, git.path, git.provider, git.repo]);
+
+  if (settings.isPending) return <SettingsFormSkeleton />;
+  if (settings.isError && !data) return <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
 
   const webUrl = repoWebUrl(git);
   const ProviderGlyph = git.provider === 'github' ? GithubIcon : GitBranch;
@@ -615,7 +638,12 @@ export function GitTab({ projectId }: { projectId?: string }) {
       ) : null}
       <div className="mt-5 flex items-center justify-between gap-3">
         {connected ? (
-          <Button type="button" variant="destructive" onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}>
+          <Button
+            loading={update.isPending}
+            type="button"
+            variant="destructive"
+            onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}
+          >
             {t('settings.git.disconnect')}
           </Button>
         ) : (
@@ -623,8 +651,13 @@ export function GitTab({ projectId }: { projectId?: string }) {
         )}
         <form.Subscribe selector={(state) => state.isSubmitting}>
           {(isSubmitting) => (
-            <Button disabled={isSubmitting} type="submit" variant={connected ? 'outline' : 'default'}>
-              {isSubmitting ? t('common.saving') : connected ? t('settings.git.save') : t('settings.git.connect')}
+            <Button
+              loading={update.isPending || isSubmitting}
+              loadingText={t('common.saving')}
+              type="submit"
+              variant={connected ? 'outline' : 'default'}
+            >
+              {connected ? t('settings.git.save') : t('settings.git.connect')}
             </Button>
           )}
         </form.Subscribe>

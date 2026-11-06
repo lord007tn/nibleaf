@@ -1,6 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -45,6 +44,7 @@ import { SearchSection } from '@/components/project-settings/search-section';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
+  SettingsFormSkeleton,
   useConfirmSettingsDiscard,
   useDirtySources,
   useSettingsDirtyGuard,
@@ -59,6 +59,24 @@ import { NotificationsTab } from '@/components/settings/notifications-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
 import { useProject, useProjectMembers } from '@/hooks/api';
+import {
+  branchesQueryOptions,
+  deploymentsQueryOptions,
+  domainsQueryOptions,
+  gitWorkflowQueryOptions,
+  languagesQueryOptions,
+  listExportRunsQueryOptions,
+  listExportSchedulesQueryOptions,
+  openApiConfigurationQueryOptions,
+  pagesQueryOptions,
+  projectAddonsQueryOptions,
+  projectMembersQueryOptions,
+  projectQueryOptions,
+  projectUsageQueryOptions,
+  readerAccessQueryOptions,
+  workspaceSettingsQueryOptions,
+} from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
@@ -124,11 +142,57 @@ const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((secti
 const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  component: ProjectSettingsPage,
   validateSearch: (search: Record<string, unknown>): { section: SectionId } => ({
     // Analytics moved under Integrations — keep old ?section=analytics links working.
     section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : 'general',
   }),
+  loaderDeps: ({ search }) => ({ section: search.section }),
+  loader: ({ context: { queryClient }, params: { projectId }, deps: { section } }) => {
+    prefetchRouteData(queryClient, projectQueryOptions(projectId));
+    prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
+    switch (section) {
+      case 'general':
+      case 'appearance':
+      case 'languages':
+        prefetchRouteData(queryClient, languagesQueryOptions(projectId));
+        break;
+      case 'domain':
+        prefetchRouteData(queryClient, domainsQueryOptions(projectId));
+        break;
+      case 'addons':
+        prefetchRouteData(queryClient, projectAddonsQueryOptions(projectId));
+        break;
+      case 'openapi':
+        prefetchRouteData(queryClient, openApiConfigurationQueryOptions(projectId));
+        break;
+      case 'usage':
+        prefetchRouteData(queryClient, projectUsageQueryOptions(projectId));
+        break;
+      case 'notifications':
+      case 'contentImport':
+        prefetchRouteData(queryClient, workspaceSettingsQueryOptions(projectId));
+        break;
+      case 'git':
+        prefetchRouteData(queryClient, workspaceSettingsQueryOptions(projectId));
+        prefetchRouteData(queryClient, branchesQueryOptions(projectId));
+        prefetchRouteData(queryClient, languagesQueryOptions(projectId));
+        prefetchRouteData(queryClient, deploymentsQueryOptions(projectId));
+        prefetchRouteData(queryClient, gitWorkflowQueryOptions(projectId));
+        break;
+      case 'authentication':
+        prefetchRouteData(queryClient, readerAccessQueryOptions(projectId));
+        prefetchRouteData(queryClient, pagesQueryOptions(projectId));
+        break;
+      case 'exports':
+        prefetchRouteData(queryClient, listExportRunsQueryOptions(projectId));
+        prefetchRouteData(queryClient, listExportSchedulesQueryOptions(projectId));
+        prefetchRouteData(queryClient, deploymentsQueryOptions(projectId));
+        break;
+      default:
+        break;
+    }
+  },
+  component: ProjectSettingsPage,
 });
 
 function ProjectSettingsPage() {
@@ -136,7 +200,13 @@ function ProjectSettingsPage() {
   const { projectId } = Route.useParams();
   const { section } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { data: project, isLoading } = useProject(projectId);
+  const {
+    data: project,
+    isPending: projectPending,
+    isError: projectError,
+    isFetching: projectFetching,
+    refetch: retryProject,
+  } = useProject(projectId);
   const {
     data: memberData,
     isPending: membersPending,
@@ -166,7 +236,7 @@ function ProjectSettingsPage() {
   if (membersPending || sessionPending) {
     return (
       <div className="p-6">
-        <SectionSkeleton />
+        <SettingsFormSkeleton />
       </div>
     );
   }
@@ -240,8 +310,10 @@ function ProjectSettingsPage() {
 
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
-            {isLoading || !project ? (
-              <SectionSkeleton />
+            {projectPending ? (
+              <SettingsFormSkeleton />
+            ) : projectError || !project ? (
+              <QueryErrorState onRetry={() => void retryProject()} retrying={projectFetching} />
             ) : !sectionAllowed ? (
               <div className="rounded-xl border border-border bg-card p-6" role="status">
                 <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
@@ -300,22 +372,6 @@ function ActiveSection({
   };
   const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';
   return <div className={cn('w-full', wideSection ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
-}
-
-function SectionSkeleton() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Skeleton className="h-7 w-40" />
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-[42px] w-full" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-[42px] w-full" />
-      </div>
-    </div>
-  );
 }
 
 function SiteAppearance({ project }: { project: Project }) {

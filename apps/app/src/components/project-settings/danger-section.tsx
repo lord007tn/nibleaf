@@ -69,7 +69,8 @@ export function DangerSection({ project }: { project: Project }) {
             </SelectContent>
           </Select>
           <Button
-            disabled={!canTransferOwnership || !targetMemberId || transfer.isPending}
+            disabled={!canTransferOwnership || !targetMemberId}
+            loading={transfer.isPending}
             onClick={async () => {
               if (!selectedTarget) {
                 return;
@@ -90,7 +91,7 @@ export function DangerSection({ project }: { project: Project }) {
                     toast.success(t('settings.danger.transfer.toast.transferred'));
                     setTargetMemberId('');
                   },
-                  onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.danger.transfer.toast.error')),
+                  onError: (_error) => toast.error(t('settings.danger.transfer.toast.error')),
                 },
               );
             }}
@@ -109,6 +110,7 @@ export function DangerSection({ project }: { project: Project }) {
         </p>
         <Button
           className="w-full cursor-pointer sm:w-auto"
+          loading={del.isPending}
           onClick={async () => {
             // Type-the-name confirmation: deleting a project cascades its whole
             // org (members, pages, deployments, domains), so require an explicit
@@ -134,7 +136,7 @@ export function DangerSection({ project }: { project: Project }) {
                 toast.success(t('settings.danger.delete.toast.deleted'));
                 navigate({ to: '/app' });
               },
-              onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.danger.delete.toast.error')),
+              onError: (_error) => toast.error(t('settings.danger.delete.toast.error')),
             });
           }}
           variant="destructive"

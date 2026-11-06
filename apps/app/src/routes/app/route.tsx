@@ -5,6 +5,8 @@ import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { getSessionFn } from '@/functions/session';
+import { projectsQueryOptions } from '@/hooks/api/query-options';
+import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
 import { ProjectProvider } from '@/stores/active-project';
 
@@ -16,6 +18,9 @@ export const Route = createFileRoute('/app')({
     }
     return { routeSession };
   },
+  // The site list feeds every signed-in screen (site switcher, command palette,
+  // overview), so start it with the session check instead of after the shell mounts.
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, projectsQueryOptions()),
   head: () => ({
     meta: [{ name: 'robots', content: 'noindex' }],
   }),

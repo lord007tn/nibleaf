@@ -7,7 +7,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ghostImportBody } from '@nibleaf/validators';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Loader2, Upload } from 'lucide-react';
+import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { type ContentImportSummary, useImportFromGhost, useImportFromGitbook, useImportFromMintlify } from '@/hooks/api';
@@ -197,7 +197,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       toast.error(t('settings.import.error'));
       return;
     }
-    toast.error(error instanceof Error ? error.message : t('settings.import.error'));
+    toast.error(t('settings.import.error'));
   };
 
   const runImport = async () => {
@@ -403,9 +403,17 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                 {t('settings.import.again')}
               </Button>
             ) : source ? (
-              <Button className="ms-auto" disabled={!canImport} onClick={runImport} size="sm" type="button">
-                {pending ? <Loader2 className="size-3.5 animate-spin" /> : <DownloadCloud className="size-3.5" />}
-                {pending ? t('settings.import.running') : t('settings.import.run')}
+              <Button
+                className="ms-auto"
+                disabled={!canImport}
+                loading={pending}
+                loadingText={t('settings.import.running')}
+                onClick={runImport}
+                size="sm"
+                type="button"
+              >
+                <DownloadCloud className="size-3.5" />
+                {t('settings.import.run')}
               </Button>
             ) : null}
           </div>

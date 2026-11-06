@@ -21,6 +21,7 @@ export const Route = createFileRoute('/app/(dashboard)/sites')({
 });
 
 const subscribeToHydration = () => () => undefined;
+const SITE_SKELETON_CARDS = ['a', 'b', 'c'];
 
 function SitesPage() {
   const { newSite } = Route.useSearch();
@@ -66,9 +67,22 @@ function SitesPage() {
       </div>
       {hydrated && isError ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
       {!hydrated || isPending ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2].map((item) => (
-            <Skeleton key={item} className="h-44 rounded-xl" />
+        <div aria-busy="true" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          {/* Shaped like a site card: mark, name, address, then the page count. */}
+          {SITE_SKELETON_CARDS.map((card) => (
+            <div aria-hidden className="rounded-xl border border-border bg-card p-5" key={card}>
+              <div className="flex items-start gap-3">
+                <Skeleton className="size-11 shrink-0 rounded-xl" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-0.5">
+                  <Skeleton className="h-5 w-3/5" />
+                  <Skeleton className="h-3 w-2/5" />
+                </div>
+              </div>
+              <Skeleton className="mt-8 h-5 w-24" />
+            </div>
           ))}
         </div>
       ) : isError && !projects ? null : filtered.length ? (

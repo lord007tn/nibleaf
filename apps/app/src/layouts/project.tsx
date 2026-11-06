@@ -8,10 +8,11 @@ import {
 } from '@nibleaf/design-system/components/ui/breadcrumb';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Eye, Loader2, Rocket, Search } from 'lucide-react';
+import { Eye, Rocket, Search } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { useOpenCommandPalette } from '@/components/app/command-palette';
@@ -58,7 +59,8 @@ export function PublishControl({
       <Button
         aria-describedby={countLabel ? countId : undefined}
         aria-label={building ? t('project.publishing') : t('project.publish')}
-        disabled={building || preparing}
+        disabled={building}
+        loading={preparing}
         title={countLabel}
         onClick={async () => {
           setPreparing(true);
@@ -73,7 +75,7 @@ export function PublishControl({
         }}
         size="sm"
       >
-        {preparing ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
+        <Rocket className="size-3.5" />
         <span>{building ? t('project.publishing') : t('project.publish')}</span>
         {changeCount > 0 ? (
           <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
@@ -155,7 +157,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               <BreadcrumbSeparator className="hidden sm:inline-flex" />
               <BreadcrumbItem className="min-w-0">
                 {!project?.name ? (
-                  <span aria-hidden className="h-4 w-28 animate-pulse rounded bg-muted" />
+                  <Skeleton aria-hidden className="h-4 w-28" />
                 ) : sectionKey ? (
                   <BreadcrumbLink className="truncate" dir="auto" render={<Link params={{ projectId }} to="/app/projects/$projectId" />}>
                     {project.name}

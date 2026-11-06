@@ -9,16 +9,18 @@ import { useT } from '@nibleaf/i18n/react';
 import { AlertTriangle, Braces, FileUp, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useDeleteOpenApi, useOpenApiConfiguration, useSyncOpenApi, useUpsertOpenApi } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
-import { DirtyStateReporter, FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented } from './shared';
+import { DirtyStateReporter, FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented, SettingsFormSkeleton } from './shared';
 
 type SourceType = 'upload' | 'url' | 'repository';
 
 export function OpenApiSection({ projectId }: { projectId: string }) {
   const t = useT();
   const confirm = useConfirm();
-  const { data: current, isPending } = useOpenApiConfiguration(projectId);
+  const query = useOpenApiConfiguration(projectId);
+  const { data: current, isPending } = query;
   const save = useUpsertOpenApi(projectId);
   const sync = useSyncOpenApi(projectId);
   const remove = useDeleteOpenApi(projectId);
@@ -74,8 +76,8 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
         setSourceValue('');
         setFilename('');
       }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.openapi.saveError'));
+    } catch {
+      toast.error(t('settings.openapi.saveError'));
     }
   };
 
@@ -83,8 +85,8 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
     try {
       await sync.mutateAsync();
       toast.success(t('settings.openapi.synced'));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.openapi.syncError'));
+    } catch {
+      toast.error(t('settings.openapi.syncError'));
     }
   };
 
@@ -98,10 +100,13 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
       setSourceValue('');
       setFilename('');
       setEditing(false);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('settings.openapi.deleteError'));
+    } catch {
+      toast.error(t('settings.openapi.deleteError'));
     }
   };
+
+  if (isPending) return <SettingsFormSkeleton />;
+  if (query.isError && !current) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
 
   return (
     <div>
@@ -132,11 +137,11 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
                 {t('settings.openapi.edit')}
               </Button>
               {current.source.type !== 'upload' ? (
-                <Button variant="outline" disabled={sync.isPending} onClick={() => void refresh()} size="sm">
-                  <RefreshCw className={sync.isPending ? 'animate-spin' : ''} /> {t('settings.openapi.sync')}
+                <Button variant="outline" loading={sync.isPending} onClick={() => void refresh()} size="sm">
+                  <RefreshCw /> {t('settings.openapi.sync')}
                 </Button>
               ) : null}
-              <Button variant="outline" disabled={remove.isPending} onClick={() => void deleteReference()} size="sm">
+              <Button variant="outline" loading={remove.isPending} onClick={() => void deleteReference()} size="sm">
                 <Trash2 /> {t('settings.openapi.remove')}
               </Button>
             </div>
@@ -223,7 +228,7 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               {current ? (
-                <Button variant="destructive" disabled={remove.isPending} onClick={() => void deleteReference()}>
+                <Button variant="destructive" loading={remove.isPending} onClick={() => void deleteReference()}>
                   <Trash2 /> {t('settings.openapi.remove')}
                 </Button>
               ) : null}
@@ -233,22 +238,23 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
                 {t('common.cancel')}
               </Button>
               {current && current.source.type !== 'upload' ? (
-                <Button variant="outline" disabled={sync.isPending} onClick={() => void refresh()}>
-                  <RefreshCw className={sync.isPending ? 'animate-spin' : ''} /> {t('settings.openapi.sync')}
+                <Button variant="outline" loading={sync.isPending} onClick={() => void refresh()}>
+                  <RefreshCw /> {t('settings.openapi.sync')}
                 </Button>
               ) : null}
               <Button
                 disabled={
                   isPending ||
-                  save.isPending ||
                   !title.trim() ||
                   !path.trim() ||
                   (!current && !sourceValue.trim()) ||
                   (!!current && sourceType !== current.source.type && !sourceValue.trim())
                 }
+                loading={save.isPending}
+                loadingText={t('common.saving')}
                 onClick={() => void submit()}
               >
-                {save.isPending ? t('common.saving') : t('common.save')}
+                {t('common.save')}
               </Button>
             </div>
           </div>

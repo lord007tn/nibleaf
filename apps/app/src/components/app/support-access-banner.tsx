@@ -16,10 +16,12 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
     setError(null);
     try {
       const response = await authClient.admin.stopImpersonating();
-      if (response.error) throw new Error(response.error.message || t('support.banner.stopError'));
+      if (response.error) throw new Error(response.error.message);
       window.location.assign(`${ADMIN_URL}/users/${customerId}`);
     } catch (cause) {
-      setError(cause instanceof Error && cause.message ? cause.message : t('support.banner.stopError'));
+      // Server text is English and technical: keep it for the console, show the localized message.
+      console.error(cause);
+      setError(t('support.banner.stopError'));
       setPending(false);
     }
   };
@@ -40,8 +42,14 @@ export function SupportAccessBanner({ customerId, customerName }: { customerId: 
           {error}
         </p>
       ) : null}
-      <Button className="h-8 bg-warning text-warning-foreground hover:bg-warning/90" disabled={pending} onClick={stop} size="sm">
-        {pending ? t('support.banner.stopping') : t('support.banner.stop')}
+      <Button
+        className="h-8 bg-warning text-warning-foreground hover:bg-warning/90"
+        loading={pending}
+        loadingText={t('support.banner.stopping')}
+        onClick={stop}
+        size="sm"
+      >
+        {t('support.banner.stop')}
       </Button>
     </aside>
   );

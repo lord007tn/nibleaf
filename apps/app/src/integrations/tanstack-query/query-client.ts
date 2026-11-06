@@ -7,9 +7,11 @@ declare module '@tanstack/react-query' {
      * `meta.errorMessage`: plain-language text (already translated with `t()` by
      * the hook) toasted when the query or mutation fails. Callers that handle
      * errors inline (an error state, their own `onError`) simply leave it out.
+     * A mutation may pass a function to word the message from the error (for
+     * example with `friendlyErrorMessage`); it runs once for every failed call.
      */
     queryMeta: { errorMessage?: string };
-    mutationMeta: { errorMessage?: string };
+    mutationMeta: { errorMessage?: string | ((error: unknown) => string) };
   }
 }
 
@@ -38,7 +40,10 @@ export function createQueryClient(): QueryClient {
       onError: (_error, query) => toastError(query.meta?.errorMessage),
     }),
     mutationCache: new MutationCache({
-      onError: (_error, _variables, _context, mutation) => toastError(mutation.meta?.errorMessage),
+      onError: (error, _variables, _context, mutation) => {
+        const message = mutation.meta?.errorMessage;
+        toastError(typeof message === 'function' ? message(error) : message);
+      },
     }),
     defaultOptions: {
       queries: {

@@ -11,7 +11,7 @@ import { SitePageSkeleton } from './site-page-skeleton';
  * should leave an already-open editor and its unsaved draft mounted. */
 export function ProjectAccessBoundary({ projectId, children }: { projectId: string; children: ReactNode }) {
   const t = useT();
-  const { data: project, error, isPending, refetch } = useProject(projectId);
+  const { data: project, error, isPending, isFetching, refetch } = useProject(projectId);
   const unavailable = error instanceof ApiResponseError && [401, 403, 404].includes(error.status);
 
   if (project && !unavailable) return children;
@@ -25,7 +25,7 @@ export function ProjectAccessBoundary({ projectId, children }: { projectId: stri
         <p className="text-muted-foreground text-sm">{t(missing ? 'notFound.body' : 'error.unexpected')}</p>
         <div className="mt-2 flex flex-wrap justify-center gap-2">
           {!missing && (
-            <Button onClick={() => void refetch()} variant="outline">
+            <Button loading={isFetching} onClick={() => void refetch()} variant="outline">
               {t('error.tryAgain')}
             </Button>
           )}

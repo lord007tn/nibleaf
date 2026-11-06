@@ -3,6 +3,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/de
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -16,6 +17,45 @@ import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVeri
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
+
+const DOMAIN_SKELETON_CARDS = ['first', 'second'];
+
+/** The section's first load: heading, the three guide steps, the add row and domain cards, so nothing moves on arrival. */
+function DomainSectionSkeleton() {
+  const t = useT();
+  return (
+    <div aria-busy="true">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <div className="mb-6 border-border border-b pb-3">
+          <Skeleton className="h-7 w-40" />
+        </div>
+        <div className="mb-4 space-y-2 ps-5">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Skeleton className="h-10 min-w-0 flex-1" />
+          <Skeleton className="h-10 w-28 rounded-[10px]" />
+        </div>
+        <div className="mt-4 space-y-3">
+          {DOMAIN_SKELETON_CARDS.map((card) => (
+            <div className="rounded-xl border border-border p-3.5" key={card}>
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="h-5 w-48 max-w-full" />
+                <Skeleton className="h-6 w-20 rounded-full" />
+              </div>
+              <Skeleton className="mt-3 h-3 w-2/3" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DomainSection({ project }: { project: Project }) {
   const t = useT();
@@ -38,11 +78,14 @@ export function DomainSection({ project }: { project: Project }) {
     }
   };
   const [domain, setDomain] = useState('');
+  const [copyingRecord, setCopyingRecord] = useState<string | null>(null);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
 
   const list = domains ?? [];
   const copyRecord = async (key: string, text: string) => {
+    setCopyingRecord(key);
     const ok = await copyToClipboard(text);
+    setCopyingRecord(null);
     if (!ok) {
       toast.error(t('settings.domain.dns.copyFailed'));
       return;
@@ -53,7 +96,7 @@ export function DomainSection({ project }: { project: Project }) {
   };
 
   if (query.isError && !domains) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
-  if (!domains) return <p role="status">{t('common.loading')}</p>;
+  if (query.isPending) return <DomainSectionSkeleton />;
   return (
     <div>
       {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
@@ -79,7 +122,7 @@ export function DomainSection({ project }: { project: Project }) {
                 toast.success(t('settings.domain.toast.added'));
                 setDomain('');
               },
-              onError: (err) => toast.error(err instanceof Error ? err.message : t('settings.domain.toast.addError')),
+              onError: (_err) => toast.error(t('settings.domain.toast.addError')),
             },
           );
         }}
@@ -95,7 +138,7 @@ export function DomainSection({ project }: { project: Project }) {
           placeholder="docs.yoursite.com"
           value={domain}
         />
-        <Button className="cursor-pointer rounded-[10px]" disabled={add.isPending || !domain.trim()} type="submit">
+        <Button className="cursor-pointer rounded-[10px]" disabled={!domain.trim()} loading={add.isPending} type="submit">
           {t('settings.domain.add')}
         </Button>
       </form>
@@ -155,24 +198,26 @@ export function DomainSection({ project }: { project: Project }) {
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
-                    disabled={verify.isPending && verify.variables === d.id}
+                    loading={verify.isPending && verify.variables === d.id}
+                    loadingText={t('common.loading')}
                     onClick={() =>
                       verify.mutate(d.id, {
                         onSuccess: (result) =>
                           toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.status.provisioning')),
-                        onError: (error) => toast.error(error instanceof Error ? error.message : t('settings.domain.toast.verifyError')),
+                        onError: (_error) => toast.error(t('settings.domain.toast.verifyError')),
                       })
                     }
                     size="sm"
                     variant="outline"
                   >
-                    <RefreshCw className={cn('size-3.5', verify.isPending && verify.variables === d.id && 'animate-spin')} />
-                    {verify.isPending && verify.variables === d.id ? t('common.loading') : t('settings.domain.retry')}
+                    <RefreshCw className="size-3.5" />
+                    {t('settings.domain.retry')}
                   </Button>
                 ) : null}
                 {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
                   <Button
                     className="cursor-pointer"
+                    loading={setPrimary.isPending && setPrimary.variables === d.id}
                     onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
                     size="sm"
                     variant="outline"
@@ -180,7 +225,13 @@ export function DomainSection({ project }: { project: Project }) {
                     {t('settings.domain.makePrimary')}
                   </Button>
                 ) : null}
-                <Button className="cursor-pointer" onClick={() => removeDomain(d.id, d.domain)} size="sm" variant="ghost">
+                <Button
+                  className="cursor-pointer"
+                  loading={remove.isPending && remove.variables === d.id}
+                  onClick={() => removeDomain(d.id, d.domain)}
+                  size="sm"
+                  variant="ghost"
+                >
                   {t('settings.domain.remove')}
                 </Button>
               </div>
@@ -222,6 +273,7 @@ export function DomainSection({ project }: { project: Project }) {
                                 </div>
                                 <Button
                                   aria-label={`${t('settings.domain.dns.copy')}: ${label}`}
+                                  loading={copyingRecord === fieldKey}
                                   onClick={() => void copyRecord(fieldKey, value)}
                                   size="icon-sm"
                                   type="button"

@@ -27,6 +27,7 @@ const pendingChange = {
   truncated: false,
 };
 vi.mock('@/hooks/api', () => ({
+  friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDomains: () => ({ data: [] }),
   usePublish: () => ({ isPending: false, mutate }),
   usePendingChanges: () => ({
@@ -239,6 +240,17 @@ describe('review changes', () => {
     expect(document.body.textContent).toContain('publish.removed');
     expect(document.body.textContent).toContain('publish.added');
     expect(document.body.innerHTML).not.toContain('#0b0b0b');
+  });
+
+  it('tells screen-reader users where unchanged lines were skipped', async () => {
+    pendingChange.lines = [
+      ...Array.from({ length: 10 }, (_, index) => line('unchanged', `line ${index + 1}`, index + 1, index + 1)),
+      line('added', 'new line', null, 11),
+    ];
+    await openReview();
+    const skipped = [...document.querySelectorAll('.sr-only')].filter((element) => element.textContent === 'publish.unchangedHidden');
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]?.closest('[aria-hidden]')).toBeNull();
   });
 
   it('says when the text did not change and when the list was shortened', async () => {

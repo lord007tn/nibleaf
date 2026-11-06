@@ -12,9 +12,18 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
  * words. Unknown failures fall back to the caller's action-specific message
  * (e.g. "Couldn't delete the page. Try again.").
  */
-export function friendlyErrorMessage(t: Translate, error: unknown, fallbackKey: MessageKey): string {
+export function friendlyErrorMessage(
+  t: Translate,
+  error: unknown,
+  fallbackKey: MessageKey,
+  /** What a status means for this action, when the general wording would mislead
+   *  (an invite's 409 is "already a member", not a concurrent edit). */
+  statusKeys?: Partial<Record<number, MessageKey>>,
+): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
+    const specific = statusKeys?.[error.status];
+    if (specific) return t(specific);
     if (error.status === 401) return t('error.signedOut');
     if (error.status === 403) return t('error.noPermission');
     if (error.status === 404) return t('error.notFound');

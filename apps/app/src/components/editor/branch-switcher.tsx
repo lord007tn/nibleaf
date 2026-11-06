@@ -124,7 +124,14 @@ export function BranchSwitcher({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5" aria-label={triggerLabel} title={triggerLabel}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 gap-1.5 px-2.5"
+                aria-label={triggerLabel}
+                loading={merge.isPending}
+                title={triggerLabel}
+              >
                 <Layers className="size-3.5" />
                 <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]" dir="ltr">
                   {active?.name ?? 'main'}
@@ -145,7 +152,7 @@ export function BranchSwitcher({
             ))}
             <DropdownMenuSeparator />
             {active && !active.isDefault ? (
-              <DropdownMenuItem onClick={mergeActive}>
+              <DropdownMenuItem disabled={merge.isPending} onClick={mergeActive}>
                 <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
               </DropdownMenuItem>
             ) : null}
@@ -180,8 +187,8 @@ export function BranchSwitcher({
           </div>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="outline" />}>{t('common.cancel')}</DialogClose>
-            <Button type="button" onClick={submit} disabled={create.isPending}>
-              {create.isPending ? t('editor.branch.creating') : t('editor.branch.create')}
+            <Button type="button" onClick={submit} loading={create.isPending} loadingText={t('editor.branch.creating')}>
+              {t('editor.branch.create')}
             </Button>
           </DialogFooter>
         </DialogContent>

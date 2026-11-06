@@ -1,8 +1,9 @@
 import type { CreateAudienceBody, InviteReaderBody, JwtAccessConfigBody, ProjectAccessModeBody } from '@nibleaf/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { getData, mutateData } from './client-helpers';
+import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
+import { readerAccessQueryOptions } from './query-options';
 
 export interface ReaderAccessData {
   accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
@@ -35,12 +36,7 @@ export interface ReaderAccessData {
   audit: Array<{ id: string; action: string; createdAt: string }>;
 }
 
-export const useReaderAccess = (projectId: string) =>
-  useQuery({
-    queryKey: queryKeys.readerAccess.detail(projectId),
-    queryFn: async () =>
-      getData<ReaderAccessData>(await api.app.projects[':projectId']['reader-access'].$get({ param: { projectId } }), 'reader access settings'),
-  });
+export const useReaderAccess = (projectId: string) => useQuery(readerAccessQueryOptions(projectId));
 
 const useReaderAccessMutation = <TVariables, TResult>(projectId: string, mutationFn: (variables: TVariables) => Promise<TResult>) => {
   const queryClient = useQueryClient();

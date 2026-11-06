@@ -3,6 +3,7 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import type { MessageKey } from '@nibleaf/i18n';
@@ -12,6 +13,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import {
+  friendlyErrorMessage,
   type Project,
   useCreateReaderAudience,
   useDeleteReaderAudience,
@@ -27,6 +29,31 @@ import {
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, Field, SectionHeader, Segmented } from './shared';
+
+/**
+ * The section's first load: heading, then the "who can read" choice every mode
+ * shows. Private-site panels only appear below it, so they never push it around.
+ */
+function AuthenticationSectionSkeleton() {
+  const { t } = useLocale();
+  return (
+    <div aria-busy="true">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        <div className="mb-6 border-border border-b pb-3">
+          <Skeleton className="h-7 w-40" />
+          <SkeletonText className="mt-1.5" lines={1} />
+        </div>
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="mt-1 mb-2.5 h-3 w-2/3" />
+        <Skeleton className="h-9 w-full max-w-[540px] rounded-lg" />
+        <Skeleton className="mt-3 h-9 w-32" />
+      </div>
+    </div>
+  );
+}
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
 const READER_STATUS_KEYS: Record<string, MessageKey> = {
@@ -72,6 +99,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
   const testJwt = useTestReaderJwt(project.id);
   const emergencyRevoke = useEmergencyRevokeReaderAccess(project.id);
   const [invitationLink, setInvitationLink] = useState('');
+  const [copyingInvitation, setCopyingInvitation] = useState(false);
   const [mode, setMode] = useState<AccessMode>('PUBLIC');
   const [audienceName, setAudienceName] = useState('');
   const [audiencePages, setAudiencePages] = useState<string[]>([]);
@@ -202,7 +230,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
   };
 
   if (readerAccess.isError && !data) return <QueryErrorState onRetry={() => void readerAccess.refetch()} retrying={readerAccess.isFetching} />;
-  if (!data) return <p role="status">{t('common.loading')}</p>;
+  if (readerAccess.isPending || !data) return <AuthenticationSectionSkeleton />;
 
   return (
     <div>
@@ -237,8 +265,9 @@ export function AuthenticationSection({ project }: { project: Project }) {
         />
         <Button
           className="mt-3"
-          disabled={readerAccess.isError || updateMode.isPending || mode === data.accessMode}
-          onClick={() => void saveMode().catch((error) => toast.error(error.message))}
+          disabled={readerAccess.isError || mode === data.accessMode}
+          loading={updateMode.isPending}
+          onClick={() => void saveMode().catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
           type="button"
         >
           {t('settings.authentication.reader.saveMode')}
@@ -271,7 +300,8 @@ export function AuthenticationSection({ project }: { project: Project }) {
             <Button
               className="mt-3"
               disabled={!audienceName.trim()}
-              onClick={() => void addAudience().catch((error) => toast.error(error.message))}
+              loading={createAudience.isPending}
+              onClick={() => void addAudience().catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
               type="button"
             >
               {t('settings.authentication.reader.createAudience')}
@@ -289,7 +319,10 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     </div>
                   </div>
                   <Button
-                    onClick={() => void removeAudience(audience).catch((error) => toast.error(error.message))}
+                    loading={deleteAudience.isPending && deleteAudience.variables === audience.id}
+                    onClick={() =>
+                      void removeAudience(audience).catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))
+                    }
                     size="sm"
                     type="button"
                     variant="outline"
@@ -331,7 +364,8 @@ export function AuthenticationSection({ project }: { project: Project }) {
             <Button
               className="mt-3"
               disabled={!readerEmail || readerAudiences.length === 0}
-              onClick={() => void invite().catch((error) => toast.error(error.message))}
+              loading={inviteReader.isPending}
+              onClick={() => void invite().catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
               type="button"
             >
               {t('settings.authentication.reader.invite')}
@@ -348,8 +382,11 @@ export function AuthenticationSection({ project }: { project: Project }) {
                 />
                 <Button
                   type="button"
+                  loading={copyingInvitation}
                   onClick={async () => {
+                    setCopyingInvitation(true);
                     const ok = await copyToClipboard(invitationLink);
+                    setCopyingInvitation(false);
                     toast[ok ? 'success' : 'error'](t(ok ? 'settings.members.linkCopied' : 'settings.members.copyFailed'));
                   }}
                 >
@@ -371,7 +408,8 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   </div>
                   <Button
                     disabled={reader.status === 'REVOKED'}
-                    onClick={() => void revoke(reader).catch((error) => toast.error(error.message))}
+                    loading={revokeReader.isPending && revokeReader.variables === reader.id}
+                    onClick={() => void revoke(reader).catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
                     size="sm"
                     type="button"
                     variant="outline"
@@ -422,7 +460,12 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   placeholder={'{"customer":"audience_id"}'}
                   value={claimMapping}
                 />
-                <Button className="mt-3" onClick={() => void saveJwt().catch((error) => toast.error(error.message))} type="button">
+                <Button
+                  className="mt-3"
+                  loading={updateJwt.isPending}
+                  onClick={() => void saveJwt().catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
+                  type="button"
+                >
                   {t('settings.authentication.reader.jwtSave')}
                 </Button>
                 <div className="mt-5 border-t pt-4">
@@ -436,11 +479,12 @@ export function AuthenticationSection({ project }: { project: Project }) {
                   <Button
                     className="mt-2"
                     disabled={!testToken}
+                    loading={testJwt.isPending}
                     onClick={() =>
                       void testJwt
                         .mutateAsync(testToken)
                         .then((result) => toast.success(`${t('settings.authentication.reader.jwtValid')}: ${JSON.stringify(result)}`))
-                        .catch((error) => toast.error(error.message))
+                        .catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))
                     }
                     type="button"
                     variant="outline"
@@ -458,7 +502,12 @@ export function AuthenticationSection({ project }: { project: Project }) {
             </Button>
             {showAudit ? (
               <div className="mt-4">
-                <Button onClick={() => void emergency().catch((error) => toast.error(error.message))} type="button" variant="destructive">
+                <Button
+                  loading={emergencyRevoke.isPending}
+                  onClick={() => void emergency().catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')))}
+                  type="button"
+                  variant="destructive"
+                >
                   {t('settings.authentication.reader.emergencyAction')}
                 </Button>
                 <div className="mt-4 max-h-56 divide-y overflow-auto rounded-md border">

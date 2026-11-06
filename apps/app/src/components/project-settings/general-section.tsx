@@ -119,8 +119,8 @@ export function GeneralSection({ project }: { project: Project }) {
           if (current[key] !== value[key]) form.setFieldValue(key, current[key]);
         }
         toast.success(t('common.saved'));
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+      } catch {
+        toast.error(t('settings.saveError'));
       }
     },
   });

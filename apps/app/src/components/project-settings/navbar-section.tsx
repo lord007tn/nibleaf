@@ -206,8 +206,8 @@ function LanguageNavbarForm({
         try {
           await update.mutateAsync({ id: language.id, body: { config: { navbar: Object.keys(navbar).length > 0 ? navbar : null } } });
           toast.success(t('common.saved'));
-        } catch (error) {
-          toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+        } catch {
+          toast.error(t('settings.saveError'));
         }
       }}
     />

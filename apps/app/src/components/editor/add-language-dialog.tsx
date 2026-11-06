@@ -9,7 +9,7 @@ import { ArrowLeft, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { Language } from '@/hooks/api';
-import { useCreateLanguage, useLanguages } from '@/hooks/api';
+import { friendlyErrorMessage, useCreateLanguage, useLanguages } from '@/hooks/api';
 import { type CatalogLanguage, LANGUAGE_CATALOG } from '@/lib/languages';
 
 interface AddLanguageDialogProps {
@@ -55,7 +55,7 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
       onCreated(language);
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : t('editor.addLanguage.error'));
+      toast.error(friendlyErrorMessage(t, error, 'editor.addLanguage.error'));
     } finally {
       setSubmitting(false);
     }
@@ -134,8 +134,14 @@ export function AddLanguageDialog({ projectId, open, onOpenChange, onCreated }: 
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" disabled={submitting} onClick={() => void handleCustomAdd()} type="button">
-              <Plus className="size-4" /> {submitting ? t('editor.addLanguage.adding') : t('editor.addLanguage.title')}
+            <Button
+              className="w-full"
+              loading={submitting}
+              loadingText={t('editor.addLanguage.adding')}
+              onClick={() => void handleCustomAdd()}
+              type="button"
+            >
+              <Plus className="size-4" /> {t('editor.addLanguage.title')}
             </Button>
           </div>
         ) : (

@@ -20,8 +20,8 @@ export function QueryErrorState({
         <p className="font-medium text-sm">{title ?? t('error.title')}</p>
         <p className="mt-1 text-muted-foreground text-sm">{description ?? t('error.unexpected')}</p>
       </div>
-      <Button disabled={retrying} onClick={onRetry} type="button" variant="outline">
-        {retrying ? t('common.loading') : t('error.tryAgain')}
+      <Button loading={retrying ?? false} onClick={onRetry} type="button" variant="outline">
+        {t('error.tryAgain')}
       </Button>
     </div>
   );

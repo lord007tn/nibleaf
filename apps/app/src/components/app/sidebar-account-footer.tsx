@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { SidebarFooter, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
@@ -59,14 +60,23 @@ export function SidebarAccountFooter() {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <div className="grid flex-1 text-start leading-tight">
-                  <span className="truncate font-medium text-sm">
-                    <bdi>{visibleSession?.user?.name ?? t('nav.account')}</bdi>
-                  </span>
-                  <span className="truncate text-muted-foreground text-xs">
-                    <bdi dir="ltr">{visibleSession?.user?.email ?? ''}</bdi>
-                  </span>
-                </div>
+                {visibleSession?.user ? (
+                  <div className="grid flex-1 text-start leading-tight">
+                    <span className="truncate font-medium text-sm">
+                      <bdi>{visibleSession.user.name || t('nav.account')}</bdi>
+                    </span>
+                    <span className="truncate text-muted-foreground text-xs">
+                      <bdi dir="ltr">{visibleSession.user.email ?? ''}</bdi>
+                    </span>
+                  </div>
+                ) : (
+                  // Name and email lines while the session resolves, so "Account" never flashes.
+                  <div className="flex flex-1 flex-col gap-1.5">
+                    <span className="sr-only">{t('nav.account')}</span>
+                    <Skeleton aria-hidden className="h-4 w-3/4" />
+                    <Skeleton aria-hidden className="h-3 w-full" />
+                  </div>
+                )}
                 <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64" side="top">

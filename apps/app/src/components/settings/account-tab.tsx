@@ -10,8 +10,8 @@ import { Mail } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
-import { DirtyStateReporter } from '@/components/project-settings/shared';
-import { friendlyAuthError } from '@/lib/auth-errors';
+import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
+import { friendlyEmailChangeError, isSameEmail } from '@/lib/auth-errors';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
@@ -26,15 +26,15 @@ function NameForm({ initialName }: { initialName: string }) {
       try {
         const res = await authClient.updateUser({ name: value.name.trim() });
         if (res?.error) {
-          toast.error(res.error.message ?? t('settings.account.name.error'));
+          toast.error(t('settings.account.name.error'));
           return;
         }
         const currentName = form.state.values.name;
         form.reset({ name: value.name.trim() });
         if (currentName !== value.name) form.setFieldValue('name', currentName);
         toast.success(t('settings.account.profileUpdated'));
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : t('settings.account.name.error'));
+      } catch {
+        toast.error(t('settings.account.name.error'));
       }
     },
   });
@@ -66,8 +66,8 @@ function NameForm({ initialName }: { initialName: string }) {
       <div className="mt-4 flex justify-end">
         <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue] as const}>
           {([isSubmitting, isDirty]) => (
-            <Button disabled={isSubmitting || !isDirty} type="submit">
-              {isSubmitting ? t('common.saving') : t('common.save')}
+            <Button disabled={!isDirty} loading={isSubmitting} type="submit" loadingText={t('common.saving')}>
+              {t('common.save')}
             </Button>
           )}
         </form.Subscribe>
@@ -95,6 +95,10 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     defaultValues: { newEmail: '' },
     onSubmit: async ({ value }) => {
       const next = value.newEmail.trim();
+      if (isSameEmail(email, next)) {
+        toast.error(t('settings.account.email.sameAsCurrent'));
+        return;
+      }
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (res.error) {
@@ -104,8 +108,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         toast.success(t('settings.account.email.currentVerificationSent'));
         setNewEmail(next);
         setStage('verify-current');
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : t('settings.account.email.sendError'));
+      } catch {
+        // The request never reached the server.
+        toast.error(t('auth.error.tryAgain'));
       }
     },
   });
@@ -121,8 +126,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       toast.success(t('settings.account.email.verificationSent', { email: newEmail }));
       setOtp('');
       setStage('pending');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('settings.account.email.verifyError'));
+    } catch {
+      toast.error(t('auth.error.tryAgain'));
     } finally {
       setIsVerifying(false);
     }
@@ -133,14 +138,15 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     try {
       const res = await authClient.emailOtp.changeEmail({ newEmail, otp: otp.trim() });
       if (res.error) {
-        toast.error(res.error.message ?? t('settings.account.email.verifyError'));
+        // Never Better Auth's English text ("Email already in use").
+        toast.error(emailChangeError(res.error, t, t('settings.account.email.verifyError')));
         return;
       }
       toast.success(t('settings.account.email.changed'));
       flushSync(reset);
       window.location.reload();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('settings.account.email.verifyError'));
+    } catch {
+      toast.error(t('auth.error.tryAgain'));
     } finally {
       setIsVerifying(false);
     }
@@ -180,7 +186,12 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
           }}
         >
           <p className="mb-3 text-muted-foreground text-sm leading-relaxed">{t('settings.account.email.changeIntro')}</p>
-          <editForm.Field name="newEmail" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
+          <editForm.Field
+            name="newEmail"
+            validators={{
+              onChange: ({ value }) => validateEmail(value, t) ?? (isSameEmail(email, value) ? t('settings.account.email.sameAsCurrent') : undefined),
+            }}
+          >
             {(field) => (
               <div className="flex flex-col gap-1.5">
                 <Input
@@ -202,8 +213,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
           <div className="mt-3 flex gap-2">
             <editForm.Subscribe selector={(state) => state.isSubmitting}>
               {(isSubmitting) => (
-                <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? t('settings.account.email.sending') : t('settings.account.email.sendVerification')}
+                <Button loading={isSubmitting} type="submit" loadingText={t('settings.account.email.sending')}>
+                  {t('settings.account.email.sendVerification')}
                 </Button>
               )}
             </editForm.Subscribe>
@@ -251,8 +262,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             </InputOTP>
           </div>
           <div className="mt-3 flex gap-2">
-            <Button disabled={isVerifying || otp.length !== 6} type="submit">
-              {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.verifyCurrent')}
+            <Button disabled={otp.length !== 6} loading={isVerifying} type="submit" loadingText={t('auth.otp.verifying')}>
+              {t('settings.account.email.verifyCurrent')}
             </Button>
             <Button onClick={reset} type="button" variant="outline">
               {t('common.cancel')}
@@ -298,8 +309,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             </InputOTP>
           </div>
           <div className="mt-3 flex gap-2">
-            <Button disabled={isVerifying || otp.length !== 6} type="submit">
-              {isVerifying ? t('auth.otp.verifying') : t('settings.account.email.confirm')}
+            <Button disabled={otp.length !== 6} loading={isVerifying} type="submit" loadingText={t('auth.otp.verifying')}>
+              {t('settings.account.email.confirm')}
             </Button>
             <Button onClick={reset} type="button" variant="outline">
               {t('common.cancel')}
@@ -324,9 +335,7 @@ export function AccountTab() {
   if (!hydrated || isPending || !session?.user) {
     return (
       <SettingsSection title={t('settings.account.title')} description={t('settings.account.description')}>
-        <p className="text-muted-foreground text-sm" role="status">
-          {t('common.loading')}
-        </p>
+        <SettingsFormSkeleton />
       </SettingsSection>
     );
   }
@@ -353,6 +362,6 @@ export function AccountTab() {
 
 /** Email-change failures: an undeliverable address gets the delivery message;
  *  everything else goes through the shared plain-language auth policy. */
-function emailChangeError(error: Parameters<typeof friendlyAuthError>[0], t: ReturnType<typeof useT>, fallback: string): string {
-  return error?.code === 'AUTH_EMAIL_UNAVAILABLE' ? t('settings.account.email.sendError') : friendlyAuthError(error, t, fallback);
+function emailChangeError(error: Parameters<typeof friendlyEmailChangeError>[0], t: ReturnType<typeof useT>, fallback: string): string {
+  return error?.code === 'AUTH_EMAIL_UNAVAILABLE' ? t('settings.account.email.sendError') : friendlyEmailChangeError(error, t, fallback);
 }

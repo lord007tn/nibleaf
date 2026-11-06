@@ -1,8 +1,9 @@
 import type { GitConflictResolutionBody, GitConnectionBody, GitOperationBody } from '@nibleaf/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
-import { getData, mutateData } from './client-helpers';
+import { mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
+import { gitWorkflowQueryOptions } from './query-options';
 
 export interface GitConflict {
   id: string;
@@ -50,10 +51,10 @@ export interface GitWorkflowStatus {
   files: Array<{ path: string }>;
 }
 
+/** Repository connection and recent operations. Polls while an operation is queued or running. */
 export const useGitWorkflow = (projectId: string) =>
   useQuery({
-    queryKey: queryKeys.gitWorkflow.detail(projectId),
-    queryFn: async () => getData<GitWorkflowStatus | null>(await api.app.projects[':projectId'].git.$get({ param: { projectId } }), 'Git workflow'),
+    ...gitWorkflowQueryOptions(projectId),
     refetchInterval: (query) =>
       query.state.data?.operations.some((operation) => operation.status === 'QUEUED' || operation.status === 'RUNNING') ? 2500 : false,
   });
@@ -77,14 +78,14 @@ export const useResolveGitConflict = (projectId: string, conflictId: string) =>
     ),
   );
 
+// Authorizing stores the credential, which the status shows (`credentialConfigured`).
 export const useAuthorizeGitWorkflow = (projectId: string) =>
-  useMutation({
-    mutationFn: async (token: string) =>
-      mutateData(
-        await api.app.projects[':projectId'].git.authorize.$post({ param: { projectId }, json: { token } }),
-        'Could not authorize the GitHub account.',
-      ),
-  });
+  useGitWorkflowMutation(projectId, async (token: string) =>
+    mutateData(
+      await api.app.projects[':projectId'].git.authorize.$post({ param: { projectId }, json: { token } }),
+      'Could not authorize the GitHub account.',
+    ),
+  );
 
 export const useConnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (json: GitConnectionBody) =>
