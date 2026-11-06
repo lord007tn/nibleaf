@@ -1,14 +1,15 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonStatTile } from '@nibleaf/design-system/components/ui/skeleton';
 import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { SearchIndexDiagnosticsResult } from '@nibleaf/validators';
-import { ChevronLeft, ChevronRight, Database, LoaderCircle, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Database, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { useCreateProjectSearchReindex, useProjectSearchIndexDiagnostics } from '@/hooks/api';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { localeTag } from '@/lib/format';
 
 const healthVariant = (health: string) => {
@@ -32,8 +33,8 @@ export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
       await reindex.mutateAsync();
       setCursors([undefined]);
       toast.success(t('settings.search.diagnostics.reindexQueued'));
-    } catch {
-      toast.error(t('settings.search.diagnostics.reindexError'));
+    } catch (error) {
+      toast.error(friendlyErrorMessage(t, error, 'settings.search.diagnostics.reindexError'));
     }
   };
 
@@ -50,17 +51,18 @@ export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
         <Button
           className="h-9 shrink-0"
           disabled={
-            reindex.isPending ||
             !diagnostics.data ||
             diagnostics.data.availability.reason === 'not_configured' ||
             diagnostics.data.availability.reason === 'not_published' ||
             diagnostics.data.health === 'indexing'
           }
+          loading={reindex.isPending}
+          loadingText={t('settings.search.diagnostics.reindexing')}
           onClick={createReindex}
           type="button"
         >
-          {reindex.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-          {reindex.isPending ? t('settings.search.diagnostics.reindexing') : t('settings.search.diagnostics.reindex')}
+          <RefreshCw className="size-4" />
+          {t('settings.search.diagnostics.reindex')}
         </Button>
       </div>
 
@@ -294,16 +296,26 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** The health row, the four counts and the two detail cards, in place. */
 function DiagnosticsSkeleton() {
+  const t = useT();
   return (
-    <div className="space-y-4">
-      <Skeleton className="h-12 w-full" />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {['a', 'b', 'c', 'd'].map((key) => (
-          <Skeleton className="h-20" key={key} />
-        ))}
+    <div aria-busy="true" className="space-y-5">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden className="space-y-5">
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {['chunks', 'pages', 'languages', 'versions'].map((key) => (
+            <SkeletonStatTile key={key} />
+          ))}
+        </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Skeleton className="h-40 rounded-lg" />
+          <Skeleton className="h-40 rounded-lg" />
+        </div>
       </div>
-      <Skeleton className="h-36 w-full" />
     </div>
   );
 }

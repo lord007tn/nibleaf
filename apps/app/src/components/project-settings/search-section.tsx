@@ -1,4 +1,3 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
@@ -8,8 +7,10 @@ import { useForm } from '@tanstack/react-form';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useGetPublicMeta, useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
@@ -62,18 +63,17 @@ export function SearchSection({ project }: { project: Project }) {
 
 /** Default scope: the project-level search config (unchanged). */
 function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDirtyChange?: (dirty: boolean) => void }) {
+  const t = useT();
   const configuration = useProjectSearchConfiguration(project.id);
-  if (configuration.isPending) {
-    return (
-      <div className="space-y-5">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-28 w-full" />
-      </div>
-    );
-  }
+  if (configuration.isPending) return <SearchSettingsSkeleton />;
   if (configuration.isError || !configuration.data) {
-    return <SearchConfigurationError onRetry={() => void configuration.refetch()} />;
+    return (
+      <QueryErrorState
+        description={t('settings.search.configuration.error')}
+        onRetry={() => void configuration.refetch()}
+        retrying={configuration.isFetching}
+      />
+    );
   }
   return (
     <>
@@ -89,14 +89,40 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
   );
 }
 
-function SearchConfigurationError({ onRetry }: { onRetry: () => void }) {
+/** The search form's first load, shaped like its fields: two inputs, the
+ *  hotkey switch, the toggles, the starter questions and the support link. */
+function SearchSettingsSkeleton() {
   const t = useT();
+  const field = (control: string) => (
+    <div className="mb-6">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="mt-1 mb-2.5 h-3.5 w-2/3" />
+      <Skeleton className={control} />
+    </div>
+  );
+  const toggle = (
+    <div className="mb-6 flex items-center gap-4 rounded-lg border px-4 py-3.5">
+      <div className="flex-1 space-y-1.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-3/4" />
+      </div>
+      <Skeleton className="h-5 w-9 rounded-full" />
+    </div>
+  );
   return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
-      <p className="font-medium text-destructive">{t('settings.search.configuration.error')}</p>
-      <Button className="mt-2 h-auto p-0 text-xs" onClick={onRetry} size="sm" type="button" variant="link">
-        {t('common.retry')}
-      </Button>
+    <div aria-busy="true">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        {field('h-9 w-full')}
+        {field('h-9 w-full')}
+        {field('h-9 w-[200px]')}
+        {toggle}
+        {toggle}
+        {field('h-20 w-full')}
+        {field('h-9 w-full')}
+      </div>
     </div>
   );
 }
@@ -174,7 +200,7 @@ function ProjectSearchConfigurationForm({
         });
         toast.success(t('common.saved'));
       } catch {
-        toast.error(t('settings.search.configuration.error'));
+        // The mutation's `meta.errorMessage` reports the failure in plain words.
       }
     },
   });
@@ -337,7 +363,8 @@ function LanguageSearchForm({
         await update.mutateAsync({ id: language.id, body: { config: { search: placeholder ? { placeholder } : null } } });
         toast.success(t('common.saved'));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+        // Never the server's own wording: it is English and technical.
+        toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
       }
     },
   });

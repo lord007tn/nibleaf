@@ -188,6 +188,18 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
         prefetchRouteData(queryClient, listExportSchedulesQueryOptions(projectId));
         prefetchRouteData(queryClient, deploymentsQueryOptions(projectId));
         break;
+      case 'search':
+        prefetchRouteData(queryClient, languagesQueryOptions(projectId));
+        // These factories parse with validators schemas, so they load lazily to
+        // stay out of the main chunk. If the chunk fails, the section fetches on render.
+        if (typeof window !== 'undefined')
+          void import('@/hooks/api/project-search')
+            .then((search) => {
+              prefetchRouteData(queryClient, search.projectSearchConfigurationQueryOptions(projectId));
+              prefetchRouteData(queryClient, search.projectSearchIndexDiagnosticsQueryOptions(projectId));
+            })
+            .catch(() => undefined);
+        break;
       default:
         break;
     }

@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   data: { availability: { reason: 'provider_unavailable' as string | null }, health: 'unavailable' },
   mutate: vi.fn(),
+  toastError: vi.fn(),
 }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: state.toastError } }));
 vi.mock('@/hooks/api', () => ({
   useProjectSearchIndexDiagnostics: () => ({ data: state.data, isPending: false, isError: false }),
   useCreateProjectSearchReindex: () => ({ isPending: false, mutateAsync: state.mutate }),
@@ -34,11 +36,24 @@ describe('index recovery controls', () => {
     document.body.append(container);
     root = createRoot(container);
     await act(async () => root.render(<SearchIndexDiagnostics projectId="qa-project" />));
-    const button = [...container.querySelectorAll('button')].find((b) => b.textContent === 'settings.search.diagnostics.reindex');
+    const button = [...container.querySelectorAll('button')].find((b) => b.textContent?.startsWith('settings.search.diagnostics.reindex'));
     expect(button?.disabled).toBe(disabled);
     if (!disabled) {
       await act(async () => button?.click());
       expect(state.mutate).toHaveBeenCalledOnce();
     }
+  });
+  it('reports a failed reindex in plain words, never the server text', async () => {
+    state.data = { availability: { reason: 'provider_unavailable' }, health: 'unavailable' };
+    state.mutate.mockRejectedValueOnce(new Error('PrismaClientKnownRequestError: Unique constraint failed'));
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root.render(<SearchIndexDiagnostics projectId="qa-project" />));
+    const button = [...container.querySelectorAll('button')].find((b) => b.textContent?.startsWith('settings.search.diagnostics.reindex'));
+    await act(async () => button?.click());
+    expect(state.toastError).toHaveBeenCalledExactlyOnceWith('settings.search.diagnostics.reindexError');
+    quiet.mockRestore();
   });
 });
