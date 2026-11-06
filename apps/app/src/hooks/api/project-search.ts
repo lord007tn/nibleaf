@@ -4,7 +4,7 @@ import {
   type UpdateProjectSearchConfigurationBody,
   updateProjectSearchConfigurationBody,
 } from '@nibleaf/validators';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -41,6 +41,8 @@ export const useUpdateProjectSearchConfiguration = (projectId: string) => {
 export const useProjectSearchIndexDiagnostics = (projectId: string, cursor?: string, limit = 10) =>
   useQuery({
     queryKey: queryKeys.projectSearch.index(projectId, cursor, limit),
+    // Paging keeps the current page on screen until the next one arrives.
+    placeholderData: keepPreviousData,
     queryFn: async () =>
       getData(
         await api.app.projects[':projectId'].settings.search.diagnostics.$get({
