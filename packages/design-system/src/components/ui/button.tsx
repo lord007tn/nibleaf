@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2Icon } from "lucide-react"
 
 import { cn } from '../../lib/utils'
 
@@ -40,18 +41,70 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonLoadingProps = {
+  /**
+   * Shows a spinner, sets `aria-busy` and disables the button while an action
+   * runs. The label stays in the layout (invisible) so the button keeps its
+   * width; pass `false` rather than leaving it undefined on buttons that can
+   * load, so the markup doesn't change when loading starts.
+   */
+  loading?: boolean
+  /** Optional text shown next to the spinner while loading (e.g. "Saving…"). */
+  loadingText?: string
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading,
+  loadingText,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & ButtonLoadingProps) {
+  // Buttons that never pass `loading` render exactly as before.
+  const canLoad = loading !== undefined
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-loading={loading ? "" : undefined}
+      aria-busy={loading || undefined}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100"
+      )}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {canLoad ? (
+        // Both states share one grid cell, so the button is as wide as the
+        // wider of the two and never jumps when loading starts or ends.
+        <span className="inline-grid items-center justify-items-center gap-[inherit]">
+          <span
+            className={cn(
+              "col-start-1 row-start-1 inline-flex items-center justify-center gap-[inherit]",
+              loading && "invisible"
+            )}
+            aria-hidden={loading && loadingText ? true : undefined}
+          >
+            {children}
+          </span>
+          <span
+            className={cn(
+              "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5",
+              !loading && "invisible"
+            )}
+            aria-hidden={!loading || !loadingText ? true : undefined}
+          >
+            <Loader2Icon aria-hidden className="animate-spin motion-reduce:animate-none" />
+            {loadingText ? <span>{loadingText}</span> : null}
+          </span>
+        </span>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   )
 }
 

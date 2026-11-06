@@ -12,6 +12,10 @@
     "./keys": {
       "types": "./dist/keys.d.mts",
       "default": "./dist/keys.mjs"
+    },
+    "./workspace": {
+      "types": "./dist/workspace.d.mts",
+      "default": "./dist/workspace.mjs"
     }
   },
   "scripts": {
@@ -23,10 +27,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@nibleaf/database": "workspace:*",
+    "@nibleaf/shared": "workspace:*",
     "@nibleaf/i18n": "workspace:*",
     "@openrouter/sdk": "1.5.28",
     "@orama/orama": "^3.1.18",
     "@t3-oss/env-core": "^0.13.11",
+    "openai": "7.47.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
