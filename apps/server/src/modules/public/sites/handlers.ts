@@ -1,5 +1,5 @@
 import { publicAnalyticsEventSchema } from '@nibleaf/clickhouse';
-import { searchAnswerBody, searchQuery } from '@nibleaf/validators';
+import { searchAnswerBody, searchQuery, siteChatBody, siteChatFeedbackBody } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import {
@@ -18,6 +18,7 @@ import {
   type SiteTextDocument,
   searchSite,
 } from '@/actions/sites';
+import { chatSite, submitSiteChatFeedback } from '@/actions/site-chat';
 import { deliveryCacheHeaders } from '@/lib/delivery-cache';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -86,6 +87,11 @@ const app = new Hono<HonoEnv>()
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await answerSite(ctx.req.param('id'), q, lang, version) }, 200);
+  })
+  .post('/:id/chat', ...sitesRoutes.chat, validator('json', siteChatBody), async (ctx) => chatSite(ctx.req.param('id'), ctx.req.valid('json')))
+  .put('/:id/chat/feedback', ...sitesRoutes.chatFeedback, validator('json', siteChatFeedbackBody), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    return ctx.json({ data: await submitSiteChatFeedback(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
   })
   .post('/:id/events', ...sitesRoutes.track, validator('json', publicAnalyticsEventSchema), async (ctx) => {
     ctx.header('Cache-Control', 'private, no-store');

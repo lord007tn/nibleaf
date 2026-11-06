@@ -32,6 +32,8 @@ const app = new Hono<HonoEnv>()
   // abuse budget than ordinary content/search requests.
   .use('/reader-access/*', rateLimit({ windowMs: 60_000, max: 20 }))
   .use('/sites/:id/answer', rateLimit({ windowMs: 60_000, max: envExtras.SEARCH_ANSWER_RATE_LIMIT_PER_MIN }))
+  .use('/sites/:id/chat', rateLimit({ windowMs: 60_000, max: envExtras.SEARCH_ANSWER_RATE_LIMIT_PER_MIN }))
+  .use('/sites/:id/chat/feedback', rateLimit({ windowMs: 60_000, max: 30 }))
   .use('/marketing-events/*', rateLimit({ windowMs: 60_000, max: 30 }))
   .route('/sites', sites)
   .route('/domains', domains)

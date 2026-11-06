@@ -13,6 +13,16 @@ export const envExtras = createEnv({
     /** Expensive grounded-answer budget per caller, enforced in addition to the
      * shared public limiter. */
     SEARCH_ANSWER_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
+    /** Reader AI chat: prior messages (user + assistant) sent to the model. */
+    SEARCH_CHAT_HISTORY_MESSAGES: z.coerce.number().int().min(0).max(12).default(6),
+    /** Reader AI chat: estimated token cap for that history. */
+    SEARCH_CHAT_HISTORY_MAX_TOKENS: z.coerce.number().int().min(0).max(16_000).default(1500),
+    /** Reader AI chat: questions allowed in one conversation before readers are asked to start a new chat. */
+    SEARCH_CHAT_MAX_TURNS: z.coerce.number().int().min(1).max(200).default(20),
+    /** Reader AI chat: provider tokens one conversation may spend. */
+    SEARCH_CHAT_MAX_CONVERSATION_TOKENS: z.coerce.number().int().min(1000).max(10_000_000).default(60_000),
+    /** Reader AI chat: provider tokens one project may spend per UTC day. 0 disables this budget. */
+    SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: z.coerce.number().int().min(0).max(1_000_000_000).default(2_000_000),
     /** Per-workspace daily cap on AI draft calls. 0 disables AI drafting entirely. */
     AI_DAILY_LIMIT: z.coerce.number().int().min(0).default(50),
     /** Instance-level switch to turn off self-serve sign-up (surfaced via /api/public/meta). */

@@ -3,8 +3,8 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-11-03'
-verified_against: 'packages/search, packages/qdrant, apps/server/src/lib/ai-search, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
+last_reviewed: '2026-11-06'
+verified_against: 'packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/search-ai'
@@ -99,10 +99,12 @@ Quotas are atomic per project and day in Redis. Requests also have a separate
 per-IP minute limit, provider timeout, and request cancellation. If Redis is
 unavailable, answer quota checks fail closed.
 
-Answer generation is intentionally non-streaming in this release. Nibleaf first
-validates the complete structured response, rejects unknown citations and
-unsupported claims, and only then returns it. This avoids streaming unvalidated
-model text. Search results remain immediate and non-generative.
+The one-shot answer endpoint (`POST /api/public/sites/:id/answer`) stays
+non-streaming. It validates the complete structured response, rejects unknown
+citations and unsupported claims, and only then returns it. The reader chat
+assistant streams instead and validates citations when the answer is complete;
+see [Run the AI chat assistant](#run-the-ai-chat-assistant). Search results
+remain immediate and non-generative.
 
 AI controls stay hidden until the instance can serve them. The editor's AI tab
 appears only when `OPENROUTER_API_KEY` is set and `AI_DAILY_LIMIT` is above
@@ -111,6 +113,123 @@ when the site has a usable provider and a ready published index. Instance-manage
 answers additionally require `SEARCH_ANSWER_ENABLED=true`; a verified workspace
 connection uses the administrator's explicit Smart AI selection. If the provider fails, drafting returns an error
 instead of placeholder text.
+
+## Run the AI chat assistant
+
+The chat assistant uses the same switches as grounded answers: the site's
+**Grounded AI answers** setting, a usable provider, and a READY published index.
+It needs no extra service. Readers open it from the **Ask AI** button, from the
+search dialog, with **Ask AI about this page** on an article, or with an
+`?ask=<question>` link. Conversations are multi-turn and live in the browser tab
+only; a full reload starts a new chat.
+
+The reader calls a TanStack Start server function, which forwards the visitor's
+cookie and authorization to `POST /api/public/sites/:id/chat` and passes the
+response stream through unchanged. The Hono endpoint derives the tenant,
+deployment, version, language, visibility, and reader page grants exactly as
+results and answers do, then streams AG-UI events through TanStack AI. A request
+can only choose among published languages and versions. It never widens scope.
+
+Each turn runs these steps:
+
+1. Spend gates run before any provider call: the per-IP minute limit, the
+   conversation's turn and token caps, the project's daily token budget, and the
+   existing daily answer quota (each question counts once). If Redis is
+   unavailable, the turn is refused.
+2. A follow-up question is rewritten into a standalone search query from the
+   bounded conversation history. This is one small extra model call; the first
+   question in a chat skips it.
+3. Hybrid retrieval runs with the usual scope filters. With page context, a
+   second lane searches only that page and slightly boosts its passages, but only
+   when the reader may read it.
+4. If retrieval is not confident enough, the model is not called. The reader is
+   told the docs could not confirm an answer and is offered the best-matching
+   articles.
+5. Otherwise the answer streams as Markdown with inline `[S1]` source markers.
+   When the stream ends, Nibleaf validates it and sends a final event that the
+   reader UI uses in place of the streamed text.
+
+Validation keeps the existing safety rules and relaxes only the formatting rules.
+An unknown source marker anywhere withdraws the whole answer, as does an answer
+with no valid citation. Headings, code blocks, short lead-ins, and lists that cite
+a source do not need their own marker. A few uncited paragraphs are removed from
+the final answer. If more than a third of the substantive paragraphs are uncited,
+the answer is withdrawn. A withdrawn answer is replaced with "I couldn't verify
+this from the docs" and links to the best-matching articles.
+
+Streaming is a trade-off: readers see text as it arrives, so they can briefly see
+wording that validation later removes or withdraws. The final event always
+decides what remains on screen and what is stored. Compare the strict one-shot
+policy with the chat policy on the same fixtures:
+
+```bash
+EVAL_MODE=both pnpm --filter @nibleaf/search eval:rag
+```
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `SEARCH_ANSWER_DAILY_PER_PROJECT` | `200` | Existing daily answer quota. Each chat question counts once. |
+| `SEARCH_ANSWER_RATE_LIMIT_PER_MIN` | `10` | Per-IP minute limit, applied separately to `/answer` and `/chat`. |
+| `SEARCH_CHAT_MAX_TURNS` | `20` | Questions per conversation before readers are asked to start a new chat. |
+| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `60000` | Provider tokens one conversation may use. |
+| `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | Provider tokens per project per UTC day. `0` turns this budget off. |
+| `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Earlier messages sent to the model with each question. |
+| `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated token cap for that history. |
+
+Budgets use provider-reported token usage. When a provider reports none, Nibleaf
+counts a conservative estimate instead. The site's AI settings can also list up
+to four suggested first questions for the default language.
+
+## Keep AI conversation history and feedback
+
+Readers can rate each answer with a thumbs up or down, pick a reason, and add a
+comment. They can change or withdraw a rating. Each rating needs a signed token
+issued with that answer, so only the reader who received it can rate it.
+
+Conversations and feedback are stored in ClickHouse next to site analytics. This
+needs `ANALYTICS_MODE` set to anything other than `disabled` and a worker
+processing the `analytics` queue. After upgrading, run the analytics migrations
+once to add the conversation tables (migration versions 1001 and later):
+
+```bash
+pnpm analytics:migrate
+```
+
+Every turn records content-free facts: status, no-answer reason, language,
+version, page asked from, cited pages, model, tokens, provider-reported cost, and
+response time. These feed the dashboard's usage and cost views and the existing
+answer analytics and usage metering.
+
+Question, answer, and comment text is stored only when all of the following hold:
+
+- **Save questions to improve your docs** is on in the site's search settings
+  (it is on by default).
+- An encryption key is configured: `AI_CONVERSATION_ENCRYPTION_KEY` (32 random
+  bytes, base64, for example `openssl rand -base64 32`) on both the API and the
+  worker. Without it, Nibleaf derives a separate key from
+  `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`. With neither, no text is stored.
+- The visitor allows it. When the site shows a consent banner, text is stored
+  only after the visitor accepts. Otherwise text is stored unless they declined.
+
+Text is redacted inside the API before it is queued. Redaction removes email
+addresses, phone and ID numbers (including Arabic-Indic digits), credentials and
+tokens, and URL query strings. This reduces personal data but is not
+anonymization, so treat stored conversations as restricted. Queue payloads are
+sealed with AES-256-GCM, so Redis never holds plaintext. Nibleaf never stores
+reader identity; a per-tab session id is stored only as a salted hash. Private
+sites keep their conversations marked private.
+
+Rows expire after `AI_CONVERSATION_RETENTION_DAYS` (default `90`, from 1 to 365)
+through ClickHouse TTL. Project administrators can delete a conversation from the
+dashboard. Deletion writes a tombstone, removes the rows, and stops a queued write
+from bringing them back. Deleting a project or workspace removes its
+conversations as well.
+
+Workspace members find conversations, feedback, unanswered questions, and usage
+under **AI assistant** in the project sidebar. Project-bound API keys with the
+`analytics:read` scope can read the same data through the MCP tools
+`list_ai_conversations`, `get_ai_conversation`, `get_ai_feedback_summary`, and
+`list_ai_content_gaps`. Every MCP call is audited.
 
 ## Index and evaluate
 

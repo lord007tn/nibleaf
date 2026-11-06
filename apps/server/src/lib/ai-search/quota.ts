@@ -4,7 +4,8 @@ import { env } from '@/env';
 let redis: Redis | null = null;
 let connecting: Promise<Redis> | null = null;
 
-const connection = (): Promise<Redis> => {
+/** Shared bounded connection for AI spend counters (answer quota, chat budgets). */
+export const aiSpendRedis = (): Promise<Redis> => {
   if (redis?.status === 'ready') return Promise.resolve(redis);
   if (connecting) return connecting;
   redis?.disconnect();
@@ -42,7 +43,7 @@ export const consumeAnswerQuota = async (projectId: string, now = new Date()): P
   const limit = env.SEARCH_ANSWER_DAILY_PER_PROJECT;
   if (limit === 0) return { allowed: false, remaining: 0 };
   const key = `{search-answer-quota}:${projectId}:${day(now)}`;
-  const client = await connection();
+  const client = await aiSpendRedis();
   const current = Number(
     await client.eval("local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],172800) end; return n", 1, key),
   );

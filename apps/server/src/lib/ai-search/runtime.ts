@@ -224,6 +224,60 @@ export const runPublishedSearch = async (
   }
 };
 
+/** Score bonus for chunks from the page the reader asked about. Small enough
+ * that a clearly better match elsewhere in the docs still wins. */
+const PAGE_CONTEXT_BOOST = 0.12;
+/** The reader explicitly asked about this page, so its own chunks are relevant
+ * even when the question ("summarize this") embeds poorly on its own. */
+const PAGE_CONTEXT_MIN_CONFIDENCE = 0.5;
+
+export interface ChatRetrieval {
+  chunks: SearchChunk[];
+  hits: HybridChunkHit[];
+  confidence: number;
+}
+
+/** Retrieval for one chat turn. The optional page lane narrows the same
+ * server-derived scope to a single page — it can never widen the reader's
+ * grants: a page outside `allowedPageIds` is simply not searched. */
+export const retrieveChatContext = async (
+  scope: SearchScope,
+  query: string,
+  runtime: WorkspaceAiRuntime,
+  options: { page?: { id: string; title: string }; signal?: AbortSignal } = {},
+): Promise<ChatRetrieval> => {
+  const page = options.page && (scope.allowedPageIds === null || scope.allowedPageIds.has(options.page.id)) ? options.page : undefined;
+  const [main, pageLane] = await Promise.all([
+    retrieveHybrid(scope, query, 12, options.signal, runtime),
+    page
+      ? retrieveHybrid({ ...scope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6, options.signal, runtime)
+      : Promise.resolve(null),
+  ]);
+  if (!pageLane || pageLane.chunks.length === 0) {
+    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence };
+  }
+  const merged = new Map<string, HybridChunkHit>();
+  for (const hit of main.chunks) merged.set(hit.chunk.id, hit);
+  for (const hit of pageLane.chunks) {
+    const boosted = { ...hit, score: hit.score + PAGE_CONTEXT_BOOST };
+    const current = merged.get(hit.chunk.id);
+    if (!current || boosted.score > current.score) merged.set(hit.chunk.id, boosted);
+  }
+  const hits = [...merged.values()].sort((left, right) => right.score - left.score || left.chunk.id.localeCompare(right.chunk.id));
+  return {
+    chunks: selectAnswerChunks(hits),
+    hits,
+    confidence: Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE),
+  };
+};
+
+/** The live provider runtime for a chat turn, or null when answers are off. */
+export const resolveChatRuntime = async (projectId: string): Promise<WorkspaceAiRuntime | null> => {
+  if (!qdrant) return null;
+  const runtime = await resolveWorkspaceAi(projectId);
+  return runtime?.answersEnabled ? runtime : null;
+};
+
 export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,
