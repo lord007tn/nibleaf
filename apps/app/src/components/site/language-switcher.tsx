@@ -12,7 +12,7 @@ export interface SiteLanguage {
 /**
  * Header control for switching the active site language. Renders nothing for
  * single-language sites, and a dropdown (Mintlify-style) whenever there are two
- * or more languages.
+ * or more languages. Phones get the same choice in the mobile drawer instead.
  */
 export function LanguageSwitcher({
   languages,
@@ -38,24 +38,27 @@ export function LanguageSwitcher({
             type="button"
             // The min width keeps the header from shifting when the label changes
             // script ("English" ↔ "العربية"); the chevron stays pinned at the end.
-            className="flex h-8 min-w-[7.5rem] cursor-pointer items-center gap-1.5 rounded-full border border-border/70 px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/60 hover:text-foreground"
-            aria-label={t('changeLanguage')}
+            // Touch screens get a 44px target; fine pointers keep the compact pill.
+            className="flex h-11 min-w-[7.5rem] cursor-pointer items-center gap-1.5 rounded-full border border-border/70 px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted/60 hover:text-foreground pointer-fine:h-8"
+            // The name carries the current value, so a screen reader hears "Language: English".
+            aria-label={t('languageCurrent', { language: active?.label ?? activeCode })}
+            title={t('changeLanguage')}
           >
-            <Languages className="size-3.5 shrink-0" />
+            <Languages className="size-3.5 shrink-0" aria-hidden />
             <span className="max-w-[7rem] truncate" dir={active?.direction === 'RTL' ? 'rtl' : 'ltr'} lang={active?.code}>
               {active?.label ?? activeCode}
             </span>
-            <ChevronDown className="ms-auto size-3.5 shrink-0 opacity-60" />
+            <ChevronDown className="ms-auto size-3.5 shrink-0 opacity-60" aria-hidden />
           </button>
         }
       />
       <DropdownMenuContent align="end" className="w-44">
         {languages.map((language) => (
-          <DropdownMenuItem key={language.code} onClick={() => onChange(language.code)}>
+          <DropdownMenuItem key={language.code} onClick={() => onChange(language.code)} className="pointer-coarse:min-h-11">
             <span className="flex-1" dir={language.direction === 'RTL' ? 'rtl' : 'ltr'} lang={language.code}>
               {language.label}
             </span>
-            {language.code === activeCode ? <Check className="size-4" /> : null}
+            {language.code === activeCode ? <Check className="size-4" aria-hidden /> : null}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

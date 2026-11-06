@@ -1,6 +1,9 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
+import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
+import { useSiteReader } from '@/components/site/site-reader-context';
 import { getSiteFn, getSitePageFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { SitePage } from '@/hooks/api/types';
@@ -16,6 +19,9 @@ const OpenApiReferenceView = lazy(() =>
 
 export const Route = createFileRoute('/sites/$projectId/$')({
   component: SitePath,
+  // A missing page renders here, inside the reader chrome and in the site's
+  // language, instead of the platform-wide not-found screen.
+  notFoundComponent: SiteNotFound,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
   loader: async ({ params, deps, location }) => {
@@ -109,9 +115,10 @@ function SitePath() {
   // Active language comes from the parent route's ?lang= search param.
   const { lang } = Route.useSearch();
   const data = Route.useLoaderData();
+  const readerLang = useSiteReader()?.lang;
   if (data.kind === 'openapi') {
     return (
-      <Suspense fallback={<div className="py-12 text-center text-muted-foreground">Loading API reference…</div>}>
+      <Suspense fallback={<div className="py-12 text-center text-muted-foreground">{siteT(readerLang ?? lang)('loadingApiReference')}</div>}>
         <OpenApiReferenceView projectId={projectId} />
       </Suspense>
     );

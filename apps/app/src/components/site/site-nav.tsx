@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { ChevronRight } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
 import type { NavNode } from '@/hooks/api';
 import { siteHref } from '@/lib/site-paths';
@@ -67,7 +67,8 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
           href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
           aria-current={active ? 'page' : undefined}
           className={cn(
-            'relative flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors',
+            // Touch screens get 44px rows; mouse and trackpad keep the dense list.
+            'relative flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11',
             active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
             // Entries in a railed list recolor their segment of the rail when active.
             rail && active && 'before:absolute before:-start-[13px] before:inset-y-1 before:w-[1.5px] before:rounded-full before:bg-primary',
@@ -90,7 +91,7 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
             aria-controls={childrenId}
             aria-label={toggleLabel}
             aria-labelledby={`${toggleId} ${linkId}`}
-            className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:size-11"
           >
             <ChevronRight className={cn('size-3.5 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
           </button>
@@ -119,13 +120,20 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
  *  on hover so the resting state reads as a plain heading. */
 function NavSection({ node, projectId, currentPath, lang, version, depth, toggleLabel }: NavItemProps & { node: NavNode }) {
   const [open, setOpen] = useState(true);
+  // A reader may collapse a section, then reach one of its pages from search or
+  // a link: reopen it so the current page is never hidden in the sidebar.
+  useEffect(() => {
+    if (containsPath(node, currentPath)) {
+      setOpen(true);
+    }
+  }, [currentPath, node]);
   return (
     <li className="mt-7 first:mt-1">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm"
+        className="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11"
       >
         <span className="truncate">{node.title}</span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
@@ -171,7 +179,7 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground"
+        className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11"
       >
         <ChevronRight className={cn('size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="size-3.5 shrink-0 text-muted-foreground/80" /> : null}
@@ -223,6 +231,29 @@ function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: st
  *  `!important` beats an unlayered one, so this rule has to join that layer. */
 const SHOW_SUBPAGES_WITHOUT_SCRIPT = '@layer base{nav[data-site-nav] ul[hidden]{display:block!important}}';
 
+const isScrollable = (element: HTMLElement): boolean => {
+  const { overflowX, overflowY } = getComputedStyle(element);
+  const scrolls = (value: string) => value === 'auto' || value === 'scroll';
+  return (scrolls(overflowY) && element.scrollHeight > element.clientHeight) || (scrolls(overflowX) && element.scrollWidth > element.clientWidth);
+};
+
+/** Bring the current page's link into view inside the sidebar (or drawer)
+ * scroller, like `scrollIntoView({ block: 'nearest' })` but without ever
+ * scrolling the page itself: only the nav's own scroll viewport moves, and only
+ * when the link is outside it. */
+export function revealCurrentNavLink(nav: HTMLElement): void {
+  const link = nav.querySelector<HTMLElement>('a[aria-current="page"]');
+  if (!link || link.closest('[hidden]')) return;
+  let viewport = nav.parentElement;
+  while (viewport && viewport !== document.body && !isScrollable(viewport)) viewport = viewport.parentElement;
+  if (!viewport || viewport === document.body || viewport === document.documentElement) return;
+  const frame = viewport.getBoundingClientRect();
+  const target = link.getBoundingClientRect();
+  const margin = 24;
+  if (target.top < frame.top) viewport.scrollTop -= frame.top - target.top + margin;
+  else if (target.bottom > frame.bottom) viewport.scrollTop += target.bottom - frame.bottom + margin;
+}
+
 export function SiteNav({
   nodes,
   projectId,
@@ -230,6 +261,7 @@ export function SiteNav({
   lang,
   version,
   toggleLabel,
+  label,
 }: {
   nodes: NavNode[];
   projectId: string;
@@ -237,9 +269,21 @@ export function SiteNav({
   lang?: string;
   version?: string;
   toggleLabel: string;
+  /** Accessible name that tells this page list apart from the header links. */
+  label?: string;
 }) {
+  const navRef = useRef<HTMLElement>(null);
+  // Sections expand in their own effects, so wait a frame for that render
+  // before measuring where the current link landed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-run whenever the current page changes.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const frame = requestAnimationFrame(() => revealCurrentNavLink(nav));
+    return () => cancelAnimationFrame(frame);
+  }, [currentPath]);
   return (
-    <nav data-site-nav="">
+    <nav data-site-nav="" aria-label={label} ref={navRef}>
       <noscript>
         <style>{SHOW_SUBPAGES_WITHOUT_SCRIPT}</style>
       </noscript>
