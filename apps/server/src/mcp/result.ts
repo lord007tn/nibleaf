@@ -191,8 +191,9 @@ export type McpActor = NonNullable<McpPrincipal['actor']>;
 
 export interface McpWriteOutcome {
   data: unknown;
-  /** Compact result stored for clientRequestId replay: ids, revision, status.
-   *  Never page content. */
+  /** Compact result stored for clientRequestId replay: ids, revision, status,
+   *  and every flag, warning and next step the response carries, so a replay
+   *  means the same as the first answer. Never page content. */
   stored?: Prisma.InputJsonObject;
   /** The entity actually touched, when known only after running (a created page). */
   target?: McpAuditTarget;

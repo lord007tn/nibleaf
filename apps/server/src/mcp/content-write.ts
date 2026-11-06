@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server';
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { McpScope } from '@nibleaf/shared/mcp';
 import type { UpdatePageBody } from '@nibleaf/validators';
@@ -205,6 +205,20 @@ const pageSummary = (page: Page) => ({
 
 /** The replay record: ids, revision and status only, never titles or content. */
 const storedPage = (page: Page, status: string) => ({ pageId: page.id, kind: page.kind, revision: pageRevision(page), hidden: page.hidden, status });
+
+const UNPUBLISHED = { publishState: 'unpublished', note: UNPUBLISHED_NOTE } as const;
+
+/** What a page write did, for the response and for an identical retry.
+ *  `details` holds everything that tells the client what happened or what to
+ *  do next (changed flags, warnings, notes, ids). It goes into both, so a
+ *  replayed answer means the same as the first one. The stored copy names the
+ *  page by id and revision instead of repeating its title and path: the replay
+ *  cache never stores page content. */
+const writeOutcome = (page: Page, status: string, details: Prisma.InputJsonObject): McpWriteOutcome => ({
+  data: { page: pageSummary(page), ...details },
+  stored: { ...storedPage(page, status), ...details },
+  target: pageTarget(page.id),
+});
 
 const pageTarget = (pageId: string | null): McpAuditTarget => ({ type: 'page', id: pageId });
 
@@ -430,20 +444,15 @@ const createPageDraft = async (projectId: string, args: z.output<typeof createPa
   } catch (error) {
     log.warn({ pageId: page.id, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'MCP duplicate check failed after create');
   }
-  return {
-    data: {
-      page: pageSummary(page),
-      possibleDuplicates: duplicates,
-      ...(duplicates === null ? { possibleDuplicatesUnavailable: true } : {}),
-      ...(placementFailed
-        ? { placement: 'failed', placementNote: 'The page was created but left at the end of its siblings; use move_page to reposition it.' }
-        : {}),
-      publishState: 'unpublished',
-      note: UNPUBLISHED_NOTE,
-    },
-    stored: storedPage(page, 'created'),
-    target: pageTarget(page.id),
-  };
+  const outcome = writeOutcome(page, 'created', {
+    ...(duplicates === null ? { possibleDuplicatesUnavailable: true } : { possibleDuplicateIds: duplicates.map((duplicate) => duplicate.id) }),
+    ...(placementFailed
+      ? { placement: 'failed', placementNote: 'The page was created but left at the end of its siblings; use move_page to reposition it.' }
+      : {}),
+    ...UNPUBLISHED,
+  });
+  // The response also lists the duplicates' titles and paths; a replay names them by id.
+  return { ...outcome, data: { ...(outcome.data as Record<string, unknown>), possibleDuplicates: duplicates } };
 };
 
 const updatePageContent = async (projectId: string, args: z.output<typeof updatePageInput>, actor: McpActor): Promise<McpWriteOutcome> => {
@@ -463,17 +472,11 @@ const updatePageContent = async (projectId: string, args: z.output<typeof update
     ...(prepared && prepared.body !== page.content ? { content: prepared.body } : {}),
   };
   const changedFields = Object.keys(body);
-  if (changedFields.length === 0) {
-    return { data: { page: pageSummary(page), changed: false, changedFields }, stored: storedPage(page, 'unchanged'), target: pageTarget(page.id) };
-  }
+  if (changedFields.length === 0) return writeOutcome(page, 'unchanged', { changed: false, changedFields });
   const updated = await withRevisionGuard(projectId, page.id, () =>
     updatePage(projectId, page.id, body, actor.userId, { expectedUpdatedAt: page.updatedAt }),
   );
-  return {
-    data: { page: pageSummary(updated), changed: true, changedFields, publishState: 'unpublished', note: UNPUBLISHED_NOTE },
-    stored: storedPage(updated, 'updated'),
-    target: pageTarget(page.id),
-  };
+  return writeOutcome(updated, 'updated', { changed: true, changedFields, ...UNPUBLISHED });
 };
 
 const movePage = async (projectId: string, args: z.output<typeof movePageInput>, actor: McpActor): Promise<McpWriteOutcome> => {
@@ -481,9 +484,7 @@ const movePage = async (projectId: string, args: z.output<typeof movePageInput>,
   assertRevision(page, args.expectedRevision);
   if (args.parentId === page.id) throw badRequest('A page cannot be moved under itself or one of its descendants.');
   const reparent = args.parentId !== page.parentId;
-  if (!reparent && args.position === undefined) {
-    return { data: { page: pageSummary(page), changed: false }, stored: storedPage(page, 'unchanged'), target: pageTarget(page.id) };
-  }
+  if (!reparent && args.position === undefined) return writeOutcome(page, 'unchanged', { changed: false });
   // updatePage is the conditional write (and, for a new parent, applies the
   // dashboard's same-language/version, cycle and unique-slug rules); the
   // reorder then makes the 0-based position exact among the new siblings.
@@ -503,23 +504,14 @@ const movePage = async (projectId: string, args: z.output<typeof movePageInput>,
     // reporting a failure that hides a committed change.
     const conflict = error instanceof AppError && error.code === 'mcp:revision_conflict';
     log.warn({ errorName: error instanceof Error ? error.name : 'UnknownError', conflict }, 'MCP move saved without its sibling position');
-    return {
-      data: {
-        page: pageSummary(current),
-        changed: true,
-        placed: false,
-        publishState: 'unpublished',
-        note: `${UNPUBLISHED_NOTE} The page moved under its new parent, but its position among the new siblings was not set${conflict ? ' because someone reordered them meanwhile' : ''}. Re-read the siblings and call move_page with position (and no parentId change) to place it.`,
-      },
-      stored: storedPage(current, 'moved'),
-      target: pageTarget(page.id),
-    };
+    return writeOutcome(current, 'moved', {
+      changed: true,
+      placed: false,
+      publishState: 'unpublished',
+      note: `${UNPUBLISHED_NOTE} The page moved under its new parent, but its position among the new siblings was not set${conflict ? ' because someone reordered them meanwhile' : ''}. Re-read the siblings and call move_page with position (and no parentId change) to place it.`,
+    });
   }
-  return {
-    data: { page: pageSummary(placed), changed: true, publishState: 'unpublished', note: UNPUBLISHED_NOTE },
-    stored: storedPage(placed, 'moved'),
-    target: pageTarget(page.id),
-  };
+  return writeOutcome(placed, 'moved', { changed: true, placed: true, ...UNPUBLISHED });
 };
 
 type PairingCandidate = { id: string; path: string; translationKey: string | null; updatedAt: Date };
@@ -616,41 +608,29 @@ const translatePage = async (projectId: string, args: z.output<typeof translateP
     },
     actor.userId,
   );
-  return {
-    data: {
-      page: pageSummary(created),
-      sourcePageId: source.id,
-      translationKey,
-      linkedVariantIds: linkedVariants,
-      parentMapped: source.parentId ? parentId !== null : null,
-      ...(source.parentId && !parentId
-        ? {
-            parentNote:
-              'The source page’s parent has no translation in the target language, so the translation was created at the top level. Use move_page to place it.',
-          }
-        : {}),
-      publishState: 'unpublished',
-      note: UNPUBLISHED_NOTE,
-    },
-    stored: { ...storedPage(created, 'created'), sourcePageId: source.id },
-    target: pageTarget(created.id),
-  };
+  return writeOutcome(created, 'created', {
+    sourcePageId: source.id,
+    translationKey,
+    linkedVariantIds: linkedVariants,
+    parentMapped: source.parentId ? parentId !== null : null,
+    ...(source.parentId && !parentId
+      ? {
+          parentNote:
+            'The source page’s parent has no translation in the target language, so the translation was created at the top level. Use move_page to place it.',
+        }
+      : {}),
+    ...UNPUBLISHED,
+  });
 };
 
 const setPageVisibility = async (projectId: string, args: z.output<typeof setPageVisibilityInput>, actor: McpActor): Promise<McpWriteOutcome> => {
   const page = await getPage(projectId, args.pageId);
   assertRevision(page, args.expectedRevision);
-  if (page.hidden === args.hidden) {
-    return { data: { page: pageSummary(page), changed: false }, stored: storedPage(page, 'unchanged'), target: pageTarget(page.id) };
-  }
+  if (page.hidden === args.hidden) return writeOutcome(page, 'unchanged', { changed: false });
   const updated = await withRevisionGuard(projectId, page.id, () =>
     updatePage(projectId, page.id, { hidden: args.hidden }, actor.userId, { expectedUpdatedAt: page.updatedAt }),
   );
-  return {
-    data: { page: pageSummary(updated), changed: true, publishState: 'unpublished', note: UNPUBLISHED_NOTE },
-    stored: storedPage(updated, args.hidden ? 'hidden' : 'shown'),
-    target: pageTarget(page.id),
-  };
+  return writeOutcome(updated, args.hidden ? 'hidden' : 'shown', { changed: true, ...UNPUBLISHED });
 };
 
 const PROJECT_WIDE_NOTICE =
@@ -795,18 +775,16 @@ const publishChanges = async (
     { message: publishMessage(args.message, principal.credential) },
     ctx.get('locale'),
   );
-  return {
-    data: {
-      deploymentId: deployment.id,
-      version: deployment.version,
-      status: deployment.status,
-      message: deployment.commitMessage,
-      poll: { tool: 'get_deployment', arguments: { id: deployment.id }, untilStatus: ['READY', 'FAILED'] },
-      note: 'The deployment is queued. Readers see the changes once get_deployment reports READY; FAILED means the live site is unchanged.',
-    },
-    stored: { deploymentId: deployment.id, version: deployment.version, status: deployment.status },
-    target: { type: 'deployment', id: deployment.id },
+  // The replay carries the same next step; the message (the caller's own text)
+  // stays out of the replay cache and is available from get_deployment.
+  const details = {
+    deploymentId: deployment.id,
+    version: deployment.version,
+    status: deployment.status,
+    poll: { tool: 'get_deployment', arguments: { id: deployment.id }, untilStatus: ['READY', 'FAILED'] },
+    note: 'The deployment is queued. Readers see the changes once get_deployment reports READY; FAILED means the live site is unchanged.',
   };
+  return { data: { ...details, message: deployment.commitMessage }, stored: details, target: { type: 'deployment', id: deployment.id } };
 };
 
 // ─── Registration ──────────────────────────────────────────────────────────────

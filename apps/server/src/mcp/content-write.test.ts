@@ -693,6 +693,101 @@ describe('clientRequestId idempotency', () => {
     await client.close();
   });
 
+  // Everything that says what happened or what to do next must survive a
+  // replay; only the page's own details (and the caller's publish message)
+  // are left to get_page / get_deployment.
+  const expectReplayParity = (first: { structuredContent: { data: unknown } }, second: { structuredContent: { data: unknown } }) => {
+    const firstData = first.structuredContent.data as Record<string, unknown>;
+    const replay = second.structuredContent.data as Record<string, unknown>;
+    expect(replay.replayed).toBe(true);
+    for (const [key, value] of Object.entries(firstData)) {
+      if (key === 'page' || key === 'possibleDuplicates' || key === 'message') continue;
+      expect(replay[key], `replayed ${key}`).toEqual(value);
+    }
+  };
+
+  it('replays a partial move with its placement warning and recovery step', async () => {
+    state.pages.push(page({ id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides', content: '', position: 1 }));
+    state.pages.push(page({ id: 'child-1', parentId: 'group-1', title: 'A', slug: 'a', path: 'guides/a', position: 0 }));
+    const original = mocks.pageFindMany.getMockImplementation();
+    mocks.pageFindMany.mockImplementationOnce(async (...args: unknown[]) => {
+      const rows = await original?.(...(args as Parameters<NonNullable<typeof original>>));
+      Object.assign(state.pages.find((row) => row.id === 'child-1') as PageRow, { position: 5 });
+      return rows;
+    });
+    const client = await connect(makePrincipal());
+    const args = {
+      pageId: 'page-1',
+      expectedRevision: '2026-11-02T00:00:00.000Z',
+      parentId: 'group-1',
+      position: 0,
+      clientRequestId: 'move-partial-0001',
+    };
+    const first = await client.call('move_page', args);
+    expect(first.structuredContent.data).toMatchObject({ placed: false });
+    // The client lost the first answer and retries the identical call.
+    const second = await client.call('move_page', args);
+    expect(mocks.updatePage).toHaveBeenCalledOnce();
+    expect(second.structuredContent.data).toMatchObject({ replayed: true, status: 'moved', changed: true, placed: false });
+    expect(String(second.structuredContent.data.note)).toContain('its position among the new siblings was not set');
+    expect(String(second.structuredContent.data.note)).toContain('call move_page with position');
+    expectReplayParity(first, second);
+    await client.close();
+  });
+
+  it.each([
+    ['create_page_draft', () => ({ title: 'Refunds', markdown: 'How refunds work', clientRequestId: 'parity-create-01' })],
+    [
+      'update_page',
+      () => ({ pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: 'Installing', clientRequestId: 'parity-update-01' }),
+    ],
+    [
+      'set_page_visibility',
+      () => ({ pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', hidden: true, clientRequestId: 'parity-hide-0001' }),
+    ],
+    [
+      'translate_page',
+      () => {
+        // The source's parent has no Arabic counterpart, so the answer carries a parentNote.
+        state.pages = [
+          page({ id: 'group-en', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides', content: '', translationKey: 'guides' }),
+          page({ id: 'page-1', parentId: 'group-en', path: 'guides/install-guide' }),
+        ];
+        return {
+          sourcePageId: 'page-1',
+          sourceRevision: '2026-11-02T00:00:00.000Z',
+          targetLanguageId: 'lang-ar',
+          title: 'دليل التثبيت',
+          markdown: 'نص',
+          clientRequestId: 'parity-translate-1',
+        };
+      },
+    ],
+  ] as const)('replays %s with the same flags, warnings and next steps', async (tool, setup) => {
+    const args = setup();
+    const client = await connect(makePrincipal());
+    const first = await client.call(tool, args);
+    expect(first.isError).not.toBe(true);
+    const second = await client.call(tool, args);
+    expectReplayParity(first, second);
+    if (tool === 'translate_page') expect(String(second.structuredContent.data.parentNote)).toContain('top level');
+    await client.close();
+  });
+
+  it('replays publish_changes with the same polling step', async () => {
+    const client = await connect(makePrincipal());
+    const preview = (await client.call('preview_publish')).structuredContent.data as { previewToken: string };
+    const args = { confirm: true, previewToken: preview.previewToken, message: 'Refund policy', clientRequestId: 'parity-publish-01' };
+    const first = await client.call('publish_changes', args);
+    const second = await client.call('publish_changes', args);
+    expect(mocks.createDeployment).toHaveBeenCalledOnce();
+    expect(second.structuredContent.data).toMatchObject({ poll: { tool: 'get_deployment' } });
+    expectReplayParity(first, second);
+    // The caller's own message is not kept in the replay cache.
+    expect(JSON.stringify([...state.records.values()].map((record) => record.result))).not.toContain('Refund policy');
+    await client.close();
+  });
+
   it('refuses the same clientRequestId with different arguments', async () => {
     const client = await connect(makePrincipal());
     await client.call('create_page_draft', { title: 'Refunds', markdown: 'A', clientRequestId: 'draft-refunds-1' });
