@@ -1,6 +1,6 @@
 import { resolveLocale } from './locales';
 import type { MessageKey } from './message-ids';
-import type { MessageFn } from './message-types';
+import type { MessageFn, MessageVariables } from './message-types';
 import { marketing_arabiclanding_description } from './paraglide/messages/marketing_arabiclanding_description.js';
 import { marketing_arabiclanding_imagealt } from './paraglide/messages/marketing_arabiclanding_imagealt.js';
 import { marketing_arabiclanding_title } from './paraglide/messages/marketing_arabiclanding_title.js';
@@ -68,6 +68,11 @@ import { site_results } from './paraglide/messages/site_results.js';
 import { site_screenshot } from './paraglide/messages/site_screenshot.js';
 import { site_screenshots } from './paraglide/messages/site_screenshots.js';
 import { site_search } from './paraglide/messages/site_search.js';
+import { site_searchaskaiabout } from './paraglide/messages/site_searchaskaiabout.js';
+import { site_searchaskaihint } from './paraglide/messages/site_searchaskaihint.js';
+import { site_searchbacktoresults } from './paraglide/messages/site_searchbacktoresults.js';
+import { site_searchcancel } from './paraglide/messages/site_searchcancel.js';
+import { site_searchclearrecent } from './paraglide/messages/site_searchclearrecent.js';
 import { site_searchdescription } from './paraglide/messages/site_searchdescription.js';
 import { site_searchdocumentation } from './paraglide/messages/site_searchdocumentation.js';
 import { site_searchempty } from './paraglide/messages/site_searchempty.js';
@@ -75,9 +80,20 @@ import { site_searchfailed } from './paraglide/messages/site_searchfailed.js';
 import { site_searchfilterlanguage } from './paraglide/messages/site_searchfilterlanguage.js';
 import { site_searchfilterversion } from './paraglide/messages/site_searchfilterversion.js';
 import { site_searching } from './paraglide/messages/site_searching.js';
+import { site_searchkeysclose } from './paraglide/messages/site_searchkeysclose.js';
+import { site_searchkeysnavigate } from './paraglide/messages/site_searchkeysnavigate.js';
+import { site_searchkeysopen } from './paraglide/messages/site_searchkeysopen.js';
 import { site_searchmode } from './paraglide/messages/site_searchmode.js';
+import { site_searchnoresultsfor } from './paraglide/messages/site_searchnoresultsfor.js';
+import { site_searchnoresultshint } from './paraglide/messages/site_searchnoresultshint.js';
+import { site_searchpages } from './paraglide/messages/site_searchpages.js';
 import { site_searchplaceholder } from './paraglide/messages/site_searchplaceholder.js';
 import { site_searchprompt } from './paraglide/messages/site_searchprompt.js';
+import { site_searchrecent } from './paraglide/messages/site_searchrecent.js';
+import { site_searchresultcount } from './paraglide/messages/site_searchresultcount.js';
+import { site_searchretry } from './paraglide/messages/site_searchretry.js';
+import { site_searchsuggested } from './paraglide/messages/site_searchsuggested.js';
+import { site_searchversionlabel } from './paraglide/messages/site_searchversionlabel.js';
 import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_sources } from './paraglide/messages/site_sources.js';
 import { site_tab } from './paraglide/messages/site_tab.js';
@@ -88,8 +104,28 @@ import { site_updated } from './paraglide/messages/site_updated.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 
+/** Paraglide types a message with {variables} as requiring them; siteT passes
+ * the caller's variables straight through, like translateFn does. */
+const withVariables = (message: unknown) => message as MessageFn;
+
 const siteMessages = {
   closeSearch: site_closesearch,
+  searchCancel: site_searchcancel,
+  searchRecent: site_searchrecent,
+  searchClearRecent: site_searchclearrecent,
+  searchSuggested: site_searchsuggested,
+  searchNoResultsFor: withVariables(site_searchnoresultsfor),
+  searchNoResultsHint: site_searchnoresultshint,
+  searchAskAiAbout: withVariables(site_searchaskaiabout),
+  searchAskAiHint: site_searchaskaihint,
+  searchPages: site_searchpages,
+  searchResultCount: withVariables(site_searchresultcount),
+  searchRetry: site_searchretry,
+  searchBackToResults: site_searchbacktoresults,
+  searchKeysNavigate: site_searchkeysnavigate,
+  searchKeysOpen: site_searchkeysopen,
+  searchKeysClose: site_searchkeysclose,
+  searchVersionLabel: site_searchversionlabel,
   docs: site_docs,
   changelog: site_changelog,
   search: site_search,
@@ -182,7 +218,7 @@ export type SiteMessageKey = SiteContractKey extends `site.${infer Key}` ? Key :
 
 /** Published-site chrome uses its content locale explicitly; it must not mutate
  * the dashboard's Paraglide locale or depend on a browser preference. */
-export function siteT(language?: string): (key: SiteMessageKey) => string {
+export function siteT(language?: string): (key: SiteMessageKey, variables?: MessageVariables) => string {
   const locale = resolveLocale(language) ?? 'en';
-  return (key) => siteMessages[key](undefined, { locale });
+  return (key, variables) => siteMessages[key](variables, { locale });
 }

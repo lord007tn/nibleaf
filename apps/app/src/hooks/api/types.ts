@@ -370,6 +370,9 @@ export interface SiteSearchHit {
   score: number;
   /** Language of the matched published page; used to build its localized URL. */
   language: string;
+  /** The heading whose section matched the query, when the match is inside a
+   * section rather than the page title. `id` is the heading's DOM anchor. */
+  section?: { id: string; title: string };
 }
 
 export interface SearchAnswer {

@@ -15,7 +15,7 @@ import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/compone
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
-import { firstLeafPath, SiteNav } from '@/components/site/site-nav';
+import { firstLeafPath, leadingPages, SiteNav } from '@/components/site/site-nav';
 import { SiteSearch } from '@/components/site/site-search';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
@@ -335,6 +335,7 @@ function SiteChrome() {
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
   const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
+  const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({ title: node.title, path: node.path, icon: node.icon }));
 
   // Only configured navigation renders — the chrome imposes no IA of its own.
   // Root-relative hrefs are site-internal: resolve them to the site base (and
@@ -638,6 +639,7 @@ function SiteChrome() {
                   versions={versions}
                   versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
                   aiAnswers={site?.capabilities?.answer === true}
+                  suggestions={searchSuggestions}
                 />
               ) : null}
               <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />

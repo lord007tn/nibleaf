@@ -20,6 +20,21 @@ export function firstLeafPath(nodes: NavNode[]): string | undefined {
   return undefined;
 }
 
+/** The first pages in sidebar order (groups flattened) — offered as search
+ *  suggestions before the reader types. */
+export function leadingPages(nodes: NavNode[], limit: number): NavNode[] {
+  const pages: NavNode[] = [];
+  const visit = (items: NavNode[]) => {
+    for (const node of items) {
+      if (pages.length >= limit) return;
+      if (node.kind === 'PAGE') pages.push(node);
+      visit(node.children);
+    }
+  };
+  visit(nodes);
+  return pages;
+}
+
 const containsPath = (node: NavNode, path: string): boolean =>
   (node.kind === 'PAGE' && node.path === path) || node.children.some((child) => containsPath(child, path));
 

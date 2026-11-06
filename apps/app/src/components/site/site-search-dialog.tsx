@@ -1,19 +1,42 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
-import { AlertCircle, FileText, Loader2, Search, Sparkles, X } from 'lucide-react';
-import { lazy, Suspense, useEffect, useId, useState } from 'react';
+import { AlertCircle, ArrowLeft, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
+import { Fragment, lazy, type ReactNode, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { useAnswerSite, useSiteSearch } from '@/hooks/api/site-search';
+import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
 
 const SiteSearchAnswer = lazy(() => import('./site-search-answer'));
+
+const RECENT_LIMIT = 5;
+const recentKey = (projectId: string) => `nibleaf:site-search:recent:${projectId}`;
+
+const readRecent = (projectId: string): string[] => {
+  try {
+    const parsed: unknown = JSON.parse(readSiteStorage('localStorage', recentKey(projectId)) ?? '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string' && item.trim() !== '').slice(0, RECENT_LIMIT)
+      : [];
+  } catch {
+    return [];
+  }
+};
+
+/** A page the reader can jump to before typing (the first pages of the sidebar). */
+export interface SiteSearchSuggestion {
+  title: string;
+  path: string;
+  icon?: string | null;
+}
 
 /** Wrap occurrences of the query's words in <mark> so matches stand out. */
 const splitWithOffsets = (text: string, pattern: RegExp) => {
@@ -41,7 +64,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
     <>
       {splitWithOffsets(text, splitRe).map(({ key, value }) =>
         testRe.test(value) ? (
-          <mark key={key} className="rounded bg-primary/20 text-foreground">
+          <mark key={key} className="rounded-[3px] bg-primary/15 px-px font-semibold text-inherit">
             {value}
           </mark>
         ) : (
@@ -51,6 +74,52 @@ function Highlight({ text, query }: { text: string; query: string }) {
     </>
   );
 }
+
+/** Keyboard key chip. Keys read left-to-right even inside an RTL dialog. */
+function Key({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <kbd
+      dir="ltr"
+      className={cn(
+        'inline-flex h-5 min-w-5 items-center justify-center rounded border border-border bg-background px-1 font-medium font-sans text-[11px] text-muted-foreground shadow-[0_1px_0] shadow-border',
+        className,
+      )}
+    >
+      {children}
+    </kbd>
+  );
+}
+
+/** Shown on the highlighted row so keyboard users see what Enter does. */
+function EnterHint() {
+  return (
+    <span aria-hidden className="ms-auto hidden shrink-0 self-center group-data-[selected=true]/command-item:inline-flex">
+      <Key>
+        <CornerDownLeft className="size-3" />
+      </Key>
+    </span>
+  );
+}
+
+function RowIcon({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'grid size-8 shrink-0 place-items-center rounded-md border border-border/80 bg-background text-muted-foreground group-data-[selected=true]/command-item:border-primary/30 group-data-[selected=true]/command-item:text-primary',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Queries phrased as questions default to "Ask AI"; keywords default to the best page. */
+const QUESTION = /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will|كيف|ماذا|لماذا|هل|متى|أين|اين|ما|من)\s/i;
+
+const ROW = 'group/command-item min-h-11 gap-3 rounded-lg px-2.5 py-2 text-foreground data-selected:text-foreground';
+const GROUP = 'p-1.5 **:[[cmdk-group-heading]]:px-2.5 **:[[cmdk-group-heading]]:pt-2 **:[[cmdk-group-heading]]:pb-1.5';
 
 export default function SiteSearchDialog({
   projectId,
@@ -65,6 +134,8 @@ export default function SiteSearchDialog({
   versions = [],
   versionFilterEnabled = true,
   aiAnswers,
+  onAskAi,
+  suggestions = [],
 }: {
   projectId: string;
   open: boolean;
@@ -83,49 +154,89 @@ export default function SiteSearchDialog({
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   versionFilterEnabled?: boolean;
-  /** Shows the "Ask AI" mode: the site enables AI answers and the instance
-   * can serve them. The answer endpoint still enforces both server-side. */
+  /** Shows the built-in "Ask AI" answer view: the site enables AI answers and
+   * the instance can serve them. The answer endpoint still enforces both
+   * server-side. Ignored when `onAskAi` is provided. */
   aiAnswers?: boolean;
+  /** Hands the reader's question to an external assistant (e.g. a chat panel).
+   * When provided, the "Ask AI about …" row closes search and calls this
+   * instead of opening the built-in answer view. */
+  onAskAi?: (question: string) => void;
+  /** Pages offered before the reader types and when nothing matches. */
+  suggestions?: SiteSearchSuggestion[];
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
   const t = siteT(lang);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // cmdk re-selects the first row whenever the list changes. Only highlight
+  // moves made by the reader (keys or pointer) are kept; otherwise the best
+  // page result stays highlighted even though "Ask AI" is listed above it.
+  const readerMovedRef = useRef(false);
+  const markReaderMove = () => {
+    readerMovedRef.current = true;
+    queueMicrotask(() => {
+      readerMovedRef.current = false;
+    });
+  };
   const [query, setQuery] = useState('');
   const [requestedMode, setMode] = useState<'search' | 'answer'>('search');
-  const mode = aiAnswers ? requestedMode : 'search';
-  const modeId = useId();
+  const askAiAvailable = Boolean(onAskAi) || Boolean(aiAnswers);
+  // An external assistant replaces the built-in answer view entirely.
+  const mode = aiAnswers && !onAskAi ? requestedMode : 'search';
+  const baseId = useId();
   const [selectedVersion, setSelectedVersion] = useState(version);
+  const [recent, setRecent] = useState<string[]>([]);
+  const [activeItem, setActiveItem] = useState('');
   const baseLanguage = lang?.toLowerCase().split(/[-_]/)[0];
   const rtl = direction ? direction === 'rtl' : (LANGUAGE_CATALOG.find((language) => language.code === baseLanguage)?.rtl ?? false);
   const versionOptions = versions.map((item) => ({ value: item.isDefault ? '__default' : item.slug, label: item.name }));
+  const showVersionFilter = mode === 'search' && versionFilterEnabled && versions.length > 1;
   // Debounce the typed query before it feeds the search request, so we don't fire a
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 250 });
+  const trimmed = query.trim();
   // Keyword search is intentionally language-independent. Omitting `language`
   // asks the public endpoint to search every enabled language in the published
   // snapshot; each hit carries its own language for correct localized routing.
   const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
-  const queryPending = query.trim() !== debouncedQuery.trim() || hitsQuery.isFetching;
-  const hits = query.trim() && !queryPending && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  const queryPending = trimmed !== debouncedQuery.trim() || hitsQuery.isFetching;
+  const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
+  const hits: SiteSearchHit[] = trimmed && !queryPending && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
+  const canAsk = askAiAvailable && trimmed.length >= 2;
   // A completed request belongs to the exact question and documentation scope
   // that produced it. Editing the query or version must never relabel old
   // evidence or send its citations into a different version.
   const answerMatchesScope =
     answerMutation.variables?.projectId === projectId &&
-    answerMutation.variables.query === query.trim() &&
+    answerMutation.variables.query === trimmed &&
     answerMutation.variables.language === lang &&
     answerMutation.variables.version === selectedVersion;
   const answer = answerMatchesScope && !answerMutation.isPending ? (answerMutation.data ?? null) : null;
   const answerError = answerMatchesScope && !answerMutation.isPending && answerMutation.error ? t('answerFailed') : null;
-  const searchMessage = !query.trim() ? t('searchPrompt') : queryPending ? t('searching') : hitsQuery.error ? t('searchFailed') : t('searchEmpty');
+
+  const remember = (value: string) => {
+    const entry = value.trim();
+    if (entry.length < 2) return;
+    const next = [entry, ...readRecent(projectId).filter((item) => item.toLowerCase() !== entry.toLowerCase())].slice(0, RECENT_LIMIT);
+    writeSiteStorage('localStorage', recentKey(projectId), JSON.stringify(next));
+    setRecent(next);
+  };
+
+  const clearRecent = () => {
+    writeSiteStorage('localStorage', recentKey(projectId), '[]');
+    setRecent([]);
+    inputRef.current?.focus();
+  };
 
   const ask = () => {
-    const q = query.trim();
-    if (q.length < 2 || answerMutation.isPending) return;
+    if (trimmed.length < 2 || answerMutation.isPending) return;
     answerMutation.mutate({
       projectId,
-      query: q,
+      query: trimmed,
       // Answers stay in the reader's current language even though ordinary
       // results search the whole multilingual corpus.
       ...(lang ? { language: lang } : {}),
@@ -133,169 +244,391 @@ export default function SiteSearchDialog({
     });
   };
 
-  useEffect(() => {
-    if (open) {
-      setSelectedVersion(version);
+  const askAi = () => {
+    if (!canAsk) return;
+    remember(trimmed);
+    if (onAskAi) {
+      onOpenChange(false);
+      onAskAi(trimmed);
+      return;
     }
-  }, [open, version]);
+    setMode('answer');
+    if (!answerMatchesScope || answerMutation.error) ask();
+  };
+
+  const openPage = (path: string, language: string | undefined, analytics?: { hit: SiteSearchHit; position: number }) => {
+    if (analytics) {
+      track({
+        name: 'search_result_clicked',
+        path: analytics.hit.path,
+        resultId: analytics.hit.id,
+        resultPosition: analytics.position,
+        language: analytics.hit.language,
+      });
+      remember(debouncedQuery);
+    }
+    onOpenChange(false);
+    void router.navigate({
+      href: siteHref(projectId, path, {
+        lang: siteLanguageParam(language ?? lang ?? defaultLanguage ?? '', defaultLanguage),
+        version: selectedVersion,
+      }),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    setSelectedVersion(version);
+    setRecent(readRecent(projectId));
+    // Reopening keeps the last query; select it so typing starts a new search.
+    const frame = requestAnimationFrame(() => inputRef.current?.select());
+    return () => cancelAnimationFrame(frame);
+  }, [open, version, projectId]);
+
+  // Ordered values of every selectable row, matching render order. For a
+  // keyword query the first page result starts highlighted so Enter opens the
+  // best match, with "Ask AI" one ↑ above it; a question starts on "Ask AI".
+  const askValue = 'ask-ai';
+  const suggestionValues = suggestions.map((_, index) => `suggest-${index}`);
+  const itemValues: string[] = [];
+  if (!trimmed) {
+    itemValues.push(...recent.map((_, index) => `recent-${index}`));
+    if (recent.length > 0) itemValues.push('recent-clear');
+    itemValues.push(...suggestionValues);
+  } else if (hits.length > 0) {
+    if (canAsk) itemValues.push(askValue);
+    for (const [index, hit] of hits.entries()) {
+      itemValues.push(`page-${index}`);
+      if (hit.section) itemValues.push(`section-${index}`);
+    }
+  } else if (noResults) {
+    if (canAsk) itemValues.push(askValue);
+    itemValues.push(...suggestionValues);
+  }
+  const preferred = canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue) ? askValue : hits.length > 0 ? 'page-0' : itemValues[0];
+  const selectedValue = itemValues.includes(activeItem) ? activeItem : (preferred ?? '');
+  const selectedValueRef = useRef(selectedValue);
+  selectedValueRef.current = selectedValue;
+  // Re-select through cmdk's own pointer path so its internal selection and
+  // the input's aria-activedescendant follow (a controlled value alone does not).
+  const restoreSelection = () => {
+    const value = selectedValueRef.current;
+    listRef.current?.querySelector(`[cmdk-item][data-value="${value}"]`)?.dispatchEvent(new Event('pointermove', { bubbles: true }));
+  };
+  // Reset the highlight to the best match whenever a new result set arrives.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new result set or query resets the highlight.
+  useEffect(() => {
+    setActiveItem('');
+  }, [hitsQuery.data, debouncedQuery]);
+
+  const statusMessage = !trimmed
+    ? ''
+    : queryPending
+      ? t('searching')
+      : searchFailed
+        ? ''
+        : hits.length > 0
+          ? t('searchResultCount', { count: hits.length })
+          : t('searchNoResultsFor', { query: trimmed });
+
+  const languageName = (code: string) => {
+    const base = code.toLowerCase().split(/[-_]/)[0];
+    return LANGUAGE_CATALOG.find((language) => language.code.toLowerCase() === code.toLowerCase() || language.code === base)?.native ?? code;
+  };
+
+  const askRow = canAsk ? (
+    <CommandGroup className={GROUP}>
+      <CommandItem value={askValue} onSelect={askAi} className={cn(ROW, 'bg-primary/[0.04] data-selected:bg-primary/10')}>
+        <RowIcon className="border-primary/25 bg-primary/10 text-primary">
+          <Sparkles className="size-4" />
+        </RowIcon>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium" dir="auto">
+            {t('searchAskAiAbout', { query: trimmed })}
+          </div>
+          <div className="truncate text-muted-foreground text-xs">{t('searchAskAiHint')}</div>
+        </div>
+        <EnterHint />
+      </CommandItem>
+    </CommandGroup>
+  ) : null;
+
+  const suggestionGroup =
+    suggestions.length > 0 ? (
+      <CommandGroup heading={t('searchSuggested')} className={GROUP}>
+        {suggestions.map((suggestion, index) => (
+          <CommandItem key={suggestion.path} value={`suggest-${index}`} onSelect={() => openPage(suggestion.path, lang)} className={ROW}>
+            <RowIcon>{hasIcon(suggestion.icon) ? <PageIcon name={suggestion.icon} className="size-4" /> : <FileText className="size-4" />}</RowIcon>
+            <span className="min-w-0 flex-1 truncate" dir="auto">
+              {suggestion.title}
+            </span>
+            <EnterHint />
+          </CommandItem>
+        ))}
+      </CommandGroup>
+    ) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-h-[min(80vh,720px)] overflow-hidden p-0 sm:max-w-2xl"
+        className={cn(
+          // Phones: a full-screen sheet so the keyboard never covers results.
+          'inset-0 top-0 start-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 rtl:translate-x-0',
+          // Larger screens: a panel anchored near the top, so it grows downward
+          // as results arrive instead of jumping around the center.
+          'sm:inset-auto sm:start-1/2 sm:top-[12vh] sm:h-auto sm:max-h-[min(76vh,680px)] sm:max-w-2xl sm:-translate-x-1/2 sm:rounded-xl sm:shadow-2xl sm:ring-1 sm:rtl:translate-x-1/2',
+        )}
         data-theme-surface="search"
         dir={rtl ? 'rtl' : 'ltr'}
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
-        <Command shouldFilter={false} label={t('searchDocumentation')}>
-          {aiAnswers ? (
-            <div
-              className="flex items-center gap-1 border-b px-3 pt-3"
-              role="tablist"
-              aria-label={t('searchMode')}
+        <Command
+          shouldFilter={false}
+          label={t('searchDocumentation')}
+          value={selectedValue}
+          onValueChange={(value) => {
+            if (readerMovedRef.current) setActiveItem(value);
+            else if (value !== selectedValueRef.current) queueMicrotask(restoreSelection);
+          }}
+          onKeyDown={(event) => {
+            if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) || (event.ctrlKey && ['j', 'k', 'n', 'p'].includes(event.key))) {
+              markReaderMove();
+            }
+          }}
+          loop
+          className="min-h-0 flex-1 rounded-none! bg-transparent p-0"
+        >
+          <div
+            className={cn(
+              'flex shrink-0 items-center gap-1 border-border/70 border-b ps-4 pe-2 pt-[env(safe-area-inset-top)] sm:pe-3',
+              // Restyle the shared command input into a borderless, full-width field.
+              '[&_[data-slot=command-input-wrapper]]:min-w-0 [&_[data-slot=command-input-wrapper]]:flex-1 [&_[data-slot=command-input-wrapper]]:p-0',
+              '[&_[data-slot=input-group]]:h-14 [&_[data-slot=input-group]]:rounded-none! [&_[data-slot=input-group]]:border-0 [&_[data-slot=input-group]]:bg-transparent! [&_[data-slot=input-group]]:ring-0!',
+              '[&_[data-slot=input-group-addon]]:hidden',
+            )}
+          >
+            {queryPending && trimmed ? (
+              <Loader2 aria-hidden className="size-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />
+            ) : (
+              <Search aria-hidden className="size-5 shrink-0 text-muted-foreground" />
+            )}
+            <CommandInput
+              ref={inputRef}
+              placeholder={placeholder?.trim() || t('searchPlaceholder')}
+              value={query}
+              onValueChange={setQuery}
+              maxLength={300}
+              enterKeyHint={mode === 'answer' ? 'send' : 'search'}
+              className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {
-                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-                event.preventDefault();
-                const offset = (event.key === 'ArrowRight') !== rtl ? 1 : -1;
-                const index = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : ((mode === 'search' ? 0 : 1) + offset + 2) % 2;
-                setMode(index === 0 ? 'search' : 'answer');
-                event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]')[index]?.focus();
+                if (mode === 'answer' && event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  ask();
+                }
               }}
+            />
+            {/* Esc closes on keyboards; phones get a plain-language action. */}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="hidden h-8 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:inline-flex"
             >
-              <button
-                type="button"
-                role="tab"
-                id={`${modeId}-search-tab`}
-                aria-controls={`${modeId}-search-panel`}
-                aria-selected={mode === 'search'}
-                tabIndex={mode === 'search' ? 0 : -1}
-                className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'search' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
-                onClick={() => setMode('search')}
-              >
-                <Search className="size-4" /> {t('results')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id={`${modeId}-answer-tab`}
-                aria-controls={`${modeId}-answer-panel`}
-                aria-selected={mode === 'answer'}
-                tabIndex={mode === 'answer' ? 0 : -1}
-                className={`flex items-center gap-2 border-b-2 px-3 py-2 text-sm ${mode === 'answer' ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground'}`}
-                onClick={() => setMode('answer')}
-              >
-                <Sparkles className="size-4" /> {t('askAi')}
-              </button>
-            </div>
-          ) : null}
-          <div className="flex items-center gap-1 pe-2">
-            <div className="min-w-0 flex-1">
-              <CommandInput
-                placeholder={placeholder?.trim() || t('searchPlaceholder')}
-                value={query}
-                onValueChange={setQuery}
-                maxLength={300}
-                onKeyDown={(event) => {
-                  if (mode === 'answer' && event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    ask();
-                  }
-                }}
-              />
-            </div>
-            <Button aria-label={t('closeSearch')} onClick={() => onOpenChange(false)} size="icon-sm" type="button" variant="ghost">
-              <X className="size-4" aria-hidden />
-            </Button>
+              <Key>Esc</Key>
+              <span className="sr-only">{t('closeSearch')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="inline-flex h-11 shrink-0 cursor-pointer items-center rounded-md px-3 font-medium text-primary text-sm focus-visible:outline-2 focus-visible:outline-ring sm:hidden"
+            >
+              {t('searchCancel')}
+            </button>
           </div>
-          {mode === 'search' && versionFilterEnabled && versions.length > 1 ? (
-            <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row">
-              <Select
-                items={versionOptions}
-                onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
-                value={selectedVersion ?? '__default'}
-              >
-                <SelectTrigger aria-label={t('searchFilterVersion')} className="min-w-0 flex-1 sm:max-w-56">
-                  <SelectValue placeholder={t('searchFilterVersion')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {versionOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
+
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {statusMessage}
+          </div>
+
           {mode === 'search' ? (
-            <section
-              id={`${modeId}-search-panel`}
-              role={aiAnswers ? 'tabpanel' : undefined}
-              aria-labelledby={aiAnswers ? `${modeId}-search-tab` : undefined}
+            <CommandList
+              ref={listRef}
+              label={t('results')}
+              className="max-h-none min-h-0 flex-1 overscroll-contain pb-[env(safe-area-inset-bottom)]"
+              onPointerMoveCapture={markReaderMove}
             >
-              <CommandList label={t('results')}>
-                {hits.length === 0 ? (
-                  <div className="py-6 text-center text-sm" role={query.trim() && !queryPending && hitsQuery.error ? 'alert' : 'status'}>
-                    {searchMessage}
-                  </div>
+              {!trimmed ? (
+                recent.length > 0 || suggestions.length > 0 ? (
+                  <>
+                    {recent.length > 0 ? (
+                      <CommandGroup heading={t('searchRecent')} className={GROUP}>
+                        {recent.map((item, index) => (
+                          <CommandItem key={item} value={`recent-${index}`} onSelect={() => setQuery(item)} className={ROW}>
+                            <RowIcon>
+                              <Clock className="size-4" />
+                            </RowIcon>
+                            <span className="min-w-0 flex-1 truncate" dir="auto">
+                              {item}
+                            </span>
+                            <EnterHint />
+                          </CommandItem>
+                        ))}
+                        <CommandItem value="recent-clear" onSelect={clearRecent} className={cn(ROW, 'min-h-9 text-muted-foreground text-xs')}>
+                          <RotateCcw aria-hidden className="ms-2.5 size-3.5" />
+                          <span className="ms-1.5">{t('searchClearRecent')}</span>
+                        </CommandItem>
+                      </CommandGroup>
+                    ) : null}
+                    {suggestionGroup}
+                  </>
                 ) : (
-                  <CommandGroup heading={t('results')}>
-                    {hits.map((hit, index) => (
-                      <CommandItem
-                        key={hit.id}
-                        value={hit.id}
-                        onSelect={() => {
-                          track({
-                            name: 'search_result_clicked',
-                            path: hit.path,
-                            resultId: hit.id,
-                            resultPosition: index + 1,
-                            language: hit.language,
-                          });
-                          onOpenChange(false);
-                          void router.navigate({
-                            href: siteHref(projectId, hit.path, { lang: siteLanguageParam(hit.language, defaultLanguage), version: selectedVersion }),
-                          });
-                        }}
-                      >
-                        {hasIcon(hit.icon) ? (
-                          <PageIcon name={hit.icon} className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        ) : (
-                          <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        )}
-                        <div className="min-w-0" dir="auto" lang={hit.language}>
-                          <div className="font-medium">
-                            <Highlight text={hit.title} query={debouncedQuery} />
-                          </div>
-                          <div className="truncate text-muted-foreground text-xs">
-                            <Highlight text={hit.snippet} query={debouncedQuery} />
-                          </div>
-                        </div>
-                      </CommandItem>
-                    ))}
+                  <p className="px-6 py-10 text-center text-muted-foreground text-sm">{t('searchPrompt')}</p>
+                )
+              ) : queryPending ? (
+                <div aria-hidden className="space-y-1 p-1.5">
+                  {['w-2/5', 'w-1/2', 'w-1/3'].map((width) => (
+                    <div key={width} className="flex items-center gap-3 rounded-lg px-2.5 py-2">
+                      <span className="size-8 shrink-0 rounded-md bg-muted" />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className={cn('h-3 rounded bg-muted', width)} />
+                        <div className="h-2.5 w-4/5 rounded bg-muted/70" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : searchFailed ? (
+                <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
+                  <AlertCircle aria-hidden className="size-6 text-destructive" />
+                  <p className="text-sm">{t('searchFailed')}</p>
+                  <button
+                    type="button"
+                    onClick={() => void hitsQuery.refetch?.()}
+                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 font-medium text-sm transition-colors hover:bg-muted"
+                  >
+                    <RotateCcw aria-hidden className="size-3.5" />
+                    {t('searchRetry')}
+                  </button>
+                </div>
+              ) : hits.length > 0 ? (
+                <>
+                  {askRow}
+                  <CommandGroup heading={t('searchPages')} className={GROUP}>
+                    {hits.map((hit, index) => {
+                      const otherLanguage = baseLanguage && hit.language.toLowerCase().split(/[-_]/)[0] !== baseLanguage;
+                      const analytics = { hit, position: index + 1 };
+                      return (
+                        <Fragment key={hit.id}>
+                          <CommandItem value={`page-${index}`} onSelect={() => openPage(hit.path, hit.language, analytics)} className={ROW}>
+                            <RowIcon>{hasIcon(hit.icon) ? <PageIcon name={hit.icon} className="size-4" /> : <FileText className="size-4" />}</RowIcon>
+                            <div className="min-w-0 flex-1" dir="auto" lang={hit.language}>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="truncate font-medium">
+                                  <Highlight text={hit.title} query={debouncedQuery} />
+                                </span>
+                                {otherLanguage ? (
+                                  <span className="shrink-0 rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground">
+                                    {languageName(hit.language)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {hit.section ? (
+                                hit.description ? (
+                                  <div className="truncate text-muted-foreground text-xs">{hit.description}</div>
+                                ) : null
+                              ) : (
+                                <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
+                                  <Highlight text={hit.snippet} query={debouncedQuery} />
+                                </div>
+                              )}
+                            </div>
+                            <EnterHint />
+                          </CommandItem>
+                          {hit.section ? (
+                            <CommandItem
+                              value={`section-${index}`}
+                              onSelect={() => openPage(`${hit.path}#${hit.section?.id}`, hit.language, analytics)}
+                              className={cn(ROW, 'ms-7')}
+                            >
+                              <RowIcon className="size-7">
+                                <Hash className="size-3.5" />
+                              </RowIcon>
+                              <div className="min-w-0 flex-1" dir="auto" lang={hit.language}>
+                                <div className="truncate font-medium text-[13px]">
+                                  <Highlight text={hit.section.title} query={debouncedQuery} />
+                                </div>
+                                <div className="line-clamp-2 text-muted-foreground text-xs leading-5">
+                                  <Highlight text={hit.snippet} query={debouncedQuery} />
+                                </div>
+                              </div>
+                              <EnterHint />
+                            </CommandItem>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
                   </CommandGroup>
-                )}
-              </CommandList>
-            </section>
+                </>
+              ) : (
+                <>
+                  <div className="px-6 pt-8 pb-4 text-center">
+                    <p className="font-medium text-sm" dir="auto">
+                      {t('searchNoResultsFor', { query: trimmed })}
+                    </p>
+                    <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
+                  </div>
+                  {askRow}
+                  {suggestionGroup}
+                </>
+              )}
+            </CommandList>
           ) : (
-            <div
-              className="max-h-[55vh] overflow-y-auto p-4"
+            <section
+              aria-labelledby={`${baseId}-answer-title`}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
               dir={rtl ? 'rtl' : 'ltr'}
-              id={`${modeId}-answer-panel`}
-              role="tabpanel"
-              aria-labelledby={`${modeId}-answer-tab`}
             >
-              {!answer && !answerError ? (
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('search');
+                    inputRef.current?.focus();
+                  }}
+                  className="-ms-2 inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
+                  {t('searchBackToResults')}
+                </button>
+                <h2 id={`${baseId}-answer-title`} className="flex items-center gap-1.5 font-medium text-sm">
+                  <Sparkles aria-hidden className="size-4 text-primary" />
+                  {t('askAi')}
+                </h2>
+              </div>
+              {answerMutation.isPending ? (
+                <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4 text-sm" role="status">
+                  <Loader2 aria-hidden className="size-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" />
+                  <span>{t('checking')}</span>
+                </div>
+              ) : null}
+              {!answerMutation.isPending && !answer && !answerError ? (
                 <div className="rounded-lg border bg-muted/30 p-4 text-sm">
                   <p className="font-medium">{t('groundedAnswerTitle')}</p>
                   <p className="mt-1 text-muted-foreground">{t('groundedAnswerBody')}</p>
+                  <button
+                    type="button"
+                    disabled={trimmed.length < 2}
+                    onClick={ask}
+                    className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Sparkles aria-hidden className="size-4" />
+                    {t('answer')}
+                  </button>
                 </div>
               ) : null}
               {answerError ? (
                 <div className="flex gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
-                  <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
+                  <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-destructive" />
                   <span>{answerError}</span>
                 </div>
               ) : null}
@@ -304,15 +637,58 @@ export default function SiteSearchDialog({
                   <SiteSearchAnswer answer={answer} projectId={projectId} lang={lang} version={selectedVersion} rtl={rtl} />
                 </Suspense>
               ) : null}
-              <div className="mt-4 flex items-center justify-between gap-3 border-t pt-4">
-                <p className="text-muted-foreground text-xs">{t('noAnswer')}</p>
-                <Button disabled={query.trim().length < 2 || answerMutation.isPending} onClick={ask} size="sm" type="button">
-                  {answerMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-                  {answerMutation.isPending ? t('checking') : t('answer')}
-                </Button>
-              </div>
-            </div>
+              <p className="mt-4 border-t pt-3 text-muted-foreground text-xs">{t('noAnswer')}</p>
+            </section>
           )}
+
+          {mode === 'search' ? (
+            <div
+              className={cn(
+                'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
+                // Key hints mean nothing on touch screens; keep the bar only for the version filter there.
+                showVersionFilter ? 'flex' : 'hidden sm:flex',
+              )}
+            >
+              <div className="hidden items-center gap-4 sm:flex">
+                <span className="inline-flex items-center gap-1.5">
+                  <Key>↑</Key>
+                  <Key>↓</Key>
+                  {t('searchKeysNavigate')}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Key>
+                    <CornerDownLeft className="size-3" />
+                  </Key>
+                  {t('searchKeysOpen')}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Key>Esc</Key>
+                  {t('searchKeysClose')}
+                </span>
+              </div>
+              {showVersionFilter ? (
+                <div className="ms-auto flex items-center gap-2">
+                  <span aria-hidden>{t('searchVersionLabel')}</span>
+                  <Select
+                    items={versionOptions}
+                    onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
+                    value={selectedVersion ?? '__default'}
+                  >
+                    <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs">
+                      <SelectValue placeholder={t('searchFilterVersion')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versionOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </Command>
       </DialogContent>
     </Dialog>

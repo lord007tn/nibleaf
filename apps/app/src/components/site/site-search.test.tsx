@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   answer: vi.fn(),
   mutate: vi.fn(),
+  refetch: vi.fn(),
   debounced: undefined as string | undefined,
   realLabels: false,
 }));
@@ -24,7 +25,27 @@ import { SiteSearch } from './site-search';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
-const hit = { id: 'setup', path: 'setup', title: 'Setup guide', snippet: 'Configure the project.', language: 'en', icon: null };
+const hit = {
+  id: 'setup',
+  path: 'setup',
+  title: 'Setup guide',
+  description: 'Get going',
+  snippet: 'Configure the project.',
+  language: 'en',
+  icon: null,
+};
+const sectionHit = {
+  ...hit,
+  id: 'billing',
+  path: 'billing',
+  title: 'Billing',
+  section: { id: 'refunds', title: 'Refunds' },
+  snippet: 'We refund it.',
+};
+const suggestions = [
+  { title: 'Getting started', path: 'getting-started', icon: 'rocket' },
+  { title: 'Installation', path: 'installation' },
+];
 
 // Load the lazy dialog and answer chunks up front: a cold import under a busy
 // runner can outlast `vi.dynamicImportSettled()` and leave the dialog unrendered.
@@ -42,9 +63,10 @@ beforeEach(() => {
     },
   );
   Element.prototype.scrollIntoView = vi.fn();
+  window.localStorage.clear();
   mocks.debounced = undefined;
   mocks.realLabels = false;
-  mocks.search.mockReturnValue({ data: [], isFetching: false, error: null });
+  mocks.search.mockReturnValue({ data: [], isFetching: false, error: null, refetch: mocks.refetch });
   mocks.answer.mockReturnValue({ mutate: mocks.mutate, variables: undefined, isPending: false, data: null, error: null });
 });
 
@@ -68,25 +90,34 @@ async function render(overrides: Partial<Parameters<typeof SiteSearch>[0]> = {})
   return { props, rerender };
 }
 
+const input = () => document.querySelector<HTMLInputElement>('[data-slot="command-input"]');
+const options = () => [...document.querySelectorAll<HTMLElement>('[role="option"]')];
+const option = (text: string) => options().find((item) => item.textContent?.includes(text));
+const status = () => document.querySelector('[role="status"][aria-live="polite"]')?.textContent;
+
 const typeQuery = (value: string) =>
   act(async () => {
-    const input = document.querySelector<HTMLInputElement>('[data-slot="command-input"]');
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
-    input?.dispatchEvent(new Event('input', { bubbles: true }));
+    const field = input();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, value);
+    field?.dispatchEvent(new Event('input', { bubbles: true }));
   });
 
-const selectAnswers = async () => {
-  await act(async () => {
-    const tab = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((button) => button.textContent?.includes('askAi'));
-    tab?.click();
+const press = (key: string) =>
+  act(async () => {
+    input()?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
   });
+
+const select = async (text: string) => {
+  const item = option(text);
+  if (!item) throw new Error(`Missing option ${text}`);
+  await act(async () => item.click());
   await act(async () => {
     await vi.dynamicImportSettled();
   });
 };
 
 describe('published reader search', () => {
-  it('opens with the shortcut before loading the dialog and preserves its mode when reopened', async () => {
+  it('opens with the shortcut before loading the dialog and keeps the answer view when reopened', async () => {
     const { props, rerender } = await render({ open: false });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await act(async () => {
@@ -97,13 +128,13 @@ describe('published reader search', () => {
     await act(async () => {
       await vi.dynamicImportSettled();
     });
-    await selectAnswers();
+    await typeQuery('How do I start?');
+    await select('searchAskAiAbout');
     await rerender({ open: false });
     await rerender({ open: true });
-    expect([...document.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent?.includes('askAi'))?.getAttribute('aria-selected')).toBe(
-      'true',
-    );
+    expect(document.body.textContent).toContain('searchBackToResults');
   });
+
   it.each([
     ['en', 'Search documentation', 'Results'],
     ['ar', 'البحث في الوثائق', 'النتائج'],
@@ -112,24 +143,42 @@ describe('published reader search', () => {
     mocks.realLabels = true;
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
     await render({ lang, placeholder: 'Custom site prompt', aiAnswers: false });
-    const input = document.querySelector<HTMLInputElement>('[role="combobox"]');
+    const field = document.querySelector<HTMLInputElement>('[role="combobox"]');
     const list = document.querySelector('[role="listbox"]');
-    expect(document.getElementById(input?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe(label);
-    expect(input?.placeholder).toBe('Custom site prompt');
+    expect(document.getElementById(field?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe(label);
+    expect(field?.placeholder).toBe('Custom site prompt');
     expect(list?.getAttribute('aria-label')).toBe(results);
-    expect(input?.getAttribute('aria-controls')).toBe(list?.id);
+    expect(field?.getAttribute('aria-controls')).toBe(list?.id);
     await typeQuery('setup');
     expect(list?.querySelector('[role="option"]')?.textContent).toContain('Setup guide');
   });
 
-  it('distinguishes an unavailable search from a successful empty result and hides cached results on failure', async () => {
+  it('closes with a keyboard Esc hint or a plain Cancel action instead of an icon-only X', async () => {
+    mocks.realLabels = true;
+    const { props } = await render();
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')];
+    const escapeHint = buttons.find((button) => button.textContent?.includes('Esc'));
+    const cancel = buttons.find((button) => button.textContent === 'Cancel');
+    expect(escapeHint?.textContent).toContain('Close search');
+    expect(cancel).toBeDefined();
+    expect(document.querySelector('button[aria-label="Close search"]')).toBeNull();
+    await act(async () => cancel?.click());
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+    await act(async () => escapeHint?.click());
+    expect(props.onOpenChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('announces a failed search, offers a retry, and hides cached results', async () => {
     const { rerender } = await render();
     await typeQuery('setup');
-    expect(document.body.textContent).toContain('searchEmpty');
-    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: new Error('Network unavailable') });
+    expect(document.body.textContent).toContain('searchNoResultsFor');
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: new Error('Network unavailable'), refetch: mocks.refetch });
     await rerender();
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe('searchFailed');
+    const alert = document.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('searchFailed');
     expect(document.body.textContent).not.toContain('Setup guide');
+    await act(async () => alert?.querySelector('button')?.click());
+    expect(mocks.refetch).toHaveBeenCalledOnce();
   });
 
   it('does not show old results while waiting for the typed query debounce or after the input is cleared', async () => {
@@ -137,68 +186,100 @@ describe('published reader search', () => {
     await render();
     await typeQuery('setup');
     expect(document.body.textContent).toContain('Setup guide');
+    expect(status()).toBe('searchResultCount');
     mocks.debounced = 'setup';
     await typeQuery('billing');
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('searching');
+    expect(status()).toBe('searching');
     expect(document.body.textContent).not.toContain('Setup guide');
     await typeQuery('');
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('searchPrompt');
+    expect(document.body.textContent).toContain('searchPrompt');
     expect(document.body.textContent).not.toContain('Setup guide');
   });
 
-  it('submits an AI question with Enter and provides a visible search close action', async () => {
-    const { props } = await render();
-    await typeQuery('How do I start?');
-    await selectAnswers();
-    await act(async () => {
-      document.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
-    });
-    expect(mocks.mutate).toHaveBeenCalledWith({ projectId: 'docs', query: 'How do I start?', language: 'en' });
-    const close = document.querySelector<HTMLButtonElement>('button[aria-label="closeSearch"]');
-    expect(close).not.toBeNull();
-    await act(async () => close?.click());
+  it('highlights the best page first and keeps "Ask AI" one step above it', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render();
+    await typeQuery('setup');
+    expect(options().map((item) => item.textContent?.includes('searchAskAiAbout'))).toEqual([true, false]);
+    expect(option('Setup guide')?.getAttribute('aria-selected')).toBe('true');
+    expect(input()?.getAttribute('aria-activedescendant')).toBe(option('Setup guide')?.id);
+    await press('ArrowUp');
+    expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('starts on "Ask AI" when the reader types a question', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render();
+    await typeQuery('How do I set up billing?');
+    expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+    await typeQuery('كيف أبدأ');
+    expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('hands the question to an external assistant from results and from an empty result', async () => {
+    const onAskAi = vi.fn();
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    const { props, rerender } = await render({ onAskAi });
+    await typeQuery('  How do I start?  ');
+    await select('searchAskAiAbout');
+    expect(onAskAi).toHaveBeenCalledExactlyOnceWith('How do I start?');
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    mocks.search.mockReturnValue({ data: [], isFetching: false, error: null });
+    await rerender();
+    expect(document.body.textContent).toContain('searchNoResultsFor');
+    await select('searchAskAiAbout');
+    expect(onAskAi).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers no AI row when neither built-in answers nor an assistant are available', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render({ aiAnswers: false });
+    await typeQuery('setup');
+    expect(option('searchAskAiAbout')).toBeUndefined();
+  });
+
+  it('asks the built-in answer view immediately and submits again with Enter', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render();
+    await typeQuery('How do I start?');
+    await select('searchAskAiAbout');
+    expect(mocks.mutate).toHaveBeenCalledExactlyOnceWith({ projectId: 'docs', query: 'How do I start?', language: 'en' });
+    await press('Enter');
+    expect(mocks.mutate).toHaveBeenCalledTimes(2);
+    const back = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('searchBackToResults'));
+    await act(async () => back?.click());
+    expect(option('Setup guide')).toBeDefined();
   });
 
   it.each(['en', 'ar', 'he', 'fa', 'ur', 'ar-SA', 'he-IL', 'fa-IR', 'ur-PK'])(
-    'supports keyboard mode tabs and the content direction in %s',
+    'lays out the dialog and answer view in the direction of %s',
     async (lang) => {
       await render({ lang });
-      const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-      expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1]);
-      await act(async () => {
-        tabs[0]?.focus();
-        tabs[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: lang === 'en' ? 'ArrowRight' : 'ArrowLeft', bubbles: true, cancelable: true }));
-      });
-      expect(document.activeElement).toBe(tabs[1]);
-      expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
-      expect(document.querySelector('[role="tabpanel"]')?.getAttribute('aria-labelledby')).toBe(tabs[1]?.id);
-      expect(document.querySelector('[role="tabpanel"]')?.id).toBe(tabs[1]?.getAttribute('aria-controls'));
-      expect(document.querySelector('[role="tabpanel"]')?.getAttribute('dir')).toBe(lang === 'en' ? 'ltr' : 'rtl');
-      await act(async () => tabs[1]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true })));
-      expect(document.activeElement).toBe(tabs[0]);
-      expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+      await typeQuery('How do I start?');
+      await select('searchAskAiAbout');
+      const expected = lang === 'en' ? 'ltr' : 'rtl';
+      expect(document.querySelector('[role="dialog"]')?.getAttribute('dir')).toBe(expected);
+      expect(document.querySelector('section[aria-labelledby]')?.getAttribute('dir')).toBe(expected);
     },
   );
 
   it('honors the published language direction without changing the requested answer language', async () => {
     await render({ lang: 'en', direction: 'rtl' });
     await typeQuery('How do I start?');
-    await selectAnswers();
-    expect(document.querySelector('[role="tabpanel"]')?.getAttribute('dir')).toBe('rtl');
-    await act(async () =>
-      document.querySelector('input')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })),
-    );
+    await select('searchAskAiAbout');
+    expect(document.querySelector('section[aria-labelledby]')?.getAttribute('dir')).toBe('rtl');
     expect(mocks.mutate).toHaveBeenCalledWith({ projectId: 'docs', query: 'How do I start?', language: 'en' });
   });
 
-  it('returns to keyword search if AI answers are disabled while its panel is open', async () => {
+  it('returns to keyword search if AI answers are disabled while the answer view is open', async () => {
     const { rerender } = await render();
-    await selectAnswers();
-    expect(document.body.textContent).toContain('groundedAnswerTitle');
+    await typeQuery('setup');
+    await select('searchAskAiAbout');
+    expect(document.body.textContent).toContain('searchBackToResults');
     await rerender({ aiAnswers: false });
-    expect(document.body.textContent).not.toContain('groundedAnswerTitle');
-    expect(document.body.textContent).toContain('searchPrompt');
+    expect(document.body.textContent).not.toContain('searchBackToResults');
+    expect(document.body.textContent).toContain('searchNoResultsFor');
   });
 
   it.each(['query', 'language', 'version'])('hides AI answers and citations when their %s scope changes', async (scope) => {
@@ -214,7 +295,7 @@ describe('published reader search', () => {
     });
     const { rerender } = await render();
     await typeQuery('setup');
-    await selectAnswers();
+    await select('searchAskAiAbout');
     expect(document.body.textContent).toContain('The saved answer');
     expect(document.body.textContent).toContain('Saved source');
     if (scope === 'query') await typeQuery('billing');
@@ -237,7 +318,7 @@ describe('published reader search', () => {
     });
     await render();
     await typeQuery('setup');
-    await selectAnswers();
+    await select('searchAskAiAbout');
     expect(document.querySelector('strong')?.textContent).toBe('Configure storage');
     expect(document.querySelector('pre code')?.textContent).toContain('API_URL=http://localhost:4311');
     expect(document.querySelector('pre')?.getAttribute('dir')).toBe('ltr');
@@ -245,12 +326,63 @@ describe('published reader search', () => {
     expect(document.querySelector('a[href*="example.invalid"]')).toBeNull();
     expect(document.querySelector('a[href*="setup"]')).not.toBeNull();
   });
+
+  it('shows the matching section under its page and links straight to the heading', async () => {
+    window.history.replaceState(null, '', '/sites/docs/start');
+    mocks.search.mockReturnValue({ data: [sectionHit], isFetching: false, error: null });
+    await render({ aiAnswers: false, defaultLanguage: 'en' });
+    await typeQuery('refund');
+    expect(options().map((item) => item.textContent)).toEqual([expect.stringContaining('Billing'), expect.stringContaining('Refunds')]);
+    expect(option('Refunds')?.textContent).toContain('We refund it.');
+    await select('Refunds');
+    expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/billing#refunds' });
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('labels a result from another published language', async () => {
+    mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar', title: 'دليل الإعداد' }], isFetching: false, error: null });
+    await render({ aiAnswers: false });
+    await typeQuery('setup');
+    expect(option('دليل الإعداد')?.textContent).toContain('العربية');
+  });
+
+  it('remembers searches that led somewhere and lets the reader reuse or clear them', async () => {
+    window.history.replaceState(null, '', '/sites/docs/start');
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    const { rerender } = await render({ aiAnswers: false, suggestions });
+    await typeQuery('setup');
+    await select('Setup guide');
+    await typeQuery('');
+    await rerender({ open: false });
+    await rerender({ open: true });
+    expect(document.body.textContent).toContain('searchRecent');
+    await select('setup');
+    expect(input()?.value).toBe('setup');
+    await typeQuery('');
+    await select('searchClearRecent');
+    expect(document.body.textContent).not.toContain('searchRecent');
+    expect(window.localStorage.getItem('nibleaf:site-search:recent:docs')).toBe('[]');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('suggests pages before typing and when nothing matches', async () => {
+    window.history.replaceState(null, '', '/sites/docs/start');
+    const { rerender } = await render({ aiAnswers: false, suggestions, defaultLanguage: 'en' });
+    expect(document.body.textContent).toContain('searchSuggested');
+    expect(option('Getting started')?.getAttribute('aria-selected')).toBe('true');
+    await typeQuery('kubernetes');
+    await rerender();
+    expect(document.body.textContent).toContain('searchNoResultsHint');
+    await select('Installation');
+    expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/installation' });
+    window.history.replaceState(null, '', '/');
+  });
 });
 
 it('routes a selected search result with its language and selected version', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar' }], isFetching: false, error: null });
-  await render({ lang: 'ar', version: 'v2' });
+  await render({ lang: 'ar', version: 'v2', aiAnswers: false });
   await typeQuery('Setup');
   const result = document.querySelector<HTMLElement>('[role="option"]');
   if (!result) throw new Error('Missing search result');
@@ -262,7 +394,7 @@ it('routes a selected search result with its language and selected version', asy
 it('keeps default-language search navigation on the clean URL', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-  await render({ lang: 'en', defaultLanguage: 'en' });
+  await render({ lang: 'en', defaultLanguage: 'en', aiAnswers: false });
   await typeQuery('Setup');
   const result = document.querySelector<HTMLElement>('[role="option"]');
   if (!result) throw new Error('Missing search result');

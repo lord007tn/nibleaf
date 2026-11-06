@@ -1,6 +1,14 @@
 import { type ComponentProps, lazy, Suspense, useEffect, useState } from 'react';
 
-const SiteSearchDialog = lazy(() => import('./site-search-dialog'));
+const loadSiteSearchDialog = () => import('./site-search-dialog');
+const SiteSearchDialog = lazy(loadSiteSearchDialog);
+
+/** Fetch the search dialog's code ahead of the first open (idle time, or when a
+ * reader points at / focuses the search trigger). Without it, the first letters
+ * typed right after ⌘K land while the code is still loading and are lost. */
+export const preloadSiteSearch = (): void => {
+  void loadSiteSearchDialog();
+};
 
 export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
   const { open, onOpenChange, hotkey } = props;
@@ -9,6 +17,14 @@ export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
   useEffect(() => {
     if (open) setActivated(true);
   }, [open]);
+
+  useEffect(() => {
+    // Warm the chunk once the page is idle so the first open is instant.
+    const idle = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 2000));
+    const cancel = window.cancelIdleCallback ?? window.clearTimeout;
+    const handle = idle(() => preloadSiteSearch());
+    return () => cancel(handle);
+  }, []);
 
   useEffect(() => {
     const isTypingTarget = (el: EventTarget | null): boolean => {
@@ -20,11 +36,13 @@ export function SiteSearch(props: ComponentProps<typeof SiteSearchDialog>) {
     const onKey = (event: KeyboardEvent) => {
       if (hotkey === 'slash' && event.key === '/' && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
         event.preventDefault();
+        preloadSiteSearch();
         onOpenChange(true);
         return;
       }
       if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
+        preloadSiteSearch();
         onOpenChange(!open);
       }
     };
