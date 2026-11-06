@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection } } }));
 
-import { resolveWorkspaceAi, workspaceChatModelOptions } from './workspace';
+import { costReportingFetch, resolveWorkspaceAi, workspaceChatModelOptions } from './workspace';
 
 const key = Buffer.alloc(32, 13).toString('base64');
 const encrypted = (projectId = 'workspace-a', providerId = 'openai', apiKey = 'workspace-owned-secret') =>
@@ -93,5 +93,27 @@ describe('workspace chat model options', () => {
   it('never sends temperature to direct OpenAI, matching the answer provider', () => {
     expect(workspaceChatModelOptions({ providerId: 'openai' })(1200)).toEqual({ max_completion_tokens: 1200 });
     expect(workspaceChatModelOptions({ providerId: 'openrouter' })(120)).toEqual({ temperature: 0, max_tokens: 120 });
+  });
+});
+
+describe('OpenRouter cost reporting', () => {
+  const respond = (body: string) => async () => new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+
+  it('adds usage.cost from streamed and plain responses without altering the body', async () => {
+    const sink: { costUsd?: number; pending?: Promise<void>[] } = {};
+    const streamed =
+      'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\ndata: {"choices":[],"usage":{"prompt_tokens":9,"cost":0.0000078,"cost_details":{"upstream_inference_cost":0.5}}}\n\ndata: [DONE]\n\n';
+    const first = await costReportingFetch(sink, respond(streamed))('https://openrouter.ai/api/v1/chat/completions');
+    expect(await first.text()).toBe(streamed);
+    await costReportingFetch(sink, respond('{"choices":[],"usage":{"total_tokens":3,"cost":2e-6}}'))('https://openrouter.ai/api/v1/x');
+    await Promise.all(sink.pending ?? []);
+    expect(sink.costUsd).toBeCloseTo(0.000_009_8, 10);
+  });
+
+  it('leaves cost unknown when the provider reports none', async () => {
+    const sink: { costUsd?: number; pending?: Promise<void>[] } = {};
+    await (await costReportingFetch(sink, respond('{"usage":{"total_tokens":3}}'))('https://example.test')).text();
+    await Promise.all(sink.pending ?? []);
+    expect(sink.costUsd).toBeUndefined();
   });
 });

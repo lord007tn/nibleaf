@@ -166,6 +166,19 @@ policy with the chat policy on the same fixtures:
 EVAL_MODE=both pnpm --filter @nibleaf/search eval:rag
 ```
 
+On the bundled fixtures (10 English and Arabic cases, including follow-ups and
+page context; run on 2026-11-06), the chat policy answered every answerable
+question without lowering citation validity or no-answer accuracy:
+
+| Model | Policy | Answered (answerable) | Correct no-answer | Valid citations | Required facts covered |
+| --- | --- | --- | --- | --- | --- |
+| `openai/gpt-5.6-luna` | strict | 100% | 100% | 100% | 70% |
+| `openai/gpt-5.6-luna` | chat | 100% | 100% | 100% | 100% |
+| `deepseek/deepseek-v4-flash-0731` | strict | 86% | 100% | 100% | 80% |
+| `deepseek/deepseek-v4-flash-0731` | chat | 100% | 100% | 100% | 80% |
+
+Re-run the evaluation when you change the answer model.
+
 | Variable | Default | Effect |
 | --- | --- | --- |
 | `SEARCH_ANSWER_DAILY_PER_PROJECT` | `200` | Existing daily answer quota. Each chat question counts once. |

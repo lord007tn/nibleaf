@@ -13,7 +13,7 @@ import {
   streamGroundedChat,
   suggestedArticles,
 } from '@nibleaf/search';
-import { workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
+import { type ChatCostSink, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
 import { defaultLanguage } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
@@ -173,10 +173,11 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
 
   const page = resolvePageContext(context, body.pagePath);
   const outcome: TurnOutcome = { status: 'failed' };
+  const cost: ChatCostSink = {};
   let textStarted = false;
   try {
     yield custom(AI_CHAT_EVENT.status, { phase: 'searching' });
-    const adapter = workspaceChatAdapter(runtime);
+    const adapter = workspaceChatAdapter(runtime, cost);
     const historyLimits = { maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS };
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
@@ -259,7 +260,7 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
     // A reader pressing "Stop" ends iteration from outside, skipping catch.
     if (signal.aborted && outcome.status === 'failed') outcome.status = 'cancelled';
     const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    void finishTurn({ context, body, turnId, turnIndex: reservation.turnIndex, outcome, page, latencyMs, analytics, runtime });
+    void finishTurn({ context, body, turnId, turnIndex: reservation.turnIndex, outcome, page, latencyMs, analytics, runtime, cost });
   }
 }
 
@@ -274,6 +275,7 @@ const finishTurn = async ({
   latencyMs,
   analytics,
   runtime,
+  cost,
 }: {
   context: PublishedAnswerContext;
   body: SiteChatBody;
@@ -284,8 +286,12 @@ const finishTurn = async ({
   latencyMs: number;
   analytics: Parameters<typeof trackProjectEvent>[2];
   runtime: { providerId: string; answerModel: string };
+  cost: ChatCostSink;
 }): Promise<void> => {
   const projectId = context.scope.projectId;
+  // Provider-reported spend (OpenRouter) is read from the response bodies.
+  await Promise.allSettled(cost.pending ?? []);
+  if (cost.costUsd !== undefined) outcome.usage = { ...outcome.usage, costUsd: cost.costUsd };
   const tokens =
     usageTokens(outcome.usage) ??
     // Unknown provider usage still counts against budgets, conservatively.

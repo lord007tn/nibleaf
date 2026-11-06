@@ -85,14 +85,52 @@ export const workspaceAnswerProvider = (runtime: WorkspaceAiRuntime) => {
 };
 
 /** Direct OpenAI uses precisely the model id used by OpenAIChatProvider. */
-export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime) =>
+export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime, cost?: ChatCostSink) =>
   openaiCompatibleText(runtime.answerModel, {
     baseURL: runtime.providerId === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1',
     apiKey: runtime.apiKey,
     api: 'chat-completions',
     timeout: keys().SEARCH_ANSWER_TIMEOUT_MS,
     maxRetries: 0,
+    ...(runtime.providerId === 'openrouter' && cost ? { fetch: costReportingFetch(cost) } : {}),
   });
+
+/** Accumulates provider-reported spend across the calls of one chat turn. */
+export interface ChatCostSink {
+  costUsd?: number;
+  /** Response scans still reading; await before recording the turn. */
+  pending?: Promise<void>[];
+}
+
+const COST = /"cost"\s*:\s*(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)/g;
+
+/** OpenRouter reports each call's cost in `usage.cost`, which the OpenAI-
+ * compatible adapter does not surface. Read it from a tee of the response
+ * (streamed or not) without delaying the reader's stream. */
+export const costReportingFetch =
+  (sink: ChatCostSink, base: typeof fetch = fetch): typeof fetch =>
+  async (input, init) => {
+    const response = await base(input, init);
+    if (!response.ok || !response.body) return response;
+    const [forward, scan] = response.body.tee();
+    const scanning = (async () => {
+      const decoder = new TextDecoder();
+      let text = '';
+      const reader = scan.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+        // Usage arrives last; keep only a bounded tail of the body.
+        if (text.length > 16_384) text = text.slice(-8192);
+      }
+      const usage = text.slice(text.lastIndexOf('"usage"'));
+      const match = [...usage.matchAll(COST)][0];
+      if (match?.[1]) sink.costUsd = (sink.costUsd ?? 0) + Number(match[1]);
+    })().catch(() => undefined);
+    sink.pending = [...(sink.pending ?? []), scanning];
+    return new Response(forward, { status: response.status, statusText: response.statusText, headers: response.headers });
+  };
 
 /** Direct OpenAI mirrors OpenAIChatProvider (no temperature, completion-token cap);
  * OpenRouter mirrors OpenRouterChatProvider (deterministic temperature). */
