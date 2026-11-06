@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonListRow, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteSearchT } from '@nibleaf/i18n/site-search';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, ArrowLeft, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
@@ -228,7 +228,7 @@ export default function SiteSearchDialog({
 }) {
   const { track } = useSiteAnalytics();
   const router = useRouter();
-  const t = siteT(lang);
+  const t = siteSearchT(lang);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // cmdk re-selects the first row whenever the list changes. Only highlight

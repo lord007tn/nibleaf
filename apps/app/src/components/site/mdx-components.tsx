@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import {
   AlertTriangle,
@@ -157,7 +157,7 @@ export function Tabs({ children, language }: { children?: ReactNode; language?: 
   const [active, setActive] = useState(0);
   const tabsId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const t = siteT(language);
+  const t = siteContentT(language);
   if (tabs.length === 0) return null;
   return (
     <div className="my-5">
@@ -229,7 +229,7 @@ export function Accordion({
 }) {
   const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
   const accordionId = useId();
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div>
       <button
@@ -383,7 +383,7 @@ function FieldRow({
   children?: ReactNode;
   language?: string;
 }) {
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div className="border-border border-b py-3 first:pt-0 last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -482,7 +482,7 @@ export function Expandable({
 }) {
   const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
   const expandableId = useId();
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border">
       <button
@@ -754,7 +754,7 @@ export function CodeGroup({ children, language }: { children?: ReactNode; langua
       return title;
     }
     const codeLanguage = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
-    return codeLanguage ? codeLanguage.toUpperCase() : `${siteT(language)('tab')} ${index + 1}`;
+    return codeLanguage ? codeLanguage.toUpperCase() : `${siteContentT(language)('tab')} ${index + 1}`;
   };
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-border">

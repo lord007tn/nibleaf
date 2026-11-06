@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, type FunctionComponent, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
@@ -98,7 +98,7 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
-  const t = siteT(locale);
+  const t = siteContentT(locale);
   // Language + optional title come from the fence meta. mdast→hast may attach
   // them to this <pre> or to the child <code>, so check both.
   const ownProps = props as ComponentProps<'pre'> & { 'data-title'?: string; 'data-lang'?: string };

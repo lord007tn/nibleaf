@@ -14,10 +14,7 @@ import { site_analyticsconsentdecline } from './paraglide/messages/site_analytic
 import { site_analyticsconsentmanage } from './paraglide/messages/site_analyticsconsentmanage.js';
 import { site_analyticsconsentprivacy } from './paraglide/messages/site_analyticsconsentprivacy.js';
 import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
-import { site_answer } from './paraglide/messages/site_answer.js';
-import { site_answerfailed } from './paraglide/messages/site_answerfailed.js';
 import { site_articledetails } from './paraglide/messages/site_articledetails.js';
-import { site_askai } from './paraglide/messages/site_askai.js';
 import { site_blog } from './paraglide/messages/site_blog.js';
 import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
 import { site_changelog } from './paraglide/messages/site_changelog.js';
@@ -27,18 +24,8 @@ import { site_changelogpages } from './paraglide/messages/site_changelogpages.js
 import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
-import { site_checking } from './paraglide/messages/site_checking.js';
-import { site_closeimage } from './paraglide/messages/site_closeimage.js';
-import { site_closesearch } from './paraglide/messages/site_closesearch.js';
-import { site_copied } from './paraglide/messages/site_copied.js';
-import { site_copycode } from './paraglide/messages/site_copycode.js';
-import { site_copyfailed } from './paraglide/messages/site_copyfailed.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
-import { site_copysectionlink } from './paraglide/messages/site_copysectionlink.js';
-import { site_defaultvalue } from './paraglide/messages/site_defaultvalue.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
-import { site_deprecated } from './paraglide/messages/site_deprecated.js';
-import { site_details } from './paraglide/messages/site_details.js';
 import { site_dismissbanner } from './paraglide/messages/site_dismissbanner.js';
 import { site_docs } from './paraglide/messages/site_docs.js';
 import { site_docspages } from './paraglide/messages/site_docspages.js';
@@ -49,8 +36,6 @@ import { site_feedbackno } from './paraglide/messages/site_feedbackno.js';
 import { site_feedbackquestion } from './paraglide/messages/site_feedbackquestion.js';
 import { site_feedbackthanks } from './paraglide/messages/site_feedbackthanks.js';
 import { site_feedbackyes } from './paraglide/messages/site_feedbackyes.js';
-import { site_groundedanswerbody } from './paraglide/messages/site_groundedanswerbody.js';
-import { site_groundedanswertitle } from './paraglide/messages/site_groundedanswertitle.js';
 import { site_home } from './paraglide/messages/site_home.js';
 import { site_importadditionalpages } from './paraglide/messages/site_importadditionalpages.js';
 import { site_importblog } from './paraglide/messages/site_importblog.js';
@@ -65,7 +50,6 @@ import { site_markdowncopyfailed } from './paraglide/messages/site_markdowncopyf
 import { site_menu } from './paraglide/messages/site_menu.js';
 import { site_minread } from './paraglide/messages/site_minread.js';
 import { site_next } from './paraglide/messages/site_next.js';
-import { site_noanswer } from './paraglide/messages/site_noanswer.js';
 import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
 import { site_notfoundbody } from './paraglide/messages/site_notfoundbody.js';
 import { site_notfoundhome } from './paraglide/messages/site_notfoundhome.js';
@@ -79,42 +63,18 @@ import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.
 import { site_previous } from './paraglide/messages/site_previous.js';
 import { site_raiseissue } from './paraglide/messages/site_raiseissue.js';
 import { site_reportabuse } from './paraglide/messages/site_reportabuse.js';
-import { site_required } from './paraglide/messages/site_required.js';
-import { site_results } from './paraglide/messages/site_results.js';
 import { site_screenshot } from './paraglide/messages/site_screenshot.js';
 import { site_screenshots } from './paraglide/messages/site_screenshots.js';
 import { site_search } from './paraglide/messages/site_search.js';
-import { site_searchaskaiabout } from './paraglide/messages/site_searchaskaiabout.js';
-import { site_searchaskaihint } from './paraglide/messages/site_searchaskaihint.js';
-import { site_searchbacktoresults } from './paraglide/messages/site_searchbacktoresults.js';
 import { site_searchcancel } from './paraglide/messages/site_searchcancel.js';
-import { site_searchclearrecent } from './paraglide/messages/site_searchclearrecent.js';
-import { site_searchdescription } from './paraglide/messages/site_searchdescription.js';
 import { site_searchdocumentation } from './paraglide/messages/site_searchdocumentation.js';
 import { site_searchempty } from './paraglide/messages/site_searchempty.js';
-import { site_searchfailed } from './paraglide/messages/site_searchfailed.js';
 import { site_searchfilterlanguage } from './paraglide/messages/site_searchfilterlanguage.js';
-import { site_searchfilterversion } from './paraglide/messages/site_searchfilterversion.js';
-import { site_searching } from './paraglide/messages/site_searching.js';
-import { site_searchkeysclose } from './paraglide/messages/site_searchkeysclose.js';
-import { site_searchkeysnavigate } from './paraglide/messages/site_searchkeysnavigate.js';
-import { site_searchkeysopen } from './paraglide/messages/site_searchkeysopen.js';
 import { site_searchmode } from './paraglide/messages/site_searchmode.js';
-import { site_searchnoresultsfor } from './paraglide/messages/site_searchnoresultsfor.js';
-import { site_searchnoresultshint } from './paraglide/messages/site_searchnoresultshint.js';
-import { site_searchpages } from './paraglide/messages/site_searchpages.js';
 import { site_searchplaceholder } from './paraglide/messages/site_searchplaceholder.js';
-import { site_searchprompt } from './paraglide/messages/site_searchprompt.js';
-import { site_searchrecent } from './paraglide/messages/site_searchrecent.js';
-import { site_searchresultcount } from './paraglide/messages/site_searchresultcount.js';
-import { site_searchretry } from './paraglide/messages/site_searchretry.js';
-import { site_searchsuggested } from './paraglide/messages/site_searchsuggested.js';
-import { site_searchversionlabel } from './paraglide/messages/site_searchversionlabel.js';
-import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_sitelinks } from './paraglide/messages/site_sitelinks.js';
 import { site_skiptocontent } from './paraglide/messages/site_skiptocontent.js';
 import { site_sources } from './paraglide/messages/site_sources.js';
-import { site_tab } from './paraglide/messages/site_tab.js';
 import { site_tags } from './paraglide/messages/site_tags.js';
 import { site_togglesubpages } from './paraglide/messages/site_togglesubpages.js';
 import { site_toggletheme } from './paraglide/messages/site_toggletheme.js';
@@ -122,47 +82,26 @@ import { site_updated } from './paraglide/messages/site_updated.js';
 import { site_version } from './paraglide/messages/site_version.js';
 import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
-import { site_viewfullsize } from './paraglide/messages/site_viewfullsize.js';
-import { site_viewfullsizeof } from './paraglide/messages/site_viewfullsizeof.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
+import type { SiteContentMessageKey } from './site-content';
+import type { SiteSearchMessageKey } from './site-search';
 
 /** Messages with {variables} keep Paraglide's generated input types, so a caller
  * that forgets a variable fails to compile instead of rendering "{query}". */
 const siteVariableMessages = {
-  searchNoResultsFor: site_searchnoresultsfor,
-  searchAskAiAbout: site_searchaskaiabout,
-  searchResultCount: site_searchresultcount,
   languageCurrent: site_languagecurrent,
   versionCurrent: site_versioncurrent,
-  viewFullSizeOf: site_viewfullsizeof,
 };
 
 const siteMessages = {
-  closeSearch: site_closesearch,
   searchCancel: site_searchcancel,
-  searchRecent: site_searchrecent,
-  searchClearRecent: site_searchclearrecent,
-  searchSuggested: site_searchsuggested,
-  searchNoResultsHint: site_searchnoresultshint,
-  searchAskAiHint: site_searchaskaihint,
-  searchPages: site_searchpages,
-  searchRetry: site_searchretry,
-  searchBackToResults: site_searchbacktoresults,
-  searchKeysNavigate: site_searchkeysnavigate,
-  searchKeysOpen: site_searchkeysopen,
-  searchKeysClose: site_searchkeysclose,
-  searchVersionLabel: site_searchversionlabel,
   docs: site_docs,
   changelog: site_changelog,
   search: site_search,
   searchDocumentation: site_searchdocumentation,
   searchFilterLanguage: site_searchfilterlanguage,
-  searchFilterVersion: site_searchfilterversion,
   searchPlaceholder: site_searchplaceholder,
-  searchDescription: site_searchdescription,
   searchEmpty: site_searchempty,
-  searchPrompt: site_searchprompt,
-  results: site_results,
   loading: site_loading,
   previous: site_previous,
   next: site_next,
@@ -191,17 +130,8 @@ const siteMessages = {
   analyticsConsentTitle: site_analyticsconsenttitle,
   analyticsConsentManage: site_analyticsconsentmanage,
   analyticsConsentPrivacy: site_analyticsconsentprivacy,
-  searching: site_searching,
-  searchFailed: site_searchfailed,
-  answerFailed: site_answerfailed,
   searchMode: site_searchmode,
-  askAi: site_askai,
-  groundedAnswerTitle: site_groundedanswertitle,
-  groundedAnswerBody: site_groundedanswerbody,
   sources: site_sources,
-  noAnswer: site_noanswer,
-  checking: site_checking,
-  answer: site_answer,
   home: site_home,
   blog: site_blog,
   madeWith: site_madewith,
@@ -221,21 +151,9 @@ const siteMessages = {
   toggleTheme: site_toggletheme,
   toggleSubpages: site_togglesubpages,
   articleDetails: site_articledetails,
-  copyCode: site_copycode,
-  copied: site_copied,
-  copyFailed: site_copyfailed,
-  copySectionLink: site_copysectionlink,
-  viewFullSize: site_viewfullsize,
-  closeImage: site_closeimage,
   viewMarkdown: site_viewmarkdown,
   copyMarkdown: site_copymarkdown,
   markdownCopyFailed: site_markdowncopyfailed,
-  details: site_details,
-  tab: site_tab,
-  required: site_required,
-  deprecated: site_deprecated,
-  defaultValue: site_defaultvalue,
-  showProperties: site_showproperties,
   viewDetails: site_viewdetails,
   dismissBanner: site_dismissbanner,
   changeVersion: site_changeversion,
@@ -259,7 +177,9 @@ const siteMessages = {
 } satisfies Record<string, MessageFn>;
 
 type SiteContractKey = Extract<MessageKey, `site.${string}`>;
-export type SiteMessageKey = SiteContractKey extends `site.${infer Key}` ? Key : never;
+/** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
+ * (./site-search) and article renderer (./site-content). */
+export type SiteMessageKey = Exclude<SiteContractKey extends `site.${infer Key}` ? Key : never, SiteSearchMessageKey | SiteContentMessageKey>;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey>;
 type SiteVariables<Key extends SiteVariableKey> = Parameters<(typeof siteVariableMessages)[Key]>[0];

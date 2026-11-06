@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Link, ZoomIn } from 'lucide-react';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -27,7 +27,7 @@ export function announce(message: string): void {
 }
 
 export function SectionLink({ id, language }: { id: string; language?: string }) {
-  const t = siteT(language);
+  const t = siteContentT(language);
   async function copy() {
     try {
       const url = new URL(window.location.href);
@@ -65,7 +65,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const t = siteT(language);
+  const t = siteContentT(language);
   // Server-rendered and cached images often finish loading before hydration, when
   // React's onLoad never fires, and an image hidden for the other appearance only
   // gets a size once revealed; measure on mount and whenever its size changes.

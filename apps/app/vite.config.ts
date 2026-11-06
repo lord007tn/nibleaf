@@ -22,6 +22,11 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
 };
 
+/** Message files only the published reader's lazily loaded search dialog and article
+ * renderer import (packages/i18n/src/site-search.ts and site-content.ts). */
+const LAZY_SITE_MESSAGES =
+  /\/paraglide\/messages\/site_(?:answer|answerfailed|askai|checking|closeimage|closesearch|copied|copycode|copyfailed|copysectionlink|defaultvalue|deprecated|details|groundedanswerbody|groundedanswertitle|noanswer|required|results|searchaskaiabout|searchaskaihint|searchbacktoresults|searchclearrecent|searchdescription|searchfailed|searchfilterversion|searching|searchkeysclose|searchkeysnavigate|searchkeysopen|searchnoresultsfor|searchnoresultshint|searchpages|searchprompt|searchrecent|searchresultcount|searchretry|searchsuggested|searchversionlabel|showproperties|tab|viewfullsize|viewfullsizeof)\.js$/;
+
 export default defineConfig(({ mode }) => {
   const configEnv = createEnv({
     server: { VITE_API_URL: z.url().default('http://localhost:4311') },
@@ -49,8 +54,15 @@ export default defineConfig(({ mode }) => {
                   },
                   {
                     name: 'public-site-i18n',
-                    test: (id) =>
-                      /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(id.replaceAll('\\', '/')),
+                    // Messages of the lazily loaded search dialog and article renderer load
+                    // with those chunks instead of every published page's first load.
+                    test: (id) => {
+                      const path = id.replaceAll('\\', '/');
+                      return (
+                        /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(path) &&
+                        !LAZY_SITE_MESSAGES.test(path)
+                      );
+                    },
                   },
                   {
                     name: 'standalone-i18n',

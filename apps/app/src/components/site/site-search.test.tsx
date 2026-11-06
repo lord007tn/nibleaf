@@ -20,6 +20,10 @@ vi.mock('@nibleaf/i18n/site', async (importOriginal) => {
   const { siteT } = await importOriginal<typeof import('@nibleaf/i18n/site')>();
   return { siteT: (language?: string) => (mocks.realLabels ? siteT(language) : (key: string) => key) };
 });
+vi.mock('@nibleaf/i18n/site-search', async (importOriginal) => {
+  const { siteSearchT } = await importOriginal<typeof import('@nibleaf/i18n/site-search')>();
+  return { siteSearchT: (language?: string) => (mocks.realLabels ? siteSearchT(language) : (key: string) => key) };
+});
 
 import { SearchShell, SiteSearch } from './site-search';
 
