@@ -112,29 +112,43 @@ export const aiStarterQuestionsSchema = z
 /** Resolved, provider-neutral controls used by both the dashboard and MCP.
  * `placeholder` deliberately has no default here: the published UI falls back
  * to its active-language Paraglide copy when the project has not authored one. */
+const searchConfigurationFields = {
+  maxResults: z.number().int().min(SEARCH_MAX_RESULTS.min).max(SEARCH_MAX_RESULTS.max),
+  filtersEnabled: z.boolean(),
+  versionFilterEnabled: z.boolean(),
+  aiAnswers: z.boolean(),
+  aiProvider: aiSelectionSchema,
+  /** Save reader questions/answers (redacted, retention-bounded) for the AI
+   * conversations dashboard. Visitor consent still applies per request. */
+  aiConversationCapture: z.boolean(),
+  /** Suggested first questions in the site's default language. */
+  aiStarterQuestions: aiStarterQuestionsSchema,
+  hotkey: z.enum(['cmdk', 'slash']),
+};
+
 export const searchConfigurationSchema = z
   .object({
-    maxResults: z.number().int().min(SEARCH_MAX_RESULTS.min).max(SEARCH_MAX_RESULTS.max).default(SEARCH_MAX_RESULTS.default),
-    filtersEnabled: z.boolean().default(true),
-    versionFilterEnabled: z.boolean().default(true),
-    aiAnswers: z.boolean().default(false),
-    aiProvider: aiSelectionSchema.default('instance'),
-    /** Save reader questions/answers (redacted, retention-bounded) for the AI
-     * conversations dashboard. Visitor consent still applies per request. */
-    aiConversationCapture: z.boolean().default(true),
-    /** Suggested first questions in the site's default language. */
-    aiStarterQuestions: aiStarterQuestionsSchema.default([]),
+    maxResults: searchConfigurationFields.maxResults.default(SEARCH_MAX_RESULTS.default),
+    filtersEnabled: searchConfigurationFields.filtersEnabled.default(true),
+    versionFilterEnabled: searchConfigurationFields.versionFilterEnabled.default(true),
+    aiAnswers: searchConfigurationFields.aiAnswers.default(false),
+    aiProvider: searchConfigurationFields.aiProvider.default('instance'),
+    aiConversationCapture: searchConfigurationFields.aiConversationCapture.default(true),
+    aiStarterQuestions: searchConfigurationFields.aiStarterQuestions.default([]),
     aiSupportUrl: aiSupportUrlSchema.optional(),
-    hotkey: z.enum(['cmdk', 'slash']).default('cmdk'),
+    hotkey: searchConfigurationFields.hotkey.default('cmdk'),
     placeholder: z.string().trim().max(80).optional(),
   })
   .strict();
 export type SearchConfiguration = z.infer<typeof searchConfigurationSchema>;
 
-/** A settings mutation is partial. `null` clears authored placeholder copy so
- * each active language returns to the localized Paraglide site default. */
-export const updateProjectSearchConfigurationBody = searchConfigurationSchema
-  .omit({ placeholder: true, aiSupportUrl: true })
+/** A settings mutation is partial: only the fields sent change. It is built
+ * from the fields without their defaults, because Zod 4 applies `.default()`
+ * inside `.partial()`, which would reset every omitted setting. `null` clears
+ * authored placeholder copy (each language returns to its localized default)
+ * and the support link. */
+export const updateProjectSearchConfigurationBody = z
+  .object(searchConfigurationFields)
   .partial()
   .extend({ placeholder: z.string().trim().max(80).nullable().optional(), aiSupportUrl: aiSupportUrlSchema.nullable().optional() })
   .strict();
