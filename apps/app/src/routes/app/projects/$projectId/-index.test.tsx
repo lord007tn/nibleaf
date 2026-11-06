@@ -26,13 +26,13 @@ vi.mock('@/hooks/api', () => ({
   useProjectMembers: () => pending,
   usePublishAnyway: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-vi.mock('@/hooks/api/analytics', () => ({
+vi.mock('@/hooks/api/analytics', () => ({ useProjectAnalytics: analytics.hook }));
+vi.mock('@/hooks/api/analytics/query-options', () => ({
   analyticsTimezone: () => 'Asia/Riyadh',
   // Same key as the real factory (queryKeys.analytics.project).
   projectAnalyticsQueryOptions: (projectId: string, range: string, timezone: string) => ({
     queryKey: ['analytics', 'project', projectId, range, timezone],
   }),
-  useProjectAnalytics: analytics.hook,
 }));
 vi.mock('@/hooks/api/query-options', () => ({ domainsQueryOptions: vi.fn(), projectMembersQueryOptions: vi.fn() }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));

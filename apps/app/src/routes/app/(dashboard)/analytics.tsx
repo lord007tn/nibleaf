@@ -10,7 +10,9 @@ import { RangeTabs } from '@/components/analytics/range-tabs';
 import { StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
 import type { AnalyticsRange } from '@/hooks/api';
-import { analyticsTimezone, useWorkspaceAnalytics, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics';
+import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
+// Loader factories come from the i18n-free module: loaders ship in every page's first load.
+import { analyticsTimezone, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 

@@ -59,7 +59,7 @@ vi.mock('@/hooks/api/query-options', () => ({
   pagesQueryOptions: (projectId: string) => ({ queryKey: ['pages', projectId, null, null] }),
 }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@/hooks/api/analytics', () => ({
+vi.mock('@/hooks/api/analytics/query-options', () => ({
   analyticsTimezone: () => 'Asia/Riyadh',
   // Same key as the real factory (queryKeys.analytics.workspace).
   workspaceAnalyticsQueryOptions: (range: string, timezone: string) => ({ queryKey: ['analytics', 'workspace', range, timezone] }),

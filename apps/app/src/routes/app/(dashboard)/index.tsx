@@ -14,7 +14,7 @@ import { NewProjectDialog } from '@/components/app/new-project-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
-import { analyticsTimezone, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics';
+import { analyticsTimezone, workspaceAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { deploymentsQueryOptions, pagesQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';

@@ -12,13 +12,8 @@ vi.mock('@/services/api', () => {
 });
 
 import { queryKeys } from '../query-keys';
-import {
-  analyticsTimezone,
-  projectAnalyticsQueryOptions,
-  useProjectAnalytics,
-  useWorkspaceAnalytics,
-  workspaceAnalyticsQueryOptions,
-} from './queries';
+import { useProjectAnalytics, useWorkspaceAnalytics } from './queries';
+import { analyticsTimezone, projectAnalyticsQueryOptions, workspaceAnalyticsQueryOptions } from './query-options';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
