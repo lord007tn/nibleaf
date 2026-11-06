@@ -19,7 +19,7 @@ const workflows = {
   find_content_gaps:
     'Call get_failed_searches and get_top_searches for the requested range and language. Distinguish missing metrics from zero counts. For each candidate term call search_pages to rule out existing coverage. Propose articles with supporting evidence. Use create_page_draft for chosen gaps, then preview_publish and STOP for the human to review.',
   weekly_docs_health_report:
-    'Call get_analytics_overview, get_top_pages, get_page_feedback, get_failed_searches (only if this key lists it; otherwise say search terms are not available to this key), get_referrers (include AI assistants), get_search_health, and get_pending_changes. Pass the requested range and language to analytics tools that accept them. Report evidence, ranges, source limitations, pending changes, and unknown metrics explicitly. Do not edit content.',
+    'Call get_analytics_overview, get_top_pages, get_page_feedback, get_failed_searches (only if this key lists it; otherwise say search terms are not available to this key), get_referrers (include AI assistant visits and AI crawler activity), get_search_health, and get_pending_changes. Pass the requested range and language to analytics tools that accept them. Report evidence, ranges, source limitations, pending changes, and unknown metrics explicitly. Do not edit content.',
   draft_article:
     'Use the quoted topic as article subject. Call search_pages first to check existing coverage. Read relevant pages with get_page, then create_page_draft in the requested language. Return the draft for human review.',
   translate_article:

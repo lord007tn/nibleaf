@@ -1,6 +1,7 @@
-import { getClickHouseClient, keys } from '@nibleaf/clickhouse';
+import { type AiVisibilityInsights, getClickHouseClient, type InsightsAvailability, keys, type SearchInsights } from '@nibleaf/clickhouse';
 import { Prisma, prisma } from '@nibleaf/database';
-import type { ProjectConfig } from '@nibleaf/validators';
+import type { AnalyticsInsightsQuery, ProjectConfig } from '@nibleaf/validators';
+import { getAiVisibilityInsights, getSearchInsights } from '@/actions/analytics-insights';
 import { AppError } from '@/errors';
 import { resolveSupportRange, type SupportRange } from './support-range';
 import type { McpPrincipal } from './types';
@@ -13,8 +14,6 @@ type Row = {
   helpful?: string | number | bigint;
   unhelpful?: string | number | bigint;
   lastSeen?: string | Date;
-  zeroResults?: string | number;
-  clicks?: string | number;
 };
 const number = (value: Row['count'] | undefined) => Number(value ?? 0);
 export const redactSearchTerm = (term: string) =>
@@ -56,17 +55,127 @@ const classify = (domain: string) => {
   return 'other';
 };
 
+const TERMS_DISABLED_HINT =
+  'An admin can enable storing public search terms in project analytics settings; collection also requires eligible public traffic and consent.';
+const availabilityReasons: Partial<Record<InsightsAvailability, string>> = {
+  partial: 'Some events lack a visit or result record, so rates cover only the events that have them.',
+  unavailable: 'The analytics store did not answer; try again later.',
+  not_configured: 'ClickHouse analytics is not configured.',
+};
+const answered = (availability: InsightsAvailability) => availability === 'complete' || availability === 'partial';
+
+/** The dashboard insights work in whole local days, so an MCP from/to instant
+ * maps to the local date it falls on. */
+const localDate = (instant: string, timeZone: string) => {
+  const parts = new Intl.DateTimeFormat('en', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(instant));
+  const part = (type: string) => parts.find((item) => item.type === type)?.value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+};
+const insightsQuery = (input: SupportRange): AnalyticsInsightsQuery => {
+  const timezone = input.timezone ?? 'UTC';
+  return input.from && input.to
+    ? { range: 'custom', from: localDate(input.from, timezone), to: localDate(input.to, timezone), timezone, compare: 'none' }
+    : { range: input.range ?? '30d', timezone, compare: 'none' };
+};
+
+const searchTermsHint = (insights: SearchInsights, shown: number) => {
+  if (insights.searchTermsVisibility === 'disabled_by_setting') return TERMS_DISABLED_HINT;
+  if (insights.searchTermsVisibility === 'private_site') return 'Search terms are never stored for private or reader-restricted sites.';
+  if (shown > 0) return null;
+  return insights.hiddenTerms.terms > 0
+    ? `${insights.hiddenTerms.terms} terms were searched by fewer than ${insights.termVisibilityThreshold} visitors and stay hidden for privacy.`
+    : 'No search terms are available for this range.';
+};
+
+/** The dashboard's search model, so the AI and the person see the same
+ * numbers and the same privacy rules: settled searches (typeahead counts
+ * once), a minimum number of visitors before a term's text is shown, and no
+ * terms for private sites. */
+const searchesFromInsights = async (tenantId: string, projectId: string, kind: 'get_top_searches' | 'get_failed_searches', input: SupportRange) => {
+  const insights = await getSearchInsights(tenantId, projectId, insightsQuery(input));
+  const { meta, kpis } = insights;
+  const rows = (kind === 'get_failed_searches' ? insights.failedTerms : insights.topTerms)
+    .flatMap((row) => (row.term === null ? [] : [{ ...row, term: row.term }]))
+    .slice(0, 50);
+  const availabilityReason = availabilityReasons[meta.availability];
+  return {
+    source: 'clickhouse' as const,
+    from: meta.current.from,
+    to: meta.current.to,
+    timezone: meta.timezone,
+    availability: meta.availability,
+    reasons: [
+      `Searches are settled: typeahead keystrokes count once, as the final query. A term's text is shown only when at least ${insights.termVisibilityThreshold} visitors searched it.`,
+      ...(kind === 'get_failed_searches' ? ['Failed terms returned no results, or returned results that nobody clicked.'] : []),
+      ...(input.language ? ['Search analytics are not split by language, so the language filter was not applied.'] : []),
+      ...(availabilityReason ? [availabilityReason] : []),
+    ],
+    available: answered(meta.availability),
+    termsEnabled: insights.searchTermsVisibility === 'visible',
+    termsCollected: rows.length > 0,
+    hint: searchTermsHint(insights, rows.length),
+    aggregates: {
+      searches: kpis.searches.value,
+      zeroResultRate: kpis.zeroResultRate.value,
+      clickThroughRate: kpis.clickThroughRate.value,
+      refinementRate: kpis.refinementRate.value,
+    },
+    hiddenTerms: insights.hiddenTerms,
+    terms: rows.map((row) => ({
+      term: redactSearchTerm(row.term),
+      trust: 'untrusted_visitor_input' as const,
+      searches: row.searches,
+      visitors: row.visits,
+      zeroResults: row.zeroResultSearches,
+      clickThrough: row.clickThroughRate,
+      refinementRate: row.refinementRate,
+      topResultPath: row.topResultPath,
+      lastSeen: null,
+    })),
+  };
+};
+
+const aiCrawlerSummary = (insights: AiVisibilityInsights, languageRequested: boolean) => {
+  const reason = availabilityReasons[insights.meta.availability];
+  return {
+    tracked: answered(insights.meta.availability),
+    availability: insights.meta.availability,
+    from: insights.meta.current.from,
+    to: insights.meta.current.to,
+    reasons: [
+      'AI crawlers are counted from server responses to their requests. "assistantFetches" are pages an AI assistant fetched for a person.',
+      ...(languageRequested ? ['Crawler requests are not split by language.'] : []),
+      ...(reason ? [reason] : []),
+    ],
+    requests: insights.kpis.aiCrawlerRequests.value,
+    assistantFetches: insights.kpis.aiAssistantFetches.value,
+    crawledPages: insights.kpis.crawledPages.value,
+    bots: insights.bots.slice(0, 10).map(({ bot, operator, category, requests, pages, lastSeenAt, verification }) => ({
+      bot,
+      operator,
+      category,
+      requests,
+      pages,
+      lastSeenAt,
+      verification,
+    })),
+    topCrawledPages: insights.topCrawledPages.slice(0, 10).map(({ path, title, requests, bots }) => ({ path, title, requests, bots })),
+  };
+};
+
 export const getSupportAnalytics = async (principal: McpPrincipal, kind: InvestigationKind, input: SupportRange) => {
   const { id: projectId, organizationId: tenantId } = principal.project;
   const project = await prisma.project.findFirst({ where: { id: projectId, organizationId: tenantId }, select: { config: true } });
   if (!project) throw new AppError({ code: 'database:not_found', message: 'Project not found.' });
+  // Match the existing overview: shadow_read keeps relational results authoritative.
+  const source = keys().ANALYTICS_MODE === 'clickhouse' ? 'clickhouse' : 'relational';
+  if (source === 'clickhouse' && (kind === 'get_top_searches' || kind === 'get_failed_searches'))
+    return searchesFromInsights(tenantId, projectId, kind, input);
   const resolved = resolveSupportRange(input);
   // Feedback events record no language, so a language filter would silently
   // hide every row. Ignore it for feedback and say so in the response.
   const languageIgnored = kind === 'get_page_feedback' && resolved.language !== undefined;
   const range = languageIgnored ? { ...resolved, language: undefined } : resolved;
-  // Match the existing overview: shadow_read keeps relational results authoritative.
-  const source = keys().ANALYTICS_MODE === 'clickhouse' ? 'clickhouse' : 'relational';
   const termsEnabled = (project.config as ProjectConfig | null)?.analytics?.storePublicSearchTerms === true;
   const searches = kind === 'get_top_searches' || kind === 'get_failed_searches';
   let rows: Row[] = [];
@@ -81,26 +190,13 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
       to: range.to.toISOString(),
       language: range.language ?? '',
     };
-    const common = `e.tenant_id = {tenant:String} AND e.project_id = {project:String}
+    // People only, as in the dashboard: crawlers and bots are reported separately.
+    const common = `e.tenant_id = {tenant:String} AND e.project_id = {project:String} AND e.actor_type = 'human'
       AND (e.tenant_id, e.project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       AND e.occurred_at >= parseDateTime64BestEffort({from:String}) AND e.occurred_at <= parseDateTime64BestEffort({to:String})
       AND ({language:String} = '' OR e.language = {language:String})`;
     const query = async (sql: string) => (await client.query({ query: sql, query_params: params, format: 'JSONEachRow' })).json<Row>();
-    if (searches) {
-      totals = await query(
-        `SELECT countIf(event_name = 'search_query_submitted') AS count, countIf(event_name = 'search_zero_result') AS zeroResults, countIf(event_name = 'search_result_clicked') AS clicks FROM analytics_events AS e FINAL WHERE ${common} LIMIT 1`,
-      );
-      if (termsEnabled)
-        rows = await query(`SELECT s.query_text AS key, countIf(e.event_name = 'search_query_submitted') AS count,
-        countIf(e.event_name = 'search_zero_result') AS zeroResults, countIf(e.event_name = 'search_result_clicked') AS clicks,
-        ${kind === 'get_failed_searches' ? "maxIf(e.occurred_at, e.event_name = 'search_zero_result')" : 'max(e.occurred_at)'} AS lastSeen FROM analytics_events AS e FINAL
-        INNER JOIN analytics_sensitive_queries AS s FINAL ON e.event_id = s.event_id AND e.tenant_id = s.tenant_id AND e.project_id = s.project_id
-        WHERE ${common} AND e.event_name IN ('search_query_submitted', 'search_zero_result', 'search_result_clicked')
-        GROUP BY s.query_text ${kind === 'get_failed_searches' ? 'HAVING zeroResults > 0' : ''} ORDER BY ${kind === 'get_failed_searches' ? 'zeroResults' : 'count'} DESC, key ASC LIMIT 50`);
-      reasons.push(
-        'Term rows cover only retained, opted-in events with stored query text. Click events cannot be correlated reliably to individual submitted searches; click-through and no-click counts are unavailable.',
-      );
-    } else if (kind === 'get_top_pages') {
+    if (kind === 'get_top_pages') {
       rows = await query(
         `SELECT path AS key, count() AS count, uniqExactIf(session_hash, session_hash IS NOT NULL) AS visitors FROM analytics_events AS e FINAL WHERE ${common} AND event_name = 'page_view' GROUP BY path ORDER BY count DESC, key ASC LIMIT 50`,
       );
@@ -166,26 +262,22 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
   if (searches)
     return {
       ...base,
-      available: kind !== 'get_failed_searches' || source === 'clickhouse',
-      termsCollected: rows.length > 0,
+      availability: 'complete' as const,
+      available: kind !== 'get_failed_searches',
       termsEnabled,
-      hint: !termsEnabled
-        ? 'An admin can enable storing public search terms in project analytics settings; collection also requires eligible public traffic and consent.'
-        : rows.length === 0
-          ? 'No retained search terms are available for this range.'
-          : null,
-      aggregates: {
-        total: number(totals[0]?.count),
-        zeroResults: source === 'clickhouse' ? number(totals[0]?.zeroResults) : null,
-        clickedResults: source === 'clickhouse' ? number(totals[0]?.clicks) : null,
-      },
+      termsCollected: rows.length > 0,
+      hint: !termsEnabled ? TERMS_DISABLED_HINT : rows.length === 0 ? 'No retained search terms are available for this range.' : null,
+      aggregates: { searches: number(totals[0]?.count), zeroResultRate: null, clickThroughRate: null, refinementRate: null },
+      hiddenTerms: null,
       terms: rows.map((row) => ({
         term: redactSearchTerm(row.key),
-        trust: 'untrusted_visitor_input',
-        count: number(kind === 'get_failed_searches' ? row.zeroResults : row.count),
-        zeroResults: source === 'clickhouse' ? number(row.zeroResults) : null,
+        trust: 'untrusted_visitor_input' as const,
+        searches: number(row.count),
+        visitors: null,
+        zeroResults: null,
         clickThrough: null,
-        noClickCount: null,
+        refinementRate: null,
+        topResultPath: null,
         lastSeen: row.lastSeen instanceof Date ? row.lastSeen.toISOString() : (row.lastSeen ?? null),
       })),
     };
@@ -216,6 +308,9 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
     referrers,
     totals: Object.fromEntries(classes.map((category) => [category, number(totals.find((row) => row.key === category)?.count)])),
     totalsCoverage: 'all_events',
-    aiCrawlers: { tracked: false, reason: 'Analytics stores no crawler user agents or dedicated llms.txt/markdown fetch events.' },
+    aiCrawlers:
+      source === 'clickhouse'
+        ? aiCrawlerSummary(await getAiVisibilityInsights(tenantId, projectId, insightsQuery(input)), range.language !== undefined)
+        : { tracked: false, reasons: ['Only ClickHouse analytics records AI crawler requests.'] },
   };
 };

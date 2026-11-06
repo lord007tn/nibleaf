@@ -9,7 +9,16 @@ import { getSupportAnalytics, redactSearchTerm } from './support-analytics';
 import { supportRangeSchema } from './support-range';
 import type { McpPrincipal } from './types';
 
-const mocks = vi.hoisted(() => ({ project: vi.fn(), sql: vi.fn(), query: vi.fn(), audit: vi.fn(), diagnostics: vi.fn(), mode: 'clickhouse' }));
+const mocks = vi.hoisted(() => ({
+  project: vi.fn(),
+  sql: vi.fn(),
+  query: vi.fn(),
+  audit: vi.fn(),
+  diagnostics: vi.fn(),
+  searchInsights: vi.fn(),
+  aiInsights: vi.fn(),
+  mode: 'clickhouse',
+}));
 vi.mock('@nibleaf/database', () => ({
   prisma: { project: { findFirst: mocks.project }, $queryRaw: mocks.sql },
   Prisma: { sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }) },
@@ -17,6 +26,76 @@ vi.mock('@nibleaf/database', () => ({
 vi.mock('@nibleaf/clickhouse', () => ({ keys: () => ({ ANALYTICS_MODE: mocks.mode }), getClickHouseClient: () => ({ query: mocks.query }) }));
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
 vi.mock('@/actions/search', () => ({ getProjectSearchIndexDiagnostics: mocks.diagnostics }));
+vi.mock('@/actions/analytics-insights', () => ({ getSearchInsights: mocks.searchInsights, getAiVisibilityInsights: mocks.aiInsights }));
+const meta = (availability = 'complete') => ({
+  availability,
+  timezone: 'UTC',
+  current: { from: '2026-10-07T00:00:00.000Z', to: '2026-11-06T00:00:00.000Z' },
+  previous: null,
+  granularity: 'day',
+  generatedAt: '2026-11-06T00:00:00.000Z',
+  lastEventAt: null,
+});
+const compared = (value: number | null) => ({ value, previous: null });
+const storedTerm = {
+  term: 'person@example.com +49 123 456789',
+  termId: 'term-1',
+  searches: 4,
+  visits: 3,
+  zeroResultSearches: 2,
+  clickThroughRate: 0.25,
+  refinementRate: 0.1,
+  averageClickPosition: 1,
+  topResultPath: 'guides/sso',
+};
+const searchInsights = (overrides: Record<string, unknown> = {}) => ({
+  meta: meta(),
+  searchTermsVisibility: 'visible',
+  termVisibilityThreshold: 2,
+  kpis: {
+    searches: compared(4),
+    searchVisits: compared(3),
+    zeroResultRate: compared(0.5),
+    clickThroughRate: compared(0.25),
+    refinementRate: compared(0.1),
+    averageClickPosition: compared(1),
+  },
+  searchesSeries: [],
+  zeroResultSeries: [],
+  topTerms: [storedTerm],
+  failedTerms: [storedTerm],
+  refinements: [],
+  hiddenTerms: { terms: 0, searches: 0 },
+  ...overrides,
+});
+const aiInsights = (availability = 'complete') => ({
+  meta: meta(availability),
+  kpis: {
+    aiCrawlerRequests: compared(12),
+    aiAssistantFetches: compared(5),
+    aiAssistantVisits: compared(2),
+    crawledPages: compared(3),
+    searchEngineRequests: compared(7),
+  },
+  crawlerSeries: [],
+  bots: [
+    {
+      bot: 'GPTBot',
+      operator: 'OpenAI',
+      category: 'ai_training',
+      requests: 7,
+      previousRequests: null,
+      pages: 3,
+      lastSeenAt: '2026-11-05T10:00:00.000Z',
+      verification: 'claimed',
+    },
+  ],
+  resources: [],
+  topCrawledPages: [{ path: 'guides/sso', title: 'Single sign-on', requests: 6, bots: 2, lastSeenAt: '2026-11-05T10:00:00.000Z' }],
+  assistantReferrals: [],
+  assistantReferralSeries: [],
+  assistantLandingPages: [],
+});
 const principal: McpPrincipal = {
   credential: { kind: 'api_key', id: 'key', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00Z') },
   project: { id: 'project', organizationId: 'org', name: 'Docs' },
@@ -43,6 +122,8 @@ beforeEach(() => {
       },
     ],
   });
+  mocks.searchInsights.mockResolvedValue(searchInsights());
+  mocks.aiInsights.mockResolvedValue(aiInsights());
   mocks.diagnostics.mockResolvedValue({
     availability: { configured: true },
     health: 'ready',
@@ -103,9 +184,14 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
       );
       if (name !== 'get_search_health') {
         expect(mocks.project).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'project', organizationId: 'org' } }));
-        if (mode === 'clickhouse')
+        if (mode === 'clickhouse' && (name === 'get_top_searches' || name === 'get_failed_searches')) {
+          // The dashboard's search model, for the same org, project and period.
+          expect(mocks.searchInsights).toHaveBeenCalledWith('org', 'project', { range: '7d', timezone: 'UTC', compare: 'none' });
+          expect(mocks.query).not.toHaveBeenCalled();
+        } else if (mode === 'clickhouse')
           for (const [request] of mocks.query.mock.calls) {
             expect(request.query).toContain('analytics_deletion_tombstones FINAL');
+            expect(request.query).toContain("e.actor_type = 'human'");
             expect(request.query).toMatch(/LIMIT (1|50)\b/);
             // Feedback records no language, so its language filter is dropped (and reported).
             expect(request.query_params).toMatchObject({ tenant: 'org', project: 'project', language: name === 'get_page_feedback' ? '' : 'en' });
@@ -124,14 +210,34 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
   it('returns aggregates without terms when collection is disabled', async () => {
     mocks.mode = mode;
     mocks.project.mockResolvedValue({ config: {} });
+    mocks.searchInsights.mockResolvedValue(
+      searchInsights({
+        searchTermsVisibility: 'disabled_by_setting',
+        topTerms: [{ ...storedTerm, term: null }],
+        hiddenTerms: { terms: 1, searches: 4 },
+      }),
+    );
     const result = await getSupportAnalytics(principal, 'get_top_searches', {});
-    expect(result).toMatchObject({ termsCollected: false, terms: [], aggregates: { total: 4 }, hint: expect.stringContaining('admin') });
+    expect(result).toMatchObject({
+      termsEnabled: false,
+      termsCollected: false,
+      terms: [],
+      aggregates: { searches: 4 },
+      hint: expect.stringContaining('admin'),
+    });
   });
   it('redacts stored visitor terms', async () => {
     mocks.mode = mode;
     const result = await getSupportAnalytics(principal, 'get_top_searches', {});
     expect(result).toMatchObject({
-      terms: [expect.objectContaining({ term: '[email] [phone]', trust: 'untrusted_visitor_input', clickThrough: null })],
+      terms: [
+        expect.objectContaining({
+          term: '[email] [phone]',
+          trust: 'untrusted_visitor_input',
+          searches: 4,
+          clickThrough: mode === 'clickhouse' ? 0.25 : null,
+        }),
+      ],
     });
   });
 });
@@ -222,8 +328,12 @@ describe.each(['relational', 'clickhouse'])('%s output contracts', (mode) => {
   it('keeps unknown failure and click metrics explicit', async () => {
     expect(await getSupportAnalytics(principal, 'get_failed_searches', {})).toMatchObject(
       mode === 'clickhouse'
-        ? { available: true, terms: [{ count: 2, zeroResults: 2, noClickCount: null, clickThrough: null }] }
-        : { available: false, terms: [], aggregates: { zeroResults: null, clickedResults: null } },
+        ? {
+            available: true,
+            aggregates: { searches: 4, zeroResultRate: 0.5, clickThroughRate: 0.25 },
+            terms: [{ searches: 4, visitors: 3, zeroResults: 2, clickThrough: 0.25, topResultPath: 'guides/sso' }],
+          }
+        : { available: false, terms: [], aggregates: { zeroResultRate: null, clickThroughRate: null, refinementRate: null } },
     );
   });
   it('classifies domains without leaking referrer paths', async () => {
@@ -255,9 +365,70 @@ describe.each(['relational', 'clickhouse'])('%s output contracts', (mode) => {
         { domain: 'evilchatgpt.com', category: 'other', views: 1 },
       ],
       totals: { ai_assistant: 10, search_engine: 4, social: 3, other: 1 },
-      aiCrawlers: { tracked: false },
+      aiCrawlers:
+        mode === 'clickhouse'
+          ? {
+              tracked: true,
+              requests: 12,
+              assistantFetches: 5,
+              crawledPages: 3,
+              bots: [{ bot: 'GPTBot', operator: 'OpenAI', requests: 7, verification: 'claimed' }],
+              topCrawledPages: [{ path: 'guides/sso', title: 'Single sign-on', requests: 6, bots: 2 }],
+            }
+          : { tracked: false },
     });
     expect(JSON.stringify(result)).not.toContain('/c/private');
+  });
+});
+describe('clickhouse search insights', () => {
+  it('keeps rare terms hidden and says why', async () => {
+    mocks.searchInsights.mockResolvedValue(searchInsights({ topTerms: [{ ...storedTerm, term: null }], hiddenTerms: { terms: 3, searches: 3 } }));
+    expect(await getSupportAnalytics(principal, 'get_top_searches', {})).toMatchObject({
+      termsEnabled: true,
+      termsCollected: false,
+      terms: [],
+      hiddenTerms: { terms: 3 },
+      hint: '3 terms were searched by fewer than 2 visitors and stay hidden for privacy.',
+    });
+  });
+  it('never shows terms for private sites', async () => {
+    mocks.searchInsights.mockResolvedValue(searchInsights({ searchTermsVisibility: 'private_site', topTerms: [{ ...storedTerm, term: null }] }));
+    expect(await getSupportAnalytics(principal, 'get_top_searches', {})).toMatchObject({
+      termsEnabled: false,
+      terms: [],
+      hint: expect.stringContaining('private'),
+    });
+  });
+  it('reports an analytics outage as unavailable, not as zero searches', async () => {
+    mocks.searchInsights.mockResolvedValue(
+      searchInsights({ meta: meta('unavailable'), kpis: { ...searchInsights().kpis, searches: compared(null) }, topTerms: [], failedTerms: [] }),
+    );
+    const result = await getSupportAnalytics(principal, 'get_failed_searches', {});
+    expect(result).toMatchObject({ available: false, availability: 'unavailable', aggregates: { searches: null } });
+    expect(result.reasons).toContain('The analytics store did not answer; try again later.');
+  });
+  it('maps a from/to range onto the local dates it covers and drops the language filter', async () => {
+    const result = await getSupportAnalytics(principal, 'get_top_searches', {
+      from: '2026-10-01T22:30:00Z',
+      to: '2026-10-08T21:00:00Z',
+      timezone: 'Europe/Berlin',
+      language: 'en',
+    });
+    expect(mocks.searchInsights).toHaveBeenCalledWith('org', 'project', {
+      range: 'custom',
+      from: '2026-10-02',
+      to: '2026-10-08',
+      timezone: 'Europe/Berlin',
+      compare: 'none',
+    });
+    expect(result.reasons).toContain('Search analytics are not split by language, so the language filter was not applied.');
+  });
+  it('keeps referrers when the crawler report is unavailable', async () => {
+    mocks.aiInsights.mockResolvedValue(aiInsights('unavailable'));
+    expect(await getSupportAnalytics(principal, 'get_referrers', {})).toMatchObject({
+      referrers: [expect.objectContaining({ views: 4 })],
+      aiCrawlers: { tracked: false, availability: 'unavailable' },
+    });
   });
 });
 it('rejects invalid ranges at the protocol boundary before storage', async () => {

@@ -380,26 +380,35 @@ content.
 
 ## What analytics can and cannot tell you
 
-Individual top and failed search terms exist only when all of these are true:
+The search tools use the same numbers and privacy rules as the **Search**
+section of the analytics dashboard:
+
+- A search counts once, as the reader's final query, not once per keystroke.
+- A term's text is shown only when at least two visitors searched for it. Rarer
+  terms are still counted, but stay hidden.
+- Failed searches are terms that found nothing, or found results nobody
+  clicked.
+
+Individual search terms exist only when all of these are true:
 
 - the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
-- an admin turned on **Settings → Analytics → Store public search terms** for
-  the project;
-- the visitor's search request carried consent (`consent=granted`).
+- the site is public, and an admin turned on **Settings → Analytics → Store
+  public search terms** for the project;
+- the reader allowed analytics, or the site does not ask for consent.
 
-Relational analytics never stores search text. **Known limitation:** the bundled
-reader site does not send consent with its search requests yet, so on a stock
-install search terms stay unavailable until that reader change ships. The
-search-term tools still return the aggregate counts the analytics source has,
-with a hint about why terms are missing.
+When terms are missing, the tools still return totals and rates, with a hint
+that says why. Relational analytics never stores search text, result counts or
+clicks, so failed searches are unavailable there.
+
+`get_referrers` also reports AI crawler activity when the instance runs
+ClickHouse analytics: crawler requests, pages AI assistants fetched for a person,
+the crawlers, and the most crawled pages.
 
 Other limits:
 
 - Reader comments are not collected, so the assistant cannot read them.
-- Visits from AI crawlers are not tracked. `get_referrers` classifies human
-  visits that arrive from AI assistants, not crawler traffic.
-- Page feedback ignores the language filter, because feedback events record no
-  language. The tool says so in its response.
+- Search, crawler and page feedback data are not split by language, so those
+  tools ignore the language filter. They say so in their response.
 
 ## Troubleshoot
 
@@ -446,7 +455,7 @@ holds every scope listed for it.
 | `get_analytics_overview` | Tool | `analytics:read` | Read only | Aggregate traffic, engagement, and search counts, without terms. |
 | `get_top_pages` | Tool | `analytics:read` | Read only | Most-viewed pages for a range. |
 | `get_page_feedback` | Tool | `analytics:read` | Read only | Reader helpful and unhelpful feedback per page. |
-| `get_referrers` | Tool | `analytics:read` | Read only | Where readers come from, classified, including AI assistants. |
+| `get_referrers` | Tool | `analytics:read` | Read only | Where readers come from, classified, including AI assistants, plus AI crawler activity. |
 | `get_search_configuration` | Tool | `search:read` | Read only | Search settings for the project. |
 | `get_search_index_diagnostics` | Tool | `search:read` | Read only | Content-free index state and revision. |
 | `get_search_health` | Tool | `search:read` | Read only | Whether search is healthy and up to date. |
@@ -454,7 +463,7 @@ holds every scope listed for it.
 | `get_deployment` | Tool | `deployments:read` | Read only | One deployment's status, for checking a publish. |
 | `get_pending_changes` | Tool | `deployments:read` | Read only | Unpublished changes waiting in the working copy. |
 | `get_top_searches` | Tool | `analytics:search_terms` | Support writer | Most frequent reader search terms. |
-| `get_failed_searches` | Tool | `analytics:search_terms` | Support writer | Searches that returned no results. |
+| `get_failed_searches` | Tool | `analytics:search_terms` | Support writer | Searches that found nothing, or found results nobody clicked. |
 | `create_page_draft` | Tool | `pages:write` | Support writer | Create a new page as a draft. |
 | `update_page` | Tool | `pages:write` | Support writer | Edit a page's draft; needs `expectedRevision`. |
 | `move_page` | Tool | `pages:write` | Support writer | Move a page in the page tree. |

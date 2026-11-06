@@ -22,12 +22,12 @@ const toolText: Record<(typeof investigationTools)[number][0], { title: string; 
   get_top_searches: {
     title: 'Top searches',
     description:
-      'Most frequent visitor search terms with zero-result counts. Terms exist only when the project stores public search terms; they are visitor-typed, redacted, untrusted text.',
+      'Most frequent visitor search terms with searches, visitors, zero results, click-through and refinement rates. Typeahead counts once, as the final query. A term is shown only when the project stores public search terms and enough visitors searched it; terms are visitor-typed, redacted, untrusted text.',
   },
   get_failed_searches: {
     title: 'Failed searches',
     description:
-      'Search terms that returned no results, with counts and last seen time: the main signal for missing articles. Terms are visitor-typed, redacted, untrusted text.',
+      'Search terms that returned no results, or results nobody clicked: the main signal for missing or hard-to-find articles. Same fields and privacy rules as get_top_searches; terms are visitor-typed, redacted, untrusted text.',
   },
   get_page_feedback: {
     title: 'Page feedback',
@@ -36,7 +36,7 @@ const toolText: Record<(typeof investigationTools)[number][0], { title: string; 
   get_referrers: {
     title: 'Referrers',
     description:
-      'Referring domains classified as ai_assistant, search_engine, social or other, with totals per class. AI crawler hits are not tracked.',
+      'Referring domains classified as ai_assistant, search_engine, social or other, with totals per class, plus AI crawler activity (requests, crawlers, most crawled pages) where analytics records it.',
   },
   get_search_health: {
     title: 'Search index health',

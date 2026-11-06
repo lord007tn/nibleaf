@@ -168,26 +168,35 @@ origin rather than another host listed in `MCP_ALLOWED_HOSTS`.
 
 ## Search terms and analytics limits
 
-Raw top and failed search terms exist only when all three conditions hold:
+In ClickHouse mode, `get_top_searches` and `get_failed_searches` read the same
+search model as the dashboard's **Search** section:
+
+- typeahead keystrokes collapse into one settled search, the final query;
+- a term's text is shown only when at least two distinct visits searched for it.
+  Rarer terms are counted but hidden;
+- failed terms returned no results, or returned results that nobody clicked.
+
+Raw search terms exist only when all of these hold:
 
 1. the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
-2. the project enables **Settings → Analytics → Store public search terms**;
-3. the visitor's search request carries `consent=granted`.
+2. the site is public, and the project enables **Settings → Analytics → Store
+   public search terms**;
+3. the reader's search carries `consentState=granted`, or `not_required` on a
+   site without a consent banner. The bundled reader site sends it.
 
-The public search endpoint accepts an optional `consent=granted|denied` query
-parameter. When it is absent, consent is unknown and no search text is stored.
-Failed-search events carry the query hashed in every case and as text only
-under the three conditions. Relational analytics never stores search text.
+Search events always carry the query as a salted hash, and as text only under
+these conditions. When terms are missing, the tools return totals, rates and a
+hint explaining why. Relational analytics never stores search text, result
+counts or clicks, so `get_failed_searches` reports itself unavailable there.
 
-**Known limitation:** the bundled reader site does not send `consent` on search
-requests yet, so on a stock install `get_top_searches` and
-`get_failed_searches` return no terms until that reader change ships. They still
-return the available aggregate counts and a hint explaining why terms are
-missing.
+In ClickHouse mode `get_referrers` also returns AI crawler activity from the
+same report as the dashboard's **AI visibility** section: AI crawler requests,
+assistant fetches made for a person, the crawlers, and the most crawled pages.
+All analytics tools count people only; crawlers are reported separately.
 
-Reader comments are not stored, and AI crawler hits are not tracked. Page
-feedback ignores the language filter, because feedback events record no
-language, and the tool response says so.
+Reader comments are not stored. Search, crawler and page feedback data are not
+split by language, so those tools ignore the language filter, and the response
+says so.
 
 ## Current capability boundary
 
