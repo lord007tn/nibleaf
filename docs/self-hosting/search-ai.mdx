@@ -186,7 +186,7 @@ EVAL_FIXTURES=docs EVAL_MODE=chat EVAL_MODELS=openai/gpt-6-luna,openai/gpt-6.1-t
   EVAL_JUDGE_MODEL=openai/gpt-6.1-terra pnpm --filter @nibleaf/search eval:rag
 ```
 
-Results on 2026-11-06 with the chat policy, on 36 cases from these docs (12
+Results on 2026-11-06 with the chat policy (prompt `chat-v2`), on 36 cases from these docs (12
 English, 12 Arabic, 12 mixed; including follow-ups, out-of-scope questions and
 vague ones). Model IDs were resolved from the live OpenRouter catalog, and costs
 are what OpenRouter reported:
@@ -201,18 +201,30 @@ are what OpenRouter reported:
 
 Recommendations:
 
-- **Default answer model: `openai/gpt-6-luna`.** It grounds and cites at least as
-  well as `openai/gpt-5.6-luna` for half the cost. The first word arrives about
-  0.7 s later.
-- **Fallback: `openai/gpt-5.6-luna`**, the current default, if you prefer the
-  faster first token.
-- **When speed and completeness matter more than cost: `openai/gpt-6.1-terra`.**
-  It covered every required fact and starts in about 1.7 s, at roughly nine times
-  the cost of `openai/gpt-6-luna`.
+- **Default answer model: `openai/gpt-5.6-luna`** (the current default). It
+  matched the other Luna models on grounding and starts writing soonest, which is
+  what readers notice most. After the final prompt changes (`chat-v3`), it
+  answered or correctly refused every case, with a median first token of 1.3 s.
+- **Lower-cost alternative: `openai/gpt-6-luna`.** It cites the expected section
+  slightly more often for half the cost, but the first word arrives about 2 s
+  later. It is also the fallback if the default is unavailable.
+- **When completeness matters more than cost: `openai/gpt-6.1-terra`.** It
+  covered every required fact and starts in about 1.7 s, at roughly four times the
+  cost of the default.
 - **Follow-up rewriting and suggestions (`SEARCH_CHAT_UTILITY_MODEL`):
   `openai/gpt-6-luna`.** It turned every follow-up into the right standalone
-  query for about $0.00006 each.
+  query, slightly faster and at half the cost of the default (about $0.00006
+  each).
 - `openai/gpt-6-luna-pro` spends many reasoning tokens and is too slow for chat.
+
+Confirmation run on the final prompt (`chat-v3`, same 36 cases):
+
+| Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | First token, median / p90 | Cost per 1,000 answers |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 84% | 95% | 4.74 | 1.3 s / 3.5 s | $0.65 |
+| `openai/gpt-6-luna` | 100% / 100% | 100% | 88% | 89% | 4.81 | 3.3 s / 6.9 s | $0.33 |
+
+Timings vary between runs by a second or more, so compare models within one run.
 
 Two limits apply to these numbers. The judge (`openai/gpt-6.1-terra`) also took
 part, so answers were spot-checked by hand. For the three "which editing mode
