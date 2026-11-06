@@ -70,7 +70,8 @@ export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query
       return { status: 'no_answer', reason: 'uncited' };
   } else {
     const blocks = markdownBlocks(text);
-    const heading = (block: string) => /^#{1,6}\s+[^\n]+$/.test(block);
+    // Disjoint parts keep this linear on long runs of spaces (CodeQL js/polynomial-redos).
+    const heading = (block: string) => /^#{1,6}[ \t]+\S[^\n]*$/.test(block);
     const code = (block: string) => /^\s*(`{3,}|~{3,})/.test(block);
     const list = (block: string) => /^\s*(?:[-*+]|\d+[.)])\s/.test(block);
     const substantive = blocks.map((block, index) => {
