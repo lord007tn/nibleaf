@@ -32,6 +32,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/env', () => ({ env: mocks.env }));
+vi.mock('@nibleaf/search/workspace', () => ({
+  resolveWorkspaceAi: async () => (mocks.env.OPENROUTER_API_KEY ? { providerId: 'openrouter', apiKey: mocks.env.OPENROUTER_API_KEY } : null),
+}));
 
 vi.mock('@nibleaf/database', () => ({
   Prisma: {

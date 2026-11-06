@@ -329,7 +329,7 @@ const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): Snap
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
-  const { snapshot, version: deploymentVersion } = await getPublished(identifier);
+  const { snapshot, deploymentId, version: deploymentVersion } = await getPublished(identifier);
   const docsVersion = activeVersion(snapshot, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const versionPages = pagesForVersion(snapshot, docsVersion);
@@ -368,7 +368,11 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
       : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
-    capabilities: { answer: resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers && answerSearchAvailable() },
+    capabilities: {
+      answer:
+        resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers &&
+        (await answerSearchAvailable(snapshot.project.id, deploymentId)),
+    },
   };
 };
 
@@ -635,7 +639,12 @@ export const searchSite = async (
     sessionId: analytics.sessionId,
     userAgent: headers.get('user-agent') ?? undefined,
   }).catch(() => undefined);
-  return { hits, searchId, runtime, capabilities: { answer: request.configuration.aiAnswers && answerSearchAvailable() } };
+  return {
+    hits,
+    searchId,
+    runtime,
+    capabilities: { answer: request.configuration.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)) },
+  };
 };
 
 /** Grounded answer mode uses the exact same server-derived publication and
@@ -643,8 +652,8 @@ export const searchSite = async (
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const request = resolvePublishedSearchContext(snapshot, { language: lang, version });
-  if (!request.configuration.aiAnswers || !answerSearchAvailable()) {
-    throw new AppError({ code: 'search:unavailable', message: 'AI answers are not configured for this Nibleaf instance.' });
+  if (!request.configuration.aiAnswers || !(await answerSearchAvailable(snapshot.project.id, deploymentId))) {
+    throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
   const activeLanguage = request.language;
   const docsVersion = request.version;

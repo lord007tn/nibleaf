@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { Prisma, prisma } from '@nibleaf/database';
 import { getQdrantClient } from '@nibleaf/qdrant';
+import { resolveWorkspaceAi } from '@nibleaf/search/workspace';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import {
@@ -220,7 +221,7 @@ export const getProjectSearchIndexDiagnostics = async (ctx: Context<HonoEnv>, pr
   if (!deployment) return unavailableDiagnostics('not_published', null);
   const latestRun = await getLatestSearchRun(projectId, deployment.id);
   const qdrant = getQdrantClient();
-  if (!(qdrant && env.OPENROUTER_API_KEY)) return unavailableDiagnostics('not_configured', latestRun);
+  if (!(qdrant && (await resolveWorkspaceAi(projectId)))) return unavailableDiagnostics('not_configured', latestRun);
 
   const filter = projectDeploymentFilter(projectId, deployment.id);
   const offset = readSearchDiagnosticsCursor(env.BETTER_AUTH_SECRET, resolvedQuery.cursor, projectId, deployment.id);
@@ -308,7 +309,7 @@ export const getProjectSearchIndexDiagnostics = async (ctx: Context<HonoEnv>, pr
 
 export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectId: string) => {
   const { actorId } = await authorizeProjectSearch(ctx, projectId, 'search:reindex', true);
-  if (!(getQdrantClient() && env.OPENROUTER_API_KEY)) {
+  if (!(getQdrantClient() && (await resolveWorkspaceAi(projectId)))) {
     throw new AppError({ code: 'search:unavailable', message: 'Search indexing is not configured.' });
   }
   const deployment = await prisma.deployment.findFirst({
