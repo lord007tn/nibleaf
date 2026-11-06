@@ -75,7 +75,11 @@ const app = new Hono<HonoEnv>()
   .use('/:id/*', async (ctx, next) => {
     const started = performance.now();
     await next();
-    if (ctx.req.method !== 'GET' || hasInternalAnalyticsProof(ctx.req.header('x-nibleaf-internal'))) return;
+    // Skip Nibleaf's own SSR/proxy fetches: the app server observes the outer
+    // request itself. `x-nibleaf-ssr` is a non-secret hint so this also holds
+    // when INTERNAL_API_SECRET is unset; spoofing it only hides the sender's own request.
+    if (ctx.req.method !== 'GET' || ctx.req.header('x-nibleaf-ssr') === '1' || hasInternalAnalyticsProof(ctx.req.header('x-nibleaf-internal')))
+      return;
     const url = new URL(ctx.req.url);
     const resource = url.pathname.split('/').pop() ?? '';
     if (!['page', 'markdown', 'llms.txt', 'llms-full.txt', 'sitemap.xml', 'robots.txt', 'openapi.json', 'rss.xml'].includes(resource)) return;

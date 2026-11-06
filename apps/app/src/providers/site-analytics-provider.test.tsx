@@ -184,6 +184,17 @@ it('uses the latest consent config without restarting the page lifecycle', async
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);
 });
 
+it.each([
+  [false, 'not_required'],
+  [true, 'denied'],
+] as const)('maps a disabled consent banner with consent required=%s to %s', async (cookieConsent, expected) => {
+  const banner = { enabled: false, placement: 'bottom-end', presentation: 'comfortable', buttonLayout: 'inline' } as const;
+  const container = await render({ analytics: { cookieConsent }, addons: { consentBanner: banner } });
+  await act(async () => container.querySelector('button')?.click());
+  expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe(expected);
+  expect(Boolean(mocks.createEvent.mock.lastCall?.[0].sessionId)).toBe(expected === 'not_required');
+});
+
 it.each(['declined', 'unset'])('does not create session identity while consent is %s', async (choice) => {
   if (choice === 'declined') window.localStorage.setItem('nibleaf.analytics.consent.docs', choice);
   await render({ analytics: { cookieConsent: true } });

@@ -247,6 +247,8 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
       // Always overwrite: an inbound (possibly attacker-supplied) value must
       // never ride along on our authenticated internal hint.
       if (requestAuth.ip) headers.set('x-nibleaf-client-ip', requestAuth.ip);
+      // Non-secret analytics hint: the outer request is observed here, so the API must not count this fetch as a crawl.
+      headers.set('x-nibleaf-ssr', '1');
       if (INTERNAL_API_SECRET) {
         headers.set('x-nibleaf-internal', INTERNAL_API_SECRET);
       }
@@ -266,6 +268,7 @@ const internalRequestHeaders = () => {
   const requestAuth = publishedRequestAuth.getStore();
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
+    'x-nibleaf-ssr': '1',
     ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
     ...(requestAuth?.cookie ? { cookie: requestAuth.cookie } : {}),
     ...(requestAuth?.authorization ? { authorization: requestAuth.authorization } : {}),
@@ -277,6 +280,7 @@ const publicMachineRequestHeaders = () => {
   const requestAuth = publishedRequestAuth.getStore();
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
+    'x-nibleaf-ssr': '1',
     ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
   };
 };

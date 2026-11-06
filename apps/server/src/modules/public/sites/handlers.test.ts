@@ -135,6 +135,9 @@ describe('crawler observation authentication and duplicate suppression', () => {
     await app.request('/sites/project/markdown?path=guide', {
       headers: { 'user-agent': 'GPTBot/1', 'x-nibleaf-internal': 'fictional-internal-proof' },
     });
+    // Without a configured secret, the app server's SSR hint still prevents double counting.
+    vi.stubEnv('INTERNAL_API_SECRET', '');
+    await app.request('/sites/project/markdown?path=guide', { headers: { 'user-agent': 'GPTBot/1', 'x-nibleaf-ssr': '1' } });
     await vi.advanceTimersByTimeAsync(250);
     expect(mocks.recordCrawlerRequest).toHaveBeenCalledTimes(1);
     expect(mocks.recordCrawlerRequest).toHaveBeenCalledWith(

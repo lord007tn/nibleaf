@@ -71,6 +71,15 @@ const collect = async (request: Request, result: Response, durationMs: number, r
   }
 };
 
+let warnedMissingSecret = false;
+/** The collector authenticates to the API with INTERNAL_API_SECRET; without it,
+ * crawler visits to pages served by this server are not recorded. Say so once. */
+const warnMissingSecret = () => {
+  if (warnedMissingSecret) return;
+  warnedMissingSecret = true;
+  console.warn('[nibleaf] INTERNAL_API_SECRET is not set: AI crawler visits to published pages are not recorded in analytics.');
+};
+
 /** Observe the outer response once. Project resolution and collector I/O run
  * detached after the response. No dashboard root files or internal API probes. */
 export const observeCrawlerResponse = (
@@ -82,8 +91,11 @@ export const observeCrawlerResponse = (
   const ua = request.headers.get('user-agent') ?? '';
   const url = new URL(request.url);
   const resultPromise = Promise.resolve(response);
-  if (!serverEnv.INTERNAL_API_SECRET || request.method !== 'GET' || url.pathname.startsWith('/api/') || classifyUserAgent(ua).actorType !== 'bot')
+  if (!serverEnv.INTERNAL_API_SECRET) {
+    warnMissingSecret();
     return resultPromise;
+  }
+  if (request.method !== 'GET' || url.pathname.startsWith('/api/') || classifyUserAgent(ua).actorType !== 'bot') return resultPromise;
   return resultPromise.then((result) => {
     const contentType = result.headers.get('content-type') ?? '';
     if (/(?:text\/html|text\/markdown|xml|json|text\/plain)/iu.test(contentType))

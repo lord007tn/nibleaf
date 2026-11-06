@@ -153,3 +153,9 @@ Origin-side crawler capture cannot see requests served entirely from a CDN or
 edge cache in front of Nibleaf. Crawler counts therefore describe requests that
 reach Nibleaf, not all edge traffic. Compare CDN logs separately when assessing
 coverage; do not read missing origin requests as an absence of crawlers.
+
+The app server reports crawler visits to published pages, page Markdown,
+`llms.txt`, sitemaps and robots files to the API with `INTERNAL_API_SECRET`.
+Set the same random value (`openssl rand -hex 32`) on the app, API and worker.
+Without it, only crawlers that call the API directly are counted, and the app
+logs a warning once at startup.

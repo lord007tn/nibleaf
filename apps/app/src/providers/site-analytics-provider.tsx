@@ -29,7 +29,10 @@ const sessionIdFn = (): string | undefined => {
 };
 
 const consentStateFn = (projectId: string, config?: ProjectConfig | null): SiteAnalyticsConsent => {
-  if (config?.addons?.consentBanner?.enabled === false) return 'denied';
+  // Without a consent banner the site runs no consent flow: consent is only
+  // "denied" when the owner still requires it, otherwise built-in first-party
+  // analytics doesn't need it. (Third-party scripts stay blocked; see analyticsDeliveryMode.)
+  if (config?.addons?.consentBanner?.enabled === false) return config?.analytics?.cookieConsent ? 'denied' : 'not_required';
   if (!config?.analytics?.cookieConsent) return 'not_required';
   if (typeof window === 'undefined') return 'unknown';
   const value = readSiteStorage('localStorage', `nibleaf.analytics.consent.${projectId}`);
