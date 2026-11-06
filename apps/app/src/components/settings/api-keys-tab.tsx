@@ -7,7 +7,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { MCP_KEY_PRESETS, MCP_PRESET_MIN_ROLE, MCP_PRESET_SCOPES, MCP_SCOPES, type McpKeyPreset, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import { canAdminister, roleAtLeast } from '@nibleaf/shared/rbac';
 import { Copy, KeyRound, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
@@ -60,12 +60,26 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const [client, setClient] = useState('claudeCode');
   const [connection, setConnection] = useState('');
   const [testing, setTesting] = useState(false);
+  // A connection test belongs to the key it started for. Creating, rotating or
+  // hiding a key starts a new run, so a late result never lands beside it.
+  const testRun = useRef(0);
   const connected = waiting && keys.some((key) => key.id === waiting.id && key.lastUsedAt && Date.parse(key.lastUsedAt) > waiting.since);
 
   const [scopes, setScopes] = useState<IssuableMcpScope[]>(DEFAULT_SCOPES);
   const [expiryDays, setExpiryDays] = useState<ExpiryDays>(90);
   const [secret, setSecret] = useState<string | null>(null);
   const [revokeCandidate, setRevokeCandidate] = useState<ApiKey | null>(null);
+  // The server refuses a preset or scope above the person's role; a role that
+  // changed while the form was open must not leave Create enabled for it.
+  const selectionPermitted =
+    preset === 'custom' ? scopes.every((scope) => allowedScopes.includes(scope)) : roleAtLeast(role, MCP_PRESET_MIN_ROLE[preset]);
+  const showKey = (id: string | null, value: string | null) => {
+    testRun.current += 1;
+    setTesting(false);
+    setConnection('');
+    setWaiting(id ? { id, since: 0 } : null);
+    setSecret(value);
+  };
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const expiryOptions = EXPIRY_OPTIONS.map((days) => ({ value: String(days), label: t('settings.apiKeys.expiryDays', { days: number(days) }) }));
 
@@ -76,15 +90,13 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   };
 
   const submit = () => {
-    if (!name.trim() || !enabled) return;
+    if (!name.trim() || !enabled || !selectionPermitted) return;
     create.mutate(
       { name: name.trim(), ...(preset === 'custom' ? { scopes } : { preset }), expiresInDays: expiryDays },
       {
         onSuccess: (created) => {
           setName(t('settings.apiKeys.defaultName'));
-          setConnection('');
-          setWaiting({ id: created.id, since: 0 });
-          setSecret(created.secret);
+          showKey(created.id, created.secret);
           toast.success(t('settings.apiKeys.created.toast'));
         },
       },
@@ -97,9 +109,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       { id: key.id, body: { scopes: ['mcp:connect', ...retainedScopes], expiresInDays: expiryDays } },
       {
         onSuccess: (created) => {
-          setSecret(created.secret);
-          setConnection('');
-          setWaiting({ id: created.id, since: 0 });
+          showKey(created.id, created.secret);
           toast.success(t('settings.apiKeys.rotatedToast'));
         },
       },
@@ -113,10 +123,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     if (!revokeCandidate) return;
     revoke.mutate(revokeCandidate.id, {
       onSuccess: () => {
-        if (waiting?.id === revokeCandidate.id) {
-          setSecret(null);
-          setWaiting(null);
-        }
+        if (waiting?.id === revokeCandidate.id) showKey(null, null);
         setRevokeCandidate(null);
         toast.success(t('settings.apiKeys.revokedToast'));
       },
@@ -134,22 +141,24 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     );
   const testConnection = async () => {
     if (!secret) return;
+    const run = ++testRun.current;
     setTesting(true);
     let usedUntil: number | undefined;
+    let outcome: string;
     try {
       const result = await testAssistantConnection(secret);
       usedUntil = result.usedUntil;
-      setConnection(`\u2713 ${t('settings.apiKeys.testSuccess', { count: number(result.tools) })}`);
+      outcome = `\u2713 ${t('settings.apiKeys.testSuccess', { count: number(result.tools) })}`;
     } catch (error) {
       if (error instanceof ConnectionError) usedUntil = error.usedUntil;
       const reason = error instanceof ConnectionError ? error.message : 'networkError';
-      setConnection(
-        `\u2717 ${reason === 'invalidKey' ? t('settings.apiKeys.invalidKey') : reason === 'disabled' ? t('settings.apiKeys.disabled') : reason === 'networkError' ? t('settings.apiKeys.networkError') : t('settings.apiKeys.connectionError')}`,
-      );
-    } finally {
-      setWaiting((current) => (current && usedUntil !== undefined ? { ...current, since: Math.max(current.since, usedUntil) } : current));
-      setTesting(false);
+      outcome = `\u2717 ${reason === 'invalidKey' ? t('settings.apiKeys.invalidKey') : reason === 'disabled' ? t('settings.apiKeys.disabled') : reason === 'networkError' ? t('settings.apiKeys.networkError') : t('settings.apiKeys.connectionError')}`;
     }
+    // The key on screen changed while this test ran: its result is about another key.
+    if (run !== testRun.current) return;
+    setConnection(outcome);
+    setWaiting((current) => (current && usedUntil !== undefined ? { ...current, since: Math.max(current.since, usedUntil) } : current));
+    setTesting(false);
   };
   return (
     <div className="min-w-0 flex flex-col gap-6">
@@ -266,7 +275,12 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 ))}
               </SelectContent>
             </Select>
-            <Button disabled={!enabled || !allowedScopes.length || !name.trim()} loading={create.isPending} onClick={submit} type="button">
+            <Button
+              disabled={!enabled || !allowedScopes.length || !name.trim() || !selectionPermitted}
+              loading={create.isPending}
+              onClick={submit}
+              type="button"
+            >
               <KeyRound aria-hidden />
               {t('settings.apiKeys.create')}
             </Button>
@@ -297,14 +311,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
             </Button>
           </div>
           <p className="mt-3 text-sm">{t('settings.apiKeys.secretWarning')}</p>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setSecret(null);
-              setWaiting(null);
-            }}
-          >
+          <Button type="button" variant="outline" onClick={() => showKey(null, null)}>
             {t('settings.apiKeys.dismissSecret')}
           </Button>
           {setup ? (

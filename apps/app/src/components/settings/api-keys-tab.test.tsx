@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hooks = vi.hoisted(() => {
   const mutation = () => ({ isPending: false, variables: undefined as unknown, mutate: vi.fn() });
-  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation() };
+  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn() };
 });
 
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -19,6 +19,11 @@ vi.mock('@/hooks/api', () => ({
   useRotateApiKey: () => hooks.rotate,
 }));
 
+vi.mock('./assistant-setup', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./assistant-setup')>()),
+  testAssistantConnection: hooks.testConnection,
+}));
+
 vi.mock('./connected-apps', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./connected-apps')>()),
   ConnectedApps: () => null,
@@ -29,6 +34,7 @@ import { ApiKeysTab } from './api-keys-tab';
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const MEMBER = 'member';
+const ADMIN = 'admin';
 
 const roots: Array<ReturnType<typeof createRoot>> = [];
 
@@ -186,6 +192,43 @@ describe('API-key actions', () => {
     expect(container.querySelector('pre')?.textContent).toContain('https://docs.example/api/mcp');
     await act(async () => button(container, 'settings.apiKeys.dismissSecret')?.click());
     expect(container.textContent).not.toContain('test-once-secret');
+  });
+
+  it('disables Create when the role no longer allows the selected preset', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<ApiKeysTab projectId="project-1" role={ADMIN} />));
+    await act(async () => container.querySelectorAll<HTMLInputElement>('input[type="radio"]')[2]?.click());
+    expect(button(container, 'settings.apiKeys.create')?.disabled).toBe(false);
+    // The person is downgraded while the form is open.
+    await act(async () => root.render(<ApiKeysTab projectId="project-1" role={MEMBER} />));
+    expect(button(container, 'settings.apiKeys.create')?.disabled).toBe(true);
+  });
+
+  it('drops a connection result that arrives after the key was replaced', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    let created = 0;
+    hooks.create.mutate.mockImplementation((_body, options) => options.onSuccess({ id: `key-${++created}`, secret: `secret-${created}` }));
+    let finishFirstTest: (value: { tools: number; usedUntil: number }) => void = () => undefined;
+    hooks.testConnection.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFirstTest = resolve;
+        }),
+    );
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.apiKeys.create')?.click());
+    await act(async () => button(container, 'settings.apiKeys.test')?.click());
+    expect(hooks.testConnection).toHaveBeenCalledWith('secret-1');
+    // A second key replaces the first while its test is still running.
+    await act(async () => button(container, 'settings.apiKeys.create')?.click());
+    expect(container.textContent).toContain('secret-2');
+    await act(async () => finishFirstTest({ tools: 26, usedUntil: Date.now() }));
+    expect(container.textContent).not.toContain('settings.apiKeys.testSuccess');
+    expect(button(container, 'settings.apiKeys.test')?.getAttribute('aria-busy')).not.toBe('true');
   });
 
   it('marks Create key as loading while the key is being created', async () => {
