@@ -89,5 +89,100 @@
     "requiredClaims": ["STORAGE_PROVIDER=s3"],
     "forbiddenClaims": ["system secrets"],
     "expectedNoAnswer": false
+  },
+  {
+    "id": "en-follow-up",
+    "language": "en",
+    "question": "Where do I run that command?",
+    "sources": [
+      {
+        "title": "Local development",
+        "path": "development",
+        "heading": "Start",
+        "content": "Run `pnpm dev` from the repository root to start the development server."
+      }
+    ],
+    "requiredClaims": ["pnpm dev"],
+    "expectedNoAnswer": false,
+    "history": [
+      {
+        "role": "user",
+        "content": "How do I start the development server?"
+      },
+      {
+        "role": "assistant",
+        "content": "Run pnpm dev [S1]"
+      }
+    ]
+  },
+  {
+    "id": "ar-follow-up",
+    "language": "ar",
+    "question": "من أين أشغل هذا الأمر؟",
+    "sources": [
+      {
+        "title": "التطوير المحلي",
+        "path": "ar/development",
+        "heading": "التشغيل",
+        "content": "شغّل الأمر `pnpm dev` من جذر المستودع لتشغيل خادم التطوير."
+      }
+    ],
+    "requiredClaims": ["pnpm dev"],
+    "expectedNoAnswer": false,
+    "history": [
+      {
+        "role": "user",
+        "content": "كيف أشغل خادم التطوير؟"
+      },
+      {
+        "role": "assistant",
+        "content": "شغل pnpm dev [S1]"
+      }
+    ]
+  },
+  {
+    "id": "ar-page-context",
+    "language": "ar",
+    "question": "كيف أضبطه؟",
+    "sources": [
+      {
+        "title": "إعداد البيئة",
+        "path": "ar/configuration",
+        "heading": "API",
+        "content": "للتطوير المحلي اضبط `API_URL=http://localhost:4311`. يبقى اسم المتغير كما هو باللغة الإنجليزية."
+      }
+    ],
+    "requiredClaims": ["API_URL=http://localhost:4311"],
+    "expectedNoAnswer": false,
+    "history": [],
+    "pageContext": {
+      "title": "إعداد البيئة",
+      "path": "ar/configuration"
+    }
+  },
+  {
+    "id": "en-follow-up-missing",
+    "language": "en",
+    "question": "Does that include a guaranteed response time?",
+    "sources": [
+      {
+        "title": "Plans",
+        "path": "plans",
+        "heading": "Overview",
+        "content": "The documentation lists self-hosted and cloud deployment options."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "history": [
+      {
+        "role": "user",
+        "content": "What deployment options exist?"
+      },
+      {
+        "role": "assistant",
+        "content": "Self-hosted and cloud [S1]"
+      }
+    ]
   }
 ]

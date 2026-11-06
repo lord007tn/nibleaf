@@ -1,6 +1,7 @@
 import { prisma } from '@nibleaf/database';
 import { aiConnectionConfigSchema, aiCredentialSchema, type aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { decodeEncryptionKey, decryptSecret } from '@nibleaf/shared/crypto';
+import { openaiCompatibleText } from '@tanstack/ai-openai/compatible';
 import { z } from 'zod';
 import { keys } from './keys';
 import { OpenAIChatProvider, OpenAIEmbeddingProvider, OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
@@ -82,3 +83,20 @@ export const workspaceAnswerProvider = (runtime: WorkspaceAiRuntime) => {
   const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS, temperature: 0 };
   return runtime.providerId === 'openai' ? new OpenAIChatProvider(options) : new OpenRouterChatProvider(options);
 };
+
+/** Direct OpenAI uses precisely the model id used by OpenAIChatProvider. */
+export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime) =>
+  openaiCompatibleText(runtime.answerModel, {
+    baseURL: runtime.providerId === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1',
+    apiKey: runtime.apiKey,
+    api: 'chat-completions',
+    timeout: keys().SEARCH_ANSWER_TIMEOUT_MS,
+    maxRetries: 0,
+  });
+
+/** Direct OpenAI mirrors OpenAIChatProvider (no temperature, completion-token cap);
+ * OpenRouter mirrors OpenRouterChatProvider (deterministic temperature). */
+export const workspaceChatModelOptions =
+  (runtime: Pick<WorkspaceAiRuntime, 'providerId'>) =>
+  (maxTokens: number): Record<string, unknown> =>
+    runtime.providerId === 'openai' ? { max_completion_tokens: maxTokens } : { temperature: 0, max_tokens: maxTokens };

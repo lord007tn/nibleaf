@@ -13,7 +13,7 @@ import {
   streamGroundedChat,
   suggestedArticles,
 } from '@nibleaf/search';
-import { workspaceChatAdapter } from '@nibleaf/search/workspace';
+import { workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
 import { defaultLanguage } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
@@ -169,11 +169,10 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
   try {
     yield custom(AI_CHAT_EVENT.status, { phase: 'searching' });
     const adapter = workspaceChatAdapter(runtime);
-    const history = boundChatHistory(body.history, {
-      maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES,
-      maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS,
-    });
-    const condensed = await condenseFollowUp({ adapter, question: body.question, history, language, signal });
+    const historyLimits = { maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS };
+    const modelOptions = workspaceChatModelOptions(runtime);
+    const history = boundChatHistory(body.history, historyLimits);
+    const condensed = await condenseFollowUp({ adapter, question: body.question, history, language, signal, historyLimits, modelOptions });
     outcome.usage = condensed.usage;
     outcome.rewrittenQuery = condensed.rewritten ? condensed.query : undefined;
     const retrieval = await retrieveChatContext(context.scope, condensed.query, runtime, { page, signal });
@@ -205,6 +204,8 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
         language,
         ...(page ? { pageContext: { title: page.title, path: page.path } } : {}),
         signal,
+        historyLimits,
+        modelOptions,
       });
       for await (const delta of generation.deltas) {
         yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: turnId, delta, timestamp: Date.now() };

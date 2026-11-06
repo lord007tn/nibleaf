@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection } } }));
 
-import { resolveWorkspaceAi } from './workspace';
+import { resolveWorkspaceAi, workspaceChatModelOptions } from './workspace';
 
 const key = Buffer.alloc(32, 13).toString('base64');
 const encrypted = (projectId = 'workspace-a', providerId = 'openai', apiKey = 'workspace-owned-secret') =>
@@ -86,5 +86,12 @@ describe('workspace AI credential ownership', () => {
       apiKey: 'instance-secret-must-not-be-used',
       revision: 'instance',
     });
+  });
+});
+
+describe('workspace chat model options', () => {
+  it('never sends temperature to direct OpenAI, matching the answer provider', () => {
+    expect(workspaceChatModelOptions({ providerId: 'openai' })(1200)).toEqual({ max_completion_tokens: 1200 });
+    expect(workspaceChatModelOptions({ providerId: 'openrouter' })(120)).toEqual({ temperature: 0, max_tokens: 120 });
   });
 });

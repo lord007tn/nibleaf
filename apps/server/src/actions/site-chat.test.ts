@@ -29,7 +29,7 @@ vi.mock('@/lib/ai-search/runtime', () => ({ resolveChatRuntime: mocks.runtime, r
 vi.mock('@/lib/ai-search/chat-budget', () => ({ reserveChatTurn: mocks.reserve, releaseChatTurn: mocks.release, recordChatSpend: mocks.spend }));
 vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: mocks.quota }));
 vi.mock('@/lib/ai-search/conversation-archive', () => ({ recordAiChatTurn: mocks.recordTurn, recordAiChatFeedback: mocks.recordFeedback }));
-vi.mock('@nibleaf/search/workspace', () => ({ workspaceChatAdapter: () => ({ kind: 'fake-adapter' }) }));
+vi.mock('@nibleaf/search/workspace', () => ({ workspaceChatAdapter: () => ({ kind: 'fake-adapter' }), workspaceChatModelOptions: () => () => ({}) }));
 vi.mock('@nibleaf/search', () => ({
   CHAT_PROMPT_VERSION: 'chat-v1',
   boundChatHistory: (history: unknown[]) => history,
