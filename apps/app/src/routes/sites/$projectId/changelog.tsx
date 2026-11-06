@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, notFound, useSearch } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
+import { SiteNotFound } from '@/components/site/site-not-found';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
@@ -10,6 +11,8 @@ import { changelogFeedUrl, pageHead, sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
+  // Missing pages stay inside the documentation, in the site's language.
+  notFoundComponent: SiteNotFound,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Reuse the parent shell for SSR metadata and client navigation.
   loader: async ({ params, deps, parentMatchPromise }) => {

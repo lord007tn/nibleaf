@@ -39,6 +39,7 @@ import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
 import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from '@/lib/search-configuration';
+import { matchedSearchSection, type SearchHitSection } from '@/lib/search-sections';
 import { trackProjectEvent, trackProjectEvents } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
@@ -551,7 +552,7 @@ const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ tit
   return trail;
 };
 
-type LocalizedSearchHit = SearchHit & { language: string };
+type LocalizedSearchHit = SearchHit & { language: string; section?: SearchHitSection };
 
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  The reader UI searches every published language. An explicit `lang` remains
@@ -601,10 +602,18 @@ export const searchSite = async (
       return { language, result };
     }),
   );
+  const pageById = new Map(versionPages.map((page) => [page.id, page]));
   const hits: LocalizedSearchHit[] = perLanguage
     .flatMap(({ language, result }) => result.hits.map((hit) => ({ ...hit, language })))
     .sort((left, right) => right.score - left.score || left.title.localeCompare(right.title) || left.id.localeCompare(right.id))
-    .slice(0, resultLimit);
+    .slice(0, resultLimit)
+    .map((hit) => {
+      // Point the reader at the matching heading when the match is inside a
+      // section, previewing that section rather than the page's first mention.
+      const page = pageById.get(hit.id);
+      const match = page ? matchedSearchSection(page, query, `${deploymentId}:${page.id}`) : undefined;
+      return match ? { ...hit, section: match.section, snippet: match.snippet || hit.snippet } : hit;
+    });
   const runtime = perLanguage.some(({ result }) => result.runtime === 'legacy-fallback')
     ? 'legacy-fallback'
     : perLanguage.some(({ result }) => result.runtime === 'hybrid')

@@ -1,9 +1,10 @@
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { describe, expect, it } from 'vitest';
 
 describe('published-site reader localization', () => {
+  // siteContentT covers the article renderer's own keys and falls back to siteT for the rest.
   it('localizes reader controls and MDX defaults for Arabic language variants', () => {
-    const t = siteT('ar-SA');
+    const t = siteContentT('ar-SA');
 
     expect(t('changeLanguage')).toBe('تغيير اللغة');
     expect(t('toggleTheme')).toBe('تبديل السمة');
@@ -21,8 +22,8 @@ describe('published-site reader localization', () => {
   });
 
   it('localizes shipped LTR languages and uses English for unshipped locales', () => {
-    expect(siteT('en')('copyCode')).toBe('Copy code');
-    expect(siteT('fr-CA')('showProperties')).toBe('Afficher les propriétés');
-    expect(siteT('it')('showProperties')).toBe('Show properties');
+    expect(siteContentT('en')('copyCode')).toBe('Copy code');
+    expect(siteContentT('fr-CA')('showProperties')).toBe('Afficher les propriétés');
+    expect(siteContentT('it')('showProperties')).toBe('Show properties');
   });
 });

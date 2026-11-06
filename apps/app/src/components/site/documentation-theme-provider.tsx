@@ -27,7 +27,7 @@ interface StudioPreviewSlots {
 
 interface PageSlots {
   article: ReactNode;
-  tableOfContents: ReactNode;
+  tableOfContents?: ReactNode;
 }
 
 export interface DocumentationThemeTemplate {
@@ -41,11 +41,15 @@ export interface DocumentationThemeTemplate {
 
 const readerFrame = (slots: ReaderSlots, body: ReactNode) => (
   <>
-    {slots.banner}
+    <div className="contents" data-theme-region="banner">
+      {slots.banner}
+    </div>
     {slots.header}
     {body}
     {slots.footer}
-    {slots.overlays}
+    <div className="contents" data-theme-region="overlays">
+      {slots.overlays}
+    </div>
   </>
 );
 
@@ -107,14 +111,16 @@ const HarborTemplate: DocumentationThemeTemplate = {
   ),
   PageLayout: ({ article, tableOfContents }) => (
     <div
-      className="grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12 xl:grid-cols-[minmax(0,1fr)_13rem]"
+      className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', tableOfContents && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
       data-documentation-layout="harbor-reference-page"
       data-theme-region="page-shell"
     >
       {article}
-      <aside className="hidden xl:block" data-theme-region="toc">
-        {tableOfContents}
-      </aside>
+      {tableOfContents ? (
+        <aside className="hidden xl:block" data-theme-region="toc">
+          {tableOfContents}
+        </aside>
+      ) : null}
     </div>
   ),
 };
@@ -127,7 +133,9 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
   shell: 'editorial',
   ReaderLayout: (slots) => (
     <>
-      {slots.banner}
+      <div className="contents" data-theme-region="banner">
+        {slots.banner}
+      </div>
       <section
         className="documentation-manuscript-reader flex flex-1 flex-col bg-(--theme-muted)/60"
         data-documentation-layout="manuscript-editorial"
@@ -145,7 +153,9 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         </div>
       </section>
       {slots.footer}
-      {slots.overlays}
+      <div className="contents" data-theme-region="overlays">
+        {slots.overlays}
+      </div>
     </>
   ),
   ProjectPreviewLayout: ({ mobileNavigation, navigation, content }) => (
@@ -181,13 +191,18 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
   ),
   PageLayout: ({ article, tableOfContents }) => (
     <div
-      className="grid min-w-0 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14 xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14"
+      className={cn(
+        'grid min-w-0 grid-cols-1 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14',
+        tableOfContents && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
+      )}
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
     >
-      <aside className="hidden xl:block" data-theme-region="toc">
-        {tableOfContents}
-      </aside>
+      {tableOfContents ? (
+        <aside className="hidden xl:block" data-theme-region="toc">
+          {tableOfContents}
+        </aside>
+      ) : null}
       {article}
     </div>
   ),
@@ -200,7 +215,9 @@ const SignalTemplate: DocumentationThemeTemplate = {
   shell: 'console',
   ReaderLayout: (slots) => (
     <>
-      {slots.banner}
+      <div className="contents" data-theme-region="banner">
+        {slots.banner}
+      </div>
       <section className="documentation-signal-reader flex flex-1 flex-col p-0 lg:p-3" data-documentation-layout="signal-console">
         {slots.header}
         <div
@@ -221,7 +238,9 @@ const SignalTemplate: DocumentationThemeTemplate = {
         </div>
       </section>
       {slots.footer}
-      {slots.overlays}
+      <div className="contents" data-theme-region="overlays">
+        {slots.overlays}
+      </div>
     </>
   ),
   ProjectPreviewLayout: ({ mobileNavigation, navigation, content }) => (
@@ -262,12 +281,14 @@ const SignalTemplate: DocumentationThemeTemplate = {
       data-documentation-layout="signal-console-page"
       data-theme-region="page-shell"
     >
-      <aside
-        className="documentation-signal-command-index hidden border border-(--theme-border) bg-(--theme-surface) px-4 py-2.5 xl:block"
-        data-theme-region="toc"
-      >
-        {tableOfContents}
-      </aside>
+      {tableOfContents ? (
+        <aside
+          className="documentation-signal-command-index hidden border border-(--theme-border) bg-(--theme-surface) px-4 py-2.5 xl:block"
+          data-theme-region="toc"
+        >
+          {tableOfContents}
+        </aside>
+      ) : null}
       <div className="documentation-signal-article min-w-0 lg:border lg:border-(--theme-border) lg:bg-(--theme-surface) lg:px-10 lg:py-9">
         {article}
       </div>

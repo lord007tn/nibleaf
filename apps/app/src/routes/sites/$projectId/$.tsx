@@ -1,8 +1,13 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
+import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
+import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
-import { getSiteFn, getSitePageFn } from '@/functions/site';
+import { useSiteReader } from '@/components/site/site-reader-context';
+import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import type { SitePage } from '@/hooks/api/types';
 import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
@@ -16,14 +21,23 @@ const OpenApiReferenceView = lazy(() =>
 
 export const Route = createFileRoute('/sites/$projectId/$')({
   component: SitePath,
+  // A missing page renders here, inside the reader chrome and in the site's
+  // language, instead of the platform-wide not-found screen.
+  notFoundComponent: SiteNotFound,
+  // Opening another page keeps the reader chrome and shows an article-shaped
+  // placeholder (after the router's short pending delay) instead of a
+  // full-screen loader.
+  pendingComponent: SiteArticleSkeleton,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
-  loader: async ({ params, deps, location }) => {
+  loader: async ({ params, deps, location, context: { queryClient } }) => {
     const path = params._splat ?? '';
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
     try {
-      page = await getSitePageFn({ data: { projectId: params.projectId, path, language: deps.lang, version } });
+      // A page preloaded on link hover (or read moments ago) comes from the query
+      // cache; once it is stale, the loader waits for the published version again.
+      page = await queryClient.query(sitePageQueryOptions(params.projectId, path, deps.lang, version));
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
@@ -109,9 +123,10 @@ function SitePath() {
   // Active language comes from the parent route's ?lang= search param.
   const { lang } = Route.useSearch();
   const data = Route.useLoaderData();
+  const readerLang = useSiteReader()?.lang;
   if (data.kind === 'openapi') {
     return (
-      <Suspense fallback={<div className="py-12 text-center text-muted-foreground">Loading API reference…</div>}>
+      <Suspense fallback={<div className="py-12 text-center text-muted-foreground">{siteT(readerLang ?? lang)('loadingApiReference')}</div>}>
         <OpenApiReferenceView projectId={projectId} />
       </Suspense>
     );
