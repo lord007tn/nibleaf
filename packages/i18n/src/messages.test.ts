@@ -142,6 +142,14 @@ describe('Paraglide message catalogs', () => {
     },
   );
 
+  it('translates every reader chat string for Arabic readers', () => {
+    const arabic = loadCatalog('ar');
+    // The chat panel's own copy; a string left in English is read out by Arabic screen readers.
+    const chat = orderedKeys.filter((key) => key.startsWith('site_ai_'));
+    expect(chat.length).toBeGreaterThan(40);
+    expect(chat.filter((key) => arabic[key] === english[key])).toEqual([]);
+  });
+
   it('addresses German readers formally (Sie), never with du', () => {
     const german = loadCatalog('de');
     // Informal (du-form) imperatives opening a sentence or a short label such as "Gehe zu".

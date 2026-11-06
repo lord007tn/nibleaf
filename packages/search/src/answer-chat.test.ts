@@ -519,6 +519,38 @@ describe('follow-up suggestions', () => {
       questions: ['Can I export?', 'Is it free?'],
       unreadable: false,
     });
+    // A quoted word in brackets is a list that closes before the real one starts.
+    expect(parseFollowUpQuestions('See ["Export"] below: ["Can I export one notebook?"]', 'How?').questions).toEqual(['Can I export one notebook?']);
+    // A list inside the list is not the list.
+    expect(parseFollowUpQuestions('["Can I export?", ["Nested one?"], "Is it free?"]', 'How?').questions).toEqual(['Can I export?', 'Is it free?']);
+  });
+  it('asks only what the sources state: each topic shows where a section is and how it begins', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: '["Can I export one notebook?"]' }]);
+    const sent: string[] = [];
+    const original = adapter.chatStream.bind(adapter);
+    adapter.chatStream = (options) => {
+      sent.push(...(options.systemPrompts ?? []).map(String), ...options.messages.map((message) => String(message.content)));
+      return original(options);
+    };
+    const sources = [
+      {
+        ...chunk,
+        title: 'Export notes',
+        heading: 'From the app',
+        content: 'Open a notebook, choose More → Export, then pick a format.\n\nMore text.',
+      },
+      { ...chunk, id: 'c2', title: 'Export notes', heading: 'From the app', content: 'A second chunk of the same section.' },
+      { ...chunk, id: 'c3', title: 'Export notes', heading: 'Limits', content: `${'x'.repeat(500)}` },
+    ];
+    await suggestFollowUps({ adapter, question: 'How?', answer: 'Use More → Export. [S1]', chunks: sources, language: 'en' });
+    const prompt = sent.join('\n');
+    expect(prompt).toContain('- Export notes — From the app: Open a notebook, choose More → Export, then pick a format. More text.');
+    // One line per section, its first source's start, bounded.
+    expect(prompt).not.toContain('A second chunk');
+    expect(prompt).toContain(`- Export notes — Limits: ${'x'.repeat(200)}\n`.trimEnd());
+    expect(prompt).not.toContain('x'.repeat(201));
+    expect(prompt).toContain('Only suggest questions those sections clearly answer');
   });
   it('counts a timed-out suggestions call as failed, but not one stopped with the turn', async () => {
     const timedOut = await suggestFollowUps({

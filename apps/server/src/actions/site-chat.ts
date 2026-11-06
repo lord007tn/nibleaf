@@ -183,8 +183,6 @@ interface TurnOutcome {
   firstTokenMs?: number;
 }
 
-/** The longest a suggestions call may take once the answer is out. */
-const CHAT_SUGGESTIONS_TIMEOUT_MS = 15_000;
 const chatHistoryLimits = () => ({ maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS });
 
 /** What a turn's provider calls are built from, to size them before they run. */
@@ -518,7 +516,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           chunks: sources,
           language,
           // A slow suggestions call never holds the reader's run open for long.
-          signal: AbortSignal.any([sideSignal, AbortSignal.timeout(CHAT_SUGGESTIONS_TIMEOUT_MS)]),
+          signal: AbortSignal.any([sideSignal, AbortSignal.timeout(envExtras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS)]),
           modelOptions,
           asked: history.filter((message) => message.role === 'user').map((message) => message.content),
         }).then((suggestions) => {

@@ -203,8 +203,8 @@ Recommendations:
 
 - **Default answer model: `openai/gpt-5.6-luna`** (the current default). It
   matched the other Luna models on grounding and starts writing soonest, which is
-  what readers notice most. After the final prompt changes (`chat-v3`), it
-  answered or correctly refused every case, with a median first token of 1.3 s.
+  what readers notice most. On the final prompt (`chat-v4`) it answered or
+  correctly refused every case.
 - **Lower-cost alternative: `openai/gpt-6-luna`.** It cites the expected section
   slightly more often for half the cost, but the first word arrives about 2 s
   later. It is also the fallback if the default is unavailable.
@@ -217,12 +217,20 @@ Recommendations:
   each).
 - `openai/gpt-6-luna-pro` spends many reasoning tokens and is too slow for chat.
 
-Confirmation run on the final prompt (`chat-v3`, same 36 cases):
+Confirmation run on the final prompt (`chat-v4`, same 36 cases):
 
 | Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | First token, median / p90 | Cost per 1,000 answers |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 84% | 95% | 4.74 | 1.3 s / 3.5 s | $0.65 |
-| `openai/gpt-6-luna` | 100% / 100% | 100% | 88% | 89% | 4.81 | 3.3 s / 6.9 s | $0.33 |
+| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 86% | 74% | 4.69 | 2.4 s / 3.6 s | $0.31 |
+| `openai/gpt-6-luna` | 100% / 100% | 100% | 90% | 84% | 4.75 | 3.6 s / 4.6 s | $0.14 |
+
+`chat-v4` adds one rule to `chat-v3`: a question is answered when the sources answer
+it in other words (steps done from an open notebook, page or project are how to do it
+for that one item), so the assistant no longer says the documentation does not cover
+them. Required facts vary between runs on this prompt (another run of the same cases
+gave 90% and 74%): answers that are correct but shorter leave out a secondary detail.
+Refusals and citations held in every run, and both models now answer an Arabic
+question about exporting one notebook that `chat-v3` sometimes refused.
 
 Timings vary between runs by a second or more, so compare models within one run.
 
@@ -242,6 +250,7 @@ the benchmark when you change the answer model or the prompts.
 | `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | Provider tokens per project per UTC day. `0` turns this budget off. |
 | `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Earlier messages sent to the model with each question. |
 | `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated token cap for that history. |
+| `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS` | `15000` | The longest a suggested-questions call may take after the answer. |
 | `SEARCH_CHAT_UTILITY_MODEL` | empty | Optional OpenRouter model for rewriting follow-ups and suggesting next questions, on workspaces that use OpenRouter. Empty uses each workspace's answer model. |
 
 Budgets use provider-reported token usage. When a provider reports none, Nibleaf
@@ -356,13 +365,13 @@ characters included), never at an estimate. A turn reserves in two steps:
   and up to about 29,000 with the default history limits. The API logs a warning at
   startup when `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or
   `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is below the most room a question can need
-  (about 55,000 with the defaults), or leaves room for only a few questions (below
+  (about 62,000 with the defaults), or leaves room for only a few questions (below
   twice that).
 - Once retrieval has found the best matches, what reading them adds: up to 24,000
   tokens of documentation and the topics suggestions list.
 
 A question is admitted only while both budgets also have room for that second step at
-its largest (about 27,000 more tokens), so an admitted question reads every source it
+its largest (about 33,000 more tokens), so an admitted question reads every source it
 found; a conversation without that room is told to start a new one instead of getting
 an answer from less. Only when concurrent questions take the last room of a budget, or
 the counter store is unreachable, does an answer read fewer sources, never more than
@@ -386,8 +395,10 @@ questions of its own.
 Suggested next questions are asked for only after a checked answer, and read that
 answer with the question and the sources' topics, so they never ask what it already
 says. Readers get the answer first; the suggestions follow when they arrive, and a new
-question asked meanwhile takes their place. A suggestions call that takes more than 15
-seconds, or whose output holds no readable questions, is recorded as a provider error
+question asked meanwhile takes their place. They read where each source is and how it
+begins, and suggest only what those sections state. A suggestions call that takes longer
+than `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS`, or whose output holds no readable questions, is
+recorded as a provider error
 (`follow_ups`). A turn's latency is the time until the reader had the checked answer,
 without the suggestions that follow it.
 

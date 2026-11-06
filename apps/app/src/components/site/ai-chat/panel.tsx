@@ -13,7 +13,7 @@ import {
   siteChatBody,
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
 import { Composer, type ComposerDraft } from './composer';
 import { createChatEventQueue } from './events';
@@ -133,6 +133,9 @@ export default function Panel(
   // answering, so the reader can read, stop nothing, and ask the next question.
   const latest = chat.messages.at(-1);
   const answering = chat.isLoading && !(latest && latest.role !== 'user' && finals[latest.id]);
+  // Follow new content only while the reader is at the bottom: someone who
+  // scrolled up to read is never pulled away by later text or suggestions.
+  const pinned = useRef(true);
   const send = (question: string, context: PageContext | null = page ?? null) => {
     if (answering) return;
     pinned.current = true;
@@ -185,9 +188,13 @@ export default function Panel(
       setAnnouncement(t(navigator.onLine ? 'aiFailed' : 'aiOffline'));
     }
   }, [chat.error, code, t]);
-  // Follow new content only while the reader is at the bottom: someone who
-  // scrolled up to read is never pulled away by later text or suggestions.
-  const pinned = useRef(true);
+  // Reopening the panel shows the latest exchange again, once its content is back.
+  useEffect(() => {
+    if (!options.open) return;
+    pinned.current = true;
+    const timer = window.setTimeout(() => end.current?.scrollIntoView({ block: 'nearest' }), 0);
+    return () => window.clearTimeout(timer);
+  }, [options.open]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: scroll when message content, sources or suggestions change.
   useEffect(() => {
     if (pinned.current) end.current?.scrollIntoView({ block: 'nearest' });
@@ -224,6 +231,7 @@ export default function Panel(
   // The refused question goes to the new chat's field, to edit before sending:
   // the new chat starts without the earlier conversation it may refer to.
   const [draft, setDraft] = useState<ComposerDraft>();
+  const draftApplied = useCallback(() => setDraft(undefined), []);
   const askInNewChat = (question: string) => {
     reset();
     if (question) setDraft({ id: Date.now(), text: question });
@@ -392,7 +400,7 @@ export default function Panel(
           {announcement}
         </div>
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Composer lang={options.lang} busy={answering} send={send} stop={stop} draft={draft} />
+          <Composer lang={options.lang} busy={answering} send={send} stop={stop} draft={draft} onDraftApplied={draftApplied} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
           {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
         </footer>

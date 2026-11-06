@@ -18,7 +18,12 @@ const mocks = vi.hoisted(() => ({
   recordEvents: vi.fn(),
   extend: vi.fn(),
   adapter: vi.fn((runtime: { answerModel: string }) => ({ kind: runtime.answerModel })),
-  extras: { SEARCH_CHAT_HISTORY_MESSAGES: 6, SEARCH_CHAT_HISTORY_MAX_TOKENS: 1500, SEARCH_CHAT_UTILITY_MODEL: undefined as string | undefined },
+  extras: {
+    SEARCH_CHAT_HISTORY_MESSAGES: 6,
+    SEARCH_CHAT_HISTORY_MAX_TOKENS: 1500,
+    SEARCH_CHAT_UTILITY_MODEL: undefined as string | undefined,
+    SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS: 15_000,
+  },
   request: { current: new Request('http://localhost/api/public/sites/p/chat', { method: 'POST' }) },
 }));
 
@@ -50,7 +55,7 @@ vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
 vi.mock('@nibleaf/search', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/search')>();
   return {
-    CHAT_PROMPT_VERSION: 'chat-v3',
+    CHAT_PROMPT_VERSION: 'chat-v4',
     CHAT_OUTPUT_TOKEN_LIMITS: actual.CHAT_OUTPUT_TOKEN_LIMITS,
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,
@@ -360,6 +365,41 @@ describe('reader AI chat stream', () => {
     const latencyMs = Number(mocks.recordTurn.mock.calls.at(-1)?.[0].latencyMs);
     expect(latencyMs).toBeLessThan(250);
     expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', latencyMs });
+  });
+
+  it('ends a suggestions call that takes too long and reports it, after the answer', async () => {
+    mocks.extras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS = 30;
+    // Like suggestFollowUps: a call that never answers settles when its signal aborts,
+    // as failed when it timed out.
+    mocks.suggest.mockImplementation(
+      ({ signal }: { signal: AbortSignal }) =>
+        new Promise((resolve) =>
+          signal.addEventListener(
+            'abort',
+            () => resolve({ questions: [], ...((signal.reason as { name?: string })?.name === 'TimeoutError' ? { failed: true } : {}) }),
+            { once: true },
+          ),
+        ),
+    );
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/gpt-5.6-luna',
+      }),
+    });
+    const events = await readEvents(await chatSite('project-1', body()));
+    expect(events.at(-1)).toMatchObject({ type: 'RUN_FINISHED' });
+    expect(events.some((event) => event.name === AI_CHAT_EVENT.followUps)).toBe(false);
+    await settle();
+    expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
+    mocks.extras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS = 15_000;
   });
 
   it('asks for no suggestions after a declined answer', async () => {

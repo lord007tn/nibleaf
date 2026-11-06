@@ -46,11 +46,11 @@ const mount = async () => {
   const root = createRoot(container);
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   roots.push(() => act(async () => root.unmount()));
-  const render = () =>
+  const render = (open = true) =>
     act(async () =>
       root.render(
         <QueryClientProvider client={client}>
-          <Panel projectId="docs" lang="en" direction="ltr" config={null} open onOpenChange={vi.fn()} requiresConsent={false} />
+          <Panel projectId="docs" lang="en" direction="ltr" config={null} open={open} onOpenChange={vi.fn()} requiresConsent={false} />
         </QueryClientProvider>,
       ),
     );
@@ -125,6 +125,14 @@ describe('chat panel', () => {
     const [again, options] = mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: { conversationId: string } }];
     expect(again).toBe(question);
     expect(options.body.conversationId).not.toBe(conversationId);
+    // Closing and reopening the panel never brings the sent question back.
+    await render(false);
+    vi.mocked(Element.prototype.scrollIntoView).mockClear();
+    await render(true);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]')?.value).toBe('');
+    // Reopening shows the latest exchange.
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it('announces suggestions that arrive after the answer, and keeps the reading position', async () => {

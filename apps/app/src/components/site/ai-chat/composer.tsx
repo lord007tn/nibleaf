@@ -13,12 +13,15 @@ export function Composer({
   send,
   stop,
   draft,
+  onDraftApplied,
 }: {
   lang?: string;
   busy: boolean;
   send: (question: string) => void;
   stop: () => void;
   draft?: ComposerDraft;
+  /** Called once the draft is in the field, so it is not applied again. */
+  onDraftApplied?: () => void;
 }) {
   const [value, setValue] = useState('');
   const field = useRef<HTMLTextAreaElement>(null);
@@ -26,7 +29,8 @@ export function Composer({
     if (!draft) return;
     setValue(draft.text);
     field.current?.focus();
-  }, [draft]);
+    onDraftApplied?.();
+  }, [draft, onDraftApplied]);
   const t = siteChatT(lang);
   const submit = () => {
     if (busy || value.trim().length < 2) return;

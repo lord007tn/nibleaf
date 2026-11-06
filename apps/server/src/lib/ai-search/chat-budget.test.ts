@@ -46,8 +46,10 @@ describe('chat budgets', () => {
     });
     expect(low?.largestTurnTokens).toBeGreaterThan(9000);
     expect(limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS / (low?.largestTurnTokens ?? Number.POSITIVE_INFINITY)).toBeGreaterThan(2);
-    // The previous 60,000 default admits a question, but only a few per conversation.
-    expect(chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000 })).toEqual({
+    // The previous 60,000 default is below the most room one question can need now.
+    expect(chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000 })?.settings).toEqual(['SEARCH_CHAT_MAX_CONVERSATION_TOKENS']);
+    // A budget that admits one such question but not two is flagged as leaving room for only a few.
+    expect(chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: Math.round(1.5 * (low?.largestTurnTokens ?? 0)) })).toEqual({
       settings: [],
       few: ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS'],
       largestTurnTokens: low?.largestTurnTokens,
