@@ -60,7 +60,13 @@ const seed = (page: Row) => {
     return current;
   });
   database.findMany.mockImplementation(async () => [current]);
-  database.transaction.mockResolvedValue([]);
+  // Interactive transactions run their callback against the same page client;
+  // batch transactions resolve their queries.
+  database.transaction.mockImplementation(async (work: unknown) =>
+    typeof work === 'function'
+      ? (work as (tx: unknown) => Promise<unknown>)({ page: { findFirst: database.findFirst, findMany: database.findMany, update: database.update } })
+      : Promise.all(work as Promise<unknown>[]),
+  );
 };
 
 describe('updatePage placeholder slug adoption', () => {
@@ -116,6 +122,29 @@ describe('updatePage placeholder slug adoption', () => {
 
     expect(updated.slug).toBe('untitled');
     expect(database.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('updatePage structural changes', () => {
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+  });
+
+  it('commits the slug change and the path recomputation in one transaction', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { slug: 'handbook' });
+    expect(database.transaction).toHaveBeenCalledOnce();
+    expect(database.transaction.mock.calls[0]?.[0]).toBeTypeOf('function');
+    expect(database.transaction.mock.calls[0]?.[1]).toMatchObject({ timeout: expect.any(Number) });
+  });
+
+  it('fails the whole change when the paths cannot be recomputed', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    database.findMany.mockRejectedValueOnce(new Error('connection lost'));
+    await expect(updatePage('project-1', 'page-1', { slug: 'handbook' })).rejects.toThrow('connection lost');
+    // The page write happened inside the transaction that failed, so it rolls back with it.
+    expect(database.update).toHaveBeenCalledOnce();
+    expect(database.transaction).toHaveBeenCalledOnce();
   });
 });
 
