@@ -8,6 +8,7 @@ const db = vi.hoisted(() => {
     refreshUpdateMany: updateMany('refresh'),
     accessUpdateMany: updateMany('access'),
     transaction: vi.fn(async (operations: unknown[]) => Promise.all(operations)),
+    verificationDeleteMany: vi.fn(async () => ({ count: 0 })),
   };
 });
 
@@ -16,11 +17,20 @@ vi.mock('@nibleaf/database', () => ({
     mcpOAuthGrant: { findMany: db.findMany, updateMany: db.grantUpdateMany },
     oauthRefreshToken: { updateMany: db.refreshUpdateMany },
     oauthAccessToken: { updateMany: db.accessUpdateMany },
+    verification: { deleteMany: db.verificationDeleteMany },
     $transaction: db.transaction,
   },
 }));
 
-import { activateMcpGrant, MCP_OAUTH_DISABLED_PATHS, resolveMcpOAuthConfig, signedOAuthQuerySubset } from './mcp-oauth';
+import {
+  activateMcpGrant,
+  createMcpDpopReplayStore,
+  isMcpAccessTokenError,
+  MCP_OAUTH_DISABLED_PATHS,
+  McpAccessTokenError,
+  resolveMcpOAuthConfig,
+  signedOAuthQuerySubset,
+} from './mcp-oauth';
 
 describe('MCP OAuth configuration', () => {
   it('stays off while MCP is disabled', () => {
@@ -86,5 +96,65 @@ describe('connection activation', () => {
     expect(db.refreshUpdateMany).toHaveBeenCalledWith({ where: { referenceId: { in: ['grant-old'] }, revoked: null }, data: { revoked: now } });
     expect(db.accessUpdateMany).toHaveBeenCalledWith({ where: { referenceId: { in: ['grant-old'] }, revoked: null }, data: { revoked: now } });
     expect(db.transaction).toHaveBeenCalledOnce();
+  });
+});
+
+describe('DPoP proof replay store', () => {
+  const reservation = (key: string, now: Date) => ({ key, now, expiresAt: new Date(now.getTime() + 300_000) });
+
+  it('reserves each proof once in Better Auth verification storage, shared by every instance', async () => {
+    const reserved = new Set<string>();
+    const reserveVerificationValue = vi.fn(async ({ identifier }: { identifier: string; value: string; expiresAt: Date }) => {
+      if (reserved.has(identifier)) return false;
+      reserved.add(identifier);
+      return true;
+    });
+    const context = { internalAdapter: { reserveVerificationValue } };
+    const instanceA = createMcpDpopReplayStore(async () => context);
+    const instanceB = createMcpDpopReplayStore(async () => context);
+    const now = new Date('2026-11-06T12:00:00Z');
+
+    expect(await instanceA.reserve(reservation('proof-1', now))).toBe(true);
+    expect(await instanceB.reserve(reservation('proof-1', now))).toBe(false);
+    expect(await instanceB.reserve(reservation('proof-2', now))).toBe(true);
+    expect(reserveVerificationValue).toHaveBeenCalledWith({
+      identifier: 'dpop-proof:proof-1',
+      value: 'proof-1',
+      expiresAt: new Date(now.getTime() + 300_000),
+    });
+  });
+
+  it('sweeps expired proof reservations at most every five minutes per process', async () => {
+    db.verificationDeleteMany.mockClear();
+    const store = createMcpDpopReplayStore(async () => ({ internalAdapter: { reserveVerificationValue: async () => true } }));
+    const start = new Date('2026-11-06T12:00:00Z');
+    await store.reserve(reservation('a', start));
+    await store.reserve(reservation('b', new Date(start.getTime() + 60_000)));
+    expect(db.verificationDeleteMany).toHaveBeenCalledOnce();
+    expect(db.verificationDeleteMany).toHaveBeenCalledWith({ where: { identifier: { startsWith: 'dpop-proof:' }, expiresAt: { lt: start } } });
+    await store.reserve(reservation('c', new Date(start.getTime() + 300_000)));
+    expect(db.verificationDeleteMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('propagates a storage outage instead of accepting the proof', async () => {
+    const store = createMcpDpopReplayStore(async () => ({
+      internalAdapter: {
+        reserveVerificationValue: async () => {
+          throw new Error('database unavailable');
+        },
+      },
+    }));
+    await expect(store.reserve(reservation('a', new Date()))).rejects.toThrow('database unavailable');
+  });
+});
+
+describe('MCP access token errors', () => {
+  it('carry the RFC 9449 code and whether the sender constraint failed', () => {
+    const proofError = new McpAccessTokenError('bad proof', { code: 'invalid_dpop_proof' });
+    expect(isMcpAccessTokenError(proofError)).toBe(true);
+    expect(proofError).toMatchObject({ code: 'invalid_dpop_proof', dpop: true });
+    expect(new McpAccessTokenError('expired')).toMatchObject({ code: 'invalid_token', dpop: false });
+    expect(new McpAccessTokenError('use DPoP', { dpop: true })).toMatchObject({ code: 'invalid_token', dpop: true });
+    expect(isMcpAccessTokenError(new Error('other'))).toBe(false);
   });
 });

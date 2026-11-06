@@ -406,7 +406,16 @@ instance's own signing keys (signature, issuer `<APP_URL>/api/auth`, audience
 person's membership, and suspension state. The effective scopes are the grant's
 preset ∩ the token's scopes ∩ what the person's current role allows. Revoking
 the connection, removing or suspending the person, or lowering their role takes
-effect on the next request. Sender-constrained (DPoP) tokens are refused.
+effect on the next request.
+
+Clients may also sender-constrain their tokens with DPoP (RFC 9449). A
+DPoP-bound token must be sent as `Authorization: DPoP <token>` with a `DPoP`
+proof signed by the bound key for that request's method, the token, and the
+public URL `<APP_URL>/api/mcp`, which is checked even when the request reaches
+the API through the dashboard proxy. Each proof works once: its `jti` is
+reserved in Better Auth's `verification` table, so a replay fails on every API
+instance. A DPoP-bound token sent as `Bearer` is refused. Personal API keys are
+always sent as `Bearer`.
 
 Access tokens are JWTs that last one hour. Refresh tokens are issued when the
 client asks for `offline_access`, last 30 days, and rotate strictly: a refresh

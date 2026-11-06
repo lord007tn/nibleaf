@@ -1,6 +1,7 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { MCP_PRESET_SCOPES } from '@nibleaf/shared/mcp';
 import { Hono } from 'hono';
-import { exportJWK, generateKeyPair, type JWK, SignJWT } from 'jose';
+import { calculateJwkThumbprint, exportJWK, generateKeyPair, type JWK, SignJWT } from 'jose';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
 
@@ -17,7 +18,11 @@ const mocks = vi.hoisted(() => ({
   grantUpdate: vi.fn(),
   memberFindUnique: vi.fn(),
   apiKeyFindUnique: vi.fn(),
-  verify: null as null | ((token: string) => Promise<unknown>),
+  verificationDeleteMany: vi.fn(),
+  verify: null as null | ((...args: unknown[]) => Promise<unknown>),
+  /** Better Auth's verification reservations: first writer wins. */
+  reserved: new Set<string>(),
+  reservationsDown: false,
 }));
 
 vi.mock('@nibleaf/database', () => ({
@@ -25,12 +30,25 @@ vi.mock('@nibleaf/database', () => ({
     mcpOAuthGrant: { findUnique: mocks.grantFindUnique, update: mocks.grantUpdate },
     member: { findUnique: mocks.memberFindUnique },
     apiKey: { findUnique: mocks.apiKeyFindUnique, update: vi.fn() },
+    verification: { deleteMany: mocks.verificationDeleteMany },
   },
 }));
 vi.mock('@/env', () => ({ env: { MCP_ENABLED: true } }));
 vi.mock('@nibleaf/auth/server', () => ({
   mcpOAuth: config,
-  verifyMcpAccessToken: (token: string) => (mocks.verify as (token: string) => Promise<unknown>)(token),
+  verifyMcpAccessToken: (...args: unknown[]) => (mocks.verify as (...args: unknown[]) => Promise<unknown>)(...args),
+  auth: {
+    $context: Promise.resolve({
+      internalAdapter: {
+        reserveVerificationValue: async ({ identifier }: { identifier: string }) => {
+          if (mocks.reservationsDown) throw new Error('database unavailable');
+          if (mocks.reserved.has(identifier)) return false;
+          mocks.reserved.add(identifier);
+          return true;
+        },
+      },
+    }),
+  },
 }));
 
 import { authenticateMcpRequest } from './auth';
@@ -92,15 +110,42 @@ const grant = (overrides: Record<string, unknown> = {}) => ({
 });
 
 const contexts: Array<Map<string, unknown>> = [];
-const request = async (authorization?: string) => {
-  const app = new Hono<HonoEnv>().post('/api/mcp', async (ctx) => {
+const request = async (authorization?: string, options: { dpop?: string; url?: string; method?: 'POST' | 'GET' } = {}) => {
+  const app = new Hono<HonoEnv>().on(['POST', 'GET'], '/api/mcp', async (ctx) => {
     ctx.set('requestId', 'request-1');
     const result = await authenticateMcpRequest(ctx);
     contexts.push(new Map([['apiKey', ctx.get('apiKey')]]));
     return result instanceof Response ? result : ctx.json(result);
   });
-  return app.request(`${ORIGIN}/api/mcp`, { method: 'POST', headers: authorization ? { authorization } : {} });
+  const headers: Record<string, string> = {};
+  if (authorization) headers.authorization = authorization;
+  if (options.dpop) headers.dpop = options.dpop;
+  return app.request(options.url ?? `${ORIGIN}/api/mcp`, { method: options.method ?? 'POST', headers });
 };
+
+/** The MCP client's DPoP key pair and its RFC 7638 thumbprint (`cnf.jkt`). */
+type ClientKey = { privateKey: SigningKey; jwk: JWK; jkt: string };
+const clientKey = async (): Promise<ClientKey> => {
+  const pair = await generateKeyPair('ES256', { extractable: true });
+  const jwk = await exportJWK(pair.publicKey);
+  return { privateKey: pair.privateKey, jwk, jkt: await calculateJwkThumbprint(jwk, 'sha256') };
+};
+
+/** An RFC 9449 proof for one request: what a DPoP-capable MCP client sends. */
+const proof = async (
+  key: ClientKey,
+  accessToken: string,
+  overrides: { htm?: string; htu?: string; ath?: string; iat?: number; jti?: string; signWith?: ClientKey } = {},
+) =>
+  new SignJWT({
+    htm: overrides.htm ?? 'POST',
+    htu: overrides.htu ?? config.resource,
+    ath: overrides.ath ?? createHash('sha256').update(accessToken).digest('base64url'),
+    jti: overrides.jti ?? randomUUID(),
+  })
+    .setProtectedHeader({ alg: 'ES256', typ: 'dpop+jwt', jwk: key.jwk })
+    .setIssuedAt(overrides.iat ?? Math.floor(Date.now() / 1000))
+    .sign((overrides.signWith ?? key).privateKey);
 
 beforeAll(async () => {
   const pair = await generateKeyPair('EdDSA', { crv: 'Ed25519', extractable: true });
@@ -108,12 +153,17 @@ beforeAll(async () => {
   otherKey = (await generateKeyPair('EdDSA', { crv: 'Ed25519', extractable: true })).privateKey;
   const jwk: JWK = { ...(await exportJWK(pair.publicKey)), kid: 'key-1', alg: 'EdDSA' };
   const { createMcpAccessTokenVerifier } = await vi.importActual<typeof import('@nibleaf/auth/mcp-oauth')>('@nibleaf/auth/mcp-oauth');
-  mocks.verify = createMcpAccessTokenVerifier(config, async () => ({ keys: [jwk as Record<string, unknown>] }));
+  mocks.verify = createMcpAccessTokenVerifier(config, async () => ({ keys: [jwk as Record<string, unknown>] })) as (
+    ...args: unknown[]
+  ) => Promise<unknown>;
 });
 
 beforeEach(() => {
   vi.clearAllMocks();
   contexts.length = 0;
+  mocks.reserved.clear();
+  mocks.reservationsDown = false;
+  mocks.verificationDeleteMany.mockResolvedValue({ count: 0 });
   mocks.grantFindUnique.mockResolvedValue(grant());
   mocks.grantUpdate.mockResolvedValue({ id: 'grant-1' });
   mocks.memberFindUnique.mockResolvedValue({ role: 'member', user: { suspendedAt: null } });
@@ -142,7 +192,7 @@ describe('MCP OAuth access tokens', () => {
     ['from another issuer', { iss: 'https://evil.example/api/auth' }],
     ['signed with another key', { key: undefined as unknown as SigningKey }],
     ['not an access-token JWT', { typ: 'JWT' }],
-    ['sender-constrained (DPoP)', { cnf: { jkt: 'thumbprint' } }],
+    ['bound by another confirmation method (mTLS)', { cnf: { 'x5t#S256': 'certificate-thumbprint' } }],
   ])('rejects a token %s with an RFC 6750 invalid_token challenge', async (_label, overrides) => {
     const signed = await token(_label === 'signed with another key' ? { key: otherKey } : overrides);
     const response = await request(`Bearer ${signed}`);
@@ -239,5 +289,114 @@ describe('MCP OAuth discovery challenge', () => {
     expect(response.headers.get('www-authenticate')).toContain(`resource_metadata="${config.resourceMetadata}"`);
     expect(mocks.apiKeyFindUnique).toHaveBeenCalledOnce();
     expect(mocks.grantFindUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe('MCP OAuth DPoP-bound access tokens (RFC 9449)', () => {
+  /** An API instance behind the dashboard proxy sees its own URL, not the public one. */
+  const INTERNAL_URL = 'http://nibleaf-api:3001/api/mcp';
+  let key: ClientKey;
+  let bound: string;
+
+  beforeEach(async () => {
+    key = await clientKey();
+    bound = await token({ cnf: { jkt: key.jkt } });
+  });
+
+  /** Every OAuth challenge keeps the Bearer one, with discovery, first. */
+  const challengeOf = (response: Response) => {
+    const challenge = response.headers.get('www-authenticate') ?? '';
+    expect(challenge.startsWith('Bearer ')).toBe(true);
+    expect(challenge).toContain(`resource_metadata="${config.resourceMetadata}"`);
+    return challenge;
+  };
+
+  it('still accepts a plain bearer token without a DPoP proof', async () => {
+    const response = await request(`Bearer ${await token()}`);
+    expect(response.status).toBe(200);
+    expect(mocks.reserved.size).toBe(0);
+  });
+
+  it('accepts a DPoP-bound token with a valid proof and reserves its jti', async () => {
+    const response = await request(`DPoP ${bound}`, { dpop: await proof(key, bound) });
+    expect(response.status).toBe(200);
+    const principal = (await response.json()) as Principal;
+    expect(principal.credential).toMatchObject({ kind: 'oauth', id: 'grant-1', clientId: 'client-claude' });
+    expect(mocks.grantFindUnique).toHaveBeenCalledOnce();
+    expect([...mocks.reserved][0]).toMatch(/^dpop-proof:/);
+  });
+
+  it('checks htu against the public resource URL, not the internal URL the proxy forwards to', async () => {
+    const throughProxy = await request(`DPoP ${bound}`, { url: INTERNAL_URL, dpop: await proof(key, bound) });
+    expect(throughProxy.status).toBe(200);
+
+    const signedForInternal = await request(`DPoP ${bound}`, { url: INTERNAL_URL, dpop: await proof(key, bound, { htu: INTERNAL_URL }) });
+    expect(signedForInternal.status).toBe(401);
+    expect(challengeOf(signedForInternal)).toContain('DPoP realm="Nibleaf MCP", error="invalid_dpop_proof"');
+  });
+
+  it('checks htm against the request method', async () => {
+    expect((await request(`DPoP ${bound}`, { method: 'GET', dpop: await proof(key, bound, { htm: 'GET' }) })).status).toBe(200);
+    expect((await request(`DPoP ${bound}`, { method: 'GET', dpop: await proof(key, bound) })).status).toBe(401);
+  });
+
+  it('rejects a DPoP-bound token sent as a plain bearer token, and tells the client to use DPoP', async () => {
+    const response = await request(`Bearer ${bound}`, { dpop: await proof(key, bound) });
+    expect(response.status).toBe(401);
+    const challenge = challengeOf(response);
+    expect(challenge).toContain('Bearer realm="Nibleaf MCP", error="invalid_token"');
+    expect(challenge).toMatch(/DPoP realm="Nibleaf MCP", algs="[^"]*ES256[^"]*"/);
+    expect(mocks.grantFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects a DPoP-bound token without a proof', async () => {
+    const response = await request(`DPoP ${bound}`);
+    expect(response.status).toBe(401);
+    expect(challengeOf(response)).toContain('error="invalid_dpop_proof"');
+  });
+
+  it('rejects the DPoP scheme for a token that is not DPoP-bound', async () => {
+    const plain = await token();
+    const response = await request(`DPoP ${plain}`, { dpop: await proof(key, plain) });
+    expect(response.status).toBe(401);
+    const challenge = challengeOf(response);
+    expect(challenge).toContain('DPoP realm="Nibleaf MCP", error="invalid_token"');
+    expect(challenge).not.toMatch(/Bearer [^,]*, error=/);
+  });
+
+  it.each([
+    ['ath of another token', async () => proof(key, bound, { ath: createHash('sha256').update('another-token').digest('base64url') })],
+    ['a key that does not match cnf.jkt', async () => proof(await clientKey(), bound)],
+    ['a signature by another key', async () => proof(key, bound, { signWith: await clientKey() })],
+    ['an iat outside the accepted window', async () => proof(key, bound, { iat: Math.floor(Date.now() / 1000) - 3600 })],
+  ])('rejects a proof with %s', async (_label, makeProof) => {
+    const response = await request(`DPoP ${bound}`, { dpop: await makeProof() });
+    expect(response.status).toBe(401);
+    expect(challengeOf(response)).toContain('error="invalid_dpop_proof"');
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe('auth:invalid_token');
+    expect(mocks.grantFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('rejects a replayed proof, on any instance', async () => {
+    const once = await proof(key, bound);
+    expect((await request(`DPoP ${bound}`, { dpop: once })).status).toBe(200);
+    const replay = await request(`DPoP ${bound}`, { url: INTERNAL_URL, dpop: once });
+    expect(replay.status).toBe(401);
+    expect(challengeOf(replay)).toContain('error="invalid_dpop_proof"');
+    expect(mocks.grantFindUnique).toHaveBeenCalledOnce();
+  });
+
+  it('fails as a server error, not an accepted or invalid credential, when replay storage is down', async () => {
+    mocks.reservationsDown = true;
+    const response = await request(`DPoP ${bound}`, { dpop: await proof(key, bound) });
+    expect(response.status).toBe(500);
+    expect(mocks.grantFindUnique).not.toHaveBeenCalled();
+  });
+
+  it('keeps every connection check for DPoP-bound tokens', async () => {
+    mocks.grantFindUnique.mockResolvedValue(grant({ revokedAt: new Date() }));
+    const response = await request(`DPoP ${bound}`, { dpop: await proof(key, bound) });
+    expect(response.status).toBe(401);
+    expect(challengeOf(response)).toContain('DPoP realm="Nibleaf MCP", error="invalid_token"');
   });
 });

@@ -5,7 +5,17 @@ import { getOAuthProviderState, verifyOAuthQueryParams } from '@better-auth/oaut
 import { prisma } from '@nibleaf/database';
 import { MCP_OAUTH_GRANT_CLAIM, MCP_OAUTH_HANDOFF_PATH, MCP_OAUTH_PROJECT_CLAIM, MCP_OAUTH_SCOPES, mcpOAuthUrls } from '@nibleaf/shared/mcp';
 import { APIError } from 'better-auth/api';
-import { verifyJwsAccessToken } from 'better-auth/oauth2';
+import {
+  createDpopReplayStore,
+  DPOP_SIGNING_ALGORITHMS,
+  type DpopReplayReservations,
+  type DpopReplayStore,
+  enforceDpopBinding,
+  getConfirmationJkt,
+  isDpopBindingError,
+  parseAccessTokenAuthorization,
+  verifyJwsAccessToken,
+} from 'better-auth/oauth2';
 import { jwt } from 'better-auth/plugins';
 
 type JsonWebKeySet = { keys: Array<Record<string, unknown>> };
@@ -210,21 +220,96 @@ export interface VerifiedMcpAccessToken {
   expiresAt: Date;
 }
 
-export class McpAccessTokenError extends Error {}
+/** The DPoP proof algorithms the MCP endpoint accepts: the same list the
+ *  authorization server advertises as `dpop_signing_alg_values_supported`. */
+export const MCP_DPOP_SIGNING_ALGORITHMS = DPOP_SIGNING_ALGORITHMS;
+
+/** Better Auth's identifier prefix for DPoP proof reservations. */
+const DPOP_PROOF_RESERVATION_PREFIX = 'dpop-proof:';
+const DPOP_RESERVATION_SWEEP_INTERVAL_MS = 5 * 60_000;
+
+/**
+ * DPoP proof replay protection shared by every API instance: each proof's
+ * `jti` is reserved in Better Auth's `verification` table through
+ * `internalAdapter.reserveVerificationValue`, the same atomic, first-writer-wins
+ * reservation the authorization server uses for proofs at its token endpoint.
+ * A replayed proof collides on the reservation id and is refused on any
+ * instance. Expired reservations are swept at most every few minutes per
+ * process, since an MCP client sends a fresh proof on every request.
+ */
+export const createMcpDpopReplayStore = (loadContext: () => Promise<{ internalAdapter: DpopReplayReservations }>): DpopReplayStore => {
+  let lastSweep = 0;
+  const store = createDpopReplayStore({
+    reserveVerificationValue: async (data) => (await loadContext()).internalAdapter.reserveVerificationValue(data),
+  });
+  return {
+    reserve: async (reservation) => {
+      const reserved = await store.reserve(reservation);
+      const now = reservation.now.getTime();
+      if (now - lastSweep >= DPOP_RESERVATION_SWEEP_INTERVAL_MS) {
+        lastSweep = now;
+        void prisma.verification
+          .deleteMany({ where: { identifier: { startsWith: DPOP_PROOF_RESERVATION_PREFIX }, expiresAt: { lt: reservation.now } } })
+          .catch(() => undefined);
+      }
+      return reserved;
+    },
+  };
+};
+
+/** The parts of an `/api/mcp` request that carry and constrain its token. */
+export interface McpResourceRequest {
+  /** The `Authorization` header: `Bearer <token>` or `DPoP <token>`. */
+  authorization: string;
+  /** The `DPoP` proof header, when the client sent one. */
+  dpopProof?: string | null;
+  /** The request method, which the proof's `htm` must match. */
+  method: string;
+}
+
+/**
+ * Why a token was refused. `invalid_dpop_proof` is RFC 9449's code for a
+ * missing, malformed, mismatched or replayed proof; `dpop` marks a failure of
+ * the sender constraint itself (for example a DPoP-bound token sent as
+ * `Bearer`), so the challenge can tell the client to use DPoP.
+ */
+export class McpAccessTokenError extends Error {
+  override readonly name = 'McpAccessTokenError';
+  readonly code: 'invalid_token' | 'invalid_dpop_proof';
+  readonly dpop: boolean;
+
+  constructor(message: string, options: { code?: 'invalid_token' | 'invalid_dpop_proof'; dpop?: boolean } = {}) {
+    super(message);
+    this.code = options.code ?? 'invalid_token';
+    this.dpop = options.dpop ?? this.code === 'invalid_dpop_proof';
+  }
+}
+
+export const isMcpAccessTokenError = (error: unknown): error is McpAccessTokenError =>
+  error instanceof Error && error.name === 'McpAccessTokenError' && 'code' in error && 'dpop' in error;
 
 /**
  * Local verification of an MCP access token: signature against this
  * instance's JWKS (loaded in-process, never over the public URL), issuer,
  * audience = the MCP resource, expiry, the `at+jwt` type, and the Nibleaf
- * connection claims. DPoP-bound tokens are refused; the MCP endpoint accepts
- * bearer tokens only.
+ * connection claims.
+ *
+ * Tokens without a `cnf` claim are bearer tokens. A DPoP-bound token (RFC 9449,
+ * `cnf.jkt`) must arrive with the `DPoP` scheme and a proof signed by that key
+ * for this method, this token (`ath`) and the PUBLIC resource URL: requests
+ * usually reach the API through the dashboard proxy, so the URL the API sees is
+ * not the one the client signed. Any other confirmation method is refused.
  */
 export const createMcpAccessTokenVerifier = (config: McpOAuthConfig, loadJwks: () => Promise<JsonWebKeySet | undefined>) => {
   const cacheKey = {};
-  return async (token: string): Promise<VerifiedMcpAccessToken> => {
+  return async (request: McpResourceRequest, replayStore: DpopReplayStore): Promise<VerifiedMcpAccessToken> => {
+    const authorization = parseAccessTokenAuthorization(request.authorization);
+    if (!authorization?.token || authorization.scheme === 'Unknown') {
+      throw new McpAccessTokenError('The access token is invalid or expired.');
+    }
     let payload: AccessTokenPayload;
     try {
-      payload = await verifyJwsAccessToken(token, {
+      payload = await verifyJwsAccessToken(authorization.token, {
         jwksFetch: loadJwks,
         jwksCacheKey: cacheKey,
         verifyOptions: { issuer: config.issuer, audience: config.resource, typ: 'at+jwt', requiredClaims: ['sub', 'azp', 'exp'] },
@@ -235,7 +320,8 @@ export const createMcpAccessTokenVerifier = (config: McpOAuthConfig, loadJwks: (
     const grantId = payload[MCP_OAUTH_GRANT_CLAIM];
     const projectId = payload[MCP_OAUTH_PROJECT_CLAIM];
     const scope = payload.scope;
-    if (payload.cnf !== undefined) throw new McpAccessTokenError('Sender-constrained tokens are not supported here.');
+    const boundKey = getConfirmationJkt(payload.cnf);
+    if (payload.cnf !== undefined && !boundKey) throw new McpAccessTokenError('This kind of sender-constrained token is not supported here.');
     if (
       typeof payload.sub !== 'string' ||
       typeof payload.azp !== 'string' ||
@@ -245,6 +331,29 @@ export const createMcpAccessTokenVerifier = (config: McpOAuthConfig, loadJwks: (
       typeof payload.exp !== 'number'
     ) {
       throw new McpAccessTokenError('The access token is not a Nibleaf MCP connection token.');
+    }
+    try {
+      await enforceDpopBinding({
+        payload,
+        authorization,
+        proofJwt: request.dpopProof,
+        method: request.method,
+        url: config.resource,
+        replayStore,
+        signingAlgorithms: MCP_DPOP_SIGNING_ALGORITHMS,
+      });
+    } catch (error) {
+      // Anything else (the replay store's database) is an outage, not a bad credential.
+      if (!isDpopBindingError(error)) throw error;
+      if (error.code === 'invalid_dpop_proof') {
+        throw new McpAccessTokenError('The DPoP proof is missing, invalid, expired, or was already used.', { code: 'invalid_dpop_proof' });
+      }
+      throw new McpAccessTokenError(
+        boundKey
+          ? 'This access token is DPoP-bound: send it with the DPoP scheme and a DPoP proof.'
+          : 'The DPoP scheme requires a DPoP-bound access token.',
+        { dpop: true },
+      );
     }
     return {
       userId: payload.sub,

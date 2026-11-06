@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { AuthInfo } from '@modelcontextprotocol/server';
-import { mcpOAuth, verifyMcpAccessToken } from '@nibleaf/auth/server';
+import { createMcpDpopReplayStore, isMcpAccessTokenError, MCP_DPOP_SIGNING_ALGORITHMS } from '@nibleaf/auth/mcp-oauth';
+import { auth, mcpOAuth, verifyMcpAccessToken } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { MemberRole } from '@nibleaf/shared/constants';
@@ -13,47 +14,65 @@ import type { McpPrincipal } from './types';
 
 const log = createLogger({ module: 'mcp-auth' });
 const apiKeyBearerPattern = /^Bearer\s+(plm_(?:live|test)_[0-9A-Za-z]{32})$/;
-/** A bearer value shaped like a compact JWS (RFC 6750 b64token characters). */
-const jwtBearerPattern = /^Bearer\s+([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/;
+/** An OAuth access token shaped like a compact JWS (RFC 6750 b64token
+ *  characters), sent as a bearer token or as a DPoP-bound one (RFC 9449). */
+const oauthTokenPattern = /^(Bearer|DPoP)\s+([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/;
 const issuableScopes = new Set<string>(MCP_SCOPES);
 
-type McpOAuthSettings = { resourceMetadata: string } | null;
+type TokenScheme = 'Bearer' | 'DPoP';
+type Challenge = { error?: 'invalid_token' | 'insufficient_scope' | 'invalid_dpop_proof'; description?: string; scope?: readonly string[] };
+/** How the OAuth token was presented, and whether its failure was the DPoP
+ *  sender constraint (so the client is told to use DPoP). */
+type DpopContext = { scheme: TokenScheme; hint: boolean };
+
+/** DPoP proof `jti`s are reserved in the database, so a captured proof cannot
+ *  be replayed against another API instance either. */
+const dpopReplayStore = createMcpDpopReplayStore(() => auth.$context);
 
 const quoted = (value: string) => `"${value.replace(/["\\]/g, '')}"`;
 
 /**
- * RFC 6750 bearer challenge. With OAuth on it carries the RFC 9728
- * `resource_metadata` pointer, which is how MCP clients discover where to sign
- * in; the first (credential-less) challenge also suggests the scopes to ask for.
+ * RFC 6750 Bearer or RFC 9449 §7.1 DPoP challenge. With OAuth on, the Bearer
+ * challenge carries the RFC 9728 `resource_metadata` pointer, which is how MCP
+ * clients discover where to sign in; the first (credential-less) challenge also
+ * suggests the scopes to ask for. The DPoP challenge names the accepted proof
+ * algorithms (`algs`). No DPoP nonce is required, so never `use_dpop_nonce`.
  */
-const mcpBearerChallenge = (
-  oauth: McpOAuthSettings,
-  challenge: { error?: 'invalid_token' | 'insufficient_scope'; description?: string; scope?: readonly string[] } = {},
-) =>
+const mcpChallenge = (scheme: TokenScheme, challenge: Challenge = {}) =>
   [
-    'Bearer realm="Nibleaf MCP"',
+    `${scheme} realm="Nibleaf MCP"`,
     challenge.error ? `error=${quoted(challenge.error)}` : null,
     challenge.description ? `error_description=${quoted(challenge.description)}` : null,
-    oauth && challenge.scope?.length ? `scope=${quoted(challenge.scope.join(' '))}` : null,
-    oauth ? `resource_metadata=${quoted(oauth.resourceMetadata)}` : null,
+    mcpOAuth && challenge.scope?.length ? `scope=${quoted(challenge.scope.join(' '))}` : null,
+    mcpOAuth && scheme === 'Bearer' ? `resource_metadata=${quoted(mcpOAuth.resourceMetadata)}` : null,
+    scheme === 'DPoP' ? `algs=${quoted(MCP_DPOP_SIGNING_ALGORITHMS.join(' '))}` : null,
   ]
     .filter(Boolean)
     .join(', ');
+
+/**
+ * The Bearer challenge always comes first, since MCP clients read
+ * `resource_metadata` from it. For a request made with the DPoP scheme the
+ * error moves to a DPoP challenge; a DPoP failure on a Bearer request (a
+ * DPoP-bound token sent as Bearer) adds a bare DPoP challenge.
+ */
+const challengeHeaders = (challenge: Challenge, dpop?: DpopContext): string[] => {
+  if (!(mcpOAuth && dpop)) return [mcpChallenge('Bearer', challenge)];
+  if (dpop.scheme === 'DPoP') return [mcpChallenge('Bearer'), mcpChallenge('DPoP', challenge)];
+  return dpop.hint ? [mcpChallenge('Bearer', challenge), mcpChallenge('DPoP')] : [mcpChallenge('Bearer', challenge)];
+};
 
 const authError = (
   status: 401 | 403,
   code: 'auth:invalid_api_key' | 'auth:invalid_token' | 'auth:insufficient_scope',
   message: string,
-  challenge: Parameters<typeof mcpBearerChallenge>[1] | null,
-) =>
-  new Response(JSON.stringify({ error: { code, message } }), {
-    status,
-    headers: {
-      'content-type': 'application/json; charset=utf-8',
-      ...(challenge ? { 'www-authenticate': mcpBearerChallenge(mcpOAuth, challenge) } : {}),
-      'cache-control': 'private, no-store',
-    },
-  });
+  challenge: Challenge | null,
+  dpop?: DpopContext,
+) => {
+  const headers = new Headers({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'private, no-store' });
+  if (challenge) for (const value of challengeHeaders(challenge, dpop)) headers.append('www-authenticate', value);
+  return new Response(JSON.stringify({ error: { code, message } }), { status, headers });
+};
 
 const constantTimeHashMatch = (candidate: string, stored: string) => {
   const left = Buffer.from(candidate, 'hex');
@@ -142,7 +161,8 @@ const authenticateApiKey = async (ctx: Context<HonoEnv>, secret: string): Promis
   return principal;
 };
 
-const invalidToken = (description: string) => authError(401, 'auth:invalid_token', description, { error: 'invalid_token', description });
+const invalidToken = (description: string, dpop: DpopContext, error: 'invalid_token' | 'invalid_dpop_proof' = 'invalid_token') =>
+  authError(401, 'auth:invalid_token', description, { error, description }, dpop);
 
 /**
  * An OAuth access token acts as the person who connected the app, on the ONE
@@ -152,13 +172,19 @@ const invalidToken = (description: string) => authError(401, 'auth:invalid_token
  * person, or lowering their role takes effect immediately. Effective scopes
  * are the grant's preset ∩ the token's scopes ∩ the role's current ceiling.
  */
-const authenticateOAuthToken = async (ctx: Context<HonoEnv>, token: string): Promise<McpPrincipal | Response> => {
-  if (!verifyMcpAccessToken) return invalidToken('The access token is invalid or expired.');
+const authenticateOAuthToken = async (ctx: Context<HonoEnv>, scheme: TokenScheme, token: string): Promise<McpPrincipal | Response> => {
+  const dpop: DpopContext = { scheme, hint: false };
+  if (!verifyMcpAccessToken) return invalidToken('The access token is invalid or expired.', dpop);
   let verified: Awaited<ReturnType<typeof verifyMcpAccessToken>>;
   try {
-    verified = await verifyMcpAccessToken(token);
-  } catch {
-    return invalidToken('The access token is invalid or expired.');
+    verified = await verifyMcpAccessToken(
+      { authorization: `${scheme} ${token}`, dpopProof: ctx.req.header('dpop'), method: ctx.req.method },
+      dpopReplayStore,
+    );
+  } catch (error) {
+    if (!isMcpAccessTokenError(error)) throw error;
+    // Token problems stay vague; a DPoP failure says what the client must fix.
+    return invalidToken(error.dpop ? error.message : 'The access token is invalid or expired.', { scheme, hint: error.dpop }, error.code);
   }
   const grant = await prisma.mcpOAuthGrant.findUnique({
     where: { id: verified.grantId },
@@ -180,19 +206,21 @@ const authenticateOAuthToken = async (ctx: Context<HonoEnv>, token: string): Pro
     grant.clientId !== verified.clientId ||
     grant.project.id !== verified.projectId
   ) {
-    return invalidToken('This connection was revoked. Connect the app to Nibleaf again.');
+    return invalidToken('This connection was revoked. Connect the app to Nibleaf again.', dpop);
   }
 
   const actor = await resolveActor(grant.userId, grant.project.organizationId);
-  if (actor === 'revoked') return invalidToken('This connection was revoked. Connect the app to Nibleaf again.');
+  if (actor === 'revoked') return invalidToken('This connection was revoked. Connect the app to Nibleaf again.', dpop);
 
   const tokenScopes = new Set(verified.scopes);
   if (!tokenScopes.has('mcp:connect')) {
-    return authError(403, 'auth:insufficient_scope', 'The access token does not grant MCP connection access.', {
-      error: 'insufficient_scope',
-      description: 'The access token is missing the mcp:connect scope.',
-      scope: ['mcp:connect'],
-    });
+    return authError(
+      403,
+      'auth:insufficient_scope',
+      'The access token does not grant MCP connection access.',
+      { error: 'insufficient_scope', description: 'The access token is missing the mcp:connect scope.', scope: ['mcp:connect'] },
+      dpop,
+    );
   }
   const scopes = effectiveScopes(
     grant.scopes.filter((scope) => tokenScopes.has(scope)),
@@ -234,8 +262,8 @@ export const authenticateMcpRequest = async (ctx: Context<HonoEnv>): Promise<Mcp
   const authorization = ctx.req.header('authorization') ?? '';
   const apiKey = apiKeyBearerPattern.exec(authorization)?.[1];
   if (apiKey) return authenticateApiKey(ctx, apiKey);
-  const token = mcpOAuth ? jwtBearerPattern.exec(authorization)?.[1] : undefined;
-  if (token) return authenticateOAuthToken(ctx, token);
+  const oauthToken = mcpOAuth ? oauthTokenPattern.exec(authorization) : null;
+  if (oauthToken?.[1] && oauthToken[2]) return authenticateOAuthToken(ctx, oauthToken[1] as TokenScheme, oauthToken[2]);
   return authorization
     ? authError(401, 'auth:invalid_api_key', 'A valid bearer API key or access token is required.', { error: 'invalid_token' })
     : authError(401, 'auth:invalid_api_key', 'Sign in with OAuth or send a personal API key as a bearer token.', {

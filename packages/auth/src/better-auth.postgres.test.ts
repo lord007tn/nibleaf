@@ -538,6 +538,8 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
   it('connects an MCP client to one project and preset: sign-in, project, consent, tokens, refresh, revoke', async () => {
     const { readSignedOAuthQuery } = await import('./mcp-oauth');
     const { verifyMcpAccessToken } = await import('./server');
+    // Bearer tokens never touch the DPoP replay store.
+    const verifyBearer = (token: string) => verifyMcpAccessToken?.({ authorization: `Bearer ${token}`, method: 'POST' }, { reserve: () => true });
     const clientId = await registerClient();
 
     // 1. No session: Better Auth hands off to sign-in with a signed request.
@@ -606,7 +608,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     const tokens = (await exchanged.json()) as { access_token: string; refresh_token: string; scope: string };
     expect(tokens.refresh_token).toMatch(/^nlrt_/);
     expect(tokens.scope.split(' ').sort()).toEqual([...scopes, 'offline_access'].sort());
-    const verified = await verifyMcpAccessToken?.(tokens.access_token);
+    const verified = await verifyBearer(tokens.access_token);
     expect(verified).toMatchObject({ userId, clientId, grantId: grant.id, projectId });
     expect((await prisma.mcpOAuthGrant.findUniqueOrThrow({ where: { id: grant.id } })).activatedAt).toBeInstanceOf(Date);
     expect((await prisma.mcpOAuthGrant.findUniqueOrThrow({ where: { id: earlier.id } })).revokedAt).toBeInstanceOf(Date);
@@ -620,7 +622,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     });
     expect(refreshed.status).toBe(200);
     const next = (await refreshed.json()) as { access_token: string; refresh_token: string };
-    expect((await verifyMcpAccessToken?.(next.access_token))?.grantId).toBe(grant.id);
+    expect((await verifyBearer(next.access_token))?.grantId).toBe(grant.id);
     // Strict rotation: the old refresh token is spent.
     expect(
       (
