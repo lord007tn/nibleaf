@@ -58,7 +58,10 @@ it.each(['page', 'language', 'version'])('resets reader feedback and URL when %s
   const initialFeedback = container.querySelector('button');
   if (!initialFeedback) throw new Error('Missing feedback button');
   await act(async () => initialFeedback.click());
-  expect(initialFeedback.isConnected).toBe(false);
+  expect(initialFeedback.isConnected).toBe(true);
+  expect(initialFeedback.getAttribute('aria-pressed')).toBe('true');
+  expect(container.querySelector('[role="status"]')?.textContent).toContain('Thanks');
+  expect(container.querySelectorAll('button')).toHaveLength(2);
   const next = {
     ...initial,
     page: { ...initial.page, path: change === 'page' ? 'next' : 'start' },
@@ -68,10 +71,27 @@ it.each(['page', 'language', 'version'])('resets reader feedback and URL when %s
   const url = `/sites/project-1/${change === 'version' ? 'v2/' : ''}${next.page.path}${change === 'language' ? '?lang=ar' : ''}`;
   window.history.replaceState(null, '', url);
   await act(async () => root.render(<SitePageView data={next} projectId="project-1" />));
-  expect(container.querySelector('button')).not.toBeNull();
+  expect(container.querySelector('button')?.getAttribute('aria-pressed')).toBe('false');
+  expect(container.querySelector('[role="status"]')?.textContent).toBe('');
   const edit = container.querySelector<HTMLAnchorElement>('a[target="_blank"]');
   if (!edit) throw new Error('Missing edit link');
   expect(new URL(edit.href).searchParams.get('url')).toBe(window.location.href);
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+it('closes the mobile outline after choosing a heading and leaves focus to the anchor navigation', async () => {
+  const { MobileTableOfContents } = await import('./toc');
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<MobileTableOfContents headings={[{ id: 'refunds', text: 'Refunds', depth: 2 }]} label="On this page" />));
+  const details = container.querySelector('details');
+  if (!details) throw new Error('Missing mobile outline');
+  details.open = true;
+  await act(async () => container.querySelector('a')?.click());
+  expect(details.open).toBe(false);
+  expect(document.activeElement).not.toBe(container.querySelector('summary'));
   await act(async () => root.unmount());
   container.remove();
 });

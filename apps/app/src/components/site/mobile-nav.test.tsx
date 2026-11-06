@@ -35,7 +35,7 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
         nodes={[]}
         projectId="docs"
         currentPath="start"
-        label={isRtl ? 'التوثيق' : 'Docs'}
+        label={isRtl ? 'القائمة' : 'Menu'}
         closeLabel={isRtl ? 'إغلاق' : undefined}
         toggleLabel="Toggle subpages"
         isRtl={isRtl}
@@ -73,5 +73,67 @@ it.each([false, true])('keeps configured reader destinations and the CTA availab
   const hashLink = document.querySelector<HTMLAnchorElement>('a[href="#changes"]');
   await act(async () => hashLink?.click());
   // Same-page links do not change currentPath, so clicks must close the drawer.
+  expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
+});
+
+it('offers language and version as labelled drawer settings showing the current value', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  const changeLanguage = vi.fn();
+  const changeVersion = vi.fn();
+  await act(async () =>
+    root.render(
+      <MobileNav
+        nodes={[]}
+        projectId="docs"
+        currentPath="start"
+        label="Menu"
+        triggerLabel="Open menu"
+        navLabel="Documentation pages"
+        toggleLabel="Toggle subpages"
+        choices={[
+          {
+            id: 'language',
+            label: 'Language',
+            value: 'en',
+            options: [
+              { value: 'en', label: 'English', lang: 'en', dir: 'ltr' },
+              { value: 'ar', label: 'العربية', lang: 'ar', dir: 'rtl' },
+            ],
+            onChange: changeLanguage,
+          },
+          { id: 'version', label: 'Version', value: 'main', options: [{ value: 'main', label: 'main' }], onChange: changeVersion },
+        ]}
+      />,
+    ),
+  );
+  const trigger = container.querySelector<HTMLButtonElement>('[data-slot="sheet-trigger"]');
+  expect(trigger?.getAttribute('aria-label')).toBe('Open menu');
+  expect(trigger?.className).toContain('size-11');
+  await act(async () => trigger?.click());
+  // Language and version choices load with the open drawer.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
+  const drawer = document.querySelector('[data-slot="sheet-content"]');
+  expect(drawer?.querySelector('nav[data-site-nav]')?.getAttribute('aria-label')).toBe('Documentation pages');
+
+  const settings = drawer?.querySelector('[data-mobile-nav-settings]');
+  // A single version is not a choice, so only the language setting renders.
+  expect(
+    [...(settings?.querySelectorAll('[data-mobile-nav-setting]') ?? [])].map((setting) => setting.getAttribute('data-mobile-nav-setting')),
+  ).toEqual(['language']);
+  const select = settings?.querySelector<HTMLElement>('[data-slot="select-trigger"]');
+  expect(select?.getAttribute('aria-label')).toBe('Language');
+  expect(select?.className).toContain('min-h-11');
+  expect(select?.textContent).toContain('English');
+
+  await act(async () => select?.click());
+  const arabic = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) => option.textContent === 'العربية');
+  expect(arabic?.querySelector('[dir="rtl"]')?.getAttribute('lang')).toBe('ar');
+  await act(async () => arabic?.click());
+  expect(changeLanguage).toHaveBeenCalledWith('ar');
   expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
 });

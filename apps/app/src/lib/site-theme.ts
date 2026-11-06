@@ -43,11 +43,28 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
 const derivedDeclarations = (tokens: ThemeColorTokens): string =>
   `--theme-code-accent:${readableOnBackground(tokens.accent, tokens.code)};--theme-code-muted:${readableOnBackground(tokens.mutedForeground, tokens.code)}`;
 
+// The token contract names multi-word variables after their camelCase keys
+// (`--theme-mutedForeground`), while reader styles read the kebab-case names
+// legacy projects declare (`--theme-muted-foreground`). Without both spellings,
+// rules such as Signal's code-surface rail resolve to nothing and fall back to
+// dark text on a dark surface.
+const kebabTokenAliases = (tokens: ThemeColorTokens): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(tokens)
+      .filter(([key]) => /[A-Z]/.test(key))
+      .map(([key, value]) => [`--theme-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`, value]),
+  );
+
 const tokenDeclarations = (tokens: ThemeColorTokens): string => {
   const semantic = Object.entries(tokens)
     .map(([key, value]) => `${THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens]}:${value}`)
     .join(';');
-  return [semantic, derivedDeclarations(tokens), ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`)].join(';');
+  return [
+    semantic,
+    ...Object.entries(kebabTokenAliases(tokens)).map(([name, value]) => `${name}:${value}`),
+    derivedDeclarations(tokens),
+    ...Object.entries(designSystemAliases(tokens)).map(([name, value]) => `${name}:${value}`),
+  ].join(';');
 };
 
 // Projects created before theme schema v1 keep the design-system palette they
@@ -130,6 +147,7 @@ export const projectThemeVariables = (config?: ProjectConfig | null, mode: 'ligh
   const tokens = safeTokens(theme.colors[mode], preset.colors[mode]);
   return {
     ...Object.fromEntries(Object.entries(tokens).map(([key, value]) => [THEME_TOKEN_CSS_VARIABLES[key as keyof ThemeColorTokens], value])),
+    ...kebabTokenAliases(tokens),
     '--theme-code-accent': readableOnBackground(tokens.accent, tokens.code),
     '--theme-code-muted': readableOnBackground(tokens.mutedForeground, tokens.code),
     ...designSystemAliases(tokens),

@@ -1,5 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import {
   AlertTriangle,
@@ -23,6 +23,7 @@ import {
   type ReactElement,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -102,28 +103,20 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
 export function Steps({ children }: { children?: ReactNode }) {
-  const steps = Children.toArray(children).filter(isValidElement);
   return (
-    <div className="my-5 flex flex-col gap-6 border-border border-s ps-6">
-      {steps.map((step, i) => (
-        <div key={step.key} className="relative">
-          {/* size-6 chip at -start-9 centers exactly on the 1.5rem rail line. */}
-          <span className="-start-9 absolute grid size-6 place-items-center rounded-full border border-border bg-muted font-semibold text-foreground text-xs">
-            {i + 1}
-          </span>
-          {step}
-        </div>
-      ))}
-    </div>
+    // biome-ignore lint/a11y/noRedundantRoles: preserves list semantics in Safari when list-style is none.
+    <ol className="reader-steps my-5 flex list-none flex-col gap-6 border-border border-s ps-6" role="list">
+      {children}
+    </ol>
   );
 }
 
 export function Step({ title, children }: { title?: string; children?: ReactNode }) {
   return (
-    <div className="[&>:first-child]:mt-0 [&>:last-child]:mb-0">
+    <li className="relative [&>:first-child]:mt-0 [&>:last-child]:mb-0">
       {title ? <div className="mb-1 font-semibold">{title}</div> : null}
       {children}
-    </div>
+    </li>
   );
 }
 
@@ -164,7 +157,7 @@ export function Tabs({ children, language }: { children?: ReactNode; language?: 
   const [active, setActive] = useState(0);
   const tabsId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const t = siteT(language);
+  const t = siteContentT(language);
   if (tabs.length === 0) return null;
   return (
     <div className="my-5">
@@ -236,7 +229,7 @@ export function Accordion({
 }) {
   const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
   const accordionId = useId();
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div>
       <button
@@ -267,16 +260,81 @@ export function Accordion({
 export function Frame({ caption, children }: { caption?: string; children?: ReactNode }) {
   return (
     <figure className="my-5 overflow-hidden rounded-xl border border-border bg-muted/30 p-3">
-      <div className="overflow-hidden rounded-lg [&>img]:my-0 [&>img]:w-full">{children}</div>
+      <div className="overflow-hidden rounded-lg [&>img]:my-0 [&>img]:w-full [&>.reader-image]:w-full [&>.reader-image>img]:my-0 [&>.reader-image>img]:w-full">
+        {children}
+      </div>
       {caption ? <figcaption className="mt-2 text-center text-muted-foreground text-xs">{caption}</figcaption> : null}
     </figure>
   );
 }
 
+/** True when the content holds a link, which must not be nested in a button. */
+const containsLink = (node: ReactNode): boolean =>
+  Children.toArray(node).some(
+    (child) =>
+      isValidElement<{ href?: unknown; children?: ReactNode }>(child) &&
+      (child.type === 'a' || child.props.href !== undefined || containsLink(child.props.children)),
+  );
+
 export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const pointerOpen = useRef(false);
+  const wrapper = useRef<HTMLSpanElement>(null);
+  const linked = containsLink(children);
+  // A tooltip around a link has no button of its own, so the link carries the
+  // description (added to any it already has).
+  useEffect(() => {
+    if (!tip || !linked) return;
+    const link = wrapper.current?.querySelector<HTMLElement>('a[href], [href]');
+    if (!link) return;
+    const existing = link.getAttribute('aria-describedby');
+    const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
+    ids.add(id);
+    link.setAttribute('aria-describedby', [...ids].join(' '));
+    return () => {
+      if (existing) link.setAttribute('aria-describedby', existing);
+      else link.removeAttribute('aria-describedby');
+    };
+  }, [tip, linked, id]);
+  if (!tip) return <>{children}</>;
   return (
-    <span className="cursor-help underline decoration-dotted underline-offset-2" title={tip}>
-      {children}
+    // Hover, focus and Escape are handled on the wrapper so the pointer can move
+    // onto the tip without closing it (WCAG 1.4.13) and focus inside a link works.
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: the focusable trigger is a child; the wrapper only keeps the tip open.
+    <span
+      ref={wrapper}
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      {linked ? (
+        children
+      ) : (
+        <button
+          type="button"
+          aria-describedby={id}
+          className="cursor-help underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+          onPointerDown={() => {
+            pointerOpen.current = open;
+          }}
+          onClick={(event) => setOpen(event.detail ? !pointerOpen.current : !open)}
+        >
+          {children}
+        </button>
+      )}
+      {/* Bottom padding, not a margin, keeps the gap above the trigger hoverable. */}
+      <span id={id} role="tooltip" hidden={!open} className="absolute start-0 bottom-full z-20 w-max max-w-[min(20rem,80vw)] pb-2">
+        <span className="block rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md">{tip}</span>
+      </span>
     </span>
   );
 }
@@ -325,7 +383,7 @@ function FieldRow({
   children?: ReactNode;
   language?: string;
 }) {
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div className="border-border border-b py-3 first:pt-0 last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -424,7 +482,7 @@ export function Expandable({
 }) {
   const [open, setOpen] = useState(() => truthyAttr(defaultOpen));
   const expandableId = useId();
-  const t = siteT(language);
+  const t = siteContentT(language);
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border">
       <button
@@ -696,7 +754,7 @@ export function CodeGroup({ children, language }: { children?: ReactNode; langua
       return title;
     }
     const codeLanguage = /language-([\w+#-]+)/.exec(code?.props?.className ?? '')?.[1] ?? block.props?.['data-lang'] ?? code?.props?.['data-lang'];
-    return codeLanguage ? codeLanguage.toUpperCase() : `${siteT(language)('tab')} ${index + 1}`;
+    return codeLanguage ? codeLanguage.toUpperCase() : `${siteContentT(language)('tab')} ${index + 1}`;
   };
   return (
     <div className="my-5 overflow-hidden rounded-xl border border-border">

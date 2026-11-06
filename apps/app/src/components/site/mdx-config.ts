@@ -1,4 +1,5 @@
 import { normalizeType } from '@nibleaf/shared/callouts';
+import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import type { Root } from 'mdast';
 import { defaultSchema, type Options as SanitizeOptions } from 'rehype-sanitize';
 
@@ -58,46 +59,95 @@ const BLOCK_TAGS =
 const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
 const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
 const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b[^>]*>\\s*$`, 'i');
+// A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
+const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b((?:[^>]*[^/>])?)>(.*\\S.*)</\\2>\\s*$`, 'i');
+// Inline code spans (`<Frame>` written as an example) are code too.
+const INLINE_CODE = /(`+)[\s\S]*?\1/g;
 
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
  *  directly after `<Note>` is captured as a raw HTML block and inline Markdown
  *  (**bold**, [links]) renders literally. Idempotent. */
 export function normalizeMdxBlocks(src: string): string {
-  const lines = src.split('\n');
+  // A one-line block component would otherwise sit inside a Markdown paragraph,
+  // rendering a <div> inside a <p> (invalid HTML that breaks hydration). Give it
+  // block form so its text is parsed as Markdown inside the component.
+  // Nested one-liners (`<CardGroup><Card>x</Card></CardGroup>`) expand level by level.
+  const expand = (line: string): string[] => {
+    const match = ONE_LINE_BLOCK.exec(line);
+    if (!match) return [line];
+    const [, indent = '', tag = '', attributes = '', body = ''] = match;
+    // Siblings of the same tag on one line (`<Card>a</Card><Card>b</Card>`) would be
+    // mis-split by the greedy match; leave those lines as authored.
+    if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
+    return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
+  };
+  // Code samples are never rewritten: every step below skips fenced lines.
+  const authored = src.split('\n');
+  const authoredFences = fencedMarkdownLines(authored);
+  const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
+  const fenced = fencedMarkdownLines(lines);
   const out: string[] = [];
+  const outFenced: boolean[] = [];
+  const push = (line: string, inCode = false) => {
+    out.push(line);
+    outFenced.push(inCode);
+  };
   for (let i = 0; i < lines.length; i++) {
     const authoredLine = lines[i] ?? '';
+    if (fenced[i]) {
+      push(authoredLine, true);
+      continue;
+    }
     // Indentation is visual authoring syntax, not a request to turn component
     // tags into CommonMark code blocks.
     const line = COMPONENT_LINE.test(authoredLine) ? authoredLine.trim() : authoredLine;
     if (OPEN_TAG.test(line)) {
-      out.push(line);
+      push(line);
       const next = lines[i + 1];
       if (next !== undefined && next.trim() !== '') {
-        out.push('');
+        push('');
       }
     } else if (CLOSE_TAG.test(line)) {
       const prev = out[out.length - 1];
       if (prev !== undefined && prev.trim() !== '') {
-        out.push('');
+        push('');
       }
-      out.push(line);
+      push(line);
     } else {
-      out.push(line);
+      push(line);
     }
   }
   // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
   // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
   // group 1 is only the optional closing slash) so the tag stays well-formed.
-  return (
-    out
-      .join('\n')
+  const rename = (text: string) =>
+    text
       .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
       // HTML parsers do not honor XML self-closing syntax for unknown elements.
       // Expand authored atoms so sibling File/RelatedCard nodes cannot nest.
-      .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>')
-  );
+      .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+  // Rename outside inline code spans only, so component reference pages keep their examples.
+  const prose = (text: string) => {
+    let output = '';
+    let cursor = 0;
+    for (const match of text.matchAll(INLINE_CODE)) {
+      output += rename(text.slice(cursor, match.index)) + match[0];
+      cursor = match.index + match[0].length;
+    }
+    return output + rename(text.slice(cursor));
+  };
+  // Renames apply to runs of prose only (a tag may span lines), never inside code.
+  const segments: string[] = [];
+  let start = 0;
+  for (let index = 1; index <= out.length; index += 1) {
+    if (index === out.length || outFenced[index] !== outFenced[start]) {
+      const text = out.slice(start, index).join('\n');
+      segments.push(outFenced[start] ? text : prose(text));
+      start = index;
+    }
+  }
+  return segments.join('\n');
 }
 
 /** Sanitize schema: the GitHub-safe default, extended to permit our component
