@@ -16,7 +16,9 @@ function ProjectAnalyticsLayout() {
   const t = useT();
   const { projectId, filters, setFilters, timezone } = useInsightsFilters();
   return (
-    <div className="w-full min-w-0 px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
+    // `contain: inline-size` keeps wide tables from widening the dashboard shell's
+    // flex column: they scroll inside their own card instead of the page.
+    <div className="w-full min-w-0 px-4 py-6 [contain:inline-size] sm:px-6 sm:py-8 xl:px-10">
       <div className="flex flex-col gap-4">
         <div>
           <h1 className="font-semibold text-2xl tracking-tight">{t('analytics.title')}</h1>
