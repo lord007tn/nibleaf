@@ -5,11 +5,12 @@ import { type SearchInsights, type SearchTermRow, useSearchInsights } from '@/ho
 import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PathText } from './insight-card';
-import { InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { insightsState, mergeSeries } from './insights-data';
+import { InsightsEmpty, InsightsStatus } from './insights-status';
 import { KpiCard } from './kpi-card';
 import { TermsVisibilityNotice, TermText, WriteArticleButton } from './search-terms';
 import { PageInsightsLink } from './section-links';
-import { mergeSeries, TrendChart } from './trend-chart';
+import { TrendChart } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 

@@ -38,7 +38,6 @@ export type AiVisibilityInsights = Awaited<ReturnType<typeof fetchAi>>;
 export type PerformanceInsights = Awaited<ReturnType<typeof fetchPerformance>>;
 export type InsightsMeta = OverviewInsights['meta'];
 export type InsightsAvailability = InsightsMeta['availability'];
-export type ComparedValue = OverviewInsights['kpis']['pageViews'];
 export type SeriesPoint = OverviewInsights['pageViewsSeries'][number];
 export type SearchTermRow = SearchInsights['topTerms'][number];
 export type SearchTermsVisibility = SearchInsights['searchTermsVisibility'];

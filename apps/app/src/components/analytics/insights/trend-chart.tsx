@@ -6,6 +6,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { useId } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from 'recharts';
 import type { SeriesPoint } from '@/hooks/api/analytics';
+import type { TrendRow } from './insights-data';
 import { UNKNOWN, useInsightFormat } from './use-insight-format';
 
 export interface TrendSeries {
@@ -15,26 +16,6 @@ export interface TrendSeries {
   color: string;
   /** Drawn as a dashed line without fill (the previous-period overlay). */
   dashed?: boolean;
-}
-
-export type TrendRow = { bucket: string } & Record<string, number | string | null>;
-
-/** Rows for a current series with the previous period overlaid point-by-point (same position in the period). */
-export function alignWithPrevious(current: SeriesPoint[], previous: SeriesPoint[]): TrendRow[] {
-  return current.map((point, index) => ({ bucket: point.bucket, current: point.value, previous: previous[index]?.value ?? null }));
-}
-
-/** Rows for several series that share the same buckets. */
-export function mergeSeries(series: Array<{ key: string; points: SeriesPoint[] }>): TrendRow[] {
-  const rows = new Map<string, TrendRow>();
-  for (const { key, points } of series) {
-    for (const point of points) {
-      const row: TrendRow = rows.get(point.bucket) ?? { bucket: point.bucket };
-      row[key] = point.value;
-      rows.set(point.bucket, row);
-    }
-  }
-  return [...rows.values()].sort((a, b) => a.bucket.localeCompare(b.bucket));
 }
 
 const hasValues = (rows: TrendRow[], series: TrendSeries[]) =>

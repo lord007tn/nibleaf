@@ -2,39 +2,22 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { BookOpen, Bot, MessageCircleQuestion, ShieldCheck, Sparkles } from 'lucide-react';
-import { type AiVisibilityInsights, type CrawlerCategory, useAiVisibilityInsights, useProjectAnalytics } from '@/hooks/api/analytics';
+import { type AiVisibilityInsights, useAiVisibilityInsights, useProjectAnalytics } from '@/hooks/api/analytics';
 import { SimpleTable } from './data-table';
 import type { InsightsPreset, InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
-import { InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { CHART_GROUPS, groupCrawlerSeries, insightsState, mergeSeries } from './insights-data';
+import { InsightsEmpty, InsightsStatus } from './insights-status';
 import { DeltaBadge, KpiCard } from './kpi-card';
 import { AI_SOURCE_NAMES, CRAWLER_CATEGORY_LABELS, RESOURCE_LABELS } from './labels';
 import { countDelta } from './metrics';
 import { PageInsightsLink } from './section-links';
-import { mergeSeries, TrendChart, useSeriesSummary } from './trend-chart';
+import { TrendChart, useSeriesSummary } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 
 type BotRow = AiVisibilityInsights['bots'][number];
 type CrawledPage = AiVisibilityInsights['topCrawledPages'][number];
-
-/** Five chart series: the three AI kinds, classic search engines, and everything else. */
-const CHART_GROUPS = ['ai_training', 'ai_search', 'ai_assistant', 'search_engine', 'other'] as const;
-type ChartGroup = (typeof CHART_GROUPS)[number];
-const chartGroup = (category: CrawlerCategory): ChartGroup =>
-  (CHART_GROUPS as readonly string[]).includes(category) ? (category as ChartGroup) : 'other';
-
-/** Sum the per-category series into the five chart groups, bucket by bucket. */
-export function groupCrawlerSeries(series: AiVisibilityInsights['crawlerSeries']) {
-  const grouped = new Map<ChartGroup, Map<string, number>>();
-  for (const { category, points } of series) {
-    const group = chartGroup(category);
-    const buckets = grouped.get(group) ?? new Map<string, number>();
-    for (const point of points) buckets.set(point.bucket, (buckets.get(point.bucket) ?? 0) + point.value);
-    grouped.set(group, buckets);
-  }
-  return [...grouped.entries()].map(([key, buckets]) => ({ key, points: [...buckets.entries()].map(([bucket, value]) => ({ bucket, value })) }));
-}
 
 const EXPLAINERS: ReadonlyArray<{ category: 'ai_training' | 'ai_search' | 'ai_assistant'; body: MessageKey; icon: typeof BookOpen }> = [
   { category: 'ai_training', body: 'analytics.ai.explain.training', icon: BookOpen },

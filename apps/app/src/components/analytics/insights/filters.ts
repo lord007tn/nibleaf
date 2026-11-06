@@ -1,6 +1,6 @@
 import type { AnalyticsInsightsQuery } from '@nibleaf/validators';
 
-export const INSIGHTS_PRESETS = ['24h', '7d', '30d', '90d'] as const;
+const INSIGHTS_PRESETS = ['24h', '7d', '30d', '90d'] as const;
 export type InsightsPreset = (typeof INSIGHTS_PRESETS)[number];
 type InsightsRange = InsightsPreset | 'custom';
 
@@ -13,7 +13,7 @@ export interface InsightsSearch {
   compare?: 'none';
 }
 
-export const DEFAULT_INSIGHTS_RANGE: InsightsPreset = '30d';
+const DEFAULT_INSIGHTS_RANGE: InsightsPreset = '30d';
 const MAX_CUSTOM_DAYS = 366;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -4,22 +4,15 @@ import { type FeedbackInsights, useFeedbackInsights } from '@/hooks/api/analytic
 import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel } from './insight-card';
-import { InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { insightsState, mergeSeries, sortWorstFirst } from './insights-data';
+import { InsightsEmpty, InsightsStatus } from './insights-status';
 import { KpiCard } from './kpi-card';
 import { PageInsightsLink } from './section-links';
-import { mergeSeries, TrendChart } from './trend-chart';
+import { TrendChart } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 
 type FeedbackPage = FeedbackInsights['pages'][number];
-
-/** Worst first: lowest helpful rate, then most "not helpful" votes; pages without votes last. */
-export function sortWorstFirst(pages: FeedbackPage[]): FeedbackPage[] {
-  return [...pages].sort((a, b) => {
-    if (a.helpfulRate === null || b.helpfulRate === null) return a.helpfulRate === null ? (b.helpfulRate === null ? 0 : 1) : -1;
-    return a.helpfulRate - b.helpfulRate || b.notHelpful - a.notHelpful;
-  });
-}
 
 export function FeedbackSection() {
   const { projectId, filters, query } = useInsightsFilters();

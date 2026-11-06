@@ -10,6 +10,9 @@ import { RangeTabs } from '../range-tabs';
 import { customRangeError, type InsightsSearch, localIsoDay } from './filters';
 import { useInsightFormat } from './use-insight-format';
 
+/** Today and 29 days earlier, as local calendar days: the suggested 30-day custom range. */
+const defaultDays = () => ({ today: localIsoDay(new Date()), monthAgo: localIsoDay(new Date(Date.now() - 29 * 86_400_000)) });
+
 const CUSTOM_ERROR_KEYS = {
   missing: 'analytics.filter.custom.errorMissing',
   order: 'analytics.filter.custom.errorOrder',
@@ -21,8 +24,8 @@ function CustomRangePicker({ filters, onApply }: { filters: InsightsSearch; onAp
   const t = useT();
   const format = useInsightFormat();
   const id = useId();
-  const today = localIsoDay(new Date());
-  const monthAgo = localIsoDay(new Date(Date.now() - 29 * 86_400_000));
+  // Read the clock once per picker, not on every render.
+  const [{ today, monthAgo }] = useState(defaultDays);
   const [open, setOpen] = useState(false);
   const [from, setFrom] = useState(filters.from ?? monthAgo);
   const [to, setTo] = useState(filters.to ?? today);

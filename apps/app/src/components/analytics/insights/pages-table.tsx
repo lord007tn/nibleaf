@@ -162,6 +162,7 @@ export function PagesTable({ rows, projectId, filters, compare }: { rows: PageRo
     },
   ];
 
+  // react-doctor-disable-next-line react-hooks-js/incompatible-library -- this component opts out of the compiler ('use no memo') for exactly this reason.
   const table = useReactTable({
     data: rows,
     columns,

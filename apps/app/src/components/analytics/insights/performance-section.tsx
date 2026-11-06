@@ -4,10 +4,11 @@ import { type PerformanceInsights, usePerformanceInsights } from '@/hooks/api/an
 import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel } from './insight-card';
-import { InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { insightsState, mergeSeries } from './insights-data';
+import { InsightsEmpty, InsightsStatus } from './insights-status';
 import { deviceLabelKey } from './labels';
 import { PageInsightsLink } from './section-links';
-import { mergeSeries, TrendChart } from './trend-chart';
+import { TrendChart } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 import { RatingBadge, RatingDistribution, VitalsCards } from './vitals';

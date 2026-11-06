@@ -7,13 +7,14 @@ import { type PageDetailInsights, usePageInsights } from '@/hooks/api/analytics'
 import { SimpleTable } from './data-table';
 import { filterSearch, type InsightsSearch } from './filters';
 import { InsightCard, PageLabel, PathText, RankedList } from './insight-card';
-import { InsightsStatus, insightsState } from './insights-status';
+import { alignWithPrevious, insightsState, mergeSeries } from './insights-data';
+import { InsightsStatus } from './insights-status';
 import { KpiCard } from './kpi-card';
 import { CHANNEL_LABELS, deviceLabelKey, languageName } from './labels';
 import { FeedbackSplit } from './overview-section';
 import { TermsVisibilityNotice, TermText } from './search-terms';
 import { PageInsightsLink } from './section-links';
-import { alignWithPrevious, mergeSeries, TrendChart, useSeriesSummary } from './trend-chart';
+import { TrendChart, useSeriesSummary } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 import { usePageLinks } from './use-page-links';

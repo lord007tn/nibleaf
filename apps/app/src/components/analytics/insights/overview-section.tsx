@@ -5,13 +5,14 @@ import { Bot, Clock, Eye, MousePointerClick, ScrollText, Search, SearchX, Thumbs
 import { type OverviewInsights, useOverviewInsights } from '@/hooks/api/analytics';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
-import { dataFreshness, InsightsEmpty, InsightsStatus, insightsState } from './insights-status';
+import { alignWithPrevious, dataFreshness, insightsState } from './insights-data';
+import { InsightsEmpty, InsightsStatus } from './insights-status';
 import { KpiCard } from './kpi-card';
 import { CHANNEL_LABELS, REASON_HINTS, REASON_LABELS } from './labels';
 import { countDelta } from './metrics';
 import { TermsVisibilityNotice, TermText } from './search-terms';
 import { PageInsightsLink, SectionLink } from './section-links';
-import { alignWithPrevious, TrendChart, useSeriesSummary } from './trend-chart';
+import { TrendChart, useSeriesSummary } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
 
