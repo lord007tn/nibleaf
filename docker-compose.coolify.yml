@@ -44,12 +44,22 @@ x-service-env: &service-env
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
   ANALYTICS_MODE: ${ANALYTICS_MODE:-disabled}
+  ANALYTICS_CONCURRENCY: ${ANALYTICS_CONCURRENCY:-10}
   ANALYTICS_HASH_SALT: ${ANALYTICS_HASH_SALT:-}
   CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
   CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
   CLICKHOUSE_READER_USERNAME: ${CLICKHOUSE_READER_USERNAME:-nibleaf}
   CLICKHOUSE_READER_PASSWORD: ${CLICKHOUSE_READER_PASSWORD:-${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}}
   CLICKHOUSE_WRITER_USERNAME: ${CLICKHOUSE_WRITER_USERNAME:-nibleaf}
+  CLICKHOUSE_REQUEST_TIMEOUT_MS: ${CLICKHOUSE_REQUEST_TIMEOUT_MS:-5000}
+  CLICKHOUSE_MAX_BATCH_SIZE: ${CLICKHOUSE_MAX_BATCH_SIZE:-500}
+  CLICKHOUSE_MAX_BUFFERED_EVENTS: ${CLICKHOUSE_MAX_BUFFERED_EVENTS:-10000}
+  CLICKHOUSE_FLUSH_INTERVAL_MS: ${CLICKHOUSE_FLUSH_INTERVAL_MS:-1000}
+  CLICKHOUSE_RAW_RETENTION_DAYS: ${CLICKHOUSE_RAW_RETENTION_DAYS:-180}
+  CLICKHOUSE_ROLLUP_RETENTION_DAYS: ${CLICKHOUSE_ROLLUP_RETENTION_DAYS:-730}
+  CLICKHOUSE_SENSITIVE_RETENTION_DAYS: ${CLICKHOUSE_SENSITIVE_RETENTION_DAYS:-30}
+  CLICKHOUSE_CRAWLER_RETENTION_DAYS: ${CLICKHOUSE_CRAWLER_RETENTION_DAYS:-90}
+  CLICKHOUSE_MIGRATE_ON_BOOT: ${CLICKHOUSE_MIGRATE_ON_BOOT:-true}
   CLICKHOUSE_WRITER_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${SERVICE_PASSWORD_64_CLICKHOUSE:?set SERVICE_PASSWORD_64_CLICKHOUSE}}
   QUEUE_CLUSTER: "true"
   # Render one export at a time on the shared production host.
@@ -185,6 +195,28 @@ services:
     volumes:
       - nibleaf-coolify-clickhouse:/var/lib/clickhouse
       - nibleaf-coolify-clickhouse-logs:/var/log/clickhouse-server
+      - nibleaf-coolify-clickhouse-backups:/var/lib/clickhouse/backups
+      # Coolify creates this file from its documented content extension.
+      # Plain docker compose config rejects content here; deploy this file via Coolify.
+      - type: bind
+        source: ./clickhouse/nibleaf.xml
+        target: /etc/clickhouse-server/config.d/nibleaf.xml
+        content: |
+          <clickhouse>
+            <max_server_memory_usage>1073741824</max_server_memory_usage>
+            <mark_cache_size>134217728</mark_cache_size>
+            <uncompressed_cache_size>0</uncompressed_cache_size>
+            <logger><level>warning</level><size>10M</size><count>3</count></logger>
+            <query_log remove="1"/><query_thread_log remove="1"/><trace_log remove="1"/>
+            <text_log remove="1"/><metric_log remove="1"/><asynchronous_metric_log remove="1"/>
+            <part_log remove="1"/><processors_profile_log remove="1"/>
+            <session_log remove="1"/><query_views_log remove="1"/>
+            <error_log remove="1"/><crash_log remove="1"/>
+            <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+            <backups><allowed_disk>backups</allowed_disk></backups>
+          </clickhouse>
+    mem_limit: 1536m
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
       interval: 10s
@@ -227,7 +259,10 @@ services:
     pull_policy: always
     command: ["clickhouse-migrate"]
     environment: *service-env
+    profiles: ["analytics-tools"]
     depends_on:
+      postgres:
+        condition: service_healthy
       clickhouse:
         condition: service_healthy
     restart: "no"
@@ -347,3 +382,4 @@ volumes:
     name: nibleaf-coolify-clickhouse
   nibleaf-coolify-clickhouse-logs:
     name: nibleaf-coolify-clickhouse-logs
+  nibleaf-coolify-clickhouse-backups:

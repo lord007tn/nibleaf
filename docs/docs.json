@@ -39,6 +39,7 @@
               "product/publishing",
               "product/ai-assistants",
               "product/exports",
+              "product/analytics",
               "redirects",
               "product/arabic-rtl",
               "product/migration"
@@ -126,6 +127,7 @@
               "ar/product/publishing",
               "ar/product/ai-assistants",
               "ar/product/exports",
+              "ar/product/analytics",
               "ar/redirects",
               "ar/product/arabic-rtl",
               "ar/product/migration"

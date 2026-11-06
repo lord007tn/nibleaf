@@ -11,7 +11,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
-import { authEmailErrorMessage } from '@/lib/auth-errors';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
@@ -29,7 +29,9 @@ function NameForm({ initialName }: { initialName: string }) {
           toast.error(res.error.message ?? t('settings.account.name.error'));
           return;
         }
+        const currentName = form.state.values.name;
         form.reset({ name: value.name.trim() });
+        if (currentName !== value.name) form.setFieldValue('name', currentName);
         toast.success(t('settings.account.profileUpdated'));
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t('settings.account.name.error'));
@@ -96,7 +98,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (res.error) {
-          toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError')));
+          toast.error(emailChangeError(res.error, t, t('settings.account.email.sendError')));
           return;
         }
         toast.success(t('settings.account.email.currentVerificationSent'));
@@ -113,7 +115,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     try {
       const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
       if (res.error) {
-        toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError'), t('settings.account.email.verifyError')));
+        toast.error(emailChangeError(res.error, t, t('settings.account.email.verifyError')));
         return;
       }
       toast.success(t('settings.account.email.verificationSent', { email: newEmail }));
@@ -347,4 +349,10 @@ export function AccountTab() {
       </div>
     </SettingsSection>
   );
+}
+
+/** Email-change failures: an undeliverable address gets the delivery message;
+ *  everything else goes through the shared plain-language auth policy. */
+function emailChangeError(error: Parameters<typeof friendlyAuthError>[0], t: ReturnType<typeof useT>, fallback: string): string {
+  return error?.code === 'AUTH_EMAIL_UNAVAILABLE' ? t('settings.account.email.sendError') : friendlyAuthError(error, t, fallback);
 }

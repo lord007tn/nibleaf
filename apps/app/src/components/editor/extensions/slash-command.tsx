@@ -1,9 +1,10 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { type Locale, type MessageKey, type MessageVariables, resolveLocale } from '@nibleaf/i18n';
+import { isRtl, type Locale, type MessageKey, type MessageVariables, resolveLocale } from '@nibleaf/i18n';
 import { translateFn, useLocale } from '@nibleaf/i18n/react';
 import type { Editor, Range } from '@tiptap/core';
 import { Extension } from '@tiptap/core';
-import { PluginKey } from '@tiptap/pm/state';
+import { closeHistory } from '@tiptap/pm/history';
+import { type EditorState, PluginKey } from '@tiptap/pm/state';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { exitSuggestion, type SuggestionOptions, type SuggestionProps } from '@tiptap/suggestion';
 import {
@@ -45,7 +46,8 @@ import {
   Workflow,
 } from 'lucide-react';
 import type { ComponentType, Ref } from 'react';
-import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
+import { uploadEditorImage } from './image-upload';
 
 interface SlashCommandProps {
   editor: Editor;
@@ -116,18 +118,16 @@ function insertImage(editor: Editor, onUpload?: UploadFn) {
     if (!file) {
       return;
     }
-    onUpload(file)
-      .then((url) => {
-        if (url) {
-          editor.chain().focus().setImage({ src: url }).run();
-        }
-      })
-      .catch(() => undefined);
+    void uploadEditorImage(editor, file, onUpload);
   };
+  document.body.appendChild(input);
+  input.hidden = true;
+  input.addEventListener('change', () => input.remove(), { once: true });
+  input.addEventListener('cancel', () => input.remove(), { once: true });
   input.click();
 }
 
-export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => [
+const unsortedSlashItems = (onUpload?: UploadFn): SlashItem[] => [
   {
     titleKey: 'editor.slash.text.title',
     descKey: 'editor.slash.text.desc',
@@ -364,8 +364,16 @@ export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => [
         .insertContent({
           type: 'mdxAccordionGroup',
           content: [
-            { type: 'mdxAccordion', attrs: { title: scaffoldText('editor.slash.default.firstSection', locale) }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxAccordion', attrs: { title: scaffoldText('editor.slash.default.secondSection', locale) }, content: [{ type: 'paragraph' }] },
+            {
+              type: 'mdxAccordion',
+              attrs: { title: scaffoldText('editor.slash.default.firstSection', locale) },
+              content: [{ type: 'paragraph' }],
+            },
+            {
+              type: 'mdxAccordion',
+              attrs: { title: scaffoldText('editor.slash.default.secondSection', locale) },
+              content: [{ type: 'paragraph' }],
+            },
           ],
         })
         .run(),
@@ -736,6 +744,53 @@ export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => [
   },
 ];
 
+export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => unsortedSlashItems(onUpload).sort((a, b) => slashOrder(a) - slashOrder(b));
+
+// Sections stay contiguous in the menu: the everyday writing blocks first, then
+// images/tables, then notes & warnings; everything else (to-dos, quotes, code,
+// cards…) is listed afterwards under "Advanced".
+const basic = ['text', 'h1', 'h2', 'h3', 'bulletList', 'numberedList'];
+const media = ['image', 'table'];
+const callouts = ['note', 'tip', 'info', 'check', 'warning', 'danger'];
+const itemName = (item: SlashItem) => item.titleKey.split('.')[2] ?? '';
+export const slashSection = (item: SlashItem): MessageKey => {
+  const name = itemName(item);
+  if (basic.includes(name)) return 'editor.slash.basicBlocks';
+  if (media.includes(name)) return 'editor.slash.section.media';
+  if (callouts.includes(name)) return 'editor.slash.section.callouts';
+  return 'editor.slash.section.advanced';
+};
+const slashOrder = (item: SlashItem): number => {
+  const order = [...basic, ...media, ...callouts];
+  const index = order.indexOf(itemName(item));
+  return index < 0 ? order.length : index;
+};
+export const rankSlashItems = (items: SlashItem[], query: string, locale: Locale = 'en'): SlashItem[] => {
+  const q = query.trim().toLocaleLowerCase();
+  if (!q) return items;
+  const score = (item: SlashItem) => {
+    const labels = [
+      translateFn(item.titleKey, undefined, locale),
+      labelInFn(item.titleKey, 'en'),
+      labelInFn(item.titleKey, 'ar'),
+      itemName(item),
+    ].map((label) => label.toLocaleLowerCase());
+    const aliases = (item.keywords ?? []).map((label) => label.toLocaleLowerCase());
+    if (labels.some((label) => label === q)) return 0;
+    if (aliases.some((label) => label === q)) return 1;
+    if (labels.some((label) => label.startsWith(q))) return 2;
+    if (aliases.some((label) => label.startsWith(q))) return 3;
+    return 4;
+  };
+  return items
+    .filter((item) =>
+      [haystackOf(item), translateFn(item.titleKey, undefined, locale), translateFn(item.descKey, undefined, locale), itemName(item)].some((text) =>
+        text.toLocaleLowerCase().includes(q),
+      ),
+    )
+    .sort((a, b) => score(a) - score(b));
+};
+
 /** Resolve a slash label in one canonical catalog for locale-independent search. */
 const labelInFn = (label: MessageKey, locale: 'en' | 'ar'): string => translateFn(label, undefined, locale);
 
@@ -805,7 +860,7 @@ export const resolveSlashAnchor = (
 };
 
 const SlashList = ({ items, command, ref }: SlashListProps) => {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const label = (value: MessageKey): string => t(value);
   const [selected, setSelected] = useState(0);
   const listboxId = useId();
@@ -849,38 +904,47 @@ const SlashList = ({ items, command, ref }: SlashListProps) => {
       ref={containerRef}
       role="listbox"
       aria-label={t('editor.slash.basicBlocks')}
+      // The menu is interface text: follow the dashboard language's direction, not
+      // the page's (an English dashboard editing an Arabic page stays left-to-right).
+      dir={isRtl(locale) ? 'rtl' : 'ltr'}
       className="z-50 max-h-80 w-[304px] overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-xl"
     >
-      <div className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground uppercase tracking-wide">{t('editor.slash.basicBlocks')}</div>
       {items.length === 0 ? (
         <div className="px-3 py-3 text-muted-foreground text-sm">{t('editor.slash.empty')}</div>
       ) : (
         items.map((item, index) => {
           const Icon = item.icon;
+          const previous = items[index - 1];
           return (
-            <button
-              type="button"
-              key={labelInFn(item.titleKey, 'en')}
-              id={`${listboxId}-opt-${index}`}
-              role="option"
-              aria-selected={index === selected}
-              data-index={index}
-              onMouseEnter={() => setSelected(index)}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => command(item)}
-              className={cn(
-                'flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-start',
-                index === selected ? 'bg-primary/10' : 'bg-transparent',
-              )}
-            >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[13px]">
-                <Icon className="size-4 text-foreground/80" />
-              </span>
-              <span className="min-w-0">
-                <span className="block font-medium text-[13.5px] text-foreground">{label(item.titleKey)}</span>
-                <span className="block truncate text-muted-foreground text-xs">{label(item.descKey)}</span>
-              </span>
-            </button>
+            <Fragment key={item.titleKey}>
+              {!previous || slashSection(previous) !== slashSection(item) ? (
+                <div className="px-2.5 py-1.5 text-xs text-muted-foreground" role="presentation">
+                  {t(slashSection(item))}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                id={`${listboxId}-opt-${index}`}
+                role="option"
+                aria-selected={index === selected}
+                data-index={index}
+                onMouseEnter={() => setSelected(index)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => command(item)}
+                className={cn(
+                  'flex w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1.5 text-start',
+                  index === selected ? 'bg-primary/10' : 'bg-transparent',
+                )}
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-card font-mono text-[13px]">
+                  <Icon className="size-4 text-foreground/80" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block font-medium text-[13.5px] text-foreground">{label(item.titleKey)}</span>
+                  <span className="block truncate text-muted-foreground text-xs">{label(item.descKey)}</span>
+                </span>
+              </button>
+            </Fragment>
           );
         })
       )}
@@ -895,15 +959,11 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
     char: '/',
     startOfLine: false,
     initialItems: items,
-    items: ({ query }) => {
-      const q = query.toLowerCase().trim();
-      if (!q) {
-        return items;
-      }
-      return items.filter((item) => haystackOf(item).includes(q));
-    },
+    items: ({ query }) => rankSlashItems(items, query, locale),
     command: ({ editor, range, props }) => {
+      editor.view.dispatch(closeHistory(editor.state.tr));
       props.command({ editor, range, locale: slashPageLocale(editor, locale) });
+      editor.view.dispatch(closeHistory(editor.state.tr));
     },
     render: () => {
       let component: ReactRenderer<SlashListHandle, SlashListProps> | null = null;
@@ -927,7 +987,9 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
         const gap = 6;
         const edge = 12;
         const popupRect = popup.getBoundingClientRect();
-        const left = Math.max(edge, Math.min(anchor.left, window.innerWidth - popupRect.width - edge));
+        const rtl = currentProps.editor.view.dom.closest('[dir]')?.getAttribute('dir') === 'rtl';
+        popup.dir = rtl ? 'rtl' : 'ltr';
+        const left = Math.max(edge, Math.min(rtl ? anchor.right - popupRect.width : anchor.left, window.innerWidth - popupRect.width - edge));
         const below = anchor.bottom + gap;
         const top = below + popupRect.height <= window.innerHeight - edge ? below : Math.max(edge, anchor.top - popupRect.height - gap);
 
@@ -1006,6 +1068,8 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
 };
 
 const slashSuggestionKey = new PluginKey('nibleaf-slash-command');
+/** True while the "/" block menu is open, so other floating menus can step aside. */
+export const isSlashMenuOpen = (state: EditorState): boolean => Boolean(slashSuggestionKey.getState(state)?.active);
 
 /** Slash-command extension: type `/` to open the Basic blocks menu. `locale` is
  *  the page language for inserted scaffold text; when omitted it is derived from

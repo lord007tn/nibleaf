@@ -15,7 +15,8 @@ export function RangeTabs({
   ranges = ANALYTICS_RANGES,
   className,
 }: {
-  value: AnalyticsRange;
+  /** null when none of the presets is active (e.g. a custom date range). */
+  value: AnalyticsRange | null;
   onValueChange: (range: AnalyticsRange) => void;
   ranges?: readonly AnalyticsRange[];
   /** Applied to the tab list (e.g. `w-full sm:w-fit` to stretch on small screens). */

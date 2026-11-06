@@ -30,8 +30,22 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
+import { applyPageReorder, isPageListKey } from './page-cache';
 import { queryKeys } from './query-keys';
-import type { ApiKey, ApiKeyList, ApiKeySecret, Asset, Comment, Deployment, Language, Page, Project, ProjectAddon, WorkspaceSettings } from './types';
+import type {
+  ApiKey,
+  ApiKeyList,
+  ApiKeySecret,
+  Asset,
+  Comment,
+  Deployment,
+  Language,
+  Page,
+  PageNode,
+  Project,
+  ProjectAddon,
+  WorkspaceSettings,
+} from './types';
 
 export interface ProjectThemeImportResult {
   applied: boolean;
@@ -208,7 +222,13 @@ export const useCreatePage = (projectId: string) => {
   return useMutation({
     mutationFn: async (body: CreatePageBody) =>
       mutateData<Page>(await api.app.projects[':projectId'].pages.$post({ param: { projectId }, json: body }), 'Could not create the page.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
+    onSuccess: (created) => {
+      // The response is the full page: seed its detail so the editor can open it
+      // without a second round trip.
+      qc.setQueryData(queryKeys.pages.detail(projectId, created.id), created);
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
   });
 };
 
@@ -233,16 +253,40 @@ export const useDeletePage = (projectId: string) => {
   return useMutation({
     mutationFn: async (pageId: string) =>
       mutateData(await api.app.projects[':projectId'].pages[':id'].$delete({ param: { projectId, id: pageId } }), 'Could not delete the page.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
+    onSuccess: (_data, pageId) => {
+      qc.removeQueries({ queryKey: queryKeys.pages.detail(projectId, pageId), exact: true });
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
   });
 };
 
+/** Reorder optimistically: the tree shows the drop result at once and rolls
+ *  back if the server rejects it (the caller shows the error). */
 export const useReorderPages = (projectId: string) => {
   const qc = useQueryClient();
+  const listFilter = {
+    queryKey: queryKeys.pages.allForProject(projectId),
+    predicate: (query: { queryKey: readonly unknown[] }) => isPageListKey(query.queryKey),
+  };
   return useMutation({
     mutationFn: async (body: ReorderPagesBody) =>
       mutateData(await api.app.projects[':projectId'].pages.reorder.$post({ param: { projectId }, json: body }), 'Could not reorder pages.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
+    onMutate: async (body) => {
+      await qc.cancelQueries(listFilter);
+      const previous = qc.getQueriesData<PageNode[]>(listFilter);
+      for (const [key, pages] of previous) {
+        if (Array.isArray(pages)) qc.setQueryData<PageNode[]>(key, applyPageReorder(pages, body.items));
+      }
+      return { previous };
+    },
+    onError: (_error, _body, context) => {
+      for (const [key, pages] of context?.previous ?? []) qc.setQueryData(key, pages);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
   });
 };
 
@@ -257,7 +301,13 @@ export const usePublish = (projectId: string) => {
         }),
         'Could not publish.',
       ),
-    onSuccess: () => {
+    onSuccess: (deployment) => {
+      // List the new publish right away: the editor then knows a publish is running
+      // (a page's address stops following its title), and the poll that sees it go
+      // READY can tell it was in flight.
+      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+      );
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
@@ -273,7 +323,10 @@ export const usePublishAnyway = (projectId: string) => {
         await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
         'Could not publish.',
       ),
-    onSuccess: () => {
+    onSuccess: (deployment) => {
+      qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
+        old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+      );
       qc.invalidateQueries({ queryKey: queryKeys.deployments.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
@@ -356,7 +409,8 @@ export const useUploadAsset = (projectId: string) => {
       );
       const put = await fetch(presign.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } });
       if (!put.ok) {
-        throw new Error('Upload failed.');
+        // Keep the status so callers can tell "too large" from other failures.
+        throw new ApiResponseError('Upload failed.', put.status);
       }
       return mutateData(
         await api.app.projects[':projectId'].assets.confirm.$post({

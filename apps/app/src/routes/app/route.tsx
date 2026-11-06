@@ -1,4 +1,6 @@
 import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
+import { CommandPaletteProvider } from '@/components/app/command-palette';
+import { SkipToContent } from '@/components/app/skip-to-content';
 import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
@@ -45,8 +47,12 @@ function AppGuard() {
   const impersonatedBy = supportSession.session?.impersonatedBy;
   return (
     <div className={impersonatedBy ? 'pb-14' : undefined}>
+      <SkipToContent />
       <ProjectProvider>
-        <Outlet />
+        {/* One palette for every signed-in screen (dashboard, site pages, editor). */}
+        <CommandPaletteProvider>
+          <Outlet />
+        </CommandPaletteProvider>
       </ProjectProvider>
       {impersonatedBy && supportSession.user?.id ? (
         <SupportAccessBanner customerId={supportSession.user.id} customerName={supportSession.user.name || supportSession.user.email} />

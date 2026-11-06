@@ -39,10 +39,11 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
               {selected ? <NibleafMark className="size-5.5" /> : <LayoutGrid className="size-4.5 text-sidebar-primary" />}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold text-sm" dir="auto">
-                {selected?.name ?? t('project.allSites')}
+              {/* bdi isolates a Latin site name without left-aligning it in RTL. */}
+              <span className="block truncate text-start font-semibold text-sm">
+                <bdi>{selected?.name ?? t('project.allSites')}</bdi>
               </span>
-              <span className="block truncate text-muted-foreground text-xs">{selected ? t('nav.site') : t('nav.workspace')}</span>
+              <span className="block truncate text-start text-muted-foreground text-xs">{selected ? t('nav.site') : t('nav.workspace')}</span>
             </span>
             <ChevronsUpDown className="size-4.5 shrink-0 text-muted-foreground" />
           </DropdownMenuTrigger>
@@ -57,8 +58,8 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
             {(projects ?? []).map((site) => (
               <DropdownMenuItem key={site.id} onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: site.id } })}>
                 <NibleafMark className="size-4.5" />
-                <span className="flex-1 truncate" dir="auto">
-                  {site.name}
+                <span className="flex-1 truncate text-start">
+                  <bdi>{site.name}</bdi>
                 </span>
                 {site.id === projectId ? <Check className="size-4 text-primary" /> : null}
               </DropdownMenuItem>

@@ -5,10 +5,9 @@ import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { InterfaceLanguageButton } from '@/components/interface-language-dialog';
 
 /**
- * Auth chrome — a premium split: a dark, brand-led panel (value props +
- * cloud-product positioning) beside a focused form card. The brand panel is
- * decorative marketing copy (English, hidden below lg); the form heading uses
- * the localized `subtitle` each page passes.
+ * Auth chrome — a premium split: a dark, brand-led panel (plain-language value
+ * props, localized, hidden below lg) beside a focused form card. The form's h1
+ * is the localized `subtitle` each page passes, so pages must not add another.
  */
 const BRAND_POINTS: { icon: ComponentType<SVGProps<SVGSVGElement>>; key: 'auth.brand.domains' | 'auth.brand.hosting' | 'auth.brand.multilingual' }[] =
   [
