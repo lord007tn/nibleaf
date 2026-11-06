@@ -119,9 +119,16 @@ const bindContext = (ctx: Context<HonoEnv>, principal: McpPrincipal) => {
   ctx.set('session', null);
 };
 
-const invalidApiKey = () => authError(401, 'auth:invalid_api_key', 'The API key is invalid, expired, or revoked.', { error: 'invalid_token' });
+const rejectedKeyResponse = () => authError(401, 'auth:invalid_api_key', 'The API key is invalid, expired, or revoked.', { error: 'invalid_token' });
 
-const authenticateApiKey = async (ctx: Context<HonoEnv>, secret: string): Promise<McpPrincipal | Response> => {
+/**
+ * The principal a personal key acts as. The plaintext key is used only to
+ * compute its SHA-256 lookup digest; what this returns is identity (key id and
+ * name, project, creator and role, scopes), never key material. Downstream
+ * code signs some of these ids (publish previews, diagnostics cursors) with
+ * server secrets, so the function is named for what it returns.
+ */
+const resolveKeyPrincipal = async (ctx: Context<HonoEnv>, secret: string): Promise<McpPrincipal | Response> => {
   const digest = hashApiKeySecret(secret);
   const key = await prisma.apiKey.findUnique({
     where: { hashedSecret: digest },
@@ -137,10 +144,10 @@ const authenticateApiKey = async (ctx: Context<HonoEnv>, secret: string): Promis
     },
   });
   const hashMatches = constantTimeHashMatch(digest, key?.hashedSecret ?? '0'.repeat(64));
-  if (!(key && hashMatches) || key.revokedAt || !key.expiresAt || key.expiresAt <= new Date()) return invalidApiKey();
+  if (!(key && hashMatches) || key.revokedAt || !key.expiresAt || key.expiresAt <= new Date()) return rejectedKeyResponse();
 
   const actor = await resolveActor(key.createdById, key.project.organizationId);
-  if (actor === 'revoked') return invalidApiKey();
+  if (actor === 'revoked') return rejectedKeyResponse();
 
   const scopes = effectiveScopes(key.scopes, actor);
   if (!scopes.includes('mcp:connect')) {
@@ -171,8 +178,10 @@ const invalidToken = (description: string, dpop: DpopContext, error: 'invalid_to
  * every request, so revoking the connection, removing or suspending the
  * person, or lowering their role takes effect immediately. Effective scopes
  * are the grant's preset ∩ the token's scopes ∩ the role's current ceiling.
+ * Like resolveKeyPrincipal, it returns identity read from the database, never
+ * the token.
  */
-const authenticateOAuthToken = async (ctx: Context<HonoEnv>, scheme: TokenScheme, token: string): Promise<McpPrincipal | Response> => {
+const resolveAccessTokenPrincipal = async (ctx: Context<HonoEnv>, scheme: TokenScheme, token: string): Promise<McpPrincipal | Response> => {
   const dpop: DpopContext = { scheme, hint: false };
   if (!verifyMcpAccessToken) return invalidToken('The access token is invalid or expired.', dpop);
   let verified: Awaited<ReturnType<typeof verifyMcpAccessToken>>;
@@ -260,10 +269,10 @@ export const authenticateMcpRequest = async (ctx: Context<HonoEnv>): Promise<Mcp
     });
   }
   const authorization = ctx.req.header('authorization') ?? '';
-  const apiKey = apiKeyBearerPattern.exec(authorization)?.[1];
-  if (apiKey) return authenticateApiKey(ctx, apiKey);
-  const oauthToken = mcpOAuth ? oauthTokenPattern.exec(authorization) : null;
-  if (oauthToken?.[1] && oauthToken[2]) return authenticateOAuthToken(ctx, oauthToken[1] as TokenScheme, oauthToken[2]);
+  const keySecret = apiKeyBearerPattern.exec(authorization)?.[1];
+  if (keySecret) return resolveKeyPrincipal(ctx, keySecret);
+  const accessToken = mcpOAuth ? oauthTokenPattern.exec(authorization) : null;
+  if (accessToken?.[1] && accessToken[2]) return resolveAccessTokenPrincipal(ctx, accessToken[1] as TokenScheme, accessToken[2]);
   return authorization
     ? authError(401, 'auth:invalid_api_key', 'A valid bearer API key or access token is required.', { error: 'invalid_token' })
     : authError(401, 'auth:invalid_api_key', 'Sign in with OAuth or send a personal API key as a bearer token.', {
