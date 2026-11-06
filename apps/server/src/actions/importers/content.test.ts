@@ -14,6 +14,12 @@ describe('frontmatter round trip', () => {
     expect(body.trim()).toBe('# Body');
   });
 
+  it('keeps a body that starts with an indented code block intact', () => {
+    const content = '\n\n    npm install nibleaf\n\nThen run it.';
+    const { body } = parseFrontmatter(serializeGitPage({ title: 'Install', description: null, icon: null, content }));
+    expect(body).toBe('\n    npm install nibleaf\n\nThen run it.');
+  });
+
   it('keeps reading frontmatter written by hand or by other tools', () => {
     const { meta } = parseFrontmatter(
       ['---', 'title: Plain title', "description: 'It''s single-quoted'", 'icon: "C:\\docs\\x"', 'sidebarTitle: "Not \\q JSON"', '---', 'Body'].join(

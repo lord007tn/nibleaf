@@ -59,7 +59,8 @@ export const serializeGitPage = (page: { title: string; description: string | nu
   const fields = [`title: ${frontmatterValue(page.title)}`];
   if (page.description) fields.push(`description: ${frontmatterValue(page.description)}`);
   if (page.icon) fields.push(`icon: ${frontmatterValue(page.icon)}`);
-  return `---\n${fields.join('\n')}\n---\n\n${page.content.replace(/^\s+/, '')}`;
+  // Drop leading blank lines only: leading spaces can matter (an indented code block).
+  return `---\n${fields.join('\n')}\n---\n\n${page.content.replace(/^(?:[ \t]*\r?\n)+/, '')}`;
 };
 
 export const humanize = (name: string): string =>
