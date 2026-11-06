@@ -2,6 +2,7 @@ import { keys as clickHouseKeys } from '@nibleaf/clickhouse/keys';
 import { type IntegrationWebhookDelivery, Prisma, type ProjectIntegration, prisma } from '@nibleaf/database';
 import { keys as qdrantKeys } from '@nibleaf/qdrant/keys';
 import { keys as searchKeys } from '@nibleaf/search/keys';
+import { aiConnectionConfigSchema, aiProviderIdSchema } from '@nibleaf/shared/ai';
 import { MemberRole } from '@nibleaf/shared/constants';
 import {
   getIntegrationManifest,
@@ -158,10 +159,13 @@ const webhookPublicConfig = (providerId: WebhookProviderId, config: Prisma.JsonV
   return { providerId, label: parsed.success ? parsed.data.label : null };
 };
 
-const webhookConnectionSummary = (connection: ProjectIntegration, providerId: WebhookProviderId): IntegrationConnectionSummary => ({
+const projectConnectionSummary = (
+  connection: ProjectIntegration,
+  providerId: WebhookProviderId | 'openai' | 'openrouter',
+): IntegrationConnectionSummary => ({
   id: connection.id,
   providerId,
-  category: 'webhook',
+  category: providerId === 'openai' || providerId === 'openrouter' ? 'ai' : 'webhook',
   ownership: 'project',
   status: connection.status === 'ACTIVE' ? 'active' : connection.status === 'ERROR' ? 'error' : 'inactive',
   health: {
@@ -171,7 +175,10 @@ const webhookConnectionSummary = (connection: ProjectIntegration, providerId: We
     code: safeVerificationCode(connection.lastVerificationCode),
   },
   credential: { configured: true },
-  config: webhookPublicConfig(providerId, connection.config),
+  config:
+    providerId === 'openai' || providerId === 'openrouter'
+      ? { providerId, ...aiConnectionConfigSchema.parse(connection.config) }
+      : webhookPublicConfig(providerId, connection.config),
   revision: connection.revision,
   createdAt: connection.createdAt.toISOString(),
   updatedAt: connection.updatedAt.toISOString(),
@@ -181,14 +188,20 @@ const adapterConnection = (
   projectId: string,
   config: IntegrationPublicConfig,
   createdAt: Date,
-  options?: { id?: string; status?: 'active' | 'error'; credentialConfigured?: boolean; healthCode?: string | null },
+  options?: {
+    id?: string;
+    status?: 'active' | 'error';
+    credentialConfigured?: boolean;
+    healthCode?: string | null;
+    ownership?: 'project' | 'instance';
+  },
 ): IntegrationConnectionSummary => {
   const manifest = manifestOrThrow(config.providerId);
   return {
     id: options?.id ?? `adapter:${projectId}:${config.providerId}`,
     providerId: config.providerId,
     category: manifest.category,
-    ownership: manifest.ownership,
+    ownership: options?.ownership ?? manifest.ownership,
     status: options?.status ?? 'active',
     health: {
       status: options?.status === 'error' ? 'unhealthy' : 'unverified',
@@ -253,7 +266,10 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
   const connections = new Map<IntegrationProviderId, IntegrationConnectionSummary>();
   for (const connection of webhookConnections) {
     const providerId = configurableIntegrationProviderIdSchema.safeParse(connection.providerId);
-    if (providerId.success) connections.set(providerId.data, webhookConnectionSummary(connection, providerId.data));
+    if (providerId.success) connections.set(providerId.data, projectConnectionSummary(connection, providerId.data));
+    const ai = aiProviderIdSchema.safeParse(connection.providerId);
+    if (ai.success && aiConnectionConfigSchema.safeParse(connection.config).success)
+      connections.set(ai.data, projectConnectionSummary(connection, ai.data));
   }
 
   if (gitConnection) {
@@ -336,7 +352,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
     connections.set('plausible', adapterConnection(projectId, { providerId: 'plausible', domain: analytics.plausible }, project.createdAt));
   }
 
-  if (env.OPENROUTER_API_KEY) {
+  if (env.OPENROUTER_API_KEY && !connections.has('openrouter')) {
     connections.set(
       'openrouter',
       adapterConnection(
@@ -348,6 +364,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
           answerModel: searchKeys().SEARCH_ANSWER_MODEL,
         },
         project.createdAt,
+        { ownership: 'instance' },
       ),
     );
   }
@@ -509,7 +526,7 @@ export const createProjectIntegration = async (ctx: Context<HonoEnv>, projectId:
           createdById: access.principalId,
         },
       });
-      const result = webhookConnectionSummary(created, body.providerId);
+      const result = projectConnectionSummary(created, body.providerId);
       await createIdempotencyRecord(tx, projectId, body.providerId, 'create', idempotencyDigest, requestDigest, created, result);
       await createAuditEvent(tx, access, projectId, body.providerId, 'create', 'success', {
         connectionId: created.id,
@@ -564,7 +581,7 @@ export const updateProjectIntegration = async (
         },
       });
       if (!updated) throw integrationError('integration:revision_conflict', 'The integration changed. Refresh and try again.');
-      const result = webhookConnectionSummary(updated, providerId);
+      const result = projectConnectionSummary(updated, providerId);
       await createIdempotencyRecord(tx, projectId, providerId, 'update', idempotencyDigest, requestDigest, updated, result);
       await createAuditEvent(tx, access, projectId, providerId, body.webhookUrl ? 'reconnect' : 'update', 'success', {
         connectionId: existing.id,
@@ -608,7 +625,7 @@ const setProjectIntegrationStatus = async (
         data: { status, revision: { increment: 1 } },
       });
       if (!updated) throw integrationError('integration:revision_conflict', 'The integration changed. Refresh and try again.');
-      const result = webhookConnectionSummary(updated, providerId);
+      const result = projectConnectionSummary(updated, providerId);
       await createIdempotencyRecord(tx, projectId, providerId, action, idempotencyDigest, requestDigest, updated, result);
       await createAuditEvent(tx, access, projectId, providerId, action, 'success', {
         connectionId: existing.id,
@@ -834,7 +851,7 @@ export const verifyProjectIntegration = async (
       });
       return { status: 'revision_conflict' as const };
     }
-    const result = webhookConnectionSummary(updated, webhookProviderId);
+    const result = projectConnectionSummary(updated, webhookProviderId);
     await tx.integrationWebhookDelivery.update({
       where: { id: delivery.id },
       data: providerResult.ok

@@ -10,6 +10,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { jwtAccessConfigBody } from '@nibleaf/validators';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import {
   type Project,
   useCreateReaderAudience,
@@ -24,7 +25,8 @@ import {
   useUpdateReaderJwt,
 } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
-import { Field, SectionHeader, Segmented } from './shared';
+import { copyToClipboard } from '@/lib/invitations';
+import { DirtyStateReporter, Field, SectionHeader, Segmented } from './shared';
 
 type AccessMode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
 const READER_STATUS_KEYS: Record<string, MessageKey> = {
@@ -69,6 +71,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
   const updateJwt = useUpdateReaderJwt(project.id);
   const testJwt = useTestReaderJwt(project.id);
   const emergencyRevoke = useEmergencyRevokeReaderAccess(project.id);
+  const [invitationLink, setInvitationLink] = useState('');
   const [mode, setMode] = useState<AccessMode>('PUBLIC');
   const [audienceName, setAudienceName] = useState('');
   const [audiencePages, setAudiencePages] = useState<string[]>([]);
@@ -134,7 +137,8 @@ export function AuthenticationSection({ project }: { project: Project }) {
     });
     setReaderEmail('');
     setReaderName('');
-    if (navigator.clipboard) await navigator.clipboard.writeText(result.activationUrl).catch(() => undefined);
+    setReaderAudiences([]);
+    setInvitationLink(result.activationUrl);
     toast.success(t('settings.authentication.reader.invited'));
   };
   const labelFor = (keys: Record<string, MessageKey>, value: string) => {
@@ -197,12 +201,32 @@ export function AuthenticationSection({ project }: { project: Project }) {
     toast.success(t('settings.authentication.reader.jwtSaved'));
   };
 
+  if (readerAccess.isError && !data) return <QueryErrorState onRetry={() => void readerAccess.refetch()} retrying={readerAccess.isFetching} />;
+  if (!data) return <p role="status">{t('common.loading')}</p>;
+
   return (
     <div>
+      {readerAccess.isError ? <QueryErrorState onRetry={() => void readerAccess.refetch()} retrying={readerAccess.isFetching} /> : null}
+      <DirtyStateReporter
+        dirty={
+          mode !== data.accessMode ||
+          Boolean(readerEmail || readerName || audienceName || testToken) ||
+          audiencePages.length > 0 ||
+          readerAudiences.length > 0 ||
+          jwtEnabled !== (data.jwt?.enabled ?? false) ||
+          issuer !== (data.jwt?.issuer ?? '') ||
+          jwtAudience !== (data.jwt?.audience ?? '') ||
+          jwksUrl !== (data.jwt?.jwksUrl ?? '') ||
+          publicJwks !== (data.jwt?.publicJwks ? JSON.stringify(data.jwt.publicJwks, null, 2) : '') ||
+          groupsClaim !== (data.jwt?.groupsClaim ?? 'groups') ||
+          claimMapping !== (data.jwt ? JSON.stringify(data.jwt.claimMapping ?? {}, null, 2) : '{}')
+        }
+      />
       <SectionHeader description={t('settings.authentication.description')} icon="◉" title={t('settings.authentication.title')} />
       <Field hint={t('settings.authentication.reader.modeHint')} label={t('settings.authentication.reader.mode')}>
         <Segmented
           className="max-w-[540px]"
+          disabled={updateMode.isPending || readerAccess.isError}
           onChange={setMode}
           options={[
             { value: 'PUBLIC', label: t('settings.authentication.mode.public') },
@@ -213,7 +237,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
         />
         <Button
           className="mt-3"
-          disabled={readerAccess.isPending || mode === (data?.accessMode ?? 'PUBLIC')}
+          disabled={readerAccess.isError || updateMode.isPending || mode === data.accessMode}
           onClick={() => void saveMode().catch((error) => toast.error(error.message))}
           type="button"
         >
@@ -312,6 +336,27 @@ export function AuthenticationSection({ project }: { project: Project }) {
             >
               {t('settings.authentication.reader.invite')}
             </Button>
+            {invitationLink ? (
+              <div className="mt-3 flex flex-wrap gap-2" role="status">
+                <Input
+                  aria-label={t('settings.members.copyLink')}
+                  className="min-w-0 flex-1"
+                  dir="ltr"
+                  readOnly
+                  value={invitationLink}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await copyToClipboard(invitationLink);
+                    toast[ok ? 'success' : 'error'](t(ok ? 'settings.members.linkCopied' : 'settings.members.copyFailed'));
+                  }}
+                >
+                  {t('settings.members.copyLink')}
+                </Button>
+              </div>
+            ) : null}
             <div className="mt-4 divide-y rounded-md border">
               {(data?.readers ?? []).map((reader) => (
                 <div className="flex items-center justify-between gap-3 p-3 text-sm" key={reader.id}>

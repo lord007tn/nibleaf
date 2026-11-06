@@ -1,12 +1,18 @@
 import { ThemeProvider } from '@nibleaf/design-system/theme';
-import { createRootRoute, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
+import type { QueryClient } from '@tanstack/react-query';
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts, useRouter, useRouterState } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { RootMarketingAnalytics } from '@/components/root-marketing-analytics';
 import type { SiteShell } from '@/hooks/api/types';
 import { siteThemeNoFlashScript } from '@/lib/site-theme';
 import appCss from '@/styles.css?url';
 
-export const Route = createRootRoute({
+/** Available to every route's `beforeLoad` / `loader` as `context`. */
+export interface RouterContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },

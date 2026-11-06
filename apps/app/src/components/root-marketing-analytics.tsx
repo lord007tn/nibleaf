@@ -1,5 +1,4 @@
 import { lazy, Suspense } from 'react';
-import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { marketingAnalyticsEnabled } from '@/lib/marketing-analytics-route';
 
 // Published readers never use platform marketing analytics. Keep the consent
@@ -13,9 +12,7 @@ export function RootMarketingAnalytics({ pathname, siteProjectId, language }: { 
   if (!enabled) return null;
   return (
     <Suspense fallback={null}>
-      <QueryProvider>
-        <MarketingAnalyticsConsent enabled language={language} />
-      </QueryProvider>
+      <MarketingAnalyticsConsent enabled language={language} />
     </Suspense>
   );
 }

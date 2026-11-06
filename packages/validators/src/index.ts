@@ -1,3 +1,4 @@
+import { aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
@@ -105,6 +106,7 @@ export const searchConfigurationSchema = z
     filtersEnabled: z.boolean().default(true),
     versionFilterEnabled: z.boolean().default(true),
     aiAnswers: z.boolean().default(false),
+    aiProvider: aiSelectionSchema.default('instance'),
     hotkey: z.enum(['cmdk', 'slash']).default('cmdk'),
     placeholder: z.string().trim().max(80).optional(),
   })
@@ -311,6 +313,7 @@ export const projectConfigSchema = z
         filtersEnabled: z.boolean().optional(),
         versionFilterEnabled: z.boolean().optional(),
         aiAnswers: z.boolean().optional(),
+        aiProvider: aiSelectionSchema.optional(),
       })
       .strict()
       .optional(),
@@ -1225,3 +1228,5 @@ export const gitConflictResolutionBody = z
     path: ['content'],
   });
 export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody>;
+
+export * from './ai';

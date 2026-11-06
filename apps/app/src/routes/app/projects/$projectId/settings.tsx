@@ -10,6 +10,7 @@ import {
   Archive,
   Bell,
   Blocks,
+  Bot,
   Braces,
   ChartNoAxesCombined,
   CirclePlus,
@@ -21,12 +22,15 @@ import {
   Languages,
   LockKeyhole,
   type LucideIcon,
+  Palette,
   Plug,
   Search,
   TriangleAlert,
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
@@ -38,6 +42,14 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
+import {
+  ConfigDirtyProvider,
+  DirtyStateReporter,
+  useConfirmSettingsDiscard,
+  useDirtySources,
+  useSettingsDirtyGuard,
+} from '@/components/project-settings/shared';
+import { SmartAiSection } from '@/components/project-settings/smart-ai-section';
 import { QueryErrorState } from '@/components/query-error-state';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
@@ -55,6 +67,7 @@ import { useSession } from '@/services/auth-client';
 type SettingsGroupId = 'site' | 'deployment' | 'workspace' | 'advanced';
 
 type SectionId =
+  | 'appearance'
   | 'general'
   | 'languages'
   | 'domain'
@@ -69,6 +82,7 @@ type SectionId =
   | 'plan'
   | 'usage'
   | 'integrations'
+  | 'smartAi'
   | 'notifications'
   | 'exports'
   | 'danger';
@@ -82,6 +96,7 @@ const GROUPS = [
 
 const SECTIONS = [
   { id: 'general', group: 'site', icon: CirclePlus },
+  { id: 'appearance', group: 'site', icon: Palette },
   { id: 'languages', group: 'site', icon: Languages },
   { id: 'domain', group: 'site', icon: Globe2 },
   { id: 'authentication', group: 'site', icon: LockKeyhole },
@@ -95,10 +110,13 @@ const SECTIONS = [
   { id: 'plan', group: 'workspace', icon: Gem },
   { id: 'usage', group: 'workspace', icon: ChartNoAxesCombined },
   { id: 'integrations', group: 'workspace', icon: Plug },
+  { id: 'smartAi', group: 'workspace', icon: Bot },
   { id: 'notifications', group: 'workspace', icon: Bell },
   { id: 'exports', group: 'advanced', icon: Archive },
   { id: 'danger', group: 'advanced', icon: TriangleAlert },
 ] as const satisfies ReadonlyArray<{ id: SectionId; group: SettingsGroupId; icon: LucideIcon }>;
+
+const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
 
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
 // Content languages, team visibility, usage and one-time exports are available
@@ -114,6 +132,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 });
 
 function ProjectSettingsPage() {
+  const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
   const { section } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -130,7 +149,10 @@ function ProjectSettingsPage() {
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
   const canManage = canAdminister(currentMember?.role ?? '');
   const availableSections = SECTIONS.filter((item) => canManage || EDITOR_SECTIONS.has(item.id));
-  const sectionItems = availableSections.map((item) => ({ value: item.id, label: t(`settings.${item.id}` as MessageKey) }));
+  const sectionItems = availableSections.map((item) => ({
+    value: item.id,
+    label: t(sectionLabelKey(item.id)),
+  }));
   const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
 
   if (membersError) {
@@ -150,97 +172,102 @@ function ProjectSettingsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-background md:flex-row">
-      <div className="shrink-0 border-border border-b bg-card px-4 py-3 md:hidden">
-        <label className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider" htmlFor="mobile-settings-section">
-          {t('settings.heading')}
-        </label>
-        <Select
-          items={sectionItems}
-          onValueChange={(next) => navigate({ search: { section: (next ?? section) as SectionId }, replace: true })}
-          value={sectionAllowed ? section : ''}
-        >
-          <SelectTrigger aria-label={t('settings.heading')} className="h-10 w-full rounded-lg font-medium" id="mobile-settings-section">
-            <SelectValue placeholder={t('settings.heading')} />
-          </SelectTrigger>
-          <SelectContent>
+    <ConfigDirtyProvider report={reportDirty}>
+      <div className="flex h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
+        <div className="shrink-0 border-border border-b bg-card px-4 py-3 md:hidden">
+          <label
+            className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider"
+            htmlFor="mobile-settings-section"
+          >
+            {t('settings.heading')}
+          </label>
+          <Select
+            items={sectionItems}
+            onValueChange={(next) => navigate({ search: { section: (next ?? section) as SectionId }, replace: true })}
+            value={sectionAllowed ? section : ''}
+          >
+            <SelectTrigger aria-label={t('settings.heading')} className="h-10 w-full rounded-lg font-medium" id="mobile-settings-section">
+              <SelectValue placeholder={t('settings.heading')} />
+            </SelectTrigger>
+            <SelectContent>
+              {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
+                <SelectGroup key={group.id}>
+                  <SelectLabel>{t(group.labelKey)}</SelectLabel>
+                  {availableSections
+                    .filter((item) => item.group === group.id)
+                    .map((item) => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {t(sectionLabelKey(item.id))}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
+          <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
+          <nav className="flex flex-col gap-0.5">
             {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
-              <SelectGroup key={group.id}>
-                <SelectLabel>{t(group.labelKey)}</SelectLabel>
+              <div key={group.id} className="mt-3 first:mt-0">
+                <div className="px-3 pb-1 font-semibold text-[10.5px] text-muted-foreground/70 uppercase tracking-wider">{t(group.labelKey)}</div>
                 {availableSections
                   .filter((item) => item.group === group.id)
-                  .map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {t(`settings.${item.id}` as MessageKey)}
-                    </SelectItem>
-                  ))}
-              </SelectGroup>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <aside className="hidden w-[238px] shrink-0 overflow-y-auto border-border border-e bg-card px-3 py-4.5 md:block">
-        <div className="px-3 pt-1 pb-2.5 font-bold text-[11px] text-muted-foreground uppercase tracking-wider">{t('settings.heading')}</div>
-        <nav className="flex flex-col gap-0.5">
-          {GROUPS.filter((group) => availableSections.some((item) => item.group === group.id)).map((group) => (
-            <div key={group.id} className="mt-3 first:mt-0">
-              <div className="px-3 pb-1 font-semibold text-[10.5px] text-muted-foreground/70 uppercase tracking-wider">{t(group.labelKey)}</div>
-              {availableSections
-                .filter((item) => item.group === group.id)
-                .map((item) => {
-                  const active = item.id === section;
-                  const Icon = item.icon;
-                  return (
-                    <Button
-                      aria-current={active ? 'page' : undefined}
-                      className={cn(
-                        'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
-                        active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
-                      )}
-                      key={item.id}
-                      onClick={() => navigate({ search: { section: item.id }, replace: true })}
-                      type="button"
-                      variant="ghost"
-                    >
-                      <Icon aria-hidden className="size-4 shrink-0" />
-                      {t(`settings.${item.id}` as MessageKey)}
-                    </Button>
-                  );
-                })}
-            </div>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
-          {isLoading || !project ? (
-            <SectionSkeleton />
-          ) : !sectionAllowed ? (
-            <div className="rounded-xl border border-border bg-card p-6" role="status">
-              <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
-              <p className="mt-2 text-muted-foreground text-sm">{t('settings.permissions.body')}</p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button onClick={() => navigate({ search: { section: 'usage' }, replace: true })} type="button" variant="outline">
-                  {t('settings.usage')}
-                </Button>
-                <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
-                  {t('project.editor')}
-                </Button>
+                  .map((item) => {
+                    const active = item.id === section;
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        aria-current={active ? 'page' : undefined}
+                        className={cn(
+                          'h-9 w-full justify-start gap-2 rounded-lg px-3 text-[13.5px]',
+                          active ? 'bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary' : 'text-muted-foreground',
+                        )}
+                        key={item.id}
+                        onClick={() => navigate({ search: { section: item.id }, replace: true })}
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Icon aria-hidden className="size-4 shrink-0" />
+                        {t(sectionLabelKey(item.id))}
+                      </Button>
+                    );
+                  })}
               </div>
-            </div>
-          ) : (
-            <ActiveSection
-              role={currentMember?.role ?? ''}
-              canManageSchedules={canManage}
-              projectId={projectId}
-              project={project}
-              section={section}
-            />
-          )}
+            ))}
+          </nav>
+        </aside>
+
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
+            {isLoading || !project ? (
+              <SectionSkeleton />
+            ) : !sectionAllowed ? (
+              <div className="rounded-xl border border-border bg-card p-6" role="status">
+                <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
+                <p className="mt-2 text-muted-foreground text-sm">{t('settings.permissions.body')}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button onClick={() => navigate({ search: { section: 'usage' }, replace: true })} type="button" variant="outline">
+                    {t('settings.usage')}
+                  </Button>
+                  <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
+                    {t('project.editor')}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <ActiveSection
+                canManageSchedules={canManage}
+                projectId={projectId}
+                project={project}
+                role={currentMember?.role ?? ''}
+                section={section}
+              />
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </ConfigDirtyProvider>
   );
 }
 
@@ -259,6 +286,7 @@ function ActiveSection({
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
+    appearance: <SiteAppearance key={project.id} project={project} />,
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
     languages: <LanguagesSection key={`languages-${project.id}`} project={project} />,
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
@@ -273,6 +301,7 @@ function ActiveSection({
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
+    smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
     exports: <ExportsSection canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,
@@ -294,5 +323,30 @@ function SectionSkeleton() {
         <Skeleton className="h-[42px] w-full" />
       </div>
     </div>
+  );
+}
+
+function SiteAppearance({ project }: { project: Project }) {
+  const confirmDiscard = useConfirmSettingsDiscard();
+  const [section, setSection] = useState<ConfigSectionId>('branding');
+  // Report to the route as well as guarding the local appearance section picker.
+  const { sources, report } = useDirtySources();
+  return (
+    <>
+      <DirtyStateReporter dirty={sources.size > 0} />
+      <div className="mb-6">
+        <ConfigSectionList
+          active={section}
+          onSelect={async (next) => {
+            if (next === section) return;
+            if (sources.size > 0 && !(await confirmDiscard())) return;
+            setSection(next);
+          }}
+        />
+      </div>
+      <ConfigDirtyProvider report={report}>
+        <ConfigSection project={project} section={section} />
+      </ConfigDirtyProvider>
+    </>
   );
 }

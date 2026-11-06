@@ -1,10 +1,11 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2Icon } from "lucide-react"
 
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-normal text-center transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button pointer-coarse:min-h-10 pointer-coarse:min-w-10 inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-medium whitespace-normal text-center transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -40,18 +41,70 @@ const buttonVariants = cva(
   }
 )
 
+type ButtonLoadingProps = {
+  /**
+   * Shows a spinner, sets `aria-busy` and disables the button while an action
+   * runs. The label stays in the layout (invisible) so the button keeps its
+   * width; pass `false` rather than leaving it undefined on buttons that can
+   * load, so the markup doesn't change when loading starts.
+   */
+  loading?: boolean
+  /** Optional text shown next to the spinner while loading (e.g. "Saving…"). */
+  loadingText?: string
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading,
+  loadingText,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & ButtonLoadingProps) {
+  // Buttons that never pass `loading` render exactly as before.
+  const canLoad = loading !== undefined
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-loading={loading ? "" : undefined}
+      aria-busy={loading || undefined}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100"
+      )}
+      disabled={disabled || loading}
       {...props}
-    />
+    >
+      {canLoad ? (
+        // Both states share one grid cell, so the button is as wide as the
+        // wider of the two and never jumps when loading starts or ends.
+        <span className="inline-grid items-center justify-items-center gap-[inherit]">
+          <span
+            className={cn(
+              "col-start-1 row-start-1 inline-flex items-center justify-center gap-[inherit]",
+              loading && "invisible"
+            )}
+            aria-hidden={loading && loadingText ? true : undefined}
+          >
+            {children}
+          </span>
+          <span
+            className={cn(
+              "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5",
+              !loading && "invisible"
+            )}
+            aria-hidden={!loading || !loadingText ? true : undefined}
+          >
+            <Loader2Icon aria-hidden className="animate-spin motion-reduce:animate-none" />
+            {loadingText ? <span>{loadingText}</span> : null}
+          </span>
+        </span>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   )
 }
 

@@ -82,6 +82,10 @@ sitemap tests validate their discovery contracts.
 - **i18n is first-class.** New user-facing strings must be added to *both* the
   English and Arabic Paraglide catalogs (`packages/i18n/messages/*.json`), and
   the UI must work in RTL. Use logical CSS properties (`ms-*`/`me-*`, `start`/`end`).
+- **Data loading and loading states** follow
+  [apps/app/DATA_LOADING.md](apps/app/DATA_LOADING.md): `queryOptions()` factories
+  keyed by `queryKeys`, non-blocking loader prefetch, content-shaped skeletons for
+  first loads, `Button loading` for async actions, and no fetching in `useEffect`.
 - **Commits**: short, imperative, scoped (e.g. `editor: fix slash menu in RTL`).
 - **Tests**: add or update tests for behavior changes. Pure logic lives in
   `packages/*` and is the easiest to cover.

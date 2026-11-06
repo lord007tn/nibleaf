@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useDeleteOpenApi, useOpenApiConfiguration, useSyncOpenApi, useUpsertOpenApi } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
-import { FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented } from './shared';
+import { DirtyStateReporter, FIELD_INPUT, FIELD_MONO, Field, SectionHeader, Segmented } from './shared';
 
 type SourceType = 'upload' | 'url' | 'repository';
 
@@ -105,6 +105,15 @@ export function OpenApiSection({ projectId }: { projectId: string }) {
 
   return (
     <div>
+      <DirtyStateReporter
+        dirty={
+          (editing || !current) &&
+          (title !== (current?.title ?? t('settings.openapi')) ||
+            path !== (current?.path ?? 'api-reference') ||
+            sourceType !== (current?.source.type ?? 'upload') ||
+            sourceValue !== (current?.source.type === 'url' ? current.source.url : current?.source.type === 'repository' ? current.source.path : ''))
+        }
+      />
       <SectionHeader icon={<Braces className="size-4" />} title={t('settings.openapi.title')} description={t('settings.openapi.description')} />
 
       {current && !editing ? (

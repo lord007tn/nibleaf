@@ -1,3 +1,4 @@
+import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantScoredPoint } from '@nibleaf/qdrant';
 import {
@@ -5,8 +6,6 @@ import {
   type GroundedAnswer,
   generateGroundedAnswer,
   type HybridChunkHit,
-  OpenRouterChatProvider,
-  OpenRouterEmbeddingProvider,
   rerankHybridChunks,
   retrievalConfidence,
   type SearchChunk,
@@ -16,6 +15,7 @@ import {
   selectAnswerChunks,
   sparseVectorForQuery,
 } from '@nibleaf/search';
+import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
 import { z } from 'zod';
 import { env } from '@/env';
 import { TtlCache } from '@/lib/lru';
@@ -45,20 +45,30 @@ const indexedChunkPayloadSchema = z.object({
   icon: z.string().optional(),
 });
 
-const embeddings = () => {
-  if (!env.OPENROUTER_API_KEY) return null;
-  return new OpenRouterEmbeddingProvider({
-    apiKey: env.OPENROUTER_API_KEY,
-    model: env.SEARCH_EMBEDDING_MODEL,
-    dimensions: env.SEARCH_EMBEDDING_DIMENSIONS,
-    timeoutMs: env.SEARCH_EMBEDDING_TIMEOUT_MS,
-    siteUrl: env.APP_URL,
-    title: env.APP_NAME,
-  });
+export const answerSearchAvailable = async (projectId?: string, deploymentId?: string): Promise<boolean> => {
+  try {
+    return await readAnswerAvailability(projectId, deploymentId);
+  } catch (error) {
+    // The site shell and keyword search must keep working; only the AI
+    // capability is reported unavailable.
+    log.warn({ projectId, errorName: error instanceof Error ? error.name : 'UnknownError' }, 'AI answer readiness check failed');
+    return false;
+  }
 };
 
-const hybridSearchAvailable = () => Boolean(qdrant && env.OPENROUTER_API_KEY);
-export const answerSearchAvailable = () => hybridSearchAvailable() && env.SEARCH_ANSWER_ENABLED;
+const readAnswerAvailability = async (projectId?: string, deploymentId?: string) => {
+  if (!qdrant) return false;
+  if (!projectId) return Boolean(env.OPENROUTER_API_KEY && env.SEARCH_ANSWER_ENABLED);
+  const runtime = await resolveWorkspaceAi(projectId);
+  if (!runtime?.answersEnabled) return false;
+  if (!deploymentId) return true;
+  const latestRun = await prisma.searchIndexRun.findFirst({
+    where: { projectId, deploymentId },
+    orderBy: { createdAt: 'desc' },
+    select: { status: true, indexedChunks: true },
+  });
+  return latestRun?.status === 'READY' && latestRun.indexedChunks > 0;
+};
 
 export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null => {
   if (scope.allowedPageIds !== null && scope.allowedPageIds.size === 0) return null;
@@ -118,17 +128,24 @@ interface RetrievalResult {
   confidence: number;
 }
 
-const retrieveHybrid = async (scope: SearchScope, query: string, limit: number, signal?: AbortSignal): Promise<RetrievalResult> => {
+const retrieveHybrid = async (
+  scope: SearchScope,
+  query: string,
+  limit: number,
+  signal?: AbortSignal,
+  runtime?: WorkspaceAiRuntime,
+): Promise<RetrievalResult> => {
   const filter = filterForSearchScope(scope);
   if (!filter || !query.trim()) return { cacheHit: false, chunks: [], confidence: 0 };
   const client = qdrant;
-  const provider = embeddings();
+  const resolved = runtime ?? (await resolveWorkspaceAi(scope.projectId));
+  const provider = resolved ? workspaceEmbeddingProvider(resolved) : null;
   if (!client || !provider) throw new Error('Hybrid search is not configured.');
   if (client.vectorSize !== provider.dimensions) throw new Error('Qdrant vector size and embedding dimensions must match.');
   const key = searchCacheKey(
     scope,
     query,
-    `chunks-v2-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
+    `chunks-v3-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
   );
   const cached = retrievalCache.get(key);
   if (cached) return { cacheHit: true, chunks: cached, confidence: retrievalConfidence(cached) };
@@ -171,10 +188,12 @@ export const runPublishedSearch = async (
   signal?: AbortSignal,
 ): Promise<SearchRuntimeResult> => {
   if (env.SEARCH_RUNTIME === 'legacy') return { hits: await legacy(), runtime: 'legacy' };
-  if (!hybridSearchAvailable()) return { hits: await legacy(), runtime: 'legacy-fallback' };
+  if (!qdrant) return { hits: await legacy(), runtime: 'legacy-fallback' };
+  const provider = await resolveWorkspaceAi(scope.projectId).catch(() => null);
+  if (!provider) return { hits: await legacy(), runtime: 'legacy-fallback' };
   if (env.SEARCH_RUNTIME === 'shadow') {
     const legacyHits = await legacy();
-    void retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal)
+    void retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider)
       .then((result) => {
         const hybridIds = new Set(collapseChunkHits(result.chunks, limit, query).map((hit) => hit.id));
         const overlap = legacyHits.filter((hit) => hybridIds.has(hit.id)).length;
@@ -190,17 +209,17 @@ export const runPublishedSearch = async (
           'hybrid search shadow comparison',
         );
       })
-      .catch((error) => log.warn({ projectId: scope.projectId, error }, 'hybrid search shadow request failed'));
+      .catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
     return { hits: legacyHits, runtime: 'shadow' };
   }
   try {
-    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal);
+    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
     // A newly published deployment can be served before its async index job
     // finishes. Keep ordinary search working during that window and recovery.
     if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
     return { hits: collapseChunkHits(result.chunks, limit, query), runtime: 'hybrid' };
-  } catch (error) {
-    log.error({ projectId: scope.projectId, error }, 'hybrid search failed; using rollback runtime');
+  } catch {
+    log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
     return { hits: await legacy(), runtime: 'legacy-fallback' };
   }
 };
@@ -210,23 +229,17 @@ export const answerPublishedSearch = async (
   query: string,
   signal?: AbortSignal,
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
-  if (!answerSearchAvailable() || !env.OPENROUTER_API_KEY) throw new Error('AI answers are not configured.');
+  const runtime = await resolveWorkspaceAi(scope.projectId);
+  if (!qdrant || !runtime?.answersEnabled) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v2-${env.QDRANT_COLLECTION_VERSION}-${env.SEARCH_EMBEDDING_MODEL}-${env.SEARCH_ANSWER_MODEL}`,
+    `answer-v3-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
-  const retrieval = await retrieveHybrid(scope, query, 12, signal);
-  const provider = new OpenRouterChatProvider({
-    apiKey: env.OPENROUTER_API_KEY,
-    model: env.SEARCH_ANSWER_MODEL,
-    timeoutMs: env.SEARCH_ANSWER_TIMEOUT_MS,
-    temperature: 0,
-    siteUrl: env.APP_URL,
-    title: 'Nibleaf grounded documentation answers',
-  });
+  const retrieval = await retrieveHybrid(scope, query, 12, signal, runtime);
+  const provider = workspaceAnswerProvider(runtime);
   const answer = await generateGroundedAnswer(
     provider,
     query,

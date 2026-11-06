@@ -17,7 +17,7 @@ describe('integration contracts', () => {
         en: '/reference/integrations-engine',
         ar: '/ar/reference/integrations-engine',
       });
-      expect(['git', 'integrations', null]).toContain(manifest.navigation.settingsSection);
+      expect(['git', 'integrations', 'smartAi', null]).toContain(manifest.navigation.settingsSection);
     }
     expect(
       INTEGRATION_CATALOG.filter(({ lifecycle }) => lifecycle === 'managed').every(({ navigation }) => navigation.settingsSection === null),
