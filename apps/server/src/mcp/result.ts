@@ -15,7 +15,7 @@ import type { Context } from 'hono';
 import type { z } from 'zod';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
-import { recordMcpAudit } from './audit';
+import { beginMcpWriteAudit, recordMcpAudit, settleMcpWriteAudit } from './audit';
 import { mcpCredentialKey } from './credential';
 import {
   abandonMcpIdempotentWrite,
@@ -256,6 +256,8 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
     spec.idempotent && typeof raw.clientRequestId === 'string' && CLIENT_REQUEST_ID_PATTERN.test(raw.clientRequestId) ? raw.clientRequestId : null;
   let outcome: 'succeeded' | 'replayed' = 'succeeded';
   let wrote = false;
+  // The audit row a non-replayed write records before it runs.
+  let auditId: string | null = null;
   try {
     if (!principal.credential.scopes.includes(spec.capability)) {
       throw new AppError({ code: 'mcp:scope_required', message: `This tool requires the ${spec.capability} scope.` });
@@ -299,6 +301,14 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
     } else {
       let result: McpWriteOutcome;
       try {
+        auditId = await beginMcpWriteAudit(ctx, principal, {
+          kind: 'tool',
+          operation: spec.operation,
+          capability: spec.capability,
+          target,
+          clientRequestId,
+          durationMs: performance.now() - startedAt,
+        });
         result = await spec.run(parsed.data, actor);
       } catch (error) {
         if (start) await abandonMcpIdempotentWrite(start.recordId).catch(() => undefined);
@@ -329,15 +339,17 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
         ...(outcome === 'replayed' ? { replayed: true } : {}),
       },
     };
-    await recordMcpAudit(ctx, principal, {
-      kind: 'tool',
-      operation: spec.operation,
-      capability: spec.capability,
-      outcome,
-      target,
-      clientRequestId,
-      durationMs: performance.now() - startedAt,
-    });
+    if (auditId) await settleMcpWriteAudit(ctx, auditId, { outcome: 'succeeded', target, durationMs: performance.now() - startedAt });
+    else
+      await recordMcpAudit(ctx, principal, {
+        kind: 'tool',
+        operation: spec.operation,
+        capability: spec.capability,
+        outcome,
+        target,
+        clientRequestId,
+        durationMs: performance.now() - startedAt,
+      });
     return { content: toolContent(envelope), structuredContent: envelope };
   } catch (error) {
     const appError = error instanceof AppError ? error : new AppError({ code: 'http:internal', message: 'The MCP operation failed.' });
@@ -348,7 +360,8 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
       );
     }
     if (wrote) {
-      // Only the success audit can fail after the write ran. The change is
+      // Only settling the audit row can fail after the write ran; the row
+      // recorded before the write still shows it was attempted. The change is
       // saved, so say so instead of inviting a blind retry.
       return toolErrorResult(
         ctx,
@@ -357,16 +370,19 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
       );
     }
     try {
-      await recordMcpAudit(ctx, principal, {
-        kind: 'tool',
-        operation: spec.operation,
-        capability: spec.capability,
-        outcome: 'failed',
-        errorCode: appError.code,
-        target,
-        clientRequestId,
-        durationMs: performance.now() - startedAt,
-      });
+      if (auditId)
+        await settleMcpWriteAudit(ctx, auditId, { outcome: 'failed', errorCode: appError.code, target, durationMs: performance.now() - startedAt });
+      else
+        await recordMcpAudit(ctx, principal, {
+          kind: 'tool',
+          operation: spec.operation,
+          capability: spec.capability,
+          outcome: 'failed',
+          errorCode: appError.code,
+          target,
+          clientRequestId,
+          durationMs: performance.now() - startedAt,
+        });
       return toolErrorResult(ctx, appError);
     } catch (auditError) {
       return toolErrorResult(

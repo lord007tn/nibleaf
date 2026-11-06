@@ -342,7 +342,9 @@ content.
   `react-markdown` with `rehype-sanitize`. MDX expressions and `import` or
   `export` lines appear as plain text rather than running.
 - **Translations.** `translate_page` creates the translation as a draft in the
-  target language. If one already exists, it fails with `mcp:translation_exists`
+  target language. It names the source revision it translated, so a source that
+  changed meanwhile is refused with `mcp:revision_conflict` instead of saving a
+  stale translation. If one already exists, it fails with `mcp:translation_exists`
   and `data.pageId` names the existing page; edit that page with `update_page`.
   To pair the pages, it may also set a shared translation key on the source page
   and on other-language pages already paired with it by path, using the same

@@ -55,6 +55,8 @@ const state = vi.hoisted(() => ({
 
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
+  auditBegin: vi.fn(),
+  auditSettle: vi.fn(),
   getPage: vi.fn(),
   createPage: vi.fn(),
   updatePage: vi.fn(),
@@ -82,14 +84,25 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/env', () => ({ env: mocks.env }));
-vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
+vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit, beginMcpWriteAudit: mocks.auditBegin, settleMcpWriteAudit: mocks.auditSettle }));
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany },
     deployment: { findFirst: mocks.deploymentFindFirst },
     domain: { findFirst: mocks.domainFindFirst },
     mcpIdempotencyRecord: mocks.idempotency,
-    $transaction: (operations: Promise<unknown>[]) => Promise.all(operations),
+    // Batch transactions resolve their queries; interactive ones run against the
+    // same page client and roll the in-memory pages back when they throw.
+    $transaction: async (work: unknown) => {
+      if (typeof work !== 'function') return Promise.all(work as Promise<unknown>[]);
+      const before = structuredClone(state.pages);
+      try {
+        return await (work as (tx: unknown) => Promise<unknown>)({ page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany } });
+      } catch (error) {
+        state.pages = before;
+        throw error;
+      }
+    },
   },
 }));
 vi.mock('@/actions/pages', () => ({
@@ -258,7 +271,19 @@ beforeEach(() => {
   state.sequence = 0;
   mocks.env.MCP_WRITE_RATE_LIMIT_PER_MIN = 50;
   mocks.env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR = 6;
-  mocks.audit.mockResolvedValue(undefined);
+  mocks.audit.mockResolvedValue({ id: 'audit-row' });
+  // A write's audit row is recorded before it runs and settled after; the test
+  // sees the settled event as one `mocks.audit` call, as with a single insert.
+  const begun = new Map<string, { principal: unknown; event: Record<string, unknown> }>();
+  mocks.auditBegin.mockImplementation(async (_ctx: unknown, principal: unknown, event: Record<string, unknown>) => {
+    const id = `audit-${begun.size + 1}`;
+    begun.set(id, { principal, event });
+    return id;
+  });
+  mocks.auditSettle.mockImplementation(async (ctx: unknown, id: string, settled: Record<string, unknown>) => {
+    const row = begun.get(id);
+    await mocks.audit(ctx, row?.principal, { ...row?.event, ...settled, target: settled.target ?? row?.event.target });
+  });
   mocks.domainFindFirst.mockResolvedValue(null);
   mocks.assertLanguageInProject.mockImplementation(async (_projectId: string, languageId: string) => {
     if (!['lang-en', 'lang-ar'].includes(languageId)) throw new AppError({ code: 'database:not_found', message: 'language not found' });
@@ -533,6 +558,31 @@ describe('MCP write authorization', () => {
   });
 });
 
+describe('write audit durability', () => {
+  it('runs no write when its audit row cannot be recorded first', async () => {
+    mocks.auditBegin.mockRejectedValueOnce(Object.assign(new Error('audit down'), { code: 'storage:error' }));
+    const client = await connect(makePrincipal());
+    const response = await client.call('create_page_draft', { title: 'Refund policy', markdown: 'Body' });
+    expect(response.isError).toBe(true);
+    expect(mocks.createPage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('keeps the started audit row when settling it fails after the write', async () => {
+    mocks.auditSettle.mockRejectedValueOnce(new Error('audit down'));
+    const client = await connect(makePrincipal());
+    const response = await client.call('create_page_draft', { title: 'Refund policy', markdown: 'Body' });
+    expect(mocks.createPage).toHaveBeenCalledOnce();
+    expect(mocks.auditBegin).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ operation: 'create_page_draft', capability: 'pages:write' }),
+    );
+    expect(JSON.stringify(response)).toContain('was saved but could not be recorded');
+    await client.close();
+  });
+});
+
 describe('create_page_draft', () => {
   it('creates an unpublished draft from frontmatter Markdown with explicit arguments winning', async () => {
     const client = await connect(makePrincipal());
@@ -576,9 +626,9 @@ describe('create_page_draft', () => {
     // Positions only, each guarded by the expected parent: a concurrent move is never reverted.
     const guard = { projectId: 'project-1', branchId: 'version-1', languageId: 'lang-en', parentId: null };
     expect(mocks.pageUpdateMany.mock.calls.map(([call]) => call)).toEqual([
-      { where: { ...guard, id: 'page-new-1' }, data: { position: 0 } },
-      { where: { ...guard, id: 'page-1' }, data: { position: 1 } },
-      { where: { ...guard, id: 'page-2' }, data: { position: 2 } },
+      { where: { ...guard, id: 'page-new-1', position: expect.any(Number) }, data: { position: 0 } },
+      { where: { ...guard, id: 'page-1', position: 0 }, data: { position: 1 } },
+      { where: { ...guard, id: 'page-2', position: 1 }, data: { position: 2 } },
     ]);
     expect(response.structuredContent.data.page).toMatchObject({ position: 0 });
     await client.close();
@@ -787,12 +837,57 @@ describe('move_page', () => {
       expectedUpdatedAt: new Date('2026-11-02T00:00:00.000Z'),
     });
     const guard = { projectId: 'project-1', branchId: 'version-1', languageId: 'lang-en', parentId: 'group-1' };
+    // Each write is a compare-and-set on the position that was read.
     expect(mocks.pageUpdateMany.mock.calls.map(([call]) => call)).toEqual([
-      { where: { ...guard, id: 'page-1' }, data: { position: 1 } },
-      { where: { ...guard, id: 'child-2' }, data: { position: 2 } },
+      { where: { ...guard, id: 'page-1', position: 0 }, data: { position: 1 } },
+      { where: { ...guard, id: 'child-2', position: 1 }, data: { position: 2 } },
     ]);
     expect(response.structuredContent.data.page).toMatchObject({ parentId: 'group-1', position: 1, path: 'guides/install-guide' });
     expect(lastAudit()).toMatchObject({ operation: 'move_page', outcome: 'succeeded', target: { type: 'page', id: 'page-1' } });
+    await client.close();
+  });
+
+  it('refuses to replace an order someone changed after it was read, and writes nothing', async () => {
+    state.pages.push(page({ id: 'child-1', title: 'A', slug: 'a', path: 'a', position: 1 }));
+    state.pages.push(page({ id: 'child-2', title: 'B', slug: 'b', path: 'b', position: 2 }));
+    const original = mocks.pageFindMany.getMockImplementation();
+    mocks.pageFindMany.mockImplementationOnce(async (...args: unknown[]) => {
+      const rows = await original?.(...(args as Parameters<NonNullable<typeof original>>));
+      // A person reorders the siblings right after we read them.
+      Object.assign(state.pages.find((row) => row.id === 'child-2') as PageRow, { position: 7 });
+      return rows;
+    });
+    const client = await connect(makePrincipal());
+    const response = await client.call('move_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', parentId: null, position: 2 });
+    expect(response.structuredContent.error?.code).toBe('mcp:revision_conflict');
+    expect(state.pages.map((row) => [row.id, row.position])).toEqual([
+      ['page-1', 0],
+      ['child-1', 1],
+      ['child-2', 7],
+    ]);
+    await client.close();
+  });
+
+  it('reports a saved reparent whose position could not be set, instead of an error', async () => {
+    state.pages.push(page({ id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides', path: 'guides', content: '', position: 1 }));
+    state.pages.push(page({ id: 'child-1', parentId: 'group-1', title: 'A', slug: 'a', path: 'guides/a', position: 0 }));
+    const original = mocks.pageFindMany.getMockImplementation();
+    mocks.pageFindMany.mockImplementationOnce(async (...args: unknown[]) => {
+      const rows = await original?.(...(args as Parameters<NonNullable<typeof original>>));
+      Object.assign(state.pages.find((row) => row.id === 'child-1') as PageRow, { position: 5 });
+      return rows;
+    });
+    const client = await connect(makePrincipal());
+    const response = await client.call('move_page', {
+      pageId: 'page-1',
+      expectedRevision: '2026-11-02T00:00:00.000Z',
+      parentId: 'group-1',
+      position: 0,
+      clientRequestId: 'move-retry-0001',
+    });
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent.data).toMatchObject({ changed: true, placed: false, page: { parentId: 'group-1' } });
+    expect(String(response.structuredContent.data.note)).toContain('someone reordered them meanwhile');
     await client.close();
   });
 
@@ -872,6 +967,7 @@ describe('translate_page', () => {
     const client = await connect(makePrincipal());
     const response = await client.call('translate_page', {
       sourcePageId: 'page-1',
+      sourceRevision: '2026-11-02T00:00:00.000Z',
       targetLanguageId: 'lang-ar',
       title: 'دليل التثبيت',
       markdown: '# التثبيت',
@@ -905,7 +1001,13 @@ describe('translate_page', () => {
       page({ id: 'page-ar', languageId: 'lang-ar', translationKey: 'install', slug: 'tathbit', path: 'tathbit' }),
     ];
     const client = await connect(makePrincipal());
-    const response = await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'x', markdown: 'y' });
+    const response = await client.call('translate_page', {
+      sourcePageId: 'page-1',
+      sourceRevision: '2026-11-02T00:00:00.000Z',
+      targetLanguageId: 'lang-ar',
+      title: 'x',
+      markdown: 'y',
+    });
     expect(response.structuredContent.error).toMatchObject({
       code: 'mcp:translation_exists',
       data: { pageId: 'page-ar', revision: expect.any(String) },
@@ -914,10 +1016,31 @@ describe('translate_page', () => {
     await client.close();
   });
 
+  it('refuses to translate a source that changed after it was read', async () => {
+    const client = await connect(makePrincipal());
+    const response = await client.call('translate_page', {
+      sourcePageId: 'page-1',
+      sourceRevision: '2026-11-01T00:00:00.000Z',
+      targetLanguageId: 'lang-ar',
+      title: 'x',
+      markdown: 'y',
+    });
+    expect(response.structuredContent.error).toMatchObject({ code: 'mcp:revision_conflict', data: { currentRevision: '2026-11-02T00:00:00.000Z' } });
+    expect(mocks.createPage).not.toHaveBeenCalled();
+    expect(mocks.updatePage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
   it('finds an existing translation without a key at the same path', async () => {
     state.pages = [page({ translationKey: 'install' }), page({ id: 'page-ar', languageId: 'lang-ar', translationKey: null })];
     const client = await connect(makePrincipal());
-    const response = await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'x', markdown: 'y' });
+    const response = await client.call('translate_page', {
+      sourcePageId: 'page-1',
+      sourceRevision: '2026-11-02T00:00:00.000Z',
+      targetLanguageId: 'lang-ar',
+      title: 'x',
+      markdown: 'y',
+    });
     expect(response.structuredContent.error).toMatchObject({ code: 'mcp:translation_exists', data: { pageId: 'page-ar' } });
     expect(mocks.createPage).not.toHaveBeenCalled();
     await client.close();
@@ -927,7 +1050,13 @@ describe('translate_page', () => {
     state.pages = [page(), page({ id: 'page-fr', languageId: 'lang-fr' })];
     mocks.assertLanguageInProject.mockResolvedValue({ id: 'lang-ar' });
     const client = await connect(makePrincipal());
-    const response = await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'تثبيت', markdown: 'نص' });
+    const response = await client.call('translate_page', {
+      sourcePageId: 'page-1',
+      sourceRevision: '2026-11-02T00:00:00.000Z',
+      targetLanguageId: 'lang-ar',
+      title: 'تثبيت',
+      markdown: 'نص',
+    });
     expect(response.isError).not.toBe(true);
     expect(mocks.updatePage).toHaveBeenCalledWith('project-1', 'page-fr', { translationKey: 'page-1' }, 'user-1', expect.anything());
     expect(response.structuredContent.data).toMatchObject({ linkedVariantIds: ['page-fr'], parentMapped: null });
@@ -940,7 +1069,13 @@ describe('translate_page', () => {
       page({ parentId: 'group-en', path: 'guides/install-guide' }),
     ];
     const client = await connect(makePrincipal());
-    const response = await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'تثبيت', markdown: 'نص' });
+    const response = await client.call('translate_page', {
+      sourcePageId: 'page-1',
+      sourceRevision: '2026-11-02T00:00:00.000Z',
+      targetLanguageId: 'lang-ar',
+      title: 'تثبيت',
+      markdown: 'نص',
+    });
     expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ parentId: null }), 'user-1');
     expect(response.structuredContent.data).toMatchObject({ parentMapped: false, parentNote: expect.stringContaining('move_page') });
     await client.close();
@@ -949,11 +1084,25 @@ describe('translate_page', () => {
   it('requires translated markdown for a page and refuses the source language', async () => {
     const client = await connect(makePrincipal());
     expect(
-      (await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'x' })).structuredContent.error?.code,
+      (
+        await client.call('translate_page', {
+          sourcePageId: 'page-1',
+          sourceRevision: '2026-11-02T00:00:00.000Z',
+          targetLanguageId: 'lang-ar',
+          title: 'x',
+        })
+      ).structuredContent.error?.code,
     ).toBe('validation:failed');
     expect(
-      (await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-en', title: 'x', markdown: 'y' })).structuredContent
-        .error?.code,
+      (
+        await client.call('translate_page', {
+          sourcePageId: 'page-1',
+          sourceRevision: '2026-11-02T00:00:00.000Z',
+          targetLanguageId: 'lang-en',
+          title: 'x',
+          markdown: 'y',
+        })
+      ).structuredContent.error?.code,
     ).toBe('http:bad_request');
     expect(mocks.createPage).not.toHaveBeenCalled();
     await client.close();

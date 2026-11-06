@@ -124,6 +124,9 @@ const movePageInput = z
 const translatePageInput = z
   .object({
     sourcePageId: id('The page to translate.'),
+    sourceRevision: revision.describe(
+      'The source page revision from get_page. The translation is refused if the source changed since you read it, so stale text is never saved as a translation.',
+    ),
     targetLanguageId: id('The language to create the translation in (list_languages).'),
     title: titleArg.min(1).describe('The translated title.'),
     description: descriptionArg.optional().describe('The translated description.'),
@@ -208,10 +211,11 @@ const pageTarget = (pageId: string | null): McpAuditTarget => ({ type: 'page', i
 const prepare = (markdown: string | undefined): PreparedMarkdown | null => (markdown === undefined ? null : prepareMcpMarkdown(markdown));
 
 /** Put `page` at a 0-based `position` among its siblings by renumbering them
- *  0..n. Only `position` is written, and every row is guarded by the parent we
- *  expect, so a concurrent move by someone else is never reverted: a sibling
- *  that moved away is skipped, and if the page itself moved we report a
- *  revision conflict. Positions do not affect paths, so no recompute is needed. */
+ *  0..n. Only `position` is written, and every row is a compare-and-set on the
+ *  parent and position we read, inside one transaction: if anyone moved or
+ *  reordered these siblings meanwhile, nothing is written and we report a
+ *  revision conflict instead of replacing their order. Positions do not affect
+ *  paths, so no recompute is needed. */
 const placeAmongSiblings = async (projectId: string, page: Page, position: number | undefined): Promise<Page> => {
   const siblings = await prisma.page.findMany({
     where: { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId, id: { not: page.id } },
@@ -220,19 +224,29 @@ const placeAmongSiblings = async (projectId: string, page: Page, position: numbe
   });
   const index = Math.min(position ?? siblings.length, siblings.length);
   const ordered = [...siblings.slice(0, index), { id: page.id, position: page.position }, ...siblings.slice(index)];
-  const items = ordered
-    .map((node, nextPosition) => ({ id: node.id, parentId: page.parentId, position: nextPosition, changed: node.position !== nextPosition }))
-    .filter((item) => item.changed)
-    .map(({ changed: _changed, ...item }) => item);
-  if (items.length === 0) return page;
+  const renumbered = ordered.map((node, nextPosition) => ({ id: node.id, position: nextPosition, changed: node.position !== nextPosition }));
+  if (!renumbered.some((item) => item.changed)) return page;
+  // The page's own row is always checked, so a move away from this parent made
+  // meanwhile rolls the whole placement back, even when its position is unchanged.
+  const items = renumbered.filter((item) => item.changed || item.id === page.id);
   const guard = { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId };
-  const results = await prisma.$transaction(
-    items.map((item) => prisma.page.updateMany({ where: { ...guard, id: item.id }, data: { position: item.position } })),
-  );
-  const placed = await getPage(projectId, page.id);
-  const ownIndex = items.findIndex((item) => item.id === page.id);
-  if ((ownIndex >= 0 && results[ownIndex]?.count === 0) || placed.parentId !== page.parentId) throw revisionConflict(placed);
-  return placed;
+  const observed = new Map(ordered.map((node) => [node.id, node.position]));
+  const SIBLINGS_CHANGED = 'siblings changed';
+  try {
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        const { count } = await tx.page.updateMany({
+          where: { ...guard, id: item.id, position: observed.get(item.id) },
+          data: { position: item.position },
+        });
+        if (count === 0) throw new Error(SIBLINGS_CHANGED);
+      }
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === SIBLINGS_CHANGED) throw revisionConflict(await getPage(projectId, page.id));
+    throw error;
+  }
+  return getPage(projectId, page.id);
 };
 
 const comparableTitle = (title: string) =>
@@ -476,7 +490,31 @@ const movePage = async (projectId: string, args: z.output<typeof movePageInput>,
   const moved = await withRevisionGuard(projectId, page.id, () =>
     updatePage(projectId, page.id, reparent ? { parentId: args.parentId } : {}, actor.userId, { expectedUpdatedAt: page.updatedAt }),
   );
-  const placed = await placeAmongSiblings(projectId, moved, args.position);
+  let placed: Page;
+  try {
+    placed = await placeAmongSiblings(projectId, moved, args.position);
+  } catch (error) {
+    // Without a new parent nothing was saved, so the failure is the answer.
+    if (!reparent) throw error;
+    // Someone moved the page again after our write: theirs stands, report it.
+    const current = await getPage(projectId, page.id);
+    if (current.parentId !== moved.parentId) throw error;
+    // The new parent is saved; say so (and store it for a retry) instead of
+    // reporting a failure that hides a committed change.
+    const conflict = error instanceof AppError && error.code === 'mcp:revision_conflict';
+    log.warn({ errorName: error instanceof Error ? error.name : 'UnknownError', conflict }, 'MCP move saved without its sibling position');
+    return {
+      data: {
+        page: pageSummary(current),
+        changed: true,
+        placed: false,
+        publishState: 'unpublished',
+        note: `${UNPUBLISHED_NOTE} The page moved under its new parent, but its position among the new siblings was not set${conflict ? ' because someone reordered them meanwhile' : ''}. Re-read the siblings and call move_page with position (and no parentId change) to place it.`,
+      },
+      stored: storedPage(current, 'moved'),
+      target: pageTarget(page.id),
+    };
+  }
   return {
     data: { page: pageSummary(placed), changed: true, publishState: 'unpublished', note: UNPUBLISHED_NOTE },
     stored: storedPage(placed, 'moved'),
@@ -498,6 +536,7 @@ const pairsWith = (source: { path: string; translationKey: string | null }, cand
 
 const translatePage = async (projectId: string, args: z.output<typeof translatePageInput>, actor: McpActor): Promise<McpWriteOutcome> => {
   const source = await getPage(projectId, args.sourcePageId);
+  assertRevision(source, args.sourceRevision);
   await assertLanguageInProject(projectId, args.targetLanguageId);
   if (args.targetLanguageId === source.languageId) throw badRequest('The target language is the source page’s own language.');
   if (source.kind === 'PAGE' && args.markdown === undefined) {

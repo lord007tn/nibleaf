@@ -162,7 +162,9 @@ origin rather than another host listed in `MCP_ALLOWED_HOSTS`.
   characters are not decoded, as in Git sync. MDX is never executed on the
   reader site: content renders through `react-markdown` and `rehype-sanitize`,
   and MDX expressions and `import`/`export` lines appear as text.
-- **Translation pairing.** `translate_page` refuses an existing translation with
+- **Translation pairing.** `translate_page` requires `sourceRevision` and refuses
+  a source that changed after it was read (`mcp:revision_conflict`). It refuses an
+  existing translation with
   `mcp:translation_exists` (`data.pageId` names it; edit it with
   `update_page`). It may also set a shared translation key on the source page,
   and on other-language pages already paired with it by path, using the same
