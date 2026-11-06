@@ -32,10 +32,22 @@ content ("Acme Notes") and the demo account are fictional.
   the page-context chip.
 - `reader-en-mobile390-deeplink.png`: an `?ask=` deep link answered on a phone; the
   parameter is removed without leaving the page.
-- `reader-en-dark-search-handoff.png`: dark mode, handing off from the search
-  dialog's Ask AI tab to the chat panel.
 - `reader-quota.png`: the daily quota reached. The counter was set to its limit in
   the local Redis namespace for this capture.
+
+## Search hand-off (after #281)
+
+The redesigned search dialog hands a question to the chat; the legacy answer tab
+is gone. Captured after merging main@178fc83d.
+
+- `search-handoff-en-desktop.gif`: typing a question in search, **Ask AI about
+  "…"** selected first, Enter opens the chat with that question answered (cited
+  sections, related questions), and closing returns focus to the launcher.
+- `search-ask-ai-row-en-desktop.png` and `search-handoff-answer-en-desktop.png`:
+  the two ends of that flow.
+- `search-ask-ai-row-ar-mobile390.png`: the same row in Arabic on a phone.
+- `deep-link-ar-mobile390.png`: an Arabic `?ask=` deep link answered once the
+  lazily loaded chat arrives; the address keeps `?lang=ar` and drops `ask`.
 
 ## "Ask AI about this page" in every theme
 
@@ -60,3 +72,14 @@ locally with that theme, then rolled back.
   `chat_*` events in `analytics_events`.
 - `settings-search-ai-en-desktop.png`: **Save questions to improve your docs**,
   suggested questions and the new **Support link**.
+
+## Search settings (data loading conventions)
+
+Captured in Arabic (the demo account's language), dark mode.
+
+- `search-settings-skeleton-ar-desktop.png`: first load, a skeleton shaped like the
+  form (inputs, hotkey switch, toggle rows, starter questions). The settings
+  request was delayed in the browser for this capture.
+- `search-settings-ar-desktop.png`: the loaded section.
+- `search-index-diagnostics-ar-desktop.png`: index diagnostics after **Rebuild
+  index** (which now shows the button's loading state), ready with 44 chunks.
