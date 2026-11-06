@@ -3,7 +3,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
-import { aiStarterQuestionsSchema } from '@nibleaf/validators';
+import { aiStarterQuestionsSchema, aiSupportUrlSchema } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
@@ -115,6 +115,7 @@ function ProjectSearchConfigurationForm({
     aiAnswers: boolean;
     aiConversationCapture: boolean;
     aiStarterQuestions: string[];
+    aiSupportUrl?: string;
     hotkey: Hotkey;
     placeholder: string | null;
   };
@@ -130,6 +131,8 @@ function ProjectSearchConfigurationForm({
     .map((line) => line.trim())
     .filter(Boolean);
   const startersValid = aiStarterQuestionsSchema.safeParse(starterQuestions).success;
+  const [support, setSupport] = useState(configuration.aiSupportUrl ?? '');
+  const supportValid = !support.trim() || aiSupportUrlSchema.safeParse(support).success;
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
   const { data: publicMeta } = useGetPublicMeta();
@@ -138,6 +141,7 @@ function ProjectSearchConfigurationForm({
   const controlsDirty =
     capture !== configuration.aiConversationCapture ||
     starters !== configuration.aiStarterQuestions.join('\n') ||
+    support.trim() !== (configuration.aiSupportUrl ?? '') ||
     hotkey !== configuration.hotkey ||
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
@@ -148,6 +152,10 @@ function ProjectSearchConfigurationForm({
     onSubmit: async ({ value }) => {
       if (!startersValid) {
         toast.error(t('dashboard.ai.startersError'));
+        return;
+      }
+      if (!supportValid) {
+        toast.error(t('dashboard.ai.supportUrlError'));
         return;
       }
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
@@ -162,6 +170,7 @@ function ProjectSearchConfigurationForm({
           aiAnswers: aiAnswers === 'enabled',
           aiConversationCapture: capture,
           aiStarterQuestions: starterQuestions,
+          aiSupportUrl: support.trim() || null,
         });
         toast.success(t('common.saved'));
       } catch {
@@ -254,6 +263,23 @@ function ProjectSearchConfigurationForm({
         {!startersValid && (
           <p role="alert" className="mt-2 text-destructive text-sm">
             {t('dashboard.ai.startersError')}
+          </p>
+        )}
+      </Field>
+      <Field label={t('dashboard.ai.supportUrl')} hint={t('dashboard.ai.supportUrlHint')}>
+        <Input
+          className={FIELD_INPUT}
+          aria-label={t('dashboard.ai.supportUrl')}
+          aria-invalid={!supportValid}
+          dir="ltr"
+          inputMode="url"
+          placeholder="https://"
+          value={support}
+          onChange={(event) => setSupport(event.target.value)}
+        />
+        {!supportValid && (
+          <p role="alert" className="mt-2 text-destructive text-sm">
+            {t('dashboard.ai.supportUrlError')}
           </p>
         )}
       </Field>
