@@ -54,6 +54,7 @@ import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$project
 import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
 import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
 import { Route as AppProjectsProjectIdIndexRouteImport } from './routes/app/projects/$projectId/index'
+import { Route as AppProjectsProjectIdAiRouteImport } from './routes/app/projects/$projectId/ai'
 import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/projects/$projectId/analytics'
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
@@ -289,6 +290,11 @@ const AppProjectsProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
+const AppProjectsProjectIdAiRoute = AppProjectsProjectIdAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppProjectsProjectIdRouteRoute,
+} as any)
 const AppProjectsProjectIdAnalyticsRoute =
   AppProjectsProjectIdAnalyticsRouteImport.update({
     id: '/analytics',
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
+  '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
@@ -402,6 +409,7 @@ export interface FileRoutesByTo {
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/sites/$projectId': typeof SitesProjectIdIndexRoute
+  '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
@@ -454,6 +462,7 @@ export interface FileRoutesById {
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/(dashboard)/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
+  '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
@@ -505,6 +514,7 @@ export interface FileRouteTypes {
     | '/sites/$projectId/changelog'
     | '/app/'
     | '/sites/$projectId/'
+    | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/sites/$projectId'
+    | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
@@ -601,6 +612,7 @@ export interface FileRouteTypes {
     | '/sites/$projectId/changelog'
     | '/app/(dashboard)/'
     | '/sites/$projectId/'
+    | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
@@ -954,6 +966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdIndexRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
+    '/app/projects/$projectId/ai': {
+      id: '/app/projects/$projectId/ai'
+      path: '/ai'
+      fullPath: '/app/projects/$projectId/ai'
+      preLoaderRoute: typeof AppProjectsProjectIdAiRouteImport
+      parentRoute: typeof AppProjectsProjectIdRouteRoute
+    }
     '/app/projects/$projectId/analytics': {
       id: '/app/projects/$projectId/analytics'
       path: '/analytics'
@@ -1025,6 +1044,7 @@ const AppdashboardRouteRouteWithChildren =
   AppdashboardRouteRoute._addFileChildren(AppdashboardRouteRouteChildren)
 
 interface AppProjectsProjectIdRouteRouteChildren {
+  AppProjectsProjectIdAiRoute: typeof AppProjectsProjectIdAiRoute
   AppProjectsProjectIdAnalyticsRoute: typeof AppProjectsProjectIdAnalyticsRoute
   AppProjectsProjectIdEditorRoute: typeof AppProjectsProjectIdEditorRoute
   AppProjectsProjectIdPreviewRoute: typeof AppProjectsProjectIdPreviewRoute
@@ -1034,6 +1054,7 @@ interface AppProjectsProjectIdRouteRouteChildren {
 
 const AppProjectsProjectIdRouteRouteChildren: AppProjectsProjectIdRouteRouteChildren =
   {
+    AppProjectsProjectIdAiRoute: AppProjectsProjectIdAiRoute,
     AppProjectsProjectIdAnalyticsRoute: AppProjectsProjectIdAnalyticsRoute,
     AppProjectsProjectIdEditorRoute: AppProjectsProjectIdEditorRoute,
     AppProjectsProjectIdPreviewRoute: AppProjectsProjectIdPreviewRoute,

@@ -1,7 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
+import { aiStarterQuestionsSchema } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
@@ -111,6 +113,8 @@ function ProjectSearchConfigurationForm({
     filtersEnabled: boolean;
     versionFilterEnabled: boolean;
     aiAnswers: boolean;
+    aiConversationCapture: boolean;
+    aiStarterQuestions: string[];
     hotkey: Hotkey;
     placeholder: string | null;
   };
@@ -119,12 +123,21 @@ function ProjectSearchConfigurationForm({
 }) {
   const t = useT();
   const update = useUpdateProjectSearchConfiguration(projectId);
+  const [capture, setCapture] = useState(configuration.aiConversationCapture);
+  const [starters, setStarters] = useState(() => configuration.aiStarterQuestions.join('\n'));
+  const starterQuestions = starters
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const startersValid = aiStarterQuestionsSchema.safeParse(starterQuestions).success;
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
   const { data: publicMeta } = useGetPublicMeta();
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
+    capture !== configuration.aiConversationCapture ||
+    starters !== configuration.aiStarterQuestions.join('\n') ||
     hotkey !== configuration.hotkey ||
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
@@ -133,6 +146,10 @@ function ProjectSearchConfigurationForm({
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
+      if (!startersValid) {
+        toast.error(t('dashboard.ai.startersError'));
+        return;
+      }
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
       try {
         await update.mutateAsync({
@@ -143,6 +160,8 @@ function ProjectSearchConfigurationForm({
             : maxResultsConstraint.default,
           versionFilterEnabled,
           aiAnswers: aiAnswers === 'enabled',
+          aiConversationCapture: capture,
+          aiStarterQuestions: starterQuestions,
         });
         toast.success(t('common.saved'));
       } catch {
@@ -220,6 +239,24 @@ function ProjectSearchConfigurationForm({
           />
         </Field>
       ) : null}
+
+      <div className="mb-6 rounded-lg border px-4">
+        <ToggleRow checked={capture} onCheckedChange={setCapture} title={t('dashboard.ai.capture')} hint={t('dashboard.ai.captureHint')} />
+      </div>
+      <Field label={t('dashboard.ai.starters')} hint={t('dashboard.ai.startersHint')}>
+        <Textarea
+          aria-label={t('dashboard.ai.starters')}
+          aria-invalid={!startersValid}
+          dir="auto"
+          value={starters}
+          onChange={(event) => setStarters(event.target.value)}
+        />
+        {!startersValid && (
+          <p role="alert" className="mt-2 text-destructive text-sm">
+            {t('dashboard.ai.startersError')}
+          </p>
+        )}
+      </Field>
 
       <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
         {([isDirty, values]) => (
