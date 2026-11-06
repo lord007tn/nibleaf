@@ -25,11 +25,7 @@ import sitesRoutes from './routes';
 
 const siteQuery = z.object({ lang: z.string().optional(), version: z.string().optional() });
 const pageQuery = z.object({ path: z.string().default(''), lang: z.string().optional(), version: z.string().optional() });
-const siteSearchQuery = searchQuery.extend({
-  lang: z.string().optional(),
-  version: z.string().optional(),
-  consent: z.enum(['granted', 'denied']).optional(),
-});
+const siteSearchQuery = searchQuery.extend({ lang: z.string().optional(), version: z.string().optional() });
 
 /** Shared-cache policy for published-site data: CDNs/proxies may keep it for a
  *  minute and serve stale for five while revalidating. Content only changes on
@@ -80,10 +76,10 @@ const app = new Hono<HonoEnv>()
     return ctx.json(data.document, 200);
   })
   .get('/:id/search', ...sitesRoutes.search, validator('query', siteSearchQuery), async (ctx) => {
-    const { q, limit, lang, version, consent } = ctx.req.valid('query');
+    const { q, limit, lang, version } = ctx.req.valid('query');
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
-    return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version, consent) }, 200);
+    return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version) }, 200);
   })
   .post('/:id/answer', ...sitesRoutes.answer, validator('json', searchAnswerBody), async (ctx) => {
     const { q, lang, version } = ctx.req.valid('json');

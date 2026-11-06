@@ -551,18 +551,7 @@ type LocalizedSearchHit = SearchHit & { language: string };
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  The reader UI searches every published language. An explicit `lang` remains
  *  supported for API clients that intentionally want a single-language scope. */
-/** `consent` is the visitor's analytics choice as reported by the reader.
- *  It only matters for projects that opted into storing public search terms:
- *  raw text is kept solely for `granted` (see buildAnalyticsEvent). Absent
- *  means `unknown`, which never stores text. */
-export const searchSite = async (
-  identifier: string,
-  query: string,
-  lang?: string,
-  limit?: number,
-  version?: string,
-  consent?: 'granted' | 'denied',
-) => {
+export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
   const analyticsStartedAt = performance.now();
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const request = resolvePublishedSearchContext(snapshot, { language: lang, version, limit });
@@ -615,7 +604,7 @@ export const searchSite = async (
   // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
   if (query.trim().length >= 3) {
     const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
-    const base = { source: 'public_site' as const, consentState: consent ?? ('unknown' as const) };
+    const base = { source: 'public_site' as const, consentState: 'unknown' as const };
     void Promise.allSettled([
       trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: analyticsLanguage }, base),
       trackProjectEvent(
@@ -627,10 +616,7 @@ export const searchSite = async (
         ? [
             trackProjectEvent(
               snapshot.project.id,
-              // The query rides along so the failed search carries its own query
-              // hash (and, only under the opt-in + consent gates, its text);
-              // otherwise failed searches cannot be grouped by what was asked.
-              { name: 'search_zero_result', query: query.trim(), resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: analyticsLanguage },
+              { name: 'search_zero_result', resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: analyticsLanguage },
               base,
             ),
           ]

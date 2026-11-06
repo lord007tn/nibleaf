@@ -30,7 +30,6 @@ vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn() }));
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
-import { trackProjectEvent } from './analytics';
 import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
@@ -306,24 +305,5 @@ describe('searchSite multilingual scope', () => {
     expect(mocks.getCachedIndex).toHaveBeenCalledTimes(1);
     expect(mocks.getCachedIndex.mock.calls[0]?.[2]).toBe('ar');
     expect(result.hits).toEqual([expect.objectContaining({ id: 'page-ar', language: 'ar' })]);
-  });
-
-  it('records failed searches with their query and the reported consent', async () => {
-    vi.mocked(trackProjectEvent).mockClear();
-    mocks.runPublishedSearch.mockImplementation(async () => ({ hits: [], runtime: 'legacy' }));
-    await searchSite('project-1', 'reset sso password', 'en', undefined, undefined, 'granted');
-    await vi.waitFor(() => expect(trackProjectEvent).toHaveBeenCalledTimes(3));
-    expect(trackProjectEvent).toHaveBeenCalledWith(
-      'project-1',
-      expect.objectContaining({ name: 'search_zero_result', query: 'reset sso password', resultCount: 0 }),
-      { source: 'public_site', consentState: 'granted' },
-    );
-  });
-
-  it('keeps consent unknown when the reader reports none', async () => {
-    vi.mocked(trackProjectEvent).mockClear();
-    await searchSite('project-1', 'token', 'en');
-    await vi.waitFor(() => expect(trackProjectEvent).toHaveBeenCalled());
-    for (const call of vi.mocked(trackProjectEvent).mock.calls) expect(call[2]).toEqual({ source: 'public_site', consentState: 'unknown' });
   });
 });
