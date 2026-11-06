@@ -66,6 +66,7 @@ import {
   deploymentsQueryOptions,
   domainsQueryOptions,
   gitWorkflowQueryOptions,
+  integrationsQueryOptions,
   languagesQueryOptions,
   listExportRunsQueryOptions,
   listExportSchedulesQueryOptions,
@@ -184,6 +185,9 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'authentication':
         prefetchRouteData(queryClient, readerAccessQueryOptions(projectId));
         prefetchRouteData(queryClient, pagesQueryOptions(projectId));
+        break;
+      case 'integrations':
+        prefetchRouteData(queryClient, integrationsQueryOptions(projectId));
         break;
       case 'apiKeys':
         prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));

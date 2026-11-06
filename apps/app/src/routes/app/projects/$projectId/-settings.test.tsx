@@ -53,6 +53,7 @@ vi.mock('@/hooks/api/query-options', () =>
       'listExportSchedules',
       'apiKeys',
       'connectedApps',
+      'integrations',
     ].map((name) => [`${name}QueryOptions`, (id: string) => ({ queryKey: [name, id] })]),
   ),
 );

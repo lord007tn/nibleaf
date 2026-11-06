@@ -1,3 +1,4 @@
+import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
@@ -136,6 +137,16 @@ export const apiKeysQueryOptions = (projectId: string | undefined) =>
           if (!response.ok) await getData(response, 'AI assistant keys');
           return response.json();
         }
+      : skipToken,
+  });
+
+/** The integration catalog, with each provider's connection for this project. */
+export const integrationsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.integrations.all(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<IntegrationCatalogEntry[]>(await api.app.projects[':projectId'].integrations.$get({ param: { projectId } }), 'integrations')
       : skipToken,
   });
 

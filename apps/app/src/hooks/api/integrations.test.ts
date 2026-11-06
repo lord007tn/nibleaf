@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useActivateProjectIntegration, useUpdateProjectIntegration } from './integrations';
+import { ApiResponseError } from './client-helpers';
+import { integrationErrorMessage, useActivateProjectIntegration, useUpdateProjectIntegration } from './integrations';
 import { queryKeys } from './query-keys';
+import { integrationsQueryOptions } from './query-options';
 
 const mocks = vi.hoisted(() => ({
   activate: vi.fn(),
@@ -102,5 +104,78 @@ describe('integration mutation conflict recovery', () => {
 
     expect(invalidate).not.toHaveBeenCalled();
     act(() => root.unmount());
+  });
+});
+
+describe('integration error wording', () => {
+  const t = ((key: string) => `t:${key}`) as Parameters<typeof integrationErrorMessage>[0];
+  const failure = (status: number, code?: string) => new ApiResponseError('English server text with internals', status, code);
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+
+  it.each([
+    ['integration:credentials_invalid', 422, 't:settings.integrations.errorCredentialsInvalid'],
+    ['integration:verification_failed', 502, 't:settings.integrations.errorVerificationFailed'],
+    ['integration:provider_unavailable', 503, 't:settings.integrations.errorProviderUnavailable'],
+    ['integration:revision_conflict', 409, 't:error.conflict'],
+    ['integration:rate_limited', 429, 't:error.rateLimited'],
+  ])('words %s from the code', (code, status, message) => {
+    expect(integrationErrorMessage(t, failure(status, code))).toBe(message);
+  });
+
+  it('never shows the server text, falling back to the action message or the status', () => {
+    expect(integrationErrorMessage(t, failure(500, 'integration:unknown'))).toBe('t:settings.integrations.actionError');
+    expect(integrationErrorMessage(t, failure(403))).toBe('t:error.noPermission');
+    expect(integrationErrorMessage(t, new TypeError('fetch failed'))).toBe('t:error.network');
+  });
+});
+
+describe('integration queries and mutation errors', () => {
+  it('keys the catalog by project and stays disabled without one', () => {
+    expect(integrationsQueryOptions('project-1').queryKey).toEqual(queryKeys.integrations.all('project-1'));
+    expect(typeof integrationsQueryOptions('project-1').queryFn).toBe('function');
+    expect(typeof integrationsQueryOptions(undefined).queryFn).not.toBe('function');
+  });
+
+  it('toasts a failed mutation in plain words through meta.errorMessage, not the server text', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mocks.update.mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'integration:credentials_invalid', message: 'Webhook host failed DNS check' } }), {
+        status: 422,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const toasted: string[] = [];
+    const queryClient = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+      mutationCache: new MutationCache({
+        onError: (error, _variables, _context, mutation) => {
+          const message = mutation.meta?.errorMessage;
+          toasted.push(typeof message === 'function' ? message(error) : String(message));
+        },
+      }),
+    });
+    let mutate: () => Promise<unknown> = () => Promise.reject(new Error('mutation hook was not ready'));
+    function Probe() {
+      const update = useUpdateProjectIntegration('project-a');
+      mutate = () =>
+        update.mutateAsync({
+          providerId: 'slack',
+          body: { providerId: 'slack', label: null, expectedRevision: 1, idempotencyKey: 'update-key' },
+        });
+      return null;
+    }
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    await act(async () => root.render(createElement(QueryClientProvider, { client: queryClient }, createElement(Probe))));
+    await act(async () => {
+      await expect(mutate()).rejects.toBeInstanceOf(ApiResponseError);
+    });
+    expect(toasted).toEqual(['settings.integrations.errorCredentialsInvalid']);
+    act(() => root.unmount());
+    container.remove();
   });
 });
