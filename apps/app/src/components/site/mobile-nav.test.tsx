@@ -118,18 +118,18 @@ it('offers language and version as labelled drawer settings showing the current 
 
   const settings = drawer?.querySelector('[data-mobile-nav-settings]');
   // A single version is not a choice, so only the language setting renders.
-  const labels = [...(settings?.querySelectorAll('label') ?? [])];
-  expect(labels.map((label) => label.querySelector('span')?.textContent)).toEqual(['Language']);
-  const select = labels[0]?.querySelector('select');
-  expect(select?.value).toBe('en');
+  expect(
+    [...(settings?.querySelectorAll('[data-mobile-nav-setting]') ?? [])].map((setting) => setting.getAttribute('data-mobile-nav-setting')),
+  ).toEqual(['language']);
+  const select = settings?.querySelector<HTMLElement>('[data-slot="select-trigger"]');
+  expect(select?.getAttribute('aria-label')).toBe('Language');
   expect(select?.className).toContain('min-h-11');
-  expect(select?.querySelector<HTMLOptionElement>('option[value="ar"]')?.dir).toBe('rtl');
+  expect(select?.textContent).toContain('English');
 
-  await act(async () => {
-    if (!select) return;
-    select.value = 'ar';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await act(async () => select?.click());
+  const arabic = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) => option.textContent === 'العربية');
+  expect(arabic?.querySelector('[dir="rtl"]')?.getAttribute('lang')).toBe('ar');
+  await act(async () => arabic?.click());
   expect(changeLanguage).toHaveBeenCalledWith('ar');
   expect(document.querySelector('[data-slot="sheet-content"][data-open]')).toBeNull();
 });

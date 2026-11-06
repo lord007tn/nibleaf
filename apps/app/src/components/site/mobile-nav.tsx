@@ -1,4 +1,5 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { ExternalLink, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -93,23 +94,33 @@ export function MobileNav({
               // From `sm` up the header shows these switchers itself.
               <div className="mb-4 grid gap-3 border-border/60 border-b pb-4 sm:hidden" data-mobile-nav-settings="">
                 {settings.map((choice) => (
-                  <label key={choice.id} className="grid gap-1.5">
-                    <span className="px-1 font-semibold text-foreground text-xs">{choice.label}</span>
-                    <select
+                  <div key={choice.id} className="grid gap-1.5" data-mobile-nav-setting={choice.id}>
+                    <span aria-hidden className="px-1 font-semibold text-foreground text-xs">
+                      {choice.label}
+                    </span>
+                    <Select
+                      items={choice.options.map((option) => ({ value: option.value, label: option.label }))}
                       value={choice.value}
-                      onChange={(event) => {
-                        choice.onChange(event.target.value);
+                      onValueChange={(value) => {
+                        if (!value || value === choice.value) return;
+                        choice.onChange(value);
                         setOpen(false);
                       }}
-                      className="min-h-11 w-full cursor-pointer rounded-lg border border-border bg-background px-3 text-foreground text-sm"
                     >
-                      {choice.options.map((option) => (
-                        <option key={option.value} value={option.value} lang={option.lang} dir={option.dir}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      <SelectTrigger aria-label={choice.label} className="min-h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {choice.options.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="min-h-11">
+                            <span lang={option.lang} dir={option.dir}>
+                              {option.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ))}
               </div>
             ) : null}
