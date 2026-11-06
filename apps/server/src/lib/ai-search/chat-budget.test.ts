@@ -6,7 +6,7 @@ vi.mock('@/lib/env-extras', () => ({
   envExtras: { SEARCH_CHAT_MAX_TURNS: 20, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 2_000_000 },
 }));
 
-import { releaseChatTurn, reserveChatTurn, settleChatSpend } from './chat-budget';
+import { chatBudgetWarning, releaseChatTurn, reserveChatTurn, settleChatSpend } from './chat-budget';
 
 const now = new Date('2026-11-06T10:00:00.000Z');
 const keys = ['{search-chat:project-1}:conversation:conversation-1', '{search-chat:project-1}:tokens:2026-11-06'];
@@ -14,6 +14,30 @@ const keys = ['{search-chat:project-1}:conversation:conversation-1', '{search-ch
 describe('chat budgets', () => {
   beforeEach(() => {
     mocks.eval.mockReset();
+  });
+
+  it('warns at startup about token budgets no full-size turn fits under', () => {
+    const limits = {
+      SEARCH_CHAT_HISTORY_MESSAGES: 6,
+      SEARCH_CHAT_HISTORY_MAX_TOKENS: 1500,
+      SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 60_000,
+      SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 2_000_000,
+    };
+    // The defaults fit several of the largest turns.
+    expect(chatBudgetWarning(limits)).toBeNull();
+    const low = chatBudgetWarning({ ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: 5000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 9000 });
+    expect(low).toEqual({
+      settings: ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS', 'SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'],
+      largestTurnTokens: expect.any(Number),
+    });
+    expect(low?.largestTurnTokens).toBeGreaterThan(9000);
+    expect(limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS / (low?.largestTurnTokens ?? Number.POSITIVE_INFINITY)).toBeGreaterThan(2);
+    // A longer history needs a larger reservation; 0 turns the daily budget off.
+    const justFits = { ...limits, SEARCH_CHAT_MAX_CONVERSATION_TOKENS: (low?.largestTurnTokens ?? 0) + 1 };
+    expect(chatBudgetWarning(justFits)).toBeNull();
+    const longHistory = chatBudgetWarning({ ...justFits, SEARCH_CHAT_HISTORY_MAX_TOKENS: 16_000, SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: 0 });
+    expect(longHistory?.settings).toEqual(['SEARCH_CHAT_MAX_CONVERSATION_TOKENS']);
+    expect(longHistory?.largestTurnTokens).toBeGreaterThan(low?.largestTurnTokens ?? Number.POSITIVE_INFINITY);
   });
 
   it('reserves a turn with its estimated tokens and reports the remaining allowance', async () => {

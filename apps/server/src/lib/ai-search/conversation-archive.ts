@@ -42,8 +42,8 @@ export interface ChatTurnCapture extends CapturePolicy {
   inputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
-  /** Token totals include estimates for calls that never reported usage (a
-   * stopped or failed turn): stored, but flagged unknown, as is the cost. */
+  /** The answer model's totals include estimates for calls that never reported
+   * usage (a stopped or failed turn): stored, but flagged unknown, as is the cost. */
   usageEstimated?: boolean;
   /** Rewriting and suggestions on a separate utility model: its usage, apart
    * from the answer model's (inputTokens, outputTokens, costUsd). */
@@ -51,6 +51,8 @@ export interface ChatTurnCapture extends CapturePolicy {
   utilityInputTokens?: number;
   utilityOutputTokens?: number;
   utilityCostUsd?: number;
+  /** Like usageEstimated, for the utility model's calls. */
+  utilityUsageEstimated?: boolean;
   latencyMs?: number;
   firstTokenMs?: number;
   retrievalCacheHit?: boolean;
@@ -131,14 +133,17 @@ export const buildAiTurnRow = (c: ChatTurnCapture) => {
     prompt_version: c.promptVersion,
     input_tokens: c.inputTokens ?? 0,
     output_tokens: c.outputTokens ?? 0,
+    // Each model's tokens and cost are known on their own: the answer model's
+    // here, the utility model's below. A turn's totals need both.
     tokens_known: !c.usageEstimated && c.inputTokens !== undefined && c.outputTokens !== undefined ? 1 : 0,
     cost_micros: Math.round((c.costUsd ?? 0) * 1e6),
-    // Known only when every call of the turn reported its cost.
-    cost_known: !c.usageEstimated && c.costUsd !== undefined && (!c.utilityModel || c.utilityCostUsd !== undefined) ? 1 : 0,
+    cost_known: !c.usageEstimated && c.costUsd !== undefined ? 1 : 0,
     utility_model: c.utilityModel ?? '',
     utility_input_tokens: c.utilityInputTokens ?? 0,
     utility_output_tokens: c.utilityOutputTokens ?? 0,
     utility_cost_micros: Math.round((c.utilityCostUsd ?? 0) * 1e6),
+    utility_tokens_known: c.utilityModel && !c.utilityUsageEstimated ? 1 : 0,
+    utility_cost_known: c.utilityModel && !c.utilityUsageEstimated && c.utilityCostUsd !== undefined ? 1 : 0,
     latency_ms: c.latencyMs ?? null,
     first_token_ms: c.firstTokenMs ?? null,
     retrieval_confidence: c.retrievalConfidence ?? 0,

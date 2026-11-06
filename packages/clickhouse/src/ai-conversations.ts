@@ -52,6 +52,9 @@ export const aiTurnRowSchema = z
     utility_input_tokens: uint.default(0),
     utility_output_tokens: uint.default(0),
     utility_cost_micros: uint.default(0),
+    // tokens_known/cost_known are the answer model's; these, the utility model's.
+    utility_tokens_known: uint.max(1).default(0),
+    utility_cost_known: uint.max(1).default(0),
   })
   .strict();
 export const aiFeedbackRowSchema = z
@@ -277,9 +280,13 @@ export const queryAiConversation = async (s: AiConversationScope, conversationId
         language: t.language,
         provider: t.provider || null,
         model: t.model || null,
-        inputTokens: t.tokens_known ? Number(t.input_tokens) + Number(t.utility_input_tokens ?? 0) : null,
-        outputTokens: t.tokens_known ? Number(t.output_tokens) + Number(t.utility_output_tokens ?? 0) : null,
-        costUsd: t.cost_known ? (Number(t.cost_micros) + Number(t.utility_cost_micros ?? 0)) / 1e6 : null,
+        // A turn's totals are known when every model's are.
+        inputTokens:
+          t.tokens_known && (!t.utility_model || t.utility_tokens_known) ? Number(t.input_tokens) + Number(t.utility_input_tokens ?? 0) : null,
+        outputTokens:
+          t.tokens_known && (!t.utility_model || t.utility_tokens_known) ? Number(t.output_tokens) + Number(t.utility_output_tokens ?? 0) : null,
+        costUsd:
+          t.cost_known && (!t.utility_model || t.utility_cost_known) ? (Number(t.cost_micros) + Number(t.utility_cost_micros ?? 0)) / 1e6 : null,
         latencyMs: t.latency_ms === null ? null : Number(t.latency_ms),
         feedback: f
           ? { rating: f.rating, reason: f.reason || null, comment: f.content_captured ? f.comment || null : null, updatedAt: iso(f.updated_at) }
@@ -349,12 +356,16 @@ interface TurnAggregate extends UsageAggregate {
   answered: Count;
   noAnswer: Count;
 }
+/** A turn whose every model reported its cost. */
+const TURN_COST_KNOWN = "cost_known=1 AND (utility_model='' OR utility_cost_known=1)";
+/** Cost sums every model's reported cost; knownCosts counts turns whose whole
+ * cost is known, so fewer than the turns billed means "at least". */
 const usageSql = `sum(input_tokens+utility_input_tokens) AS inputTokens,sum(output_tokens+utility_output_tokens) AS outputTokens,
- sumIf(cost_micros+utility_cost_micros,cost_known=1) AS costMicros,countIf(cost_known=1) AS knownCosts`;
+ sumIf(cost_micros,cost_known=1)+sumIf(utility_cost_micros,utility_cost_known=1) AS costMicros,countIf(${TURN_COST_KNOWN}) AS knownCosts`;
 const usageResult = (r: UsageAggregate) => ({
   inputTokens: Number(r.inputTokens),
   outputTokens: Number(r.outputTokens),
-  costUsd: Number(r.knownCosts) > 0 ? Number(r.costMicros) / 1e6 : null,
+  costUsd: Number(r.knownCosts) > 0 || Number(r.costMicros) > 0 ? Number(r.costMicros) / 1e6 : null,
 });
 export const queryAiConversationSummary = async (s: AiConversationScope, q: AiReadQuery) => {
   let timezone = 'UTC';
@@ -365,7 +376,7 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
   }
   const queryParams = { ...archiveParams(s, q), timezone };
   const ctes = `WITH turns AS (SELECT conversation_id,turn_id,status,occurred_at,language,input_tokens,output_tokens,cost_micros,cost_known,
- utility_input_tokens,utility_output_tokens,utility_cost_micros
+ utility_model,utility_input_tokens,utility_output_tokens,utility_cost_micros,utility_cost_known
  FROM ai_conversation_turns FINAL WHERE ${turnsWhere}),
  active AS (SELECT turn_id,rating,reason,updated_at FROM (${feedbackSource}) WHERE turn_id IN (SELECT turn_id FROM turns))`;
   const [totals, feedback, reasons, days, languages, spend] = await Promise.all([
@@ -563,14 +574,15 @@ const dailyColumns = [
 ] as const;
 /** Per-model usage rows from turns: each turn's answer model (it carries the
  * turn's counts and times), plus a tokens-and-cost row for its utility model when
- * rewriting and suggestions ran on one. A turn's cost counts only when every one
- * of its calls reported it, for both models. */
+ * rewriting and suggestions ran on one, with 0 questions. Each model's cost sums
+ * the turns where that model reported it; cost_known_turns, on the answer
+ * model's row, counts turns whose every model reported its cost. */
 const perModelUsage = (
   where: string,
   day: string,
   keys: string,
-) => `SELECT ${keys},${day} AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} GROUP BY ${keys},day,provider,model
- UNION ALL SELECT ${keys},${day} AS day,provider,utility_model AS model,toUInt64(0) AS questions,toUInt64(0) AS answered,toUInt64(0) AS no_answer,toUInt64(0) AS failed,toUInt64(0) AS cancelled,sum(utility_input_tokens) AS input_tokens,sum(utility_output_tokens) AS output_tokens,sumIf(utility_cost_micros,cost_known=1) AS cost_micros,toUInt64(0) AS cost_known_turns,toUInt64(0) AS latency_ms_sum,toUInt64(0) AS latency_turns,toUInt64(0) AS first_token_ms_sum,toUInt64(0) AS first_token_turns,toUInt64(0) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} AND utility_model!='' GROUP BY ${keys},day,provider,model`;
+) => `SELECT ${keys},${day} AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(${TURN_COST_KNOWN}) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} GROUP BY ${keys},day,provider,model
+ UNION ALL SELECT ${keys},${day} AS day,provider,utility_model AS model,toUInt64(0) AS questions,toUInt64(0) AS answered,toUInt64(0) AS no_answer,toUInt64(0) AS failed,toUInt64(0) AS cancelled,sum(utility_input_tokens) AS input_tokens,sum(utility_output_tokens) AS output_tokens,sumIf(utility_cost_micros,utility_cost_known=1) AS cost_micros,toUInt64(0) AS cost_known_turns,toUInt64(0) AS latency_ms_sum,toUInt64(0) AS latency_turns,toUInt64(0) AS first_token_ms_sum,toUInt64(0) AS first_token_turns,toUInt64(0) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} AND utility_model!='' GROUP BY ${keys},day,provider,model`;
 export const refreshAiUsageDaily = async (s: AiConversationScope, days: string[], client = getClickHouseClient('writer')) => {
   // A day at or past the retention boundary may already have lost turns to TTL;
   // rebuilding it from what is left would undercount, so it keeps its totals.

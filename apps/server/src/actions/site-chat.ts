@@ -6,16 +6,20 @@ import {
   boundChatHistory,
   CHAT_OUTPUT_TOKEN_LIMITS,
   CHAT_PROMPT_VERSION,
+  type ChatTurnShape,
   type ChatUsage,
+  chatCallInputTokens,
   citationsToSources,
   condenseFollowUp,
+  estimateChatTurnTokens,
   estimateTokens,
+  fitChatContext,
   type GroundedChatResult,
   streamGroundedChat,
   suggestedArticles,
   suggestFollowUps,
 } from '@nibleaf/search';
-import { type ChatCostSink, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
+import { type ChatCostSink, knownChatCost, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
 import { defaultLanguage, extractHeadings } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
@@ -165,34 +169,40 @@ interface TurnOutcome {
   firstTokenMs?: number;
 }
 
-/** Room for the retrieved docs a call reads (bounded chunks, not exact). */
-const CHAT_CONTEXT_RESERVE_TOKENS = 3000;
-/** Instructions around each call's own input. */
-const PROMPT_OVERHEAD_TOKENS: Record<ProviderCall, number> = { condense: 80, generation: 500, follow_ups: 150 };
-const historyText = (history: SiteChatBody['history']) => history.map((message) => message.content).join('\n');
 const chatHistoryLimits = () => ({ maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS });
 
-/** What a turn may spend before it runs, reserved against the budgets: the
- * rewrite and the answer each read the question and history, the answer and the
- * suggestions each read retrieved docs, plus every call's output cap. The
- * reservation is settled against actual usage when the turn ends. */
-export const estimateChatTurnTokens = (body: Pick<SiteChatBody, 'question' | 'history'>): number => {
-  const conversation = estimateTokens(`${body.question}\n${historyText(boundChatHistory(body.history, chatHistoryLimits()))}`);
-  const outputs = CHAT_OUTPUT_TOKEN_LIMITS.condense + CHAT_OUTPUT_TOKEN_LIMITS.followUps + CHAT_OUTPUT_TOKEN_LIMITS.answer;
-  return 2 * conversation + 2 * CHAT_CONTEXT_RESERVE_TOKENS + outputs;
-};
+/** What a turn's provider calls are built from, to size them before they run. */
+export const chatTurnShape = (
+  body: Pick<SiteChatBody, 'question' | 'history'>,
+  language: string,
+  page?: { title: string; path: string },
+): ChatTurnShape => ({
+  question: body.question,
+  history: body.history,
+  language,
+  historyLimits: chatHistoryLimits(),
+  ...(page ? { pageContext: { title: page.title, path: page.path } } : {}),
+});
+
+/** One model's share of a turn. `estimated` marks totals that include a call
+ * that never reported its usage; such totals carry no cost. */
+interface ModelUsage {
+  usage: ChatUsage;
+  estimated: boolean;
+}
 
 /** A turn's usage for budgets and records, per model: the answer model's calls,
  * and the utility model's when rewriting and suggestions run on one. Reported
  * calls count exactly, plus an estimate for every call that started without
- * reporting. `estimated` marks totals that are not all provider-reported, and
- * their cost as unknown. */
+ * reporting. Each model is judged on its own calls, so one model's missing
+ * report never makes the other's usage or cost unknown. A model's cost is known
+ * only when every response billed through its sink reported one. */
 const turnUsage = (
   outcome: Pick<TurnOutcome, 'usage' | 'utility' | 'unreported'>,
-  costs: { answer?: number; utility?: number },
-): { usage?: ChatUsage; utility?: { model: string; usage: ChatUsage }; tokens: number; estimated: boolean } => {
-  const estimated = outcome.unreported.size > 0;
-  const part = (reported: ChatUsage | undefined, calls: ProviderCall[], costUsd?: number): ChatUsage | undefined => {
+  sinks: { answer: ChatCostSink; utility: ChatCostSink },
+): { answer?: ModelUsage; utility?: ModelUsage & { model: string }; tokens: number } => {
+  const part = (reported: ChatUsage | undefined, calls: ProviderCall[], sink: ChatCostSink): ModelUsage | undefined => {
+    const estimated = calls.some((call) => outcome.unreported.has(call));
     let input = reported?.inputTokens;
     let output = reported?.outputTokens;
     for (const call of calls) {
@@ -202,18 +212,20 @@ const turnUsage = (
       output = (output ?? 0) + pending.output;
     }
     if (input === undefined && output === undefined && !reported) return;
-    if (!estimated) return costUsd !== undefined ? { ...reported, costUsd } : reported;
-    return { inputTokens: input ?? 0, outputTokens: output ?? 0, totalTokens: (input ?? 0) + (output ?? 0) };
+    if (estimated) return { usage: { inputTokens: input ?? 0, outputTokens: output ?? 0, totalTokens: (input ?? 0) + (output ?? 0) }, estimated };
+    // A provider that bills through the sink states cost there; otherwise only
+    // an adapter-reported cost for every call counts.
+    const { costUsd: reportedCost, ...counts } = reported ?? {};
+    const costUsd = sink.calls ? knownChatCost(sink) : reportedCost;
+    return { usage: { ...counts, ...(costUsd !== undefined ? { costUsd } : {}) }, estimated };
   };
   const separate = outcome.utility;
-  const usage = part(outcome.usage, separate ? ['generation'] : ['condense', 'generation', 'follow_ups'], costs.answer);
-  const utilityUsage = separate ? part(separate.usage, ['condense', 'follow_ups'], costs.utility) : undefined;
-  const tokens = (usageTokens(usage) ?? 0) + (usageTokens(utilityUsage) ?? 0);
+  const answer = part(outcome.usage, separate ? ['generation'] : ['condense', 'generation', 'follow_ups'], sinks.answer);
+  const utility = separate ? part(separate.usage, ['condense', 'follow_ups'], sinks.utility) : undefined;
   return {
-    ...(usage ? { usage } : {}),
-    ...(separate && utilityUsage ? { utility: { model: separate.model, usage: utilityUsage } } : {}),
-    tokens,
-    estimated,
+    ...(answer ? { answer } : {}),
+    ...(separate && utility ? { utility: { ...utility, model: separate.model } } : {}),
+    tokens: (usageTokens(answer?.usage) ?? 0) + (usageTokens(utility?.usage) ?? 0),
   };
 };
 
@@ -291,7 +303,10 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const consent = trustedChatConsent(context.snapshot.project.config, body.consent);
   const emit = chatEventRecorder(context, { ...reader, consent, ...(body.sessionId ? { sessionId: body.sessionId } : {}) });
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
-  const gate = await openChatTurn(context, body.conversationId, estimateChatTurnTokens(body)).catch(() => ({
+  const page = resolvePageContext(context, body.pagePath);
+  // Sized from the prompts the turn's calls send, so the budgets hold.
+  const shape = chatTurnShape(body, language, page);
+  const gate = await openChatTurn(context, body.conversationId, estimateChatTurnTokens(shape)).catch(() => ({
     ok: false as const,
     code: 'unavailable' as const,
   }));
@@ -304,7 +319,6 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     return yield* fail(gate.code);
   }
   const { runtime, reservation, quota } = gate;
-  const page = resolvePageContext(context, body.pagePath);
   void emit([
     {
       name: 'question_asked',
@@ -357,13 +371,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     const historyLimits = chatHistoryLimits();
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
-    const conversationTokens = estimateTokens(`${body.question}\n${historyText(history)}`);
     // A first question is not rewritten, so it makes no call here.
-    if (history.length)
-      outcome.unreported.set('condense', {
-        input: conversationTokens + PROMPT_OVERHEAD_TOKENS.condense,
-        output: CHAT_OUTPUT_TOKEN_LIMITS.condense,
-      });
+    if (history.length) outcome.unreported.set('condense', { input: chatCallInputTokens(shape).condense, output: CHAT_OUTPUT_TOKEN_LIMITS.condense });
     const condensed = await condenseFollowUp({
       adapter: utilityAdapter,
       question: body.question,
@@ -404,25 +413,21 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     } else {
       yield custom(AI_CHAT_EVENT.status, { phase: 'writing' });
       phase = 'generation';
+      // The sources the answer reads; suggestions come from the same ones.
+      const sources = fitChatContext(retrieval.chunks);
+      const sent = chatCallInputTokens(shape, retrieval.chunks);
       // Prepared while the answer streams, so suggestions add no wait.
-      outcome.unreported.set('follow_ups', {
-        input: estimateTokens(body.question) + PROMPT_OVERHEAD_TOKENS.follow_ups + 12 * 40,
-        output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
-      });
+      outcome.unreported.set('follow_ups', { input: sent.followUps, output: CHAT_OUTPUT_TOKEN_LIMITS.followUps });
       const suggesting = suggestFollowUps({
         adapter: utilityAdapter,
         question: body.question,
-        chunks: retrieval.chunks,
+        chunks: sources,
         language,
         signal: sideSignal,
         modelOptions,
         asked: history.filter((message) => message.role === 'user').map((message) => message.content),
       });
-      outcome.unreported.set('generation', {
-        input:
-          conversationTokens + PROMPT_OVERHEAD_TOKENS.generation + retrieval.chunks.reduce((sum, chunk) => sum + estimateTokens(chunk.content), 0),
-        output: CHAT_OUTPUT_TOKEN_LIMITS.answer,
-      });
+      outcome.unreported.set('generation', { input: sent.generation, output: CHAT_OUTPUT_TOKEN_LIMITS.answer });
       const generation = streamGroundedChat({
         adapter,
         model: runtime.answerModel,
@@ -546,7 +551,8 @@ const finishTurn = async ({
   const projectId = context.scope.projectId;
   // Provider-reported spend (OpenRouter) is read from the response bodies.
   await Promise.allSettled([...(cost.pending ?? []), ...(utilityCost.pending ?? [])]);
-  const { usage, utility, tokens, estimated } = turnUsage(outcome, { answer: cost.costUsd, utility: utilityCost.costUsd });
+  const { answer, utility, tokens } = turnUsage(outcome, { answer: cost, utility: utilityCost });
+  const usage = answer?.usage;
   // Replaces the reservation with what the turn spent, estimates included.
   await settleChatSpend(projectId, body.conversationId, reservation, tokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
@@ -554,7 +560,7 @@ const finishTurn = async ({
 
   // Estimated totals stay out of analytics events, which carry reported facts
   // only, and they report the answer model's usage, the model they name.
-  const reported = estimated ? undefined : usage;
+  const reported = answer?.estimated ? undefined : usage;
   const costMicros = reported?.costUsd !== undefined ? Math.round(reported.costUsd * 1_000_000) : undefined;
   const base = { provider: runtime.providerId, model: outcome.result?.model ?? runtime.answerModel, latencyMs };
   const event =
@@ -630,9 +636,10 @@ const finishTurn = async ({
           utilityInputTokens: utility.usage.inputTokens ?? 0,
           utilityOutputTokens: utility.usage.outputTokens ?? 0,
           ...(utility.usage.costUsd !== undefined ? { utilityCostUsd: utility.usage.costUsd } : {}),
+          ...(utility.estimated ? { utilityUsageEstimated: true } : {}),
         }
       : {}),
-    ...(estimated ? { usageEstimated: true } : {}),
+    ...(answer?.estimated ? { usageEstimated: true } : {}),
     latencyMs,
     ...(outcome.firstTokenMs !== undefined ? { firstTokenMs: outcome.firstTokenMs } : {}),
     ...(outcome.retrieval

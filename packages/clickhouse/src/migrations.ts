@@ -526,6 +526,9 @@ export const migrations: ClickHouseMigration[] = [
       'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_input_tokens UInt64 DEFAULT 0',
       'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_output_tokens UInt64 DEFAULT 0',
       'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_cost_micros UInt64 DEFAULT 0',
+      // Each model's figures are known on their own (tokens_known/cost_known are the answer model's).
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_tokens_known UInt8 DEFAULT 0',
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_cost_known UInt8 DEFAULT 0',
     ],
   },
 ];

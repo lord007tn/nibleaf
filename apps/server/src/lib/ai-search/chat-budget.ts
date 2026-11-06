@@ -1,5 +1,28 @@
+import { largestChatTurnTokens } from '@nibleaf/search';
+import { AI_CHAT_LIMITS } from '@nibleaf/validators';
 import { envExtras } from '@/lib/env-extras';
 import { aiSpendRedis } from './quota';
+
+type ChatBudgetLimits = Pick<
+  typeof envExtras,
+  'SEARCH_CHAT_HISTORY_MESSAGES' | 'SEARCH_CHAT_HISTORY_MAX_TOKENS' | 'SEARCH_CHAT_MAX_CONVERSATION_TOKENS' | 'SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'
+>;
+
+/** Token budgets below the largest reservation a turn can make (the longest
+ * question with a full history) refuse every such turn. Reported at startup so
+ * an operator can raise them; null when both budgets fit it. */
+export const chatBudgetWarning = (limits: ChatBudgetLimits = envExtras) => {
+  const largestTurnTokens = largestChatTurnTokens({
+    questionMax: AI_CHAT_LIMITS.questionMax,
+    historyLimits: { maxMessages: limits.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: limits.SEARCH_CHAT_HISTORY_MAX_TOKENS },
+  });
+  const daily = limits.SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT;
+  const settings = [
+    ...(limits.SEARCH_CHAT_MAX_CONVERSATION_TOKENS < largestTurnTokens ? ['SEARCH_CHAT_MAX_CONVERSATION_TOKENS'] : []),
+    ...(daily > 0 && daily < largestTurnTokens ? ['SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT'] : []),
+  ];
+  return settings.length ? { settings, largestTurnTokens } : null;
+};
 
 /** Conversation counters outlive any realistic reading session; daily token
  * keys cover the UTC day plus a margin for late reconciliation. */

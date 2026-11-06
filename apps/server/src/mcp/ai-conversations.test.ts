@@ -47,5 +47,9 @@ describe('AI conversation MCP', () => {
       // runMcpReadTool re-checks the scope, audits the call and reports errors safely.
       expect(runMcpReadTool).toHaveBeenLastCalledWith({}, principal, name, 'analytics:read', expect.any(Function));
     }
+    // An agent reading per-model usage learns why a model shows spend with no questions.
+    const usage = registerTool.mock.calls.find(([name]) => name === 'get_ai_usage')?.[1].description as string;
+    expect(usage).toContain('its own rows with 0 questions');
+    expect(usage).toContain('costKnownAnswers counts answers whose every call, on every model, reported its cost');
   });
 });

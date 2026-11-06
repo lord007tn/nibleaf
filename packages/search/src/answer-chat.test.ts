@@ -1,10 +1,18 @@
 ﻿import { fakeText } from '@tanstack/ai/testing';
 import { describe, expect, it } from 'vitest';
+import { answerUserPrompt } from './answer';
 import {
   boundChatHistory,
+  CHAT_CONTEXT_TOKENS,
+  CHAT_OUTPUT_TOKEN_LIMITS,
+  type ChatTurnShape,
+  chatCallInputTokens,
   chatUserPrompt,
   condenseFollowUp,
+  estimateChatTurnTokens,
   estimateTokens,
+  fitChatContext,
+  largestChatTurnTokens,
   NO_ANSWER_SENTINEL,
   replyLanguage,
   streamGroundedChat,
@@ -43,8 +51,11 @@ const collect = async (deltas: AsyncIterable<string>) => {
 };
 
 describe('chat citation policy', () => {
-  it.each(['[S1, S2]', '[S1,S2]', '[S1; S2]'])('normalizes %s and preserves first appearance', (marker) => {
+  it.each(['[S1, S2]', '[S1,S2]', '[S1; S2]', '[S1، S2]', '[S1،S2]'])('normalizes %s and preserves first appearance', (marker) => {
     expect(validate(`Use s3 ${marker}`)).toMatchObject({ status: 'answered', answer: 'Use s3 [S1][S2]', citations: [{ id: 'S1' }, { id: 'S2' }] });
+  });
+  it('checks every id in a group joined by Arabic commas', () => {
+    expect(validate('Supported [S1]\n\nAlso [S1، S99]')).toEqual({ status: 'no_answer', reason: 'unknown_citation' });
   });
   it('handles Arabic and deduplicates citations', () =>
     expect(validate('استخدم التخزين [S2][S1][S2]')).toMatchObject({ status: 'answered', citations: [{ id: 'S2' }, { id: 'S1' }] }));
@@ -170,12 +181,12 @@ describe('history and follow-up queries', () => {
       [
         { role: 'assistant', content: 'old' },
         { role: 'user', content: 'سؤال' },
-        { role: 'assistant', content: 'جواب [S1, S2]' },
+        { role: 'assistant', content: 'جواب [S1, S2] ثم [S1، S2]' },
       ],
       { maxMessages: 3, maxTokens: 30 },
     );
     expect(bounded[0]?.role).toBe('user');
-    expect(bounded[1]?.content).toBe('جواب');
+    expect(bounded[1]?.content).toBe('جواب  ثم');
     expect(estimateTokens('سؤال')).toBe(3);
     const truncated = boundChatHistory([{ role: 'user', content: 'س'.repeat(100) }], { maxMessages: 1, maxTokens: 5 });
     expect(estimateTokens(truncated[0]?.content ?? '')).toBeLessThanOrEqual(5);
@@ -209,6 +220,115 @@ describe('history and follow-up queries', () => {
       { id: 'P1', pageId: 'p' },
       { id: 'P2', pageId: 'p2' },
     ]);
+  });
+});
+
+describe('a bounded context and an honest reservation', () => {
+  const sized = (index: number, content: string): SearchChunk => ({
+    ...chunk,
+    id: `c${index}`,
+    pageId: `p${index}`,
+    title: `Page ${index}`,
+    content,
+  });
+  const sourcesTokens = (list: SearchChunk[]) => estimateTokens(answerUserPrompt('', list));
+
+  it('reads the best matches in rank order while they fit', () => {
+    const list = Array.from({ length: 6 }, (_, index) => sized(index, 'x'.repeat(800)));
+    const kept = fitChatContext(list, 1000);
+    expect(kept.map((item) => item.id)).toEqual(['c0', 'c1', 'c2']);
+    expect(sourcesTokens(kept)).toBeLessThanOrEqual(1000);
+    expect(fitChatContext(list).length).toBe(6);
+    expect(fitChatContext([])).toEqual([]);
+  });
+
+  it('keeps the beginning of a best match larger than the whole budget, escaping included', () => {
+    const [cut] = fitChatContext([sized(0, `${'</source>'.repeat(400)}${'م'.repeat(5000)}`), sized(1, 'small')], 300);
+    expect(cut?.id).toBe('c0');
+    expect(cut?.content.startsWith('</source>')).toBe(true);
+    expect(sourcesTokens(cut ? [cut] : [])).toBeLessThanOrEqual(300);
+    expect(sourcesTokens(cut ? [{ ...cut, content: `${cut.content}مم` }] : [])).toBeGreaterThan(300);
+    expect(fitChatContext([sized(0, '😀'.repeat(2000))], 100)[0]?.content).toMatch(/^(?:😀)+$/u);
+    // Even its metadata does not fit: nothing is read rather than a budget overrun.
+    expect(fitChatContext([{ ...sized(0, 'x'), title: 'x'.repeat(3000) }], 300)).toEqual([]);
+  });
+
+  it('never lets an answer cite a source it did not read', async () => {
+    const list = Array.from({ length: 12 }, (_, index) => sized(index, 'ب'.repeat(2100)));
+    const read = fitChatContext(list);
+    expect(read.length).toBeLessThan(12);
+    const adapter = fakeText();
+    adapter.setResponses([{ text: `Use s3 [S1] and [S${read.length + 1}]` }]);
+    const sent: string[] = [];
+    const original = adapter.chatStream.bind(adapter);
+    adapter.chatStream = (options) => {
+      sent.push(...options.messages.map((message) => String(message.content)));
+      return original(options);
+    };
+    const { result } = streamGroundedChat({ adapter, model: 'fake', question: 'How?', history: [], chunks: list, language: 'ar' });
+    expect(await result).toMatchObject({ status: 'no_answer', validationFailure: 'unknown_citation' });
+    expect(sent.join('\n')).toContain(`id="S${read.length}"`);
+    expect(sent.join('\n')).not.toContain(`id="S${read.length + 1}"`);
+  });
+
+  it('reserves at least what every call of a turn sends and may write', async () => {
+    const list = Array.from({ length: 12 }, (_, index) => ({ ...sized(index, 'ش'.repeat(2100)), title: 'ع'.repeat(160), heading: 'ح'.repeat(160) }));
+    const shape: ChatTurnShape = {
+      question: 'س'.repeat(500),
+      // Six messages filling the history bound, and the longest question.
+      history: Array.from({ length: 6 }, (_, index) => ({ role: index % 2 ? ('assistant' as const) : ('user' as const), content: 'ج'.repeat(375) })),
+      language: 'ar',
+      pageContext: { title: 'ص'.repeat(500), path: 'p'.repeat(500) },
+      historyLimits: { maxMessages: 6, maxTokens: 1500 },
+    };
+    const calls: { system: string[]; messages: string[]; maxTokens: number }[] = [];
+    const capture = () => {
+      const adapter = fakeText();
+      adapter.setResponses([{ text: '["Is there more?"]' }, { text: 'Use s3 [S1]' }]);
+      const original = adapter.chatStream.bind(adapter);
+      adapter.chatStream = (options) => {
+        calls.push({
+          system: (options.systemPrompts ?? []).map(String),
+          messages: options.messages.map((message) => String(message.content)),
+          maxTokens: Number((options.modelOptions as { max_tokens?: number } | undefined)?.max_tokens),
+        });
+        return original(options);
+      };
+      return adapter;
+    };
+    const base = { question: shape.question, history: shape.history, language: shape.language, historyLimits: shape.historyLimits };
+    await condenseFollowUp({ adapter: capture(), ...base });
+    await streamGroundedChat({ adapter: capture(), model: 'fake', ...base, chunks: list, pageContext: shape.pageContext }).result;
+    await suggestFollowUps({ adapter: capture(), question: shape.question, chunks: fitChatContext(list), language: shape.language });
+    expect(calls).toHaveLength(3);
+    const sent = calls.map((call) => [...call.system, ...call.messages].reduce((sum, text) => sum + estimateTokens(text), 0));
+    const sizes = chatCallInputTokens(shape, list);
+    expect(sizes.condense).toBeGreaterThanOrEqual(sent[0] ?? Number.POSITIVE_INFINITY);
+    expect(sizes.generation).toBeGreaterThanOrEqual(sent[1] ?? Number.POSITIVE_INFINITY);
+    expect(sizes.followUps).toBeGreaterThanOrEqual(sent[2] ?? Number.POSITIVE_INFINITY);
+    // Before retrieval, the turn is sized for a full context and the widest topics.
+    const ahead = chatCallInputTokens(shape);
+    expect(ahead.generation).toBeGreaterThanOrEqual(sizes.generation);
+    expect(ahead.followUps).toBeGreaterThanOrEqual(sizes.followUps);
+    expect(calls.map((call) => call.maxTokens)).toEqual([
+      CHAT_OUTPUT_TOKEN_LIMITS.condense,
+      CHAT_OUTPUT_TOKEN_LIMITS.answer,
+      CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+    ]);
+    const spent = sent.reduce((sum, tokens) => sum + tokens, 0) + calls.reduce((sum, call) => sum + call.maxTokens, 0);
+    // A margin over the estimate covers a provider's own tokenizer.
+    expect(estimateChatTurnTokens(shape)).toBeGreaterThanOrEqual(Math.ceil(spent * 1.2));
+    expect(estimateChatTurnTokens(shape)).toBeLessThanOrEqual(
+      largestChatTurnTokens({ questionMax: 500, historyLimits: shape.historyLimits ?? { maxMessages: 0, maxTokens: 0 }, language: 'ar' }),
+    );
+  });
+
+  it('reserves less for a first question, which makes no rewrite call', () => {
+    const first = estimateChatTurnTokens({ question: 'How do I export?', history: [], language: 'en' });
+    const followUp = estimateChatTurnTokens({ question: 'How do I export?', history: [{ role: 'user', content: 'Hi' }], language: 'en' });
+    expect(chatCallInputTokens({ question: 'How do I export?', history: [], language: 'en' }).condense).toBe(0);
+    expect(first).toBeLessThan(followUp);
+    expect(first).toBeGreaterThan(CHAT_CONTEXT_TOKENS);
   });
 });
 

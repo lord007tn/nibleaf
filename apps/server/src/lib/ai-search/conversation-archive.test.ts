@@ -95,6 +95,20 @@ describe('capture policy', () => {
     const estimated = buildAiTurnRow({ ...capture, status: 'cancelled', inputTokens: 2100, outputTokens: 90, usageEstimated: true });
     expect(estimated).toMatchObject({ input_tokens: 2100, output_tokens: 90, tokens_known: 0, cost_known: 0 });
   });
+  it("judges each model's usage on its own calls", () => {
+    const utility = { utilityModel: 'openai/mini', utilityInputTokens: 300, utilityOutputTokens: 40 };
+    // The suggestions call never reported: only the utility model's figures are estimates.
+    const row = buildAiTurnRow({ ...capture, inputTokens: 2000, outputTokens: 300, costUsd: 0.001, ...utility, utilityUsageEstimated: true });
+    expect(row).toMatchObject({ tokens_known: 1, cost_known: 1, utility_tokens_known: 0, utility_cost_known: 0 });
+    // An answer stopped mid-stream leaves the utility model's reported rewrite known.
+    const stopped = buildAiTurnRow({ ...capture, inputTokens: 2100, outputTokens: 90, usageEstimated: true, ...utility, utilityCostUsd: 0.000_02 });
+    expect(stopped).toMatchObject({ tokens_known: 0, cost_known: 0, utility_tokens_known: 1, utility_cost_known: 1, utility_cost_micros: 20 });
+    expect(buildAiTurnRow({ ...capture, inputTokens: 1, outputTokens: 1 })).toMatchObject({
+      utility_model: '',
+      utility_tokens_known: 0,
+      utility_cost_known: 0,
+    });
+  });
   it('withdraws feedback text and rating', () => {
     const row = buildAiFeedbackRow({ ...capture, rating: null, comment: 'private' });
     expect(row).toMatchObject({ rating: '', comment: '', reason: '' });

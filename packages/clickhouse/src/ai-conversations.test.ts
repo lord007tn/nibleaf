@@ -290,6 +290,9 @@ it('rebuilds exact rollups from FINAL rows and previous keys with bound days', a
   // A separate utility model gets its own per-model row.
   expect(command.mock.calls[0]?.[0].query).toContain('utility_model AS model');
   expect(command.mock.calls[0]?.[0].query).toContain("utility_model!=''");
+  // Each model's cost counts on its own flag; a turn is fully costed only when both are known.
+  expect(command.mock.calls[0]?.[0].query).toContain('sumIf(utility_cost_micros,utility_cost_known=1)');
+  expect(command.mock.calls[0]?.[0].query).toContain("countIf(cost_known=1 AND (utility_model='' OR utility_cost_known=1)) AS cost_known_turns");
 });
 it('never rebuilds a day whose turns may have expired, even for a late write', async () => {
   const command = vi.fn();

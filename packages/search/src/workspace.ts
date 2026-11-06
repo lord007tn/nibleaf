@@ -98,9 +98,17 @@ export const workspaceChatAdapter = (runtime: WorkspaceAiRuntime, cost?: ChatCos
 /** Accumulates provider-reported spend across the calls of one chat turn. */
 export interface ChatCostSink {
   costUsd?: number;
+  /** Billed responses (successful), and how many of them reported a cost. */
+  calls?: number;
+  costed?: number;
   /** Response scans still reading; await before recording the turn. */
   pending?: Promise<void>[];
 }
+
+/** A sink's spend, known only when every billed response reported its cost: a
+ * call whose cost could not be read (stopped, cut off) leaves it unknown rather
+ * than undercounted. Undefined when no response was billed through it. */
+export const knownChatCost = (sink: ChatCostSink): number | undefined => (sink.calls && sink.costed === sink.calls ? (sink.costUsd ?? 0) : undefined);
 
 const COST = /"cost"\s*:\s*(\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)/g;
 
@@ -112,6 +120,7 @@ export const costReportingFetch =
   async (input, init) => {
     const response = await base(input, init);
     if (!response.ok || !response.body) return response;
+    sink.calls = (sink.calls ?? 0) + 1;
     const [forward, scan] = response.body.tee();
     const scanning = (async () => {
       const decoder = new TextDecoder();
@@ -126,7 +135,9 @@ export const costReportingFetch =
       }
       const usage = text.slice(text.lastIndexOf('"usage"'));
       const match = [...usage.matchAll(COST)][0];
-      if (match?.[1]) sink.costUsd = (sink.costUsd ?? 0) + Number(match[1]);
+      if (!match?.[1]) return;
+      sink.costUsd = (sink.costUsd ?? 0) + Number(match[1]);
+      sink.costed = (sink.costed ?? 0) + 1;
     })().catch(() => undefined);
     sink.pending = [...(sink.pending ?? []), scanning];
     return new Response(forward, { status: response.status, statusText: response.statusText, headers: response.headers });

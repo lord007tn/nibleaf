@@ -48,9 +48,9 @@ export const validateCitedAnswer = (answer: string, chunks: SearchChunk[], query
   let text = answer.trim();
   if (!text) return { status: 'no_answer', reason: 'empty' };
   if (policy === 'chat')
-    text = text.replace(/\[(S\d+(?:\s*[,;]\s*S\d+)+)\]/g, (_, group: string) =>
+    text = text.replace(/\[(S\d+(?:\s*[,;،]\s*S\d+)+)\]/g, (_, group: string) =>
       group
-        .split(/\s*[,;]\s*/)
+        .split(/\s*[,;،]\s*/)
         .map((id) => `[${id}]`)
         .join(''),
     );

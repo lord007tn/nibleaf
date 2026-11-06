@@ -6,6 +6,7 @@ import {
   deleteProjectAiConversations,
   queryAiChatEngagement,
   queryAiContentGaps,
+  queryAiConversation,
   queryAiConversationSummary,
   queryAiConversations,
   queryAiUsageDaily,
@@ -82,6 +83,8 @@ integration('AI archive SQL integration', () => {
         utility_input_tokens: 5,
         utility_output_tokens: 2,
         utility_cost_micros: 100,
+        utility_tokens_known: 1,
+        utility_cost_known: 1,
         question: '\u0643\u064a\u0641 \u0623\u0628\u062f\u0623\u061f',
         question_key: 'b'.repeat(64),
       },
@@ -294,6 +297,29 @@ integration('AI archive SQL integration', () => {
         downCount: 1,
       });
       expect((await queryAiConversationSummary(gapScope, {})).usage).toMatchObject({ costUsd: null, costComplete: false });
+      // A utility call that never reported leaves the answer model's cost known
+      // and the turn's total "at least" that, before and after the rollup.
+      const partialScope = { tenantId: tenant, projectId: randomUUID() };
+      const partialTurn = {
+        ...base,
+        project_id: partialScope.projectId,
+        turn_id: randomUUID(),
+        utility_model: 'test-mini',
+        utility_input_tokens: 5,
+        utility_output_tokens: 2,
+        utility_tokens_known: 0,
+        utility_cost_known: 0,
+      };
+      await client.insert({ table: 'ai_conversation_turns', format: 'JSONEachRow', values: [partialTurn] });
+      const partialUsage = { inputTokens: 15, outputTokens: 22, costUsd: 0.001, costComplete: false };
+      expect((await queryAiConversationSummary(partialScope, {})).usage).toEqual(partialUsage);
+      await refreshAiUsageDaily(partialScope, [at(0).slice(0, 10)], client);
+      const partial = await queryAiUsageDaily(partialScope, {});
+      expect(partial.find((r) => r.model === 'test')).toMatchObject({ questions: 1, cost_micros: 1000, cost_known_turns: 0 });
+      expect(partial.find((r) => r.model === 'test-mini')).toMatchObject({ questions: 0, input_tokens: 5, cost_micros: 0 });
+      expect((await queryAiConversationSummary(partialScope, {})).usage).toEqual(partialUsage);
+      const [partialDetail] = (await queryAiConversation(partialScope, partialTurn.conversation_id))?.turns ?? [];
+      expect(partialDetail).toMatchObject({ inputTokens: null, outputTokens: null, costUsd: null });
       await deleteAiConversation(scope, c1, client);
       expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBeNull();
       // c2, the hidden conversation and the scripted turn remain.

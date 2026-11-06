@@ -8,6 +8,7 @@ import { configureUploadCors, ensureBucket } from '@nibleaf/storage';
 import { Scalar } from '@scalar/hono-api-reference';
 import { openAPIRouteHandler } from 'hono-openapi';
 import { env } from './env';
+import { chatBudgetWarning } from './lib/ai-search/chat-budget';
 import app from './routes';
 
 // Fail fast on unhandled async/sync errors rather than running in an undefined state.
@@ -67,6 +68,8 @@ async function main() {
   // doubles as the producer readiness gate; do not route traffic to an API
   // whose publish/email/export jobs would only fail after accepting requests.
   await scheduleAnalyticsRollup();
+  const chatBudget = chatBudgetWarning();
+  if (chatBudget) logger.warn(chatBudget, 'AI chat token budgets are below the largest turn reservation; such turns will be refused');
   ready = true;
   logger.info({ revision: process.env.NIBLEAF_REVISION ?? 'development' }, 'API ready');
 }

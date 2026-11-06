@@ -103,7 +103,8 @@ const usageTotals = (rows: Record<string, string | number>[]) => {
 };
 
 /** Daily usage per model in plain units (USD, milliseconds), with totals. Cost
- * covers only answers whose provider reported it; costKnownAnswers says how many. */
+ * sums the calls whose provider reported it; costKnownAnswers counts answers
+ * whose every call, on every model, did. A utility model has its own rows. */
 export const getProjectAiUsage = async (tenantId: string, projectId: string, query: AiConversationSummaryQuery) => {
   const c = await context(tenantId, projectId);
   return read(

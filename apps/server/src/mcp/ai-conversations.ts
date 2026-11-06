@@ -23,7 +23,7 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
     'get_ai_usage',
     {
       description:
-        'AI assistant spend per day and model, with totals. Counts every turn a provider billed, automated traffic included, so its question count can exceed get_ai_feedback_summary (people only): questions, answered, unanswered, failed and cancelled answers, tokens (a stopped or failed answer contributes an estimate), cost in USD (only for answers whose provider reported it; see costKnownAnswers), average answer and first-token times in milliseconds, and retrieval cache hits.',
+        'AI assistant spend per day and model, with totals. Counts every turn a provider billed, automated traffic included, so its question count can exceed get_ai_feedback_summary (people only). When a separate, cheaper model rewrites follow-up questions and suggests next questions, it has its own rows with 0 questions and only its tokens and cost. Per row: questions, answered, unanswered, failed and cancelled answers, tokens (a stopped or failed call contributes an estimate), cost in USD (summing the calls whose provider reported it; costKnownAnswers counts answers whose every call, on every model, reported its cost), average answer and first-token times in milliseconds, and retrieval cache hits.',
       inputSchema: aiConversationSummaryQuery,
       annotations,
     },
