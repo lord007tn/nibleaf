@@ -236,6 +236,18 @@ describe('follow-up suggestions', () => {
     const result = await suggestFollowUps({ adapter, question: 'How?', answer: 'Use s3 [S1]', chunks, language: 'en' });
     expect(result.questions).toEqual(['How do I change storage?', 'Can I use local disk?', 'Is S3 required?']);
   });
+  it('never suggests a question the reader already asked in this conversation', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: '["Can I export my notes from the app", "هل يمكنني التصدير؟", "Are there limits on exports?"]' }]);
+    const result = await suggestFollowUps({
+      adapter,
+      question: 'And from the CLI?',
+      chunks,
+      language: 'en',
+      asked: ['Can I export my notes from the app?', 'هل يمكنني التصدير'],
+    });
+    expect(result.questions).toEqual(['Are there limits on exports?']);
+  });
   it.each([
     [{ error: 'boom' }, true],
     [{ text: 'not json' }, undefined],

@@ -25,4 +25,23 @@ describe('rate-limit retry guidance', () => {
     expect(recovered.status).toBe(200);
     expect(recovered.headers.get('retry-after')).toBeNull();
   });
+
+  it('reports a refused client once per window, and a failing report still refuses', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-17T12:00:00Z'));
+    const onLimited = vi.fn().mockRejectedValueOnce(new Error('recording failed'));
+    const app = new Hono<HonoEnv>();
+    app.onError(errorMiddleware({ isDevelopment: false }));
+    app.use('*', rateLimit({ windowMs: 60_000, max: 1, onLimited }));
+    app.get('/', (context) => context.json({ ok: true }));
+    expect((await app.request('/')).status).toBe(200);
+    expect((await app.request('/')).status).toBe(429);
+    expect((await app.request('/')).status).toBe(429);
+    expect(onLimited).toHaveBeenCalledOnce();
+    // The next window's first refusal is reported again.
+    vi.setSystemTime(new Date('2026-10-17T12:01:00.001Z'));
+    expect((await app.request('/')).status).toBe(200);
+    expect((await app.request('/')).status).toBe(429);
+    expect(onLimited).toHaveBeenCalledTimes(2);
+  });
 });

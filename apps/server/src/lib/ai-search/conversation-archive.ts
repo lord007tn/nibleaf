@@ -42,6 +42,9 @@ export interface ChatTurnCapture extends CapturePolicy {
   inputTokens?: number;
   outputTokens?: number;
   costUsd?: number;
+  /** Token totals include estimates for calls that never reported usage (a
+   * stopped or failed turn): stored, but flagged unknown, as is the cost. */
+  usageEstimated?: boolean;
   latencyMs?: number;
   firstTokenMs?: number;
   retrievalCacheHit?: boolean;
@@ -122,9 +125,9 @@ export const buildAiTurnRow = (c: ChatTurnCapture) => {
     prompt_version: c.promptVersion,
     input_tokens: c.inputTokens ?? 0,
     output_tokens: c.outputTokens ?? 0,
-    tokens_known: c.inputTokens !== undefined && c.outputTokens !== undefined ? 1 : 0,
+    tokens_known: !c.usageEstimated && c.inputTokens !== undefined && c.outputTokens !== undefined ? 1 : 0,
     cost_micros: Math.round((c.costUsd ?? 0) * 1e6),
-    cost_known: c.costUsd !== undefined ? 1 : 0,
+    cost_known: !c.usageEstimated && c.costUsd !== undefined ? 1 : 0,
     latency_ms: c.latencyMs ?? null,
     first_token_ms: c.firstTokenMs ?? null,
     retrieval_confidence: c.retrievalConfidence ?? 0,
@@ -170,8 +173,9 @@ const record = async (c: ChatFeedbackCapture | ChatTurnCapture, kind: 'ai-conver
 export const recordAiChatTurn = (capture: ChatTurnCapture): Promise<void> => record(capture, 'ai-conversation-turn');
 export const recordAiChatFeedback = (capture: ChatFeedbackCapture): Promise<void> => record(capture, 'ai-conversation-feedback');
 
-/** The analytics session hash (same scheme as analytics_events), only with consent. */
-const sessionHash = (c: Pick<ChatTurnCapture, 'consent' | 'sessionId' | 'tenantId' | 'projectId'>) =>
-  c.sessionId && (c.consent === 'granted' || c.consent === 'not_required')
+/** The analytics session hash (same scheme as analytics_events), only with
+ * consent: "not required" counts only where the site really doesn't ask. */
+const sessionHash = (c: Pick<ChatTurnCapture, 'consent' | 'consentRequired' | 'sessionId' | 'tenantId' | 'projectId'>) =>
+  c.sessionId && (c.consent === 'granted' || (c.consent === 'not_required' && !c.consentRequired))
     ? hash(`session:${JSON.stringify([c.tenantId, c.projectId])}:${c.sessionId}`)
     : null;

@@ -4,6 +4,7 @@ import { siteT } from '@nibleaf/i18n/site';
 import { createLogger } from '@nibleaf/logger';
 import {
   boundChatHistory,
+  CHAT_OUTPUT_TOKEN_LIMITS,
   CHAT_PROMPT_VERSION,
   type ChatUsage,
   citationsToSources,
@@ -27,12 +28,13 @@ import {
   type AiConversationTurnStatus,
   type SiteChatBody,
   type SiteChatFeedbackBody,
+  siteChatBody,
 } from '@nibleaf/validators';
 import { EventType, type StreamChunk, toServerSentEventsResponse } from '@tanstack/ai';
 import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError } from '@/errors';
-import { recordChatSpend, releaseChatTurn, reserveChatTurn } from '@/lib/ai-search/chat-budget';
+import { type ChatTurnHold, releaseChatTurn, reserveChatTurn, settleChatSpend } from '@/lib/ai-search/chat-budget';
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
@@ -137,6 +139,8 @@ const addUsage = (left?: ChatUsage, right?: ChatUsage): ChatUsage | undefined =>
 
 const custom = (name: string, value: unknown): StreamChunk => ({ type: EventType.CUSTOM, name, value, timestamp: Date.now() });
 
+type ProviderCall = 'condense' | 'generation' | 'follow_ups';
+
 interface TurnOutcome {
   status: AiConversationTurnStatus;
   noAnswerReason?: AiChatNoAnswerReason;
@@ -144,11 +148,55 @@ interface TurnOutcome {
   rewrittenQuery?: string;
   retrieval?: ChatRetrieval;
   result?: GroundedChatResult;
+  /** Usage of the provider calls that reported it. */
   usage?: ChatUsage;
+  /** Provider calls that started but never reported usage (stopped, failed, or a
+   * provider that omits it), with conservative estimates. A call leaves this
+   * list only once it reports its usage. */
+  unreported: Map<ProviderCall, { input: number; output: number }>;
+  /** The answer text streamed so far, to estimate an interrupted answer. */
+  streamed: string;
   errorCode?: AiChatErrorCode;
   /** From the request to the first visible text. */
   firstTokenMs?: number;
 }
+
+/** Room for the retrieved docs a call reads (bounded chunks, not exact). */
+const CHAT_CONTEXT_RESERVE_TOKENS = 3000;
+/** Instructions around each call's own input. */
+const PROMPT_OVERHEAD_TOKENS: Record<ProviderCall, number> = { condense: 80, generation: 500, follow_ups: 150 };
+const historyText = (history: SiteChatBody['history']) => history.map((message) => message.content).join('\n');
+const chatHistoryLimits = () => ({ maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS });
+
+/** What a turn may spend before it runs, reserved against the budgets: the
+ * rewrite and the answer each read the question and history, the answer and the
+ * suggestions each read retrieved docs, plus every call's output cap. The
+ * reservation is settled against actual usage when the turn ends. */
+export const estimateChatTurnTokens = (body: Pick<SiteChatBody, 'question' | 'history'>): number => {
+  const conversation = estimateTokens(`${body.question}\n${historyText(boundChatHistory(body.history, chatHistoryLimits()))}`);
+  const outputs = CHAT_OUTPUT_TOKEN_LIMITS.condense + CHAT_OUTPUT_TOKEN_LIMITS.followUps + CHAT_OUTPUT_TOKEN_LIMITS.answer;
+  return 2 * conversation + 2 * CHAT_CONTEXT_RESERVE_TOKENS + outputs;
+};
+
+/** A turn's usage for budgets and records: reported calls exactly, plus an
+ * estimate for every call that started without reporting. `estimated` marks
+ * totals that are not provider-reported, and their cost as unknown. */
+export const turnUsage = (
+  outcome: Pick<TurnOutcome, 'usage' | 'unreported'>,
+  costUsd?: number,
+): { usage?: ChatUsage; tokens: number; estimated: boolean } => {
+  if (outcome.unreported.size === 0) {
+    const usage = costUsd !== undefined ? { ...outcome.usage, costUsd } : outcome.usage;
+    return { ...(usage ? { usage } : {}), tokens: usageTokens(usage) ?? 0, estimated: false };
+  }
+  let input = outcome.usage?.inputTokens ?? 0;
+  let output = outcome.usage?.outputTokens ?? 0;
+  for (const call of outcome.unreported.values()) {
+    input += call.input;
+    output += call.output;
+  }
+  return { usage: { inputTokens: input, outputTokens: output, totalTokens: input + output }, tokens: input + output, estimated: true };
+};
 
 interface ChatTurnInput {
   context: PublishedAnswerContext;
@@ -175,11 +223,11 @@ type EmitChatEvents = (events: AiChatServerEvent[]) => Promise<void>;
 
 /** Content-free chat events for this reader. Never blocks or fails the stream. */
 const chatEventRecorder =
-  (context: PublishedAnswerContext, body: { consent: AiChatConsent; sessionId?: string }, reader: ReaderDimensions): EmitChatEvents =>
+  (context: PublishedAnswerContext, reader: ReaderDimensions & { consent: AiChatConsent; sessionId?: string }): EmitChatEvents =>
   (events) => {
     const eventContext: ChatEventContext = {
-      consent: trustedChatConsent(context.snapshot.project.config, body.consent),
-      ...(body.sessionId ? { sessionId: body.sessionId } : {}),
+      consent: reader.consent,
+      ...(reader.sessionId ? { sessionId: reader.sessionId } : {}),
       language: context.scope.language,
       ...(reader.userAgent ? { userAgent: reader.userAgent } : {}),
       device: reader.device,
@@ -190,16 +238,16 @@ const chatEventRecorder =
 
 /** Availability and spend gates, all before any provider call. Any failure to
  * reach the counter store refuses the turn (fail closed, like the answer quota). */
-const openChatTurn = async (context: PublishedAnswerContext, conversationId: string) => {
+const openChatTurn = async (context: PublishedAnswerContext, conversationId: string, estimatedTokens: number) => {
   const projectId = context.scope.projectId;
   if (!context.available) return { ok: false as const, code: 'unavailable' as const };
   const runtime = await resolveChatRuntime(projectId).catch(() => null);
   if (!runtime) return { ok: false as const, code: 'unavailable' as const };
-  const reservation = await reserveChatTurn(projectId, conversationId);
+  const reservation = await reserveChatTurn(projectId, conversationId, estimatedTokens);
   if (!reservation.allowed) return { ok: false as const, code: reservation.reason };
   const quota = await consumeAnswerQuota(projectId).catch(() => null);
   if (!quota?.allowed) {
-    await releaseChatTurn(projectId, conversationId).catch(() => undefined);
+    await releaseChatTurn(projectId, conversationId, reservation).catch(() => undefined);
     return { ok: false as const, code: quota ? ('quota_exhausted' as const) : ('unavailable' as const) };
   }
   return { ok: true as const, runtime, reservation, quota };
@@ -219,9 +267,15 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
 
   const started = performance.now();
   const tenant = tenantOf(projectId);
-  const emit = chatEventRecorder(context, body, reader);
+  // The consent every record of this turn uses: a client cannot claim consent
+  // is not required on a site whose banner applies.
+  const consent = trustedChatConsent(context.snapshot.project.config, body.consent);
+  const emit = chatEventRecorder(context, { ...reader, consent, ...(body.sessionId ? { sessionId: body.sessionId } : {}) });
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
-  const gate = await openChatTurn(context, body.conversationId).catch(() => ({ ok: false as const, code: 'unavailable' as const }));
+  const gate = await openChatTurn(context, body.conversationId, estimateChatTurnTokens(body)).catch(() => ({
+    ok: false as const,
+    code: 'unavailable' as const,
+  }));
   if (!gate.ok) {
     const kind = QUOTA_KIND[gate.code];
     void emit([
@@ -245,7 +299,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
 
   const analytics = {
     source: 'public_site' as const,
-    consentState: body.consent,
+    consentState: consent,
     ...(body.sessionId ? { sessionId: body.sessionId } : {}),
     device: reader.device,
     ...(reader.country ? { country: reader.country } : {}),
@@ -255,7 +309,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     () => undefined,
   );
 
-  const outcome: TurnOutcome = { status: 'failed' };
+  const outcome: TurnOutcome = { status: 'failed', unreported: new Map(), streamed: '' };
   const cost: ChatCostSink = {};
   const anchored = withSectionAnchors(context);
   const supportUrl = context.request.configuration.aiSupportUrl;
@@ -276,9 +330,16 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     // cheaper OpenRouter model. Workspace keys on OpenAI keep the answer model.
     const utilityModel = runtime.providerId === 'openrouter' ? envExtras.SEARCH_CHAT_UTILITY_MODEL : undefined;
     const utilityAdapter = utilityModel ? workspaceChatAdapter({ ...runtime, answerModel: utilityModel }, cost) : adapter;
-    const historyLimits = { maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS };
+    const historyLimits = chatHistoryLimits();
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
+    const conversationTokens = estimateTokens(`${body.question}\n${historyText(history)}`);
+    // A first question is not rewritten, so it makes no call here.
+    if (history.length)
+      outcome.unreported.set('condense', {
+        input: conversationTokens + PROMPT_OVERHEAD_TOKENS.condense,
+        output: CHAT_OUTPUT_TOKEN_LIMITS.condense,
+      });
     const condensed = await condenseFollowUp({
       adapter: utilityAdapter,
       question: body.question,
@@ -289,6 +350,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       modelOptions,
     });
     if (condensed.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'condense' }]);
+    if (condensed.usage) outcome.unreported.delete('condense');
     outcome.usage = condensed.usage;
     outcome.rewrittenQuery = condensed.rewritten ? condensed.query : undefined;
     phase = 'retrieval';
@@ -318,6 +380,10 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       yield custom(AI_CHAT_EVENT.status, { phase: 'writing' });
       phase = 'generation';
       // Prepared while the answer streams, so suggestions add no wait.
+      outcome.unreported.set('follow_ups', {
+        input: estimateTokens(body.question) + PROMPT_OVERHEAD_TOKENS.follow_ups + 12 * 40,
+        output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
+      });
       const suggesting = suggestFollowUps({
         adapter: utilityAdapter,
         question: body.question,
@@ -325,6 +391,12 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         language,
         signal: sideSignal,
         modelOptions,
+        asked: history.filter((message) => message.role === 'user').map((message) => message.content),
+      });
+      outcome.unreported.set('generation', {
+        input:
+          conversationTokens + PROMPT_OVERHEAD_TOKENS.generation + retrieval.chunks.reduce((sum, chunk) => sum + estimateTokens(chunk.content), 0),
+        output: CHAT_OUTPUT_TOKEN_LIMITS.answer,
       });
       const generation = streamGroundedChat({
         adapter,
@@ -340,11 +412,13 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       });
       for await (const delta of generation.deltas) {
         firstText();
+        outcome.streamed += delta;
         yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: turnId, delta, timestamp: Date.now() };
       }
       yield custom(AI_CHAT_EVENT.status, { phase: 'checking' });
       const result = await generation.result;
       outcome.result = result;
+      if (result.usage) outcome.unreported.delete('generation');
       outcome.usage = addUsage(outcome.usage, result.usage);
       Object.assign(outcome, { status: result.status, noAnswerReason: result.noAnswerReason, answer: result.answer });
       final =
@@ -352,6 +426,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
       const suggested = await suggesting;
+      if (suggested.usage) outcome.unreported.delete('follow_ups');
       outcome.usage = addUsage(outcome.usage, suggested.usage);
       if (suggested.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
       if (result.status === 'answered') followUps = suggested.questions;
@@ -383,8 +458,29 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     sideCalls.abort();
     // A reader pressing "Stop" ends iteration from outside, skipping catch.
     if (signal.aborted && outcome.status === 'failed') outcome.status = 'cancelled';
+    // An answer cut off mid-stream was billed for what it wrote, not its cap.
+    const generation = outcome.unreported.get('generation');
+    if (generation && outcome.status !== 'answered' && outcome.status !== 'no_answer')
+      outcome.unreported.set('generation', {
+        ...generation,
+        output: Math.min(CHAT_OUTPUT_TOKEN_LIMITS.answer, estimateTokens(outcome.streamed) + 64),
+      });
     const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    void finishTurn({ context, body, turnId, turnIndex: reservation.turnIndex, outcome, page, latencyMs, analytics, runtime, cost, tenant, emit });
+    void finishTurn({
+      context,
+      body,
+      consent,
+      turnId,
+      reservation,
+      outcome,
+      page,
+      latencyMs,
+      analytics,
+      runtime,
+      cost,
+      tenant,
+      emit,
+    });
   }
 }
 
@@ -392,8 +488,9 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
 const finishTurn = async ({
   context,
   body,
+  consent,
   turnId,
-  turnIndex,
+  reservation,
   outcome,
   page,
   latencyMs,
@@ -405,8 +502,9 @@ const finishTurn = async ({
 }: {
   context: PublishedAnswerContext;
   body: SiteChatBody;
+  consent: AiChatConsent;
   turnId: string;
-  turnIndex: number;
+  reservation: ChatTurnHold & { turnIndex: number };
   outcome: TurnOutcome;
   page?: { id: string; title: string; path: string };
   latencyMs: number;
@@ -419,16 +517,15 @@ const finishTurn = async ({
   const projectId = context.scope.projectId;
   // Provider-reported spend (OpenRouter) is read from the response bodies.
   await Promise.allSettled(cost.pending ?? []);
-  if (cost.costUsd !== undefined) outcome.usage = { ...outcome.usage, costUsd: cost.costUsd };
-  const tokens =
-    usageTokens(outcome.usage) ??
-    // Unknown provider usage still counts against budgets, conservatively.
-    estimateTokens(`${body.question}\n${body.history.map((message) => message.content).join('\n')}\n${outcome.answer ?? ''}`) +
-      (outcome.retrieval ? outcome.retrieval.chunks.reduce((sum, chunk) => sum + estimateTokens(chunk.content), 0) : 0);
-  await recordChatSpend(projectId, body.conversationId, tokens).catch(() => log.warn({ projectId }, 'AI chat spend could not be recorded'));
+  const { usage, tokens, estimated } = turnUsage(outcome, cost.costUsd);
+  // Replaces the reservation with what the turn spent, estimates included.
+  await settleChatSpend(projectId, body.conversationId, reservation, tokens).catch(() =>
+    log.warn({ projectId }, 'AI chat spend could not be recorded'),
+  );
 
-  const usage = outcome.usage;
-  const costMicros = usage?.costUsd !== undefined ? Math.round(usage.costUsd * 1_000_000) : undefined;
+  // Estimated totals stay out of analytics events, which carry reported facts only.
+  const reported = estimated ? undefined : usage;
+  const costMicros = reported?.costUsd !== undefined ? Math.round(reported.costUsd * 1_000_000) : undefined;
   const base = { provider: runtime.providerId, model: outcome.result?.model ?? runtime.answerModel, latencyMs };
   const event =
     outcome.status === 'answered' || outcome.status === 'no_answer'
@@ -436,8 +533,8 @@ const finishTurn = async ({
           name: 'answer_completed' as const,
           ...base,
           cacheStatus: 'bypass' as const,
-          ...(usage?.inputTokens !== undefined ? { promptTokens: usage.inputTokens } : {}),
-          ...(usage?.outputTokens !== undefined ? { completionTokens: usage.outputTokens } : {}),
+          ...(reported?.inputTokens !== undefined ? { promptTokens: reported.inputTokens } : {}),
+          ...(reported?.outputTokens !== undefined ? { completionTokens: reported.outputTokens } : {}),
           ...(costMicros !== undefined ? { costMicros } : {}),
           ...(outcome.noAnswerReason ? { noAnswerReason: ANALYTICS_NO_ANSWER_REASON[outcome.noAnswerReason] } : {}),
         }
@@ -454,9 +551,9 @@ const finishTurn = async ({
       ...(outcome.noAnswerReason ? { reason: outcome.noAnswerReason } : {}),
       provider: runtime.providerId,
       model: base.model,
-      ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
-      ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
-      ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+      ...(reported?.inputTokens !== undefined ? { inputTokens: reported.inputTokens } : {}),
+      ...(reported?.outputTokens !== undefined ? { outputTokens: reported.outputTokens } : {}),
+      ...(reported?.costUsd !== undefined ? { costUsd: reported.costUsd } : {}),
       latencyMs,
       ...(outcome.retrieval ? { retrievalCacheHit: outcome.retrieval.cacheHit } : {}),
     },
@@ -472,13 +569,13 @@ const finishTurn = async ({
     projectId,
     conversationId: body.conversationId,
     turnId,
-    turnIndex,
+    turnIndex: reservation.turnIndex,
     occurredAt: new Date(),
     deploymentId: context.scope.deploymentId,
     versionSlug: context.scope.versionSlug,
     language: context.scope.language,
     visibility: context.scope.visibility,
-    consent: body.consent,
+    consent,
     consentRequired: aiChatConsentRequired(context.snapshot.project.config),
     captureSetting: context.request.configuration.aiConversationCapture,
     ...(body.sessionId ? { sessionId: body.sessionId } : {}),
@@ -493,9 +590,11 @@ const finishTurn = async ({
     provider: runtime.providerId,
     model: base.model,
     promptVersion: CHAT_PROMPT_VERSION,
+    // Estimates are stored so totals stay close to what was billed, flagged as such.
     ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
     ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
     ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+    ...(estimated ? { usageEstimated: true } : {}),
     latencyMs,
     ...(outcome.firstTokenMs !== undefined ? { firstTokenMs: outcome.firstTokenMs } : {}),
     ...(outcome.retrieval
@@ -522,6 +621,27 @@ export const chatSite = async (identifier: string, body: SiteChatBody): Promise<
   });
 };
 
+/** Records a chat request the per-client rate limit refused before the turn ran,
+ * as the dashboard's limit counter expects. Only for a published site the
+ * reader may open: unknown or private identifiers are not recorded. The caller
+ * records at most once per client and window. Never throws. */
+export const recordChatRateLimited = async (identifier: string, rawBody: unknown, headers: Headers): Promise<void> => {
+  try {
+    const parsed = siteChatBody.safeParse(rawBody);
+    const body = parsed.success ? parsed.data : undefined;
+    const context = await resolvePublishedAnswerContext(identifier, body?.lang, body?.version);
+    const consent = trustedChatConsent(context.snapshot.project.config, body?.consent ?? 'unknown');
+    const conversationId = body?.conversationId ?? '';
+    const emit = chatEventRecorder(context, { ...readerDimensions(headers), consent, ...(body?.sessionId ? { sessionId: body.sessionId } : {}) });
+    await emit([
+      { name: 'quota_reached', conversationId, kind: 'rate_limited' },
+      { name: 'answer_completed', conversationId, turnId: randomUUID(), outcome: 'blocked', reason: 'rate_limited' },
+    ]);
+  } catch {
+    // Unknown, unpublished or private: nothing to record.
+  }
+};
+
 /** The reader's browser. The app server forwards its user agent, so actor and
  * device classification describe the reader rather than the proxy. */
 export const readerDimensions = (headers: Headers): ReaderDimensions => {
@@ -539,7 +659,7 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
   }
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
   if (!project) throw new AppError({ code: 'http:not_found', message: 'Site not found.' });
-  const consent: AiChatConsent = body.consent;
+  const consent = trustedChatConsent(context.snapshot.project.config, body.consent);
   const language = body.lang ?? defaultLanguage(context.snapshot.project).code;
   await recordAiChatFeedback({
     tenantId: project.organizationId,
@@ -561,7 +681,7 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
   const changed = body.previousRating != null;
   if ((body.rating || changed) && body.previousRating !== body.rating) {
     const reader = readerDimensions(getContext<HonoEnv>().req.raw.headers);
-    await recordAiChatEvents(projectId, { consent: trustedChatConsent(context.snapshot.project.config, consent), language, ...reader }, [
+    await recordAiChatEvents(projectId, { consent, language, ...reader }, [
       {
         name: changed ? 'feedback_changed' : 'feedback_given',
         conversationId: body.conversationId,

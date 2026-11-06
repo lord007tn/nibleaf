@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { recordChatRateLimited } from '@/actions/site-chat';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
 import { rateLimit } from '@/middlewares/rate-limit';
@@ -32,7 +33,20 @@ const app = new Hono<HonoEnv>()
   // abuse budget than ordinary content/search requests.
   .use('/reader-access/*', rateLimit({ windowMs: 60_000, max: 20 }))
   .use('/sites/:id/answer', rateLimit({ windowMs: 60_000, max: envExtras.SEARCH_ANSWER_RATE_LIMIT_PER_MIN }))
-  .use('/sites/:id/chat', rateLimit({ windowMs: 60_000, max: envExtras.SEARCH_ANSWER_RATE_LIMIT_PER_MIN }))
+  .use(
+    '/sites/:id/chat',
+    rateLimit({
+      windowMs: 60_000,
+      max: envExtras.SEARCH_ANSWER_RATE_LIMIT_PER_MIN,
+      // The dashboard counts rate-limit refusals with the other limits. The body
+      // (conversation, consent) is read only when small, then recorded without waiting.
+      onLimited: async (ctx) => {
+        const size = Number(ctx.req.header('content-length') ?? Number.NaN);
+        const body = size > 0 && size <= 64_000 ? await ctx.req.json().catch(() => undefined) : undefined;
+        void recordChatRateLimited(ctx.req.param('id') ?? '', body, ctx.req.raw.headers);
+      },
+    }),
+  )
   .use('/sites/:id/chat/events', rateLimit({ windowMs: 60_000, max: 60 }))
   .use('/sites/:id/chat/feedback', rateLimit({ windowMs: 60_000, max: 30 }))
   .use('/marketing-events/*', rateLimit({ windowMs: 60_000, max: 30 }))

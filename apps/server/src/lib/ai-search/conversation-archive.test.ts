@@ -81,6 +81,20 @@ describe('capture policy', () => {
       visibility: 'private',
     });
   });
+  it('links a session only with consent the site really gives', () => {
+    const withSession = { ...capture, sessionId: 'reader-session' };
+    expect(buildAiTurnRow(withSession).session_hash).toHaveLength(64);
+    // A client claiming consent "is not required" on a site that asks for it gets no hash.
+    expect(buildAiTurnRow({ ...withSession, consent: 'not_required', consentRequired: true }).session_hash).toBeNull();
+    expect(buildAiTurnRow({ ...withSession, consent: 'not_required', consentRequired: false }).session_hash).toHaveLength(64);
+    expect(buildAiTurnRow({ ...withSession, consent: 'unknown', consentRequired: false }).session_hash).toBeNull();
+  });
+  it('stores estimated usage of a stopped turn, flagged unknown with its cost', () => {
+    const reported = buildAiTurnRow({ ...capture, inputTokens: 2000, outputTokens: 300, costUsd: 0.001 });
+    expect(reported).toMatchObject({ input_tokens: 2000, output_tokens: 300, tokens_known: 1, cost_known: 1 });
+    const estimated = buildAiTurnRow({ ...capture, status: 'cancelled', inputTokens: 2100, outputTokens: 90, usageEstimated: true });
+    expect(estimated).toMatchObject({ input_tokens: 2100, output_tokens: 90, tokens_known: 0, cost_known: 0 });
+  });
   it('withdraws feedback text and rating', () => {
     const row = buildAiFeedbackRow({ ...capture, rating: null, comment: 'private' });
     expect(row).toMatchObject({ rating: '', comment: '', reason: '' });
