@@ -113,6 +113,10 @@ it('offers language and version as labelled drawer settings showing the current 
   expect(trigger?.getAttribute('aria-label')).toBe('Open menu');
   expect(trigger?.className).toContain('size-11');
   await act(async () => trigger?.click());
+  // Language and version choices load with the open drawer.
+  await act(async () => {
+    await vi.dynamicImportSettled();
+  });
   const drawer = document.querySelector('[data-slot="sheet-content"]');
   expect(drawer?.querySelector('nav[data-site-nav]')?.getAttribute('aria-label')).toBe('Documentation pages');
 

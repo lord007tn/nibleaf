@@ -1,10 +1,13 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
 import { ExternalLink, Menu } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { SiteNav } from '@/components/site/site-nav';
 import type { NavNode } from '@/hooks/api';
+
+// Language and version choices load with the open drawer, keeping the Select
+// primitive out of every public page's first load (see BUNDLE_BUDGET.md).
+const MobileNavSettings = lazy(() => import('./mobile-nav-settings'));
 
 export interface MobileNavLink {
   label: string;
@@ -93,35 +96,10 @@ export function MobileNav({
             {settings.length > 0 ? (
               // From `sm` up the header shows these switchers itself.
               <div className="mb-4 grid gap-3 border-border/60 border-b pb-4 sm:hidden" data-mobile-nav-settings="">
-                {settings.map((choice) => (
-                  <div key={choice.id} className="grid gap-1.5" data-mobile-nav-setting={choice.id}>
-                    <span aria-hidden className="px-1 font-semibold text-foreground text-xs">
-                      {choice.label}
-                    </span>
-                    <Select
-                      items={choice.options.map((option) => ({ value: option.value, label: option.label }))}
-                      value={choice.value}
-                      onValueChange={(value) => {
-                        if (!value || value === choice.value) return;
-                        choice.onChange(value);
-                        setOpen(false);
-                      }}
-                    >
-                      <SelectTrigger aria-label={choice.label} className="min-h-11 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {choice.options.map((option) => (
-                          <SelectItem key={option.value} value={option.value} className="min-h-11">
-                            <span lang={option.lang} dir={option.dir}>
-                              {option.label}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
+                {/* The fallback reserves the settings' height so nothing jumps when they load. */}
+                <Suspense fallback={<div aria-hidden style={{ blockSize: `${settings.length * 4.25}rem` }} />}>
+                  <MobileNavSettings settings={settings} onChosen={() => setOpen(false)} />
+                </Suspense>
               </div>
             ) : null}
             {navigationLinks.length > 0 ? (
