@@ -247,6 +247,13 @@ const THIN_PAGE_SECTIONS = 2;
 const WIDENED_PAGES = 2;
 /** Thin pages are chosen among the pages of the best-ranked results. */
 const WIDEN_FROM_TOP = 8;
+/** The sections an answer reads (`selectAnswerChunks`' default). */
+const ANSWER_SECTIONS = 12;
+/** The best main results keep their places in the answer, and each widened page
+ * has at most its share of the others, so a weaker thin page with many sections
+ * cannot crowd out a stronger one or the results the question matched. */
+const KEPT_RESULTS = 6;
+const WIDENED_SECTIONS = (ANSWER_SECTIONS - KEPT_RESULTS) / WIDENED_PAGES;
 /** Thin pages among the best-ranked results, the best-scored first: the answer
  * also reads their other sections. Each is a page the reader may read, since it
  * came from their own results; `best` is its best main-search score. */
@@ -264,6 +271,19 @@ export const pagesToWiden = (hits: HybridChunkHit[]): { id: string; title: strin
     .sort(([, left], [, right]) => right.best - left.best)
     .slice(0, WIDENED_PAGES)
     .map(([id, page]) => ({ id, title: page.title, best: page.best }));
+};
+
+/** The sections an answer reads when pages were widened, in ranking order: the
+ * best main results, then each widened page's best sections up to its share,
+ * then the rest by score. */
+const widenedAnswerSections = (hits: HybridChunkHit[], main: HybridChunkHit[], pages: string[]): HybridChunkHit[] => {
+  const chosen = new Set(main.slice(0, KEPT_RESULTS).map((hit) => hit.chunk.id));
+  for (const pageId of pages) {
+    const share = hits.filter((hit) => hit.chunk.pageId === pageId && !chosen.has(hit.chunk.id)).slice(0, WIDENED_SECTIONS);
+    for (const hit of share) chosen.add(hit.chunk.id);
+  }
+  for (const hit of hits) if (chosen.size < ANSWER_SECTIONS) chosen.add(hit.chunk.id);
+  return hits.filter((hit) => chosen.has(hit.chunk.id));
 };
 
 type HybridSearch = (
@@ -310,8 +330,15 @@ export const retrieveChatContext = async (
   for (const { target, lane } of widened)
     for (const [index, hit] of lane.chunks.entries()) add({ ...hit, score: Math.min(hit.score, target.best) - (index + 1) * 1e-6 });
   const hits = [...merged.values()].sort((left, right) => right.score - left.score || left.chunk.id.localeCompare(right.chunk.id));
+  const read = widen.length
+    ? widenedAnswerSections(
+        hits,
+        main.chunks,
+        widen.map((target) => target.id),
+      )
+    : hits;
   return {
-    chunks: selectAnswerChunks(hits),
+    chunks: selectAnswerChunks(read, ANSWER_SECTIONS),
     hits,
     // Asked from the page, its passages are relevant by the reader's choice; a
     // widened page keeps the confidence of the search that found it.

@@ -97,6 +97,31 @@ describe('reading the rest of pages that appear only thinly', () => {
     expect(result.confidence).toBe(0.3);
   });
 
+  it('keeps the best results and each widened page’s share of the answer, whatever a weaker page adds', async () => {
+    // Two thin pages: a weaker one (install) with many sections ranks above sync.
+    const main = [
+      hit('i1', 'install', 0.167),
+      ...['a1', 'a2', 'a3'].map((id, index) => hit(id, 'other-a', 0.166 - index / 1000)),
+      ...['b1', 'b2', 'b3'].map((id, index) => hit(id, 'other-b', 0.163 - index / 1000)),
+      hit('s1', 'sync', 0.143),
+      ...['c1', 'c2', 'c3', 'c4'].map((id) => hit(id, 'other-c', 0.12)),
+    ];
+    const { search, calls } = stub(main, {
+      install: Array.from({ length: 6 }, (_, index) => hit(`i-${index}`, 'install', 0.9 - index / 100)),
+      sync: [hit('s-token', 'sync', 0.9), hit('s-stuck', 'sync', 0.8), hit('s-conflicts', 'sync', 0.7)],
+    });
+    const result = await retrieveChatContext(searchScope, 'notes missing on my phone', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['install'], ['sync']]);
+    const read = result.chunks.map((chunk) => chunk.id);
+    expect(read).toHaveLength(12);
+    // The six best results stay, and the sync page gets its share in.
+    expect(read).toEqual(expect.arrayContaining(['i1', 'a1', 'a2', 'a3', 'b1', 'b2', 's1', 's-token', 's-stuck']));
+    expect(read.filter((id) => id.startsWith('i-')).length).toBeLessThanOrEqual(3);
+    // Still in ranking order: membership changes, the order does not.
+    const rank = result.hits.map((item) => item.chunk.id);
+    expect([...read].sort((left, right) => rank.indexOf(left) - rank.indexOf(right))).toEqual(read);
+  });
+
   it('reads nothing more for a turn below the answer threshold', async () => {
     const { search, calls } = stub([hit('s1', 'sync', 0.05)], { sync: [hit('s-token', 'sync', 0.9)] }, 0.05);
     await retrieveChatContext(searchScope, 'how?', runtime, {}, search);

@@ -17,12 +17,8 @@ export interface TurnScope {
 }
 /** Article link, opening the cited section when the source names one, in the
  * language and version the turn was answered in (the reader may have switched since). */
-const sourceHref = (
-  options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>,
-  source: Pick<AiChatSource, 'path' | 'anchor'>,
-  scope: TurnScope | undefined,
-) =>
-  `${siteHref(options.projectId, source.path, { lang: scope?.lang ?? options.lang, version: scope?.version ?? options.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+const sourceHref = (options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>, source: Pick<AiChatSource, 'path' | 'anchor'>, scope: TurnScope) =>
+  `${siteHref(options.projectId, source.path, { lang: scope.lang ?? options.lang, version: scope.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
 
 export function ChatMessage({
   text,
@@ -53,7 +49,9 @@ export function ChatMessage({
 }) {
   const t = siteChatT(options.lang);
   const prefix = final?.turnId ?? 'draft';
-  const href = (source: AiChatSource) => sourceHref(options, source, { lang: final?.language, ...scope });
+  // A captured scope keeps its version even when that is the default one
+  // (undefined); only a turn without one links in the version on screen.
+  const href = (source: AiChatSource) => sourceHref(options, source, { lang: final?.language, version: options.version, ...scope });
   const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
   // Sources are numbered in the order they are listed, so the answer's markers
   // and the cards read 1, 2, 3 whatever ids the model cited.

@@ -34,10 +34,13 @@ import Panel from './panel';
 
 const text = (id: string, role: Message['role'], content: string): Message => ({ id, role, parts: [{ type: 'text', content }] });
 const roots: Array<() => Promise<void>> = [];
+// The docs version on screen; a test switches it between renders.
+let siteVersion: string | undefined;
 afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
   document.body.replaceChildren();
   mocks.chat.isLoading = false;
+  siteVersion = undefined;
   vi.clearAllMocks();
 });
 const mount = async () => {
@@ -50,7 +53,16 @@ const mount = async () => {
     act(async () =>
       root.render(
         <QueryClientProvider client={client}>
-          <Panel projectId="docs" lang="en" direction="ltr" config={null} open={open} onOpenChange={vi.fn()} requiresConsent={false} />
+          <Panel
+            projectId="docs"
+            lang="en"
+            version={siteVersion}
+            direction="ltr"
+            config={null}
+            open={open}
+            onOpenChange={vi.fn()}
+            requiresConsent={false}
+          />
         </QueryClientProvider>,
       ),
     );
@@ -223,6 +235,33 @@ describe('chat panel', () => {
     expect(document.body.textContent).not.toContain('Partial text');
     expect(document.body.textContent).toContain('Something went wrong. Please try again.');
     expect(document.body.textContent).not.toContain('You stopped this answer');
+  });
+
+  it.each([
+    ['the default version', undefined, 'v2'],
+    ['a named version', 'v2', undefined],
+  ])('keeps the links of an answer given on %s after the reader switches version', async (_, asked, switched) => {
+    siteVersion = asked;
+    mocks.chat.messages = [];
+    const render = await mount();
+    const { question, conversationId } = await askStarter();
+    mocks.chat.messages = [text('u1', 'user', question), text(ANSWER_ID, 'assistant', 'Run the installer. [S1]')];
+    const source = {
+      id: 'S1',
+      pageId: 'page',
+      title: 'Install',
+      path: 'guide',
+      heading: 'Install',
+      anchor: 'install',
+      snippet: 'Run the installer',
+      direction: 'ltr',
+    };
+    await deliver('nibleaf.chat.final', { ...finalFor(conversationId), citations: [source] });
+    siteVersion = switched;
+    await render();
+    const link = document.getElementById(`${ANSWER_ID}-S1`)?.getAttribute('href');
+    // jsdom's host reads as a custom domain: no /sites/<id> prefix.
+    expect(link).toBe(`/${asked ? `${asked}/` : ''}guide?lang=en#install`);
   });
 
   it('streams without citation markers, even one split across chunks', async () => {
