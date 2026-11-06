@@ -249,7 +249,8 @@ globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeo
       if (requestAuth.ip) headers.set('x-nibleaf-client-ip', requestAuth.ip);
       // Non-secret analytics hint: the outer request is observed here, so the API must not count this fetch as a crawl.
       headers.set('x-nibleaf-ssr', '1');
-      if (INTERNAL_API_SECRET) {
+      // The secret only proves the client-IP hint, so it rides along only with one.
+      if (requestAuth.ip && INTERNAL_API_SECRET) {
         headers.set('x-nibleaf-internal', INTERNAL_API_SECRET);
       }
       // SSR loaders and edge metadata/SEO fetches must make the same access
@@ -269,7 +270,7 @@ const internalRequestHeaders = () => {
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
     'x-nibleaf-ssr': '1',
-    ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
     ...(requestAuth?.cookie ? { cookie: requestAuth.cookie } : {}),
     ...(requestAuth?.authorization ? { authorization: requestAuth.authorization } : {}),
   };
@@ -281,7 +282,7 @@ const publicMachineRequestHeaders = () => {
   return {
     ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
     'x-nibleaf-ssr': '1',
-    ...(INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
+    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
   };
 };
 

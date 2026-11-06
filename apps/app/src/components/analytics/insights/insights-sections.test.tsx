@@ -460,7 +460,7 @@ describe('Search', () => {
     await act(async () => turnOn?.click());
     const dialog = document.querySelector('[role="dialog"]');
     expect(text(dialog as Element)).toContain('Turn on search terms?');
-    expect(text(dialog as Element)).toContain('What readers type is kept for 30 days, then deleted.');
+    expect(text(dialog as Element)).toContain('What readers type is deleted automatically after 30 days by default');
     expect(text(dialog as Element)).toContain('at least 2 different visits have searched for it');
     expect(text(dialog as Element)).toContain('Email addresses, web addresses and long numbers are removed');
     expect(mocks.updateConfig).not.toHaveBeenCalled();
