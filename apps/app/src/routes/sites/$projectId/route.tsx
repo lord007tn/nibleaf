@@ -260,14 +260,14 @@ function SiteChrome() {
   // Search is on by default; only an explicit `false` hides it.
   const showSearch = config?.navbar?.showSearch !== false;
   // Outlet content (the site 404) links home and opens search through this.
-  const readerContext = useMemo<SiteReaderContextValue>(
-    () => ({
-      lang: activeLanguage?.code,
-      homeHref: siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix }),
-      openSearch: showSearch ? () => setSearchOpen(true) : undefined,
-    }),
-    [activeLanguage?.code, projectId, navigationLanguage, activeVersionPrefix, showSearch],
-  );
+  const readerLanguage = activeLanguage?.code;
+  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix });
+  // React Compiler memoizes this value; a manual useMemo here blocks compilation.
+  const readerContext: SiteReaderContextValue = {
+    lang: readerLanguage,
+    homeHref: readerHomeHref,
+    openSearch: showSearch ? () => setSearchOpen(true) : undefined,
+  };
 
   if (!site) {
     return (

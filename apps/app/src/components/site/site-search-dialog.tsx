@@ -307,12 +307,9 @@ export default function SiteSearchDialog({
   }
   const preferred = canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue) ? askValue : hits.length > 0 ? 'page-0' : itemValues[0];
   const selectedValue = itemValues.includes(activeItem) ? activeItem : (preferred ?? '');
-  const selectedValueRef = useRef(selectedValue);
-  selectedValueRef.current = selectedValue;
   // Re-select through cmdk's own pointer path so its internal selection and
   // the input's aria-activedescendant follow (a controlled value alone does not).
-  const restoreSelection = () => {
-    const value = selectedValueRef.current;
+  const restoreSelection = (value: string) => {
     listRef.current?.querySelector(`[cmdk-item][data-value="${value}"]`)?.dispatchEvent(new Event('pointermove', { bubbles: true }));
   };
   // Reset the highlight to the best match whenever a new result set arrives.
@@ -390,7 +387,7 @@ export default function SiteSearchDialog({
           value={selectedValue}
           onValueChange={(value) => {
             if (readerMovedRef.current) setActiveItem(value);
-            else if (value !== selectedValueRef.current) queueMicrotask(restoreSelection);
+            else if (value !== selectedValue) queueMicrotask(() => restoreSelection(selectedValue));
           }}
           onKeyDown={(event) => {
             if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) || (event.ctrlKey && ['j', 'k', 'n', 'p'].includes(event.key))) {
