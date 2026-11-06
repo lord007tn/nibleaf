@@ -141,7 +141,9 @@ Each turn runs these steps:
    question in a chat skips it.
 3. Hybrid retrieval runs with the usual scope filters. With page context, a
    second lane searches only that page and slightly boosts its passages, but only
-   when the reader may read it.
+   when the reader may read it. Without page context, when the search finds only
+   one or two passages from a single page, the same lane reads that page's other
+   sections, so a question worded differently from the page still gets its steps.
 4. If retrieval is not confident enough, the model is not called. The reader is
    told the docs could not confirm an answer and is offered the best-matching
    articles, plus a **Contact support** link when the site has one.
@@ -203,11 +205,11 @@ Recommendations:
 
 - **Default answer model: `openai/gpt-5.6-luna`** (the current default). It
   matched the other Luna models on grounding and starts writing soonest, which is
-  what readers notice most. On the final prompt (`chat-v4`) it answered or
-  correctly refused every case.
+  what readers notice most. On the final prompt (`chat-v5`) it answered or
+  correctly refused every case in three runs.
 - **Lower-cost alternative: `openai/gpt-6-luna`.** It cites the expected section
-  slightly more often for half the cost, but the first word arrives about 2 s
-  later. It is also the fallback if the default is unavailable.
+  slightly more often for half the cost, but the first word arrives about a
+  second later. It is also the fallback if the default is unavailable.
 - **When completeness matters more than cost: `openai/gpt-6.1-terra`.** It
   covered every required fact and starts in about 1.7 s, at roughly four times the
   cost of the default.
@@ -217,20 +219,26 @@ Recommendations:
   each).
 - `openai/gpt-6-luna-pro` spends many reasoning tokens and is too slow for chat.
 
-Confirmation run on the final prompt (`chat-v4`, same 36 cases):
+Confirmation runs on the final prompt (`chat-v5`, same 36 cases, three runs; ranges
+across the runs):
 
 | Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | First token, median / p90 | Cost per 1,000 answers |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 86% | 74% | 4.69 | 2.4 s / 3.6 s | $0.31 |
-| `openai/gpt-6-luna` | 100% / 100% | 100% | 90% | 84% | 4.75 | 3.6 s / 4.6 s | $0.14 |
+| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 83–87% | 74–84% | 4.72–4.75 | 1.4–1.8 s / 3.8–5.6 s | $0.29–$0.68 |
+| `openai/gpt-6-luna` | 100% / 100% | 97–100% | 86–90% | 79–84% | 4.75–4.89 | 3.0–3.2 s / 5.1–6.6 s | $0.14–$0.34 |
 
-`chat-v4` adds one rule to `chat-v3`: a question is answered when the sources answer
+`chat-v5` adds two rules to `chat-v3`. A question is answered when the sources answer
 it in other words (steps done from an open notebook, page or project are how to do it
-for that one item), so the assistant no longer says the documentation does not cover
-them. Required facts vary between runs on this prompt (another run of the same cases
-gave 90% and 74%): answers that are correct but shorter leave out a secondary detail.
-Refusals and citations held in every run, and both models now answer an Arabic
-question about exporting one notebook that `chat-v3` sometimes refused.
+for that one item). And when the question asks for something the sources do not
+describe but they describe a related way, the answer first says the documentation does
+not describe it, then gives that way; when nothing helps, the assistant refuses as
+before. Required facts vary from run to run on the same prompt: answers that are
+correct but shorter leave out a secondary detail. Refusals held in every run. On the
+older hand-written cases, both models answered an Arabic question about exporting one
+notebook that `chat-v3` sometimes refused, and both said team sharing is not described
+before giving the export steps; the default model answered one follow-up about a
+response-time guarantee by saying the documentation does not say, where a refusal was
+expected.
 
 Timings vary between runs by a second or more, so compare models within one run.
 

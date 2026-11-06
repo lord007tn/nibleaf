@@ -22,7 +22,8 @@ export const envExtras = createEnv({
     /** Reader AI chat: provider tokens one conversation may spend. */
     SEARCH_CHAT_MAX_CONVERSATION_TOKENS: z.coerce.number().int().min(1000).max(10_000_000).default(150_000),
     /** Reader AI chat: cheaper OpenRouter model for follow-up rewriting and suggested
-     * questions on the instance provider. Empty uses the answer model. */
+     * questions, used whenever a turn runs on an OpenRouter connection (the
+     * instance's or a workspace's) and billed to it. Empty uses the answer model. */
     SEARCH_CHAT_UTILITY_MODEL: z.string().trim().min(1).max(120).optional(),
     /** Reader AI chat: the longest a suggested-questions call may take after the answer. */
     SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(15_000),

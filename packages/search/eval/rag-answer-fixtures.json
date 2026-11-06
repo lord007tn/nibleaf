@@ -211,5 +211,27 @@
     ],
     "requiredClaims": ["المزيد", "PDF"],
     "expectedNoAnswer": false
+  },
+  {
+    "id": "en-share-notebook",
+    "language": "en",
+    "question": "How do I share a notebook with my team?",
+    "sources": [
+      {
+        "title": "Export your notes",
+        "path": "export-notes",
+        "heading": "Export your notes",
+        "content": "You can export notes as PDF, Markdown or HTML."
+      },
+      {
+        "title": "Export your notes",
+        "path": "export-notes",
+        "heading": "Export from the app",
+        "content": "Open a notebook, choose **More → Export**, pick a format and select **Download**. One export can include up to 500 notes."
+      }
+    ],
+    "requiredClaims": [],
+    "forbiddenClaims": ["you can share"],
+    "expectedNoAnswer": false
   }
 ]

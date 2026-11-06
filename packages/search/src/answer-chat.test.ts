@@ -521,6 +521,15 @@ describe('follow-up suggestions', () => {
     });
     // A quoted word in brackets is a list that closes before the real one starts.
     expect(parseFollowUpQuestions('See ["Export"] below: ["Can I export one notebook?"]', 'How?').questions).toEqual(['Can I export one notebook?']);
+    // A list after the real one (a note in prose) is passed over too.
+    expect(parseFollowUpQuestions('["Can I export?", "Is it free?"]\n\nThese avoid ["Export"].', 'How?').questions).toEqual([
+      'Can I export?',
+      'Is it free?',
+    ]);
+    expect(parseFollowUpQuestions('["Can I export?"]\n[]', 'How?').questions).toEqual(['Can I export?']);
+    // Lists only nested inside the list (or an object) are output the call does not accept.
+    for (const nested of ['[["Nested question?"]]', '[{"questions":["Nested question?"]}]', '[123, ["Nested question?"]]'])
+      expect(parseFollowUpQuestions(nested, 'How?')).toEqual({ questions: [], unreadable: true });
     // A list inside the list is not the list.
     expect(parseFollowUpQuestions('["Can I export?", ["Nested one?"], "Is it free?"]', 'How?').questions).toEqual(['Can I export?', 'Is it free?']);
   });

@@ -55,7 +55,7 @@ vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
 vi.mock('@nibleaf/search', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/search')>();
   return {
-    CHAT_PROMPT_VERSION: 'chat-v4',
+    CHAT_PROMPT_VERSION: 'chat-v5',
     CHAT_OUTPUT_TOKEN_LIMITS: actual.CHAT_OUTPUT_TOKEN_LIMITS,
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,
@@ -184,6 +184,7 @@ describe('reader AI chat stream', () => {
     mocks.suggest.mockResolvedValue({ questions: ['Can I install it offline?'], usage: { inputTokens: 30, outputTokens: 10 } });
     mocks.recordEvents.mockResolvedValue(undefined);
     mocks.extras.SEARCH_CHAT_UTILITY_MODEL = undefined;
+    mocks.extras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS = 15_000;
     mocks.settle.mockResolvedValue(undefined);
     mocks.release.mockResolvedValue(undefined);
     mocks.recordTurn.mockResolvedValue(undefined);
@@ -399,7 +400,6 @@ describe('reader AI chat stream', () => {
     expect(events.some((event) => event.name === AI_CHAT_EVENT.followUps)).toBe(false);
     await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'follow_ups' }));
-    mocks.extras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS = 15_000;
   });
 
   it('asks for no suggestions after a declined answer', async () => {

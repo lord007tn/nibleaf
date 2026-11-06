@@ -1,36 +1,25 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
-import { useEffect, useRef, useState } from 'react';
-/** Text to put in the field for the reader to edit and send (a new `id` each time). */
-export interface ComposerDraft {
-  id: number;
-  text: string;
-}
+import type { RefObject } from 'react';
+/** The question field. Its text is the panel's, so it survives the panel closing. */
 export function Composer({
   lang,
   busy,
+  value,
+  setValue,
+  field,
   send,
   stop,
-  draft,
-  onDraftApplied,
 }: {
   lang?: string;
   busy: boolean;
+  value: string;
+  setValue: (value: string) => void;
+  field: RefObject<HTMLTextAreaElement | null>;
   send: (question: string) => void;
   stop: () => void;
-  draft?: ComposerDraft;
-  /** Called once the draft is in the field, so it is not applied again. */
-  onDraftApplied?: () => void;
 }) {
-  const [value, setValue] = useState('');
-  const field = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    if (!draft) return;
-    setValue(draft.text);
-    field.current?.focus();
-    onDraftApplied?.();
-  }, [draft, onDraftApplied]);
   const t = siteChatT(lang);
   const submit = () => {
     if (busy || value.trim().length < 2) return;

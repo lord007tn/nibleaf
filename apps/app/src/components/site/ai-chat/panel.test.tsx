@@ -135,6 +135,21 @@ describe('chat panel', () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
+  it('keeps what the reader typed when the panel closes before it is sent', async () => {
+    mocks.chat.messages = [];
+    const render = await mount();
+    const textarea = () => document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]');
+    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    await act(async () => {
+      setValue?.call(textarea(), 'How do I export only');
+      textarea()?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await render(false);
+    expect(textarea()).toBeNull();
+    await render(true);
+    expect(textarea()?.value).toBe('How do I export only');
+  });
+
   it('announces suggestions that arrive after the answer, and keeps the reading position', async () => {
     mocks.chat.messages = [];
     const render = await mount();

@@ -13,9 +13,9 @@ import {
   siteChatBody,
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
-import { Composer, type ComposerDraft } from './composer';
+import { Composer } from './composer';
 import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey } from './helpers';
 import { ChatMessage } from './message';
@@ -228,13 +228,16 @@ export default function Panel(
     setAnnouncement('');
     setConversationId(crypto.randomUUID());
   };
+  // What the reader is typing: kept here, so closing the panel does not lose it.
+  const [typed, setTyped] = useState('');
+  const field = useRef<HTMLTextAreaElement>(null);
   // The refused question goes to the new chat's field, to edit before sending:
   // the new chat starts without the earlier conversation it may refer to.
-  const [draft, setDraft] = useState<ComposerDraft>();
-  const draftApplied = useCallback(() => setDraft(undefined), []);
   const askInNewChat = (question: string) => {
     reset();
-    if (question) setDraft({ id: Date.now(), text: question });
+    if (!question) return;
+    setTyped(question);
+    field.current?.focus();
   };
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
@@ -400,7 +403,7 @@ export default function Panel(
           {announcement}
         </div>
         <footer className="shrink-0 space-y-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <Composer lang={options.lang} busy={answering} send={send} stop={stop} draft={draft} onDraftApplied={draftApplied} />
+          <Composer lang={options.lang} busy={answering} value={typed} setValue={setTyped} field={field} send={send} stop={stop} />
           <p className="text-muted-foreground text-xs">{t('aiCaution')}</p>
           {options.config?.search?.aiConversationCapture !== false && <p className="text-muted-foreground text-xs">{t('aiPrivacy')}</p>}
         </footer>

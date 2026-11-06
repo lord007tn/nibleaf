@@ -239,9 +239,24 @@ export interface ChatRetrieval {
   cacheHit: boolean;
 }
 
+/** Results this few, all from one page: the question likely matched the page's
+ * opening while its other sections fell under the dense threshold (a different
+ * wording, often in Arabic). The answer then reads the rest of that page too, as
+ * it would for a reader asking from the page. */
+const THIN_RESULTS = 2;
+export const pageToWiden = (hits: HybridChunkHit[]): { id: string; title: string } | undefined => {
+  const chunks = [...new Map(hits.map((hit) => [hit.chunk.id, hit.chunk])).values()];
+  if (!chunks.length || chunks.length > THIN_RESULTS) return;
+  const [first] = chunks;
+  if (!first || chunks.some((chunk) => chunk.pageId !== first.pageId)) return;
+  return { id: first.pageId, title: first.title };
+};
+
 /** Retrieval for one chat turn. The optional page lane narrows the same
  * server-derived scope to a single page — it can never widen the reader's
- * grants: a page outside `allowedPageIds` is simply not searched. */
+ * grants: a page outside `allowedPageIds` is simply not searched. Without page
+ * context, a thin result from one page reads that page's other sections (a page
+ * the reader may read, since it came from their own results). */
 export const retrieveChatContext = async (
   scope: SearchScope,
   query: string,
@@ -249,12 +264,14 @@ export const retrieveChatContext = async (
   options: { page?: { id: string; title: string }; signal?: AbortSignal } = {},
 ): Promise<ChatRetrieval> => {
   const page = options.page && (scope.allowedPageIds === null || scope.allowedPageIds.has(options.page.id)) ? options.page : undefined;
-  const [main, pageLane] = await Promise.all([
+  const pageSearch = (target: { id: string; title: string }) =>
+    retrieveHybrid({ ...scope, allowedPageIds: new Set([target.id]) }, `${target.title} ${query}`, 6, options.signal, runtime);
+  const [main, asked] = await Promise.all([
     retrieveHybrid(scope, query, 12, options.signal, runtime),
-    page
-      ? retrieveHybrid({ ...scope, allowedPageIds: new Set([page.id]) }, `${page.title} ${query}`, 6, options.signal, runtime)
-      : Promise.resolve(null),
+    page ? pageSearch(page) : Promise.resolve(null),
   ]);
+  const widen = page ? undefined : pageToWiden(main.chunks);
+  const pageLane = asked ?? (widen ? await pageSearch(widen) : null);
   if (!pageLane || pageLane.chunks.length === 0) {
     return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence, cacheHit: main.cacheHit };
   }
@@ -269,7 +286,9 @@ export const retrieveChatContext = async (
   return {
     chunks: selectAnswerChunks(hits),
     hits,
-    confidence: Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE),
+    // Asked from the page, its passages are relevant by the reader's choice; a
+    // widened page keeps the confidence of the search that found it.
+    confidence: page ? Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE) : main.confidence,
     cacheHit: main.cacheHit,
   };
 };

@@ -1,7 +1,7 @@
 import type { QdrantScoredPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchScope } from '@nibleaf/search';
 import { describe, expect, it } from 'vitest';
-import { chunkFromPoint, filterForSearchScope } from './runtime';
+import { chunkFromPoint, filterForSearchScope, pageToWiden } from './runtime';
 
 const scope = (projectId = 'tenant-a', pages: string[] | null = ['page-a']): SearchScope => ({
   projectId,
@@ -34,6 +34,17 @@ const point = (overrides: Record<string, unknown> = {}): QdrantScoredPoint => ({
     direction: 'rtl',
     ...overrides,
   },
+});
+
+describe('reading the rest of a page a thin result came from', () => {
+  const hit = (id: string, pageId: string, title = 'تصدير ملاحظاتك') => ({ chunk: { id, pageId, title } as never, score: 0.5 });
+  it('widens only a result of one or two chunks from a single page', () => {
+    expect(pageToWiden([hit('c1', 'export')])).toEqual({ id: 'export', title: 'تصدير ملاحظاتك' });
+    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c1', 'export')])).toEqual({ id: 'export', title: 'تصدير ملاحظاتك' });
+    expect(pageToWiden([])).toBeUndefined();
+    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'sync')])).toBeUndefined();
+    expect(pageToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c3', 'export')])).toBeUndefined();
+  });
 });
 
 describe('server-derived Qdrant scope', () => {
