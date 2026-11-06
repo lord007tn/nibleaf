@@ -2,6 +2,7 @@ import { LATEST_PROTOCOL_VERSION } from '@modelcontextprotocol/server';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HonoEnv } from '@/lib/hono/context';
+import { MAX_MCP_MARKDOWN_BYTES } from './markdown';
 import { handleMcpRequest, MAX_MCP_REQUEST_BODY_BYTES } from './transport';
 
 const mocks = vi.hoisted(() => ({ audit: vi.fn(), authenticate: vi.fn(), finalizeRateLimitAudit: vi.fn(), rateLimit: vi.fn() }));
@@ -196,5 +197,23 @@ describe('MCP HTTP transport boundary', () => {
     expect(response.status).toBe(503);
     expect(await response.text()).toContain('storage:error');
     expect(mocks.audit).not.toHaveBeenCalled();
+  });
+});
+
+describe('MCP write payload sizing', () => {
+  it('fits a maximum-size Markdown page write inside the request body limit', () => {
+    const line = 'Run "nibleaf deploy" from the project folder, then open the dashboard.\n';
+    const markdown = line.repeat(Math.floor(MAX_MCP_MARKDOWN_BYTES / line.length));
+    const body = JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'update_page',
+        arguments: { pageId: 'c'.repeat(25), expectedRevision: '2026-11-06T00:00:00.000Z', markdown, clientRequestId: 'r'.repeat(128) },
+      },
+    });
+    expect(Buffer.byteLength(markdown)).toBeLessThanOrEqual(MAX_MCP_MARKDOWN_BYTES);
+    expect(Buffer.byteLength(body)).toBeLessThan(MAX_MCP_REQUEST_BODY_BYTES);
   });
 });

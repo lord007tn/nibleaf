@@ -36,6 +36,18 @@ export function parseFrontmatter(raw: string): { meta: Record<string, string>; b
   return { meta, body: raw.slice(match[0].length) };
 }
 
+const frontmatterValue = (value: string): string => JSON.stringify(value);
+
+/** A page as one Markdown file: a YAML frontmatter block (title, then the
+ *  optional description and icon) followed by the body. This is the exact file
+ *  Git sync pushes, and `parseFrontmatter` reads it back. */
+export const serializeGitPage = (page: { title: string; description: string | null; icon: string | null; content: string }): string => {
+  const fields = [`title: ${frontmatterValue(page.title)}`];
+  if (page.description) fields.push(`description: ${frontmatterValue(page.description)}`);
+  if (page.icon) fields.push(`icon: ${frontmatterValue(page.icon)}`);
+  return `---\n${fields.join('\n')}\n---\n\n${page.content.replace(/^\s+/, '')}`;
+};
+
 export const humanize = (name: string): string =>
   name
     .replace(/[-_]+/g, ' ')
