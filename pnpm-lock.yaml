@@ -796,6 +796,9 @@ importers:
       '@clickhouse/client':
         specifier: 1.24.1
         version: 1.24.1
+      '@nibleaf/database':
+        specifier: workspace:*
+        version: link:../database
       '@nibleaf/logger':
         specifier: workspace:*
         version: link:../logger

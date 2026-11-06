@@ -1,7 +1,7 @@
 import { workbench } from '@getworkbench/hono';
 import { queues } from '@nibleaf/bullmq/queues';
 import { getWorkerHealth } from '@nibleaf/bullmq/workers';
-import { clickHouseHealth } from '@nibleaf/clickhouse';
+import { getAnalyticsHealth } from '@nibleaf/clickhouse';
 import { Hono } from 'hono';
 import { env } from '../../env';
 import { resolveEmailDelivery } from '../../processors/email-delivery';
@@ -27,7 +27,7 @@ const app = new Hono()
     const ready = queuesReady && email.ready;
     const status = !workerReady ? 'starting' : ready ? 'ok' : 'degraded';
 
-    const analytics = await clickHouseHealth();
+    const analytics = await getAnalyticsHealth();
     return ctx.json(
       {
         status,

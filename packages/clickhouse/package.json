@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@clickhouse/client": "1.24.1",
+    "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
