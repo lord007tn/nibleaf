@@ -10,6 +10,7 @@ import {
   Archive,
   Bell,
   Blocks,
+  Bot,
   Braces,
   ChartNoAxesCombined,
   CirclePlus,
@@ -38,6 +39,7 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
+import { SmartAiSection } from '@/components/project-settings/smart-ai-section';
 import { QueryErrorState } from '@/components/query-error-state';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
@@ -69,6 +71,7 @@ type SectionId =
   | 'plan'
   | 'usage'
   | 'integrations'
+  | 'smartAi'
   | 'notifications'
   | 'exports'
   | 'danger';
@@ -95,6 +98,7 @@ const SECTIONS = [
   { id: 'plan', group: 'workspace', icon: Gem },
   { id: 'usage', group: 'workspace', icon: ChartNoAxesCombined },
   { id: 'integrations', group: 'workspace', icon: Plug },
+  { id: 'smartAi', group: 'workspace', icon: Bot },
   { id: 'notifications', group: 'workspace', icon: Bell },
   { id: 'exports', group: 'advanced', icon: Archive },
   { id: 'danger', group: 'advanced', icon: TriangleAlert },
@@ -150,7 +154,7 @@ function ProjectSettingsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-background md:flex-row">
+    <div className="flex h-[calc(100vh-3.5rem)] min-w-0 flex-col overflow-hidden bg-background md:flex-row">
       <div className="shrink-0 border-border border-b bg-card px-4 py-3 md:hidden">
         <label className="mb-1.5 block font-semibold text-[10.5px] text-muted-foreground uppercase tracking-wider" htmlFor="mobile-settings-section">
           {t('settings.heading')}
@@ -212,7 +216,7 @@ function ProjectSettingsPage() {
         </nav>
       </aside>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-6xl px-4 pt-6 pb-24 sm:px-6 md:px-9 md:pt-8 md:pb-32">
           {isLoading || !project ? (
             <SectionSkeleton />
@@ -265,6 +269,7 @@ function ActiveSection({
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
+    smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
     exports: <ExportsSection canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />,
     danger: <DangerSection project={project} />,

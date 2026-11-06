@@ -4,6 +4,17 @@ import { z } from 'zod';
 export const keys = () =>
   createEnv({
     server: {
+      OPENROUTER_API_KEY: z.string().optional(),
+      INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+      INTEGRATION_CREDENTIAL_PREVIOUS_KEYS: z
+        .string()
+        .default('')
+        .transform((value) =>
+          value
+            .split(',')
+            .map((key) => key.trim())
+            .filter(Boolean),
+        ),
       // Maximum Levenshtein typo tolerance for fuzzy matching. Short query
       // tokens use a lower adaptive value so common API acronyms stay precise.
       SEARCH_FUZZY_TOLERANCE: z.coerce.number().min(0).max(3).default(2),

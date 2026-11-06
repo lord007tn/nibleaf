@@ -1,6 +1,13 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
-import { searchIndexDiagnosticsQuery, updateProjectSearchConfigurationBody, updateWorkspaceSettingsBody } from '@nibleaf/validators';
+import {
+  saveWorkspaceAiConnectionBody,
+  searchIndexDiagnosticsQuery,
+  updateProjectSearchConfigurationBody,
+  updateWorkspaceSettingsBody,
+  workspaceAiModelsBody,
+  workspaceAiSelectionBody,
+} from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { importFromGitProvider } from '@/actions/git-import';
@@ -14,6 +21,7 @@ import {
 } from '@/actions/search';
 import { getProjectUsageSummary } from '@/actions/usage';
 import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
+import { getWorkspaceAi, getWorkspaceAiModels, saveWorkspaceAiConnection, selectWorkspaceAi } from '@/actions/workspace-ai';
 import { getContextMembership, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import projectSettingsRoutes from './routes';
@@ -38,6 +46,16 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     return ctx.json({ data: await updateWorkspaceSettings(organizationId, ctx.req.valid('json')) }, 200);
   })
+  .get('/ai', ...projectSettingsRoutes.update, async (ctx) => ctx.json({ data: await getWorkspaceAi(ctx, ctx.req.param('projectId') ?? '') }, 200))
+  .post('/ai/models', ...projectSettingsRoutes.update, validator('json', workspaceAiModelsBody), async (ctx) =>
+    ctx.json({ data: await getWorkspaceAiModels(ctx, ctx.req.param('projectId') ?? '', ctx.req.valid('json')) }, 200),
+  )
+  .put('/ai/connection', ...projectSettingsRoutes.update, validator('json', saveWorkspaceAiConnectionBody), async (ctx) =>
+    ctx.json({ data: await saveWorkspaceAiConnection(ctx, ctx.req.param('projectId') ?? '', ctx.req.valid('json')) }, 200),
+  )
+  .patch('/ai', ...projectSettingsRoutes.update, validator('json', workspaceAiSelectionBody), async (ctx) =>
+    ctx.json({ data: await selectWorkspaceAi(ctx, ctx.req.param('projectId') ?? '', ctx.req.valid('json')) }, 200),
+  )
   .post('/git/import', ...projectSettingsRoutes.gitImport, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     const user = getContextUserOrThrow();

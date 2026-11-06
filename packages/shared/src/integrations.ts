@@ -19,6 +19,7 @@ export type IntegrationProviderId =
   | 'discord'
   | 'zapier'
   | 'openrouter'
+  | 'openai'
   | 'qdrant'
   | 'clickhouse'
   | 'postmark'
@@ -40,6 +41,7 @@ export const INTEGRATION_PROVIDER_IDS = [
   'discord',
   'zapier',
   'openrouter',
+  'openai',
   'qdrant',
   'clickhouse',
   'postmark',
@@ -66,7 +68,7 @@ export type IntegrationCapability =
   | 'analytics'
   | 'assets';
 
-export type IntegrationSettingsSection = 'git' | 'integrations';
+export type IntegrationSettingsSection = 'git' | 'integrations' | 'smartAi';
 
 export interface IntegrationNavigation {
   settingsSection: IntegrationSettingsSection | null;
@@ -158,8 +160,8 @@ const webhook = (id: 'slack' | 'discord' | 'zapier', verificationSideEffect: boo
 
 /**
  * Provider discovery is static and secret-free. Adapters intentionally keep
- * existing domain models authoritative; only configurable webhook providers
- * use the generic project-connection persistence layer.
+ * existing domain models authoritative. Workspace webhook and AI credentials
+ * share the project-connection persistence layer.
  */
 export const INTEGRATION_CATALOG: readonly IntegrationManifest[] = [
   {
@@ -173,7 +175,8 @@ export const INTEGRATION_CATALOG: readonly IntegrationManifest[] = [
   webhook('slack', true),
   webhook('discord', false),
   webhook('zapier', true),
-  managed('openrouter', 'ai', ['generation', 'search', 'health']),
+  adapter('openrouter', 'ai', ['generation', 'search', 'health'], 'secret', 'smartAi'),
+  adapter('openai', 'ai', ['generation', 'search', 'health'], 'secret', 'smartAi'),
   managed('qdrant', 'storage', ['search', 'health']),
   managed('clickhouse', 'analytics', ['analytics', 'health']),
   managed('postmark', 'email', ['delivery', 'health']),
@@ -192,7 +195,7 @@ export type IntegrationPublicConfig =
   | { providerId: 'google-analytics'; measurementId: string }
   | { providerId: 'plausible'; domain: string }
   | { providerId: 'slack' | 'discord' | 'zapier'; label: string | null }
-  | { providerId: 'openrouter'; draftModel: string; embeddingModel: string; answerModel: string }
+  | { providerId: 'openrouter' | 'openai'; draftModel?: string; embeddingModel: string; answerModel: string }
   | { providerId: 'qdrant'; collectionAlias: string; searchRuntime: 'legacy' | 'shadow' | 'hybrid' }
   | { providerId: 'clickhouse'; mode: 'disabled' | 'dual_write' | 'shadow_read' | 'clickhouse' }
   | { providerId: 'postmark'; messageStream: string | null }
