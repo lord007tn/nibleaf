@@ -13,7 +13,7 @@ describe('MCP API-key contracts', () => {
     expect(parsed.expiresInDays).toBe(30);
   });
 
-  it.each(['*', 'pages:write', 'search:write', 'search:reindex', 'usage:export', 'addons:write', 'integrations:write', 'unknown:scope'])(
+  it.each(['*', 'pages:delete', 'search:write', 'search:reindex', 'usage:export', 'addons:write', 'integrations:write', 'unknown:scope'])(
     'rejects unavailable or legacy scope %s',
     (scope) => {
       expect(createApiKeyBody.safeParse({ name: 'Unsafe', scopes: ['mcp:connect', scope], expiresInDays: 30 }).success).toBe(false);

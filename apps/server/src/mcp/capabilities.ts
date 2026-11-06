@@ -3,10 +3,13 @@ import type { McpScope } from '@nibleaf/shared/mcp';
 import type { Context } from 'hono';
 import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
+import { contentWriteTools } from './content-write';
+import { investigationTools } from './investigate';
+import { supportPrompts } from './prompts';
 import { runMcpReadTool, runMcpResource } from './result';
 import type { McpPrincipal } from './types';
 
-const availableTools = [
+const coreTools = [
   ['get_capabilities', 'mcp:connect'],
   ['get_project', 'projects:read'],
   ['list_pages', 'pages:read'],
@@ -34,6 +37,8 @@ const availableTools = [
   ['list_integrations', 'integrations:read'],
   ['get_integration', 'integrations:read'],
 ] as const satisfies ReadonlyArray<readonly [string, McpScope]>;
+
+const availableTools: ReadonlyArray<readonly [string, McpScope]> = [...coreTools, ...contentWriteTools, ...investigationTools];
 
 const availableResources = (projectId: string) =>
   [
@@ -67,6 +72,9 @@ const getCapabilityDto = (principal: McpPrincipal) => ({
   resources: availableResources(principal.project.id)
     .filter(([, scope]) => principal.apiKey.scopes.includes(scope))
     .map(([uri, scope]) => ({ uri, scope })),
+  prompts: supportPrompts
+    .filter(([, scopes]) => scopes.every((scope) => principal.apiKey.scopes.includes(scope)))
+    .map(([name, scopes]) => ({ name, scopes })),
   unavailable: [
     { domain: 'mutations', reason: 'Actor, confirmation, idempotency, or revision-safe action dependencies are not available in this release.' },
   ],
