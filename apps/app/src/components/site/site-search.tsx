@@ -97,20 +97,24 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
   const [pendingQuery, setPendingQuery] = useState('');
   // Where focus returns when search closes: the last element focused outside it.
   const returnFocus = useRef<HTMLElement | null>(null);
-  const openRef = useRef(open);
-  openRef.current = open;
   // Preserve the dialog's selected mode and query after its first opening.
   useEffect(() => {
     if (open) setActivated(true);
   }, [open]);
 
   useEffect(() => {
+    if (open) return;
     const remember = (event: FocusEvent) => {
-      if (!openRef.current && event.target instanceof HTMLElement && event.target !== document.body) returnFocus.current = event.target;
+      const target = event.target;
+      // Search's own field can take focus before this listener is removed on open.
+      if (!(target instanceof HTMLElement) || target === document.body || target.closest('[data-search-shell], [data-theme-surface="search"]')) {
+        return;
+      }
+      returnFocus.current = target;
     };
     document.addEventListener('focusin', remember);
     return () => document.removeEventListener('focusin', remember);
-  }, []);
+  }, [open]);
 
   useEffect(() => {
     // Warm the chunk once the page is idle so the first open is usually instant.

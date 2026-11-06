@@ -1,6 +1,8 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { SkeletonListRow, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
 import { useDebouncedValue } from '@tanstack/react-pacer';
@@ -260,11 +262,17 @@ export default function SiteSearchDialog({
   // snapshot; each hit carries its own language for correct localized routing.
   const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open && mode === 'search');
   const answerMutation = useAnswerSite();
-  // Only a first load for this query counts as pending: a background refetch of
-  // the same query keeps its results, highlight and announcement in place.
-  const queryPending = trimmed !== debouncedQuery.trim() || (hitsQuery.isFetching && hitsQuery.data === undefined);
+  // Pending: what's on screen doesn't answer the typed text yet. While the next
+  // query loads, the last results stay in place, dimmed and inert (the query
+  // keeps previous data), so the list doesn't flash empty on every keystroke.
+  // A background refetch of the same query, or a retry after an error, keeps its
+  // own content in place.
+  const queryPending =
+    Boolean(trimmed) &&
+    (trimmed !== debouncedQuery.trim() || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
-  const hits: SiteSearchHit[] = trimmed && !queryPending && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  const staleHits = queryPending && hits.length > 0;
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
   const canAsk = askAiAvailable && trimmed.length >= 2;
   // A completed request belongs to the exact question and documentation scope
@@ -372,6 +380,9 @@ export default function SiteSearchDialog({
     itemValues.push(...recent.map((_, index) => `recent-${index}`));
     if (recent.length > 0) itemValues.push('recent-clear');
     itemValues.push(...suggestionValues);
+  } else if (staleHits) {
+    // Dimmed results can't be chosen; Enter waits for the new ones.
+    if (canAsk) itemValues.push(askValue);
   } else if (hits.length > 0) {
     if (canAsk) itemValues.push(askValue);
     for (const [index, hit] of hits.entries()) {
@@ -382,7 +393,8 @@ export default function SiteSearchDialog({
     if (canAsk) itemValues.push(askValue);
     itemValues.push(...suggestionValues);
   }
-  const preferred = canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue) ? askValue : hits.length > 0 ? 'page-0' : itemValues[0];
+  const preferred =
+    canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue) ? askValue : itemValues.includes('page-0') ? 'page-0' : itemValues[0];
   const selectedValue = itemValues.includes(activeItem) ? activeItem : (preferred ?? '');
   // Re-select through cmdk's own pointer path so its internal selection and
   // the input's aria-activedescendant follow (a controlled value alone does not).
@@ -397,15 +409,20 @@ export default function SiteSearchDialog({
     setActiveItem('');
   }, [hitsQuery.data, debouncedQuery]);
 
-  const statusMessage = !trimmed
-    ? ''
-    : queryPending
-      ? t('searching')
-      : searchFailed
+  const statusMessage =
+    mode === 'answer'
+      ? answerMutation.isPending
+        ? t('checking')
+        : ''
+      : !trimmed
         ? ''
-        : hits.length > 0
-          ? t('searchResultCount', { count: hits.length })
-          : t('searchNoResultsFor', { query: trimmed });
+        : queryPending
+          ? t('searching')
+          : searchFailed
+            ? ''
+            : hits.length > 0
+              ? t('searchResultCount', { count: hits.length })
+              : t('searchNoResultsFor', { query: trimmed });
 
   const languageName = (code: string) => {
     const base = code.toLowerCase().split(/[-_]/)[0];
@@ -536,21 +553,16 @@ export default function SiteSearchDialog({
           </div>
 
           {mode === 'search' ? (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+            <div aria-busy={queryPending} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
               {/* Messages stay outside the listbox, which may only hold options. */}
               {!trimmed && recent.length === 0 && visibleSuggestions.length === 0 ? (
                 <p className="px-6 py-10 text-center text-muted-foreground text-sm">{t('searchPrompt')}</p>
               ) : null}
-              {trimmed && queryPending ? (
-                <div aria-hidden className="space-y-1 p-1.5">
-                  {['w-2/5', 'w-1/2', 'w-1/3'].map((width) => (
-                    <div key={width} className="flex items-center gap-3 rounded-lg px-2.5 py-2">
-                      <span className="size-8 shrink-0 rounded-md bg-muted" />
-                      <div className="min-w-0 flex-1 space-y-2">
-                        <div className={cn('h-3 rounded bg-muted', width)} />
-                        <div className="h-2.5 w-4/5 rounded bg-muted/70" />
-                      </div>
-                    </div>
+              {queryPending && !staleHits ? (
+                // First results for this search: rows shaped like the results.
+                <div aria-hidden className="space-y-1 p-1.5" data-search-skeleton>
+                  {['a', 'b', 'c'].map((row) => (
+                    <SkeletonListRow key={row} className="min-h-11 rounded-lg px-2.5" />
                   ))}
                 </div>
               ) : null}
@@ -558,18 +570,20 @@ export default function SiteSearchDialog({
                 <div className="flex flex-col items-center gap-3 px-6 py-10 text-center" role="alert">
                   <AlertCircle aria-hidden className="size-6 text-destructive" />
                   <p className="text-sm">{t('searchFailed')}</p>
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    loading={hitsQuery.isFetching}
                     onClick={() => {
-                      // The button unmounts while the search reloads; keep focus in the field.
+                      // The button is disabled while it retries and goes away on success;
+                      // keep focus in the field.
                       inputRef.current?.focus();
                       void hitsQuery.refetch?.();
                     }}
-                    className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-md border border-border px-3 font-medium text-sm transition-colors hover:bg-muted pointer-coarse:h-11"
+                    className="pointer-coarse:min-h-11"
                   >
                     <RotateCcw aria-hidden className="size-3.5" />
                     {t('searchRetry')}
-                  </button>
+                  </Button>
                 </div>
               ) : null}
               {noResults ? (
@@ -619,13 +633,21 @@ export default function SiteSearchDialog({
                 ) : hits.length > 0 ? (
                   <>
                     {askRow}
-                    <CommandGroup heading={t('searchPages')} className={GROUP}>
+                    <CommandGroup
+                      heading={t('searchPages')}
+                      className={cn(GROUP, staleHits && 'opacity-55 transition-opacity motion-reduce:transition-none')}
+                    >
                       {hits.map((hit, index) => {
                         const otherLanguage = baseLanguage && hit.language.toLowerCase().split(/[-_]/)[0] !== baseLanguage;
                         const analytics = { hit, position: index + 1 };
                         return (
                           <Fragment key={hit.id}>
-                            <CommandItem value={`page-${index}`} onSelect={() => openPage(hit.path, hit.language, analytics)} className={ROW}>
+                            <CommandItem
+                              value={`page-${index}`}
+                              disabled={staleHits}
+                              onSelect={() => openPage(hit.path, hit.language, analytics)}
+                              className={ROW}
+                            >
                               <RowIcon>
                                 {hasIcon(hit.icon) ? <PageIcon name={hit.icon} className="size-4" /> : <FileText className="size-4" />}
                               </RowIcon>
@@ -655,6 +677,7 @@ export default function SiteSearchDialog({
                             {hit.section ? (
                               <CommandItem
                                 value={`section-${index}`}
+                                disabled={staleHits}
                                 onSelect={() => openPage(`${hit.path}#${hit.section?.id}`, hit.language, analytics)}
                                 className={cn(ROW, 'ms-7')}
                               >
@@ -708,25 +731,21 @@ export default function SiteSearchDialog({
                   {t('askAi')}
                 </h2>
               </div>
-              {answerMutation.isPending ? (
-                <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4 text-sm" role="status">
-                  <Loader2 aria-hidden className="size-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" />
-                  <span>{t('checking')}</span>
-                </div>
-              ) : null}
-              {!answerMutation.isPending && !answer && !answerError ? (
-                <div className="rounded-lg border bg-muted/30 p-4 text-sm">
+              {!answer && !answerError ? (
+                <div aria-busy={answerMutation.isPending} className="rounded-lg border bg-muted/30 p-4 text-sm">
                   <p className="font-medium">{t('groundedAnswerTitle')}</p>
                   <p className="mt-1 text-muted-foreground">{t('groundedAnswerBody')}</p>
-                  <button
-                    type="button"
+                  <Button
                     disabled={trimmed.length < 2}
+                    loading={answerMutation.isPending}
+                    loadingText={t('checking')}
                     onClick={ask}
-                    className="mt-3 inline-flex h-9 cursor-pointer items-center gap-2 rounded-md bg-primary px-3 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 pointer-coarse:h-11"
+                    className="mt-3 pointer-coarse:min-h-11"
                   >
                     <Sparkles aria-hidden className="size-4" />
                     {t('answer')}
-                  </button>
+                  </Button>
+                  {answerMutation.isPending ? <SkeletonText className="mt-5" lines={4} /> : null}
                 </div>
               ) : null}
               {answerError ? (

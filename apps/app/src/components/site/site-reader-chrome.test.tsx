@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import type { SiteShell } from '@/hooks/api/types';
+import { queryKeys } from '@/hooks/api/query-keys';
+import type { SitePage, SiteShell } from '@/hooks/api/types';
+import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 
 const mocks = vi.hoisted(() => ({ getSite: vi.fn(), getSitePage: vi.fn() }));
 vi.mock('@/functions/site', () => ({ getSiteFn: mocks.getSite, getSitePageFn: mocks.getSitePage }));
@@ -72,13 +75,20 @@ afterEach(async () => {
 async function renderReader(url: string) {
   // Site links resolve against the real location (path-based vs custom-domain serving).
   window.history.replaceState(null, '', url);
-  const router = createRouter({ routeTree, history: createMemoryHistory({ initialEntries: [url] }), defaultPendingMs: 0 });
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const router = createRouter({
+    routeTree,
+    context: { queryClient },
+    history: createMemoryHistory({ initialEntries: [url] }),
+    defaultPendingMs: 0,
+    Wrap: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+  });
   const container = document.createElement('div');
   document.body.append(container);
   root = createRoot(container);
   await act(async () => root?.render(<RouterProvider router={router} />));
   await vi.waitFor(() => expect(container.querySelector('main')).not.toBeNull());
-  return container;
+  return Object.assign(container, { router });
 }
 
 describe('published reader chrome', () => {
@@ -122,5 +132,45 @@ describe('published reader chrome', () => {
     expect(home?.getAttribute('href')).toBe('/sites/docs?lang=ar');
     expect(home?.textContent).toBe('الذهاب إلى الصفحة الرئيسية للوثائق');
     expect(notFound?.querySelector('button')?.textContent).toBe('ابحث في الوثائق');
+  });
+
+  it('keeps the chrome and shows an article-shaped placeholder while the next page loads', async () => {
+    const container = await renderReader(MISSING);
+    await vi.waitFor(() => expect(container.querySelector('[data-site-not-found]')).not.toBeNull());
+    mocks.getSitePage.mockReturnValue(new Promise(() => undefined));
+    await act(async () => {
+      void container.router.navigate({ href: '/sites/docs/start?lang=ar' });
+    });
+    await vi.waitFor(() => expect(container.querySelector('main [data-site-article-skeleton]')).not.toBeNull());
+    const placeholder = container.querySelector('main [data-site-article-skeleton]');
+    expect(placeholder?.getAttribute('aria-busy')).toBe('true');
+    expect(placeholder?.querySelector('[role="status"]')?.textContent).toBe('جارٍ التحميل…');
+    // The header and sidebar stay; no full-screen loader replaces the docs.
+    expect(container.querySelector('header')).not.toBeNull();
+    expect(container.querySelector('nav[aria-label="صفحات الوثائق"]')).not.toBeNull();
+  });
+});
+
+describe('published page loader', () => {
+  const page = { versions: [], activeVersion: 'main', page: { path: 'start' } } as unknown as SitePage;
+  const load = (queryClient: QueryClient) =>
+    (
+      SplatRoute.options.loader as unknown as (input: {
+        params: { projectId: string; _splat: string };
+        deps: { lang?: string };
+        location: { searchStr: string };
+        context: { queryClient: QueryClient };
+      }) => Promise<{ page: SitePage }>
+    )({ params: { projectId: 'docs', _splat: 'start' }, deps: { lang: 'ar' }, location: { searchStr: '' }, context: { queryClient } });
+
+  it('reads pages through the shared query cache, so a preloaded or recent page opens without another request', async () => {
+    mocks.getSitePage.mockResolvedValue(page);
+    // The app's client: a page read moments ago is still fresh.
+    const queryClient = createQueryClient();
+    await expect(load(queryClient)).resolves.toMatchObject({ page });
+    expect(queryClient.getQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'))).toBe(page);
+    await load(queryClient);
+    expect(mocks.getSitePage).toHaveBeenCalledOnce();
+    expect(mocks.getSitePage).toHaveBeenCalledWith({ data: { projectId: 'docs', path: 'start', language: 'ar', version: 'start' } });
   });
 });

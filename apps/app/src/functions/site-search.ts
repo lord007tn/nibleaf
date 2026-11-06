@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequest } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { getData } from '@/hooks/api/client-helpers';
 import type { SearchAnswer, SiteSearchHit } from '@/hooks/api/types';
@@ -22,15 +23,20 @@ export const searchSiteFn = createServerFn({ method: 'GET' })
   .validator(searchSiteInput)
   .handler(async ({ data }) => {
     const result = await getData<{ hits: SiteSearchHit[] }>(
-      await api.public.sites[':id'].search.$get({
-        param: { id: data.projectId },
-        query: {
-          q: data.query,
-          ...(data.limit ? { limit: String(data.limit) } : {}),
-          ...(data.language ? { lang: data.language } : {}),
-          ...(data.version ? { version: data.version } : {}),
+      await api.public.sites[':id'].search.$get(
+        {
+          param: { id: data.projectId },
+          query: {
+            q: data.query,
+            ...(data.limit ? { limit: String(data.limit) } : {}),
+            ...(data.language ? { lang: data.language } : {}),
+            ...(data.version ? { version: data.version } : {}),
+          },
         },
-      }),
+        // When the reader's browser cancels this request (they typed past it),
+        // stop the API search too.
+        { init: { signal: getRequest().signal } },
+      ),
       'search',
     );
     return result.hits;

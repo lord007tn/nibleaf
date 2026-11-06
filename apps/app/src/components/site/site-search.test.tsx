@@ -184,21 +184,78 @@ describe('published reader search', () => {
     expect(document.body.textContent).not.toContain('Setup guide');
     await act(async () => alert?.querySelector('button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(input());
+    // While it retries, the message stays and the button shows it is working.
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: new Error('Network unavailable'), refetch: mocks.refetch });
+    await rerender();
+    const retry = document.querySelector('[role="alert"] button');
+    expect(retry?.getAttribute('aria-busy')).toBe('true');
+    expect(retry?.hasAttribute('disabled')).toBe(true);
+    expect(document.querySelector('[data-search-skeleton]')).toBeNull();
   });
 
-  it('does not show old results while waiting for the typed query debounce or after the input is cleared', async () => {
+  it('shows the answer button working while an answer loads', async () => {
+    const { rerender } = await render();
+    await typeQuery('How do I start?');
+    await select('searchAskAiAbout');
+    expect(mocks.mutate).toHaveBeenCalledOnce();
+    mocks.answer.mockReturnValue({
+      mutate: mocks.mutate,
+      variables: { projectId: 'docs', query: 'How do I start?', language: 'en' },
+      isPending: true,
+      data: undefined,
+      error: null,
+    });
+    await rerender();
+    const answer = [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent?.includes('answer'));
+    expect(answer?.getAttribute('aria-busy')).toBe('true');
+    expect(answer?.textContent).toContain('checking');
+    expect(status()).toBe('checking');
+    expect(answer?.parentElement?.closest('[aria-busy="true"]')?.querySelector('[data-slot="skeleton-text"]')).not.toBeNull();
+  });
+
+  it('keeps the last results dimmed and inert while the next query loads, and drops them when the input is cleared', async () => {
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
     await render();
     await typeQuery('setup');
     expect(document.body.textContent).toContain('Setup guide');
     expect(status()).toBe('searchResultCount');
+    const results = () => document.querySelector('[aria-busy]');
+    expect(results()?.getAttribute('aria-busy')).toBe('false');
+    // Waiting for the debounce: the old results stay, but can't be opened.
     mocks.debounced = 'setup';
     await typeQuery('billing');
     expect(status()).toBe('searching');
-    expect(document.body.textContent).not.toContain('Setup guide');
+    expect(results()?.getAttribute('aria-busy')).toBe('true');
+    expect(option('Setup guide')?.getAttribute('aria-disabled')).toBe('true');
+    expect(document.querySelector('[data-search-skeleton]')).toBeNull();
+    // The Ask AI row follows the typed text and stays selectable.
+    expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
+    // Then the query's placeholder data (the previous results) while it fetches.
+    mocks.debounced = undefined;
+    mocks.search.mockReturnValue({ data: [hit], isPlaceholderData: true, isFetching: true, error: null });
+    await typeQuery('billing!');
+    expect(status()).toBe('searching');
+    expect(option('Setup guide')?.getAttribute('aria-disabled')).toBe('true');
+    await act(async () => option('Setup guide')?.click());
+    expect(mocks.navigate).not.toHaveBeenCalled();
     await typeQuery('');
     expect(document.body.textContent).toContain('searchPrompt');
     expect(document.body.textContent).not.toContain('Setup guide');
+  });
+
+  it('shows result-shaped skeleton rows only while a first search loads', async () => {
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await render();
+    await typeQuery('setup');
+    expect(status()).toBe('searching');
+    expect(document.querySelectorAll('[data-search-skeleton] [data-slot="skeleton-list-row"]')).toHaveLength(3);
+    expect(document.querySelector('[data-search-skeleton]')?.closest('[aria-busy="true"]')).not.toBeNull();
+    // A background refresh of results already on screen shows no skeleton.
+    mocks.search.mockReturnValue({ data: [hit], isFetching: true, error: null });
+    await typeQuery('setup ');
+    expect(document.querySelector('[data-search-skeleton]')).toBeNull();
+    expect(option('Setup guide')?.getAttribute('aria-disabled')).not.toBe('true');
   });
 
   it('highlights the best page first and keeps "Ask AI" one step above it', async () => {

@@ -1,11 +1,13 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, notFound, redirect } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
+import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteNotFound } from '@/components/site/site-not-found';
 import { SitePageView } from '@/components/site/site-page-view';
 import { useSiteReader } from '@/components/site/site-reader-context';
-import { getSiteFn, getSitePageFn } from '@/functions/site';
+import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import type { SitePage } from '@/hooks/api/types';
 import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
@@ -22,14 +24,23 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // A missing page renders here, inside the reader chrome and in the site's
   // language, instead of the platform-wide not-found screen.
   notFoundComponent: SiteNotFound,
+  // Opening another page keeps the reader chrome and shows an article-shaped
+  // placeholder (after the router's short pending delay) instead of a
+  // full-screen loader.
+  pendingComponent: SiteArticleSkeleton,
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Server-fetch the page so its content + per-page SEO tags are in the HTML.
-  loader: async ({ params, deps, location }) => {
+  loader: async ({ params, deps, location, context: { queryClient } }) => {
     const path = params._splat ?? '';
     const version = path ? path.split('/')[0] : undefined;
     let page: SitePage;
     try {
-      page = await getSitePageFn({ data: { projectId: params.projectId, path, language: deps.lang, version } });
+      // A page preloaded on link hover (or visited moments ago) comes from the
+      // query cache; a stale copy shows at once and refreshes in the background.
+      page = await queryClient.ensureQueryData({
+        ...sitePageQueryOptions(params.projectId, path, deps.lang, version),
+        revalidateIfStale: true,
+      });
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) {
         throw error;
