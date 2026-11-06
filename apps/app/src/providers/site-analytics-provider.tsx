@@ -7,6 +7,7 @@ import { collectSiteWebVitals } from '@/lib/site-web-vitals';
 export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
 
 const viewedDocuments = new WeakSet<Document>();
+const replayedViews = new WeakMap<Document, string>();
 const vitalDocuments = new WeakSet<Document>();
 
 const randomIdFn = (): string => {
@@ -90,14 +91,27 @@ export function SiteAnalyticsProvider({
     [createEvent, projectId],
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: another version is a distinct view of the same path.
   useEffect(() => {
     if (!path) return;
+    // React can unmount and immediately remount the same effect in one task
+    // (StrictMode does this in development). That replay is not a new view.
+    const viewKey = `${projectId}|${path}|${version ?? ''}|${language ?? ''}`;
+    const forget = () => {
+      replayedViews.set(document, viewKey);
+      queueMicrotask(() => {
+        if (replayedViews.get(document) === viewKey) replayedViews.delete(document);
+      });
+    };
+    if (replayedViews.get(document) === viewKey) {
+      replayedViews.delete(document);
+      return forget;
+    }
     const referrer = viewedDocuments.has(document) ? undefined : document.referrer || undefined;
     viewedDocuments.add(document);
     const campaign = new URLSearchParams(window.location.search);
     track({ name: 'page_view', path, referrer, language, utmSource: campaign.get('utm_source')?.slice(0, 120) || undefined });
-  }, [language, path, track, version]);
+    return forget;
+  }, [language, path, projectId, track, version]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: engagement belongs to one version of the page.
   useEffect(() => {

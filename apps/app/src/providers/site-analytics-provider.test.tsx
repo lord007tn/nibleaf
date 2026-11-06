@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ProjectConfig } from '@nibleaf/validators';
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -182,6 +182,23 @@ it('uses the latest consent config without restarting the page lifecycle', async
   await act(async () => container.querySelector('button')?.click());
   expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe('denied');
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);
+});
+
+it('records one page view when StrictMode replays the effect', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <SiteAnalyticsProvider projectId="docs" path="strict" language="en">
+          <ReaderContent />
+        </SiteAnalyticsProvider>
+      </StrictMode>,
+    ),
+  );
+  expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view' && event.payload.path === 'strict')).toHaveLength(1);
 });
 
 it.each([
