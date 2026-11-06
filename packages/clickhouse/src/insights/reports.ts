@@ -1,5 +1,5 @@
 import { readPages, readViewsSeries, readVitals, vitalSummary } from './pages';
-import { type InsightsReader, ratio } from './reader';
+import { CRAWLED_PAGE, type InsightsReader, ratio } from './reader';
 import { readSearch } from './search';
 import type { AiVisibilityInsights, FeedbackInsights, OverviewInsights, PerformanceInsights, SeriesPoint } from './types';
 
@@ -8,20 +8,22 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
   const [totals, bots, resources, pages, referrals, series, landing, crawlerSeries] = await Promise.all([
     reader.rows<{ current: number; ai: number; fetches: number; pages: number; engines: number; visits: number }>(`WITH totals AS (
       SELECT current, countIf(startsWith(bot_category, 'ai_')) AS ai, countIf(bot_category = 'ai_assistant') AS fetches,
-        uniqExactIf(path, startsWith(bot_category, 'ai_') AND crawled_resource IN ('page', 'markdown')) AS pages,
+        uniqExactIf(${CRAWLED_PAGE}, startsWith(bot_category, 'ai_') AND crawled_resource IN ('page', 'markdown')) AS pages,
         countIf(bot_category = 'search_engine') AS engines FROM (${crawlers}) GROUP BY current
     ), visits AS (SELECT current, uniqExact(session_hash) AS visits FROM (${reader.human}) WHERE event_name = 'page_view' AND channel = 'ai_assistant' GROUP BY current)
     SELECT coalesce(t.current, v.current) AS current, ifNull(ai, 0) AS ai, ifNull(fetches, 0) AS fetches, ifNull(pages, 0) AS pages,
       ifNull(engines, 0) AS engines, ifNull(visits, 0) AS visits FROM totals t FULL OUTER JOIN visits v ON t.current = v.current SETTINGS join_use_nulls = 1`),
     reader.rows<AiVisibilityInsights['bots'][number] & { current: number }>(`SELECT current, bot_name AS bot, any(bot_operator) AS operator,
-      any(bot_category) AS category, count() AS requests, uniqExact(path) AS pages,
+      any(bot_category) AS category, count() AS requests, uniqExactIf(${CRAWLED_PAGE}, crawled_resource IN ('page', 'markdown')) AS pages,
       formatDateTime(max(occurred_at), '%FT%T.000Z', 'UTC') AS lastSeenAt, any(verification) AS verification
       FROM (${crawlers}) GROUP BY current, bot ORDER BY requests DESC LIMIT 500`),
     reader.rows<AiVisibilityInsights['resources'][number]>(
       `SELECT crawled_resource AS resource, count() AS requests FROM (${crawlers}) WHERE current GROUP BY resource ORDER BY requests DESC`,
     ),
-    reader.rows<Omit<AiVisibilityInsights['topCrawledPages'][number], 'title'>>(`SELECT path, count() AS requests, uniqExact(bot_name) AS bots,
-      formatDateTime(max(occurred_at), '%FT%T.000Z', 'UTC') AS lastSeenAt FROM (${crawlers}) WHERE current AND crawled_resource IN ('page', 'markdown') GROUP BY path ORDER BY requests DESC LIMIT 100`),
+    reader.rows<
+      Omit<AiVisibilityInsights['topCrawledPages'][number], 'title'>
+    >(`SELECT crawled_page AS path, requests, bots, lastSeenAt FROM (SELECT ${CRAWLED_PAGE} AS crawled_page, count() AS requests, uniqExact(bot_name) AS bots,
+      formatDateTime(max(occurred_at), '%FT%T.000Z', 'UTC') AS lastSeenAt FROM (${crawlers}) WHERE current AND crawled_resource IN ('page', 'markdown') GROUP BY crawled_page) ORDER BY requests DESC LIMIT 100`),
     reader.rows<{ current: number; source: AiVisibilityInsights['assistantReferrals'][number]['source']; visits: number }>(
       `SELECT current, ai_source AS source, uniqExact(session_hash) AS visits FROM (${reader.human}) WHERE event_name = 'page_view' AND channel = 'ai_assistant' AND ai_source != '' GROUP BY current, ai_source`,
     ),

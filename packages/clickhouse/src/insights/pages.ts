@@ -1,4 +1,4 @@
-import { type InsightsReader, ratio } from './reader';
+import { CRAWLED_PAGE, type InsightsReader, ratio } from './reader';
 import { readSearchBounces, readSearchesLeadingHere } from './search';
 import type { PageAttentionReason, PageDetailInsights, PageRow, PagesInsights, SeriesPoint, WebVitalsSummary } from './types';
 
@@ -47,7 +47,7 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
       SELECT entry AS path, 'entry' AS kind FROM sessions UNION ALL SELECT exit AS path, 'exit' AS kind FROM sessions
     ) GROUP BY path`),
     reader.rows<{ path: string; requests: number }>(
-      `SELECT path, count() AS requests FROM (${reader.facts}) WHERE current AND event_name = 'crawler_request' AND actor_type = 'bot' AND startsWith(bot_category, 'ai_') GROUP BY path`,
+      `SELECT crawled_page AS path, requests FROM (SELECT ${CRAWLED_PAGE} AS crawled_page, count() AS requests FROM (${reader.facts}) WHERE current AND event_name = 'crawler_request' AND actor_type = 'bot' AND startsWith(bot_category, 'ai_') AND crawled_resource IN ('page', 'markdown') GROUP BY crawled_page)`,
     ),
     reader.rows<{ path: string; samples: number }>(
       `SELECT path, countIf(lcp_ms IS NOT NULL) AS samples FROM (${reader.human}) WHERE current AND event_name = 'web_vitals' GROUP BY path`,
@@ -204,7 +204,7 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
     readVitals(reader, undefined, path),
     reader.rows<PageDetailInsights['aiCrawlers'][number]>(
       `SELECT bot_name AS bot, any(bot_operator) AS operator, count() AS requests,
-      formatDateTime(max(occurred_at), '%FT%T.000Z', 'UTC') AS lastSeenAt FROM (${reader.facts}) WHERE current AND actor_type = 'bot' AND event_name = 'crawler_request' AND startsWith(bot_category, 'ai_') AND path = {path:String} GROUP BY bot ORDER BY requests DESC`,
+      formatDateTime(max(occurred_at), '%FT%T.000Z', 'UTC') AS lastSeenAt FROM (${reader.facts}) WHERE current AND actor_type = 'bot' AND event_name = 'crawler_request' AND startsWith(bot_category, 'ai_') AND crawled_resource IN ('page', 'markdown') AND ${CRAWLED_PAGE} = {path:String} GROUP BY bot ORDER BY requests DESC`,
       { path },
     ),
     reader.rows<{ path: string; target: string; clicks: number }>(

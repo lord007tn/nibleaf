@@ -132,4 +132,9 @@ export class InsightsReader {
   }
 }
 
+/** The docs page a crawler request was for: "/guide.md" (Markdown variant) and
+ * "guide" are the same page, so reports group them together. Machine files
+ * (llms.txt, robots.txt…) are filtered separately by crawled_resource. */
+export const CRAWLED_PAGE = "replaceRegexpAll(path, '^/+|[.]md$', '')";
+
 export const ratio = (numerator: number, denominator: number): number | null => (denominator > 0 ? numerator / denominator : null);

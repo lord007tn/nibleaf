@@ -142,6 +142,12 @@ integration('insights over real deduplicated facts', () => {
         botCategory: 'ai_search',
         payload: { name: 'crawler_request', path: 'target', resource: 'page', statusCode: 200 },
       }),
+      // The Markdown variant of the same page is the same page in every report.
+      event(6000, {
+        actorType: 'bot',
+        botCategory: 'ai_training',
+        payload: { name: 'crawler_request', path: '/target.md', resource: 'markdown', statusCode: 200 },
+      }),
     ]);
     try {
       const page = await readPageDetail(new InsightsReader(isolated), 'target');
@@ -158,7 +164,11 @@ integration('insights over real deduplicated facts', () => {
           { domain: 'example.org', visits: 1 },
         ]),
       );
-      expect((await readPages(new InsightsReader(isolated))).rows.find((row) => row.path === 'target')?.aiCrawlerRequests).toBe(1);
+      expect((await readPages(new InsightsReader(isolated))).rows.find((row) => row.path === 'target')?.aiCrawlerRequests).toBe(2);
+      expect(page.aiCrawlers.reduce((sum, bot) => sum + bot.requests, 0)).toBe(2);
+      const ai = await readAiVisibility(new InsightsReader(isolated));
+      expect(ai.topCrawledPages.map((row) => [row.path, row.requests])).toEqual([['target', 3]]);
+      expect(ai.kpis.crawledPages.value).toBe(1);
       const before = await readInsightsProjectStatus(isolated);
       expect(Date.parse(before.lastEventAt ?? '')).toBe(start + 3000);
       await getClickHouseClient('writer').command({
