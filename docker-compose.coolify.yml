@@ -194,9 +194,25 @@ services:
       - nibleaf-coolify-clickhouse:/var/lib/clickhouse
       - nibleaf-coolify-clickhouse-logs:/var/log/clickhouse-server
       - nibleaf-coolify-clickhouse-backups:/var/lib/clickhouse/backups
-    configs:
-      - source: clickhouse-small-host
+      # Coolify creates this file from its documented content extension.
+      # Plain docker compose config rejects content here; deploy this file via Coolify.
+      - type: bind
+        source: ./clickhouse/nibleaf.xml
         target: /etc/clickhouse-server/config.d/nibleaf.xml
+        content: |
+          <clickhouse>
+            <max_server_memory_usage>1073741824</max_server_memory_usage>
+            <mark_cache_size>134217728</mark_cache_size>
+            <uncompressed_cache_size>0</uncompressed_cache_size>
+            <logger><level>warning</level><size>10M</size><count>3</count></logger>
+            <query_log remove="1"/><query_thread_log remove="1"/><trace_log remove="1"/>
+            <text_log remove="1"/><metric_log remove="1"/><asynchronous_metric_log remove="1"/>
+            <part_log remove="1"/><processors_profile_log remove="1"/>
+            <session_log remove="1"/><query_views_log remove="1"/>
+            <error_log remove="1"/><crash_log remove="1"/>
+            <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+            <backups><allowed_disk>backups</allowed_disk></backups>
+          </clickhouse>
     mem_limit: 1536m
     cpus: 2.0
     healthcheck:
@@ -365,20 +381,3 @@ volumes:
   nibleaf-coolify-clickhouse-logs:
     name: nibleaf-coolify-clickhouse-logs
   nibleaf-coolify-clickhouse-backups:
-
-configs:
-  clickhouse-small-host:
-    content: |
-      <clickhouse>
-        <max_server_memory_usage>1073741824</max_server_memory_usage>
-        <mark_cache_size>134217728</mark_cache_size>
-        <uncompressed_cache_size>0</uncompressed_cache_size>
-        <logger><level>warning</level><size>10M</size><count>3</count></logger>
-        <query_log remove="1"/><query_thread_log remove="1"/><trace_log remove="1"/>
-        <text_log remove="1"/><metric_log remove="1"/><asynchronous_metric_log remove="1"/>
-        <part_log remove="1"/><processors_profile_log remove="1"/>
-        <session_log remove="1"/><query_views_log remove="1"/>
-        <error_log remove="1"/><crash_log remove="1"/>
-        <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
-        <backups><allowed_disk>backups</allowed_disk></backups>
-      </clickhouse>

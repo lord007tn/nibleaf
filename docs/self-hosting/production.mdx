@@ -104,4 +104,7 @@ Keep analytics health independent from core readiness. The bundled ClickHouse bu
 is a starting point for small hosts; measure disk headroom before enabling ingestion.
 Review [analytics operations](/self-hosting/clickhouse-analytics) and perform the
 [isolated analytics restore drill](/self-hosting/backups-upgrades) before upgrades.
-Inline Compose configs require Docker Compose 2.23.1 or newer.
+Non-Coolify inline Compose configs require Docker Compose 2.23.1 or newer.
+The Coolify file instead uses its documented bind-mount `content:` extension to
+create the ClickHouse XML file. Plain `docker compose config` rejects this
+Coolify-only extension; deploy that file through Coolify.

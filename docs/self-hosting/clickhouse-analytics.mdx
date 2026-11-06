@@ -60,17 +60,27 @@ finishes. Server and worker `/health` include this independent field:
 uninitialized database); `unavailable` means connection, credentials or schema
 probing failed; `ok` means every code migration is recorded. The API independently
 probes the database, so it can report `schema_outdated` while a worker migrates.
-The optional schema probe has a 750 ms deadline so an outage stays inside the
-container healthcheck timeout. Core readiness and its HTTP status continue to
+Schema probes share a result for ten seconds per process, including failures.
+The local worker migration flag is reflected immediately; its completion clears
+the cache. Each probe has a 750 ms deadline to stay inside the container
+healthcheck timeout. Core readiness and its HTTP status continue to
 depend on core services only.
 
 ## Credentials and privacy
 
 Generate an independent `ANALYTICS_HASH_SALT` with `openssl rand -hex 32`. Preserve
 existing salts and keys; changing a salt splits historical visit identities.
-Sessions use salted hashes, with a per-tab session identifier. Consent states
-are `granted`, `denied`, `unknown`, and `not_required`; sensitive search text is
-eligible only for `granted` or `not_required`.
+Without `ANALYTICS_HASH_SALT` while ClickHouse analytics is enabled, events are
+**dropped**, not hashed with a fallback; core documentation delivery stays healthy.
+Restore the existing secret before enabling ingestion. A new salt is for a new
+installation, not a replacement for a lost production value.
+
+Session and anonymous identifiers are created and accepted only with consent
+`granted` or `not_required`. Visits therefore count only identifiable visits.
+For `denied` or `unknown`, content-free page views and search counts still count,
+without session or anonymous-user hashes; the server discards identifiers even
+if a client sends them. Consented sessions use salted hashes and a per-tab session
+identifier. Sensitive search text also requires `granted` or `not_required`.
 
 Public search terms require a public site and the project setting
 `analytics.storePublicSearchTerms=true`. Private sites never store raw terms.
@@ -81,14 +91,37 @@ others contribute to hidden-term totals. Sensitive text has its own short TTL.
 No document bodies, prompts or answers belong in product analytics events.
 
 Compose bootstraps a writer identity; it does not provision a separate reader.
-Create a reader with SELECT on the analytics database (including migration
-versions and the sensitive table needed for eligible terms), then set
-`CLICKHOUSE_READER_USERNAME` and `CLICKHOUSE_READER_PASSWORD`. Protect those
-credentials: SQL privileges are database-wide; tenant scoping is enforced by
-Nibleaf queries. The writer needs INSERT, CREATE and ALTER for migrations, TTLs,
-rollups and project erasure; database creation may require an operator grant.
-Use a dedicated operator identity for CLI migrations if runtime DDL is prohibited.
-Never reuse reader credentials for writes. Keep passwords in deployment secrets.
+Create roles and assign them to separately provisioned users. Database-level
+grants cover new analytics tables without forgetting deletion tombstone reads:
+
+```sql
+CREATE ROLE IF NOT EXISTS nibleaf_analytics_reader;
+GRANT SELECT ON nibleaf_analytics.* TO nibleaf_analytics_reader;
+
+CREATE ROLE IF NOT EXISTS nibleaf_analytics_writer;
+GRANT INSERT ON nibleaf_analytics.* TO nibleaf_analytics_writer;
+GRANT SELECT ON nibleaf_analytics.analytics_deletion_tombstones TO nibleaf_analytics_writer;
+GRANT SELECT ON nibleaf_analytics.usage_deletion_tombstones TO nibleaf_analytics_writer;
+
+CREATE ROLE IF NOT EXISTS nibleaf_analytics_erasure;
+GRANT ALTER DELETE ON nibleaf_analytics.* TO nibleaf_analytics_erasure;
+```
+
+The reader includes `analytics_deletion_tombstones`, migration versions and the
+sensitive table needed for eligible terms. SQL privileges are database-wide;
+Nibleaf queries enforce tenant/project scope. Set the matching
+`CLICKHOUSE_READER_USERNAME` and `CLICKHOUSE_READER_PASSWORD`. The runtime writer
+needs INSERT plus SELECT on tombstones; deletion tooling additionally needs
+SELECT to check erasure and the erasure role above, covering **every project
+table**. Assign the reader and erasure roles to the worker identity if it runs
+rollup reads and project deletion. Do not give erasure privileges to the dashboard
+reader. Keep passwords in deployment secrets.
+
+Migration execution separately needs CREATE/ALTER and reads/writes on migration
+versions, including rights to create the database when absent. With boot
+migrations enabled, provision those rights to the worker writer identity. If
+runtime DDL is prohibited, set `CLICKHOUSE_MIGRATE_ON_BOOT=false` and run the CLI
+with a dedicated migration identity. The runtime INSERT role alone cannot migrate.
 
 Deleting a project erases its raw, sensitive and rollup analytics with a deletion
 fence. Verify ClickHouse mutations finish before closing an erasure request.
@@ -99,10 +132,10 @@ connecting restored data to the application.
 
 | Variable | Default days | Allowed range |
 | --- | --- | --- |
-| `CLICKHOUSE_RAW_RETENTION_DAYS` | 180 | 7?730 |
-| `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | 90 | 7?730 |
-| `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | 730 | 30?3650 |
-| `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | 30 | 1?90 |
+| `CLICKHOUSE_RAW_RETENTION_DAYS` | 180 | 7-730 |
+| `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | 90 | 7-730 |
+| `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | 730 | 30-3650 |
+| `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | 30 | 1-90 |
 
 Every migration run reapplies TTLs with `materialize_ttl_after_modify=0`.
 Changes affect subsequent merges without an immediate rewrite; deletion is
@@ -115,3 +148,8 @@ operator review. These are starting limits, not a capacity guarantee. Monitor
 free bytes, queue age, failed jobs, parts, merges and mutations. Never delete
 files under the ClickHouse data volume to free space. See
 [backups](/self-hosting/backups-upgrades) and [troubleshooting](/self-hosting/troubleshooting).
+
+Origin-side crawler capture cannot see requests served entirely from a CDN or
+edge cache in front of Nibleaf. Crawler counts therefore describe requests that
+reach Nibleaf, not all edge traffic. Compare CDN logs separately when assessing
+coverage; do not read missing origin requests as an absence of crawlers.

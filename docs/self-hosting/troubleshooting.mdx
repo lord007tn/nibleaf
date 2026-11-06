@@ -147,3 +147,8 @@ text logs; old system tables are not automatically removed. Review them with an
 operator before targeted cleanup. Copy backups off-host, then review retention;
 TTL merges need free space and are asynchronous. Never delete ClickHouse data
 files, run broad OPTIMIZE FINAL on a full host, or erase queues to make health green.
+If health is `ok` but no new events arrive, check `ANALYTICS_HASH_SALT` before
+network debugging. With ClickHouse analytics enabled and no salt, events are
+dropped even though schema health is healthy. Restore the existing deployment
+secret; never replace it to fix a missing environment variable. Schema health
+results can be up to ten seconds old; the worker migration flag is immediate.

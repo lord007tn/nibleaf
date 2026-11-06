@@ -106,11 +106,11 @@ maxio عبر TLS. وبالنسبة إلى R2 أو S3 أو Backblaze B2 أو أي
 | المتغير | القيمة الافتراضية | الإرشاد |
 | --- | --- | --- |
 | `ANALYTICS_MODE` | `disabled` في قالب الإنتاج | انتقل إلى `dual_write` ثم `shadow_read` ثم `clickhouse` بعد مطابقة النتائج. |
-| `ANALYTICS_HASH_SALT` | غير مضبوط | ولّده بـ `openssl rand -hex 32` واحتفظ بالقيمة الحالية. |
+| `ANALYTICS_HASH_SALT` | غير مضبوط | مطلوب عند تفعيل إدخال ClickHouse؛ تسقط الأحداث عند غيابه. ولّده للتثبيت الجديد فقط بـ `openssl rand -hex 32` واحتفظ بالقيمة الحالية. |
 | `CLICKHOUSE_URL` | `http://localhost:8123` في الشفرة | يستخدم Compose العنوان `http://clickhouse:8123`؛ احم الاتصال البعيد بـ TLS. |
 | `CLICKHOUSE_DATABASE` | `nibleaf_analytics` | القيمة نفسها للخادم والعامل وأداة الترقية. |
 | `CLICKHOUSE_READER_USERNAME` / `CLICKHOUSE_READER_PASSWORD` | `default` / غير مضبوطة في الشفرة | قارئ مستقل بصلاحية SELECT فقط في الإنتاج؛ تختلف قيم Compose الأولية. |
-| `CLICKHOUSE_WRITER_USERNAME` / `CLICKHOUSE_WRITER_PASSWORD` | `default` / غير مضبوطة في الشفرة | صلاحيات الكتابة وترقية المخطط، أو هوية مخصصة للأداة اليدوية. |
+| `CLICKHOUSE_WRITER_USERNAME` / `CLICKHOUSE_WRITER_PASSWORD` | `default` / غير مضبوطة في الشفرة | INSERT وSELECT على سجلات الحذف؛ أضف دوري القارئ والمحو لمهام العامل وصلاحيات المخطط للترقية عند البدء، أو استخدم هوية ترقية يدوية مخصصة. |
 | `CLICKHOUSE_REQUEST_TIMEOUT_MS` | `5000` | من 250 إلى 60000 ملّي ثانية لكل طلب نقل. |
 | `CLICKHOUSE_MAX_BATCH_SIZE` | `500` | من 1 إلى 10000 حدث. |
 | `CLICKHOUSE_MAX_BUFFERED_EVENTS` | `10000` | من 100 إلى 100000 حدث؛ يبقى حفظ المهام ضرورياً. |
