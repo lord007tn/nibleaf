@@ -27,7 +27,7 @@ describe('workspace AI credential ownership', () => {
     vi.stubEnv('INTEGRATION_CREDENTIAL_ENCRYPTION_KEY', key);
     vi.stubEnv('INTEGRATION_CREDENTIAL_PREVIOUS_KEYS', '');
     vi.stubEnv('SEARCH_EMBEDDING_MODEL', 'openai/text-embedding-3-small');
-    db.project.mockResolvedValue({ config: { search: { aiProvider: 'openai' } } });
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'openai', aiAnswers: true } } });
     db.connection.mockResolvedValue(connection());
   });
 
@@ -67,6 +67,11 @@ describe('workspace AI credential ownership', () => {
     const next = await resolveWorkspaceAi('workspace-a');
     expect(previous?.revision).toBe('connection-a:1');
     expect(next).toMatchObject({ revision: 'connection-a:2', apiKey: 'new-workspace-secret' });
+  });
+
+  it('keeps search usable but refuses answers as soon as answers are switched off', async () => {
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'openai', aiAnswers: false } } });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toMatchObject({ providerId: 'openai', answersEnabled: false });
   });
 
   it('does not query a different embedding model against an existing index', async () => {

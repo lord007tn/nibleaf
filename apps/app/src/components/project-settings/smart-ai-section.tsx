@@ -53,7 +53,8 @@ export function SmartAiSection({ project }: { project: Project }) {
       ? data.instanceConfigured
       : data.providers.some((provider) => provider.id === data.selectedProvider && provider.verified);
   // Only report answers as enabled when the runtime can actually serve them.
-  const enabled = data.selectedProvider !== 'disabled' && data.answersEnabled && providerConfigured;
+  const answersUsable = data.selectedProvider === 'instance' ? data.instanceConfigured && data.instanceAnswersEnabled : providerConfigured;
+  const enabled = data.selectedProvider !== 'disabled' && data.answersEnabled && answersUsable;
   // A run whose enqueue failed stays PENDING; the server re-enqueues it on retry.
   const indexActive = data.index.status === 'RUNNING' || (data.index.status === 'PENDING' && data.index.errorCode !== 'queue_unavailable');
 

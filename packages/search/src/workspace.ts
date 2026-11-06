@@ -5,7 +5,9 @@ import { z } from 'zod';
 import { keys } from './keys';
 import { OpenAIChatProvider, OpenAIEmbeddingProvider, OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
 
-const configurationSchema = z.object({ search: z.object({ aiProvider: aiSelectionSchema.optional() }).optional() });
+const configurationSchema = z.object({
+  search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
+});
 
 /** Resolve live project state for every operation. An explicit workspace selection
  * never falls back to another tenant's or the instance's paid credentials. */
@@ -16,6 +18,9 @@ export const resolveWorkspaceAi = async (projectId: string) => {
   const configuration = configurationSchema.safeParse(project.config ?? {});
   if (!configuration.success) return null;
   const selection = configuration.data.search?.aiProvider ?? 'instance';
+  // Read the live switch here so a replica with cached site config cannot keep
+  // spending the workspace key after answers are turned off.
+  const answersSwitchedOn = configuration.data.search?.aiAnswers === true;
   if (selection === 'disabled') return null;
   if (selection === 'instance') {
     return env.OPENROUTER_API_KEY
@@ -25,7 +30,7 @@ export const resolveWorkspaceAi = async (projectId: string) => {
           answerModel: env.SEARCH_ANSWER_MODEL,
           embeddingModel: env.SEARCH_EMBEDDING_MODEL,
           revision: 'instance',
-          answersEnabled: env.SEARCH_ANSWER_ENABLED,
+          answersEnabled: env.SEARCH_ANSWER_ENABLED && answersSwitchedOn,
         }
       : null;
   }
@@ -44,7 +49,7 @@ export const resolveWorkspaceAi = async (projectId: string) => {
       apiKey: credential.apiKey,
       ...config.data,
       revision: `${connection.id}:${connection.revision}`,
-      answersEnabled: true,
+      answersEnabled: answersSwitchedOn,
     };
   } catch {
     return null;
