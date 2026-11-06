@@ -376,6 +376,15 @@ describe('reader AI chat stream', () => {
       expect.objectContaining({ name: 'answer_completed', outcome: 'blocked', reason: 'rate_limited' }),
     ]);
     expect(mocks.recordEvents.mock.calls[0]?.[1]).toMatchObject({ consent: 'granted', sessionId: 'reader-session-0001' });
+    // An invalid body still records under a valid conversation id, or the analytics
+    // pipeline would reject the batch.
+    mocks.recordEvents.mockClear();
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    await recordChatRateLimited('project-1', { conversationId: limited.conversationId, question: 'x' }, new Headers());
+    expect(recorded()[0]).toMatchObject({ name: 'quota_reached', conversationId: limited.conversationId });
+    mocks.recordEvents.mockClear();
+    await recordChatRateLimited('project-1', { nonsense: true }, new Headers());
+    expect(recorded().map((event) => event.conversationId)).toEqual([expect.stringMatching(uuid), expect.stringMatching(uuid)]);
     mocks.recordEvents.mockClear();
     mocks.context.mockRejectedValue(new Error('not found'));
     await expect(recordChatRateLimited('missing-site', { nonsense: true }, new Headers())).resolves.toBeUndefined();

@@ -32,6 +32,7 @@ import {
 } from '@nibleaf/validators';
 import { EventType, type StreamChunk, toServerSentEventsResponse } from '@tanstack/ai';
 import { getContext } from 'hono/context-storage';
+import { z } from 'zod';
 import { env } from '@/env';
 import { AppError } from '@/errors';
 import { type ChatTurnHold, releaseChatTurn, reserveChatTurn, settleChatSpend } from '@/lib/ai-search/chat-budget';
@@ -631,7 +632,10 @@ export const recordChatRateLimited = async (identifier: string, rawBody: unknown
     const body = parsed.success ? parsed.data : undefined;
     const context = await resolvePublishedAnswerContext(identifier, body?.lang, body?.version);
     const consent = trustedChatConsent(context.snapshot.project.config, body?.consent ?? 'unknown');
-    const conversationId = body?.conversationId ?? '';
+    // Events need a conversation id: the request's own when it has a valid one,
+    // even if the rest of the body is invalid, else a fresh one.
+    const requested = z.uuid().safeParse((rawBody as { conversationId?: unknown } | null | undefined)?.conversationId);
+    const conversationId = body?.conversationId ?? (requested.success ? requested.data : randomUUID());
     const emit = chatEventRecorder(context, { ...readerDimensions(headers), consent, ...(body?.sessionId ? { sessionId: body.sessionId } : {}) });
     await emit([
       { name: 'quota_reached', conversationId, kind: 'rate_limited' },
