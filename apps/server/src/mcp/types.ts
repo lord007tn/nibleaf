@@ -27,6 +27,9 @@ export interface McpSuccessEnvelope {
     requestId: string;
     projectId: string;
     capability: string;
+    /** Write tools only: the result is the stored outcome of an earlier call
+     *  with the same clientRequestId and arguments; nothing ran again. */
+    replayed?: boolean;
   };
 }
 
@@ -37,5 +40,14 @@ export interface McpErrorEnvelope {
     message: string;
     retryable: boolean;
     requestId: string;
+    /** Structured detail for MCP-specific errors (for example the page's
+     *  currentRevision on mcp:revision_conflict). Never raw internals. */
+    data?: Record<string, unknown>;
   };
+}
+
+/** The entity an audited operation touched. */
+export interface McpAuditTarget {
+  type: 'project' | 'page' | 'deployment';
+  id: string | null;
 }

@@ -3,7 +3,7 @@ import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
-import { badRequest, notFound } from '@/errors';
+import { badRequest, conflict, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -186,10 +186,28 @@ const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): ob
   return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
 };
 
-export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string) => {
+/** Raised when an `expectedUpdatedAt` precondition no longer matches the page. */
+const pageRevisionConflict = (id: string) =>
+  conflict('This page was changed after it was read. Re-read it and apply the edit again.', { id, reason: 'revision_conflict' });
+
+const isRecordNotFound = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
+
+interface UpdatePageOptions {
+  /** Optimistic-concurrency precondition: apply the update only while the page's
+   *  `updatedAt` still equals this value. The final write is conditional on it,
+   *  so an edit that lands between the read and the write is never overwritten. */
+  expectedUpdatedAt?: Date;
+}
+
+export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string, options?: UpdatePageOptions) => {
   const page = await prisma.page.findFirst({ where: { id, projectId } });
   if (!page) {
     throw notFound('page', { id });
+  }
+  const expectedUpdatedAt = options?.expectedUpdatedAt;
+  if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    throw pageRevisionConflict(id);
   }
   // The slug/URL is decoupled from the title (Mintlify-style): it only changes
   // when the slug is set explicitly or the page is re-parented (which needs a
@@ -220,20 +238,26 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
     nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, desiredSlug, id);
   }
   const nextConfig = mergePageConfig(page.config, body.config);
-  const updated = await prisma.page.update({
-    where: { id },
-    data: {
-      ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
-      ...(body.title === undefined ? {} : { title: body.title }),
-      slug: nextSlug,
-      ...(body.icon === undefined ? {} : { icon: body.icon }),
-      ...(body.description === undefined ? {} : { description: body.description }),
-      ...(body.content === undefined ? {} : { content: body.content }),
-      ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
-      ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
-      ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
-    },
-  });
+  const updated = await prisma.page
+    .update({
+      // With a precondition the write matches only the revision that was read;
+      // a concurrent edit makes it match nothing (P2025) instead of being lost.
+      where: expectedUpdatedAt ? { id, updatedAt: expectedUpdatedAt } : { id },
+      data: {
+        ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
+        ...(body.title === undefined ? {} : { title: body.title }),
+        slug: nextSlug,
+        ...(body.icon === undefined ? {} : { icon: body.icon }),
+        ...(body.description === undefined ? {} : { description: body.description }),
+        ...(body.content === undefined ? {} : { content: body.content }),
+        ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
+        ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
+        ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
+      },
+    })
+    .catch((error: unknown) => {
+      throw expectedUpdatedAt && isRecordNotFound(error) ? pageRevisionConflict(id) : error;
+    });
   if (userId && page.kind === 'PAGE' && body.content !== undefined && body.content.trim() !== page.content.trim()) {
     logFirstContentEdit(userId, projectId);
   }
