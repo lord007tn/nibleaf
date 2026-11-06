@@ -127,11 +127,20 @@ describe('personal key permissions', () => {
     expect(database.update).not.toHaveBeenCalled();
     expect(database.create).not.toHaveBeenCalled();
   });
-  it('allows admin revoke and rotation of another key', async () => {
+  it('lets admins revoke another member key but not rotate it into their own identity', async () => {
     database.updateMany.mockResolvedValue({ count: 1 });
     await revokeApiKey('org-1', 'project-1', current.id, admin);
-    await rotateApiKey('org-1', 'project-1', current.id, admin, body);
     expect(database.update).toHaveBeenCalledOnce();
-    expect(database.create).toHaveBeenCalledOnce();
+    await expect(rotateApiKey('org-1', 'project-1', current.id, admin, body)).rejects.toMatchObject({ status: 404 });
+    expect(database.findFirst).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: current.id, projectId: 'project-1', createdById: admin.id } }),
+    );
+    expect(database.create).not.toHaveBeenCalled();
+  });
+  it('rotates the caller own key as the caller', async () => {
+    database.findFirst.mockResolvedValue(current);
+    database.updateMany.mockResolvedValue({ count: 1 });
+    await rotateApiKey('org-1', 'project-1', current.id, admin, body);
+    expect(database.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ createdById: admin.id }) }));
   });
 });

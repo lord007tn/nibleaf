@@ -52,7 +52,7 @@ export const listApiKeys = async (organizationId: string, projectId: string, act
   `)
     : [];
   const activity = new Map(events.map(({ apiKeyId, ...event }) => [apiKeyId, event]));
-  return keys.map((key) => ({ ...apiKeyDto(key), lastActivity: activity.get(key.id) ?? null }));
+  return keys.map((key) => ({ ...apiKeyDto(key), lastActivity: activity.get(key.id) ?? null, ownedByViewer: key.createdBy?.id === actor.id }));
 };
 
 export const createApiKey = async (organizationId: string, projectId: string, actor: Actor, body: CreateApiKeyBody) => {
@@ -78,7 +78,10 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
   await assertProjectInOrg(organizationId, projectId);
   const scopes = issueScopes(body, actor.role);
   const rotated = await prisma.$transaction(async (tx) => {
-    const current = await tx.apiKey.findFirst({ where: { id, projectId, ...ownership(actor) }, select: { id: true, name: true } });
+    // Rotation re-issues the key AS the caller, so it is limited to the caller's
+    // own keys: an admin rotating someone else's key would silently take it over.
+    // Admins can still revoke any key.
+    const current = await tx.apiKey.findFirst({ where: { id, projectId, createdById: actor.id }, select: { id: true, name: true } });
     if (!current) throw notFound('api key', { id });
 
     const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: new Date() } });

@@ -364,16 +364,18 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   </div>
                 </div>
                 <div className="flex gap-2 self-start sm:self-center">
-                  <Button
-                    className="h-9"
-                    disabled={!enabled || !allowedScopes.length || Boolean(key.revokedAt) || rotate.isPending}
-                    onClick={() => rotateKey(key)}
-                    type="button"
-                    variant="outline"
-                  >
-                    <RefreshCw aria-hidden />
-                    {t('settings.apiKeys.rotate')}
-                  </Button>
+                  {key.ownedByViewer === false ? null : (
+                    <Button
+                      className="h-9"
+                      disabled={!enabled || !allowedScopes.length || Boolean(key.revokedAt) || rotate.isPending}
+                      onClick={() => rotateKey(key)}
+                      type="button"
+                      variant="outline"
+                    >
+                      <RefreshCw aria-hidden />
+                      {t('settings.apiKeys.rotate')}
+                    </Button>
+                  )}
                   <Button
                     className="h-9"
                     disabled={Boolean(key.revokedAt) || revoke.isPending}

@@ -5,7 +5,7 @@ import type { McpPrincipal } from './types';
 
 export const supportPrompts = [
   ['find_content_gaps', ['analytics:search_terms', 'pages:read', 'search:read', 'pages:write', 'deployments:publish']],
-  ['weekly_docs_health_report', ['analytics:read', 'analytics:search_terms', 'search:read', 'deployments:read']],
+  ['weekly_docs_health_report', ['analytics:read', 'search:read', 'deployments:read']],
   ['draft_article', ['pages:read', 'search:read', 'pages:write']],
   ['translate_article', ['pages:read', 'pages:write']],
   ['review_unhelpful_pages', ['analytics:read', 'pages:read', 'pages:write']],
@@ -19,13 +19,30 @@ const workflows = {
   find_content_gaps:
     'Call get_failed_searches and get_top_searches for the requested range and language. Distinguish missing metrics from zero counts. For each candidate term call search_pages to rule out existing coverage. Propose articles with supporting evidence. Use create_page_draft for chosen gaps, then preview_publish and STOP for the human to review.',
   weekly_docs_health_report:
-    'Call get_analytics_overview, get_top_pages, get_page_feedback, get_failed_searches, get_referrers (include AI assistants), get_search_health, and get_pending_changes. Pass the requested range and language to analytics tools that accept them. Report evidence, ranges, source limitations, pending changes, and unknown metrics explicitly. Do not edit content.',
+    'Call get_analytics_overview, get_top_pages, get_page_feedback, get_failed_searches (only if this key lists it; otherwise say search terms are not available to this key), get_referrers (include AI assistants), get_search_health, and get_pending_changes. Pass the requested range and language to analytics tools that accept them. Report evidence, ranges, source limitations, pending changes, and unknown metrics explicitly. Do not edit content.',
   draft_article:
     'Use the quoted topic as article subject. Call search_pages first to check existing coverage. Read relevant pages with get_page, then create_page_draft in the requested language. Return the draft for human review.',
   translate_article:
     'Read the quoted pageId with get_page, then call translate_page for the quoted targetLanguage. Preserve meaning and formatting. Return the translation draft for human review.',
   review_unhelpful_pages:
     'Call get_page_feedback, rank pages by poor helpfulness and feedback volume, then get_page for each candidate. Propose justified edits. Use update_page with expectedRevision from the page read; on revision conflict read again and reassess. Return proposed changes for human review.',
+};
+
+const promptTitles = {
+  find_content_gaps: 'Find content gaps from failed searches',
+  weekly_docs_health_report: 'Weekly docs health report',
+  draft_article: 'Draft a new article',
+  translate_article: 'Translate an article',
+  review_unhelpful_pages: 'Improve pages readers found unhelpful',
+};
+const promptDescriptions = {
+  find_content_gaps:
+    'Turn searches that returned nothing into a short list of missing articles, draft the chosen ones, and stop at a publish preview for review.',
+  weekly_docs_health_report:
+    'Summarize traffic, top pages, reader feedback, failed searches, referrers (including AI assistants), search index health and unpublished changes. Read only.',
+  draft_article: 'Check existing coverage for a topic, then create an unpublished draft article.',
+  translate_article: 'Create an unpublished translation of one page in another configured language.',
+  review_unhelpful_pages: 'Find pages with the worst "was this helpful" ratio and propose revision-safe edits.',
 };
 
 export const registerSupportPrompts = (server: McpServer, principal: McpPrincipal) => {
@@ -39,7 +56,7 @@ export const registerSupportPrompts = (server: McpServer, principal: McpPrincipa
           : z.object({ range, language }).strict();
     server.registerPrompt(
       name,
-      { description: `Support workflow: ${name.replaceAll('_', ' ')}.`, argsSchema },
+      { title: promptTitles[name], description: promptDescriptions[name], argsSchema },
       async (args: Record<string, string | undefined>) => ({
         messages: [
           {
