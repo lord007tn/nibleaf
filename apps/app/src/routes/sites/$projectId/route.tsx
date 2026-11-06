@@ -23,7 +23,6 @@ import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
-import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
@@ -62,11 +61,7 @@ export const Route = createFileRoute('/sites/$projectId')({
 });
 
 function SiteRoute() {
-  return (
-    <QueryProvider>
-      <SiteChrome />
-    </QueryProvider>
-  );
+  return <SiteChrome />;
 }
 
 // Brand glyphs as inline SVG — lucide-react no longer ships GitHub/X/LinkedIn icons.
