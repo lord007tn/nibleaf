@@ -59,7 +59,7 @@ export const classifyUserAgent = (userAgent?: string | null): ActorClassificatio
   const match = catalog.find(([name]) => ua.includes(name.toLowerCase()));
   if (match) return { actorType: 'bot', botName: match[0], botOperator: match[1], botCategory: match[2], verification: 'claimed' };
   const automated =
-    /bot\b|crawler|spider|headless|phantomjs|selenium|playwright|puppeteer|curl\/|wget\/|python[-/ ]|httpx|aiohttp|go-http-client|okhttp|libwww|apache-httpclient|node-fetch|undici|scrapy/iu.test(
+    /bot\b|crawler|spider|headless|phantomjs|selenium|playwright|puppeteer|curl\/|wget\/|python[-/ ]|httpx|aiohttp|go-http-client|okhttp|libwww|apache-httpclient|node-fetch|undici|scrapy|axios\/|postmanruntime|insomnia|restsharp|java\//iu.test(
       ua,
     );
   const monitor = /uptimerobot|healthcheck|pingdom|statuscake/iu.test(ua);
@@ -128,7 +128,7 @@ export const normalizeSearchTerm = (term: string): string =>
     .toLowerCase()
     .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/giu, '[email]')
     .replace(/(?:https?:\/\/|www\.)[^\s]+/giu, '[url]')
-    .replace(/\d{6,}/gu, '[number]')
+    .replace(/\p{Nd}{6,}/gu, '[number]')
     .trim()
     .replace(/\s+/gu, ' ')
     .slice(0, 200);

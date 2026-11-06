@@ -1,4 +1,4 @@
-import { type InsightsReader, ratio } from './reader';
+import { type InsightsReader, ratio, SEARCH_TERM_VISIBILITY_THRESHOLD } from './reader';
 import type { SearchInsights, SearchTermRow } from './types';
 
 /** Request ids join the three server facts and result clicks. Window lookahead
@@ -25,20 +25,20 @@ const searchFacts = () => `WITH source AS (
   FROM requests
 ), clicks AS (
   SELECT search_id AS click_id, session_hash AS click_visit,
-    min(occurred_at) AS click_at, avgIf(result_position, result_position > 0) AS position,
-    argMin(path, occurred_at) AS result_path
+    min(occurred_at) AS click_at, sumIf(result_position, result_position > 0) AS position_sum, countIf(result_position > 0) AS position_count,
+    argMin(path, occurred_at) AS result_path, groupArray(path) AS result_paths
   FROM analytics_events FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String} AND actor_type = 'human'
     AND occurred_at >= parseDateTime64BestEffort({start:String}) - INTERVAL 120 SECOND
     AND event_name = 'search_result_clicked' AND search_id != ''
   GROUP BY search_id, session_hash
 ), settled AS (
-  SELECT r.*, c.click_at, c.position, c.result_path,
+  SELECT r.*, c.click_at, c.position_sum, c.position_count, c.result_path, c.result_paths,
     c.click_id != '' AND c.click_at >= r.occurred_at AS clicked
   FROM sequenced r LEFT JOIN clicks c ON r.id = c.click_id AND r.visit = c.click_visit
   WHERE dateDiff('millisecond', r.occurred_at, r.next_request) >= 5000
     AND r.occurred_at <= now64(3) - INTERVAL 5 SECOND
 ), followed AS (
-  SELECT *, requested_at AS occurred_at, leadInFrame(requested_at, 1, toDateTime64('2100-01-01', 3, 'UTC')) OVER w AS next_settled,
+  SELECT *, leadInFrame(occurred_at, 1, toDateTime64('2100-01-01', 3, 'UTC')) OVER w AS next_settled,
     leadInFrame(ifNull(term_id, ''), 1, '') OVER w AS next_term
   FROM settled WINDOW w AS (PARTITION BY ifNull(visit, concat('missing-', id)) ORDER BY occurred_at, id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING)
 ), searches AS (
@@ -64,22 +64,23 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
       if({show_terms:UInt8} AND uniqExact(s.visit) >= {k:UInt8} AND countIf(q.query_text != '') > 0, anyIf(q.query_text, q.query_text != ''), NULL) AS term,
       substring(ifNull(s.term_id, ''), 1, 24) AS termId, count() AS searches, uniqExact(s.visit) AS visits,
       countIf(result_known AND result_count = 0) AS zeroResultSearches,
-      countIf(clicked) / count() AS clickThroughRate, countIf(refined) / count() AS refinementRate,
-      avgOrNullIf(position, clicked AND isFinite(position)) AS averageClickPosition,
-      nullIf(topKIf(1)(result_path, clicked)[1], '') AS topResultPath, term IS NOT NULL AS visible
+      if(countIf(s.visit IS NULL OR NOT has_id OR NOT result_known) > 0, NULL, countIf(clicked) / count()) AS clickThroughRate,
+      if(countIf(s.visit IS NULL OR NOT has_id OR NOT result_known) > 0, NULL, countIf(refined) / count()) AS refinementRate,
+      sumIf(position_sum, clicked) / nullIf(sumIf(position_count, clicked), 0) AS averageClickPosition,
+      nullIf(topKArrayIf(1)(result_paths, clicked)[1], '') AS topResultPath, term IS NOT NULL AS visible
       FROM searches s LEFT JOIN (SELECT event_id, query_text FROM analytics_sensitive_queries FINAL
         WHERE tenant_id = {tenant:String} AND project_id = {project:String}) q ON s.query_event = toString(q.event_id)
       WHERE current AND s.term_id IS NOT NULL GROUP BY s.term_id  )`;
   const [totals, series, terms, hidden, refinements] = await Promise.all([
     reader.rows<SearchTotals>(`${cte} SELECT current, count() AS searches, uniqExact(visit) AS visits,
       countIf(result_known AND result_count = 0) AS zeros, countIf(clicked) AS clicked, countIf(refined) AS refined,
-      avgOrNullIf(position, clicked AND isFinite(position)) AS averagePosition,
+      sumIf(position_sum, clicked) / nullIf(sumIf(position_count, clicked), 0) AS averagePosition,
       countIf(visit IS NULL OR NOT has_id OR NOT result_known) AS incomplete FROM searches GROUP BY current`),
     reader.rows<{ bucket: string; searches: number; zeros: number }>(`${cte} SELECT ${reader.bucket} AS bucket,
       count() AS searches, countIf(result_known AND result_count = 0) AS zeros FROM searches WHERE current GROUP BY bucket ORDER BY bucket`),
     reader.rows<SearchTermRow & { visible: number }>(
       `${termStatistics} SELECT * FROM term_statistics WHERE visible
-      ${leadingPath === undefined ? '' : "AND termId IN (SELECT substring(ifNull(term_id, ''), 1, 24) FROM searches WHERE current AND clicked AND result_path = {leading_path:String})"}
+      ${leadingPath === undefined ? '' : "AND termId IN (SELECT substring(ifNull(term_id, ''), 1, 24) FROM searches WHERE current AND clicked AND has(result_paths, {leading_path:String}))"}
       ORDER BY searches DESC LIMIT 100`,
       { leading_path: leadingPath },
     ),
@@ -105,12 +106,15 @@ export const readSearch = async (reader: InsightsReader, leadingPath?: string): 
     if (row.incomplete > 0) return null;
     return ratio(metric === 'zeroResultRate' ? row.zeros : metric === 'clickThroughRate' ? row.clicked : row.refined, row.searches);
   };
-  const compared = (metric: string) => ({ value: value(current, metric), previous: reader.scope.meta.previous ? value(previous, metric) : null });
+  const compared = (metric: string) => ({
+    value: reader.covered('current') ? value(current, metric) : null,
+    previous: reader.covered('previous') ? value(previous, metric) : null,
+  });
   const visible = terms.filter((row) => row.visible).map(({ visible: _visible, ...row }) => row);
   return {
     meta: reader.meta(totals.some((row) => row.incomplete > 0)),
     searchTermsVisibility: reader.scope.visibility,
-    termVisibilityThreshold: 2,
+    termVisibilityThreshold: SEARCH_TERM_VISIBILITY_THRESHOLD,
     kpis: {
       searches: compared('searches'),
       searchVisits: compared('searchVisits'),

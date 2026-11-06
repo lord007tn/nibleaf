@@ -47,7 +47,7 @@ export class InsightsReader {
   async ready(): Promise<boolean> {
     if (this.scope.preflight === null) throw new Error('Analytics preflight unavailable');
     const status = this.scope.preflight ?? (await readInsightsProjectStatus(this.scope));
-    this.scope.meta.lastEventAt = status.lastEventAt;
+    this.scope.meta.lastEventAt = status.deleted ? null : status.lastEventAt;
     return !status.deleted;
   }
 
@@ -64,6 +64,14 @@ export class InsightsReader {
 
   title(path: string): string | null {
     return this.scope.titles?.get(path.replace(/^\//u, '')) ?? this.scope.titles?.get(path) ?? null;
+  }
+
+  covered(period: 'current' | 'previous', actor: 'human' | 'crawler' = 'human'): boolean {
+    const range = this.scope.meta[period];
+    if (!range) return false;
+    const config = keys();
+    const days = actor === 'crawler' ? config.CLICKHOUSE_CRAWLER_RETENTION_DAYS : config.CLICKHOUSE_RAW_RETENTION_DAYS;
+    return Date.parse(range.from) >= Date.parse(this.scope.meta.generatedAt) - days * 86_400_000;
   }
 
   meta(incomplete = false): InsightsMeta {

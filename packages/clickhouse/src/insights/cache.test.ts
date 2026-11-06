@@ -1,5 +1,5 @@
 import type { ClickHouseClient } from '@clickhouse/client';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invalidateInsightsCache, withInsightsCache } from './cache';
 import { resolveInsightsMeta } from './period';
 
@@ -12,7 +12,9 @@ describe('scoped insights cache', () => {
     meta: resolveInsightsMeta({ range: '7d', timezone: 'UTC', compare: 'none' }),
     client: { query } as unknown as ClickHouseClient,
   };
+  afterEach(() => vi.unstubAllEnvs());
   beforeEach(() => {
+    vi.stubEnv('ANALYTICS_MODE', 'clickhouse');
     invalidateInsightsCache(scope.tenantId, scope.projectId);
     query.mockReset().mockResolvedValue({ json: async () => [{ deleted: 0, lastEventAt: '2026-11-06T00:00:00.000Z' }] });
   });

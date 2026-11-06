@@ -54,6 +54,7 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
     ),
     readSearchBounces(reader),
   ]);
+  const previousTruncated = metrics.filter((row) => !row.current).length >= 501;
   const previous = new Map(metrics.filter((row) => !row.current).map((row) => [row.path, row]));
   const edgeMap = new Map(edges.map((row) => [row.path, row]));
   const crawlerMap = new Map(crawlers.map((row) => [row.path, row.requests]));
@@ -66,7 +67,7 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
         path: metric.path,
         title: reader.title(metric.path),
         views: metric.views,
-        previousViews: reader.scope.meta.previous ? (previous.get(metric.path)?.views ?? 0) : null,
+        previousViews: reader.covered('previous') ? (previous.get(metric.path)?.views ?? (previousTruncated ? null : 0)) : null,
         visits: metric.visits,
         avgEngagedMs: metric.engagement,
         avgScrollDepth: metric.scroll,
@@ -87,7 +88,12 @@ export const readPages = async (reader: InsightsReader): Promise<PagesInsights> 
     })
     .sort((left, right) => right.views - left.views || left.path.localeCompare(right.path));
   return {
-    meta: reader.meta(metrics.some((row) => row.views > 0 && (row.visits === 0 || row.engaged === 0)) || rows.length > 500 || metrics.length >= 1002),
+    meta: reader.meta(
+      previousTruncated ||
+        metrics.some((row) => row.views > 0 && (row.visits === 0 || row.engaged === 0)) ||
+        rows.length > 500 ||
+        metrics.length >= 1002,
+    ),
     rows: rows.slice(0, 500),
     truncated: rows.length > 500 || metrics.length >= 1002,
   };
@@ -139,12 +145,14 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
       `WITH views AS (
       SELECT current, session_hash, argMax(path, tuple(occurred_at, event_id)) AS exit FROM (${reader.human})
       WHERE event_name = 'page_view' AND session_hash IS NOT NULL GROUP BY current, session_hash
-    ) SELECT current, path, countIf(event_name = 'page_view') AS views, uniqExactIf(session_hash, event_name = 'page_view') AS visits,
+    ), exits_by_period AS (SELECT current, countIf(exit = {path:String}) AS exits_count FROM views GROUP BY current)
+    SELECT e.current AS current, e.path AS path, countIf(event_name = 'page_view') AS views, uniqExactIf(session_hash, event_name = 'page_view') AS visits,
       countIf(event_name = 'page_engaged') AS engaged, avgOrNullIf(engagement_ms, event_name = 'page_engaged') AS engagement,
       avgOrNullIf(scroll_depth, event_name = 'page_engaged') AS scroll,
       countIf(feedback = 'helpful' AND feedback_target = 'page') AS helpful, countIf(feedback = 'not_helpful' AND feedback_target = 'page') AS notHelpful,
-      (SELECT count() FROM views WHERE exit = {path:String} AND current = e.current) AS exits
-      FROM (${reader.human}) e WHERE path = {path:String} GROUP BY current, path`,
+      any(x.exits_count) AS exits
+      FROM (${reader.human}) e LEFT JOIN exits_by_period x ON e.current = x.current
+      WHERE e.path = {path:String} GROUP BY e.current, e.path`,
       { path },
     ),
     readViewsSeries(reader, path),
@@ -177,8 +185,8 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
       { path },
     ),
     reader.rows<{ path: string; target: string; clicks: number }>(
-      `SELECT path, target_path AS target, count() AS clicks FROM (${reader.human})
-      WHERE current AND event_name = 'navigation_clicked' AND (path = {path:String} OR target_path = {path:String}) GROUP BY path, target ORDER BY clicks DESC LIMIT 200`,
+      `SELECT path, replaceRegexpOne(target_path, '^/(?:sites/[^/]+/?)?', '') AS target, count() AS clicks FROM (${reader.human})
+      WHERE current AND event_name = 'navigation_clicked' AND target != path AND (path = {path:String} OR target = {path:String}) GROUP BY path, target ORDER BY clicks DESC LIMIT 200`,
       { path },
     ),
     readSearchesLeadingHere(reader, path),
@@ -191,8 +199,8 @@ export const readPageDetail = async (reader: InsightsReader, path: string): Prom
     return key === 'exitRate' ? ratio(row.exits, row.visits) : key === 'helpfulRate' ? ratio(row.helpful, row.helpful + row.notHelpful) : row[key];
   };
   const compared = (key: Parameters<typeof metric>[1]) => ({
-    value: metric(current, key),
-    previous: reader.scope.meta.previous ? metric(previous, key) : null,
+    value: reader.covered('current') ? metric(current, key) : null,
+    previous: reader.covered('previous') ? metric(previous, key) : null,
   });
   return {
     meta: reader.meta(!current?.engaged || !vitals[0]?.samples),

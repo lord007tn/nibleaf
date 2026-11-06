@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { recordCrawlerRequest } from '@/actions/sites';
 
 const log = createLogger({ module: 'crawler-hits' });
-export const crawlerHitSchema = z
+const crawlerHitSchema = z
   .object({
     identifier: z.string().min(1).max(200),
     eventId: z.uuid(),

@@ -364,6 +364,91 @@ export const migrations: ClickHouseMigration[] = [
     name: 'crawler_response_content_type',
     statements: ["ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS content_type LowCardinality(String) DEFAULT ''"],
   },
+  {
+    version: 2_026_110_604,
+    name: 'human_only_legacy_projections',
+    statements: [
+      'DROP VIEW IF EXISTS analytics_daily_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_daily_mv TO analytics_daily AS
+      SELECT
+        toDate(occurred_at) AS day,
+        tenant_id,
+        project_id,
+        event_name,
+        path,
+        language,
+        device,
+        referrer_domain,
+        uniqCombined64State(event_id) AS event_ids,
+        uniqCombined64State(session_hash) AS sessions
+      FROM analytics_events WHERE actor_type = 'human'
+      GROUP BY day, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
+      'DROP VIEW IF EXISTS analytics_search_daily_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_search_daily_mv TO analytics_search_daily AS
+      SELECT
+        toDate(occurred_at) AS day,
+        tenant_id,
+        project_id,
+        event_id,
+        received_at,
+        event_name,
+        provider,
+        model,
+        cache_status,
+        no_answer_reason,
+        latency_ms,
+        latency_known,
+        result_count,
+        prompt_tokens,
+        completion_tokens,
+        cost_micros,
+        prompt_tokens_known,
+        completion_tokens_known,
+        cost_micros_known
+      FROM analytics_events
+      WHERE actor_type = 'human' AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')
+      `,
+      'DROP VIEW IF EXISTS analytics_hourly_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_hourly_mv TO analytics_hourly AS
+      SELECT
+        toStartOfHour(occurred_at) AS hour,
+        tenant_id,
+        project_id,
+        event_name,
+        path,
+        language,
+        device,
+        referrer_domain,
+        uniqCombined64State(event_id) AS event_ids,
+        uniqCombined64State(session_hash) AS sessions
+      FROM analytics_events WHERE actor_type = 'human'
+      GROUP BY hour, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
+      'DROP VIEW IF EXISTS analytics_search_hourly_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_search_hourly_mv TO analytics_search_hourly AS
+      SELECT
+        toStartOfHour(occurred_at) AS hour,
+        tenant_id,
+        project_id,
+        event_id,
+        received_at,
+        event_name,
+        provider,
+        model,
+        cache_status,
+        no_answer_reason,
+        latency_ms,
+        latency_known,
+        result_count,
+        prompt_tokens,
+        completion_tokens,
+        cost_micros,
+        prompt_tokens_known,
+        completion_tokens_known,
+        cost_micros_known
+      FROM analytics_events
+      WHERE actor_type = 'human' AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
+    ],
+  },
 ];
 
 export interface MigrationOptions {
@@ -413,6 +498,18 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
     await client.command({
       query: `ALTER TABLE ${table.name} MODIFY TTL ${table.time} + toIntervalDay(${table.name === 'analytics_events' ? "if(actor_type = 'bot', {crawler_days:UInt16}, {days:UInt16})" : '{days:UInt16}'}) DELETE`,
       query_params: { days, crawler_days: crawlerDays },
+      clickhouse_settings: { materialize_ttl_after_modify: 0 },
+    });
+  }
+  for (const [table, column, days] of [
+    ['usage_events', 'occurred_at', options.rawRetentionDays],
+    ['usage_hourly', 'hour', options.rollupRetentionDays],
+    ['usage_reconciliation_state', 'period_end', options.rollupRetentionDays],
+    ['usage_reconciliation_coverage', 'period_end', options.rollupRetentionDays],
+  ] as const) {
+    await client.command({
+      query: `ALTER TABLE ${table} MODIFY TTL ${column} + toIntervalDay({days:UInt16}) DELETE`,
+      query_params: { days },
       clickhouse_settings: { materialize_ttl_after_modify: 0 },
     });
   }

@@ -76,7 +76,7 @@ export const demoAnalyticsEvents = (tenantId: string, projectId: string, days: n
         append(60_200, { name: 'search_results_returned', searchId, resultCount: 3 });
         append(70_000, { name: 'search_result_clicked', searchId, path: 'guides/authentication', resultPosition: 2 });
       }
-      append(80_000, { name: 'navigation_clicked', path, targetPath: 'guides/api' });
+      append(80_000, { name: 'navigation_clicked', path, targetPath: `/sites/${projectId}/guides/api` });
       append(81_000, { name: 'page_view', path: 'guides/api' });
       append(101_000, { name: 'page_engaged', path: 'guides/api', engagementMs: 20_000, scrollDepth: 90 });
       for (const ua of ['GPTBot', 'Claude-SearchBot', 'ChatGPT-User', 'Googlebot', 'curl/8']) {

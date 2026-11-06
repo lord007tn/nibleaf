@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { demoAnalyticsEvents } from '../../scripts/demo-data';
 import { getClickHouseClient, insertAnalyticsEvents } from '../client';
 import { deleteProjectAnalytics } from '../privacy';
+import { refreshProjectInsightsRollups } from '../rollups';
 import { readPageDetail, readPages } from './pages';
 import { resolveInsightsMeta } from './period';
 import {
@@ -33,6 +34,21 @@ integration('insights over real deduplicated facts', () => {
     const events = demoAnalyticsEvents(scope.tenantId, projectId, 1);
     await insertAnalyticsEvents(events);
     await insertAnalyticsEvents(events.slice(0, 12));
+    const request = events.find((event) => event.payload.name === 'search_query_submitted' && event.sensitiveQueryText === 'api tokens');
+    if (request?.payload.name !== 'search_query_submitted') throw new Error('Missing synthetic search fixture');
+    const searchId = request.payload.searchId;
+    // Ten second-result clicks must outweigh the nine first-result clicks, and
+    // click-position averages must weight clicks rather than per-search means.
+    await insertAnalyticsEvents(
+      Array.from({ length: 10 }, () => ({
+        ...request,
+        eventId: randomUUID(),
+        occurredAt: new Date(Date.parse(request.occurredAt) + 30_000).toISOString(),
+        queryHash: null,
+        sensitiveQueryText: null,
+        payload: { name: 'search_result_clicked', searchId, path: 'guides/authentication', resultPosition: 4 },
+      })),
+    );
   }, 60_000);
   afterAll(async () => {
     await deleteProjectAnalytics(scope.tenantId, projectId);
@@ -58,11 +74,14 @@ integration('insights over real deduplicated facts', () => {
     const page = await queryPageDetailInsights(scope, 'guides/api');
     expect(page.kpis.views.value).toBe(15);
     expect(page.webVitals.samples).toBe(3);
+    expect(page.previousPages).toContainEqual({ path: 'introduction', clicks: 3 });
     const search = await querySearchInsights(scope);
     expect(search.kpis.clickThroughRate.value).toBeCloseTo(12 / 15);
     expect(search.kpis.refinementRate.value).toBeCloseTo(3 / 15);
     expect(search.kpis.zeroResultRate.value).toBeCloseTo(3 / 15);
     expect(search.topTerms.map((row) => row.term)).toContain('api tokens');
+    expect(search.kpis.averageClickPosition.value).toBeCloseTo(2.5);
+    expect(search.topTerms.find((row) => row.term === 'api tokens')?.topResultPath).toBe('guides/authentication');
     expect(search.topTerms.map((row) => row.term)).not.toContain('api');
     const feedback = await queryFeedbackInsights(scope);
     expect(feedback.kpis.helpful.value).toBe(9);
@@ -90,6 +109,17 @@ integration('insights over real deduplicated facts', () => {
     vi.stubEnv('ANALYTICS_MODE', 'clickhouse');
   }, 60_000);
 
+  it('returns unknown KPI comparisons for periods outside raw retention', async () => {
+    const expired = {
+      ...scope,
+      meta: { ...scope.meta, previous: null, current: { from: new Date(Date.now() - 200 * 86_400_000).toISOString(), to: scope.meta.current.to } },
+    };
+    const report = await queryAiVisibilityInsights(expired);
+    expect(report.meta.availability).toBe('partial');
+    expect(report.kpis.aiCrawlerRequests.value).toBeNull();
+    expect(report.kpis.aiAssistantVisits.value).toBeNull();
+  }, 60_000);
+
   it('hides every term below k distinct visits and respects a later opt-out', async () => {
     const privateScope = { ...scope, projectId: `${projectId}-privacy` };
     const events = demoAnalyticsEvents(scope.tenantId, privateScope.projectId, 1).map((event) => ({ ...event, sessionHash: 'a'.repeat(64) }));
@@ -105,5 +135,25 @@ integration('insights over real deduplicated facts', () => {
     } finally {
       await deleteProjectAnalytics(privateScope.tenantId, privateScope.projectId);
     }
+  }, 60_000);
+
+  it('rebuilds duplicate-safe page/session/vital/crawler/referral snapshots', async () => {
+    const client = getClickHouseClient('writer');
+    await refreshProjectInsightsRollups(scope.tenantId, scope.projectId, client);
+    await refreshProjectInsightsRollups(scope.tenantId, scope.projectId, client);
+    const result = await client.query({
+      query: `SELECT
+      (SELECT sum(views) FROM analytics_pages_hourly WHERE tenant_id = {t:String} AND project_id = {p:String}) AS views,
+      (SELECT count() FROM analytics_sessions WHERE tenant_id = {t:String} AND project_id = {p:String}) AS sessions,
+      (SELECT sum(samples) FROM analytics_web_vitals_hourly WHERE tenant_id = {t:String} AND project_id = {p:String}) AS vitals,
+      (SELECT sum(requests) FROM analytics_crawlers_hourly WHERE tenant_id = {t:String} AND project_id = {p:String}) AS crawls`,
+      query_params: { t: scope.tenantId, p: scope.projectId },
+      format: 'JSONEachRow',
+    });
+    const row = (await result.json<Record<string, number>>())[0];
+    expect(Number(row?.views)).toBe(24);
+    expect(Number(row?.sessions)).toBe(12);
+    expect(Number(row?.vitals)).toBe(12);
+    expect(Number(row?.crawls)).toBe(60);
   }, 60_000);
 });

@@ -68,6 +68,7 @@ describe('server actor and referral classification', () => {
   });
   it('redacts and folds terms before both hashing and storage, including not_required', () => {
     expect(normalizeSearchTerm('  ＡＰＩ   Foo@Example.COM https://secret.test/123 1234567  ')).toBe('api [email] [url] [number]');
+    expect(normalizeSearchTerm('account \u0661\u0662\u0663\u0664\u0665\u0666\u0667')).toBe('account [number]');
     const context = {
       tenantId: 't',
       projectId: 'p',

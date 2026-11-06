@@ -9,7 +9,9 @@
  * rendered as zero.
  *
  * Human traffic only: every reader metric excludes classified bots. Crawler
- * traffic is reported separately under `AiVisibility`.
+ * traffic is reported separately under `AiVisibility`. Visits/sessions count
+ * only identities permitted by granted/not_required consent. Content-free view
+ * and search totals also include denied/unknown consent without identities.
  */
 
 export type InsightsAvailability =

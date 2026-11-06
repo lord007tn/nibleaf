@@ -7,6 +7,7 @@ import { collectSiteWebVitals } from '@/lib/site-web-vitals';
 export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
 
 const viewedDocuments = new WeakSet<Document>();
+const vitalDocuments = new WeakSet<Document>();
 
 const randomIdFn = (): string => {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -129,11 +130,10 @@ export function SiteAnalyticsProvider({
 
   // Native navigation metrics describe document loads. Soft route changes emit
   // optional vitals (unknown values), rather than relabeling the old document's LCP.
-  const vitalDocument = useRef<Document | null>(null);
   useEffect(() => {
     if (!path) return;
-    const initial = vitalDocument.current !== document;
-    vitalDocument.current = document;
+    const initial = !vitalDocuments.has(document);
+    vitalDocuments.add(document);
     return collectSiteWebVitals((vitals) => track({ name: 'web_vitals', path, language, ...vitals }), initial);
   }, [path, language, track]);
 

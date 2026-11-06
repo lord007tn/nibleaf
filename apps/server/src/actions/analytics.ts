@@ -321,6 +321,7 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
  *  DB write in the request path; if enqueueing fails (redis down / slow), we
  *  fall back to the direct insert so no event is lost. */
 const legacyEvent = (envelope: AnalyticsEventEnvelope) => {
+  if (envelope.actorType === 'bot') return null;
   const payload = envelope.payload;
   const type =
     payload.name === 'page_view'

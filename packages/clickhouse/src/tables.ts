@@ -97,7 +97,7 @@ export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
     rebuild: `SELECT toDate(occurred_at) AS day, tenant_id, project_id, event_name, path, language, device, referrer_domain,
         uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
       FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+      WHERE actor_type = 'human' AND tenant_id = {tenant_id:String} AND project_id = {project_id:String}
         AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       GROUP BY day, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
   },
@@ -109,7 +109,7 @@ export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
     rebuild: `SELECT toDate(occurred_at), tenant_id, project_id, event_id, received_at, event_name, provider, model, cache_status, no_answer_reason,
         latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
       FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+      WHERE actor_type = 'human' AND tenant_id = {tenant_id:String} AND project_id = {project_id:String}
         AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
         AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
   },
@@ -121,7 +121,7 @@ export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
     rebuild: `SELECT toStartOfHour(occurred_at) AS hour, tenant_id, project_id, event_name, path, language, device, referrer_domain,
         uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
       FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+      WHERE actor_type = 'human' AND tenant_id = {tenant_id:String} AND project_id = {project_id:String}
         AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
       GROUP BY hour, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
   },
@@ -133,7 +133,7 @@ export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
     rebuild: `SELECT toStartOfHour(occurred_at), tenant_id, project_id, event_id, received_at, event_name, provider, model, cache_status, no_answer_reason,
         latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
       FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
+      WHERE actor_type = 'human' AND tenant_id = {tenant_id:String} AND project_id = {project_id:String}
         AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
         AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
   },

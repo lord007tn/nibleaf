@@ -37,8 +37,8 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
     ),
   ]);
   const compared = (key: 'ai' | 'fetches' | 'pages' | 'engines' | 'visits') => ({
-    value: totals.find((row) => row.current === 1)?.[key] ?? 0,
-    previous: reader.scope.meta.previous ? (totals.find((row) => row.current === 0)?.[key] ?? 0) : null,
+    value: reader.covered('current', key === 'visits' ? 'human' : 'crawler') ? (totals.find((row) => row.current === 1)?.[key] ?? 0) : null,
+    previous: reader.covered('previous', key === 'visits' ? 'human' : 'crawler') ? (totals.find((row) => row.current === 0)?.[key] ?? 0) : null,
   });
   const previousBots = new Map(bots.filter((row) => !row.current).map((row) => [row.bot, row.requests]));
   const previousReferrals = new Map(referrals.filter((row) => !row.current).map((row) => [row.source, row.visits]));
@@ -53,7 +53,10 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
     },
     bots: bots
       .filter((row) => row.current)
-      .map(({ current: _current, ...row }) => ({ ...row, previousRequests: reader.scope.meta.previous ? (previousBots.get(row.bot) ?? 0) : null })),
+      .map(({ current: _current, ...row }) => ({
+        ...row,
+        previousRequests: reader.covered('previous', 'crawler') ? (previousBots.get(row.bot) ?? 0) : null,
+      })),
     resources,
     topCrawledPages: pages.map((row) => ({ ...row, title: reader.title(row.path) })),
     assistantReferrals: referrals
@@ -61,7 +64,7 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
       .map((row) => ({
         source: row.source,
         visits: row.visits,
-        previousVisits: reader.scope.meta.previous ? (previousReferrals.get(row.source) ?? 0) : null,
+        previousVisits: reader.covered('previous') ? (previousReferrals.get(row.source) ?? 0) : null,
       })),
     assistantReferralSeries: series,
     assistantLandingPages: landing.map((row) => ({ ...row, title: reader.title(row.path) })),
@@ -90,7 +93,10 @@ export const readFeedback = async (reader: InsightsReader): Promise<FeedbackInsi
       ? ratio(key === 'helpfulRate' ? row.helpful : row.helpful + row.notHelpful, key === 'helpfulRate' ? row.helpful + row.notHelpful : row.views)
       : null;
   };
-  const compared = (key: Parameters<typeof value>[1]) => ({ value: value(1, key), previous: reader.scope.meta.previous ? value(0, key) : null });
+  const compared = (key: Parameters<typeof value>[1]) => ({
+    value: reader.covered('current') ? value(1, key) : null,
+    previous: reader.covered('previous') ? value(0, key) : null,
+  });
   return {
     meta: reader.meta(),
     kpis: {
@@ -157,7 +163,10 @@ export const readOverview = async (reader: InsightsReader): Promise<OverviewInsi
     if (key === 'views' || key === 'visits') return row?.[key] ?? 0;
     return row ? (key === 'helpfulRate' ? ratio(row.helpful, row.helpful + row.notHelpful) : row[key]) : null;
   };
-  const compared = (key: Parameters<typeof value>[1]) => ({ value: value(1, key), previous: reader.scope.meta.previous ? value(0, key) : null });
+  const compared = (key: Parameters<typeof value>[1]) => ({
+    value: reader.covered('current') ? value(1, key) : null,
+    previous: reader.covered('previous') ? value(0, key) : null,
+  });
   return {
     meta: reader.meta([pages.meta, search.meta, ai.meta].some((meta) => meta.availability === 'partial')),
     kpis: {
@@ -194,7 +203,7 @@ export const readOverview = async (reader: InsightsReader): Promise<OverviewInsi
       .map((row) => ({
         channel: row.channel,
         visits: row.visits,
-        previousVisits: reader.scope.meta.previous ? (channels.find((item) => !item.current && item.channel === row.channel)?.visits ?? 0) : null,
+        previousVisits: reader.covered('previous') ? (channels.find((item) => !item.current && item.channel === row.channel)?.visits ?? 0) : null,
       })),
     feedback: { helpful: totals.find((row) => row.current)?.helpful ?? 0, notHelpful: totals.find((row) => row.current)?.notHelpful ?? 0 },
   };

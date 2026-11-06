@@ -65,9 +65,10 @@ export interface ExportedAnalyticsEvent {
 }
 
 /** Content-free data-subject/project export. Raw search terms, query hashes,
- * session hashes, answer content, and credentials are intentionally excluded. */
-/** Derived snapshots in ANALYTICS_PROJECT_TABLES are explicitly excluded:
- * they contain no facts absent from this raw export. Sensitive queries and
+ * session hashes, answer content, and credentials are intentionally excluded.
+ * Derived snapshots in ANALYTICS_PROJECT_TABLES are explicitly excluded:
+ * the export is an event audit, not a snapshot download. Performance samples,
+ * crawler attribution and derived aggregates are intentionally omitted. Sensitive queries and
  * permanent deletion tombstones remain excluded to avoid exposing search text
  * or stable visit hashes. No new table introduces separate subject data. */
 export const exportProjectAnalytics = async (

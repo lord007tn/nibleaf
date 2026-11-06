@@ -8,5 +8,6 @@ export * from './migrations';
 export * from './privacy';
 export * from './queries';
 export * from './redaction';
+export * from './rollups';
 export * from './tables';
 export * from './usage';

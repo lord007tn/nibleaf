@@ -1,4 +1,5 @@
 import { getClickHouseClient } from '../client';
+import { clickHouseReadsEnabled, keys } from '../keys';
 import type { InsightsScope } from './reader';
 import type { InsightsMeta } from './types';
 
@@ -10,7 +11,7 @@ export interface InsightsProjectStatus {
 export const readInsightsProjectStatus = async (scope: InsightsScope): Promise<InsightsProjectStatus> => {
   const result = await (scope.client ?? getClickHouseClient()).query({
     query: `SELECT (SELECT count() FROM analytics_deletion_tombstones FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String}) AS deleted,
-      formatDateTime(maxOrNull(received_at), '%FT%T.000Z', 'UTC') AS lastEventAt
+      formatDateTime(maxOrNull(received_at), '%FT%T.%fZ', 'UTC') AS lastEventAt
       FROM analytics_events FINAL WHERE tenant_id = {tenant:String} AND project_id = {project:String} AND actor_type = 'human'`,
     query_params: { tenant: scope.tenantId, project: scope.projectId },
     format: 'JSONEachRow',
@@ -35,6 +36,7 @@ export const withInsightsCache = async <T extends { meta: InsightsMeta }>(
   normalizedKey: string,
   load: (scope: InsightsScope) => Promise<T>,
 ): Promise<T> => {
+  if (!clickHouseReadsEnabled(keys().ANALYTICS_MODE)) return load(scope);
   const key = JSON.stringify([scope.tenantId, scope.projectId, scope.visibility, normalizedKey]);
   const entry = cache.get(key);
   if (entry && entry.expires > Date.now()) {
