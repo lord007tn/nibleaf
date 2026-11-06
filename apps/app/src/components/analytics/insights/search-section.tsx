@@ -1,18 +1,26 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { ArrowRight, Search } from 'lucide-react';
-import { type SearchInsights, type SearchTermRow, useSearchInsights } from '@/hooks/api/analytics';
+import { type SearchInsights, type SearchTermRow, type SearchTermsVisibility, useSearchInsights } from '@/hooks/api/analytics';
 import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PathText } from './insight-card';
 import { insightsState, mergeSeries } from './insights-data';
 import { InsightsEmpty, InsightsStatus } from './insights-status';
-import { KpiCard } from './kpi-card';
-import { TermsVisibilityNotice, TermText, WriteArticleButton } from './search-terms';
+import { KpiCard, KpiGrid } from './kpi-card';
+import { HiddenTermsEmpty, TermsEmptyState, TermsVisibilityNotice, TermText, WriteArticleButton } from './search-terms';
 import { PageInsightsLink } from './section-links';
 import { TrendChart } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
 import { useInsightsFilters } from './use-insights-filters';
+
+/** Why the footer's hidden terms are hidden: the setting / a private site, or (only when visible) the k-visit threshold. */
+const HIDDEN_AGGREGATE: Record<SearchTermsVisibility, MessageKey> = {
+  visible: 'analytics.search.hiddenAggregate',
+  disabled_by_setting: 'analytics.search.hiddenAggregate.disabled',
+  private_site: 'analytics.search.hiddenAggregate.private',
+};
 
 export function SearchSection() {
   const { projectId, filters, query } = useInsightsFilters();
@@ -37,8 +45,9 @@ function SearchView({
   const kpis = data?.kpis;
   if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
   const noSearches = data !== undefined && !unknown && data.kpis.searches.value === 0;
-  const termsHidden = data !== undefined && !unknown && data.searchTermsVisibility !== 'visible';
+  const hiddenBy = data !== undefined && !unknown && data.searchTermsVisibility !== 'visible' ? data.searchTermsVisibility : null;
   const granularity = data?.meta.granularity ?? 'day';
+  const empties = data && !unknown ? termListEmpties({ data, hiddenBy, projectId, t, format }) : null;
 
   const termColumns = [
     { key: 'term', header: t('analytics.search.column.term'), cell: (row: SearchTermRow) => <TermText term={row} /> },
@@ -69,7 +78,7 @@ function SearchView({
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-3">
+          <KpiGrid className="xl:grid-cols-3">
             <KpiCard
               compared={kpis?.searches}
               hint={t('analytics.metric.searches.hint')}
@@ -118,7 +127,7 @@ function SearchView({
               loading={loading}
               polarity="neutral"
             />
-          </div>
+          </KpiGrid>
 
           <InsightCard description={t('analytics.search.trend.description')} title={t('analytics.search.trend.title')}>
             <TrendChart
@@ -141,9 +150,7 @@ function SearchView({
             />
           </InsightCard>
 
-          {termsHidden && data && data.searchTermsVisibility !== 'visible' ? (
-            <TermsVisibilityNotice projectId={projectId} threshold={data.termVisibilityThreshold} visibility={data.searchTermsVisibility} />
-          ) : null}
+          {hiddenBy && data ? <TermsVisibilityNotice projectId={projectId} threshold={data.termVisibilityThreshold} visibility={hiddenBy} /> : null}
 
           <InsightCard description={t('analytics.search.failed.description')} title={t('analytics.search.failed.title')}>
             <SimpleTable
@@ -173,7 +180,7 @@ function SearchView({
                   className: 'text-end',
                 },
               ]}
-              empty={t('analytics.search.failed.empty')}
+              empty={empties?.failed ?? t('analytics.search.failed.empty')}
               loading={loading}
               rowKey={(row) => row.termId}
               rows={data?.failedTerms ?? []}
@@ -186,7 +193,7 @@ function SearchView({
               <SimpleTable
                 caption={t('analytics.search.top.title')}
                 columns={termColumns}
-                empty={t('analytics.empty.searches')}
+                empty={empties?.top ?? t('analytics.empty.searches')}
                 loading={loading}
                 rowKey={(row) => row.termId}
                 rows={data?.topTerms ?? []}
@@ -194,8 +201,8 @@ function SearchView({
               />
             </InsightCard>
             <InsightCard description={t('analytics.search.refinements.description')} title={t('analytics.search.refinements.title')}>
-              {termsHidden ? (
-                <p className="py-6 text-center text-muted-foreground text-sm">{t('analytics.search.refinements.hidden')}</p>
+              {hiddenBy ? (
+                <HiddenTermsEmpty belowNotice projectId={projectId} visibility={hiddenBy} />
               ) : (
                 <SimpleTable
                   caption={t('analytics.search.refinements.title')}
@@ -218,7 +225,7 @@ function SearchView({
                     },
                     { key: 'visits', header: t('analytics.search.column.visits'), cell: (row) => format.count(row.visits), numeric: true },
                   ]}
-                  empty={t('analytics.search.refinements.empty')}
+                  empty={empties?.refinements ?? t('analytics.search.refinements.empty')}
                   loading={loading}
                   rowKey={(row) => `${row.from}→${row.to}`}
                   rows={data?.refinements ?? []}
@@ -229,8 +236,8 @@ function SearchView({
           </div>
 
           {data && !unknown && data.hiddenTerms.terms > 0 ? (
-            <p className="text-muted-foreground text-xs">
-              {t('analytics.search.hiddenAggregate', {
+            <p className="text-muted-foreground text-xs" data-hidden-aggregate="">
+              {t(HIDDEN_AGGREGATE[data.searchTermsVisibility], {
                 terms: format.count(data.hiddenTerms.terms),
                 searches: format.count(data.hiddenTerms.searches),
                 threshold: format.count(data.termVisibilityThreshold),
@@ -241,4 +248,48 @@ function SearchView({
       )}
     </div>
   );
+}
+
+/**
+ * The empty states of the term lists, built from what is still known. A list
+ * is only "empty" in the plain sense when the counts agree: "every search found
+ * something" needs zero no-result searches, not merely zero listable terms.
+ */
+function termListEmpties({
+  data,
+  hiddenBy,
+  projectId,
+  t,
+  format,
+}: {
+  data: SearchInsights;
+  hiddenBy: Exclude<SearchTermsVisibility, 'visible'> | null;
+  projectId: string;
+  t: ReturnType<typeof useT>;
+  format: ReturnType<typeof useInsightFormat>;
+}) {
+  const searches = data.kpis.searches.value;
+  const zeroResults = data.kpis.zeroResultRate.value === null ? null : data.zeroResultSeries.reduce((sum, point) => sum + point.value, 0);
+  const zeroLine =
+    zeroResults === null
+      ? null
+      : zeroResults > 0
+        ? t('analytics.search.zeroCount', { count: format.count(zeroResults) })
+        : t('analytics.search.noneEmpty');
+  const searchLine = searches ? t('analytics.search.searchCount', { count: format.count(searches) }) : null;
+  if (hiddenBy) {
+    return {
+      failed: <HiddenTermsEmpty belowNotice known={zeroLine} projectId={projectId} visibility={hiddenBy} />,
+      top: <HiddenTermsEmpty belowNotice known={searchLine} projectId={projectId} visibility={hiddenBy} />,
+      refinements: null,
+    };
+  }
+  // Visible terms: anything not listed is below the k-visit threshold.
+  const belowThreshold = t('analytics.search.belowThreshold', { threshold: format.count(data.termVisibilityThreshold) });
+  const rare = data.hiddenTerms.terms > 0;
+  return {
+    failed: zeroResults === 0 ? null : <TermsEmptyState known={zeroLine} reason={rare ? belowThreshold : t('analytics.search.rareHidden')} />,
+    top: searches ? <TermsEmptyState known={searchLine} reason={belowThreshold} /> : null,
+    refinements: (data.kpis.refinementRate.value ?? 0) > 0 ? <TermsEmptyState reason={t('analytics.search.rareHidden')} /> : null,
+  };
 }

@@ -1,8 +1,9 @@
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
+import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { ArrowDown, ArrowUp, Minus } from 'lucide-react';
+import { ArrowDown, ArrowUp, Info, Minus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { type Compared, compareDelta, type Delta, deltaTone, type MetricKind, type MetricPolarity } from './metrics';
 import { useInsightFormat } from './use-insight-format';
@@ -41,9 +42,21 @@ export function DeltaBadge({ delta, polarity, className }: { delta: Delta; polar
 }
 
 /**
+ * The grid every KPI row sits in: two columns from 340px so a phone sees the
+ * numbers side by side; `className` adds the wide-screen column count.
+ */
+export function KpiGrid({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn('grid grid-cols-1 gap-3 min-[340px]:grid-cols-2 sm:gap-4', className)}>{children}</div>;
+}
+
+/**
  * A KPI tile for the insights dashboard: the value, its change against the
  * previous period (arrow + %, coloured by whether the change is good news) and
  * a one-line plain-language hint. Unknown values render as "—", never 0.
+ *
+ * Below `sm` the tile is compact so two fit side by side: smaller padding and
+ * value, the "vs. previous period" caption dropped (the badge keeps its spoken
+ * label), and the hint moved behind an info button. From `sm` up it is unchanged.
  */
 export function KpiCard({
   label,
@@ -67,27 +80,54 @@ export function KpiCard({
   const value = compared?.value ?? null;
   const delta = compared ? compareDelta(compared, kind) : null;
   return (
-    <Card className="@container/card gap-3">
-      <CardHeader>
-        <CardDescription className="flex items-center gap-1.5">
-          {icon}
-          {label}
+    <Card className="@container/card min-w-0 gap-3 max-sm:gap-2 max-sm:[--card-spacing:--spacing(3.5)]" data-kpi-card="">
+      <CardHeader className="min-w-0">
+        <CardDescription className="flex min-w-0 items-start gap-1.5 max-sm:text-xs sm:items-center">
+          {icon ? <span className="shrink-0 max-sm:mt-px max-sm:[&_svg]:size-3.5">{icon}</span> : null}
+          <span className="min-w-0 flex-1 break-words">{label}</span>
+          {hint ? <KpiHintButton hint={hint} label={label} /> : null}
         </CardDescription>
         {loading ? (
-          <Skeleton className="mt-1 h-8 w-20" />
+          <Skeleton className="mt-1 h-7 w-16 sm:h-8 sm:w-20" />
         ) : (
-          <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight @[220px]/card:text-3xl">{format.metric(value, kind)}</CardTitle>
+          <CardTitle className="font-semibold text-xl tabular-nums tracking-tight sm:text-2xl sm:@[220px]/card:text-3xl" data-kpi-value="">
+            {format.metric(value, kind)}
+          </CardTitle>
         )}
       </CardHeader>
       <CardFooter className="flex-col items-start gap-1 text-xs">
         {loading ? null : delta ? (
           <span className="flex flex-wrap items-center gap-1.5">
             <DeltaBadge delta={delta} polarity={polarity} />
-            <span className="text-muted-foreground">{t('analytics.vsPrevious')}</span>
+            <span className="text-muted-foreground max-sm:hidden">{t('analytics.vsPrevious')}</span>
           </span>
         ) : null}
-        {hint ? <span className="text-muted-foreground leading-snug">{hint}</span> : null}
+        {hint ? (
+          <span className="text-muted-foreground leading-snug max-sm:hidden" data-kpi-hint="">
+            {hint}
+          </span>
+        ) : null}
       </CardFooter>
     </Card>
+  );
+}
+
+/** Phones only: the KPI's explanation behind a tappable info button instead of a line of small print. */
+function KpiHintButton({ label, hint }: { label: string; hint: string }) {
+  const t = useT();
+  return (
+    <Popover>
+      <PopoverTrigger
+        aria-label={t('analytics.metric.about', { metric: label })}
+        className="-m-1 inline-grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring sm:hidden"
+        data-kpi-info=""
+      >
+        <Info aria-hidden className="size-3.5" />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-64 max-w-[calc(100vw-2rem)] gap-1 p-3 text-xs leading-snug">
+        <PopoverTitle className="font-medium text-sm">{label}</PopoverTitle>
+        <PopoverDescription className="text-muted-foreground">{hint}</PopoverDescription>
+      </PopoverContent>
+    </Popover>
   );
 }

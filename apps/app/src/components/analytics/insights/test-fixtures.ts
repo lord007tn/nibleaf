@@ -176,12 +176,12 @@ export const searchFixture = (visibility: SearchInsights['searchTermsVisibility'
   },
   searchesSeries: series([10, 20, 30]),
   zeroResultSeries: series([1, 2, 3]),
+  // Hidden visibility: the API lists no term rows at all; every term is in `hiddenTerms`.
   topTerms:
     visibility === 'visible'
       ? [term({ term: 'install', termId: 't1', zeroResultSearches: 0, clickThroughRate: 0.8, topResultPath: 'getting-started' })]
-      : [term({ term: null, termId: 'h1' })],
-  failedTerms:
-    visibility === 'visible' ? [term(), term({ term: 'rate limits', termId: 'r2', zeroResultSearches: 0 })] : [term({ term: null, termId: 'h2' })],
+      : [],
+  failedTerms: visibility === 'visible' ? [term(), term({ term: 'rate limits', termId: 'r2', zeroResultSearches: 0 })] : [],
   refinements: visibility === 'visible' ? [{ from: 'sso', to: 'single sign-on', visits: 4 }] : [],
   hiddenTerms: { terms: 7, searches: 9 },
 });

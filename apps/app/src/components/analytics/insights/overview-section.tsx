@@ -7,10 +7,10 @@ import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
 import { alignWithPrevious, dataFreshness, insightsState } from './insights-data';
 import { InsightsEmpty, InsightsStatus } from './insights-status';
-import { KpiCard } from './kpi-card';
+import { KpiCard, KpiGrid } from './kpi-card';
 import { CHANNEL_LABELS, REASON_HINTS, REASON_LABELS } from './labels';
 import { countDelta } from './metrics';
-import { TermsVisibilityNotice, TermText } from './search-terms';
+import { HiddenTermsEmpty, TermsEmptyState, TermText } from './search-terms';
 import { PageInsightsLink, SectionLink } from './section-links';
 import { TrendChart, useSeriesSummary } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
@@ -66,7 +66,7 @@ function OverviewView({
     <div className="flex flex-col gap-4">
       <InsightsStatus projectId={projectId} state={state} />
 
-      <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4">
+      <KpiGrid className="xl:grid-cols-4">
         <KpiCard
           compared={kpis?.pageViews}
           hint={t('analytics.metric.pageViews.hint')}
@@ -139,7 +139,7 @@ function OverviewView({
           loading={loading}
           polarity="higher_is_better"
         />
-      </div>
+      </KpiGrid>
 
       <InsightCard
         action={
@@ -193,21 +193,17 @@ function OverviewView({
           description={t('analytics.overview.cantFind.description')}
           title={t('analytics.overview.cantFind.title')}
         >
-          {data && !unknown && data.searchTermsVisibility !== 'visible' ? (
-            <TermsVisibilityNotice projectId={projectId} visibility={data.searchTermsVisibility} />
-          ) : (
-            <RankedList
-              empty={t('analytics.overview.cantFind.empty')}
-              items={(data?.failedSearches ?? []).slice(0, 6).map((term) => ({
-                key: term.termId,
-                label: <TermText term={term} />,
-                value: term.searches,
-                meta: term.zeroResultSearches > 0 ? t('analytics.search.noResultsBadge') : t('analytics.search.noClicksBadge'),
-              }))}
-              loading={loading}
-              unknown={unknown}
-            />
-          )}
+          <RankedList
+            empty={data && !unknown ? cantFindEmpty({ data, projectId, t, format }) : t('analytics.overview.cantFind.empty')}
+            items={(data?.failedSearches ?? []).slice(0, 6).map((term) => ({
+              key: term.termId,
+              label: <TermText term={term} />,
+              value: term.searches,
+              meta: term.zeroResultSearches > 0 ? t('analytics.search.noResultsBadge') : t('analytics.search.noClicksBadge'),
+            }))}
+            loading={loading}
+            unknown={unknown}
+          />
         </InsightCard>
 
         <InsightCard description={t('analytics.overview.needsWork.description')} title={t('analytics.overview.needsWork.title')}>
@@ -292,7 +288,7 @@ function OverviewView({
         description={t('analytics.overview.ai.description')}
         title={t('analytics.overview.ai.title')}
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <KpiGrid>
           <KpiCard
             compared={kpis?.aiAssistantVisits}
             hint={t('analytics.metric.aiAssistantVisits.hint')}
@@ -309,10 +305,43 @@ function OverviewView({
             loading={loading}
             polarity="neutral"
           />
-        </div>
+        </KpiGrid>
       </InsightCard>
     </div>
   );
+}
+
+/**
+ * "What can't they find?" with no term to list: keep the known share of
+ * searches that found nothing, and say why the terms are missing (setting,
+ * private site, or too few visits per term). "No failed searches" only when
+ * the zero-result rate really is zero.
+ */
+function cantFindEmpty({
+  data,
+  projectId,
+  t,
+  format,
+}: {
+  data: OverviewInsights;
+  projectId: string;
+  t: ReturnType<typeof useT>;
+  format: ReturnType<typeof useInsightFormat>;
+}) {
+  const searches = data.kpis.searches.value;
+  const rate = data.kpis.zeroResultRate.value;
+  const known =
+    rate === null || !searches
+      ? null
+      : rate > 0
+        ? t('analytics.overview.cantFind.zeroShare', { rate: format.rate(rate), searches: format.count(searches) })
+        : t('analytics.search.noneEmpty');
+  if (data.searchTermsVisibility !== 'visible') {
+    return <HiddenTermsEmpty known={known} projectId={projectId} visibility={data.searchTermsVisibility} />;
+  }
+  if (searches === 0) return t('analytics.empty.searches');
+  if (rate === 0) return t('analytics.overview.cantFind.empty');
+  return <TermsEmptyState known={known} reason={t('analytics.search.rareHidden')} />;
 }
 
 /** Helpful vs not helpful as two numbers and one proportional bar. */

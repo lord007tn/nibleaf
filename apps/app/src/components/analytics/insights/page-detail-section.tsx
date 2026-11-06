@@ -9,10 +9,10 @@ import { filterSearch, type InsightsSearch } from './filters';
 import { InsightCard, PageLabel, PathText, RankedList } from './insight-card';
 import { alignWithPrevious, insightsState, mergeSeries } from './insights-data';
 import { InsightsStatus } from './insights-status';
-import { KpiCard } from './kpi-card';
+import { KpiCard, KpiGrid } from './kpi-card';
 import { CHANNEL_LABELS, deviceLabelKey, languageName } from './labels';
 import { FeedbackSplit } from './overview-section';
-import { TermsVisibilityNotice, TermText } from './search-terms';
+import { HiddenTermsEmpty, TermsEmptyState, TermText } from './search-terms';
 import { PageInsightsLink } from './section-links';
 import { TrendChart, useSeriesSummary } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
@@ -98,7 +98,7 @@ function PageDetailView({
       <InsightsStatus projectId={projectId} state={state} />
       {state.availability === 'not_configured' ? null : (
         <>
-          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-3">
+          <KpiGrid className="xl:grid-cols-3">
             <KpiCard
               compared={kpis?.views}
               hint={t('analytics.metric.pageViews.hint')}
@@ -147,7 +147,7 @@ function PageDetailView({
               loading={loading}
               polarity="higher_is_better"
             />
-          </div>
+          </KpiGrid>
 
           <InsightCard description={t('analytics.page.trend.description')} title={t('analytics.page.trend.title')}>
             <TrendChart
@@ -226,20 +226,22 @@ function PageDetailView({
               />
             </InsightCard>
             <InsightCard description={t('analytics.page.searches.description')} title={t('analytics.page.searches.title')}>
-              {data && !unknown && data.searchTermsVisibility !== 'visible' ? (
-                <TermsVisibilityNotice projectId={projectId} visibility={data.searchTermsVisibility} />
-              ) : (
-                <RankedList
-                  empty={t('analytics.page.searches.empty')}
-                  items={(data?.searchesLeadingHere ?? []).map((term) => ({
-                    key: term.termId,
-                    label: <TermText term={term} />,
-                    value: term.searches,
-                  }))}
-                  loading={loading}
-                  unknown={unknown}
-                />
-              )}
+              <RankedList
+                empty={
+                  data && data.searchTermsVisibility !== 'visible' ? (
+                    <HiddenTermsEmpty projectId={projectId} visibility={data.searchTermsVisibility} />
+                  ) : (
+                    <TermsEmptyState known={t('analytics.page.searches.empty')} reason={t('analytics.search.rareHidden')} />
+                  )
+                }
+                items={(data?.searchesLeadingHere ?? []).map((term) => ({
+                  key: term.termId,
+                  label: <TermText term={term} />,
+                  value: term.searches,
+                }))}
+                loading={loading}
+                unknown={unknown}
+              />
             </InsightCard>
             <InsightCard description={t('analytics.page.next.description')} title={t('analytics.page.next.title')}>
               <RankedList empty={t('analytics.page.journey.empty')} items={journey(data?.nextPages)} loading={loading} unknown={unknown} />

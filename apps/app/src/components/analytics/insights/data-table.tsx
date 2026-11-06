@@ -30,7 +30,8 @@ export function SimpleTable<Row>({
   columns: SimpleColumn<Row>[];
   rowKey: (row: Row) => string;
   caption: string;
-  empty: string;
+  /** Text, or a richer explanation (e.g. why search terms are hidden). */
+  empty: ReactNode;
   loading?: boolean;
   unknown?: boolean;
 }) {
@@ -46,6 +47,7 @@ export function SimpleTable<Row>({
     );
   }
   if (unknown || rows.length === 0) {
+    if (!unknown && typeof empty !== 'string') return empty;
     return <p className="py-6 text-center text-muted-foreground text-sm">{unknown ? t('analytics.state.unknown') : empty}</p>;
   }
   return (

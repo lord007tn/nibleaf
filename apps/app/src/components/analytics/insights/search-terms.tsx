@@ -3,7 +3,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { EyeOff, Loader2, PenLine } from 'lucide-react';
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { toast } from 'sonner';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
 import { useCreatePage } from '@/hooks/api/mutations';
@@ -44,18 +44,66 @@ export function TermsVisibilityNotice({
       <AlertDescription className="flex flex-col items-start gap-2">
         <span>{t(HIDDEN_TERMS_EXPLANATION[visibility], { setting: t('settings.analytics.searchTerms.title') })}</span>
         {threshold ? <span>{t('analytics.search.hidden.threshold', { count: threshold })}</span> : null}
-        {visibility === 'disabled_by_setting' ? (
-          <Button
-            nativeButton={false}
-            render={<Link params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />}
-            size="sm"
-            variant="outline"
-          >
-            {t('analytics.search.hidden.openSettings')}
-          </Button>
-        ) : null}
+        {visibility === 'disabled_by_setting' ? <SearchTermsSettingsButton projectId={projectId} /> : null}
       </AlertDescription>
     </Alert>
+  );
+}
+
+/** Opens the analytics settings where "store public search terms" is turned on. */
+function SearchTermsSettingsButton({ projectId }: { projectId: string }) {
+  const t = useT();
+  return (
+    <Button
+      nativeButton={false}
+      render={<Link params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />}
+      size="sm"
+      variant="outline"
+    >
+      {t('analytics.search.hidden.openSettings')}
+    </Button>
+  );
+}
+
+/**
+ * What a term list shows when it has no rows: the figure that is still known
+ * (e.g. how many searches found nothing) over the honest reason no term is
+ * listed. Never claims "nothing happened" when terms are merely hidden.
+ */
+export function TermsEmptyState({ known, reason, action }: { known?: string | null; reason?: string | null; action?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center gap-1.5 py-6 text-center text-sm" data-terms-empty="">
+      {known ? <p className="font-medium text-foreground">{known}</p> : null}
+      {reason ? <p className="max-w-prose text-balance text-muted-foreground">{reason}</p> : null}
+      {action}
+    </div>
+  );
+}
+
+/**
+ * The empty state of a term list whose terms are hidden by the project setting
+ * or because the site is private. `belowNotice` lists sit under the full
+ * `TermsVisibilityNotice` and only point at it; standalone lists (overview,
+ * page drill-down) carry the short reason and the settings link themselves.
+ */
+export function HiddenTermsEmpty({
+  projectId,
+  visibility,
+  known,
+  belowNotice = false,
+}: {
+  projectId: string;
+  visibility: Exclude<SearchTermsVisibility, 'visible'>;
+  known?: string | null;
+  belowNotice?: boolean;
+}) {
+  const t = useT();
+  const disabled = visibility === 'disabled_by_setting';
+  const reason = disabled
+    ? t(belowNotice ? 'analytics.search.hiddenReason.seeAbove' : 'analytics.search.hiddenReason.disabled')
+    : t('analytics.search.hiddenReason.private');
+  return (
+    <TermsEmptyState action={disabled && !belowNotice ? <SearchTermsSettingsButton projectId={projectId} /> : null} known={known} reason={reason} />
   );
 }
 

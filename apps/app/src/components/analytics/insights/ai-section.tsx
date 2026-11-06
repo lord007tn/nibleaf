@@ -2,13 +2,13 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { BookOpen, Bot, MessageCircleQuestion, ShieldCheck, Sparkles } from 'lucide-react';
-import { type AiVisibilityInsights, useAiVisibilityInsights, useProjectAnalytics } from '@/hooks/api/analytics';
+import { type AiVisibilityInsights, useAiVisibilityInsights } from '@/hooks/api/analytics';
 import { SimpleTable } from './data-table';
-import type { InsightsPreset, InsightsSearch } from './filters';
+import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
 import { CHART_GROUPS, groupCrawlerSeries, insightsState, mergeSeries } from './insights-data';
 import { InsightsEmpty, InsightsStatus } from './insights-status';
-import { DeltaBadge, KpiCard } from './kpi-card';
+import { DeltaBadge, KpiCard, KpiGrid } from './kpi-card';
 import { AI_SOURCE_NAMES, CRAWLER_CATEGORY_LABELS, RESOURCE_LABELS } from './labels';
 import { countDelta } from './metrics';
 import { PageInsightsLink } from './section-links';
@@ -85,7 +85,7 @@ function AiView({
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4">
+          <KpiGrid className="xl:grid-cols-4">
             <KpiCard
               compared={kpis?.aiAssistantVisits}
               hint={t('analytics.metric.aiAssistantVisits.hint')}
@@ -118,7 +118,7 @@ function AiView({
               loading={loading}
               polarity="higher_is_better"
             />
-          </div>
+          </KpiGrid>
 
           {explainer}
 
@@ -226,12 +226,14 @@ function AiView({
             <InsightCard description={t('analytics.ai.referrals.description')} title={t('analytics.ai.referrals.title')}>
               <RankedList
                 empty={t('analytics.ai.referrals.empty')}
-                items={(data?.assistantReferrals ?? []).map((referral) => ({
-                  key: referral.source,
-                  label: <span dir="ltr">{AI_SOURCE_NAMES[referral.source] ?? t('analytics.ai.source.other')}</span>,
-                  value: referral.visits,
-                  delta: compare ? countDelta(referral.visits, referral.previousVisits) : null,
-                }))}
+                items={[...(data?.assistantReferrals ?? [])]
+                  .sort((a, b) => b.visits - a.visits)
+                  .map((referral) => ({
+                    key: referral.source,
+                    label: <span dir="ltr">{AI_SOURCE_NAMES[referral.source] ?? t('analytics.ai.source.other')}</span>,
+                    value: referral.visits,
+                    delta: compare ? countDelta(referral.visits, referral.previousVisits) : null,
+                  }))}
                 loading={loading}
                 unknown={unknown}
               />
@@ -298,45 +300,6 @@ function AiView({
           </InsightCard>
         </>
       )}
-      <AskAiAnswersCard filters={filters} projectId={projectId} />
     </div>
-  );
-}
-
-const NO_ANSWER_REASON_KEYS: Record<string, MessageKey> = {
-  no_match: 'analytics.noAnswerReason.no_match',
-  provider_error: 'analytics.noAnswerReason.provider_error',
-  empty_corpus: 'analytics.noAnswerReason.empty_corpus',
-  filtered: 'analytics.noAnswerReason.filtered',
-  low_confidence: 'analytics.noAnswerReason.low_confidence',
-  policy: 'analytics.noAnswerReason.policy',
-  unknown: 'analytics.noAnswerReason.unknown',
-  cancelled: 'analytics.noAnswerReason.cancelled',
-  quota: 'analytics.noAnswerReason.quota',
-};
-
-/**
- * Answers from the site's own Ask-AI assistant, carried over from the previous
- * analytics page (legacy overview endpoint, preset ranges only).
- */
-function AskAiAnswersCard({ projectId, filters }: { projectId: string; filters: InsightsSearch }) {
-  const t = useT();
-  const range: InsightsPreset | null = filters.range === 'custom' ? null : (filters.range ?? '30d');
-  const { data, isPending, isError } = useProjectAnalytics(projectId, range ?? '30d', { enabled: range !== null });
-  const unknown = isError || data?.availability === 'unavailable';
-  if (range === null) return null;
-  const items = [
-    ...(data?.ai.answersCompleted == null ? [] : [{ key: 'completed', label: t('analytics.kpi.answersCompleted'), value: data.ai.answersCompleted }]),
-    ...(data?.ai.answersFailed == null ? [] : [{ key: 'failed', label: t('analytics.kpi.answersFailed'), value: data.ai.answersFailed }]),
-    ...(data?.noAnswerReasons ?? []).map((item) => ({
-      key: `reason-${item.reason}`,
-      label: NO_ANSWER_REASON_KEYS[item.reason] ? t(NO_ANSWER_REASON_KEYS[item.reason] as MessageKey) : item.reason.replaceAll('_', ' '),
-      value: item.count,
-    })),
-  ];
-  return (
-    <InsightCard description={t('analytics.ai.askAi.description')} title={t('analytics.section.aiAnswers')}>
-      <RankedList empty={t('analytics.empty.ai')} items={items} loading={isPending} unknown={unknown} />
-    </InsightCard>
   );
 }

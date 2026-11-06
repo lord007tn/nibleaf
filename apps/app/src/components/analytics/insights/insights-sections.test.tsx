@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   feedback: vi.fn(),
   ai: vi.fn(),
   performance: vi.fn(),
-  legacy: vi.fn(),
   deployments: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
 }));
@@ -69,7 +68,6 @@ vi.mock('@/hooks/api/analytics', () => ({
   useFeedbackInsights: mocks.feedback,
   useAiVisibilityInsights: mocks.ai,
   usePerformanceInsights: mocks.performance,
-  useProjectAnalytics: mocks.legacy,
 }));
 
 import { AiSection } from './ai-section';
@@ -102,7 +100,6 @@ beforeEach(() => {
   mocks.locale = 'en';
   mocks.search = {};
   mocks.deployments.mockReturnValue({ data: [{ status: 'READY' }] });
-  mocks.legacy.mockReturnValue({ data: undefined, isPending: true, isError: false });
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -131,6 +128,12 @@ async function render(element: ReactElement, direction: 'ltr' | 'rtl' = 'ltr') {
 
 const text = (element: Element) => element.textContent ?? '';
 const headings = (element: Element) => [...element.querySelectorAll('h2')].map(text);
+const cardTitled = (element: Element, title: string) => {
+  const heading = [...element.querySelectorAll('h2')].find((node) => text(node) === title);
+  const card = heading?.closest('[data-slot="card"]');
+  if (!card) throw new Error(`expected a card titled ${title}`);
+  return card;
+};
 
 describe('Overview', () => {
   it('answers the docs-owner questions with numbers and period comparisons', async () => {
@@ -229,6 +232,63 @@ describe('Overview', () => {
     expect(arabicPath?.getAttribute('dir')).toBe('ltr');
     expect(view.querySelector('[dir="auto"]')).not.toBeNull();
   });
+
+  it('keeps the known no-result share when search terms are off, and links to the setting', async () => {
+    mocks.overview.mockReturnValue(ready({ ...overviewFixture(), failedSearches: [], searchTermsVisibility: 'disabled_by_setting' }));
+    const view = await render(<OverviewSection />);
+    const card = cardTitled(view, "What can't they find?");
+    expect(text(card)).toContain('12% of 300 searches in this period found nothing.');
+    expect(text(card)).toContain("Search terms are off for this project, so what readers typed isn't stored.");
+    expect(text(card)).not.toContain('No failed searches');
+    const settings = card.querySelector<HTMLAnchorElement>('a[data-to="/app/projects/$projectId/settings"]');
+    expect(JSON.parse(settings?.dataset.search ?? '{}')).toEqual({ section: 'integrations' });
+  });
+
+  it('says rare terms are hidden instead of "no failed searches" when searches did fail', async () => {
+    mocks.overview.mockReturnValue(ready({ ...overviewFixture(), failedSearches: [] }));
+    const view = await render(<OverviewSection />);
+    const card = cardTitled(view, "What can't they find?");
+    expect(text(card)).toContain('12% of 300 searches in this period found nothing.');
+    expect(text(card)).toContain('stay hidden for privacy');
+    expect(text(card)).not.toContain('No failed searches');
+    expect(card.querySelector('a[data-to="/app/projects/$projectId/settings"]')).toBeNull();
+  });
+
+  it('only reports no failed searches when nothing came back empty', async () => {
+    const data = overviewFixture();
+    mocks.overview.mockReturnValue(ready({ ...data, failedSearches: [], kpis: { ...data.kpis, zeroResultRate: { value: 0, previous: 0 } } }));
+    const view = await render(<OverviewSection />);
+    expect(text(cardTitled(view, "What can't they find?"))).toContain('No failed searches in this period.');
+  });
+
+  it('renders compact KPI tiles two to a row on phones without changing the wide layout', async () => {
+    mocks.overview.mockReturnValue(ready(overviewFixture()));
+    const view = await render(<OverviewSection />);
+    const tiles = [...view.querySelectorAll<HTMLElement>('[data-kpi-card]')];
+    expect(tiles).toHaveLength(10);
+    const grid = tiles[0]?.parentElement;
+    expect(grid?.className).toContain('min-[340px]:grid-cols-2');
+    expect(grid?.className).toContain('xl:grid-cols-4');
+    expect(grid?.className).not.toContain('min-[420px]');
+    const tile = tiles[0] as HTMLElement;
+    expect(tile.className).toContain('max-sm:[--card-spacing:--spacing(3.5)]');
+    const value = tile.querySelector('[data-kpi-value]');
+    expect(value?.className).toContain('text-xl');
+    expect(value?.className).toContain('sm:text-2xl');
+    expect(value?.className).toContain('sm:@[220px]/card:text-3xl');
+    // The hint stays in the tile from `sm` up and moves behind an info button below it.
+    expect(tile.querySelector('[data-kpi-hint]')?.className).toContain('max-sm:hidden');
+    const info = tile.querySelector<HTMLButtonElement>('button[data-kpi-info]');
+    expect(info?.getAttribute('aria-label')).toBe('About “Page views”');
+    expect(info?.className).toContain('sm:hidden');
+    // The delta badge stays visible on phones; only the "vs. previous period" caption is dropped.
+    const badge = tile.querySelector('[title="Up +24% from the previous period"]');
+    expect(badge?.className).not.toContain('hidden');
+    expect(badge?.nextElementSibling?.className).toContain('max-sm:hidden');
+    await act(async () => info?.click());
+    expect(document.body.textContent).toContain(text(tile.querySelector('[data-kpi-hint]') as Element));
+    expect(document.querySelector('[data-slot="popover-content"]')).not.toBeNull();
+  });
 });
 
 describe('Pages', () => {
@@ -278,6 +338,14 @@ describe('Pages', () => {
     expect(text(view)).toContain('Needs improvement');
     expect(text(view)).toContain('Poor');
   });
+
+  it('explains hidden terms in the page drill-down instead of an empty list', async () => {
+    mocks.page.mockReturnValue(ready({ ...pageDetailFixture(), searchesLeadingHere: [], searchTermsVisibility: 'private_site' }));
+    const view = await render(<PagesSection path="getting-started" />);
+    const card = cardTitled(view, 'Searches that led here');
+    expect(text(card)).toContain('This is a private site, so what readers typed is never stored.');
+    expect(text(card)).not.toContain('No searches led here');
+  });
 });
 
 describe('Search', () => {
@@ -311,6 +379,61 @@ describe('Search', () => {
     expect(view.querySelector('button[aria-label^="Write an article"]')).toBeNull();
   });
 
+  it('keeps hidden-term lists truthful when the setting is off', async () => {
+    mocks.search_.mockReturnValue(ready(searchFixture('disabled_by_setting')));
+    const view = await render(<SearchSection />);
+    const failed = cardTitled(view, 'Searches that failed');
+    expect(text(failed)).toContain('Searches with no results in this period: 6.');
+    expect(text(failed)).toContain('Turn on search terms (see the note above)');
+    expect(text(failed)).not.toContain('Every search found something');
+    const top = cardTitled(view, 'Top searches');
+    expect(text(top)).toContain('Searches in this period: 300.');
+    expect(text(top)).not.toContain('No searches yet');
+    expect(text(cardTitled(view, 'Searched again'))).toContain('Turn on search terms');
+    // Only the notice carries the settings button; the lists point to it.
+    expect(view.querySelectorAll('a[data-to="/app/projects/$projectId/settings"]')).toHaveLength(1);
+    const footer = view.querySelector('[data-hidden-aggregate]');
+    expect(text(footer as Element)).toBe('Hidden because search terms are off for this project: 7 terms across 9 searches.');
+  });
+
+  it('blames the private site, not rarity, for hidden terms', async () => {
+    mocks.search_.mockReturnValue(ready(searchFixture('private_site')));
+    const view = await render(<SearchSection />);
+    const failed = cardTitled(view, 'Searches that failed');
+    expect(text(failed)).toContain('This is a private site, so what readers typed is never stored.');
+    expect(text(failed)).toContain('Searches with no results in this period: 6.');
+    const footer = text(view.querySelector('[data-hidden-aggregate]') as Element);
+    expect(footer).toBe('Hidden because this is a private site: 7 terms across 9 searches.');
+    expect(footer).not.toContain('Rare terms');
+  });
+
+  it('names the visit threshold when visible terms are all too rare to list', async () => {
+    mocks.search_.mockReturnValue(ready({ ...searchFixture(), topTerms: [], failedTerms: [], refinements: [] }));
+    const view = await render(<SearchSection />);
+    const failed = cardTitled(view, 'Searches that failed');
+    expect(text(failed)).toContain('Searches with no results in this period: 6.');
+    expect(text(failed)).toContain('fewer than 2 different visits');
+    expect(text(failed)).not.toContain('Every search found something');
+    expect(text(cardTitled(view, 'Top searches'))).toContain('fewer than 2 different visits');
+    expect(text(cardTitled(view, 'Searched again'))).toContain('stay hidden for privacy');
+    expect(text(view.querySelector('[data-hidden-aggregate]') as Element)).toContain('Rare terms hidden for privacy: 7 terms across 9 searches');
+    expect(view.querySelector('a[data-to="/app/projects/$projectId/settings"]')).toBeNull();
+  });
+
+  it('says every search found something only when none came back empty', async () => {
+    const data = searchFixture();
+    mocks.search_.mockReturnValue(
+      ready({
+        ...data,
+        failedTerms: [],
+        kpis: { ...data.kpis, zeroResultRate: { value: 0, previous: 0 } },
+        zeroResultSeries: data.zeroResultSeries.map((point) => ({ ...point, value: 0 })),
+      }),
+    );
+    const view = await render(<SearchSection />);
+    expect(text(cardTitled(view, 'Searches that failed'))).toContain('Every search found something in this period.');
+  });
+
   it('says private sites never store terms', async () => {
     mocks.search_.mockReturnValue(ready(searchFixture('private_site')));
     const view = await render(<SearchSection />);
@@ -336,6 +459,16 @@ describe('Feedback, AI visibility and performance', () => {
     expect(text(view)).toContain('ChatGPT');
     expect(text(view)).toContain('Other assistants');
     expect(text(view)).toContain('llms.txt');
+  });
+
+  it('drops the legacy AI answers card and ranks assistant referrals by visits', async () => {
+    const data = aiFixture();
+    mocks.ai.mockReturnValue(ready({ ...data, assistantReferrals: [...data.assistantReferrals].reverse() }));
+    const view = await render(<AiSection />);
+    expect(text(view)).not.toContain('AI answers and cost');
+    expect(text(view)).not.toContain('No matching content');
+    const referrals = text(cardTitled(view, 'Visits from AI assistants'));
+    expect(referrals.indexOf('ChatGPT')).toBeLessThan(referrals.indexOf('Other assistants'));
   });
 
   it('rates web vitals and names the slowest pages', async () => {

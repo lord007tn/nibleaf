@@ -1,4 +1,4 @@
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -25,13 +25,26 @@ export function InsightCard({
 }) {
   return (
     <Card className={cn('min-w-0', className)}>
-      <CardHeader>
-        <CardTitle>
-          <h2 className="font-semibold text-base">{title}</h2>
-        </CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-        {action ? <CardAction>{action}</CardAction> : null}
-      </CardHeader>
+      {action ? (
+        // With an action the header wraps instead of squeezing: on a phone a long
+        // (Arabic) title keeps its width and the link drops below it.
+        <CardHeader className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+          <div className="flex min-w-0 flex-[1_1_14rem] flex-col gap-1">
+            <CardTitle>
+              <h2 className="font-semibold text-base">{title}</h2>
+            </CardTitle>
+            {description ? <CardDescription>{description}</CardDescription> : null}
+          </div>
+          <div className="max-w-full shrink-0">{action}</div>
+        </CardHeader>
+      ) : (
+        <CardHeader>
+          <CardTitle>
+            <h2 className="font-semibold text-base">{title}</h2>
+          </CardTitle>
+          {description ? <CardDescription>{description}</CardDescription> : null}
+        </CardHeader>
+      )}
       <CardContent className={cn('min-w-0', contentClassName)}>{children}</CardContent>
     </Card>
   );
@@ -82,7 +95,8 @@ export function RankedList({
   label,
 }: {
   items: RankedItem[];
-  empty: string;
+  /** Text, or a richer explanation (e.g. why search terms are hidden). */
+  empty: ReactNode;
   loading?: boolean;
   unknown?: boolean;
   polarity?: MetricPolarity;
@@ -103,6 +117,7 @@ export function RankedList({
     );
   }
   if (unknown || items.length === 0) {
+    if (!unknown && typeof empty !== 'string') return empty;
     return <p className="py-6 text-center text-muted-foreground text-sm">{unknown ? t('analytics.state.unknown') : empty}</p>;
   }
   const max = Math.max(1, ...items.map((item) => item.value));

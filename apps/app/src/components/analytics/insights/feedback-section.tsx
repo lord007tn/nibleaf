@@ -6,7 +6,7 @@ import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel } from './insight-card';
 import { insightsState, mergeSeries, sortWorstFirst } from './insights-data';
 import { InsightsEmpty, InsightsStatus } from './insights-status';
-import { KpiCard } from './kpi-card';
+import { KpiCard, KpiGrid } from './kpi-card';
 import { PageInsightsLink } from './section-links';
 import { TrendChart } from './trend-chart';
 import { useInsightFormat } from './use-insight-format';
@@ -48,7 +48,7 @@ function FeedbackView({
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2 xl:grid-cols-4">
+          <KpiGrid className="xl:grid-cols-4">
             <KpiCard
               compared={kpis?.helpfulRate}
               hint={t('analytics.metric.helpfulRate.hint')}
@@ -81,7 +81,7 @@ function FeedbackView({
               loading={loading}
               polarity="higher_is_better"
             />
-          </div>
+          </KpiGrid>
 
           <InsightCard description={t('analytics.feedback.trend.description')} title={t('analytics.feedback.trend.title')}>
             <TrendChart
