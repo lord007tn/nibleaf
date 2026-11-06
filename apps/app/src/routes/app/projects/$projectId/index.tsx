@@ -69,7 +69,8 @@ function SiteOverviewPage() {
   const { data: members, isPending: membersPending } = useProjectMembers(projectId);
   const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
   const { data: domains } = useDomains(projectId);
-  const { data: analytics, isPending: analyticsPending } = useProjectAnalytics(projectId, range);
+  const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
+  const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const memberCount = members?.members.length ?? 0;
@@ -252,6 +253,7 @@ function SiteOverviewPage() {
           range={range}
           onRangeChange={setRange}
           loading={analyticsPending}
+          unavailable={analyticsUnknown}
         />
       </div>
 

@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
-const analytics = vi.hoisted(() => ({ hook: vi.fn() }));
+const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -36,7 +36,12 @@ vi.mock('@/hooks/api/analytics', () => ({
 }));
 vi.mock('@/hooks/api/query-options', () => ({ domainsQueryOptions: vi.fn(), projectMembersQueryOptions: vi.fn() }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@/components/analytics/views-area-chart', () => ({ ViewsAreaChart: () => null }));
+vi.mock('@/components/analytics/views-area-chart', () => ({
+  ViewsAreaChart: (props: { unavailable?: boolean }) => {
+    analytics.chart(props);
+    return null;
+  },
+}));
 
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { Route } from './index';
@@ -81,6 +86,14 @@ describe('site overview first load', () => {
     const tiles = [...container.querySelectorAll('[data-slot="card"]')].filter((card) => card.textContent?.includes('overview.stats.pageviews'));
     expect(tiles).toHaveLength(1);
     expect(tiles[0]?.querySelector('[data-slot="card-title"]')?.textContent).toBe('—');
+    // …and the chart says the views are unknown instead of "no traffic yet".
+    expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ unavailable: true }));
+  });
+
+  it('treats a failed page-views request as unknown, not as no traffic', async () => {
+    analytics.hook.mockReturnValue({ isPending: false, isError: true, data: undefined });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ unavailable: true }));
   });
 
   it('announces loading once for the page and keeps the heading free of block elements', async () => {
