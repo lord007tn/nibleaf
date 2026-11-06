@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   blocker: vi.fn(),
   confirm: vi.fn(),
   dirty: false,
+  prefetch: vi.fn(),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -59,6 +60,11 @@ vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
 vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => null }));
 vi.mock('@/components/settings/notifications-tab', () => ({ NotificationsTab: () => null }));
 vi.mock('@/components/settings/usage-tab', () => ({ UsageTab: () => null }));
+vi.mock('@/hooks/api/query-options', () => ({
+  apiKeysQueryOptions: (projectId: string) => ({ queryKey: ['api-keys', projectId] }),
+  connectedAppsQueryOptions: (projectId: string) => ({ queryKey: ['connected-apps', projectId] }),
+}));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetch }));
 
 import { Route } from './settings';
 
@@ -155,5 +161,25 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[data-testid="general-settings"]')).toBeNull();
     await act(async () => container.querySelector<HTMLButtonElement>('button')?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
+  });
+});
+
+describe('site settings data loading', () => {
+  type Loader = (args: { context: { queryClient: unknown }; deps: { section: string }; params: { projectId: string } }) => void;
+  const loader = Route.options.loader as unknown as Loader;
+  const loaderDeps = Route.options.loaderDeps as unknown as (args: { search: { section: string } }) => { section: string };
+
+  it('prefetches AI assistant keys and connected apps only for that section', () => {
+    const queryClient = {};
+    mocks.prefetch.mockClear();
+    expect(loaderDeps({ search: { section: 'apiKeys' } })).toEqual({ section: 'apiKeys' });
+    loader({ context: { queryClient }, deps: { section: 'general' }, params: { projectId: 'project-1' } });
+    expect(mocks.prefetch).not.toHaveBeenCalled();
+
+    loader({ context: { queryClient }, deps: { section: 'apiKeys' }, params: { projectId: 'project-1' } });
+    expect(mocks.prefetch.mock.calls).toEqual([
+      [queryClient, { queryKey: ['api-keys', 'project-1'] }],
+      [queryClient, { queryKey: ['connected-apps', 'project-1'] }],
+    ]);
   });
 });
