@@ -16,7 +16,7 @@ import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
-import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
+import { deriveTitle, humanize, parseFrontmatter, serializeGitPage } from '../importers/content';
 import { ensureGroupPage, upsertLeafPage } from '../importers/persistence';
 import { getDefaultLanguage } from '../languages';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
@@ -128,14 +128,6 @@ type AuthoringPage = {
   content: string;
   description: string | null;
   icon: string | null;
-};
-
-const frontmatterValue = (value: string): string => JSON.stringify(value);
-const serializeGitPage = (page: AuthoringPage): string => {
-  const fields = [`title: ${frontmatterValue(page.title)}`];
-  if (page.description) fields.push(`description: ${frontmatterValue(page.description)}`);
-  if (page.icon) fields.push(`icon: ${frontmatterValue(page.icon)}`);
-  return `---\n${fields.join('\n')}\n---\n\n${page.content.replace(/^\s+/, '')}`;
 };
 
 const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {

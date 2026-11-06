@@ -423,6 +423,7 @@ model Project {
   integrationConfirmations      IntegrationConfirmation[]
   integrationIdempotencyRecords IntegrationIdempotencyRecord[]
   mcpAuditEvents  McpAuditEvent[]
+  mcpIdempotencyRecords McpIdempotencyRecord[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -1324,25 +1325,56 @@ model ApiKey {
 
 /// Privacy-minimized append-only audit for MCP authentication and operations.
 /// Inputs, content, credentials, network identifiers, and provider payloads
-/// are intentionally absent.
+/// are intentionally absent. `actorUserId` is the key creator the operation ran
+/// as; `targetType`/`targetId` name the entity a write touched (page, project,
+/// deployment); `clientRequestId` is the caller's idempotency id, if any.
 model McpAuditEvent {
-  id         String   @id @default(cuid())
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  apiKeyId   String?
-  requestId  String
-  kind       String
-  operation  String
-  capability String
-  outcome    String
-  errorCode  String?
-  durationMs Int
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKeyId        String?
+  actorUserId     String?
+  requestId       String
+  kind            String
+  operation       String
+  capability      String
+  outcome         String
+  errorCode       String?
+  targetType      String?
+  targetId        String?
+  clientRequestId String?
+  durationMs      Int
+  createdAt       DateTime @default(now())
 
   @@index([projectId, createdAt])
   @@index([apiKeyId, createdAt])
+  @@index([actorUserId, createdAt])
   @@index([requestId])
   @@map("mcp_audit_event")
+}
+
+/// Replay cache for MCP write tools, keyed by the caller's clientRequestId.
+/// Holds a SHA-256 of the canonical arguments and a compact result (ids,
+/// revision, status), never page content. `status` is `pending` while the
+/// write runs and `completed` once its result is stored. Rows expire after 24
+/// hours and are pruned lazily per project.
+model McpIdempotencyRecord {
+  id              String    @id @default(cuid())
+  projectId       String
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  apiKeyId        String
+  operation       String
+  clientRequestId String
+  argsHash        String
+  status          String
+  result          Json?
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+  expiresAt       DateTime
+
+  @@unique([apiKeyId, operation, clientRequestId])
+  @@index([projectId, expiresAt])
+  @@map("mcp_idempotency_record")
 }
 
 

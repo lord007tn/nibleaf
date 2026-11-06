@@ -17,6 +17,17 @@ export type ErrorCode =
   | 'mcp:disabled'
   | 'mcp:invalid_request'
   | 'mcp:scope_required'
+  | 'mcp:actor_required'
+  | 'mcp:confirmation_required'
+  | 'mcp:revision_conflict'
+  | 'mcp:idempotency_conflict'
+  | 'mcp:idempotency_in_progress'
+  | 'mcp:translation_exists'
+  | 'mcp:preview_invalid'
+  | 'mcp:preview_expired'
+  | 'mcp:preview_stale'
+  | 'mcp:nothing_to_publish'
+  | 'mcp:publish_blocked'
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
@@ -77,6 +88,17 @@ const ERROR_STATUS = {
   'mcp:disabled': 503,
   'mcp:invalid_request': 400,
   'mcp:scope_required': 403,
+  'mcp:actor_required': 403,
+  'mcp:confirmation_required': 400,
+  'mcp:revision_conflict': 409,
+  'mcp:idempotency_conflict': 409,
+  'mcp:idempotency_in_progress': 409,
+  'mcp:translation_exists': 409,
+  'mcp:preview_invalid': 400,
+  'mcp:preview_expired': 409,
+  'mcp:preview_stale': 409,
+  'mcp:nothing_to_publish': 409,
+  'mcp:publish_blocked': 409,
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,

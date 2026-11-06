@@ -45,6 +45,11 @@ export const env = createEnv({
       .optional()
       .transform((value) => (value ? csv(value) : [])),
     MCP_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(10_000).default(120),
+    /** Per-key budget for MCP write tools (drafts, edits, moves, translations,
+     *  visibility, publish), on top of MCP_RATE_LIMIT_PER_MIN. Instance-local. */
+    MCP_WRITE_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(20),
+    /** Per-key budget for MCP `publish_changes` deployments. Instance-local. */
+    MCP_PUBLISH_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(1000).default(6),
     EMAIL_FROM: z.string().default('nibleaf@localhost'),
     POSTMARK_API_KEY: z.string().optional(),
     POSTMARK_MESSAGE_STREAM: z.string().optional(),

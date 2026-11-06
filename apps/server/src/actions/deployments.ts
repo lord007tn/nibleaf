@@ -357,10 +357,12 @@ export const getDeploymentDiff = async (projectId: string, id: string) => {
 /**
  * Diff every current docs version against the last published snapshot, so the
  * publish dialog can show exactly which pages will change (Mintlify-style).
+ * A caller that must bind a decision to the exact state it summarized (the MCP
+ * publish preview) passes the `draftSnapshot` it already read.
  */
-export const getPendingChanges = async (projectId: string): Promise<PendingChanges> => {
+export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteSnapshot): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
-  const validation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
   const currentSnapshot = validation.snapshot;
   const current = currentSnapshot.pages;
 
