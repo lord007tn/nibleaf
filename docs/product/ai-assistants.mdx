@@ -1,6 +1,6 @@
 ---
 title: 'Work on your docs with an AI assistant'
-description: 'Connect ChatGPT, Claude, Cursor, or VS Code to one Nibleaf project by signing in or with a personal key, investigate reader questions, and publish after review.'
+description: 'Connect ChatGPT, Claude, Cursor, or VS Code to one Nibleaf project by signing in or with a personal key, investigate reader questions, and publish after a fresh preview.'
 audience: 'support staff and documentation editors'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
@@ -359,12 +359,13 @@ content.
 
 - **Drafts first.** Writes change the working copy only. Nothing is live until a
   publish succeeds.
-- **Preview, review, confirm.** Publishing needs a preview, a human decision, and
-  an explicit confirmation carrying the preview token. The token is bound to
+- **Preview, then confirm.** Publishing needs a fresh preview and an explicit
+  confirmation carrying the preview token. Reviewing the preview before you
+  confirm is the recommended step, but Nibleaf can't enforce it. The token is bound to
   you, the project, and exactly what the publish would ship. It expires
   after 10 minutes and is effectively single-use: any edit, publish, or rollback
   after the preview, including the publish it approved, makes it stale.
-- **Your review is the gate.** Nibleaf can check that a confirmation matches a
+- **Review before you confirm.** Nibleaf can check that a confirmation matches a
   fresh preview, but not that a person read it. An assistant that runs without
   asking you could confirm on its own, so keep **Support writer** for assistants
   you work with and **Read only** for anything unattended.

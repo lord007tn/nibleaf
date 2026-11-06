@@ -125,11 +125,12 @@ origin rather than another host listed in `MCP_ALLOWED_HOSTS`.
 
 - **Working copy only.** `pages:write` tools create and edit drafts. Nothing is
   live until a publish succeeds.
-- **Project-wide publish with a human gate.** A publish includes every
+- **Project-wide publish after a fresh preview.** A publish includes every
   unpublished change in the project, including everyone's drafts, not only the
-  key owner's. The client must call `preview_publish`, a person reviews the
-  list, and the client then calls `publish_changes` with `confirm: true` and the
-  preview token. The deployment message records the MCP key name.
+  key owner's. The client must call `preview_publish`, then `publish_changes`
+  with `confirm: true` and the preview token. Having a person review the list in
+  between is the recommended step, which the server can't verify (see below).
+  The deployment message records the MCP key name.
 - **What the server can and cannot check.** The server verifies that a
   confirmation matches a fresh preview for the same person and project. It
   cannot verify that a person read the preview: the review depends on the
@@ -500,7 +501,7 @@ every OAuth client out.
 - `mcp:preview_stale`: something changed after the preview; run `preview_publish` again and re-review.
 - `mcp:preview_expired`: the token is older than 10 minutes; preview again.
 - `mcp:preview_invalid`: the token is not valid for this person and project; preview again.
-- `mcp:confirmation_required`: `publish_changes` needs `confirm: true` after a person approved the preview.
+- `mcp:confirmation_required`: `publish_changes` was called without `confirm: true`. Clients should send it only after the person they are helping has reviewed the preview.
 - `mcp:nothing_to_publish`: there are no unpublished changes.
 - `mcp:publish_blocked`: fix the blocking issue, such as redirect issues, in the dashboard, then preview again.
 - `mcp:publish_in_progress` (`409`): a deployment is queued or building, so page writes and `publish_changes` wait; nothing was saved. Retry after `get_deployment` reports it ready or failed.
