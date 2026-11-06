@@ -9,32 +9,27 @@ import {
 } from './ai-conversations';
 import { redactConversationText } from './redaction';
 
-const mocks = vi.hoisted(() => ({ turns: [] as Record<string, unknown>[], feedback: [] as Record<string, unknown>[], query: vi.fn() }));
+const mocks = vi.hoisted(() => ({ query: vi.fn() }));
 vi.mock('./client', () => ({ getClickHouseClient: () => ({ query: mocks.query }) }));
 const scope = { tenantId: 'tenant', projectId: 'project' };
-const turn = (extra: Record<string, unknown> = {}) => ({
-  conversation_id: 'c',
-  turn_id: 't',
-  turn_index: 0,
-  occurred_at: '2026-11-01 01:00:00.000',
+const aggregate = (extra: Record<string, unknown> = {}) => ({
+  conversationId: 'b',
+  startedAt: '2026-11-01 01:00:00.000',
+  lastActivityAt: '2026-11-02 01:00:00.000',
   language: 'en',
-  question: 'How?',
-  question_key: 'a'.repeat(64),
-  content_captured: 1,
-  page_path: '/docs',
-  status: 'answered',
-  input_tokens: 10,
-  output_tokens: 20,
-  cost_known: 0,
-  cost_micros: 0,
+  turns: '2',
+  firstQuestion: null,
+  answered: '1',
+  noAnswer: '1',
+  failed: '0',
+  rating: 'mixed',
+  pagePath: null,
   ...extra,
 });
+const reply = (rows: unknown[]) => ({ json: async () => rows });
 beforeEach(() => {
-  mocks.turns = [];
-  mocks.feedback = [];
-  mocks.query.mockImplementation(async ({ query }) => ({
-    json: async () => (query.includes('FROM ai_conversation_turns') ? mocks.turns : mocks.feedback),
-  }));
+  mocks.query.mockReset();
+  mocks.query.mockResolvedValue(reply([]));
 });
 describe('AI archive', () => {
   it.each([
@@ -78,31 +73,121 @@ describe('AI archive', () => {
     await deleteAiConversation(scope, 'c', client as never);
     expect(calls).toEqual(['tombstone', 'purge', 'purge']);
   });
-  it('filters captured text and pages with a stable cursor', async () => {
-    mocks.turns = [
-      turn(),
-      turn({ conversation_id: 'b', turn_id: 'u', occurred_at: '2026-11-02 01:00:00.000' }),
-      turn({ conversation_id: 'hidden', turn_id: 'v', content_captured: 0, question: 'How?' }),
-    ];
-    const first = await queryAiConversations(scope, { q: 'How', limit: 1 });
-    expect(first.items[0]?.conversationId).toBe('b');
-    expect(first.nextCursor).toBeTruthy();
-    const next = await queryAiConversations(scope, { q: 'How', cursor: first.nextCursor ?? undefined, limit: 1 });
-    expect(next.items.map((i) => i.conversationId)).toEqual(['c']);
+  it('binds list filters and cursor and maps bounded aggregate rows', async () => {
+    mocks.query.mockResolvedValueOnce(reply([aggregate(), aggregate({ conversationId: 'a' })]));
+    const first = await queryAiConversations(scope, { q: "How' OR 1=1", language: 'ar', status: 'failed', rating: 'down', limit: 1 });
+    expect(first.items[0]).toMatchObject({
+      conversationId: 'b',
+      turns: 2,
+      answered: 1,
+      noAnswer: 1,
+      failed: 0,
+      firstQuestion: null,
+      pagePath: null,
+      rating: 'mixed',
+      lastActivityAt: '2026-11-02T01:00:00.000Z',
+    });
+    expect(first.nextCursor).toBe(Buffer.from('2026-11-02T01:00:00.000Z|b').toString('base64url'));
+    const call = mocks.query.mock.calls[0]?.[0];
+    expect(call.query).not.toContain("How' OR");
+    expect(call.query).not.toContain('SELECT *');
+    expect(call.query).toContain('positionCaseInsensitiveUTF8');
+    expect(call.query).toContain('ORDER BY lastActivityAt DESC,conversationId DESC');
+    expect(call.query_params).toMatchObject({
+      tenant: 'tenant',
+      project: 'project',
+      search: "How' OR 1=1",
+      language: 'ar',
+      rating: 'down',
+      status: 'failed',
+      fetchLimit: 2,
+    });
+    await queryAiConversations(scope, { cursor: first.nextCursor ?? undefined, limit: 1 });
+    expect(mocks.query.mock.calls[1]?.[0].query_params).toMatchObject({ cursorDate: '2026-11-02T01:00:00.000Z', cursorId: 'b' });
   });
-  it('counts every occurrence of a gap and selects the latest wording', async () => {
-    mocks.turns = [turn({ status: 'no_answer' }), turn({ turn_id: 'u', question: 'How now?', occurred_at: '2026-11-02 01:00:00.000' })];
-    expect((await queryAiContentGaps(scope, {})).items[0]).toMatchObject({
+  it('rejects malformed cursors before querying', async () => {
+    await expect(queryAiConversations(scope, { cursor: 'bad' })).rejects.toThrow();
+    expect(mocks.query).not.toHaveBeenCalled();
+  });
+  it('maps gap aggregates and excludes the empty FixedString key in SQL', async () => {
+    mocks.query.mockResolvedValue(
+      reply([
+        {
+          question: 'How now?',
+          language: 'en',
+          askedCount: '2',
+          noAnswerCount: '1',
+          downCount: '1',
+          lastAskedAt: '2026-11-02 01:00:00.000',
+          sampleConversationId: 'c',
+        },
+      ]),
+    );
+    expect((await queryAiContentGaps(scope, { limit: 3 })).items[0]).toMatchObject({
       askedCount: 2,
       noAnswerCount: 1,
+      downCount: 1,
       question: 'How now?',
       reason: 'no_answer',
+      lastAskedAt: '2026-11-02T01:00:00.000Z',
     });
+    expect(mocks.query.mock.calls[0]?.[0].query).toContain("question_key!=toFixedString('',64)");
+    expect(mocks.query.mock.calls[0]?.[0].query_params.limit).toBe(3);
   });
-  it('keeps unknown cost null and buckets by local date', async () => {
-    mocks.turns = [turn()];
-    const result = await queryAiConversationSummary(scope, { timezone: 'America/Los_Angeles' });
-    expect(result.usage).toMatchObject({ costUsd: null, costComplete: false });
-    expect(result.timeseries[0]).toMatchObject({ date: '2026-10-31', costUsd: null });
+  it.each([
+    ['America/Los_Angeles', 'America/Los_Angeles'],
+    ['invalid/timezone', 'UTC'],
+  ])('maps summary aggregates with timezone %s', async (timezone, expected) => {
+    mocks.query
+      .mockResolvedValueOnce(
+        reply([
+          {
+            conversations: '1',
+            questions: '2',
+            answered: '1',
+            noAnswer: '1',
+            failed: '0',
+            inputTokens: '10',
+            outputTokens: '20',
+            costMicros: '500',
+            knownCosts: '1',
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(reply([{ up: '1', down: '2' }]))
+      .mockResolvedValueOnce(reply([{ reason: 'wrong', count: '2' }]))
+      .mockResolvedValueOnce(
+        reply([
+          {
+            date: '2026-10-31',
+            questions: '2',
+            answered: '1',
+            noAnswer: '1',
+            up: '1',
+            down: '0',
+            inputTokens: '10',
+            outputTokens: '20',
+            costMicros: '0',
+            knownCosts: '0',
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(reply([{ language: 'ar', questions: '2' }]));
+    const result = await queryAiConversationSummary(scope, { timezone });
+    expect(result.totals).toEqual({ conversations: 1, questions: 2, answered: 1, noAnswer: 1, failed: 0 });
+    expect(result.usage).toEqual({ inputTokens: 10, outputTokens: 20, costUsd: 0.0005, costComplete: false });
+    expect(result.feedback).toEqual({ up: 1, down: 2, reasons: [{ reason: 'wrong', count: 2 }] });
+    expect(result.timeseries[0]).toMatchObject({ date: '2026-10-31', questions: 2, costUsd: null });
+    expect(result.languages).toEqual([{ language: 'ar', questions: 2 }]);
+    for (const [call] of mocks.query.mock.calls) {
+      expect(call.query_params.timezone).toBe(expected);
+      expect(call.query).not.toContain('SELECT *');
+      expect(call.query).toContain('ai_conversation_deletions FINAL');
+    }
+  });
+  it('returns empty aggregates without inventing known cost', async () => {
+    const result = await queryAiConversationSummary(scope, {});
+    expect(result.usage.costUsd).toBeNull();
+    expect(result.usage.costComplete).toBe(false);
   });
 });

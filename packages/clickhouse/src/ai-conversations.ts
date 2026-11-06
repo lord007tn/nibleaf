@@ -144,65 +144,81 @@ const read = async (s: AiConversationScope, q: AiReadQuery, conversationId = '')
   ]);
   return { turns: await t.json<AiTurnRow>(), feedback: await f.json<AiFeedbackRow>() };
 };
-const groupBy = <T>(rows: T[], key: (row: T) => string): Map<string, [T, ...T[]]> => {
-  const groups = new Map<string, [T, ...T[]]>();
-  for (const row of rows) {
-    const k = key(row);
-    const bucket = groups.get(k);
-    if (bucket) bucket.push(row);
-    else groups.set(k, [row]);
-  }
-  return groups;
+// FINAL resolves replacement rows before mutable feedback ratings are filtered.
+const archiveWhere = `tenant_id={tenant:String} AND project_id={project:String} AND expires_at>now64(3)
+ AND conversation_id NOT IN (SELECT conversation_id FROM ai_conversation_deletions FINAL
+   WHERE tenant_id={tenant:String} AND project_id={project:String})
+ AND {project:String} NOT IN (SELECT project_id FROM ai_conversation_deletions FINAL
+   WHERE tenant_id={tenant:String} AND project_id={project:String} AND conversation_id='')`;
+const archiveParams = (s: AiConversationScope, q: AiReadQuery) => ({
+  ...params(s),
+  since: new Date(Date.now() - Number.parseInt(q.range ?? '30d', 10) * 86_400_000).toISOString(),
+  language: q.language ?? '',
+});
+const turnsWhere = `${archiveWhere} AND occurred_at>=parseDateTime64BestEffort({since:String})
+ AND ({language:String}='' OR language={language:String})`;
+const feedbackSource = `SELECT conversation_id,turn_id,rating,reason,updated_at FROM ai_conversation_feedback FINAL
+ WHERE ${archiveWhere} AND created_at>=parseDateTime64BestEffort({since:String}) AND rating!=''`;
+const archiveRows = async <T>(query: string, queryParams: Record<string, string | number>) => {
+  const result = await getClickHouseClient('reader').query({ query, query_params: queryParams, format: 'JSONEachRow' });
+  return result.json<T>();
 };
-const rating = (f: AiFeedbackRow[]) =>
-  f.some((r) => r.rating === 'up')
-    ? f.some((r) => r.rating === 'down')
-      ? ('mixed' as const)
-      : ('up' as const)
-    : f.some((r) => r.rating === 'down')
-      ? ('down' as const)
-      : null;
+type Count = string | number;
+interface ConversationAggregate {
+  conversationId: string;
+  startedAt: string;
+  lastActivityAt: string;
+  language: string;
+  turns: Count;
+  firstQuestion: string | null;
+  answered: Count;
+  noAnswer: Count;
+  failed: Count;
+  rating: 'up' | 'down' | 'mixed' | null;
+  pagePath: string | null;
+}
 export const queryAiConversations = async (s: AiConversationScope, q: AiReadQuery) => {
-  const { turns, feedback } = await read(s, q);
-  const groups = groupBy(turns, (t) => t.conversation_id);
-  let items = [...groups]
-    .map(([conversationId, rows]) => {
-      rows.sort((a, b) => iso(a.occurred_at).localeCompare(iso(b.occurred_at)) || a.turn_index - b.turn_index);
-      const first = rows[0];
-      const last = rows.at(-1) ?? first;
-      return {
-        conversationId,
-        startedAt: iso(first.occurred_at),
-        lastActivityAt: iso(last.occurred_at),
-        language: first.language,
-        turns: rows.length,
-        firstQuestion: first.content_captured ? first.question : null,
-        answered: rows.filter((t) => t.status === 'answered').length,
-        noAnswer: rows.filter((t) => t.status === 'no_answer').length,
-        failed: rows.filter((t) => t.status === 'failed').length,
-        rating: rating(feedback.filter((f) => f.conversation_id === conversationId)),
-        pagePath: first.page_path || null,
-      };
-    })
-    .filter(
-      (i) =>
-        (!q.status || turns.some((t) => t.conversation_id === i.conversationId && t.status === q.status)) &&
-        (!q.rating || (q.rating === 'unrated' ? i.rating === null : i.rating === q.rating || i.rating === 'mixed')) &&
-        (!q.q ||
-          turns.some(
-            (t) => t.conversation_id === i.conversationId && t.content_captured && t.question.toLowerCase().includes((q.q ?? '').toLowerCase()),
-          )),
-    );
-  items.sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt) || b.conversationId.localeCompare(a.conversationId));
-  if (q.cursor) {
-    const [date, id] = z.tuple([z.iso.datetime(), z.string().min(1)]).parse(Buffer.from(q.cursor, 'base64url').toString().split('|'));
-    items = items.filter((i) => i.lastActivityAt < date || (i.lastActivityAt === date && i.conversationId < id));
-  }
+  const [cursorDate, cursorId] = q.cursor
+    ? z.tuple([z.iso.datetime(), z.string().min(1)]).parse(Buffer.from(q.cursor, 'base64url').toString().split('|'))
+    : ['1970-01-01T00:00:00.000Z', ''];
   const limit = q.limit ?? 25;
-  const more = items.length > limit;
-  items = items.slice(0, limit);
+  const rows = await archiveRows<ConversationAggregate>(
+    `
+ WITH conversations AS (
+ SELECT conversation_id AS conversationId,min(occurred_at) AS startedAt,max(occurred_at) AS lastActivityAt,
+ argMin(tuple(language,content_captured,question,page_path),tuple(occurred_at,turn_index)) AS first,
+ count() AS turns,countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,
+ countIf(status='failed') AS failed,countIf(status={status:String}) AS statusMatches,
+ countIf(content_captured=1 AND positionCaseInsensitiveUTF8(question,{search:String})>0) AS searchMatches
+ FROM ai_conversation_turns FINAL WHERE ${turnsWhere} GROUP BY conversation_id
+ ), feedback AS (
+ SELECT conversation_id,countIf(rating='up') AS ups,countIf(rating='down') AS downs
+ FROM (${feedbackSource}) GROUP BY conversation_id)
+ SELECT conversationId,startedAt,lastActivityAt,first.1 AS language,turns,
+ if(first.2=1,toNullable(first.3),NULL) AS firstQuestion,answered,noAnswer,failed,
+ multiIf(ups>0 AND downs>0,'mixed',ups>0,'up',downs>0,'down',NULL) AS rating,nullIf(first.4,'') AS pagePath
+ FROM conversations LEFT JOIN feedback ON conversationId=feedback.conversation_id
+ WHERE ({status:String}='' OR statusMatches>0) AND ({search:String}='' OR searchMatches>0)
+ AND ({rating:String}='' OR ({rating:String}='unrated' AND ups=0 AND downs=0)
+ OR ({rating:String}='up' AND ups>0) OR ({rating:String}='down' AND downs>0))
+ AND ({cursorId:String}='' OR (lastActivityAt,conversationId)<(parseDateTime64BestEffort({cursorDate:String}),{cursorId:String}))
+ ORDER BY lastActivityAt DESC,conversationId DESC LIMIT {fetchLimit:UInt64}`,
+    { ...archiveParams(s, q), status: q.status ?? '', search: q.q ?? '', rating: q.rating ?? '', cursorDate, cursorId, fetchLimit: limit + 1 },
+  );
+  const items = rows.slice(0, limit).map((r) => ({
+    ...r,
+    startedAt: iso(r.startedAt),
+    lastActivityAt: iso(r.lastActivityAt),
+    turns: Number(r.turns),
+    answered: Number(r.answered),
+    noAnswer: Number(r.noAnswer),
+    failed: Number(r.failed),
+  }));
   const last = items.at(-1);
-  return { items, nextCursor: more && last ? Buffer.from(`${last.lastActivityAt}|${last.conversationId}`).toString('base64url') : null };
+  return {
+    items,
+    nextCursor: rows.length > limit && last ? Buffer.from(`${last.lastActivityAt}|${last.conversationId}`).toString('base64url') : null,
+  };
 };
 const sourceSchema = z.array(z.object({ id: z.string().optional(), pageId: z.string(), title: z.string(), path: z.string() }));
 export const queryAiConversation = async (s: AiConversationScope, conversationId: string) => {
@@ -244,33 +260,34 @@ export const queryAiConversation = async (s: AiConversationScope, conversationId
   };
 };
 export const queryAiContentGaps = async (s: AiConversationScope, q: AiReadQuery) => {
-  const { turns, feedback } = await read(s, q);
-  const down = new Set(feedback.filter((f) => f.rating === 'down').map((f) => f.turn_id));
+  const rows = await archiveRows<{
+    question: string;
+    language: string;
+    askedCount: Count;
+    noAnswerCount: Count;
+    downCount: Count;
+    lastAskedAt: string;
+    sampleConversationId: string;
+  }>(
+    `SELECT argMax(t.question,t.occurred_at) AS question,argMax(t.language,t.occurred_at) AS language,
+ count() AS askedCount,countIf(t.status='no_answer') AS noAnswerCount,countIf(f.rating='down') AS downCount,
+ max(t.occurred_at) AS lastAskedAt,argMax(t.conversation_id,t.occurred_at) AS sampleConversationId
+ FROM (SELECT conversation_id,turn_id,question_key,question,language,status,occurred_at FROM ai_conversation_turns FINAL
+ WHERE ${turnsWhere} AND content_captured=1 AND question_key!=toFixedString('',64)) AS t
+ LEFT JOIN (${feedbackSource}) AS f ON t.turn_id=f.turn_id
+ GROUP BY t.question_key HAVING noAnswerCount>0 OR downCount>0
+ ORDER BY askedCount DESC,lastAskedAt DESC LIMIT {limit:UInt64}`,
+    { ...archiveParams(s, q), limit: q.limit ?? 20 },
+  );
   return {
-    items: [
-      ...groupBy(
-        turns.filter((t) => t.content_captured && t.question_key.replace(/\0/gu, '')),
-        (t) => t.question_key,
-      ),
-    ]
-      .map(([, rows]) => {
-        rows.sort((a, b) => iso(b.occurred_at).localeCompare(iso(a.occurred_at)));
-        const t = rows[0];
-        const noAnswerCount = rows.filter((t) => t.status === 'no_answer').length;
-        return {
-          question: t.question,
-          language: t.language,
-          askedCount: rows.length,
-          noAnswerCount,
-          downCount: rows.filter((t) => down.has(t.turn_id)).length,
-          lastAskedAt: iso(t.occurred_at),
-          sampleConversationId: t.conversation_id,
-          reason: noAnswerCount ? ('no_answer' as const) : ('low_rating' as const),
-        };
-      })
-      .filter((g) => g.noAnswerCount > 0 || g.downCount > 0)
-      .sort((a, b) => b.askedCount - a.askedCount || b.lastAskedAt.localeCompare(a.lastAskedAt))
-      .slice(0, q.limit ?? 20),
+    items: rows.map((r) => ({
+      ...r,
+      askedCount: Number(r.askedCount),
+      noAnswerCount: Number(r.noAnswerCount),
+      downCount: Number(r.downCount),
+      lastAskedAt: iso(r.lastAskedAt),
+      reason: Number(r.noAnswerCount) > 0 ? ('no_answer' as const) : ('low_rating' as const),
+    })),
   };
 };
 export const emptyAiSummary = (range: '7d' | '30d' | '90d' = '30d') => ({
@@ -291,46 +308,83 @@ export const emptyAiSummary = (range: '7d' | '30d' | '90d' = '30d') => ({
   }[],
   languages: [] as { language: string; questions: number }[],
 });
+interface UsageAggregate {
+  inputTokens: Count;
+  outputTokens: Count;
+  costMicros: Count;
+  knownCosts: Count;
+}
+interface TurnAggregate extends UsageAggregate {
+  questions: Count;
+  answered: Count;
+  noAnswer: Count;
+}
+const usageSql = `sum(input_tokens) AS inputTokens,sum(output_tokens) AS outputTokens,
+ sumIf(cost_micros,cost_known=1) AS costMicros,countIf(cost_known=1) AS knownCosts`;
+const usageResult = (r: UsageAggregate) => ({
+  inputTokens: Number(r.inputTokens),
+  outputTokens: Number(r.outputTokens),
+  costUsd: Number(r.knownCosts) > 0 ? Number(r.costMicros) / 1e6 : null,
+});
 export const queryAiConversationSummary = async (s: AiConversationScope, q: AiReadQuery) => {
-  const { turns, feedback } = await read(s, q);
+  let timezone = 'UTC';
+  try {
+    timezone = new Intl.DateTimeFormat('en', { timeZone: q.timezone ?? 'UTC' }).resolvedOptions().timeZone;
+  } catch {
+    /* Invalid IANA zones use UTC. */
+  }
+  const queryParams = { ...archiveParams(s, q), timezone };
+  const ctes = `WITH turns AS (SELECT conversation_id,turn_id,status,occurred_at,language,input_tokens,output_tokens,cost_micros,cost_known
+ FROM ai_conversation_turns FINAL WHERE ${turnsWhere}),
+ active AS (SELECT turn_id,rating,reason,updated_at FROM (${feedbackSource}) WHERE turn_id IN (SELECT turn_id FROM turns))`;
+  const [totals, feedback, reasons, days, languages] = await Promise.all([
+    archiveRows<TurnAggregate & { conversations: Count; failed: Count }>(
+      `${ctes} SELECT uniqExact(conversation_id) AS conversations,
+ count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,
+ countIf(status='failed') AS failed,${usageSql} FROM turns`,
+      queryParams,
+    ),
+    archiveRows<{ up: Count; down: Count }>(`${ctes} SELECT countIf(rating='up') AS up,countIf(rating='down') AS down FROM active`, queryParams),
+    archiveRows<{ reason: string; count: Count }>(`${ctes} SELECT reason,count() AS count FROM active WHERE reason!='' GROUP BY reason`, queryParams),
+    archiveRows<TurnAggregate & { date: string; up: Count; down: Count }>(
+      `${ctes},
+ turn_days AS (SELECT toString(toDate(occurred_at,{timezone:String})) AS date,count() AS questions,
+ countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,${usageSql} FROM turns GROUP BY date),
+ feedback_days AS (SELECT toString(toDate(updated_at,{timezone:String})) AS date,
+ countIf(rating='up') AS up,countIf(rating='down') AS down FROM active GROUP BY date)
+ SELECT t.date AS date,t.questions AS questions,t.answered AS answered,t.noAnswer AS noAnswer,
+ t.inputTokens AS inputTokens,t.outputTokens AS outputTokens,t.costMicros AS costMicros,t.knownCosts AS knownCosts,
+ f.up AS up,f.down AS down FROM turn_days t LEFT JOIN feedback_days f ON t.date=f.date ORDER BY date`,
+      queryParams,
+    ),
+    archiveRows<{ language: string; questions: Count }>(`${ctes} SELECT language,count() AS questions FROM turns GROUP BY language`, queryParams),
+  ]);
   const out = emptyAiSummary(q.range);
-  const active = feedback.filter((f) => f.rating && turns.some((t) => t.turn_id === f.turn_id));
-  out.totals = {
-    conversations: new Set(turns.map((t) => t.conversation_id)).size,
-    questions: turns.length,
-    answered: turns.filter((t) => t.status === 'answered').length,
-    noAnswer: turns.filter((t) => t.status === 'no_answer').length,
-    failed: turns.filter((t) => t.status === 'failed').length,
-  };
+  const t = totals[0];
+  if (t) {
+    out.totals = {
+      conversations: Number(t.conversations),
+      questions: Number(t.questions),
+      answered: Number(t.answered),
+      noAnswer: Number(t.noAnswer),
+      failed: Number(t.failed),
+    };
+    out.usage = { ...usageResult(t), costComplete: Number(t.questions) > 0 && Number(t.knownCosts) === Number(t.questions) };
+  }
   out.feedback = {
-    up: active.filter((f) => f.rating === 'up').length,
-    down: active.filter((f) => f.rating === 'down').length,
-    reasons: [
-      ...groupBy(
-        active.filter((f) => f.reason),
-        (f) => f.reason,
-      ),
-    ].map(([reason, rows]) => ({ reason, count: rows.length })),
+    up: Number(feedback[0]?.up ?? 0),
+    down: Number(feedback[0]?.down ?? 0),
+    reasons: reasons.map((r) => ({ reason: r.reason, count: Number(r.count) })),
   };
-  const usage = (rows: AiTurnRow[]) => ({
-    inputTokens: rows.reduce((n, t) => n + Number(t.input_tokens), 0),
-    outputTokens: rows.reduce((n, t) => n + Number(t.output_tokens), 0),
-    costUsd: rows.some((t) => t.cost_known) ? rows.reduce((n, t) => n + (t.cost_known ? Number(t.cost_micros) : 0), 0) / 1e6 : null,
-  });
-  out.usage = { ...usage(turns), costComplete: turns.length > 0 && turns.every((t) => Boolean(t.cost_known)) };
-  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: q.timezone ?? 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' });
-  const day = (value: string) => formatter.format(new Date(iso(value)));
-  out.timeseries = [...groupBy(turns, (t) => day(t.occurred_at))]
-    .map(([date, rows]) => ({
-      date,
-      questions: rows.length,
-      answered: rows.filter((t) => t.status === 'answered').length,
-      noAnswer: rows.filter((t) => t.status === 'no_answer').length,
-      up: active.filter((f) => f.rating === 'up' && day(f.updated_at) === date).length,
-      down: active.filter((f) => f.rating === 'down' && day(f.updated_at) === date).length,
-      ...usage(rows),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-  out.languages = [...groupBy(turns, (t) => t.language)].map(([language, rows]) => ({ language, questions: rows.length }));
+  out.timeseries = days.map((r) => ({
+    date: r.date,
+    questions: Number(r.questions),
+    answered: Number(r.answered),
+    noAnswer: Number(r.noAnswer),
+    up: Number(r.up),
+    down: Number(r.down),
+    ...usageResult(r),
+  }));
+  out.languages = languages.map((r) => ({ language: r.language, questions: Number(r.questions) }));
   return out;
 };
