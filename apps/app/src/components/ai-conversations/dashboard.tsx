@@ -175,12 +175,22 @@ export function AiDashboard({
       </div>
       {state?.captureEnabled === false && (
         <Alert variant="info">
-          <AlertDescription>
-            {t('dashboard.ai.captureOff')}{' '}
-            <Link className="underline" to="/app/projects/$projectId/settings" params={{ projectId }} search={{ section: 'search' }}>
-              {t('dashboard.ai.settings')}
-            </Link>
-          </AlertDescription>
+          {state.captureOffReason === 'instance' ? (
+            // Only the instance operator can add the encryption key.
+            <AlertDescription>
+              {t('dashboard.ai.captureInstance')}{' '}
+              <a className="underline" href="/docs/self-hosting/search-ai">
+                {t('dashboard.ai.selfHosting')}
+              </a>
+            </AlertDescription>
+          ) : (
+            <AlertDescription>
+              {t('dashboard.ai.captureOff')}{' '}
+              <Link className="underline" to="/app/projects/$projectId/settings" params={{ projectId }} search={{ section: 'search' }}>
+                {t('dashboard.ai.settings')}
+              </Link>
+            </AlertDescription>
+          )}
         </Alert>
       )}
       {disabled ? (

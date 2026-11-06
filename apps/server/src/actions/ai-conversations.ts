@@ -26,7 +26,14 @@ const log = createLogger({ action: 'ai-conversations' });
 const context = async (tenantId: string, projectId: string) => {
   const project = await assertProjectInOrg(tenantId, projectId);
   const config = project.config as { search?: { aiConversationCapture?: boolean } } | null;
-  return { captureEnabled: config?.search?.aiConversationCapture !== false && aiConversationCaptureReady(), scope: { tenantId, projectId } };
+  const settingOn = config?.search?.aiConversationCapture !== false;
+  const instanceReady = aiConversationCaptureReady();
+  return {
+    captureEnabled: settingOn && instanceReady,
+    // A missing encryption key is the operator's to fix, not the site admin's.
+    capture: settingOn ? (instanceReady ? {} : { captureOffReason: 'instance' as const }) : { captureOffReason: 'setting' as const },
+    scope: { tenantId, projectId },
+  };
 };
 const read = async <T>(run: () => Promise<T>, fallback: T) => {
   if (keys().ANALYTICS_MODE === 'disabled') return { ...fallback, availability: 'disabled' as const };
@@ -42,6 +49,7 @@ export const listProjectAiConversations = async (tenantId: string, projectId: st
   return aiConversationListResultSchema.parse({
     ...(await read(() => queryAiConversations(c.scope, query), { items: [], nextCursor: null })),
     captureEnabled: c.captureEnabled,
+    ...c.capture,
   });
 };
 export const getProjectAiConversation = async (tenantId: string, projectId: string, conversationId: string) => {
@@ -61,6 +69,7 @@ export const getProjectAiConversationSummary = async (tenantId: string, projectI
   return aiConversationSummarySchema.parse({
     ...(await read(() => queryAiConversationSummary(c.scope, query), emptyAiSummary(query.range))),
     captureEnabled: c.captureEnabled,
+    ...c.capture,
   });
 };
 export const listProjectAiContentGaps = async (tenantId: string, projectId: string, query: AiContentGapsQuery) => {
@@ -68,10 +77,57 @@ export const listProjectAiContentGaps = async (tenantId: string, projectId: stri
   return aiContentGapsResultSchema.parse({
     ...(await read(() => queryAiContentGaps(c.scope, query), { items: [] })),
     captureEnabled: c.captureEnabled,
+    ...c.capture,
   });
 };
 
+const usageNumber = (row: Record<string, string | number>, key: string) => Number(row[key] ?? 0);
+const average = (sum: number, count: number) => (count > 0 ? Math.round(sum / count) : null);
+
+const usageTotals = (rows: Record<string, string | number>[]) => {
+  const sum = (key: string) => rows.reduce((total, row) => total + usageNumber(row, key), 0);
+  return {
+    questions: sum('questions'),
+    answered: sum('answered'),
+    noAnswer: sum('no_answer'),
+    failed: sum('failed'),
+    cancelled: sum('cancelled'),
+    inputTokens: sum('input_tokens'),
+    outputTokens: sum('output_tokens'),
+    costUsd: sum('cost_micros') / 1_000_000,
+    costKnownAnswers: sum('cost_known_turns'),
+    averageLatencyMs: average(sum('latency_ms_sum'), sum('latency_turns')),
+    averageFirstTokenMs: average(sum('first_token_ms_sum'), sum('first_token_turns')),
+    retrievalCacheHits: sum('retrieval_cache_hits'),
+  };
+};
+
+/** Daily usage per model in plain units (USD, milliseconds), with totals. Cost
+ * covers only answers whose provider reported it; costKnownAnswers says how many. */
 export const getProjectAiUsage = async (tenantId: string, projectId: string, query: AiConversationSummaryQuery) => {
   const c = await context(tenantId, projectId);
-  return read(async () => ({ items: await queryAiUsageDaily(c.scope, query) }), { items: [] });
+  return read(
+    async () => {
+      const rows = await queryAiUsageDaily(c.scope, query);
+      const days = rows.map((row) => ({
+        day: String(row.day),
+        provider: String(row.provider),
+        model: String(row.model),
+        questions: usageNumber(row, 'questions'),
+        answered: usageNumber(row, 'answered'),
+        noAnswer: usageNumber(row, 'no_answer'),
+        failed: usageNumber(row, 'failed'),
+        cancelled: usageNumber(row, 'cancelled'),
+        inputTokens: usageNumber(row, 'input_tokens'),
+        outputTokens: usageNumber(row, 'output_tokens'),
+        costUsd: usageNumber(row, 'cost_micros') / 1_000_000,
+        costKnownAnswers: usageNumber(row, 'cost_known_turns'),
+        averageLatencyMs: average(usageNumber(row, 'latency_ms_sum'), usageNumber(row, 'latency_turns')),
+        averageFirstTokenMs: average(usageNumber(row, 'first_token_ms_sum'), usageNumber(row, 'first_token_turns')),
+        retrievalCacheHits: usageNumber(row, 'retrieval_cache_hits'),
+      }));
+      return { days, totals: usageTotals(rows) };
+    },
+    { days: [], totals: usageTotals([]) },
+  );
 };

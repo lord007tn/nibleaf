@@ -289,6 +289,8 @@ export const aiConversationListResultSchema = z
   .object({
     availability: aiConversationAvailabilitySchema,
     captureEnabled: z.boolean(),
+    /** Why text is not saved: the site setting is off, or the instance has no encryption key. */
+    captureOffReason: z.enum(['setting', 'instance']).optional(),
     items: z.array(aiConversationListItemSchema),
     nextCursor: z.string().nullable(),
   })
@@ -354,6 +356,8 @@ export const aiConversationSummarySchema = z
   .object({
     availability: aiConversationAvailabilitySchema,
     captureEnabled: z.boolean(),
+    /** Why text is not saved: the site setting is off, or the instance has no encryption key. */
+    captureOffReason: z.enum(['setting', 'instance']).optional(),
     range: aiConversationRangeSchema,
     totals: z
       .object({
@@ -449,6 +453,8 @@ export const aiContentGapsResultSchema = z
   .object({
     availability: aiConversationAvailabilitySchema,
     captureEnabled: z.boolean(),
+    /** Why text is not saved: the site setting is off, or the instance has no encryption key. */
+    captureOffReason: z.enum(['setting', 'instance']).optional(),
     items: z.array(aiContentGapSchema),
   })
   .strict();

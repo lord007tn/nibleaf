@@ -20,7 +20,8 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
   server.registerTool(
     'get_ai_usage',
     {
-      description: 'Daily per-model questions, outcomes, tokens, cost in micros, latency and first-token sums/counts, and retrieval cache hits.',
+      description:
+        'AI assistant usage per day and model, with totals: questions, answered, unanswered, failed and cancelled answers, tokens, cost in USD (only for answers whose provider reported it; see costKnownAnswers), average answer and first-token times in milliseconds, and retrieval cache hits.',
       inputSchema: aiConversationSummaryQuery,
       annotations,
     },
@@ -29,7 +30,8 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
   server.registerTool(
     'list_ai_conversations',
     {
-      description: 'Find conversations readers had with your docs assistant, with answer and feedback filters.',
+      description:
+        'Find conversations readers had with your docs assistant, with answer and feedback filters. Question text is present only when capture is on; captureOffReason says why it is off (setting: the site setting; instance: no encryption key on the server).',
       inputSchema: aiConversationListQuery,
       annotations,
     },
@@ -48,7 +50,8 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
   server.registerTool(
     'get_ai_feedback_summary',
     {
-      description: 'Understand how often your docs assistant answers readers and which answers receive useful feedback.',
+      description:
+        'Understand how often your docs assistant answers readers, which answers receive useful feedback, what it costs, and how readers use it (engagement: opens by source, source and follow-up clicks, copies, stops, new chats, rating changes, limits reached, provider errors, median response times).',
       inputSchema: aiConversationSummaryQuery,
       annotations,
     },
@@ -58,7 +61,8 @@ export const registerAiConversationSurface = (server: McpServer, ctx: Context<Ho
   server.registerTool(
     'list_ai_content_gaps',
     {
-      description: 'Find questions readers asked that the docs could not answer; good candidates for new articles.',
+      description:
+        'Find questions readers asked that the docs could not answer or rated down; good candidates for new articles. Follow-up questions appear as their standalone rewrite.',
       inputSchema: aiContentGapsQuery,
       annotations,
     },

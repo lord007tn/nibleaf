@@ -68,6 +68,7 @@ export const MESSAGE_IDS = {
   'dashboard.ai.disabled': 'dashboard_ai_disabled',
   'dashboard.ai.unavailable': 'dashboard_ai_unavailable',
   'dashboard.ai.captureOff': 'dashboard_ai_captureoff',
+  'dashboard.ai.captureInstance': 'dashboard_ai_captureinstance',
   'dashboard.ai.settings': 'dashboard_ai_settings',
   'dashboard.ai.empty': 'dashboard_ai_empty',
   'dashboard.ai.selfHosting': 'dashboard_ai_selfhosting',

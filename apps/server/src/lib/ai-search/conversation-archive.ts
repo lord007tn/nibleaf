@@ -109,7 +109,8 @@ export const buildAiTurnRow = (c: ChatTurnCapture) => {
     question: redact(c.question, 1000),
     rewritten_query: redact(c.rewrittenQuery),
     answer: redact(c.answer),
-    question_key: allowed && c.question ? hash(normalizeConversationQuestion(c.question)) : '',
+    // Follow-ups ("can I do that for one notebook?") group by their standalone rewrite.
+    question_key: allowed && c.question ? hash(normalizeConversationQuestion(c.rewrittenQuery || c.question)) : '',
     citations: sources(c.citations),
     suggestions: sources(c.suggestions),
     provider: c.provider ?? '',

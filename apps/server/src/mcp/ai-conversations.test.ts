@@ -21,6 +21,7 @@ describe('AI conversation MCP', () => {
     principal.apiKey.scopes = ['analytics:read'];
     registerAiConversationSurface(server as never, {} as never, principal as never);
     expect(registerTool.mock.calls.map((c) => c[0])).toEqual([
+      'get_ai_usage',
       'list_ai_conversations',
       'get_ai_conversation',
       'get_ai_feedback_summary',

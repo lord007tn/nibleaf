@@ -287,10 +287,10 @@ export const queryAiContentGaps = async (s: AiConversationScope, q: AiReadQuery)
     lastAskedAt: string;
     sampleConversationId: string;
   }>(
-    `SELECT argMax(t.question,t.occurred_at) AS question,argMax(t.language,t.occurred_at) AS language,
+    `SELECT argMax(if(t.rewritten_query!='',t.rewritten_query,t.question),t.occurred_at) AS question,argMax(t.language,t.occurred_at) AS language,
  count() AS askedCount,countIf(t.status='no_answer') AS noAnswerCount,countIf(f.rating='down') AS downCount,
  max(t.occurred_at) AS lastAskedAt,argMax(t.conversation_id,t.occurred_at) AS sampleConversationId
- FROM (SELECT conversation_id,turn_id,question_key,question,language,status,occurred_at FROM ai_conversation_turns FINAL
+ FROM (SELECT conversation_id,turn_id,question_key,question,rewritten_query,language,status,occurred_at FROM ai_conversation_turns FINAL
  WHERE ${turnsWhere} AND content_captured=1 AND question_key!=toFixedString('',64)) AS t
  LEFT JOIN (${feedbackSource}) AS f ON t.turn_id=f.turn_id
  GROUP BY t.question_key HAVING noAnswerCount>0 OR downCount>0
