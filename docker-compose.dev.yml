@@ -56,6 +56,12 @@ services:
     volumes:
       - nibleaf-clickhouse:/var/lib/clickhouse
       - nibleaf-clickhouse-logs:/var/log/clickhouse-server
+      - nibleaf-clickhouse-backups:/var/lib/clickhouse/backups
+    configs:
+      - source: clickhouse-small-host
+        target: /etc/clickhouse-server/config.d/nibleaf.xml
+    mem_limit: 1536m
+    cpus: 2.0
     healthcheck:
       test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://127.0.0.1:8123/ping']
       interval: 5s
@@ -92,3 +98,21 @@ volumes:
   nibleaf-maxio:
   nibleaf-clickhouse:
   nibleaf-clickhouse-logs:
+  nibleaf-clickhouse-backups:
+
+configs:
+  clickhouse-small-host:
+    content: |
+      <clickhouse>
+        <max_server_memory_usage>1073741824</max_server_memory_usage>
+        <mark_cache_size>134217728</mark_cache_size>
+        <uncompressed_cache_size>0</uncompressed_cache_size>
+        <logger><level>warning</level><size>10M</size><count>3</count></logger>
+        <query_log remove="1"/><query_thread_log remove="1"/><trace_log remove="1"/>
+        <text_log remove="1"/><metric_log remove="1"/><asynchronous_metric_log remove="1"/>
+        <part_log remove="1"/><processors_profile_log remove="1"/>
+        <session_log remove="1"/><query_views_log remove="1"/>
+        <error_log remove="1"/><crash_log remove="1"/>
+        <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+        <backups><allowed_disk>backups</allowed_disk></backups>
+      </clickhouse>

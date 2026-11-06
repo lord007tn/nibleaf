@@ -38,6 +38,7 @@
               "git-authoring",
               "product/publishing",
               "product/exports",
+              "product/analytics",
               "redirects",
               "product/arabic-rtl",
               "product/migration"
@@ -124,6 +125,7 @@
               "ar/git-authoring",
               "ar/product/publishing",
               "ar/product/exports",
+              "ar/product/analytics",
               "ar/redirects",
               "ar/product/arabic-rtl",
               "ar/product/migration"

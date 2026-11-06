@@ -100,3 +100,28 @@ maxio عبر TLS. وبالنسبة إلى R2 أو S3 أو Backblaze B2 أو أي
 [قائمة تحقق بيئة الإنتاج](/ar/self-hosting/production). وإذا كان الموقع سيكون
 خاصًا، فأكمل [إجراء استعادة وصول القرّاء](/ar/private-reader-access) قبل إرسال
 الدعوات.
+
+## متغيرات التحليلات
+
+| المتغير | القيمة الافتراضية | الإرشاد |
+| --- | --- | --- |
+| `ANALYTICS_MODE` | `disabled` في قالب الإنتاج | انتقل إلى `dual_write` ثم `shadow_read` ثم `clickhouse` بعد مطابقة النتائج. |
+| `ANALYTICS_HASH_SALT` | غير مضبوط | ولّده بـ `openssl rand -hex 32` واحتفظ بالقيمة الحالية. |
+| `CLICKHOUSE_URL` | `http://localhost:8123` في الشفرة | يستخدم Compose العنوان `http://clickhouse:8123`؛ احم الاتصال البعيد بـ TLS. |
+| `CLICKHOUSE_DATABASE` | `nibleaf_analytics` | القيمة نفسها للخادم والعامل وأداة الترقية. |
+| `CLICKHOUSE_READER_USERNAME` / `CLICKHOUSE_READER_PASSWORD` | `default` / غير مضبوطة في الشفرة | قارئ مستقل بصلاحية SELECT فقط في الإنتاج؛ تختلف قيم Compose الأولية. |
+| `CLICKHOUSE_WRITER_USERNAME` / `CLICKHOUSE_WRITER_PASSWORD` | `default` / غير مضبوطة في الشفرة | صلاحيات الكتابة وترقية المخطط، أو هوية مخصصة للأداة اليدوية. |
+| `CLICKHOUSE_REQUEST_TIMEOUT_MS` | `5000` | من 250 إلى 60000 ملّي ثانية لكل طلب نقل. |
+| `CLICKHOUSE_MAX_BATCH_SIZE` | `500` | من 1 إلى 10000 حدث. |
+| `CLICKHOUSE_MAX_BUFFERED_EVENTS` | `10000` | من 100 إلى 100000 حدث؛ يبقى حفظ المهام ضرورياً. |
+| `CLICKHOUSE_FLUSH_INTERVAL_MS` | `1000` | من 25 إلى 30000 ملّي ثانية. |
+| `CLICKHOUSE_RAW_RETENTION_DAYS` | `180` | من 7 إلى 730؛ أحداث القرّاء الخام. |
+| `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | `90` | من 7 إلى 730؛ أحداث الزواحف الخام. |
+| `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | `730` | من 30 إلى 3650؛ التجميعات. |
+| `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | `30` | من 1 إلى 90؛ نص البحث العام المحفوظ بموافقة مؤهلة. |
+| `CLICKHOUSE_MIGRATE_ON_BOOT` | `true` | يعيد العامل المحاولة في الخلفية؛ تتطلب false ترقية يدوية. |
+
+يستخدم Compose المتغيرين `CLICKHOUSE_USERNAME` و`CLICKHOUSE_PASSWORD` للتهيئة الأولية فقط؛
+ويستخدم Coolify المتغير `SERVICE_PASSWORD_64_CLICKHOUSE`. هذه ليست إعدادات عميل التطبيق.
+اضبط بيانات القارئ والكاتب صراحة بما يطابق المستخدمين المنشأين.
+راجع [تشغيل التحليلات](/ar/self-hosting/clickhouse-analytics).

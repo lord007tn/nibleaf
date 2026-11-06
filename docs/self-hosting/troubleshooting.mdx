@@ -119,3 +119,31 @@ body phrase. For Arabic, test normalized spelling variants and consult
 
 For security-sensitive behavior, stop public troubleshooting and use the
 private reporting path in the repository's `SECURITY.md`.
+
+## Analytics unavailable, outdated, or stuck
+
+The docs site can remain healthy while analytics is unavailable. Inspect the
+`analytics` field on API and worker `/health`; keep it separate from core alarms.
+For `unavailable`, check network/DNS, credentials, database name and ClickHouse
+logs. Restore connectivity and let the worker retry; do not restart databases or
+clear queues. Watch oldest pending jobs and failed-job replay so outages do not
+silently become missing history.
+
+For `schema_outdated`, check that a worker is running, analytics is enabled and
+`CLICKHOUSE_MIGRATE_ON_BOOT=true`. Check writer CREATE/ALTER permissions. Run the
+explicit `clickhouse-migrate` command with the same Postgres and ClickHouse
+database settings if automatic migrations are disabled. A successful ping alone
+does not establish schema currency.
+
+For stuck migrations, inspect worker migration logs, `pg_stat_activity` and
+`pg_locks` (advisory locks), and ClickHouse `system.processes` and
+`system.mutations`. Lock holders may legitimately be another worker or the CLI.
+Do not clear migration-version records or kill locks to bypass a running DDL
+operation. Confirm the owning process and query have stopped before retrying.
+
+For disk pressure, inspect `system.parts` by database/table and both the data and
+log volumes. Bundled configuration disables new noisy system logs and rotates
+text logs; old system tables are not automatically removed. Review them with an
+operator before targeted cleanup. Copy backups off-host, then review retention;
+TTL merges need free space and are asynchronous. Never delete ClickHouse data
+files, run broad OPTIMIZE FINAL on a full host, or erase queues to make health green.

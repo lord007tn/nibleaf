@@ -130,3 +130,51 @@ nor the database restore is enough alone.
 
 Do not combine an application upgrade with a PostgreSQL major-version change.
 Treat the database upgrade as a separate dump-and-restore project.
+
+## ClickHouse analytics recovery
+
+The Compose files define the `backups` disk at `/var/lib/clickhouse/backups` on a
+separate named volume. Use ClickHouse 25.8-compatible native backups with an
+operator identity; keep passwords out of command history. In `clickhouse-client`
+(or another authenticated SQL client), run:
+
+```sql
+BACKUP DATABASE nibleaf_analytics TO Disk('backups', 'analytics-20261106-001');
+SELECT name, status, error FROM system.backups;
+```
+
+Use a unique backup name. Require `BACKUP_CREATED`, archive the backup volume,
+encrypt it and copy it off-host. A volume on the same full disk is not disaster
+recovery. Record the exact ClickHouse version, database DDL, users/roles,
+application revision, retention env and backup checksums. Back up Postgres and
+object storage separately; analytics backups do not include them.
+
+On an isolated recovery server with the same ClickHouse version and backups
+disk configuration, copy the backup into that disk and restore to a new database:
+
+```sql
+RESTORE DATABASE nibleaf_analytics AS nibleaf_analytics_restore
+FROM Disk('backups', 'analytics-20261106-001');
+SELECT name, status, error FROM system.backups;
+SELECT count(), uniqExact(event_id) FROM nibleaf_analytics_restore.analytics_events;
+SELECT version FROM nibleaf_analytics_restore.analytics_schema_migrations FINAL ORDER BY version;
+```
+
+Require `RESTORED`, compare counts and event-id samples with the backup manifest,
+then set `CLICKHOUSE_DATABASE=nibleaf_analytics_restore` and an isolated
+`POSTGRES_URL`, run migrations and test tenant-scoped reads. Replay project
+erasures since the backup before allowing application access. Preserve existing
+keys and salts. Never test a restore over the serving database.
+
+`rebuildProjectAnalyticsRollups` can rebuild analytics rollups from retained raw
+facts. Expired raw facts cannot recreate older rollups; raw-event loss leaves
+permanent gaps. Sensitive query text intentionally expires quickly and is not
+reconstructed. Do not apply analytics rebuild assumptions to billing/usage data.
+
+Before upgrades, pin the image, create and restore-test a backup, and review
+ClickHouse release compatibility. Restore to the original server version first,
+then follow supported upgrade steps. Automatic migrations are additive, not a
+schema downgrade mechanism. A retention reduction is irreversible after merges.
+The SQL above is a recovery drill procedure; only a completed isolated restore
+with matching invariants counts as recovery proof for your deployment.
+The disk configuration and SQL follow the [ClickHouse native backup reference](https://clickhouse.com/docs/operations/backup/disk).
