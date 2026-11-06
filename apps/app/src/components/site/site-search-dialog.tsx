@@ -166,9 +166,10 @@ function RowIcon({ children, className }: { children: ReactNode; className?: str
 /** Queries phrased as questions default to "Ask AI"; keywords default to the best page. */
 // Arabic openers may carry a و/ف prefix ("وكيف", "فهل"). ما / من alone also start
 // ordinary titles ("من نحن" About us, "ما الجديد" What's new), so bare ما counts
-// only before two or more words, and من only as من هو/هي.
+// only before two or more words (not ما بعد / ما قبل, "after" / "pre-"), and من only
+// as من هو/هي.
 const QUESTION =
-  /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will)\s|^[وف]?(كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s|^[وف]?ما\s+\S+\s+\S+/i;
+  /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will)\s|^[وف]?(كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s|^[وف]?ما\s+(?!بعد\s|قبل\s)\S+\s+\S+/i;
 
 // A controlled value no row has. cmdk auto-selects the first row whenever the
 // value is empty, so "nothing selected" needs a value of its own.
@@ -435,7 +436,7 @@ export default function SiteSearchDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new result set or query resets the highlight.
   useEffect(() => {
     setActiveItem('');
-  }, [hitsQuery.data, debouncedQuery]);
+  }, [hitsQuery.data, debouncedQuery, open]);
   // cmdk recomputes the input's aria-activedescendant only when its own selection
   // changes, not when the controlled value does. So the controlled value only ever
   // echoes a row cmdk itself selected (the reader's choice, or the best match routed
@@ -454,11 +455,17 @@ export default function SiteSearchDialog({
   }, [queryPending, hits.length]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the held Enter can be answered.
   useEffect(() => {
-    if (!pendingEnter || queryPending) return;
+    if (!pendingEnter) return;
+    // Closing search drops a held Enter: it must never navigate after the reader left.
+    if (!open) {
+      setPendingEnter(false);
+      return;
+    }
+    if (queryPending) return;
     setPendingEnter(false);
     const best = hits[0];
     if (best && !searchFailed) openPage(best.path, best.language, { hit: best, position: 1 });
-  }, [pendingEnter, queryPending]);
+  }, [pendingEnter, queryPending, open]);
 
   const statusMessage =
     mode === 'answer'
@@ -544,7 +551,10 @@ export default function SiteSearchDialog({
           label={t('searchDocumentation')}
           value={cmdkValue}
           onValueChange={(value) => {
-            if (readerMovedRef.current) setActiveItem(value);
+            // cmdk picks a row itself when the text changes or rows mount; when that is
+            // the row we want, record it, or a later restore would be a no-op for cmdk and
+            // the input's aria-activedescendant would stay on its earlier pick.
+            if (readerMovedRef.current || value === selectedValue) setActiveItem(value);
             else if (value !== selectedValue) queueMicrotask(() => restoreSelection(selectedValue));
           }}
           onKeyDown={(event) => {
@@ -780,6 +790,7 @@ export default function SiteSearchDialog({
                 <button
                   type="button"
                   onClick={() => {
+                    setActiveItem('');
                     setMode('search');
                     inputRef.current?.focus();
                   }}
@@ -859,7 +870,11 @@ export default function SiteSearchDialog({
                   <span aria-hidden>{t('searchVersionLabel')}</span>
                   <Select
                     items={versionOptions}
-                    onValueChange={(value) => setSelectedVersion(!value || value === '__default' ? undefined : value)}
+                    onValueChange={(value) => {
+                      // The reader's last action was choosing a version, not confirming a result.
+                      setPendingEnter(false);
+                      setSelectedVersion(!value || value === '__default' ? undefined : value);
+                    }}
                     value={selectedVersion ?? '__default'}
                   >
                     <SelectTrigger aria-label={t('searchFilterVersion')} size="sm" className="h-8 min-w-24 text-xs pointer-coarse:h-11">

@@ -354,9 +354,12 @@ describe('published reader search', () => {
       await typeQuery(question);
       expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
     }
-    // A short title such as "ما الجديد" (What's new) stays a keyword.
-    await typeQuery('ما الجديد');
-    expect(option('Setup guide')?.getAttribute('aria-selected')).toBe('true');
+    // A short title such as "ما الجديد" (What's new), or a noun phrase such as
+    // "ما بعد البيع" (after-sales), stays a keyword.
+    for (const keyword of ['ما الجديد', 'ما بعد البيع']) {
+      await typeQuery(keyword);
+      expect(option('Setup guide')?.getAttribute('aria-selected')).toBe('true');
+    }
   });
 
   it('announces the best match when results arrive after the keystroke, and ↓ moves on from it', async () => {
@@ -397,6 +400,63 @@ describe('published reader search', () => {
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
     await rerender();
     expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('drops an Enter held while loading when the reader closes search', async () => {
+    const { rerender } = await render();
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await typeQuery('setup');
+    await press('Enter');
+    await rerender({ open: false });
+    // The search finishes after the reader left; nothing may open.
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await rerender({ open: false });
+    await rerender({ open: true });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('drops an Enter held while loading when the reader picks another version', async () => {
+    const { rerender } = await render({
+      versions: [
+        { id: 'v1', name: 'v1', slug: 'v1', isDefault: true },
+        { id: 'v2', name: 'v2', slug: 'v2', isDefault: false },
+      ],
+    });
+    mocks.search.mockReturnValue({ data: undefined, isFetching: true, error: null });
+    await typeQuery('setup');
+    await press('Enter');
+    const trigger = document.querySelector<HTMLElement>('[aria-label="searchFilterVersion"]');
+    await act(async () => trigger?.click());
+    const v2 = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((item) => item.textContent === 'v2');
+    expect(v2).toBeDefined();
+    await act(async () => v2?.click());
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await rerender();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('announces the highlighted row again after reopening search and after leaving the answer view', async () => {
+    const first = { ...hit, id: 'first', path: 'first', title: 'First guide' };
+    const second = { ...hit, id: 'second', path: 'second', title: 'Second guide' };
+    mocks.search.mockReturnValue({ data: [first, second], isFetching: false, error: null });
+    const { rerender } = await render();
+    const announced = () => input()?.getAttribute('aria-activedescendant');
+    const selected = () => options().find((item) => item.getAttribute('aria-selected') === 'true');
+    await typeQuery('guide');
+    await press('ArrowDown');
+    expect(selected()?.textContent).toContain('Second guide');
+    await rerender({ open: false });
+    await rerender({ open: true });
+    // Reopening starts again on the best match, and that is what is announced.
+    expect(selected()?.textContent).toContain('First guide');
+    expect(announced()).toBe(selected()?.id);
+    // Back from the answer view: the highlighted row is the announced one.
+    await typeQuery('How do I start?');
+    await select('searchAskAiAbout');
+    const back = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('searchBackToResults'));
+    await act(async () => back?.click());
+    expect(selected()?.textContent).toContain('searchAskAiAbout');
+    expect(announced()).toBe(selected()?.id);
   });
 
   it('offers "Ask AI" above the loading rows while a question\'s first results load', async () => {
