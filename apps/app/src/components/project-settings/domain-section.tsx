@@ -59,9 +59,9 @@ export function DomainSection({ project }: { project: Project }) {
       {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <DirtyStateReporter dirty={Boolean(domain.trim())} />
       <SectionHeader icon={<Globe2 className="size-4" />} title={t('settings.domain.title')} />
-      <ol className="mb-4 space-y-1 text-[13.5px] text-muted-foreground leading-relaxed">
-        {guideSteps(t('settings.domain.guide')).map((step) => (
-          <li key={step}>{step}</li>
+      <ol className="mb-4 list-decimal space-y-1 ps-5 text-[13.5px] text-muted-foreground leading-relaxed">
+        {(['settings.domain.guide.step1', 'settings.domain.guide.step2', 'settings.domain.guide.step3'] as const).map((key) => (
+          <li key={key}>{t(key)}</li>
         ))}
       </ol>
 
@@ -126,7 +126,7 @@ export function DomainSection({ project }: { project: Project }) {
                       label={
                         d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR'
                           ? t('settings.domain.status.needsAttention')
-                          : verify.isPending
+                          : verify.isPending && verify.variables === d.id
                             ? t('common.loading')
                             : t('settings.domain.status.provisioning')
                       }
@@ -155,7 +155,7 @@ export function DomainSection({ project }: { project: Project }) {
                 {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
                   <Button
                     className="cursor-pointer"
-                    disabled={verify.isPending}
+                    disabled={verify.isPending && verify.variables === d.id}
                     onClick={() =>
                       verify.mutate(d.id, {
                         onSuccess: (result) =>
@@ -166,8 +166,8 @@ export function DomainSection({ project }: { project: Project }) {
                     size="sm"
                     variant="outline"
                   >
-                    <RefreshCw className={cn('size-3.5', verify.isPending && 'animate-spin')} />
-                    {verify.isPending ? t('common.loading') : t('settings.domain.retry')}
+                    <RefreshCw className={cn('size-3.5', verify.isPending && verify.variables === d.id && 'animate-spin')} />
+                    {verify.isPending && verify.variables === d.id ? t('common.loading') : t('settings.domain.retry')}
                   </Button>
                 ) : null}
                 {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
@@ -256,7 +256,6 @@ export function DomainSection({ project }: { project: Project }) {
 function StatusBadge({ label, tone }: { label: string; tone: 'ready' | 'pending' | 'error' }) {
   return (
     <span
-      role="status"
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold text-[12px]',
         tone === 'ready' && 'bg-primary/10 text-primary',
@@ -268,13 +267,4 @@ function StatusBadge({ label, tone }: { label: string; tone: 'ready' | 'pending'
       {label}
     </span>
   );
-}
-
-/** The DNS guide is one translated string with numbered steps ("1. … 2. … 3. …",
- *  written with the locale's own digits). Show each step on its own line. */
-function guideSteps(text: string): string[] {
-  return text
-    .split(/(?=[1-3١-٣۱-۳১-৩][.۔]\s?)/u)
-    .map((step) => step.trim())
-    .filter(Boolean);
 }

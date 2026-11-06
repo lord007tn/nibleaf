@@ -112,8 +112,12 @@ export function GeneralSection({ project }: { project: Project }) {
           );
         });
         await saveTranslations();
-        // The saved values are the new baseline, so leaving the page no longer warns.
+        // Advance the baseline without discarding edits made during the request.
+        const current = form.state.values;
         form.reset({ name: value.name.trim(), slug: value.slug.trim(), description: value.description.trim() });
+        for (const key of ['name', 'slug', 'description'] as const) {
+          if (current[key] !== value[key]) form.setFieldValue(key, current[key]);
+        }
         toast.success(t('common.saved'));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t('settings.saveError'));

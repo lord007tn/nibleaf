@@ -1,5 +1,4 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
@@ -29,7 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
@@ -42,7 +41,13 @@ import { MembersSection } from '@/components/project-settings/members-section';
 import { OpenApiSection } from '@/components/project-settings/openapi-section';
 import { PlanSection } from '@/components/project-settings/plan-section';
 import { SearchSection } from '@/components/project-settings/search-section';
-import { ConfigDirtyProvider, DirtyStateReporter, useSettingsDirtyGuard } from '@/components/project-settings/shared';
+import {
+  ConfigDirtyProvider,
+  DirtyStateReporter,
+  useConfirmSettingsDiscard,
+  useDirtySources,
+  useSettingsDirtyGuard,
+} from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
@@ -107,6 +112,8 @@ const SECTIONS = [
   { id: 'danger', group: 'advanced', icon: TriangleAlert },
 ] as const satisfies ReadonlyArray<{ id: SectionId; group: SettingsGroupId; icon: LucideIcon }>;
 
+const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
+
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
@@ -140,7 +147,7 @@ function ProjectSettingsPage() {
   const availableSections = SECTIONS.filter((item) => canManage || EDITOR_SECTIONS.has(item.id));
   const sectionItems = availableSections.map((item) => ({
     value: item.id,
-    label: t(item.id === 'appearance' ? 'settings.tab.appearance' : (`settings.${item.id}` as MessageKey)),
+    label: t(sectionLabelKey(item.id)),
   }));
   const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
 
@@ -186,7 +193,7 @@ function ProjectSettingsPage() {
                     .filter((item) => item.group === group.id)
                     .map((item) => (
                       <SelectItem key={item.id} value={item.id}>
-                        {t(item.id === 'appearance' ? 'settings.tab.appearance' : (`settings.${item.id}` as MessageKey))}
+                        {t(sectionLabelKey(item.id))}
                       </SelectItem>
                     ))}
                 </SelectGroup>
@@ -218,7 +225,7 @@ function ProjectSettingsPage() {
                         variant="ghost"
                       >
                         <Icon aria-hidden className="size-4 shrink-0" />
-                        {t(item.id === 'appearance' ? 'settings.tab.appearance' : (`settings.${item.id}` as MessageKey))}
+                        {t(sectionLabelKey(item.id))}
                       </Button>
                     );
                   })}
@@ -307,20 +314,10 @@ function SectionSkeleton() {
 }
 
 function SiteAppearance({ project }: { project: Project }) {
-  const t = useT();
-  const confirm = useConfirm();
+  const confirmDiscard = useConfirmSettingsDiscard();
   const [section, setSection] = useState<ConfigSectionId>('branding');
   // Report to the route as well as guarding the local appearance section picker.
-  const [sources, setSources] = useState<Set<string>>(() => new Set());
-  const report = useCallback((source: string, changed: boolean) => {
-    setSources((current) => {
-      if (current.has(source) === changed) return current;
-      const next = new Set(current);
-      if (changed) next.add(source);
-      else next.delete(source);
-      return next;
-    });
-  }, []);
+  const { sources, report } = useDirtySources();
   return (
     <>
       <DirtyStateReporter dirty={sources.size > 0} />
@@ -329,17 +326,7 @@ function SiteAppearance({ project }: { project: Project }) {
           active={section}
           onSelect={async (next) => {
             if (next === section) return;
-            if (
-              sources.size > 0 &&
-              !(await confirm({
-                title: t('settings.unsaved.title'),
-                description: t('settings.unsaved.description'),
-                cancelLabel: t('settings.unsaved.keep'),
-                confirmLabel: t('settings.chrome.scope.discardConfirm'),
-                destructive: true,
-              }))
-            )
-              return;
+            if (sources.size > 0 && !(await confirmDiscard())) return;
             setSection(next);
           }}
         />
