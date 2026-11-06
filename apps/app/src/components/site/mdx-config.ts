@@ -58,13 +58,26 @@ const BLOCK_TAGS =
 const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
 const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
 const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b[^>]*>\\s*$`, 'i');
+// A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
+const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b((?:[^>]*[^/>])?)>(.*\\S.*)</\\2>\\s*$`, 'i');
+const FENCE = /^\s*(```|~~~)/;
 
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
  *  directly after `<Note>` is captured as a raw HTML block and inline Markdown
  *  (**bold**, [links]) renders literally. Idempotent. */
 export function normalizeMdxBlocks(src: string): string {
-  const lines = src.split('\n');
+  // A one-line block component would otherwise sit inside a Markdown paragraph,
+  // rendering a <div> inside a <p> (invalid HTML that breaks hydration). Give it
+  // block form so its text is parsed as Markdown inside the component.
+  let inFence = false;
+  const lines = src.split('\n').flatMap((line) => {
+    if (FENCE.test(line)) inFence = !inFence;
+    const match = inFence ? null : ONE_LINE_BLOCK.exec(line);
+    if (!match) return [line];
+    const [, indent = '', tag = '', attributes = '', body = ''] = match;
+    return [`${indent}<${tag}${attributes}>`, '', body.trim(), '', `${indent}</${tag}>`];
+  });
   const out: string[] = [];
   for (let i = 0; i < lines.length; i++) {
     const authoredLine = lines[i] ?? '';

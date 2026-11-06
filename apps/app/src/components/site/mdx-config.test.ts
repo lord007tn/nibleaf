@@ -33,6 +33,16 @@ describe('normalizeMdxBlocks', () => {
     expect(normalizeMdxBlocks('<Note>\ntext\n</Note>')).toBe('<Note>\n\ntext\n\n</Note>');
     expect(normalizeMdxBlocks('<Callout type="tip">\n**text**\n</Callout>')).toBe('<Callout type="tip">\n\n**text**\n\n</Callout>');
   });
+  it('gives one-line block components block form so they never land inside a paragraph', () => {
+    expect(normalizeMdxBlocks('Intro.\n\n<Callout type="tip">Upgrading is **instant**.</Callout>\n\nAfter.')).toBe(
+      'Intro.\n\n<Callout type="tip">\n\nUpgrading is **instant**.\n\n</Callout>\n\nAfter.',
+    );
+    expect(normalizeMdxBlocks('  <Accordion title="Why?">Because.</Accordion>')).toBe('<Accordion title="Why?">\n\nBecause.\n\n</Accordion>');
+    expect(normalizeMdxBlocks('```mdx\n<Note>Example</Note>\n```')).toBe('```mdx\n<Note>Example</Note>\n```');
+    expect(normalizeMdxBlocks('Use <Tooltip tip="x">this</Tooltip> inline.')).toBe('Use <Tooltip tip="x">this</Tooltip> inline.');
+    const once = normalizeMdxBlocks('<Note>Text</Note>');
+    expect(normalizeMdxBlocks(once)).toBe(once);
+  });
   it('is idempotent', () => {
     const once = normalizeMdxBlocks('<Card title="x">\nbody\n</Card>');
     expect(normalizeMdxBlocks(once)).toBe(once);
