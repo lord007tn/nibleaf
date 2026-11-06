@@ -45,7 +45,7 @@ actually consumes. Never commit a populated `.env`.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `BETTER_AUTH_SECRET` | Yes | Signs authentication state. Generate independently with `openssl rand -hex 32`. |
+| `BETTER_AUTH_SECRET` | Yes | Signs authentication state and encrypts the MCP OAuth signing keys. Generate independently with `openssl rand -hex 32`. After rotating it, delete the rows in the `jwks` table so new signing keys are created; otherwise OAuth token requests fail with a server error. Connected AI apps then sign in again. |
 | `POSTGRES_PASSWORD` | Yes | Password for the bundled Nibleaf database user. |
 | `INTERNAL_API_SECRET` | Strongly recommended | Authenticates trusted app-to-API hints used for accurate rate limiting. |
 

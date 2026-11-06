@@ -33,7 +33,7 @@ const authorization = (overrides: object = {}) => ({
   data: {
     client: { clientId: 'c1', name: 'Claude', uri: null, redirectTarget: 'claude.ai', verifiedDomain: null },
     requestedScopes: ['mcp:connect', 'pages:read', 'offline_access'],
-    projects: [{ id: 'p1', name: 'Docs', role: 'member', presets: ['read_only', 'support_writer'] }],
+    projects: [{ id: 'p1', name: 'Docs', slug: 'docs', workspace: 'Acme', role: 'member', presets: ['read_only', 'support_writer'] }],
     selection: null,
     ...overrides,
   },

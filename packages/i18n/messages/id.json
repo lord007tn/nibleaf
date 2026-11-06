@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "gagal",
   "settings_apikeys_outcomereplayed": "hasil digunakan kembali",
   "settings_apikeys_title": "Asisten AI (MCP)",
-  "settings_apikeys_description": "Buat kunci cakupan untuk skrip dan integrasi yang memanggil situs ini.",
+  "settings_apikeys_description": "Hubungkan asisten AI ke proyek ini dengan masuk, atau dengan kunci pribadi.",
   "settings_apikeys_nameplaceholder": "Kunci penerapan produksi",
   "settings_apikeys_create": "Buat kunci",
   "settings_apikeys_empty": "Belum ada kunci API.",

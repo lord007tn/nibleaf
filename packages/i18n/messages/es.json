@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "fallido",
   "settings_apikeys_outcomereplayed": "resultado reutilizado",
   "settings_apikeys_title": "Asistentes de IA (MCP)",
-  "settings_apikeys_description": "Cree claves de ámbito para scripts e integraciones que llamen a este sitio.",
+  "settings_apikeys_description": "Conecta un asistente de IA a este proyecto iniciando sesión o con una clave personal.",
   "settings_apikeys_nameplaceholder": "Clave de implementación de producción",
   "settings_apikeys_create": "Crear clave",
   "settings_apikeys_empty": "Aún no hay claves API.",

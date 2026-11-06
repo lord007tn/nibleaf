@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Skeleton, SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { MCP_OAUTH_IDENTITY_SCOPES, type McpKeyPreset } from '@nibleaf/shared/mcp';
 import { Check, ShieldCheck, TriangleAlert, X } from 'lucide-react';
@@ -69,7 +70,16 @@ function AuthorizationGate({
   if (oauthQuery === undefined || isPending || (session && oauthQuery && authorization.isPending)) {
     return (
       <AuthLayout subtitle={subtitle}>
-        <p className="text-center text-muted-foreground text-sm">{t('common.loading')}</p>
+        <section aria-busy="true" className="flex flex-col gap-4">
+          <p className="sr-only" role="status">
+            {t('common.loading')}
+          </p>
+          <Skeleton aria-hidden className="h-10 w-full" />
+          <SkeletonListRow withIcon={false} />
+          <SkeletonListRow withIcon={false} />
+          <Skeleton aria-hidden className="mt-2 h-16 w-full" />
+          <Skeleton aria-hidden className="h-16 w-full" />
+        </section>
       </AuthLayout>
     );
   }
@@ -182,7 +192,12 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
               }}
               type="radio"
             />
-            <bdi className="min-w-0 flex-1 truncate font-medium">{candidate.name}</bdi>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <bdi className="truncate font-medium">{candidate.name}</bdi>
+              <bdi className="truncate text-muted-foreground text-xs">
+                {candidate.workspace} · {candidate.slug}
+              </bdi>
+            </span>
           </label>
         ))}
       </fieldset>

@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "失败",
   "settings_apikeys_outcomereplayed": "已重放",
   "settings_apikeys_title": "AI 助手 (MCP)",
-  "settings_apikeys_description": "为调用此站点的脚本和集成创建作用域键。",
+  "settings_apikeys_description": "通过登录或使用个人密钥，将 AI 助手连接到此项目。",
   "settings_apikeys_nameplaceholder": "生产部署密钥",
   "settings_apikeys_create": "创建密钥",
   "settings_apikeys_empty": "还没有 API 键。",

@@ -1046,7 +1046,7 @@
   "settings_members_toast_ownershiptransferred": "Ownership transferred",
   "settings_members_toast_transfererror": "Could not transfer ownership",
   "settings_apikeys_title": "AI assistants (MCP)",
-  "settings_apikeys_description": "Connect your assistant to this project with a personal access key.",
+  "settings_apikeys_description": "Connect an AI assistant to this project by signing in, or with a personal key.",
   "settings_apikeys_nameplaceholder": "Production deploy key",
   "settings_apikeys_create": "Create key",
   "settings_apikeys_empty": "No API keys yet.",

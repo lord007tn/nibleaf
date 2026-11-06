@@ -24,11 +24,18 @@ import { SettingsSection } from './section';
 export const formattedDate = (value: string, locale: string) =>
   new Intl.DateTimeFormat(localeTag(locale), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
-export const relativeMinutes = (value: string, locale: string) =>
-  new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' }).format(
-    -Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60_000)),
-    'minute',
-  );
+/** "just now", "5 minutes ago", "3 hours ago", "2 days ago": the largest unit
+ *  that fits, so a key used this morning doesn't read "222 minutes ago". */
+export const relativeMinutes = (value: string, locale: string) => {
+  const format = new Intl.RelativeTimeFormat(localeTag(locale), { numeric: 'auto' });
+  const minutes = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 60_000));
+  if (minutes < 60) return format.format(-minutes, 'minute');
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return format.format(-hours, 'hour');
+  const days = Math.floor(hours / 24);
+  if (days < 30) return format.format(-days, 'day');
+  return format.format(-Math.floor(days / 30), 'month');
+};
 
 // ─── Latest activity in plain words ─────────────────────────────────────────
 

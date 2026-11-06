@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "ব্যর্থ",
   "settings_apikeys_outcomereplayed": "পুনরায় চালানো",
   "settings_apikeys_title": "AI সহকারী (MCP)",
-  "settings_apikeys_description": "এই সাইটটিকে কল করে এমন স্ক্রিপ্ট এবং ইন্টিগ্রেশনের জন্য স্কোপড কী তৈরি করুন।",
+  "settings_apikeys_description": "সাইন ইন করে বা একটি ব্যক্তিগত কী দিয়ে এই প্রজেক্টে একটি AI সহকারী সংযুক্ত করুন।",
   "settings_apikeys_nameplaceholder": "উত্পাদন স্থাপন কী",
   "settings_apikeys_create": "কী তৈরি করুন",
   "settings_apikeys_empty": "এখনো কোনো API কী নেই।",

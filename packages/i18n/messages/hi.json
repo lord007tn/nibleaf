@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "विफल",
   "settings_apikeys_outcomereplayed": "दोहराया गया",
   "settings_apikeys_title": "AI सहायक (MCP)",
-  "settings_apikeys_description": "इस साइट को कॉल करने वाली स्क्रिप्ट और एकीकरण के लिए स्कोप्ड कुंजियाँ बनाएँ।",
+  "settings_apikeys_description": "साइन इन करके या किसी निजी कुंजी से इस प्रोजेक्ट से एक AI सहायक कनेक्ट करें।",
   "settings_apikeys_nameplaceholder": "उत्पादन परिनियोजन कुंजी",
   "settings_apikeys_create": "कुंजी बनाएं",
   "settings_apikeys_empty": "अभी तक कोई API कुंजी नहीं है।",

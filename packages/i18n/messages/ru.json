@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "ошибка",
   "settings_apikeys_outcomereplayed": "повтор",
   "settings_apikeys_title": "ИИ-ассистенты (MCP)",
-  "settings_apikeys_description": "Создайте ключи области действия для сценариев и интеграций, которые вызывают этот сайт.",
+  "settings_apikeys_description": "Подключите ИИ-ассистента к этому проекту — через вход в аккаунт или с личным ключом.",
   "settings_apikeys_nameplaceholder": "Ключ производственного развертывания",
   "settings_apikeys_create": "Создать ключ",
   "settings_apikeys_empty": "Ключей API пока нет.",

@@ -12,7 +12,7 @@ const hooks = vi.hoisted(() => ({
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('@/hooks/api', () => ({ useConnectedApps: hooks.useConnectedApps, useRevokeConnectedApp: () => hooks.revoke }));
 
-import { ConnectedApps, describeMcpActivity } from './connected-apps';
+import { ConnectedApps, describeMcpActivity, relativeMinutes } from './connected-apps';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -140,5 +140,15 @@ describe('ConnectedApps', () => {
       button.textContent?.includes('settings.connectedApps.disconnect'),
     );
     expect(loading?.getAttribute('aria-busy')).toBe('true');
+  });
+});
+
+describe('relative last-used time', () => {
+  it('uses the largest unit that fits', () => {
+    const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+    expect(relativeMinutes(ago(0), 'en')).toBe('this minute');
+    expect(relativeMinutes(ago(5), 'en')).toBe('5 minutes ago');
+    expect(relativeMinutes(ago(222), 'en')).toBe('3 hours ago');
+    expect(relativeMinutes(ago(60 * 24 * 2 + 5), 'en')).toBe('2 days ago');
   });
 });

@@ -1046,7 +1046,7 @@
   "settings_members_toast_ownershiptransferred": "تم نقل الملكية",
   "settings_members_toast_transfererror": "تعذّر نقل الملكية",
   "settings_apikeys_title": "مساعدو الذكاء الاصطناعي (MCP)",
-  "settings_apikeys_description": "اربط مساعدك بهذا المشروع باستخدام مفتاح وصول شخصي.",
+  "settings_apikeys_description": "اربط مساعد ذكاء اصطناعي بهذا المشروع بتسجيل الدخول، أو باستخدام مفتاح شخصي.",
   "settings_apikeys_nameplaceholder": "مفتاح نشر الإنتاج",
   "settings_apikeys_create": "إنشاء مفتاح",
   "settings_apikeys_empty": "لا توجد مفاتيح API بعد.",

@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "falha",
   "settings_apikeys_outcomereplayed": "resultado reutilizado",
   "settings_apikeys_title": "Assistentes de IA (MCP)",
-  "settings_apikeys_description": "Crie chaves com escopo para scripts e integrações que chamam este site.",
+  "settings_apikeys_description": "Conecte um assistente de IA a este projeto entrando na sua conta ou com uma chave pessoal.",
   "settings_apikeys_nameplaceholder": "Chave de implantação de produção",
   "settings_apikeys_create": "Criar chave",
   "settings_apikeys_empty": "Ainda não há chaves API.",

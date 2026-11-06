@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "échoué",
   "settings_apikeys_outcomereplayed": "rejoué",
   "settings_apikeys_title": "Assistants IA (MCP)",
-  "settings_apikeys_description": "Créez des clés étendues pour les scripts et les intégrations qui appellent ce site.",
+  "settings_apikeys_description": "Connectez un assistant IA à ce projet en vous connectant, ou avec une clé personnelle.",
   "settings_apikeys_nameplaceholder": "Clé de déploiement en production",
   "settings_apikeys_create": "Créer une clé",
   "settings_apikeys_empty": "Pas encore de clés API.",

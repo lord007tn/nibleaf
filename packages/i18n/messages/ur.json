@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "ناکام",
   "settings_apikeys_outcomereplayed": "دہرایا گیا",
   "settings_apikeys_title": "AI معاونین (MCP)",
-  "settings_apikeys_description": "اسکرپٹس اور انٹیگریشنز کے لیے دائرہ کار کی کلیدیں بنائیں جو اس سائٹ کو کہتے ہیں۔",
+  "settings_apikeys_description": "سائن ان کر کے یا ذاتی کلید کے ذریعے اس پروجیکٹ سے ایک AI معاون منسلک کریں۔",
   "settings_apikeys_nameplaceholder": "پیداوار کی تعیناتی کی کلید",
   "settings_apikeys_create": "کلید بنائیں",
   "settings_apikeys_empty": "ابھی تک کوئی API کلیدیں نہیں ہیں۔",

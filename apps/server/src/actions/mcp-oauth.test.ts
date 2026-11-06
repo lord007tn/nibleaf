@@ -116,15 +116,23 @@ describe('MCP OAuth project choice', () => {
 
   it('offers each project with the presets the person’s role may grant', async () => {
     mocks.memberFindMany.mockResolvedValue([
-      { role: 'member', organization: { projects: [{ id: 'p-member', name: 'Member docs' }] } },
-      { role: 'owner', organization: { projects: [{ id: 'p-owner', name: 'Owner docs' }] } },
-      { role: 'unknown', organization: { projects: [{ id: 'p-unknown', name: 'Unknown role' }] } },
+      { role: 'member', organization: { name: 'Acme', projects: [{ id: 'p-member', name: 'Docs', slug: 'docs' }] } },
+      { role: 'owner', organization: { name: 'My workspace', projects: [{ id: 'p-owner', name: 'Docs', slug: 'docs-2' }] } },
+      { role: 'unknown', organization: { name: 'Other', projects: [{ id: 'p-unknown', name: 'Unknown role', slug: 'unknown' }] } },
     ]);
     mocks.grantFindFirst.mockResolvedValue(null);
     const authorization = await getMcpOAuthAuthorization(user, session, 'signed');
     expect(authorization.projects).toEqual([
-      { id: 'p-member', name: 'Member docs', role: 'member', presets: ['read_only', 'support_writer'] },
-      { id: 'p-owner', name: 'Owner docs', role: 'owner', presets: ['read_only', 'support_writer', 'full_admin'] },
+      // Same-named projects stay distinguishable by workspace and address.
+      { id: 'p-member', name: 'Docs', slug: 'docs', workspace: 'Acme', role: 'member', presets: ['read_only', 'support_writer'] },
+      {
+        id: 'p-owner',
+        name: 'Docs',
+        slug: 'docs-2',
+        workspace: 'My workspace',
+        role: 'owner',
+        presets: ['read_only', 'support_writer', 'full_admin'],
+      },
     ]);
     expect(authorization.client).toMatchObject({ name: 'Claude', redirectTarget: 'claude.ai', verifiedDomain: null });
     expect(authorization.selection).toBeNull();

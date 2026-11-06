@@ -67,10 +67,20 @@ export const getMcpOAuthAuthorization = async (user: { id: string }, session: Se
   const memberships = await prisma.member.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: 'asc' },
-    select: { role: true, organization: { select: { projects: { select: { id: true, name: true }, orderBy: { createdAt: 'asc' } } } } },
+    select: {
+      role: true,
+      organization: { select: { name: true, projects: { select: { id: true, name: true, slug: true }, orderBy: { createdAt: 'asc' } } } },
+    },
   });
   const projects = memberships.flatMap(({ role, organization }) =>
-    organization.projects.map((project) => ({ id: project.id, name: project.name, role, presets: presetsForRole(role) })),
+    organization.projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      slug: project.slug,
+      workspace: organization.name,
+      role,
+      presets: presetsForRole(role),
+    })),
   );
   const pending = await prisma.mcpOAuthGrant.findFirst({
     where: {

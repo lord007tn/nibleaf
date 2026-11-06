@@ -1025,7 +1025,7 @@
   "settings_apikeys_outcomefailed": "fehlgeschlagen",
   "settings_apikeys_outcomereplayed": "erneut ausgegeben",
   "settings_apikeys_title": "KI-Assistenten (MCP)",
-  "settings_apikeys_description": "Erstellen Sie bereichsbezogene Schlüssel für Skripte und Integrationen, die diese Site aufrufen.",
+  "settings_apikeys_description": "Verbinden Sie einen KI-Assistenten mit diesem Projekt – per Anmeldung oder mit einem persönlichen Schlüssel.",
   "settings_apikeys_nameplaceholder": "Produktionsbereitstellungsschlüssel",
   "settings_apikeys_create": "Schlüssel erstellen",
   "settings_apikeys_empty": "Noch keine API-Schlüssel.",
