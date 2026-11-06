@@ -13,7 +13,9 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { runMcpReadTool } from './result';
 import type { McpPrincipal } from './types';
 export const registerAiConversationSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('analytics:read')) return;
+  // Registered for API keys and OAuth grants alike; each call also re-checks the
+  // scope and is audited and rate limited like every other read tool.
+  if (!principal.credential.scopes.includes('analytics:read')) return;
   const annotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   const org = principal.project.organizationId;
   const project = principal.project.id;

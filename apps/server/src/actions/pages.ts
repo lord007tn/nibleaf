@@ -3,7 +3,7 @@ import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
-import { badRequest, notFound } from '@/errors';
+import { badRequest, conflict, notFound } from '@/errors';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -118,9 +118,11 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
   }
 };
 
-/** Recompute the materialized `path` of every page in a project from the tree. */
-const recomputeProjectPaths = async (projectId: string): Promise<void> => {
-  const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, parentId: true, slug: true, path: true } });
+/** Recompute the materialized `path` of every page in a project from the tree.
+ *  Given a transaction client, the path writes join that transaction. */
+const recomputeProjectPaths = async (projectId: string, tx?: Prisma.TransactionClient): Promise<void> => {
+  const db = tx ?? prisma;
+  const pages = await db.page.findMany({ where: { projectId }, select: { id: true, parentId: true, slug: true, path: true } });
   const byId = new Map(pages.map((p) => [p.id, p]));
   const pathOf = (id: string, seen = new Set<string>()): string => {
     if (seen.has(id)) {
@@ -134,8 +136,15 @@ const recomputeProjectPaths = async (projectId: string): Promise<void> => {
     return node.parentId ? joinPath(pathOf(node.parentId, seen), node.slug) : node.slug;
   };
   const updates = pages.map((p) => ({ id: p.id, path: pathOf(p.id), old: p.path })).filter((u) => u.path !== u.old);
+  if (tx) {
+    for (const u of updates) await tx.page.update({ where: { id: u.id }, data: { path: u.path } });
+    return;
+  }
   await prisma.$transaction(updates.map((u) => prisma.page.update({ where: { id: u.id }, data: { path: u.path } })));
 };
+
+/** A move or slug change rewrites the paths of the page and its subtree. */
+const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const parentId = body.parentId ?? null;
@@ -186,10 +195,28 @@ const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): ob
   return { ...base, ...patch, ...(patch.seo ? { seo: { ...baseSeo, ...patch.seo } } : {}) };
 };
 
-export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string) => {
+/** Raised when an `expectedUpdatedAt` precondition no longer matches the page. */
+const pageRevisionConflict = (id: string) =>
+  conflict('This page was changed after it was read. Re-read it and apply the edit again.', { id, reason: 'revision_conflict' });
+
+const isRecordNotFound = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
+
+interface UpdatePageOptions {
+  /** Optimistic-concurrency precondition: apply the update only while the page's
+   *  `updatedAt` still equals this value. The final write is conditional on it,
+   *  so an edit that lands between the read and the write is never overwritten. */
+  expectedUpdatedAt?: Date;
+}
+
+export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string, options?: UpdatePageOptions) => {
   const page = await prisma.page.findFirst({ where: { id, projectId } });
   if (!page) {
     throw notFound('page', { id });
+  }
+  const expectedUpdatedAt = options?.expectedUpdatedAt;
+  if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+    throw pageRevisionConflict(id);
   }
   // The slug/URL is decoupled from the title (Mintlify-style): it only changes
   // when the slug is set explicitly or the page is re-parented (which needs a
@@ -220,28 +247,43 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
     nextSlug = await uniqueSiblingSlug(projectId, page.languageId, page.branchId, nextParentId, desiredSlug, id);
   }
   const nextConfig = mergePageConfig(page.config, body.config);
-  const updated = await prisma.page.update({
-    where: { id },
-    data: {
-      ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
-      ...(body.title === undefined ? {} : { title: body.title }),
-      slug: nextSlug,
-      ...(body.icon === undefined ? {} : { icon: body.icon }),
-      ...(body.description === undefined ? {} : { description: body.description }),
-      ...(body.content === undefined ? {} : { content: body.content }),
-      ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
-      ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
-      ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
-    },
-  });
+  const write = (db: Prisma.TransactionClient) =>
+    db.page
+      .update({
+        // With a precondition the write matches only the revision that was read;
+        // a concurrent edit makes it match nothing (P2025) instead of being lost.
+        where: expectedUpdatedAt ? { id, updatedAt: expectedUpdatedAt } : { id },
+        data: {
+          ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
+          ...(body.title === undefined ? {} : { title: body.title }),
+          slug: nextSlug,
+          ...(body.icon === undefined ? {} : { icon: body.icon }),
+          ...(body.description === undefined ? {} : { description: body.description }),
+          ...(body.content === undefined ? {} : { content: body.content }),
+          ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
+          ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
+          ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
+        },
+      })
+      .catch((error: unknown) => {
+        throw expectedUpdatedAt && isRecordNotFound(error) ? pageRevisionConflict(id) : error;
+      });
+  // A structural change commits with the path recomputation, so a failure
+  // never leaves the page or its descendants with stale paths.
+  const updated = structural
+    ? await prisma.$transaction(
+        async (tx) => {
+          const row = await write(tx);
+          await recomputeProjectPaths(projectId, tx);
+          return row;
+        },
+        { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
+      )
+    : await write(prisma);
   if (userId && page.kind === 'PAGE' && body.content !== undefined && body.content.trim() !== page.content.trim()) {
     logFirstContentEdit(userId, projectId);
   }
-  if (structural) {
-    await recomputeProjectPaths(projectId);
-    return getPage(projectId, id);
-  }
-  return updated;
+  return structural ? getPage(projectId, id) : updated;
 };
 
 export const deletePage = async (projectId: string, id: string) => {

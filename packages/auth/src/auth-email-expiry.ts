@@ -7,7 +7,7 @@ interface OtpContext {
     internalAdapter?: {
       findVerificationValue(identifier: string): Promise<{ expiresAt: Date; value: string } | null>;
     };
-    session?: { user: { email: string } } | null;
+    session?: { user: { id: string; email: string } } | null;
   };
 }
 
@@ -35,9 +35,11 @@ export async function authOtpEmailMetadata(
 ): Promise<SendEmailJobData['auth'] | null> {
   const fallbackDeadline = Date.now() + AUTH_OTP_EXPIRY_SECONDS * 1000 - 1000;
   const adapter = context?.context?.internalAdapter;
-  const currentEmail = context?.context?.session?.user.email;
+  const userId = context?.context?.session?.user.id;
   const recipient = email.toLowerCase();
-  const identifier = type === 'change-email' ? (currentEmail ? `${currentEmail.toLowerCase()}-${recipient}` : null) : recipient;
+  // From Better Auth 1.7.16 a change-email code is bound to the requesting
+  // account: `change-email-otp-<userId>:<new address>`.
+  const identifier = type === 'change-email' ? (userId ? `${userId}:${recipient}` : null) : recipient;
   if (adapter && identifier) {
     try {
       const record = await adapter.findVerificationValue(`${type}-otp-${identifier}`);

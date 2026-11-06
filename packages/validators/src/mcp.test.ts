@@ -13,7 +13,7 @@ describe('MCP API-key contracts', () => {
     expect(parsed.expiresInDays).toBe(30);
   });
 
-  it.each(['*', 'pages:write', 'search:write', 'search:reindex', 'usage:export', 'addons:write', 'integrations:write', 'unknown:scope'])(
+  it.each(['*', 'pages:delete', 'search:write', 'search:reindex', 'usage:export', 'addons:write', 'integrations:write', 'unknown:scope'])(
     'rejects unavailable or legacy scope %s',
     (scope) => {
       expect(createApiKeyBody.safeParse({ name: 'Unsafe', scopes: ['mcp:connect', scope], expiresInDays: 30 }).success).toBe(false);
@@ -33,4 +33,11 @@ describe('MCP API-key contracts', () => {
     expect(createApiKeyBody.safeParse({ name: 'Unusable', scopes: ['projects:read', 'projects:read'], expiresInDays: 30 }).success).toBe(false);
     expect(rotateApiKeyBody.safeParse({ scopes: ['pages:read'], expiresInDays: 90 }).success).toBe(false);
   });
+});
+
+it('accepts presets and rejects ambiguous or missing permissions', () => {
+  expect(createApiKeyBody.parse({ name: 'Support', preset: 'support_writer' })).toMatchObject({ preset: 'support_writer', expiresInDays: 90 });
+  expect(rotateApiKeyBody.parse({ preset: 'read_only', expiresInDays: 7 }).preset).toBe('read_only');
+  expect(createApiKeyBody.safeParse({ name: 'Ambiguous', preset: 'full_admin', scopes: ['mcp:connect'] }).success).toBe(false);
+  expect(createApiKeyBody.safeParse({ name: 'Missing' }).success).toBe(false);
 });

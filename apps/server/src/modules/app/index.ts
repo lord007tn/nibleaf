@@ -9,6 +9,7 @@ import apiKeys from './api-keys/handlers';
 import assets from './assets/handlers';
 import branches from './branches/handlers';
 import comments from './comments/handlers';
+import connectedApps from './connected-apps/handlers';
 import deployments from './deployments/handlers';
 import domains from './domains/handlers';
 import exports from './exports/handlers';
@@ -16,6 +17,7 @@ import git from './git/handlers';
 import imports from './imports/handlers';
 import integrations from './integrations/handlers';
 import languages from './languages/handlers';
+import mcpOAuth from './mcp-oauth/handlers';
 import members from './members/handlers';
 import notifications from './notifications/handlers';
 import openapi from './openapi/handlers';
@@ -43,6 +45,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/exports', exports)
   .route('/projects/:projectId/domains', domains)
   .route('/projects/:projectId/api-keys', apiKeys)
+  .route('/projects/:projectId/connected-apps', connectedApps)
   .route('/projects/:projectId/assets', assets)
   .route('/projects/:projectId/analytics', analytics)
   .route('/projects/:projectId/ai-conversations', aiConversations)
@@ -56,6 +59,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/git', git)
   .route('/projects/:projectId/ai', ai)
   .route('/workspace', workspace)
+  .route('/mcp-oauth', mcpOAuth)
   .route('/members', members)
   .route('/notifications', notifications);
 

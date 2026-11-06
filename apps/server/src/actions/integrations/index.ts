@@ -52,7 +52,7 @@ const VERIFICATION_RUNNING_LEASE_MS = 60_000;
 interface IntegrationAccess {
   organizationId: string;
   principalId: string;
-  principalType: 'api_key' | 'session';
+  principalType: 'api_key' | 'oauth_grant' | 'session';
 }
 
 const webhookConfigSchema = z.object({ label: z.string().nullable() }).strict();
@@ -106,6 +106,19 @@ const canonicalVerifyRequest = (providerId: WebhookProviderId, expectedRevision:
 
 const authorizeIntegration = async (ctx: Context<HonoEnv>, projectId: string, scope: IntegrationScope, role: MemberRole) => {
   const apiKey = ctx.get('apiKey');
+  if (apiKey?.kind === 'oauth') {
+    // MCP OAuth connection: re-read the grant like a key, and use the scopes
+    // the MCP layer already narrowed to the person's current role.
+    const grant = await prisma.mcpOAuthGrant.findFirst({
+      where: { id: apiKey.id, projectId, revokedAt: null },
+      select: { id: true, project: { select: { organizationId: true } } },
+    });
+    if (!grant) throw notFound('project', { id: projectId });
+    if (!apiKey.scopes.includes(scope)) {
+      throw new AppError({ code: 'auth:insufficient_role', message: 'The integration scope is not granted.' });
+    }
+    return { organizationId: grant.project.organizationId, principalId: grant.id, principalType: 'oauth_grant' as const };
+  }
   if (apiKey) {
     const trustedKey = await prisma.apiKey.findFirst({
       where: { id: apiKey.id, projectId, revokedAt: null, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
@@ -687,7 +700,7 @@ export const verifyProjectIntegration = async (
   if (manifest.verificationSideEffect && body.confirmExternalSideEffect !== true) {
     throw integrationError('integration:external_confirmation_required', 'This provider sends a visible test event and requires confirmation.');
   }
-  if (access.principalType === 'api_key' && manifest.verificationSideEffect) {
+  if (access.principalType !== 'session' && manifest.verificationSideEffect) {
     throw integrationError('integration:external_confirmation_required', 'MCP cannot send provider-visible test events.');
   }
 

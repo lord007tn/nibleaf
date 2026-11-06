@@ -7,6 +7,7 @@
   "exports": {
     "./client": "./src/client.ts",
     "./server": "./src/server.ts",
+    "./mcp-oauth": "./src/mcp-oauth.ts",
     "./tenant-erasure": "./src/tenant-erasure.ts",
     "./keys.server": "./src/keys.server.ts",
     "./providers": "./src/providers.ts"
@@ -17,6 +18,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@better-auth/cimd": "1.7.18",
+    "@better-auth/mcp": "1.7.18",
+    "@better-auth/oauth-provider": "1.7.18",
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
@@ -25,14 +29,14 @@
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
-    "better-auth": "^1.7.14",
+    "better-auth": "^1.7.18",
     "zod": "^4.6.7"
   },
   "peerDependencies": {
     "react": "^19.3.1"
   },
   "devDependencies": {
-    "@better-auth/core": "1.7.14",
+    "@better-auth/core": "1.7.18",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/react": "^19.3.0",
     "react": "^19.3.1",

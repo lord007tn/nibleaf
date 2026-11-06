@@ -53,7 +53,23 @@ export interface Project {
   hasPublishedVersion?: boolean;
 }
 
+/** The newest MCP audit event of a key or connected app. `operation` is the
+ *  tool or resource name and `errorCode` the audit code when it failed; the
+ *  dashboard turns both into one plain sentence. */
+export interface McpActivity {
+  operation: string;
+  outcome: string;
+  errorCode?: string | null;
+  at: string;
+}
+
 export interface ApiKey {
+  createdBy: { id: string; name: string; email: string } | null;
+  preset: 'read_only' | 'support_writer' | 'full_admin' | 'custom';
+  lastActivity: McpActivity | null;
+  /** Present on list responses: whether the signed-in user created this key
+   *  (only owners may rotate a key, because rotation re-issues it as the caller). */
+  ownedByViewer?: boolean;
   id: string;
   name: string;
   lastFour: string;
@@ -69,6 +85,26 @@ export interface ApiKey {
 
 export interface ApiKeySecret extends ApiKey {
   secret: string;
+}
+
+/** The personal-key list plus what the instance offers (MCP on/off, endpoint, sign-in connections). */
+export interface ApiKeyList {
+  data: ApiKey[];
+  meta: { mcpEnabled: boolean; mcpEndpoint: string; mcpOAuthEnabled?: boolean };
+}
+
+/** One AI app connected to a project by signing in (an OAuth connection). */
+export interface ConnectedApp {
+  id: string;
+  name: string;
+  uri: string | null;
+  preset: 'read_only' | 'support_writer' | 'full_admin';
+  scopes: string[];
+  createdAt: string;
+  lastUsedAt: string | null;
+  connectedBy: { id: string; name: string; email: string };
+  ownedByViewer: boolean;
+  lastActivity: McpActivity | null;
 }
 
 export interface OpenApiConfiguration {

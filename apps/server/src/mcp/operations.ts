@@ -10,7 +10,7 @@ const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: t
 const idInput = (label: string) => z.object({ id: z.string().trim().min(1).describe(label) }).strict();
 
 export const registerOperationSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (principal.apiKey.scopes.includes('exports:read')) {
+  if (principal.credential.scopes.includes('exports:read')) {
     server.registerTool(
       'list_exports',
       { title: 'List exports', description: 'List export jobs without storage keys, checksums, or download URLs.', annotations: readOnly },
@@ -23,7 +23,7 @@ export const registerOperationSurface = (server: McpServer, ctx: Context<HonoEnv
     );
   }
 
-  if (principal.apiKey.scopes.includes('deployments:read')) {
+  if (principal.credential.scopes.includes('deployments:read')) {
     server.registerTool(
       'list_deployments',
       { title: 'List deployments', description: 'List deployment summaries without snapshots or raw provider errors.', annotations: readOnly },

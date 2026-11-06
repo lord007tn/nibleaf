@@ -60,10 +60,13 @@ import { UsageTab } from '@/components/settings/usage-tab';
 import type { Project } from '@/hooks/api';
 import { useProject, useProjectMembers } from '@/hooks/api';
 import {
+  apiKeysQueryOptions,
   branchesQueryOptions,
+  connectedAppsQueryOptions,
   deploymentsQueryOptions,
   domainsQueryOptions,
   gitWorkflowQueryOptions,
+  integrationsQueryOptions,
   languagesQueryOptions,
   listExportRunsQueryOptions,
   listExportSchedulesQueryOptions,
@@ -139,7 +142,7 @@ const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 's
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
-const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
+const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
   validateSearch: (search: Record<string, unknown>): { section: SectionId } => ({
@@ -182,6 +185,13 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'authentication':
         prefetchRouteData(queryClient, readerAccessQueryOptions(projectId));
         prefetchRouteData(queryClient, pagesQueryOptions(projectId));
+        break;
+      case 'integrations':
+        prefetchRouteData(queryClient, integrationsQueryOptions(projectId));
+        break;
+      case 'apiKeys':
+        prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));
+        prefetchRouteData(queryClient, connectedAppsQueryOptions(projectId));
         break;
       case 'exports':
         prefetchRouteData(queryClient, listExportRunsQueryOptions(projectId));
@@ -340,7 +350,13 @@ function ProjectSettingsPage() {
                 </div>
               </div>
             ) : (
-              <ActiveSection canManageSchedules={canManage} projectId={projectId} project={project} section={section} />
+              <ActiveSection
+                canManageSchedules={canManage}
+                projectId={projectId}
+                project={project}
+                role={currentMember?.role ?? ''}
+                section={section}
+              />
             )}
           </div>
         </div>
@@ -354,11 +370,13 @@ function ActiveSection({
   section,
   projectId,
   canManageSchedules,
+  role,
 }: {
   project: Project;
   section: SectionId;
   projectId: string;
   canManageSchedules: boolean;
+  role: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -373,7 +391,7 @@ function ActiveSection({
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
-    apiKeys: <ApiKeysTab key={`api-keys-${projectId}`} projectId={projectId} />,
+    apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,

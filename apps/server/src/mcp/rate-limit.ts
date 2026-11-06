@@ -52,3 +52,34 @@ export const finalizeMcpRateLimitRejectionAudit = (apiKeyId: string, resetAt: nu
   if (!bucket || bucket.resetAt !== resetAt || bucket.rejectionAuditState !== 'reserved') return;
   bucket.rejectionAuditState = succeeded ? 'audited' : 'idle';
 };
+
+/** A per-key fixed-window counter for one budget. Like the transport limiter it
+ *  is instance-local and bounded; unlike it, every rejection is audited by the
+ *  write runner, so there is no rejection-audit reservation. */
+const createWriteBudget = (windowMs: number, limitFor: () => number) => {
+  const budget = new Map<string, { count: number; resetAt: number }>();
+  return (apiKeyId: string, now = Date.now()) => {
+    const limit = limitFor();
+    const current = budget.get(apiKeyId);
+    if (!current && budget.size >= MAX_BUCKETS) {
+      for (const [key, bucket] of budget) {
+        if (bucket.resetAt <= now) budget.delete(key);
+      }
+    }
+    const bucket = current && current.resetAt > now ? current : { count: 0, resetAt: now + windowMs };
+    bucket.count += 1;
+    budget.delete(apiKeyId);
+    budget.set(apiKeyId, bucket);
+    if (budget.size > MAX_BUCKETS) {
+      const oldest = budget.keys().next().value;
+      if (oldest && oldest !== apiKeyId) budget.delete(oldest);
+    }
+    return { allowed: bucket.count <= limit, limit, remaining: Math.max(0, limit - bucket.count), resetAt: bucket.resetAt };
+  };
+};
+
+/** Budget shared by every MCP write tool call of one key (MCP_WRITE_RATE_LIMIT_PER_MIN). */
+export const checkMcpWriteRateLimit = createWriteBudget(WINDOW_MS, () => env.MCP_WRITE_RATE_LIMIT_PER_MIN);
+
+/** Budget for deployments created through `publish_changes` (MCP_PUBLISH_RATE_LIMIT_PER_HOUR). */
+export const checkMcpPublishRateLimit = createWriteBudget(60 * WINDOW_MS, () => env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR);

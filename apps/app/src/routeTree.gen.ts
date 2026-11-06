@@ -42,6 +42,8 @@ import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
+import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
+import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
 import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
 import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
@@ -233,6 +235,16 @@ const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
   path: '/git-preview/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OauthConsentRoute = OauthConsentRouteImport.update({
+  id: '/oauth/consent',
+  path: '/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OauthProjectRoute = OauthProjectRouteImport.update({
+  id: '/oauth/project',
+  path: '/oauth/project',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitesProjectIdRouteRoute = SitesProjectIdRouteRouteImport.update({
   id: '/sites/$projectId',
   path: '/sites/$projectId',
@@ -393,6 +405,8 @@ export interface FileRoutesByFullPath {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
+  '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -447,6 +461,8 @@ export interface FileRoutesByTo {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
+  '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar': typeof ArIndexRoute
   '/blog': typeof BlogIndexRoute
@@ -503,6 +519,8 @@ export interface FileRoutesById {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/oauth/consent': typeof OauthConsentRoute
+  '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
   '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -561,6 +579,8 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/oauth/consent'
+    | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
     | '/ar/'
     | '/blog/'
@@ -615,6 +635,8 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/oauth/consent'
+    | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
     | '/ar'
     | '/blog'
@@ -670,6 +692,8 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/oauth/consent'
+    | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
     | '/ar/'
     | '/blog/'
@@ -721,6 +745,8 @@ export interface RootRouteChildren {
   CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
   CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
   GitPreviewTokenRoute: typeof GitPreviewTokenRoute
+  OauthConsentRoute: typeof OauthConsentRoute
+  OauthProjectRoute: typeof OauthProjectRoute
   ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
@@ -956,6 +982,20 @@ declare module '@tanstack/react-router' {
       path: '/git-preview/$token'
       fullPath: '/git-preview/$token'
       preLoaderRoute: typeof GitPreviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/consent': {
+      id: '/oauth/consent'
+      path: '/oauth/consent'
+      fullPath: '/oauth/consent'
+      preLoaderRoute: typeof OauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/oauth/project': {
+      id: '/oauth/project'
+      path: '/oauth/project'
+      fullPath: '/oauth/project'
+      preLoaderRoute: typeof OauthProjectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sites/$projectId': {
@@ -1284,6 +1324,8 @@ const rootRouteChildren: RootRouteChildren = {
   CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
   CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
   GitPreviewTokenRoute: GitPreviewTokenRoute,
+  OauthConsentRoute: OauthConsentRoute,
+  OauthProjectRoute: OauthProjectRoute,
   ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
