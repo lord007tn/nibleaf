@@ -139,7 +139,10 @@ describe('reader AI chat endpoints', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('text/event-stream');
     expect(await response.text()).toContain('RUN_STARTED');
-    expect(mocks.chatSite).toHaveBeenCalledWith('project', expect.objectContaining({ question: 'How do I install it?', history: [], consent: 'unknown' }));
+    expect(mocks.chatSite).toHaveBeenCalledWith(
+      'project',
+      expect.objectContaining({ question: 'How do I install it?', history: [], consent: 'unknown' }),
+    );
   });
 
   it('rejects tenant hints and malformed turns before orchestration', async () => {

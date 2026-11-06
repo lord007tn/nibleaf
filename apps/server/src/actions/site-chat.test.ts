@@ -187,7 +187,9 @@ describe('reader AI chat stream', () => {
 
   it('ignores a page context the reader cannot see', async () => {
     mocks.stream.mockReturnValue({
-      deltas: (async function* () {})(),
+      deltas: (async function* () {
+        // The model declines without streaming any text.
+      })(),
       result: Promise.resolve({
         status: 'no_answer',
         noAnswerReason: 'model_declined',
