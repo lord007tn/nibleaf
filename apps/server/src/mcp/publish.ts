@@ -16,24 +16,27 @@ const previewPayloadSchema = z.tuple([z.string(), z.string(), z.string(), z.numb
 const previewSignature = (payload: string) =>
   createHmac('sha256', env.BETTER_AUTH_SECRET).update(`nibleaf:mcp-publish-preview:${PREVIEW_TOKEN_VERSION}:${payload}`, 'utf8').digest('base64url');
 
-/** A stateless, short-lived token binding one key and project to the exact
- *  publishable state a human was shown. */
-export const createPublishPreviewToken = (apiKeyId: string, projectId: string, digest: string, now = Date.now()) => {
+/** A stateless, short-lived token binding the acting person and project to the
+ *  exact publishable state they were shown. It is bound to the key's owner
+ *  rather than the key itself: every key of that person already holds no more
+ *  than their role, a token is consumed once per key, and any publish moves the
+ *  digest, so a second key of the same person cannot reuse it to ship anything. */
+export const createPublishPreviewToken = (actorUserId: string, projectId: string, digest: string, now = Date.now()) => {
   const expiresAt = now + PREVIEW_TOKEN_TTL_MS;
-  const payload = Buffer.from(JSON.stringify([apiKeyId, projectId, digest, expiresAt]), 'utf8').toString('base64url');
+  const payload = Buffer.from(JSON.stringify([actorUserId, projectId, digest, expiresAt]), 'utf8').toString('base64url');
   return { token: `${PREVIEW_TOKEN_VERSION}.${payload}.${previewSignature(payload)}`, expiresAt };
 };
 
 const invalidPreview = () =>
   new AppError({
     code: 'mcp:preview_invalid',
-    message: 'The previewToken is not valid for this key and project. Call preview_publish to get a new one.',
+    message: 'The previewToken is not valid for this person and project. Call preview_publish to get a new one.',
   });
 
 /** Verify a preview token and return the state digest it was issued for. The
  *  signature is checked before anything else, so a forged or tampered token is
  *  always `mcp:preview_invalid`, never `expired` or `stale`. */
-export const readPublishPreviewToken = (token: string, apiKeyId: string, projectId: string, now = Date.now()): string => {
+export const readPublishPreviewToken = (token: string, actorUserId: string, projectId: string, now = Date.now()): string => {
   const [version, payload, signature, ...rest] = token.split('.');
   if (version !== PREVIEW_TOKEN_VERSION || !(payload && signature) || rest.length > 0) throw invalidPreview();
   const expected = Buffer.from(previewSignature(payload), 'base64url');
@@ -45,8 +48,8 @@ export const readPublishPreviewToken = (token: string, apiKeyId: string, project
   } catch {
     throw invalidPreview();
   }
-  const [tokenKeyId, tokenProjectId, digest, expiresAt] = decoded;
-  if (tokenKeyId !== apiKeyId || tokenProjectId !== projectId) throw invalidPreview();
+  const [tokenActorId, tokenProjectId, digest, expiresAt] = decoded;
+  if (tokenActorId !== actorUserId || tokenProjectId !== projectId) throw invalidPreview();
   if (expiresAt <= now) {
     throw new AppError({
       code: 'mcp:preview_expired',

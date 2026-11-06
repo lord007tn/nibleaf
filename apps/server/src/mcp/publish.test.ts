@@ -46,31 +46,31 @@ const snapshot = (pages: SiteSnapshot['pages']): SiteSnapshot => ({
 describe('MCP publish preview token', () => {
   it('round-trips the digest for the same key and project until it expires', () => {
     const now = Date.UTC(2026, 10, 6);
-    const { token, expiresAt } = createPublishPreviewToken('key-1', 'project-1', 'digest-1', now);
+    const { token, expiresAt } = createPublishPreviewToken('user-1', 'project-1', 'digest-1', now);
     expect(expiresAt).toBe(now + PREVIEW_TOKEN_TTL_MS);
-    expect(readPublishPreviewToken(token, 'key-1', 'project-1', now + PREVIEW_TOKEN_TTL_MS - 1)).toBe('digest-1');
-    expect(() => readPublishPreviewToken(token, 'key-1', 'project-1', now + PREVIEW_TOKEN_TTL_MS)).toThrow(
+    expect(readPublishPreviewToken(token, 'user-1', 'project-1', now + PREVIEW_TOKEN_TTL_MS - 1)).toBe('digest-1');
+    expect(() => readPublishPreviewToken(token, 'user-1', 'project-1', now + PREVIEW_TOKEN_TTL_MS)).toThrow(
       expect.objectContaining({ code: 'mcp:preview_expired' }),
     );
   });
 
-  it('rejects tokens for another key or project, tampered payloads, and garbage as invalid', () => {
+  it('rejects tokens for another person or project, tampered payloads, and garbage as invalid', () => {
     const now = Date.UTC(2026, 10, 6);
-    const { token } = createPublishPreviewToken('key-1', 'project-1', 'digest-1', now);
+    const { token } = createPublishPreviewToken('user-1', 'project-1', 'digest-1', now);
     const [version, payload, signature] = token.split('.');
-    const swapped = Buffer.from(JSON.stringify(['key-1', 'project-1', 'digest-2', now + PREVIEW_TOKEN_TTL_MS])).toString('base64url');
-    for (const [candidate, keyId, projectId] of [
-      [token, 'key-2', 'project-1'],
-      [token, 'key-1', 'project-2'],
-      [`${version}.${swapped}.${signature}`, 'key-1', 'project-1'],
-      [`v2.${payload}.${signature}`, 'key-1', 'project-1'],
-      [`${token}.extra`, 'key-1', 'project-1'],
-      ['', 'key-1', 'project-1'],
+    const swapped = Buffer.from(JSON.stringify(['user-1', 'project-1', 'digest-2', now + PREVIEW_TOKEN_TTL_MS])).toString('base64url');
+    for (const [candidate, actorId, projectId] of [
+      [token, 'user-2', 'project-1'],
+      [token, 'user-1', 'project-2'],
+      [`${version}.${swapped}.${signature}`, 'user-1', 'project-1'],
+      [`v2.${payload}.${signature}`, 'user-1', 'project-1'],
+      [`${token}.extra`, 'user-1', 'project-1'],
+      ['', 'user-1', 'project-1'],
     ] as const) {
-      expect(() => readPublishPreviewToken(candidate, keyId, projectId, now)).toThrow(expect.objectContaining({ code: 'mcp:preview_invalid' }));
+      expect(() => readPublishPreviewToken(candidate, actorId, projectId, now)).toThrow(expect.objectContaining({ code: 'mcp:preview_invalid' }));
     }
     // An expired forgery is still reported as invalid, never as merely expired.
-    expect(() => readPublishPreviewToken(`${version}.${swapped}.${signature}`, 'key-1', 'project-1', now + 2 * PREVIEW_TOKEN_TTL_MS)).toThrow(
+    expect(() => readPublishPreviewToken(`${version}.${swapped}.${signature}`, 'user-1', 'project-1', now + 2 * PREVIEW_TOKEN_TTL_MS)).toThrow(
       expect.objectContaining({ code: 'mcp:preview_invalid' }),
     );
   });

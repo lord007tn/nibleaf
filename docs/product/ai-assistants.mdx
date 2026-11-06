@@ -327,7 +327,7 @@ Other limits:
 | `mcp:translation_exists` | The page already has a translation in that language; `data.pageId` names it. | Edit that page with `update_page`. |
 | `mcp:preview_stale` | Something changed after `preview_publish`. | Run `preview_publish` again, review the new list, then confirm. |
 | `mcp:preview_expired` | The preview token is older than 10 minutes. | Run `preview_publish` again. |
-| `mcp:preview_invalid` | The token is not valid for this key and project. | Run `preview_publish` again and use the new token. |
+| `mcp:preview_invalid` | The token is not valid for this person and project. | Run `preview_publish` again and use the new token. |
 | `mcp:confirmation_required` | `publish_changes` was called without `confirm: true`. | Confirm only after you approved the preview. |
 | `mcp:nothing_to_publish` | There are no unpublished changes. | Nothing to do. |
 | `mcp:publish_blocked` | The publish is blocked, for example by redirect issues, exactly as it would be in the dashboard. | Fix the issue in the dashboard, then preview again. |

@@ -602,12 +602,12 @@ const setPageVisibility = async (projectId: string, args: z.output<typeof setPag
 const PROJECT_WIDE_NOTICE =
   'Publishing is project-wide: it makes every unpublished change in this project live, including changes other people made in the dashboard, through Git sync or with other API keys, not only changes made through this key.';
 
-const previewPublish = async (principal: McpPrincipal): Promise<McpWriteOutcome> => {
+const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise<McpWriteOutcome> => {
   const projectId = principal.project.id;
   const { pending, digest, snapshot } = await readPublishState(projectId);
   const summary = publishPreviewSummary(pending);
   const canPublish = summary.counts.total > 0 && !summary.redirectIssues.blocking;
-  const token = canPublish ? createPublishPreviewToken(principal.apiKey.id, projectId, digest) : null;
+  const token = canPublish ? createPublishPreviewToken(actor.userId, projectId, digest) : null;
   return {
     data: {
       scope: 'project',
@@ -691,7 +691,7 @@ const publishChanges = async (
   actor: McpActor,
 ): Promise<McpWriteOutcome> => {
   const projectId = principal.project.id;
-  const approvedDigest = readPublishPreviewToken(args.previewToken, principal.apiKey.id, projectId);
+  const approvedDigest = readPublishPreviewToken(args.previewToken, actor.userId, projectId);
   const { pending, digest } = await readPublishState(projectId);
   if (pending.changes.length === 0) {
     throw new AppError({ code: 'mcp:nothing_to_publish', message: 'There are no unpublished changes. Nothing was published.' });
@@ -915,7 +915,7 @@ export const registerContentWriteSurface = (server: McpServer, ctx: Context<Hono
         idempotent: false,
         rateLimited: false,
         target: () => ({ type: 'project', id: projectId }),
-        run: () => previewPublish(principal),
+        run: (_args, actor) => previewPublish(principal, actor),
       },
     );
     writeTool(

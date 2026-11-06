@@ -1105,13 +1105,13 @@ describe('preview and publish', () => {
     await client.close();
   });
 
-  it('refuses expired, forged, and other-key tokens', async () => {
+  it('refuses expired, forged, and other-person tokens', async () => {
     const principal = makePrincipal();
     const client = await connect(principal);
     const { previewToken } = await preview(client);
     const token = String(previewToken);
     const [version, payload, signature] = token.split('.');
-    const forgedPayload = Buffer.from(JSON.stringify([principal.apiKey.id, 'project-1', 'digest', Date.now() + 60_000])).toString('base64url');
+    const forgedPayload = Buffer.from(JSON.stringify(['user-1', 'project-1', 'digest', Date.now() + 60_000])).toString('base64url');
     expect(
       (await client.call('publish_changes', { confirm: true, previewToken: `${version}.${forgedPayload}.${signature}` })).structuredContent.error
         ?.code,
@@ -1122,7 +1122,8 @@ describe('preview and publish', () => {
     expect((await client.call('publish_changes', { confirm: true, previewToken: 'not-a-token' })).structuredContent.error?.code).toBe(
       'mcp:preview_invalid',
     );
-    const other = await connect(makePrincipal());
+    // The token is bound to the person who saw the preview, not to any key.
+    const other = await connect(makePrincipal({ actor: { userId: 'user-2', role: 'member' as MemberRole } }));
     expect((await other.call('publish_changes', { confirm: true, previewToken: token })).structuredContent.error?.code).toBe('mcp:preview_invalid');
     const realNow = Date.now();
     vi.spyOn(Date, 'now').mockReturnValue(realNow + 11 * 60 * 1000);

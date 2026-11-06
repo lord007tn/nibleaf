@@ -127,7 +127,7 @@ See [OAuth for MCP clients](#oauth-for-mcp-clients).
   key owner's. The client must call `preview_publish`, a person reviews the
   list, and the client then calls `publish_changes` with `confirm: true` and the
   preview token. The deployment message records the MCP key name.
-- **Bound preview token.** The token is bound to the key, the project, and a
+- **Bound preview token.** The token is bound to the key's owner, the project, and a
   digest of everything the publish would ship plus the last published and
   newest deployment version. It expires after 10 minutes
   (`mcp:preview_expired`) and is effectively single-use: any edit, publish, or
@@ -380,7 +380,7 @@ screens and ChatGPT connectors. API keys remain supported.
 - `mcp:revision_conflict`: re-read the page with `get_page`, merge, and retry with the new revision; the error data includes `currentRevision`.
 - `mcp:preview_stale`: something changed after the preview; run `preview_publish` again and re-review.
 - `mcp:preview_expired`: the token is older than 10 minutes; preview again.
-- `mcp:preview_invalid`: the token is not valid for this key and project; preview again.
+- `mcp:preview_invalid`: the token is not valid for this person and project; preview again.
 - `mcp:confirmation_required`: `publish_changes` needs `confirm: true` after a person approved the preview.
 - `mcp:nothing_to_publish`: there are no unpublished changes.
 - `mcp:publish_blocked`: fix the blocking issue, such as redirect issues, in the dashboard, then preview again.
