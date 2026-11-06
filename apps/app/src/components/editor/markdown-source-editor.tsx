@@ -103,6 +103,7 @@ export function MarkdownSourceEditor({ value, onChange, label, placeholder, dir 
           onScroll={(event) => {
             if (gutter.current) gutter.current.scrollTop = event.currentTarget.scrollTop;
           }}
+          wrap="off"
           spellCheck={false}
           placeholder={placeholder}
           className="min-h-0 min-w-0 flex-1 resize-none overflow-auto bg-transparent p-5 text-left font-mono text-[13.5px] text-foreground leading-6 outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/30"
