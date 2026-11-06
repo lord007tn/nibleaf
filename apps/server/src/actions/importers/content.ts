@@ -17,6 +17,24 @@ export const MAX_IMPORT_FILES = 500;
 export const stableHash = (value: string): string => createHash('sha1').update(value).digest('hex').slice(0, 8);
 
 /** Minimal YAML-frontmatter reader: enough for `title`/`sidebarTitle`/`description`/`icon`. */
+/** A scalar as written in frontmatter. Double-quoted values use YAML escapes,
+ *  which for the strings `serializeGitPage` writes are JSON escapes, so decode
+ *  them; anything JSON can't decode (for example `"C:\docs"`) keeps the old
+ *  behaviour of dropping the quotes. Single-quoted values double their quotes. */
+const unquoteFrontmatterValue = (value: string): string => {
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    try {
+      const decoded: unknown = JSON.parse(value);
+      if (typeof decoded === 'string') return decoded;
+    } catch {
+      // Not a JSON string literal; fall through to the plain unquote.
+    }
+    return value.slice(1, -1);
+  }
+  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) return value.slice(1, -1).replaceAll("''", "'");
+  return value;
+};
+
 export function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!match?.[1]) {
@@ -26,11 +44,7 @@ export function parseFrontmatter(raw: string): { meta: Record<string, string>; b
   for (const line of match[1].split(/\r?\n/)) {
     const kv = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
     if (kv?.[1]) {
-      let value = (kv[2] ?? '').trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-      meta[kv[1].toLowerCase()] = value;
+      meta[kv[1].toLowerCase()] = unquoteFrontmatterValue((kv[2] ?? '').trim());
     }
   }
   return { meta, body: raw.slice(match[0].length) };
