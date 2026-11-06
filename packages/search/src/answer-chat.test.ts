@@ -6,6 +6,7 @@ import {
   condenseFollowUp,
   estimateTokens,
   NO_ANSWER_SENTINEL,
+  replyLanguage,
   streamGroundedChat,
   suggestedArticles,
   suggestFollowUps,
@@ -208,6 +209,21 @@ describe('history and follow-up queries', () => {
       { id: 'P1', pageId: 'p' },
       { id: 'P2', pageId: 'p2' },
     ]);
+  });
+});
+
+describe('reply language', () => {
+  it.each([
+    ['How do I export my notes?', 'en', /^English/],
+    ['How do I export my notes?', 'ar', /Latin script, most likely English/],
+    ['كيف أصدّر ملاحظاتي؟', 'en', /^Arabic$/],
+    ['كيف أعمل export للـ notebook بصيغة Markdown؟', 'ar', /^Arabic \(keep the English names/],
+    ['میں نوٹس کیسے برآمد کروں؟', 'ur', /^Urdu$/],
+    ['Comment exporter mes notes ?', 'fr', /^French/],
+    ['?', 'en', /language of the question/],
+  ])('decides %s on a %s site', (question, site, expected) => expect(replyLanguage(question, site)).toMatch(expected));
+  it('states it after the sources, where it cannot be missed', () => {
+    expect(chatUserPrompt('How?', [chunk], undefined, 'ar')).toMatch(/Reply in: the language of the question \(it is written in Latin script/);
   });
 });
 

@@ -37,7 +37,7 @@ vi.mock('@/lib/ai-search/conversation-archive', () => ({
 }));
 vi.mock('@nibleaf/search/workspace', () => ({ workspaceChatAdapter: mocks.adapter, workspaceChatModelOptions: () => () => ({}) }));
 vi.mock('@nibleaf/search', () => ({
-  CHAT_PROMPT_VERSION: 'chat-v1',
+  CHAT_PROMPT_VERSION: 'chat-v2',
   boundChatHistory: (history: unknown[]) => history,
   estimateTokens: (text: string) => Math.ceil(text.length / 3),
   condenseFollowUp: mocks.condense,
