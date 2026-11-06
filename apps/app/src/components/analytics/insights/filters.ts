@@ -1,7 +1,7 @@
 import type { AnalyticsInsightsQuery } from '@nibleaf/validators';
 
 const INSIGHTS_PRESETS = ['24h', '7d', '30d', '90d'] as const;
-export type InsightsPreset = (typeof INSIGHTS_PRESETS)[number];
+type InsightsPreset = (typeof INSIGHTS_PRESETS)[number];
 type InsightsRange = InsightsPreset | 'custom';
 
 /** The analytics filters as they live in the URL. Defaults (30 days, compare on)
