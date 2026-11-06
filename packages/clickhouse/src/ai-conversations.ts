@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { getClickHouseClient } from './client';
+import { keys } from './keys';
 
 const scope = {
   tenant_id: z.string().min(1),
@@ -97,24 +98,32 @@ export const deleteAiConversation = async (s: AiConversationScope, conversationI
     format: 'JSONEachRow',
     values: [{ tenant_id: s.tenantId, project_id: s.projectId, conversation_id: conversationId, deleted_at: new Date().toISOString() }],
   });
+  // Only the days this conversation had turns on change. Read them before the
+  // purge, and leave alone a day at the retention boundary: its other turns may
+  // already have expired, and rebuilding it from what is left would undercount.
+  const days = conversationId
+    ? await client
+        .query({
+          query: `SELECT DISTINCT toString(toDate(occurred_at,'UTC')) AS day FROM ai_conversation_turns FINAL
+ WHERE tenant_id={tenant:String} AND project_id={project:String} AND conversation_id={conversation:String}
+ AND toDate(occurred_at,'UTC') > toDate(now64(3),'UTC') - {retention:UInt16}`,
+          query_params: { ...params(s, conversationId), retention: keys().AI_CONVERSATION_RETENTION_DAYS },
+          format: 'JSONEachRow',
+        })
+        .then((result) => result.json<{ day: string }>())
+    : [];
   await purgeAiConversation(s, conversationId, client);
   if (!conversationId)
     await client.command({
       query: 'ALTER TABLE ai_usage_daily DELETE WHERE tenant_id={tenant:String} AND project_id={project:String} SETTINGS mutations_sync=2',
       query_params: params(s),
     });
-  else {
-    const days = await client.query({
-      query: 'SELECT DISTINCT toString(day) AS day FROM ai_usage_daily FINAL WHERE tenant_id={tenant:String} AND project_id={project:String}',
-      query_params: params(s),
-      format: 'JSONEachRow',
-    });
+  else
     await refreshAiUsageDaily(
       s,
-      (await days.json<{ day: string }>()).map((r) => r.day),
+      days.map((row) => row.day),
       client,
     );
-  }
 };
 export const deleteProjectAiConversations = (tenantId: string, projectId: string) => deleteAiConversation({ tenantId, projectId }, '');
 
@@ -167,8 +176,11 @@ const archiveParams = (s: AiConversationScope, q: AiReadQuery) => ({
   since: new Date(Date.now() - Number.parseInt(q.range ?? '30d', 10) * 86_400_000).toISOString(),
   language: q.language ?? '',
 });
-const turnsWhere = `${archiveWhere} AND actor_type='human' AND occurred_at>=parseDateTime64BestEffort({since:String})
+// Engagement and conversations count people; usage and cost count every turn a
+// provider billed, scripted traffic included.
+const usageWhere = `${archiveWhere} AND occurred_at>=parseDateTime64BestEffort({since:String})
  AND ({language:String}='' OR language={language:String})`;
+const turnsWhere = `${usageWhere} AND actor_type='human'`;
 const feedbackSource = `SELECT conversation_id,turn_id,rating,reason,updated_at FROM ai_conversation_feedback FINAL
  WHERE ${archiveWhere} AND created_at>=parseDateTime64BestEffort({since:String}) AND rating!=''`;
 const archiveRows = async <T>(query: string, queryParams: Record<string, unknown>) => {
@@ -350,7 +362,7 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
   const ctes = `WITH turns AS (SELECT conversation_id,turn_id,status,occurred_at,language,input_tokens,output_tokens,cost_micros,cost_known
  FROM ai_conversation_turns FINAL WHERE ${turnsWhere}),
  active AS (SELECT turn_id,rating,reason,updated_at FROM (${feedbackSource}) WHERE turn_id IN (SELECT turn_id FROM turns))`;
-  const [totals, feedback, reasons, days, languages] = await Promise.all([
+  const [totals, feedback, reasons, days, languages, spend] = await Promise.all([
     archiveRows<TurnAggregate & { conversations: Count; failed: Count }>(
       `${ctes} SELECT uniqExact(conversation_id) AS conversations,
  count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS noAnswer,
@@ -371,10 +383,30 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
       queryParams,
     ),
     archiveRows<{ language: string; questions: Count }>(`${ctes} SELECT language,count() AS questions FROM turns GROUP BY language`, queryParams),
+    // Tokens and cost cover every turn a provider billed, scripted traffic
+    // included; the reader counts above stay people only.
+    archiveRows<UsageAggregate & { date: string; turns: Count }>(
+      `SELECT toString(toDate(occurred_at,{timezone:String})) AS date,count() AS turns,${usageSql}
+ FROM ai_conversation_turns FINAL WHERE ${usageWhere} GROUP BY date`,
+      queryParams,
+    ),
   ]);
-  // Full UTC days have the same boundaries as the rollup. Keep the partial
-  // first day and language/local-zone queries on the source rows.
-  let usedRollups = false;
+  const billed = new Map(spend.map((row) => [row.date, row]));
+  for (const date of billed.keys())
+    if (!days.some((day) => day.date === date))
+      days.push({ date, questions: 0, answered: 0, noAnswer: 0, up: 0, down: 0, inputTokens: 0, outputTokens: 0, costMicros: 0, knownCosts: 0 });
+  days.sort((a, b) => a.date.localeCompare(b.date));
+  const billedTurns = new Map<string, number>();
+  for (const day of days) {
+    const row = billed.get(day.date);
+    day.inputTokens = Number(row?.inputTokens ?? 0);
+    day.outputTokens = Number(row?.outputTokens ?? 0);
+    day.costMicros = Number(row?.costMicros ?? 0);
+    day.knownCosts = Number(row?.knownCosts ?? 0);
+    billedTurns.set(day.date, Number(row?.turns ?? 0));
+  }
+  // Full UTC days have the same boundaries as the rollup, which keeps exact
+  // spend. Keep the partial first day and language/local-zone queries on the source rows.
   if (!q.language && timezone === 'UTC') {
     const usage = await queryAiUsageDaily(s, q);
     const firstDay = String(queryParams.since).slice(0, 10);
@@ -382,15 +414,12 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
       if (day.date <= firstDay) continue;
       const models = usage.filter((row) => row.day === day.date);
       if (!models.length) continue;
-      usedRollups = true;
       const sum = (key: string) => models.reduce((n, r) => n + Number(r[key] ?? 0), 0);
       day.inputTokens = sum('input_tokens');
       day.outputTokens = sum('output_tokens');
       day.costMicros = sum('cost_micros');
       day.knownCosts = sum('cost_known_turns');
-      day.questions = sum('questions');
-      day.answered = sum('answered');
-      day.noAnswer = sum('no_answer');
+      billedTurns.set(day.date, sum('questions'));
     }
   }
   const out = emptyAiSummary(q.range);
@@ -412,10 +441,8 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
       }),
       { inputTokens: 0, outputTokens: 0, costMicros: 0, knownCosts: 0 },
     );
-    out.usage = {
-      ...usageResult(usedRollups ? usage : t),
-      costComplete: Number(t.questions) > 0 && Number(usedRollups ? usage.knownCosts : t.knownCosts) === Number(t.questions),
-    };
+    const turns = [...billedTurns.values()].reduce((sum, count) => sum + count, 0);
+    out.usage = { ...usageResult(usage), costComplete: turns > 0 && usage.knownCosts === turns };
   }
   out.feedback = {
     up: Number(feedback[0]?.up ?? 0),
@@ -534,7 +561,7 @@ export const refreshAiUsageDaily = async (s: AiConversationScope, days: string[]
   // Include old keys so deletion or a provider/model correction replaces obsolete totals with zero.
   await client.command({
     query: `INSERT INTO ai_usage_daily SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map((c) => `sum(${c})`).join(',')},now64(3) FROM (
- SELECT tenant_id,project_id,toDate(occurred_at,'UTC') AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${archiveWhere} AND actor_type='human' AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)} GROUP BY tenant_id,project_id,day,provider,model
+ SELECT tenant_id,project_id,toDate(occurred_at,'UTC') AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${archiveWhere} AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)} GROUP BY tenant_id,project_id,day,provider,model
  UNION ALL SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map(() => 'toUInt64(0)').join(',')} FROM ai_usage_daily FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND toString(day) IN {days:Array(String)}
  ) GROUP BY tenant_id,project_id,day,provider,model`,
     query_params: { ...params(s), days: parsed },
@@ -551,7 +578,7 @@ export const queryAiUsageDaily = async (s: AiConversationScope, q: AiReadQuery, 
   // Query the source for those boundaries; daily UTC reads use the durable rollup.
   if (q.language || timezone !== 'UTC')
     return archiveRows<Record<string, string | number>>(
-      `SELECT toString(toDate(occurred_at,{timezone:String})) AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${turnsWhere} GROUP BY day,provider,model ORDER BY day,provider,model`,
+      `SELECT toString(toDate(occurred_at,{timezone:String})) AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${usageWhere} GROUP BY day,provider,model ORDER BY day,provider,model`,
       { ...archiveParams(s, q), timezone },
     );
   return archiveRows<Record<string, string | number>>(

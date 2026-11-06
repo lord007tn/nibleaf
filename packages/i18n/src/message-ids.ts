@@ -123,6 +123,7 @@ export const MESSAGE_IDS = {
   'site.aiQuestion': 'site_ai_question',
   'site.aiSend': 'site_ai_send',
   'site.aiStop': 'site_ai_stop',
+  'site.aiStopped': 'site_ai_stopped',
   'site.aiCaution': 'site_ai_caution',
   'site.aiPrivacy': 'site_ai_privacy',
   'site.aiSearching': 'site_ai_searching',

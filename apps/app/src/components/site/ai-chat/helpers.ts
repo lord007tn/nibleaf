@@ -19,7 +19,10 @@ export function citationParts(text: string) {
     .filter(Boolean)
     .map((value, index) => ({ key: index, text: value, source: /^\[(S\d+)\]$/.exec(value)?.[1] }));
 }
-export const answerText = (streamed: string, final?: AiChatFinalEvent) => (final ? final.answer : streamed);
+/** Citation markers (`[S1]`, `[S1, S2]`) only mean something once the answer is checked. */
+const CITATION_MARKERS = /\s*\[S\d+(?:\s*[,;]\s*S\d+)*\]/g;
+/** The checked answer once it arrives; until then the streamed text, without markers. */
+export const answerText = (streamed: string, final?: AiChatFinalEvent) => (final ? final.answer : streamed.replace(CITATION_MARKERS, ''));
 export const errorKey = (code: AiChatErrorCode | 'offline') =>
   (
     ({

@@ -65,6 +65,27 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('numbers sources in the order they are listed, in the answer and on the cards', async () => {
+    const { container, render, unmount } = mount();
+    const [first] = final.citations;
+    if (!first) throw new Error('fixture');
+    const cited: AiChatFinalEvent = {
+      ...final,
+      answer: 'Install it [S3]. Then sign in [S2].',
+      citations: [
+        { ...first, id: 'S3', title: 'Install' },
+        { ...first, id: 'S2', title: 'Sign in', anchor: 'sign-in' },
+      ],
+    };
+    await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    const chips = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label^="Source "]')].map((chip) => chip.textContent);
+    expect(chips).toEqual(['1', '2']);
+    expect(container.querySelector('button[aria-label="Source 3"]')).toBeNull();
+    const cards = [...container.querySelectorAll('a')].map((card) => card.querySelector('span')?.textContent);
+    expect(cards).toEqual(['1. Install', '2. Sign in']);
+    await unmount();
+  });
+
   it('links each source to its exact section and reports opens, copies and follow-ups', async () => {
     const { container, render, unmount } = mount();
     const onSourceOpen = vi.fn();

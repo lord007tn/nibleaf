@@ -116,12 +116,26 @@ integration('AI archive SQL integration', () => {
       };
     };
     const oldTurn = { ...base, conversation_id: randomUUID(), turn_id: randomUUID(), occurred_at: at(-90 * 24) };
+    // A scripted reader: billed like anyone, but not a person in reader metrics.
+    const botTurn: AiTurnRow = {
+      ...base,
+      conversation_id: randomUUID(),
+      turn_id: randomUUID(),
+      occurred_at: at(24),
+      actor_type: 'bot',
+      input_tokens: 7,
+      output_tokens: 3,
+      cost_micros: 1000,
+    };
+    // A usage day older than conversation retention: its turns are gone, its spend must stay.
+    const pastDay = new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
     try {
       await client.insert({
         table: 'ai_conversation_turns',
         format: 'JSONEachRow',
         values: [
           ...turns,
+          botTurn,
           oldTurn,
           { ...base, conversation_id: randomUUID(), turn_id: randomUUID(), expires_at: at(-1) },
           { ...base, project_id: randomUUID(), conversation_id: randomUUID(), turn_id: randomUUID() },
@@ -177,8 +191,37 @@ integration('AI archive SQL integration', () => {
       await refreshAiUsageDaily(scope, days, client);
       await refreshAiUsageDaily(scope, days, client);
       const usage = await queryAiUsageDaily(scope, {});
-      expect(usage.reduce((n, r) => n + Number(r.questions), 0)).toBe(5);
-      expect(usage.reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(50);
+      // Usage counts every billed turn, the scripted one included.
+      expect(usage.reduce((n, r) => n + Number(r.questions), 0)).toBe(6);
+      expect(usage.reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(57);
+      await client.insert({
+        table: 'ai_usage_daily',
+        format: 'JSONEachRow',
+        values: [
+          {
+            tenant_id: tenant,
+            project_id: project,
+            day: pastDay,
+            provider: 'test',
+            model: 'test',
+            questions: 7,
+            answered: 7,
+            no_answer: 0,
+            failed: 0,
+            cancelled: 0,
+            input_tokens: 700,
+            output_tokens: 70,
+            cost_micros: 7000,
+            cost_known_turns: 7,
+            latency_ms_sum: 0,
+            latency_turns: 0,
+            first_token_ms_sum: 0,
+            first_token_turns: 0,
+            retrieval_cache_hits: 0,
+            updated_at: at(0),
+          },
+        ],
+      });
       const all = await queryAiConversations(scope, {});
       expect(all.items).toHaveLength(3);
       expect(all.items.map((r) => r.conversationId)).not.toContain(deleted);
@@ -196,9 +239,10 @@ integration('AI archive SQL integration', () => {
       expect([...first.items, ...second.items, ...third.items].map((r) => r.conversationId)).toEqual(all.items.map((r) => r.conversationId));
       expect(third.nextCursor).toBeNull();
       const summary = await queryAiConversationSummary(scope, { timezone: 'America/Los_Angeles' });
+      // Reader counts are people only; tokens and cost include the scripted turn.
       expect(summary.totals).toEqual({ conversations: 3, questions: 5, answered: 2, noAnswer: 2, failed: 1 });
       expect(summary.feedback).toEqual({ up: 1, down: 1, reasons: [{ reason: 'wrong', count: 1 }] });
-      expect(summary.usage).toEqual({ inputTokens: 50, outputTokens: 100, costUsd: 0.003, costComplete: false });
+      expect(summary.usage).toEqual({ inputTokens: 57, outputTokens: 103, costUsd: 0.004, costComplete: false });
       const localDay = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Los_Angeles',
         year: 'numeric',
@@ -245,7 +289,16 @@ integration('AI archive SQL integration', () => {
       expect((await queryAiConversationSummary(gapScope, {})).usage).toMatchObject({ costUsd: null, costComplete: false });
       await deleteAiConversation(scope, c1, client);
       expect((await queryAiChatEngagement(scope, {})).medianFirstTokenMs).toBeNull();
-      expect((await queryAiUsageDaily(scope, {})).reduce((n, r) => n + Number(r.questions), 0)).toBe(2);
+      // c2, the hidden conversation and the scripted turn remain.
+      expect((await queryAiUsageDaily(scope, {})).reduce((n, r) => n + Number(r.questions), 0)).toBe(3);
+      // Deleting one conversation never rebuilds days whose turns have expired.
+      const past = await client.query({
+        query:
+          'SELECT sum(questions) AS questions FROM ai_usage_daily FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND day={day:Date}',
+        query_params: { tenant, project, day: pastDay },
+        format: 'JSONEachRow',
+      });
+      expect(Number((await past.json<{ questions: string }>())[0]?.questions)).toBe(7);
       // A project-wide tombstone must exclude both sources even when facts still exist.
       await client.insert({
         table: 'ai_conversation_deletions',

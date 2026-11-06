@@ -41,6 +41,13 @@ export function ChatMessage({
   const t = siteChatT(options.lang);
   const prefix = final?.turnId ?? 'draft';
   const href = (source: AiChatSource) => sourceHref(options, source);
+  const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
+  // Sources are numbered in the order they are listed, so the answer's markers
+  // and the cards read 1, 2, 3 whatever ids the model cited.
+  const sourceNumber = (id: string) => {
+    const index = sources.findIndex((source) => source.id === id);
+    return index >= 0 ? String(index + 1) : id.replace(/^[SP]/, '');
+  };
   const cite = (children: ReactNode): ReactNode =>
     Children.map(children, (child) => {
       if (typeof child === 'string')
@@ -50,14 +57,14 @@ export function ChatMessage({
               type="button"
               className="mx-0.5 inline-flex rounded border px-1.5 text-primary text-xs focus-visible:ring-2"
               key={part.key}
-              aria-label={`${t('aiSource')} ${part.source.slice(1)}`}
+              aria-label={`${t('aiSource')} ${sourceNumber(part.source)}`}
               onClick={() => {
                 const card = document.getElementById(`${prefix}-${part.source}`);
                 card?.scrollIntoView({ block: 'nearest' });
                 card?.focus();
               }}
             >
-              {part.source.slice(1)}
+              {sourceNumber(part.source)}
             </button>
           ) : (
             part.text
@@ -66,7 +73,6 @@ export function ChatMessage({
       if (isValidElement<{ children?: ReactNode }>(child)) return cloneElement(child, {}, cite(child.props.children));
       return child;
     });
-  const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
   const supportUrl = final?.status === 'no_answer' ? final.supportUrl : undefined;
   const external = supportUrl ? /^https?:/i.test(supportUrl) : false;
   return (
@@ -121,7 +127,7 @@ export function ChatMessage({
               }}
             >
               <span className="font-medium">
-                {source.id.replace(/^[SP]/, '')}. {source.title}
+                {index + 1}. {source.title}
               </span>
               {source.heading && <span className="ms-2 text-muted-foreground">{source.heading}</span>}
               <span className="mt-1 line-clamp-2 block text-muted-foreground text-xs">{source.snippet}</span>

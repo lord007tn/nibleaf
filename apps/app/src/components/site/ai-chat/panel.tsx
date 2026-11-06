@@ -177,7 +177,18 @@ export default function Panel(
   }, [chat.messages, finals, followUps]);
   const stop = () => {
     chat.stop();
+    setAnnouncement(t('aiStopped'));
     track({ name: 'stop', conversationId });
+  };
+  /** Ask a question again. When it is the last exchange and never got a checked
+   * answer (stopped or failed), that exchange is replaced rather than repeated. */
+  const askAgain = (question: string) => {
+    if (chat.isLoading || !question) return;
+    const lastUser = chat.messages.findLastIndex((message) => message.role === 'user');
+    const asked = chat.messages[lastUser];
+    const reply = chat.messages[lastUser + 1];
+    if (asked && textOf(asked) === question && !(reply && finals[reply.id])) chat.setMessages(chat.messages.slice(0, lastUser));
+    send(question);
   };
   const reset = () => {
     if (chat.messages.length) track({ name: 'new_chat', conversationId });
@@ -255,12 +266,30 @@ export default function Panel(
               ))}
             </div>
           )}
-          {chat.messages.map((message) => {
+          {chat.messages.map((message, index) => {
             const text = textOf(message);
             const final = finals[message.id];
+            const inFlight = chat.isLoading && message.id === last?.id;
             // Before the first token the typing indicator stands in; a refused
             // run (quota, limits) leaves an empty assistant shell.
             if (message.role !== 'user' && !text && !final) return null;
+            if (message.role !== 'user' && !final && !inFlight) {
+              // Stopped or failed before the answer was checked: its unchecked
+              // text is never shown. A failure is explained by the error below.
+              if (code && message.id === last?.id) return null;
+              const previous = chat.messages[index - 1];
+              const question = previous?.role === 'user' ? textOf(previous) : '';
+              return (
+                <div key={message.id} className="space-y-2 rounded-xl border border-dashed p-4 text-muted-foreground text-sm">
+                  <p>{t('aiStopped')}</p>
+                  {question && (
+                    <Button size="sm" variant="outline" disabled={chat.isLoading} onClick={() => askAgain(question)}>
+                      {t('aiRetry')}
+                    </Button>
+                  )}
+                </div>
+              );
+            }
             return message.role === 'user' ? (
               <div key={message.id} dir="auto" className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
                 {text}
@@ -303,7 +332,7 @@ export default function Panel(
                 <Button onClick={reset}>{t('aiNew')}</Button>
               ) : (
                 !['quota_exhausted', 'budget_exhausted'].includes(code) && (
-                  <Button disabled={chat.isLoading} onClick={() => send(lastQuestion)}>
+                  <Button disabled={chat.isLoading} onClick={() => askAgain(lastQuestion)}>
                     {t('aiRetry')}
                   </Button>
                 )

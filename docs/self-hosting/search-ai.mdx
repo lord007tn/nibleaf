@@ -275,7 +275,9 @@ Question, answer, and comment text is stored only when all of the following hold
 - An encryption key is configured: `AI_CONVERSATION_ENCRYPTION_KEY` (32 random
   bytes, base64, for example `openssl rand -base64 32`) on both the API and the
   worker. Without it, Nibleaf derives a separate key from
-  `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`. With neither, no text is stored.
+  `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`. With neither, no text is stored. The key
+  seals text on its way through the queue; it does not encrypt ClickHouse (see
+  below).
 - The visitor allows it. When the site shows a consent banner, text is stored
   only after the visitor accepts. Otherwise text is stored unless they declined.
 
@@ -283,7 +285,11 @@ Text is redacted inside the API before it is queued. Redaction removes email
 addresses, phone and ID numbers (including Arabic-Indic digits), credentials and
 tokens, and URL query strings. This reduces personal data but is not
 anonymization, so treat stored conversations as restricted. Queue payloads are
-sealed with AES-256-GCM, so Redis never holds plaintext. Nibleaf never stores
+sealed with AES-256-GCM, so Redis never holds plaintext. ClickHouse stores the
+redacted text in plain columns, so the dashboard can search and group it: anyone
+who can read the ClickHouse database can read conversations. Limit ClickHouse
+access to the API, the worker and the people who operate them, and use encrypted
+storage for its disks if your policy requires encryption at rest. Nibleaf never stores
 reader identity; a per-tab session id is stored only as a salted hash. Private
 sites keep their conversations marked private.
 
@@ -294,10 +300,11 @@ from bringing them back. Deleting a project or workspace removes its
 conversations as well.
 
 Workspace members find conversations, feedback, unanswered questions, and usage
-under **AI assistant** in the project sidebar. Project-bound API keys with the
-`analytics:read` scope can read the same data through the MCP tools
-`list_ai_conversations`, `get_ai_conversation`, `get_ai_feedback_summary`,
-`list_ai_content_gaps`, and `get_ai_usage`. Every MCP call is audited. When text is
+under **AI assistant** in the project sidebar. Project-bound API keys and OAuth
+connections with the `analytics:read` scope can read the same data through the MCP
+tools `list_ai_conversations`, `get_ai_conversation`, `get_ai_feedback_summary`,
+`list_ai_content_gaps`, and `get_ai_usage`. Like every MCP tool, each call is
+scope-checked, audited and rate limited per credential. When text is
 not being saved, responses say why in `captureOffReason`: `setting` (the site
 setting is off) or `instance` (no encryption key on the server).
 
@@ -312,10 +319,10 @@ contain question, answer or comment text:
 | `chat_opened` | A reader opens the assistant, with the source: `launcher`, `page_button`, `search_handoff` or `deep_link`. |
 | `chat_question_asked` | A question passes the spend gates, noting whether it was a follow-up and asked from a page. |
 | `chat_first_token` | The first words of an answer are sent, with the time from the request. |
-| `chat_answer_completed` | A turn ends: `answered`, `no_answer`, `blocked` (refused before any provider call), `failed` or `cancelled`. Includes model, provider, tokens, reported cost, latency and whether retrieval came from the cache. |
+| `chat_answer_completed` | A turn ends: `answered`, `no_answer`, `blocked` (refused before any provider call), `failed` or `cancelled`. Includes model, provider, latency and whether retrieval came from the cache, and tokens and cost when the provider reported them (not for a stopped or failed turn). |
 | `chat_citation_clicked`, `chat_follow_up_clicked`, `chat_copy`, `chat_stop`, `chat_new_chat` | The reader opens a source or a suggested question, copies an answer, stops one, or starts over. |
 | `chat_feedback_given`, `chat_feedback_changed` | A first rating, or a change or withdrawal (with the previous rating and the reason). |
-| `chat_quota_reached` | A daily quota, token budget, conversation limit or rate limit refuses a question. |
+| `chat_quota_reached` | A daily quota, token budget, conversation limit or rate limit refuses a question. Rate-limit refusals are counted once per reader address and minute, and only for a published site. |
 | `chat_provider_error` | A provider call fails, by phase: `condense`, `retrieval`, `generation` or `follow_ups`. |
 
 Because they are ordinary analytics events, they follow the analytics rules: the
@@ -332,14 +339,23 @@ The conversation tables are registered for retention and erasure like the other
 analytics tables. Turns and feedback expire after `AI_CONVERSATION_RETENTION_DAYS`
 (set it on the API and the worker; migrations re-apply it on boot), the daily usage
 rollup after `CLICKHOUSE_ROLLUP_RETENTION_DAYS`, and deleting a project erases them.
-Turns also record `actor_type`, so automated traffic never inflates the dashboard;
-its spend still counts against the AI budgets.
+Turns also record `actor_type`, so automated traffic never inflates reader metrics
+(questions, answer rate, satisfaction, engagement). Spend is different: every turn
+a provider billed counts against the AI budgets and in usage and cost, scripted
+traffic included.
 
-`ai_usage_daily` keeps exact totals per project, day and model: questions,
-outcomes, tokens, cost, latency, first-token time and retrieval cache hits. It is
-rebuilt from the stored turns, so deletions and late writes stay exact. The
-dashboard overview shows engagement and response times, and the MCP tool
-`get_ai_usage` returns the daily usage with totals.
+Each turn reserves its estimated tokens against the conversation and daily budgets
+before any provider call, and settles to what it actually used when it ends, so
+concurrent questions can't overshoot a budget together. A turn that is stopped or
+fails partway is charged an estimate for the calls that never reported usage; its
+stored token totals are flagged as estimates and its cost as unknown.
+
+`ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
+tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from
+the stored turns for each day that changes, so late writes stay exact; deleting a
+conversation rebuilds only that conversation's days, never days whose turns have
+already expired. The dashboard overview shows engagement and response times, and
+the MCP tool `get_ai_usage` returns the daily usage with totals.
 
 ## Index and evaluate
 

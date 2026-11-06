@@ -181,7 +181,7 @@ export const estimateChatTurnTokens = (body: Pick<SiteChatBody, 'question' | 'hi
 /** A turn's usage for budgets and records: reported calls exactly, plus an
  * estimate for every call that started without reporting. `estimated` marks
  * totals that are not provider-reported, and their cost as unknown. */
-export const turnUsage = (
+const turnUsage = (
   outcome: Pick<TurnOutcome, 'usage' | 'unreported'>,
   costUsd?: number,
 ): { usage?: ChatUsage; tokens: number; estimated: boolean } => {

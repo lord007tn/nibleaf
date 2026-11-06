@@ -30,6 +30,8 @@ describe('reader chat boundaries', () => {
     expect(history[1]?.content).toHaveLength(4000);
     expect(answerText('Unverified draft', final)).toBe('Verified [S1]');
     expect(answerText('draft')).toBe('draft');
+    // Markers mean nothing until the answer is checked.
+    expect(answerText('Run it. [S6]\n\nThen this [S1, S2] and [S4; S5].')).toBe('Run it.\n\nThen this and.');
   });
   it('mirrors consent including blocked storage', () => {
     expect(deriveConsent(false, 'declined')).toBe('not_required');

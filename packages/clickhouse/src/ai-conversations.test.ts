@@ -74,6 +74,30 @@ describe('AI archive', () => {
     expect(redactReaderText('see https://acme.example/a?b=1 or www.acme.example, order 1234567')).toBe('see [URL] or [URL] order [REDACTED]');
     expect(redactConversationText('see https://docs.example/export?ref=1')).toBe('see https://docs.example/export');
   });
+  it("re-aggregates only the deleted conversation's own days, read before the purge and inside retention", async () => {
+    const calls: string[] = [];
+    const client = {
+      query: vi.fn(async (_request: { query: string; query_params: Record<string, unknown> }) => {
+        calls.push('days');
+        return reply([{ day: '2026-11-01' }]);
+      }),
+      insert: async () => {
+        calls.push('tombstone');
+      },
+      command: vi.fn(async ({ query }: { query: string }) => {
+        calls.push(query.startsWith('INSERT INTO ai_usage_daily') ? 'refresh' : 'purge');
+      }),
+    };
+    await deleteAiConversation(scope, 'c', client as never);
+    expect(calls).toEqual(['tombstone', 'days', 'purge', 'purge', 'purge', 'refresh']);
+    const daysQuery = client.query.mock.calls[0]?.[0] ?? { query: '', query_params: {} };
+    expect(daysQuery.query).toContain('FROM ai_conversation_turns FINAL');
+    expect(daysQuery.query).toContain('conversation_id={conversation:String}');
+    expect(daysQuery.query).toContain("toDate(now64(3),'UTC') - {retention:UInt16}");
+    expect(daysQuery.query_params).toMatchObject({ conversation: 'c', retention: 90 });
+    const refresh = client.command.mock.calls.at(-1)?.[0] as unknown as { query_params: { days: string[] } };
+    expect(refresh.query_params.days).toEqual(['2026-11-01']);
+  });
   it('writes the tombstone before physical purges', async () => {
     const calls: string[] = [];
     const client = {
@@ -187,12 +211,27 @@ describe('AI archive', () => {
           },
         ]),
       )
-      .mockResolvedValueOnce(reply([{ language: 'ar', questions: '2' }]));
+      .mockResolvedValueOnce(reply([{ language: 'ar', questions: '2' }]))
+      // Spend counts every billed turn: a scripted turn on the 31st and a bot-only day.
+      .mockResolvedValueOnce(
+        reply([
+          { date: '2026-11-01', turns: '1', inputTokens: '5', outputTokens: '5', costMicros: '100', knownCosts: '1' },
+          { date: '2026-10-31', turns: '3', inputTokens: '17', outputTokens: '25', costMicros: '500', knownCosts: '1' },
+        ]),
+      );
     const result = await queryAiConversationSummary(scope, { timezone });
+    // Reader counts stay people only.
     expect(result.totals).toEqual({ conversations: 1, questions: 2, answered: 1, noAnswer: 1, failed: 0 });
-    expect(result.usage).toEqual({ inputTokens: 10, outputTokens: 20, costUsd: 0.0005, costComplete: false });
+    expect(result.usage).toEqual({ inputTokens: 22, outputTokens: 30, costUsd: 0.0006, costComplete: false });
     expect(result.feedback).toEqual({ up: 1, down: 2, reasons: [{ reason: 'wrong', count: 2 }] });
-    expect(result.timeseries[0]).toMatchObject({ date: '2026-10-31', questions: 2, costUsd: null });
+    expect(result.timeseries).toMatchObject([
+      { date: '2026-10-31', questions: 2, inputTokens: 17, costUsd: 0.0005 },
+      { date: '2026-11-01', questions: 0, inputTokens: 5, costUsd: 0.0001 },
+    ]);
+    const spendQuery = mocks.query.mock.calls[5]?.[0].query as string;
+    expect(spendQuery).toContain('count() AS turns');
+    expect(spendQuery).not.toContain("actor_type='human'");
+    expect(mocks.query.mock.calls[0]?.[0].query).toContain("actor_type='human'");
     expect(result.languages).toEqual([{ language: 'ar', questions: 2 }]);
     for (const [call] of mocks.query.mock.calls) {
       if ('timezone' in call.query_params) expect(call.query_params.timezone).toBe(expected);
@@ -234,4 +273,6 @@ it('rebuilds exact rollups from FINAL rows and previous keys with bound days', a
   expect(command.mock.calls[0]?.[0].query).toContain('ai_conversation_turns FINAL');
   expect(command.mock.calls[0]?.[0].query).toContain('UNION ALL');
   expect(command.mock.calls[0]?.[0].query_params.days).toEqual(['2026-11-01']);
+  // Spend counts every billed turn, scripted traffic included.
+  expect(command.mock.calls[0]?.[0].query).not.toContain('actor_type');
 });
