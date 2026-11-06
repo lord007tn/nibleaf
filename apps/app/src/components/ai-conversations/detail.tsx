@@ -8,7 +8,7 @@ import { useDirection } from '@nibleaf/design-system/components/ui/direction';
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 
 import { useT } from '@nibleaf/i18n/react';
 
@@ -32,7 +32,7 @@ import { aiCost } from './overview';
 export function DeleteConversationButton({ allowed, pending, onDelete }: { allowed: boolean; pending: boolean; onDelete: () => void }) {
   const t = useT();
   return allowed ? (
-    <Button variant="destructive" disabled={pending} onClick={onDelete}>
+    <Button variant="destructive" loading={pending} onClick={onDelete}>
       {t('dashboard.ai.delete')}
     </Button>
   ) : null;
@@ -86,7 +86,18 @@ export function ConversationDetail({ projectId, conversation, onClose }: { proje
         </SheetHeader>
         <div className="space-y-6 px-4 pb-6">
           {detail.isPending ? (
-            <Skeleton className="h-64" />
+            <div aria-busy="true" className="space-y-6">
+              <p className="sr-only" role="status">
+                {t('common.loading')}
+              </p>
+              {['first', 'second'].map((id) => (
+                <div aria-hidden key={id} className="space-y-3 border-b pb-6">
+                  <Skeleton className="ms-8 h-14 rounded-xl" />
+                  <Skeleton className="h-5 w-20" />
+                  <SkeletonText lines={3} />
+                </div>
+              ))}
+            </div>
           ) : detail.isError ? (
             <p role="alert">{t('dashboard.ai.missing')}</p>
           ) : detail.data ? (

@@ -8,10 +8,26 @@ import {
   aiConversationListResultSchema,
   aiConversationSummarySchema,
 } from '@nibleaf/validators';
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  queryOptions,
+  skipToken,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiOrigin } from '@/services/api-origin';
 import { getData } from './client-helpers';
+import { queryKeys } from './query-keys';
+
+/*
+ * AI assistant dashboard queries. The factories are the single definition of
+ * each query (see apps/app/DATA_LOADING.md); the route loader imports this
+ * module lazily, so its schemas stay out of the main chunk public pages load.
+ */
 
 export function aiConversationsPath(projectId: string, suffix = '', query: Record<string, string | number | undefined> = {}) {
   const params = new URLSearchParams();
@@ -27,47 +43,63 @@ async function request<T>(path: string, schema: z.ZodType<T>, signal?: AbortSign
   });
   return schema.parse(await getData<unknown>(response, 'AI conversations'));
 }
-const key = (id: string) => ['ai-conversations', id] as const;
-export function useAiConversations(id: string, filters: Omit<AiConversationListQuery, 'cursor' | 'limit'>, enabled = true) {
-  return useInfiniteQuery({
-    queryKey: [...key(id), 'list', filters],
-    enabled,
+
+export type AiConversationFilters = Omit<AiConversationListQuery, 'cursor' | 'limit'>;
+
+/** Paged and filtered: earlier results stay on screen while the next ones load. */
+export const aiConversationsQueryOptions = (projectId: string, filters: AiConversationFilters) =>
+  infiniteQueryOptions({
+    queryKey: queryKeys.aiConversations.list(projectId, filters),
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam, signal }) =>
-      request(aiConversationsPath(id, '', { ...filters, cursor: pageParam }), aiConversationListResultSchema, signal),
+      request(aiConversationsPath(projectId, '', { ...filters, cursor: pageParam }), aiConversationListResultSchema, signal),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
   });
-}
-export function useAiConversationSummary(id: string, range: AiConversationRange, language?: string) {
+
+export const aiConversationSummaryQueryOptions = (projectId: string, range: AiConversationRange, language?: string) => {
+  // Daily buckets follow the viewer's own calendar.
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return useQuery({
-    queryKey: [...key(id), 'summary', range, language, timezone],
-    queryFn: ({ signal }) => request(aiConversationsPath(id, '/summary', { range, language, timezone }), aiConversationSummarySchema, signal),
+  return queryOptions({
+    queryKey: queryKeys.aiConversations.summary(projectId, range, language, timezone),
+    queryFn: ({ signal }) => request(aiConversationsPath(projectId, '/summary', { range, language, timezone }), aiConversationSummarySchema, signal),
+    placeholderData: keepPreviousData,
   });
-}
-export function useAiContentGaps(id: string, range: AiConversationRange, language?: string, enabled = true) {
-  return useQuery({
-    queryKey: [...key(id), 'gaps', range, language],
-    enabled,
-    queryFn: ({ signal }) => request(aiConversationsPath(id, '/gaps', { range, language }), aiContentGapsResultSchema, signal),
+};
+
+export const aiContentGapsQueryOptions = (projectId: string, range: AiConversationRange, language?: string) =>
+  queryOptions({
+    queryKey: queryKeys.aiConversations.gaps(projectId, range, language),
+    queryFn: ({ signal }) => request(aiConversationsPath(projectId, '/gaps', { range, language }), aiContentGapsResultSchema, signal),
+    placeholderData: keepPreviousData,
   });
-}
-export function useAiConversation(id: string, conversation?: string) {
-  return useQuery({
-    queryKey: [...key(id), 'detail', conversation],
-    enabled: Boolean(conversation),
+
+export const aiConversationQueryOptions = (projectId: string, conversation?: string) =>
+  queryOptions({
+    queryKey: queryKeys.aiConversations.detail(projectId, conversation ?? ''),
+    // A deleted or expired conversation will not come back on retry.
     retry: false,
-    queryFn: ({ signal }) => request(aiConversationsPath(id, `/${encodeURIComponent(conversation ?? '')}`), aiConversationDetailSchema, signal),
+    queryFn: conversation
+      ? ({ signal }) => request(aiConversationsPath(projectId, `/${encodeURIComponent(conversation)}`), aiConversationDetailSchema, signal)
+      : skipToken,
   });
-}
-export function useDeleteAiConversation(id: string) {
+
+export const useAiConversations = (projectId: string, filters: AiConversationFilters, enabled = true) =>
+  useInfiniteQuery({ ...aiConversationsQueryOptions(projectId, filters), enabled });
+export const useAiConversationSummary = (projectId: string, range: AiConversationRange, language?: string) =>
+  useQuery(aiConversationSummaryQueryOptions(projectId, range, language));
+export const useAiContentGaps = (projectId: string, range: AiConversationRange, language?: string, enabled = true) =>
+  useQuery({ ...aiContentGapsQueryOptions(projectId, range, language), enabled });
+export const useAiConversation = (projectId: string, conversation?: string) => useQuery(aiConversationQueryOptions(projectId, conversation));
+
+export function useDeleteAiConversation(projectId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (conversation: string) =>
-      request(aiConversationsPath(id, `/${encodeURIComponent(conversation)}`), z.object({ deleted: z.literal(true) }), undefined, 'DELETE'),
+      request(aiConversationsPath(projectId, `/${encodeURIComponent(conversation)}`), z.object({ deleted: z.literal(true) }), undefined, 'DELETE'),
     onSuccess: async (_data, conversation) => {
-      client.removeQueries({ queryKey: [...key(id), 'detail', conversation] });
-      await client.invalidateQueries({ queryKey: key(id) });
+      client.removeQueries({ queryKey: queryKeys.aiConversations.detail(projectId, conversation) });
+      await client.invalidateQueries({ queryKey: queryKeys.aiConversations.all(projectId) });
     },
   });
 }

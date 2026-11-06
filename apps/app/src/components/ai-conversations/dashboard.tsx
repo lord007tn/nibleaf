@@ -2,7 +2,7 @@ import { Alert, AlertDescription } from '@nibleaf/design-system/components/ui/al
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonCard, SkeletonListRow, SkeletonStatTile, SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { useT } from '@nibleaf/i18n/react';
@@ -15,6 +15,55 @@ import { ConversationDetail } from './detail';
 import { ContentGaps } from './gaps';
 import { Overview } from './overview';
 import { type AiDashboardSearch, conversationFilters } from './search';
+
+const SKELETON_TILES = ['questions', 'answered', 'helpful', 'gaps'];
+const SKELETON_ROWS = ['a', 'b', 'c', 'd', 'e', 'f'];
+
+/** First-load placeholder shaped like the active tab, so nothing moves on swap. */
+function DashboardSkeleton({ tab }: { tab: AiDashboardSearch['tab'] }) {
+  const t = useT();
+  return (
+    <section aria-busy="true" className="space-y-4">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      {tab === 'overview' ? (
+        <>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {SKELETON_TILES.map((id) => (
+              <SkeletonStatTile key={id} />
+            ))}
+          </div>
+          <SkeletonCard />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SkeletonCard className="h-56" />
+            <SkeletonCard className="h-56" />
+          </div>
+        </>
+      ) : tab === 'conversations' ? (
+        <>
+          <table className="hidden w-full md:table">
+            <tbody>
+              <SkeletonTableRows columns={7} rows={8} />
+            </tbody>
+          </table>
+          <div className="space-y-3 md:hidden">
+            {SKELETON_ROWS.map((id) => (
+              <SkeletonCard key={id} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="divide-y rounded-xl border px-4">
+          {SKELETON_ROWS.map((id) => (
+            <SkeletonListRow key={id} withIcon={false} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AiDashboard({
   projectId,
   search,
@@ -153,10 +202,7 @@ export function AiDashboard({
           </AlertDescription>
         </Alert>
       ) : active.isPending ? (
-        <div className="space-y-4" aria-busy="true">
-          <Skeleton className="h-28" />
-          <Skeleton className="h-64" />
-        </div>
+        <DashboardSkeleton tab={search.tab} />
       ) : (
         <>
           {empty && <p className="rounded-xl border bg-card p-6 text-muted-foreground text-sm">{t('dashboard.ai.empty')}</p>}
@@ -165,7 +211,7 @@ export function AiDashboard({
             <>
               <ConversationList items={items} onOpen={(conversation) => onChange({ conversation })} />
               {list.hasNextPage && (
-                <Button variant="outline" disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+                <Button variant="outline" loading={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
                   {t('dashboard.ai.loadMore')}
                 </Button>
               )}
