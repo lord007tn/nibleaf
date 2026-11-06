@@ -6,17 +6,26 @@ const database = vi.hoisted(() => ({
   findFirst: vi.fn(),
   transaction: vi.fn(),
   updateMany: vi.fn(),
+  findMany: vi.fn(),
+  update: vi.fn(),
+  audit: vi.fn(),
 }));
 
 vi.mock('@nibleaf/database', () => ({
-  prisma: { $transaction: database.transaction },
+  Prisma: { sql: vi.fn(), join: vi.fn() },
+  prisma: { $transaction: database.transaction, apiKey: database, $queryRaw: database.audit },
 }));
 vi.mock('@nibleaf/shared/crypto', () => ({ hashApiKeySecret: (secret: string) => `hashed:${secret}` }));
 vi.mock('@nibleaf/shared/ids', () => ({ newApiKeySecret: vi.fn(() => ({ secret: `plm_live_${'a'.repeat(32)}` })) }));
 vi.mock('./projects', () => ({ assertProjectInOrg: vi.fn().mockResolvedValue({ id: 'project-1' }) }));
 
-import { rotateApiKey } from './api-keys';
+import { MemberRole } from '@nibleaf/shared/constants';
 
+import { MCP_PRESET_SCOPES, MCP_SCOPE_MIN_ROLE } from '@nibleaf/shared/mcp';
+import { createApiKey, listApiKeys, revokeApiKey, rotateApiKey } from './api-keys';
+
+const member = { id: 'user-1', role: MemberRole.MEMBER };
+const admin = { id: 'admin-1', role: MemberRole.ADMIN };
 const current = { id: 'key-1', name: 'Docs reader' };
 const successor = {
   id: 'key-2',
@@ -45,8 +54,8 @@ describe('API-key rotation', () => {
     database.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
 
     const results = await Promise.allSettled([
-      rotateApiKey('org-1', 'project-1', current.id, 'user-1', body),
-      rotateApiKey('org-1', 'project-1', current.id, 'user-1', body),
+      rotateApiKey('org-1', 'project-1', current.id, { id: 'user-1', role: 'member' }, body),
+      rotateApiKey('org-1', 'project-1', current.id, { id: 'user-1', role: 'member' }, body),
     ]);
 
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
@@ -59,9 +68,70 @@ describe('API-key rotation', () => {
   it('returns a stable conflict and never creates a successor for a revoked key', async () => {
     database.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(rotateApiKey('org-1', 'project-1', current.id, 'user-1', body)).rejects.toMatchObject({
+    await expect(rotateApiKey('org-1', 'project-1', current.id, { id: 'user-1', role: 'member' }, body)).rejects.toMatchObject({
       code: 'database:conflict',
     });
     expect(database.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('personal key permissions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    database.create.mockResolvedValue(successor);
+    database.findMany.mockResolvedValue([successor]);
+    database.audit.mockResolvedValue([{ apiKeyId: successor.id, operation: 'get_page', outcome: 'success', at: new Date() }]);
+    database.findFirst.mockImplementation(({ where }) => Promise.resolve(where.createdById ? null : current));
+    database.update.mockResolvedValue(successor);
+  });
+  it('creates a support writer owned by the caller with expanded scopes', async () => {
+    await createApiKey('org-1', 'project-1', member, { name: 'Support', preset: 'support_writer', expiresInDays: 90 });
+    expect(database.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ createdById: member.id, scopes: MCP_PRESET_SCOPES.support_writer }) }),
+    );
+  });
+  it('denies full admin to members', async () => {
+    await expect(createApiKey('org-1', 'project-1', member, { name: 'Admin', preset: 'full_admin', expiresInDays: 90 })).rejects.toMatchObject({
+      code: 'auth:insufficient_role',
+    });
+    expect(database.create).not.toHaveBeenCalled();
+  });
+  it('consults scope role policy for explicit scopes and rotation', async () => {
+    const original = MCP_SCOPE_MIN_ROLE['pages:write'];
+    MCP_SCOPE_MIN_ROLE['pages:write'] = MemberRole.ADMIN;
+    try {
+      await expect(
+        createApiKey('org-1', 'project-1', member, { name: 'Writer', scopes: ['mcp:connect', 'pages:write'], expiresInDays: 90 }),
+      ).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+      await expect(
+        rotateApiKey('org-1', 'project-1', current.id, member, { scopes: ['mcp:connect', 'pages:write'], expiresInDays: 90 }),
+      ).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    } finally {
+      MCP_SCOPE_MIN_ROLE['pages:write'] = original;
+    }
+  });
+  it('filters member lists and attaches newest activity in a single bounded query', async () => {
+    const keys = await listApiKeys('org-1', 'project-1', member);
+    expect(database.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1', createdById: member.id } }));
+    expect(database.audit).toHaveBeenCalledOnce();
+    expect(keys[0]).toMatchObject({ preset: 'custom', lastActivity: { operation: 'get_page', outcome: 'success' } });
+  });
+  it.each(['read_only', 'support_writer', 'full_admin'] as const)('derives exact preset %s', async (preset) => {
+    database.findMany.mockResolvedValue([{ ...successor, scopes: [...MCP_PRESET_SCOPES[preset]].reverse() }]);
+    expect((await listApiKeys('org-1', 'project-1', admin))[0]?.preset).toBe(preset);
+    expect(database.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1' } }));
+  });
+  it('conceals others keys on revoke and rotate', async () => {
+    await expect(revokeApiKey('org-1', 'project-1', current.id, member)).rejects.toMatchObject({ status: 404 });
+    await expect(rotateApiKey('org-1', 'project-1', current.id, member, body)).rejects.toMatchObject({ status: 404 });
+    expect(database.update).not.toHaveBeenCalled();
+    expect(database.create).not.toHaveBeenCalled();
+  });
+  it('allows admin revoke and rotation of another key', async () => {
+    database.updateMany.mockResolvedValue({ count: 1 });
+    await revokeApiKey('org-1', 'project-1', current.id, admin);
+    await rotateApiKey('org-1', 'project-1', current.id, admin, body);
+    expect(database.update).toHaveBeenCalledOnce();
+    expect(database.create).toHaveBeenCalledOnce();
   });
 });

@@ -34,8 +34,8 @@ describe('API-key lifecycle route permissions', () => {
     vi.mocked(prisma.project.findUnique).mockResolvedValue({ id: 'project-1', organizationId: 'org-1' } as never);
   });
 
-  it.each(guardedRoutes)('rejects project members from %s', async (_name, route) => {
-    vi.mocked(prisma.member.findUnique).mockResolvedValue({ role: MemberRole.MEMBER } as never);
+  it.each(guardedRoutes)('rejects unknown roles from %s', async (_name, route) => {
+    vi.mocked(prisma.member.findUnique).mockResolvedValue({ role: 'unknown' } as never);
     const next = vi.fn();
     await expect(route[1](context(), next)).rejects.toMatchObject({ code: 'auth:insufficient_role' });
     expect(next).not.toHaveBeenCalled();
@@ -47,4 +47,11 @@ describe('API-key lifecycle route permissions', () => {
     await route[1](context(), next);
     expect(next).toHaveBeenCalledOnce();
   });
+});
+
+it.each(guardedRoutes)('allows members to %s', async (_name, route) => {
+  vi.mocked(prisma.member.findUnique).mockResolvedValue({ role: MemberRole.MEMBER } as never);
+  const next = vi.fn(async () => undefined);
+  await route[1](context(), next);
+  expect(next).toHaveBeenCalledOnce();
 });

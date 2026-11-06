@@ -46,6 +46,9 @@ export interface Project {
 }
 
 export interface ApiKey {
+  createdBy: { id: string; name: string } | null;
+  preset: 'read_only' | 'support_writer' | 'full_admin' | 'custom';
+  lastActivity: { operation: string; outcome: string; at: string } | null;
   id: string;
   name: string;
   lastFour: string;

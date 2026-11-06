@@ -1,4 +1,4 @@
-import { MCP_SCOPES } from '@nibleaf/shared/mcp';
+import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
@@ -705,14 +705,18 @@ const apiKeyScopes = z
 
 const apiKeyExpiryDays = z.number().int().min(1).max(365);
 
-export const createApiKeyBody = z.object({
-  name: z.string().min(1).max(80),
-  scopes: apiKeyScopes.default(['mcp:connect', 'projects:read', 'pages:read']),
+// Exactly one of preset/scopes is required; neither silently overrides the other.
+const keyPermissions = {
+  scopes: apiKeyScopes.optional(),
+  preset: z.enum(MCP_KEY_PRESETS).optional(),
   expiresInDays: apiKeyExpiryDays.default(90),
-});
+};
+const onePermissionSource = (body: { scopes?: unknown; preset?: unknown }) => (body.scopes !== undefined) !== (body.preset !== undefined);
+export const createApiKeyBody = z
+  .object({ name: z.string().trim().min(1).max(80), ...keyPermissions })
+  .refine(onePermissionSource, { message: 'Provide exactly one of preset or scopes.' });
 export type CreateApiKeyBody = z.infer<typeof createApiKeyBody>;
-
-export const rotateApiKeyBody = z.object({ scopes: apiKeyScopes, expiresInDays: apiKeyExpiryDays });
+export const rotateApiKeyBody = z.object(keyPermissions).refine(onePermissionSource, { message: 'Provide exactly one of preset or scopes.' });
 export type RotateApiKeyBody = z.infer<typeof rotateApiKeyBody>;
 
 // ─── Assets ──────────────────────────────────────────────────────────────—

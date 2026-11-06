@@ -34,3 +34,10 @@ describe('MCP API-key contracts', () => {
     expect(rotateApiKeyBody.safeParse({ scopes: ['pages:read'], expiresInDays: 90 }).success).toBe(false);
   });
 });
+
+it('accepts presets and rejects ambiguous or missing permissions', () => {
+  expect(createApiKeyBody.parse({ name: 'Support', preset: 'support_writer' })).toMatchObject({ preset: 'support_writer', expiresInDays: 90 });
+  expect(rotateApiKeyBody.parse({ preset: 'read_only', expiresInDays: 7 }).preset).toBe('read_only');
+  expect(createApiKeyBody.safeParse({ name: 'Ambiguous', preset: 'full_admin', scopes: ['mcp:connect'] }).success).toBe(false);
+  expect(createApiKeyBody.safeParse({ name: 'Missing' }).success).toBe(false);
+});
