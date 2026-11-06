@@ -573,6 +573,28 @@ describe('reader AI chat stream', () => {
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
   });
 
+  it('keeps suggestions on the pages the answer cited', async () => {
+    const synced = { ...searchChunk(0, 'Sign out and sign back in.'), pageId: 'sync', title: 'Fix sync problems' };
+    const install = { ...searchChunk(1, 'Install the CLI with npm.'), pageId: 'install', title: 'Install the CLI' };
+    mocks.retrieve.mockResolvedValue({ chunks: [synced, install], hits: [], confidence: 0.8, cacheHit: false });
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Sign out and sign back in. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Sign out and sign back in. [S1]',
+        citations: [{ id: 'S1', pageId: 'sync', title: 'Fix sync problems', path: 'fix-sync' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 100, outputTokens: 20 },
+        model: 'm',
+      }),
+    });
+    await readEvents(await chatSite('project-1', body()));
+    // The install page was read for context, but the answer did not cite it.
+    expect(mocks.suggest.mock.calls[0]?.[0].chunks.map((item: SearchChunk) => item.pageId)).toEqual(['sync']);
+  });
+
   it('answers and suggests from the sources that fit the context budget, and estimates them as sent', async () => {
     const sources: SearchChunk[] = Array.from({ length: 12 }, (_, index) => ({
       ...chunk,

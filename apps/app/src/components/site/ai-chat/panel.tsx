@@ -18,7 +18,7 @@ import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
 import { Composer } from './composer';
 import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey } from './helpers';
-import { ChatMessage } from './message';
+import { ChatMessage, type TurnScope } from './message';
 import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
 import { useChatViewport } from './use-chat-viewport';
 
@@ -71,6 +71,10 @@ export default function Panel(
   // Questions the reader stopped before a checked answer arrived (user message ids).
   const [stopped, setStopped] = useState<string[]>([]);
   const questions = useRef<Record<string, string>>({});
+  // The version each question was asked in, and each answered turn's scope, so its
+  // links keep pointing at what it cited after the reader switches language or version.
+  const askedVersion = useRef<string | undefined>(undefined);
+  const turnScopes = useRef<Record<string, TurnScope>>({});
   const pendingQuestion = useRef('');
   const lastRequest = useRef<number | undefined>(undefined);
   const end = useRef<HTMLDivElement>(null);
@@ -115,6 +119,7 @@ export default function Panel(
         const result = aiChatFinalEventSchema.safeParse(value);
         if (result.success && result.data.conversationId === conversationId) {
           questions.current[result.data.turnId] = pendingQuestion.current;
+          turnScopes.current[result.data.turnId] = { lang: result.data.language, version: askedVersion.current };
           setFinals((previous) => ({ ...previous, [result.data.turnId]: result.data }));
           setAnnouncement(t(result.data.status === 'answered' ? 'aiReady' : 'aiNoAnswer'));
         }
@@ -149,6 +154,7 @@ export default function Panel(
       return;
     }
     pendingQuestion.current = question;
+    askedVersion.current = options.version;
     const sessionId = readerSession();
     void chat.sendMessage(question, {
       body: {
@@ -224,6 +230,7 @@ export default function Panel(
     setFollowUps({});
     setStopped([]);
     questions.current = {};
+    turnScopes.current = {};
     setCode(undefined);
     setAnnouncement('');
     setConversationId(crypto.randomUUID());
@@ -359,6 +366,7 @@ export default function Panel(
                 final={final}
                 options={options}
                 busy={chat.isLoading && !final}
+                scope={turnScopes.current[message.id]}
                 consent={consent()}
                 close={() => options.onOpenChange(false)}
                 followUps={!answering && message.id === latestAnswer?.id ? followUps[message.id] : undefined}

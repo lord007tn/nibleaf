@@ -444,6 +444,14 @@ const readJsonList = (text: string, start: number) => {
   return { strings, filled, closedAt: -1 };
 };
 const questionLike = (value: string) => /[?؟]\s*$/u.test(value);
+/** Whether the brace at `index` opens a JSON object (`{"…` or `{}`), not prose. */
+const opensObject = (text: string, index: number) => {
+  for (let next = index + 1; next < text.length && next < index + 32; next += 1) {
+    const char = text[next] ?? '';
+    if (char.trim()) return char === '"' || char === '}';
+  }
+  return false;
+};
 /** The model's suggestions: the string items of one of its top-level JSON lists
  * (outside any object or list), also of a list cut off at the output cap. The
  * reply is read once, in one pass; the list with the most question-like items
@@ -464,7 +472,7 @@ export const parseFollowUpQuestions = (text: string, question: string, asked: st
       if (char === '\\') index += 1;
       else if (char === '"') quoted = false;
     } else if (depth > 0 && char === '"') quoted = true;
-    else if (char === '{' || (char === '[' && depth > 0)) depth += 1;
+    else if ((char === '{' && (depth > 0 || opensObject(text, index))) || (char === '[' && depth > 0)) depth += 1;
     else if (char === '}' || char === ']') depth = Math.max(0, depth - 1);
     else if (char === '[') {
       const list = readJsonList(text, index);

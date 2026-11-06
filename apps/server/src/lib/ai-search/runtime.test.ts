@@ -38,14 +38,24 @@ const point = (overrides: Record<string, unknown> = {}): QdrantScoredPoint => ({
 
 describe('reading the rest of pages that appear only thinly', () => {
   const hit = (id: string, pageId: string, score = 0.5) => ({ chunk: { id, pageId, title: `Page ${pageId}`, content: id } as never, score });
-  it('widens the best-ranked pages, at most two, that have one or two sections among the results', () => {
-    expect(pagesToWiden([hit('c1', 'export')])).toEqual([{ id: 'export', title: 'Page export' }]);
-    // A sync section ranked first among other pages' sections (several pages, one of them thin).
-    expect(
-      pagesToWiden([hit('s1', 'sync'), hit('e1', 'export'), hit('e2', 'export'), hit('e3', 'export'), hit('i1', 'install')]).map((page) => page.id),
-    ).toEqual(['sync']);
-    expect(pagesToWiden([hit('s1', 'sync'), hit('i1', 'install'), hit('e1', 'export')]).map((page) => page.id)).toEqual(['sync', 'install']);
-    expect(pagesToWiden([hit('c1', 'export'), hit('c2', 'export'), hit('c1', 'export')]).map((page) => page.id)).toEqual(['export']);
+  const ids = (pages: { id: string }[]) => pages.map((page) => page.id);
+  it('chooses thin pages among the best results by score, at most two', () => {
+    expect(pagesToWiden([hit('c1', 'export')])).toEqual([{ id: 'export', title: 'Page export', best: 0.5 }]);
+    // The sync page ranked third, behind two pages with several sections each.
+    const third = [
+      hit('e1', 'export', 0.6),
+      hit('e2', 'export', 0.59),
+      hit('e3', 'export', 0.58),
+      hit('t1', 'tour', 0.57),
+      hit('t2', 'tour', 0.56),
+      hit('t3', 'tour', 0.55),
+      hit('s1', 'sync', 0.54),
+    ];
+    expect(ids(pagesToWiden(third))).toEqual(['sync']);
+    expect(ids(pagesToWiden([hit('i1', 'install', 0.2), hit('s1', 'sync', 0.5), hit('x1', 'other', 0.3)]))).toEqual(['sync', 'other']);
+    // A thin page only past the best results is not read.
+    const late = [...Array.from({ length: 8 }, (_, index) => hit(`e${index}`, `page-${index % 3}`, 0.9 - index / 100)), hit('s1', 'sync', 0.4)];
+    expect(ids(pagesToWiden(late))).not.toContain('sync');
     expect(pagesToWiden([])).toEqual([]);
   });
 
@@ -53,27 +63,44 @@ describe('reading the rest of pages that appear only thinly', () => {
   const runtime = {} as never;
   const searchScope = { ...scope('tenant-a', null), visibility: 'public' as const };
   /** A stub search: the main lane finds `main`; a page lane finds that page's `sections`. */
-  const stub = (main: ReturnType<typeof hit>[], sections: Record<string, ReturnType<typeof hit>[]>) => {
+  const stub = (main: ReturnType<typeof hit>[], sections: Record<string, ReturnType<typeof hit>[]>, confidence = 0.3) => {
     const calls: { pages: string[] | null; query: string; limit: number }[] = [];
     const search: Search = async (target, query, limit) => {
       const pages = target.allowedPageIds ? [...target.allowedPageIds] : null;
       calls.push({ pages, query, limit });
       const chunks = pages ? (sections[pages[0] ?? ''] ?? []) : main;
-      return { cacheHit: false, chunks, confidence: pages ? 0.9 : 0.3 };
+      return { cacheHit: false, chunks, confidence: pages ? 0.9 : confidence };
     };
     return { search, calls };
   };
 
-  it('searches only the thin page for its other sections, keeping the main confidence', async () => {
-    const { search, calls } = stub([hit('s-conflict', 'sync', 0.54), hit('e1', 'export'), hit('e2', 'export'), hit('e3', 'export')], {
-      sync: [hit('s-token', 'sync', 0.4), hit('s-doctor', 'sync', 0.3)],
-    });
+  it('adds a thin page’s other sections without letting them outrank stronger results', async () => {
+    // The Arabic phone question: export ranks first; install and sync each matched once.
+    const { search, calls } = stub(
+      [hit('e1', 'export', 0.3), hit('e2', 'export', 0.29), hit('e3', 'export', 0.28), hit('i1', 'install', 0.167), hit('s1', 'sync', 0.143)],
+      {
+        install: [hit('i-overview', 'install', 1.08), hit('i-steps', 'install', 1.0)],
+        sync: [hit('s-token', 'sync', 0.9), hit('s-doctor', 'sync', 0.8)],
+      },
+    );
     const result = await retrieveChatContext(searchScope, 'notes missing on my phone', runtime, {}, search);
-    expect(calls.map((call) => call.pages)).toEqual([null, ['sync']]);
-    expect(calls[1]).toMatchObject({ query: 'Page sync notes missing on my phone', limit: 6 });
-    expect(result.chunks.map((chunk) => chunk.id)).toEqual(expect.arrayContaining(['s-conflict', 's-token', 's-doctor']));
+    expect(calls.map((call) => call.pages)).toEqual([null, ['install'], ['sync']]);
+    expect(calls[2]).toMatchObject({ query: 'Page sync notes missing on my phone', limit: 6 });
+    const order = result.hits.map((item) => item.chunk.id);
+    // Stronger results stay first; each widened section sits under its page's own best result.
+    expect(order.slice(0, 3)).toEqual(['e1', 'e2', 'e3']);
+    expect(order).toEqual(expect.arrayContaining(['s-token', 's-doctor']));
+    expect(order.indexOf('i-overview')).toBeGreaterThan(order.indexOf('e3'));
+    expect(order.indexOf('s-token')).toBeGreaterThan(order.indexOf('i-steps'));
+    for (const item of result.hits) if (item.chunk.id.startsWith('s-')) expect(item.score).toBeLessThan(0.143);
     // A widened page is not a page the reader chose: its confidence is not raised.
     expect(result.confidence).toBe(0.3);
+  });
+
+  it('reads nothing more for a turn below the answer threshold', async () => {
+    const { search, calls } = stub([hit('s1', 'sync', 0.05)], { sync: [hit('s-token', 'sync', 0.9)] }, 0.05);
+    await retrieveChatContext(searchScope, 'how?', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null]);
   });
 
   it('reads the page the reader asked from instead, and only it', async () => {

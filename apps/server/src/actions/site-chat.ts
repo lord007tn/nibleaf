@@ -503,17 +503,22 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         // says. The reader gets the answer first; they arrive after it. Their usage
         // counts as soon as they settle, however the turn ends.
         const answer = result.answer;
+        // Suggestions stay on the pages the answer cited (a related page read
+        // for context does not steer them); every source when it cited none.
+        const cited = new Set(result.citations.map((citation) => citation.pageId));
+        const onTopic = sources.filter((source) => cited.has(source.pageId));
+        const topics = onTopic.length ? onTopic : sources;
         outcome.unreported.set('follow_ups', {
-          input: chatCallInputTokens(shape, sources, answer).followUps,
+          input: chatCallInputTokens(shape, topics, answer).followUps,
           output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
-          inputBound: chatCallInputBounds(shape, sources, answer).followUps,
+          inputBound: chatCallInputBounds(shape, topics, answer).followUps,
           outputBound: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
         });
         suggesting = suggestFollowUps({
           adapter: utilityAdapter,
           question: body.question,
           answer,
-          chunks: sources,
+          chunks: topics,
           language,
           // A slow suggestions call never holds the reader's run open for long.
           signal: AbortSignal.any([sideSignal, AbortSignal.timeout(envExtras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS)]),

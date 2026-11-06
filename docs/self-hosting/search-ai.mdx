@@ -142,9 +142,11 @@ Each turn runs these steps:
 3. Hybrid retrieval runs with the usual scope filters. With page context, a
    second lane searches only that page and slightly boosts its passages, but only
    when the reader may read it. Without page context, the same lane reads the
-   other sections of the best-ranked pages (at most two) that have only one or two
-   passages among the results, so a question worded differently from a page still
-   gets its steps.
+   other sections of pages that have only one or two passages among the best
+   results (the two best-scored such pages), so a question worded differently from
+   a page still gets its steps. Those sections are ranked just under their page's
+   own best result, so they add context without reordering it, and a question the
+   search is not confident about reads nothing more.
 4. If retrieval is not confident enough, the model is not called. The reader is
    told the docs could not confirm an answer and is offered the best-matching
    articles, plus a **Contact support** link when the site has one.

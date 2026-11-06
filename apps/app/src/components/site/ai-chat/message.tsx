@@ -10,9 +10,19 @@ import { Feedback } from './feedback';
 import { answerText, citationParts } from './helpers';
 import type { ChatOptions } from './provider';
 
-/** Article link, opening the cited section when the source names one. */
-const sourceHref = (options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>, source: Pick<AiChatSource, 'path' | 'anchor'>) =>
-  `${siteHref(options.projectId, source.path, { lang: options.lang, version: options.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
+/** Where a turn was answered: its sources and their section anchors belong to it. */
+export interface TurnScope {
+  lang?: string;
+  version?: string;
+}
+/** Article link, opening the cited section when the source names one, in the
+ * language and version the turn was answered in (the reader may have switched since). */
+const sourceHref = (
+  options: Pick<ChatOptions, 'projectId' | 'lang' | 'version'>,
+  source: Pick<AiChatSource, 'path' | 'anchor'>,
+  scope: TurnScope | undefined,
+) =>
+  `${siteHref(options.projectId, source.path, { lang: scope?.lang ?? options.lang, version: scope?.version ?? options.version })}${source.anchor ? `#${encodeURIComponent(source.anchor)}` : ''}`;
 
 export function ChatMessage({
   text,
@@ -25,9 +35,12 @@ export function ChatMessage({
   onFollowUp,
   onSourceOpen,
   onCopy,
+  scope,
 }: {
   text: string;
   final?: AiChatFinalEvent;
+  /** The turn's language and version, for its links (defaults to the answer's language). */
+  scope?: TurnScope;
   options: ChatOptions;
   busy: boolean;
   consent: AiChatConsent;
@@ -40,7 +53,7 @@ export function ChatMessage({
 }) {
   const t = siteChatT(options.lang);
   const prefix = final?.turnId ?? 'draft';
-  const href = (source: AiChatSource) => sourceHref(options, source);
+  const href = (source: AiChatSource) => sourceHref(options, source, { lang: final?.language, ...scope });
   const sources = final?.status === 'no_answer' ? final.suggestions : (final?.citations ?? []);
   // Sources are numbered in the order they are listed, so the answer's markers
   // and the cards read 1, 2, 3 whatever ids the model cited.

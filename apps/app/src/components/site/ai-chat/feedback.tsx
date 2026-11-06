@@ -144,7 +144,8 @@ export function Feedback({
           />
           <Button
             size="sm"
-            disabled={!reason && !comment.trim()}
+            // Details wait for the rating's own save, so the two writes never cross.
+            disabled={(mutation.isPending && origin !== 'details') || (!reason && !comment.trim())}
             loading={mutation.isPending && origin === 'details'}
             onClick={() => {
               setOrigin('details');

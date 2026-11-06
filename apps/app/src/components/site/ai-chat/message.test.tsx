@@ -65,6 +65,23 @@ describe('reader chat messages', () => {
     await unmount();
   });
 
+  it('links sources in the language and version the turn was answered in', async () => {
+    const { render, unmount } = mount();
+    window.matchMedia = vi.fn(() => ({ matches: false }) as unknown as MediaQueryList);
+    const arabic = {
+      ...final,
+      language: 'ar',
+      citations: [{ ...final.citations[0], anchor: 'انتهاء-صلاحية-الرمز' } as (typeof final.citations)[number]],
+    };
+    // The reader has since switched to English.
+    await render(<ChatMessage text="" final={arabic} options={options} busy={false} consent="granted" close={vi.fn()} scope={{ version: 'v1' }} />);
+    const href = document.getElementById('00000000-0000-4000-8000-000000000002-S1')?.getAttribute('href') ?? '';
+    expect(href).toContain('lang=ar');
+    expect(href).toContain('v1');
+    expect(decodeURIComponent(href)).toContain('#انتهاء-صلاحية-الرمز');
+    await unmount();
+  });
+
   it('numbers sources in the order they are listed, in the answer and on the cards', async () => {
     const { container, render, unmount } = mount();
     const [first] = final.citations;
@@ -193,6 +210,34 @@ describe('reader chat messages', () => {
     await settle();
     expect(mocks.feedback.mock.calls.at(-1)?.[0].data).toMatchObject({ rating: 'down', previousRating: 'up' });
     expect(down()?.getAttribute('aria-pressed')).toBe('true');
+    await unmount();
+  });
+
+  it('lets details wait for the rating’s save, so the two writes never cross', async () => {
+    const { container, render, unmount } = mount();
+    mocks.feedback.mockClear();
+    await render(<ChatMessage text="" final={final} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    const button = (label: string) => [...container.querySelectorAll('button')].find((candidate) => candidate.textContent === label);
+    let finish: (value: unknown) => void = () => undefined;
+    mocks.feedback.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Unhelpful answer"]')?.click());
+    await act(async () => button('Incomplete')?.click());
+    // The thumbs-down is still saving: details cannot be sent yet.
+    expect(button('Send')?.disabled).toBe(true);
+    mocks.feedback.mockResolvedValue({ saved: true });
+    await act(async () => finish({ saved: true }));
+    await settle();
+    expect(button('Send')?.disabled).toBe(false);
+    await act(async () => button('Send')?.click());
+    await settle();
+    // One write after the other: the details update the saved rating, never race it.
+    expect(mocks.feedback).toHaveBeenCalledTimes(2);
+    expect(mocks.feedback.mock.calls[1]?.[0].data).toMatchObject({ rating: 'down', reason: 'incomplete', previousRating: 'down' });
     await unmount();
   });
 });

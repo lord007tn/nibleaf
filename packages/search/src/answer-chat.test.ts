@@ -533,6 +533,8 @@ describe('follow-up suggestions', () => {
       'Can I export?',
     ]);
     expect(parseFollowUpQuestions('{"note": "a ] and [ in a string"} ["Can I export?"]', 'How?').questions).toEqual(['Can I export?']);
+    // A brace in prose is not an object.
+    expect(parseFollowUpQuestions('Here you go (a curly brace { left open) ["Can I export?"]', 'How?').questions).toEqual(['Can I export?']);
     // Without question marks, the list with more items wins, then the later one.
     expect(parseFollowUpQuestions('See ["Export"] below: ["Can I export one notebook", "Is it free"]', 'How?').questions).toEqual([
       'Can I export one notebook',
