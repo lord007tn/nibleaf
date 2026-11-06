@@ -18,6 +18,10 @@ const mocks = vi.hoisted(() => ({
   ai: vi.fn(),
   performance: vi.fn(),
   deployments: vi.fn(),
+  members: vi.fn(),
+  session: vi.fn(),
+  updateConfig: vi.fn(),
+  invalidate: vi.fn(),
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
@@ -53,12 +57,21 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
-vi.mock('@/hooks/api/mutations', () => ({ useCreatePage: () => ({ mutate: mocks.mutate, isPending: false }) }));
+vi.mock('@/hooks/api/mutations', () => ({
+  useCreatePage: () => ({ mutate: mocks.mutate, isPending: false }),
+  useUpdateProjectConfig: () => ({ mutate: mocks.updateConfig, isPending: false }),
+}));
+vi.mock('@/services/auth-client', () => ({ useSession: mocks.session }));
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+}));
 vi.mock('@/hooks/api', () => ({
   useDeployments: mocks.deployments,
   useDomains: () => ({ data: [{ domain: 'docs.example.com', isPrimary: true, verified: true }] }),
   usePages: () => ({ data: [{ id: 'page-getting-started', path: 'getting-started', kind: 'PAGE' }] }),
   useProject: () => ({ data: { id: 'p1', slug: 'docs' } }),
+  useProjectMembers: mocks.members,
 }));
 vi.mock('@/hooks/api/analytics', () => ({
   useOverviewInsights: mocks.overview,
@@ -100,6 +113,8 @@ beforeEach(() => {
   mocks.locale = 'en';
   mocks.search = {};
   mocks.deployments.mockReturnValue({ data: [{ status: 'READY' }] });
+  mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'u1' }, role: 'admin' }] }, isPending: false, isError: false });
+  mocks.session.mockReturnValue({ data: { user: { id: 'u1' } }, isPending: false });
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -434,11 +449,70 @@ describe('Search', () => {
     expect(text(cardTitled(view, 'Searches that failed'))).toContain('Every search found something in this period.');
   });
 
+  it('turns search terms on in place after a confirm that says what is stored', async () => {
+    mocks.search_.mockReturnValue(ready(searchFixture('disabled_by_setting')));
+    const view = await render(<SearchSection />);
+    const buttons = () => [...document.querySelectorAll('button')];
+    const turnOn = buttons().find((button) => text(button) === 'Turn on search terms');
+    expect(turnOn).toBeDefined();
+    // Only the notice offers it; the lists below just point at the notice.
+    expect(buttons().filter((button) => text(button) === 'Turn on search terms')).toHaveLength(1);
+    await act(async () => turnOn?.click());
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(text(dialog as Element)).toContain('Turn on search terms?');
+    expect(text(dialog as Element)).toContain('What readers type is kept for 30 days, then deleted.');
+    expect(text(dialog as Element)).toContain('at least 2 different visits have searched for it');
+    expect(text(dialog as Element)).toContain('Email addresses, web addresses and long numbers are removed');
+    expect(mocks.updateConfig).not.toHaveBeenCalled();
+
+    const confirm = [...(dialog?.querySelectorAll('button') ?? [])].find((button) => text(button) === 'Turn on');
+    await act(async () => confirm?.click());
+    expect(mocks.updateConfig).toHaveBeenCalledWith({ config: { analytics: { storePublicSearchTerms: true } } }, expect.any(Object));
+    const options = mocks.updateConfig.mock.calls[0]?.[1] as { onSuccess: () => void };
+    await act(async () => options.onSuccess());
+    expect(mocks.invalidate).toHaveBeenCalledWith({ queryKey: ['analytics', 'insights', 'p1'] });
+    expect(mocks.toast.success).toHaveBeenCalledWith('Search terms are on. New searches will appear here as readers make them.');
+    // A secondary link still leads to the settings for turning it off later.
+    expect(view.querySelector('a[data-to="/app/projects/$projectId/settings"]')).not.toBeNull();
+  });
+
+  it('explains a refused save politely inside the confirm', async () => {
+    mocks.search_.mockReturnValue(ready(searchFixture('disabled_by_setting')));
+    await render(<SearchSection />);
+    const turnOn = [...document.querySelectorAll('button')].find((button) => text(button) === 'Turn on search terms');
+    await act(async () => turnOn?.click());
+    const confirm = [...document.querySelectorAll('[role="dialog"] button')].find((button) => text(button) === 'Turn on');
+    await act(async () => (confirm as HTMLButtonElement | undefined)?.click());
+    const options = mocks.updateConfig.mock.calls[0]?.[1] as { onError: (error: unknown) => void };
+    await act(async () => options.onError(Object.assign(new Error('Forbidden'), { status: 403 })));
+    expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe(
+      'Only project admins can turn on search terms. Ask an admin to turn it on for you.',
+    );
+    expect(mocks.invalidate).not.toHaveBeenCalled();
+  });
+
+  it('offers turning search terms on only to people who can change settings', async () => {
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'u1' }, role: 'member' }] }, isPending: false, isError: false });
+    mocks.search_.mockReturnValue(ready(searchFixture('disabled_by_setting')));
+    const view = await render(<SearchSection />);
+    expect([...view.querySelectorAll('button')].some((button) => text(button) === 'Turn on search terms')).toBe(false);
+    expect(view.querySelector('a[data-to="/app/projects/$projectId/settings"]')).toBeNull();
+    expect(text(view)).toContain('A project admin can turn on search terms.');
+  });
+
+  it('offers the same switch from the overview when terms are off', async () => {
+    mocks.overview.mockReturnValue(ready({ ...overviewFixture(), failedSearches: [], searchTermsVisibility: 'disabled_by_setting' }));
+    const view = await render(<OverviewSection />);
+    const card = cardTitled(view, "What can't they find?");
+    expect([...card.querySelectorAll('button')].some((button) => text(button) === 'Turn on search terms')).toBe(true);
+  });
+
   it('says private sites never store terms', async () => {
     mocks.search_.mockReturnValue(ready(searchFixture('private_site')));
     const view = await render(<SearchSection />);
     expect(text(view)).toContain('never stored');
     expect(view.querySelector('a[data-to="/app/projects/$projectId/settings"]')).toBeNull();
+    expect([...view.querySelectorAll('button')].some((button) => text(button) === 'Turn on search terms')).toBe(false);
   });
 });
 

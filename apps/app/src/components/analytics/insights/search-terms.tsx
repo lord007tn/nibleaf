@@ -1,12 +1,27 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@nibleaf/design-system/components/ui/dialog';
 import { useT } from '@nibleaf/i18n/react';
+import { canAdminister } from '@nibleaf/shared/rbac';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { EyeOff, Loader2, PenLine } from 'lucide-react';
-import { type ReactNode, useRef } from 'react';
+import { Eye, EyeOff, Loader2, PenLine } from 'lucide-react';
+import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useProjectMembers } from '@/hooks/api';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
-import { useCreatePage } from '@/hooks/api/mutations';
+import { analyticsQueryKeys } from '@/hooks/api/analytics/query-keys';
+import { useCreatePage, useUpdateProjectConfig } from '@/hooks/api/mutations';
+import { useSession } from '@/services/auth-client';
 import { HIDDEN_TERMS_EXPLANATION } from './labels';
 
 /** A search term as typed by readers, in its own direction; hidden terms get a neutral placeholder. */
@@ -44,24 +59,126 @@ export function TermsVisibilityNotice({
       <AlertDescription className="flex flex-col items-start gap-2">
         <span>{t(HIDDEN_TERMS_EXPLANATION[visibility], { setting: t('settings.analytics.searchTerms.title') })}</span>
         {threshold ? <span>{t('analytics.search.hidden.threshold', { count: threshold })}</span> : null}
-        {visibility === 'disabled_by_setting' ? <SearchTermsSettingsButton projectId={projectId} /> : null}
+        {visibility === 'disabled_by_setting' ? <SearchTermsControls projectId={projectId} threshold={threshold} /> : null}
       </AlertDescription>
     </Alert>
   );
 }
 
-/** Opens the analytics settings where "store public search terms" is turned on. */
-function SearchTermsSettingsButton({ projectId }: { projectId: string }) {
+/** Default `CLICKHOUSE_SENSITIVE_RETENTION_DAYS`: how long opted-in search text is kept before it is deleted. */
+const SEARCH_TEXT_RETENTION_DAYS = 30;
+/** The API's k-visit threshold, for responses that don't carry it (overview, page drill-down). */
+const DEFAULT_TERM_THRESHOLD = 2;
+
+/**
+ * Whether the viewer may change project settings, with the same role check as
+ * the settings page. Hidden while membership loads (no flash for editors);
+ * offered when it can't be loaded, since the server enforces it anyway.
+ */
+function useCanChangeProjectSettings(projectId: string) {
+  const members = useProjectMembers(projectId);
+  const session = useSession();
+  if (members.isError) return true;
+  if (members.isPending || session.isPending) return false;
+  const me = members.data?.members.find((member) => member.user.id === session.data?.user.id);
+  return canAdminister(me?.role ?? '');
+}
+
+/**
+ * Turning search terms on, in place: settings admins get the "Turn on" button
+ * (with a confirm that says what is stored) and a quieter link to the settings
+ * for turning it off later; everyone else is told who can turn it on.
+ */
+function SearchTermsControls({ projectId, threshold }: { projectId: string; threshold?: number }) {
   const t = useT();
+  if (!useCanChangeProjectSettings(projectId)) {
+    return <span className="text-muted-foreground">{t('analytics.search.enable.askAdmin')}</span>;
+  }
   return (
-    <Button
-      nativeButton={false}
-      render={<Link params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />}
-      size="sm"
-      variant="outline"
+    <span className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      <TurnOnSearchTermsButton projectId={projectId} threshold={threshold ?? DEFAULT_TERM_THRESHOLD} />
+      <Button
+        nativeButton={false}
+        render={<Link params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />}
+        size="sm"
+        variant="link"
+      >
+        {t('analytics.search.hidden.openSettings')}
+      </Button>
+    </span>
+  );
+}
+
+/**
+ * Confirms, then stores `analytics.storePublicSearchTerms: true` through the
+ * same project-config mutation the settings form uses (the server merges the
+ * `analytics` section, so GA4/Plausible stay as they are) and refetches the
+ * insights. A refused save is explained in the dialog, not as a raw error.
+ */
+function TurnOnSearchTermsButton({ projectId, threshold }: { projectId: string; threshold: number }) {
+  const t = useT();
+  const queryClient = useQueryClient();
+  const update = useUpdateProjectConfig(projectId);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const turnOn = () => {
+    setError(null);
+    update.mutate(
+      { config: { analytics: { storePublicSearchTerms: true } } },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          toast.success(t('analytics.search.enable.done'));
+          void queryClient.invalidateQueries({ queryKey: analyticsQueryKeys.insightsForProject(projectId) });
+        },
+        onError: (failure) =>
+          setError(t((failure as { status?: number }).status === 403 ? 'analytics.search.enable.forbidden' : 'analytics.search.enable.failed')),
+      },
+    );
+  };
+  const points = [
+    t('analytics.search.enable.retention', { days: SEARCH_TEXT_RETENTION_DAYS }),
+    t('analytics.search.enable.threshold', { count: threshold }),
+    t('analytics.search.enable.redaction'),
+    t('analytics.search.enable.forward'),
+    t('analytics.search.enable.offLater'),
+  ];
+  return (
+    <Dialog
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) setError(null);
+      }}
+      open={open}
     >
-      {t('analytics.search.hidden.openSettings')}
-    </Button>
+      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+        <Eye aria-hidden />
+        {t('analytics.search.enable.action')}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('analytics.search.enable.title')}</DialogTitle>
+          <DialogDescription>{t('analytics.search.enable.description')}</DialogDescription>
+        </DialogHeader>
+        <ul className="flex list-disc flex-col gap-1.5 ps-5 text-sm">
+          {points.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+        {error ? (
+          <p className="text-destructive text-sm" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <DialogFooter>
+          <DialogClose render={<Button disabled={update.isPending} variant="outline" />}>{t('common.cancel')}</DialogClose>
+          <Button disabled={update.isPending} onClick={turnOn}>
+            {update.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+            {t('analytics.search.enable.confirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -102,9 +219,7 @@ export function HiddenTermsEmpty({
   const reason = disabled
     ? t(belowNotice ? 'analytics.search.hiddenReason.seeAbove' : 'analytics.search.hiddenReason.disabled')
     : t('analytics.search.hiddenReason.private');
-  return (
-    <TermsEmptyState action={disabled && !belowNotice ? <SearchTermsSettingsButton projectId={projectId} /> : null} known={known} reason={reason} />
-  );
+  return <TermsEmptyState action={disabled && !belowNotice ? <SearchTermsControls projectId={projectId} /> : null} known={known} reason={reason} />;
 }
 
 /**
