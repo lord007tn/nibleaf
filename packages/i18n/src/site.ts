@@ -32,6 +32,8 @@ import { site_ai_offline } from './paraglide/messages/site_ai_offline.js';
 import { site_ai_other } from './paraglide/messages/site_ai_other.js';
 import { site_ai_outdated } from './paraglide/messages/site_ai_outdated.js';
 import { site_ai_page } from './paraglide/messages/site_ai_page.js';
+import { site_ai_page_body } from './paraglide/messages/site_ai_page_body.js';
+import { site_ai_page_title } from './paraglide/messages/site_ai_page_title.js';
 import { site_ai_privacy } from './paraglide/messages/site_ai_privacy.js';
 import { site_ai_question } from './paraglide/messages/site_ai_question.js';
 import { site_ai_quota } from './paraglide/messages/site_ai_quota.js';
@@ -52,6 +54,7 @@ import { site_ai_suggestions } from './paraglide/messages/site_ai_suggestions.js
 import { site_ai_summary } from './paraglide/messages/site_ai_summary.js';
 import { site_ai_thanks } from './paraglide/messages/site_ai_thanks.js';
 import { site_ai_title } from './paraglide/messages/site_ai_title.js';
+import { site_ai_typing } from './paraglide/messages/site_ai_typing.js';
 import { site_ai_unavailable } from './paraglide/messages/site_ai_unavailable.js';
 import { site_ai_up } from './paraglide/messages/site_ai_up.js';
 import { site_ai_writing } from './paraglide/messages/site_ai_writing.js';
@@ -148,6 +151,9 @@ const siteMessages = {
   aiAbout: site_ai_about,
   aiRemove: site_ai_remove,
   aiPage: site_ai_page,
+  aiPageBody: site_ai_page_body,
+  aiPageTitle: site_ai_page_title,
+  aiTyping: site_ai_typing,
   aiQuestion: site_ai_question,
   aiSend: site_ai_send,
   aiStop: site_ai_stop,

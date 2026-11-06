@@ -102,13 +102,31 @@ export function SiteChatProvider({
     </Context.Provider>
   );
 }
+/** End-of-article prompt: where readers finish or get stuck. Uses the theme's
+ * AI surface so it follows every documentation theme, mode and direction. */
 export function SiteChatPageAction({ title, path, lang }: PageContext & { lang?: string }) {
   const chat = useSiteChat();
-  return chat ? (
-    <Button variant="ghost" size="sm" onClick={() => chat.openChat(undefined, { title, path })}>
-      {siteT(lang)('aiPage')}
-    </Button>
-  ) : null;
+  if (!chat) return null;
+  const t = siteT(lang);
+  return (
+    <aside
+      data-theme-surface="ai"
+      aria-label={t('aiPage')}
+      className="not-prose my-10 flex flex-col gap-4 rounded-2xl border p-5 shadow-sm sm:flex-row sm:items-center"
+    >
+      <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+        <Sparkles className="size-5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold text-base">{t('aiPageTitle')}</p>
+        <p className="mt-1 text-muted-foreground text-sm">{t('aiPageBody')}</p>
+      </div>
+      <Button className="w-full shrink-0 sm:w-auto" onClick={() => chat.openChat(undefined, { title, path })}>
+        <Sparkles aria-hidden className="size-4" />
+        {t('aiPage')}
+      </Button>
+    </aside>
+  );
 }
 export function ChatSearchBridge({ children }: { children: (onAskAi?: (question: string) => void) => ReactNode }) {
   const chat = useSiteChat();
