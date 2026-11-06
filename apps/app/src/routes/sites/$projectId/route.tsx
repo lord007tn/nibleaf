@@ -392,7 +392,11 @@ function SiteChrome() {
             config,
             ask,
             onAskConsumed: () => {
-              void navigate({ search: (prev) => ({ ...prev, ask: undefined }), replace: true });
+              // Drop only `ask` from the address the reader is on. A search-only
+              // navigate from this layout route would resolve to the site root.
+              const url = new URL(window.location.href);
+              url.searchParams.delete('ask');
+              router.history.replace(`${url.pathname}${url.search}${url.hash}`);
             },
           }}
           banner={<SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} />}

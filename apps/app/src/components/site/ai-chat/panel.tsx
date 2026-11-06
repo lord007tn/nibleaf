@@ -109,9 +109,15 @@ export default function Panel(
   useEffect(() => {
     const request = options.request;
     if (!request || request.id === lastRequest.current || (request.question && chat.isLoading)) return;
-    lastRequest.current = request.id;
-    setPage(request.page);
-    if (request.question) sendRequest(request.question, request.page ?? null);
+    // A send issued in the panel's first commit (deep link, search hand-off) is
+    // cancelled while the chat client finishes attaching. Wait one task, and
+    // only mark the request consumed once it is actually sent.
+    const timer = window.setTimeout(() => {
+      lastRequest.current = request.id;
+      setPage(request.page);
+      if (request.question) sendRequest(request.question, request.page ?? null);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [options.request, chat.isLoading]);
   useEffect(() => {
     if (chat.error && !code) {
