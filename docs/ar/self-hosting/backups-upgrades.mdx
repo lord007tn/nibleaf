@@ -132,7 +132,15 @@ API وعامل المعالجة (worker) جاهزين.
 
 ## استعادة تحليلات ClickHouse
 
-تعرّف ملفات Compose قرص `backups` عند `/var/lib/clickhouse/backups` على وحدة تخزين مسماة مستقلة.
+يعرّف ملفّا Compose للتشغيل السريع من المصدر ولـCoolify قرص `backups` عند `/var/lib/clickhouse/backups` على وحدة تخزين مسماة مستقلة.
+أما `docker-compose.prod.yml` في الإصدار v0.2.0 فسابق لذلك: إلى أن يتضمنه إصدارك، اربط وحدة تخزين عند `/var/lib/clickhouse/backups` وأضف هذا الملف بالمسار `/etc/clickhouse-server/config.d/backups.xml`:
+
+```xml
+<clickhouse>
+  <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+  <backups><allowed_disk>backups</allowed_disk></backups>
+</clickhouse>
+```
 استخدم النسخ الأصلي المتوافق مع ClickHouse 25.8 بهوية مشغّل، دون كتابة كلمات المرور في سجل الأوامر.
 نفّذ في عميل SQL موثّق:
 

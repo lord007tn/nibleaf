@@ -133,8 +133,18 @@ Treat the database upgrade as a separate dump-and-restore project.
 
 ## ClickHouse analytics recovery
 
-The Compose files define the `backups` disk at `/var/lib/clickhouse/backups` on a
-separate named volume. Use ClickHouse 25.8-compatible native backups with an
+The source quickstart and Coolify Compose files define the `backups` disk at
+`/var/lib/clickhouse/backups` on a separate named volume. The v0.2.0
+`docker-compose.prod.yml` predates it: until your release includes it, mount a
+volume at `/var/lib/clickhouse/backups` and add this file as
+`/etc/clickhouse-server/config.d/backups.xml`:
+
+```xml
+<clickhouse>
+  <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+  <backups><allowed_disk>backups</allowed_disk></backups>
+</clickhouse>
+``` Use ClickHouse 25.8-compatible native backups with an
 operator identity; keep passwords out of command history. In `clickhouse-client`
 (or another authenticated SQL client), run:
 
