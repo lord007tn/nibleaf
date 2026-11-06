@@ -1,0 +1,1296 @@
+[
+  {
+    "id": "publish",
+    "language": "en",
+    "question": "Walk me through publishing the pages I have finished.",
+    "sources": [
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Publish one coherent version",
+        "content": "## Publish one coherent version\n\nSelect **Publish** once the default draft is ready. Nibleaf creates a deployment,\nqueues the publish job, serializes the project and page tree, prepares search\ndata, and marks the deployment ready. Do not edit and republish repeatedly to\nguess past a failing job; inspect its recorded failure first."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      }
+    ],
+    "requiredClaims": ["Publish"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Publish one coherent version"]
+  },
+  {
+    "id": "ar-search-follow",
+    "language": "ar",
+    "question": "طيب، هل يلاقي الكلمات حتى لو كتبتها بدون تشكيل؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "تحقق من البحث بالعربية",
+        "content": "## تحقق من البحث بالعربية\n\n<Frame caption=\"البحث العربي يعيد عناوين ومقاطع عربية من الفهرس الخاص باللغة العربية\">\n  ![مربع البحث العربي يعرض نتائج عن النسخ الاحتياطي من صفحات التوثيق العربية](../../assets/bilingual/arabic-search.png)\n</Frame>\n\n[شاهد تبديل اللغة والاتجاه ثم البحث بالعربية](https://raw.githubusercontent.com/lord007tn/nibleaf/37a2068d9736abb0219809f3ab841ecf8f927f1b/docs/assets/bilingual/arabic-language-search.webm)\nفي تسجيل قصير من البيئة المحلية المعزولة.\n\nتفهرس المشاريع العربية الحقول المطبّعة الدقيقة وحقول الصرف ذات الوزن الأقل.\nكلاهما يزيل علامات التشكيل والتطويل، ويوحّد صيغ الألف الشائعة، ويحوّل الألف\nالمقصورة إلى ياء. ثم يطبّق مسار الصرف أداة محافظة لاشتقاق السوابق واللواحق على\nغرار Lucene Light10. وتظل الرموز المطبّعة الدقيقة متاحة ويجري ترتيبها بصورة\nمستقلة، بحيث يزيد الاشتقاق معدل الاسترجاع من دون أن يستبدل إشارة التهجئة الأصلية.\n\nهذه ليست عملية استرجاع دلالي، ولا استخراجًا للجذر الثلاثي، ولا إرجاعًا عامًا\nإلى الصيغة المعجمية. تُستبعد الرموز القصيرة والشيفرة والمعرّفات المختلطة بين\nالعربية واللاتينية والكلمات المحمية الملتبسة من المعالجة الصرفية. تظل العبارات\nالدقيقة أقوى إشارة، وتضيف المسارات المعجمية والصرفية والتقريبية المحدودة نتائج\nإضافية.\n\nاختبر الكلمات مع التشكيل ومن دونه، وصيغ الألف المختلفة، والتطويل، والسوابق\nواللواحق الشائعة، وصيغ المفرد والجمع، والعبارات التقنية الدقيقة، وأسماء المنتج\nالمكتوبة بالحرفين العربي واللاتيني. وأضف استعلامات سلبية يجب ألا تجد نتائج.\nاستخدم مفردات حقيقية من الصفحات، لا قوائم مصطنعة من الكلمات المفتاحية."
+      }
+    ],
+    "requiredClaims": ["تشكيل"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["تحقق من البحث بالعربية"],
+    "history": [
+      {
+        "role": "user",
+        "content": "هل يدعم بحث نيبليف المحتوى العربي؟"
+      },
+      {
+        "role": "assistant",
+        "content": "ما الذي تريد معرفته بالتحديد؟"
+      }
+    ],
+    "rewriteTopicTerms": ["بحث", "عرب"]
+  },
+  {
+    "id": "mixed-vague",
+    "language": "mixed",
+    "question": "أبغى أغير طريقة الكتابة، أي editor أختار؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "اختر وضع التحرير",
+        "content": "## اختر وضع التحرير\n\n| الوضع | استخدمه من أجل | تحقق قبل المغادرة |\n| --- | --- | --- |\n| المرئي | الكتل المنظّمة وأوامر الشرطة المائلة والجداول وإعادة ترتيب المحتوى. | استمرار احتواء المكونات المعقدة على سماتها وعناصرها الفرعية. |\n| WYSIWYG | تحرير النثر بتركيز مع تقليل عناصر واجهة المستخدم. | احتفاظ العناوين والقوائم والروابط ببنيتها المقصودة. |\n| Markdown | تعديل المصدر مباشرة والتحرير على نطاق واسع واستخدام صياغة لا تتوفر كعنصر تحكم مرئي. | توازن أسوار الشيفرة ووسوم المكونات والأسطر الفارغة. |\nإذا احتوت صفحة على مكوّن لا يستطيع المحرر المنظّم تحويله ذهابًا وإيابًا بأمان،\nيبقي Nibleaf تلك الكتلة للقراءة فقط أو يفتح الصفحة في وضع Markdown. هذا حد\nلحماية البيانات، وليس خطأ ينبغي تجاوزه.\n\nاستخدم **Preview** (المعاينة) بعد تغيير البنية أو المكونات أو الروابط أو النص\nمختلط الاتجاه. يحفظ إجراء المعاينة المحتوى المعلّق قبل فتح المسودة في علامة\nتبويب جديدة؛ اسمح بالنوافذ المنبثقة لأصل Nibleaf إذا لم تُفتح علامة التبويب."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اختر وضع التحرير"],
+    "expectClarifying": true
+  },
+  {
+    "id": "weather",
+    "language": "en",
+    "question": "Will it rain in Berlin tomorrow?",
+    "sources": [
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Publish one coherent version",
+        "content": "## Publish one coherent version\n\nSelect **Publish** once the default draft is ready. Nibleaf creates a deployment,\nqueues the publish job, serializes the project and page tree, prepares search\ndata, and marks the deployment ready. Do not edit and republish repeatedly to\nguess past a failing job; inspect its recorded failure first."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  },
+  {
+    "id": "reader-check",
+    "language": "en",
+    "question": "How do I check that visitors can actually read my new pages?",
+    "sources": [
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Verify as an unauthenticated reader",
+        "content": "## Verify as an unauthenticated reader\n\nOpen the canonical host while signed out and check:\n\n1. The homepage and a deep page return HTTP 200.\n2. An unknown path returns HTTP 404.\n3. Search finds a phrase from late in a changed page.\n4. The page canonical uses the public host and current path.\n5. `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` return the\n   expected site and pages.\n6. A moved URL reaches its final page in one permanent hop.\n7. The mobile sidebar, language switcher, tables, and code blocks remain usable.\n\nA ready status proves that the snapshot job completed. It does not prove DNS,\nTLS, storage delivery, email, or an external custom domain."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      }
+    ],
+    "requiredClaims": ["404"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Verify as an unauthenticated reader"]
+  },
+  {
+    "id": "recover",
+    "language": "en",
+    "question": "Publishing failed. Will my old pages disappear, and what should I do?",
+    "sources": [
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Recover from failure",
+        "content": "## Recover from failure\n\nIf the job fails, leave the previous ready version live. Read the deployment\nfailure and worker log, correct the draft or infrastructure cause, and publish a\nnew version. If an incorrect version is already public, restore the intended\ncontent to the default draft and publish forward.\n\nPinning an older application image does not roll back page drafts or a database\nmigration. Self-hosters should use the separate [upgrade and restore process](/self-hosting/backups-upgrades).\nFor the merged August capability set, also follow the\n[ordered migration and rollback guide](/self-hosting/combined-release-migration)."
+      }
+    ],
+    "requiredClaims": ["publish"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Recover from failure"],
+    "forbiddenClaims": ["delete the previous"]
+  },
+  {
+    "id": "custom-domain",
+    "language": "en",
+    "question": "When can I put my docs on my own domain?",
+    "sources": [
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Publish your first Cloud project",
+        "path": "getting-started/cloud",
+        "heading": "Prepare to share the site",
+        "content": "## Prepare to share the site\n\nReview the logo and favicon, top and footer links, call to action, site title,\ndescription, indexing setting, analytics preference, languages, and public\ndomain. Add a custom domain only after the default project URL works.\n\nCloud remains a beta service. Before moving business-critical documentation,\nread [known limitations](/reference/known-limitations) and export a recovery\ncopy of the project."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": ["default", "domain"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Prepare to share the site"]
+  },
+  {
+    "id": "move-follow",
+    "language": "en",
+    "question": "What should I do with the old link after moving it?",
+    "sources": [
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Write and review a page",
+        "path": "product/authoring",
+        "heading": "Organize pages around reader tasks",
+        "content": "## Organize pages around reader tasks\n\nUse groups to create a shallow hierarchy and pages for content readers can open.\nGive each page one primary purpose. A practical product manual normally exposes\ngetting started, common tasks, configuration, operations and troubleshooting,\nand reference without copying the application's internal menu.\n\nBefore moving or renaming a published page, record its public path. Parent groups\ncontribute to the path. Add a direct permanent redirect from the old path and\nupdate internal links so readers do not spend a hop on normal navigation."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      }
+    ],
+    "requiredClaims": ["redirect"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Organize pages around reader tasks"],
+    "history": [
+      {
+        "role": "user",
+        "content": "I am reorganizing a published documentation page."
+      },
+      {
+        "role": "assistant",
+        "content": "What would you like to know about that?"
+      }
+    ],
+    "rewriteTopicTerms": ["page", "redirect"]
+  },
+  {
+    "id": "review",
+    "language": "en",
+    "question": "How can my team review a big rewrite before it goes live? Give me the steps.",
+    "sources": [
+      {
+        "title": "Write and review a page",
+        "path": "product/authoring",
+        "heading": "Review a substantial change",
+        "content": "## Review a substantial change\n\nCreate a branch before a migration, large rewrite, or page-tree reorganization.\nUse a name that describes the outcome. Add anchored comments to the exact block\nbeing reviewed, then resolve or record every blocking discussion.\n\nReview the branch as a reader:\n\n1. Open every changed page in Preview.\n2. Test new links and paths.\n3. Search using words a reader would type.\n4. Check a narrow mobile viewport and keyboard focus.\n5. Confirm title, description, indexing, and language relationships.\n6. Merge the reviewed branch into the default draft, publish once, and verify\n   the public deployment."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      }
+    ],
+    "requiredClaims": ["branch", "Preview"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Review a substantial change"]
+  },
+  {
+    "id": "ar-en",
+    "language": "en",
+    "question": "Can people search my Arabic docs without typing accents?",
+    "sources": [
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Verify Arabic search",
+        "content": "## Verify Arabic search\n\nArabic projects index exact normalized fields and lower-weight morphology fields.\nBoth remove diacritics and tatweel, fold common alef forms, and map alef maqsura\nto ya. The morphology lane then applies a conservative Lucene Light10-style\naffix stemmer. Exact normalized tokens remain available and rank separately, so\nstemming can add recall without replacing the original spelling signal.\n\nThis is not semantic retrieval, triliteral-root extraction, or general\nlemmatization. Short tokens, code, mixed Arabic/Latin identifiers, and protected\nambiguous words are excluded from morphology processing. Exact phrases remain\nthe strongest signal; lexical, morphology, and bounded fuzzy lanes fill in\nadditional results.\n\nTest words with and without diacritics, alef variants, tatweel, common prefixes\nand suffixes, singular and plural forms, exact technical phrases, and product\nterms written in Arabic and Latin script. Include negative queries that must not\nmatch. Use real page vocabulary, not synthetic keyword lists."
+      }
+    ],
+    "requiredClaims": ["diacritics"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Verify Arabic search"]
+  },
+  {
+    "id": "translation",
+    "language": "en",
+    "question": "Do my English and Arabic pages have to have the same address?",
+    "sources": [
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Connect translations",
+        "content": "## Connect translations\n\nLink each translated page to its actual counterpart. Nibleaf uses that explicit\nrelationship when generating `hreflang`; matching slugs are not required.\n\n```text\nEnglish: /getting-started\nArabic:  /البدء\n```\n\nThe initial HTML should agree on `lang`, `dir`, page title, description, Open\nGraph locale, canonical, language alternates, and structured-data language."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": ["hreflang"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Connect translations"]
+  },
+  {
+    "id": "en-vague",
+    "language": "en",
+    "question": "I want a different editing experience. Which mode should I pick?",
+    "sources": [
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Write and review a page",
+        "path": "product/authoring",
+        "heading": "Choose an editing mode",
+        "content": "## Choose an editing mode\n\n| Mode | Use it for | Check before leaving |\n| --- | --- | --- |\n| Visual | Structured blocks, slash commands, tables, and rearranging content. | Complex components still contain their attributes and children. |\n| WYSIWYG | Focused prose editing with less interface chrome. | Headings, lists, and links kept their intended structure. |\n| Markdown | Direct source changes, bulk edits, and syntax unavailable as a visual control. | Fences, component tags, and blank lines are balanced. |\nIf a page contains a component the structured editor cannot safely round-trip,\nNibleaf keeps that block read-only or opens the page in Markdown mode. This is a\ndata-preservation boundary, not an error to bypass.\n\nUse **Preview** after changing structure, components, links, or mixed-direction\ntext. The preview action saves pending content before opening the draft in a new\ntab; allow pop-ups for the Nibleaf origin if the tab does not open."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Choose an editing mode"],
+    "expectClarifying": true
+  },
+  {
+    "id": "export",
+    "language": "en",
+    "question": "How do I download a copy of my docs?",
+    "sources": [
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Create a one-time export",
+        "content": "## Create a one-time export\n\nPublish and verify the site before exporting. Then open **Site settings →\nExports → Create export**, select at least one format, and start the run:\n\n- **Markdown ZIP** for portable source and migration checkpoints. Verify page\n  files, frontmatter, navigation, and referenced assets.\n- **PDF** for review, approval, or print distribution. Verify fonts, code,\n  diagrams, page breaks, and RTL text.\n- **Static HTML ZIP** for offline or independent static hosting. Verify internal\n  links, local search, navigation, CSS, and copied assets without Nibleaf.\n\nThe run moves through `PENDING`, `RUNNING`, and a terminal state. Download links\nappear only for `SUCCEEDED` artifacts and expire after a short, instance-defined\nwindow. A failed run does not change the published site; read the failure in run\nhistory, correct the cause, and create a new export."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      }
+    ],
+    "requiredClaims": ["export"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["Create a one-time export"]
+  },
+  {
+    "id": "tax",
+    "language": "en",
+    "question": "How much income tax do I owe this year?",
+    "sources": [
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Schedule archival snapshots",
+        "content": "## Schedule archival snapshots\n\nOpen **Schedules**, create a named schedule, and choose:\n\n- the formats to generate;\n- a daily, weekly, or monthly cadence;\n- an IANA timezone and local run time;\n- how many completed runs to keep;\n- the maximum retention age.\n\nUse an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes\nthe next run in that timezone so daylight-saving changes retain the intended\nwall-clock time. Use **Run now** to test the exact schedule before depending on\nit, then confirm the artifact in **Run history**.\n\nAn export schedule is an additional recovery copy, not a database backup. It\ndoes not preserve workspace membership, drafts, comments, analytics, credentials,\nor operational state. Self-hosters still need synchronized [Postgres and object\nstorage backups](/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "Publish and verify a documentation version",
+        "path": "product/publishing",
+        "heading": "Run the pre-publish review",
+        "content": "## Run the pre-publish review\n\nCheck the pages that changed:\n\n- The opening paragraph answers the page's primary question.\n- Prerequisites appear before actions that depend on them.\n- Commands and setting names match the current repository or release.\n- Links and redirects reach the final destination.\n- Images have useful alternative text and contain no secrets.\n- Headings form a logical outline.\n- Title, description, slug, indexing, and language relationships are correct.\n- Failure recovery is documented for destructive or operational tasks.\n\nFor a large change, merge a reviewed documentation branch into the default\ndraft before selecting **Publish**.\n\nWhen the CI-check add-on is enabled, the worker runs the configured local gates\nbefore creating a ready deployment. Enabled broken-link checks always block on\nan unresolved internal target. The preview grammar linter can be bypassed only\nwhen every finding is grammar-only and an editor explicitly chooses to publish\nanyway. Disabling the CI-check umbrella skips both checks; record any emergency\nbypass and restore the gate afterward. See [project add-ons](/product/add-ons)."
+      },
+      {
+        "title": "Publish Arabic and right-to-left documentation",
+        "path": "product/arabic-rtl",
+        "heading": "Test mixed technical text",
+        "content": "## Test mixed technical text\n\nUse a sentence containing Arabic prose, a command, a path, a query string, and\na version number:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nCheck the line in Visual, Markdown, Preview, and the published reader. Copy the\ncommand into a plain-text field to verify its logical order. Also check focus\norder, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,\nfont weights, mobile menus, long code blocks, and heading spacing."
+      },
+      {
+        "title": "Export and archive a published documentation version",
+        "path": "product/exports",
+        "heading": "Create a one-time export",
+        "content": "## Create a one-time export\n\nPublish and verify the site before exporting. Then open **Site settings →\nExports → Create export**, select at least one format, and start the run:\n\n- **Markdown ZIP** for portable source and migration checkpoints. Verify page\n  files, frontmatter, navigation, and referenced assets.\n- **PDF** for review, approval, or print distribution. Verify fonts, code,\n  diagrams, page breaks, and RTL text.\n- **Static HTML ZIP** for offline or independent static hosting. Verify internal\n  links, local search, navigation, CSS, and copied assets without Nibleaf.\n\nThe run moves through `PENDING`, `RUNNING`, and a terminal state. Download links\nappear only for `SUCCEEDED` artifacts and expire after a short, instance-defined\nwindow. A failed run does not change the published site; read the failure in run\nhistory, correct the cause, and create a new export."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  },
+  {
+    "id": "ar-publish",
+    "language": "ar",
+    "question": "خلصت كتابة الصفحات، كيف أنشرها للناس خطوة بخطوة؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "انشر إصدارًا واحدًا متماسكًا",
+        "content": "## انشر إصدارًا واحدًا متماسكًا\n\nاختر **Publish** (النشر) مرة واحدة عندما تصبح المسودة الافتراضية جاهزة. ينشئ\nNibleaf عملية نشر، ويضع مهمة النشر في قائمة الانتظار، ويسلسل المشروع وشجرة\nالصفحات، ويجهز بيانات البحث، ثم يعلن جاهزية عملية النشر. لا تعدّل وتعيد النشر\nمرارًا في محاولة لتجاوز مهمة فاشلة بالتخمين؛ افحص أولًا سبب الفشل المسجّل."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": ["نشر"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["انشر إصدارًا واحدًا متماسكًا"]
+  },
+  {
+    "id": "ar-check",
+    "language": "ar",
+    "question": "كيف أتأكد أن الزائر يقدر يشوف الصفحات الجديدة؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "تحقق بوصفك قارئًا غير مصادق عليه",
+        "content": "## تحقق بوصفك قارئًا غير مصادق عليه\n\nافتح المضيف الأساسي بعد تسجيل الخروج وتحقق مما يلي:\n\n1. تعيد الصفحة الرئيسية وصفحة عميقة استجابة HTTP 200.\n2. يعيد مسار غير معروف استجابة HTTP 404.\n3. يعثر البحث على عبارة واردة قرب نهاية صفحة تغيرت.\n4. يستخدم الرابط الأساسي للصفحة المضيف العام والمسار الحالي.\n5. تعيد `/robots.txt` و`/sitemap.xml` و`/llms.txt` و`/llms-full.txt` الموقع\n   والصفحات المتوقعة.\n6. يصل عنوان URL المنقول إلى صفحته النهائية بقفزة دائمة واحدة.\n7. تظل القائمة الجانبية على الهاتف ومبدّل اللغة والجداول وكتل الشيفرة قابلة\n   للاستخدام.\n\nتثبت حالة الجاهزية اكتمال مهمة اللقطة الثابتة. لكنها لا تثبت عمل DNS أو TLS\nأو تسليم التخزين أو البريد الإلكتروني أو نطاق مخصص خارجي."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": ["404"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["تحقق بوصفك قارئًا غير مصادق عليه"]
+  },
+  {
+    "id": "ar-recover-follow",
+    "language": "ar",
+    "question": "طيب لو فشل، إيش أسوي؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "استعد بعد الفشل",
+        "content": "## استعد بعد الفشل\n\nإذا فشلت المهمة، فاترك الإصدار الجاهز السابق متاحًا. اقرأ سبب فشل عملية النشر\nوسجل العامل، وصحح السبب في المسودة أو البنية التحتية، ثم انشر إصدارًا جديدًا.\nإذا كان إصدار غير صحيح قد أصبح عامًا، فأعد المحتوى المقصود إلى المسودة\nالافتراضية وانشر إصدارًا أحدث.\n\nلا تؤدي العودة إلى صورة تطبيق أقدم إلى التراجع عن مسودات الصفحات أو عملية\nترحيل قاعدة البيانات. ينبغي للمستضيفين ذاتيًا استخدام [عملية الترقية والاستعادة\nالمنفصلة](/ar/self-hosting/backups-upgrades).\nولمجموعة إمكانات أغسطس المدمجة، اتبع أيضًا\n[دليل الترحيل والتراجع المرتب](/ar/self-hosting/combined-release-migration)."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["استعد بعد الفشل"],
+    "history": [
+      {
+        "role": "user",
+        "content": "أريد نشر النسخة الجديدة من التوثيق."
+      },
+      {
+        "role": "assistant",
+        "content": "ما الذي تريد معرفته بالتحديد؟"
+      }
+    ],
+    "rewriteTopicTerms": ["نشر", "توثيق"]
+  },
+  {
+    "id": "ar-mode",
+    "language": "ar",
+    "question": "أنا مو مبرمج، هل أقدر أكتب صفحة من غير كتابة أكواد؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "اختر وضع التحرير",
+        "content": "## اختر وضع التحرير\n\n| الوضع | استخدمه من أجل | تحقق قبل المغادرة |\n| --- | --- | --- |\n| المرئي | الكتل المنظّمة وأوامر الشرطة المائلة والجداول وإعادة ترتيب المحتوى. | استمرار احتواء المكونات المعقدة على سماتها وعناصرها الفرعية. |\n| WYSIWYG | تحرير النثر بتركيز مع تقليل عناصر واجهة المستخدم. | احتفاظ العناوين والقوائم والروابط ببنيتها المقصودة. |\n| Markdown | تعديل المصدر مباشرة والتحرير على نطاق واسع واستخدام صياغة لا تتوفر كعنصر تحكم مرئي. | توازن أسوار الشيفرة ووسوم المكونات والأسطر الفارغة. |\nإذا احتوت صفحة على مكوّن لا يستطيع المحرر المنظّم تحويله ذهابًا وإيابًا بأمان،\nيبقي Nibleaf تلك الكتلة للقراءة فقط أو يفتح الصفحة في وضع Markdown. هذا حد\nلحماية البيانات، وليس خطأ ينبغي تجاوزه.\n\nاستخدم **Preview** (المعاينة) بعد تغيير البنية أو المكونات أو الروابط أو النص\nمختلط الاتجاه. يحفظ إجراء المعاينة المحتوى المعلّق قبل فتح المسودة في علامة\nتبويب جديدة؛ اسمح بالنوافذ المنبثقة لأصل Nibleaf إذا لم تُفتح علامة التبويب."
+      }
+    ],
+    "requiredClaims": ["Markdown"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اختر وضع التحرير"]
+  },
+  {
+    "id": "ar-language",
+    "language": "ar",
+    "question": "كيف أضيف نسخة عربية للموقع؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "أضف اللغة العربية",
+        "content": "## أضف اللغة العربية\n\nافتح عناصر التحكم في لغة شجرة الصفحات، وأضف العربية باستخدام رمز اللغة الصحيح\nوالاتجاه `rtl`، وحدد اللغة الافتراضية. يمكن أن تستخدم الصفحة العربية اسمًا\nمختصرًا وموقعًا مختلفين عن نظيرتها الإنجليزية.\n\nلا تنشئ نسخًا مترجمة فارغة لمجرد جعل الشجرتين متطابقتين. وينبغي ألا يُعلن عن\nالصفحات المفقودة أو غير القابلة للفهرسة أو ذات الرابط الأساسي الخارجي ضمن\nمجموعة لغات متبادلة."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": ["rtl"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["أضف اللغة العربية"]
+  },
+  {
+    "id": "ar-translation",
+    "language": "ar",
+    "question": "هل لازم رابط الصفحة العربية يكون مثل الإنجليزية؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اربط الترجمات",
+        "content": "## اربط الترجمات\n\nاربط كل صفحة مترجمة بنظيرتها الفعلية. يستخدم Nibleaf هذه العلاقة الصريحة عند\nإنشاء `hreflang`؛ ولا يُشترط تطابق الأسماء المختصرة.\n\n```text\nEnglish: /getting-started\nArabic:  /البدء\n```\n\nينبغي أن تتوافق HTML الأولية في `lang` و`dir` وعنوان الصفحة ووصفها وإعدادات\nOpen Graph المحلية والرابط الأساسي والبدائل اللغوية ولغة البيانات المنظّمة."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": ["hreflang"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اربط الترجمات"]
+  },
+  {
+    "id": "ar-export",
+    "language": "ar",
+    "question": "كيف أنزّل نسخة من التوثيق عندي؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "إنشاء تصدير لمرة واحدة",
+        "content": "## إنشاء تصدير لمرة واحدة\n\nانشر الموقع وتحقق منه قبل التصدير. ثم افتح **إعدادات الموقع ←\nالتصديرات ← إنشاء تصدير**، واختر صيغة واحدة على الأقل، وابدأ التشغيل:\n\n- **Markdown ZIP** للحصول على مصدر قابل للنقل ونقاط تحقق للترحيل. تحقق من ملفات\n  الصفحات، والبيانات الوصفية الأمامية، والتنقل، والأصول المشار إليها.\n- **PDF** للمراجعة أو الاعتماد أو التوزيع المطبوع. تحقق من الخطوط، والشيفرة،\n  والرسومات التخطيطية، وفواصل الصفحات، والنص من اليمين إلى اليسار.\n- **Static HTML ZIP** للاستخدام دون اتصال أو للاستضافة الثابتة المستقلة. تحقق من\n  الروابط الداخلية، والبحث المحلي، والتنقل، وCSS، والأصول المنسوخة من دون Nibleaf.\n\nتنتقل عملية التشغيل عبر `PENDING` ثم `RUNNING` ثم حالة نهائية. لا تظهر روابط\nالتنزيل إلا للنواتج ذات الحالة `SUCCEEDED`، وتنتهي صلاحيتها بعد مدة قصيرة تحددها\nنسخة Nibleaf. لا تغيّر العملية الفاشلة الموقع المنشور؛ اقرأ سبب الفشل في سجل\nالتشغيل، وصحح السبب، وأنشئ تصديرًا جديدًا."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["إنشاء تصدير لمرة واحدة"]
+  },
+  {
+    "id": "ar-vague",
+    "language": "ar",
+    "question": "أبغى أكتب بطريقة ثانية، أي وضع أنسب لي؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "اختر وضع التحرير",
+        "content": "## اختر وضع التحرير\n\n| الوضع | استخدمه من أجل | تحقق قبل المغادرة |\n| --- | --- | --- |\n| المرئي | الكتل المنظّمة وأوامر الشرطة المائلة والجداول وإعادة ترتيب المحتوى. | استمرار احتواء المكونات المعقدة على سماتها وعناصرها الفرعية. |\n| WYSIWYG | تحرير النثر بتركيز مع تقليل عناصر واجهة المستخدم. | احتفاظ العناوين والقوائم والروابط ببنيتها المقصودة. |\n| Markdown | تعديل المصدر مباشرة والتحرير على نطاق واسع واستخدام صياغة لا تتوفر كعنصر تحكم مرئي. | توازن أسوار الشيفرة ووسوم المكونات والأسطر الفارغة. |\nإذا احتوت صفحة على مكوّن لا يستطيع المحرر المنظّم تحويله ذهابًا وإيابًا بأمان،\nيبقي Nibleaf تلك الكتلة للقراءة فقط أو يفتح الصفحة في وضع Markdown. هذا حد\nلحماية البيانات، وليس خطأ ينبغي تجاوزه.\n\nاستخدم **Preview** (المعاينة) بعد تغيير البنية أو المكونات أو الروابط أو النص\nمختلط الاتجاه. يحفظ إجراء المعاينة المحتوى المعلّق قبل فتح المسودة في علامة\nتبويب جديدة؛ اسمح بالنوافذ المنبثقة لأصل Nibleaf إذا لم تُفتح علامة التبويب."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اختر وضع التحرير"],
+    "expectClarifying": true
+  },
+  {
+    "id": "ar-review",
+    "language": "ar",
+    "question": "كيف أراجع تعديلات الفريق قبل نشرها؟ اشرح الخطوات.",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "راجع تغييرًا جوهريًا",
+        "content": "## راجع تغييرًا جوهريًا\n\nأنشئ فرعًا قبل عملية ترحيل أو إعادة كتابة كبيرة أو إعادة تنظيم شجرة الصفحات.\nاستخدم اسمًا يصف النتيجة. أضف تعليقات مثبتة على الكتلة الجاري مراجعتها تحديدًا،\nثم احسم كل نقاش مانع أو سجّله.\n\nراجع الفرع بوصفك قارئًا:\n\n1. افتح كل صفحة تغيرت في **Preview** (المعاينة).\n2. اختبر الروابط والمسارات الجديدة.\n3. ابحث باستخدام كلمات قد يكتبها القارئ.\n4. تحقق من إطار عرض ضيق بحجم شاشة الهاتف ومن تركيز لوحة المفاتيح.\n5. تأكد من العنوان والوصف والفهرسة وعلاقات اللغات.\n6. ادمج الفرع الذي جرت مراجعته في المسودة الافتراضية، وانشر مرة واحدة، ثم تحقق\n   من عملية النشر العامة."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["راجع تغييرًا جوهريًا"]
+  },
+  {
+    "id": "ar-food",
+    "language": "ar",
+    "question": "كيف أطبخ كبسة دجاج لأربعة أشخاص؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "اختر وضع التحرير",
+        "content": "## اختر وضع التحرير\n\n| الوضع | استخدمه من أجل | تحقق قبل المغادرة |\n| --- | --- | --- |\n| المرئي | الكتل المنظّمة وأوامر الشرطة المائلة والجداول وإعادة ترتيب المحتوى. | استمرار احتواء المكونات المعقدة على سماتها وعناصرها الفرعية. |\n| WYSIWYG | تحرير النثر بتركيز مع تقليل عناصر واجهة المستخدم. | احتفاظ العناوين والقوائم والروابط ببنيتها المقصودة. |\n| Markdown | تعديل المصدر مباشرة والتحرير على نطاق واسع واستخدام صياغة لا تتوفر كعنصر تحكم مرئي. | توازن أسوار الشيفرة ووسوم المكونات والأسطر الفارغة. |\nإذا احتوت صفحة على مكوّن لا يستطيع المحرر المنظّم تحويله ذهابًا وإيابًا بأمان،\nيبقي Nibleaf تلك الكتلة للقراءة فقط أو يفتح الصفحة في وضع Markdown. هذا حد\nلحماية البيانات، وليس خطأ ينبغي تجاوزه.\n\nاستخدم **Preview** (المعاينة) بعد تغيير البنية أو المكونات أو الروابط أو النص\nمختلط الاتجاه. يحفظ إجراء المعاينة المحتوى المعلّق قبل فتح المسودة في علامة\nتبويب جديدة؛ اسمح بالنوافذ المنبثقة لأصل Nibleaf إذا لم تُفتح علامة التبويب."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  },
+  {
+    "id": "ar-health",
+    "language": "ar",
+    "question": "عندي صداع، أي دواء آخذ؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "إنشاء تصدير لمرة واحدة",
+        "content": "## إنشاء تصدير لمرة واحدة\n\nانشر الموقع وتحقق منه قبل التصدير. ثم افتح **إعدادات الموقع ←\nالتصديرات ← إنشاء تصدير**، واختر صيغة واحدة على الأقل، وابدأ التشغيل:\n\n- **Markdown ZIP** للحصول على مصدر قابل للنقل ونقاط تحقق للترحيل. تحقق من ملفات\n  الصفحات، والبيانات الوصفية الأمامية، والتنقل، والأصول المشار إليها.\n- **PDF** للمراجعة أو الاعتماد أو التوزيع المطبوع. تحقق من الخطوط، والشيفرة،\n  والرسومات التخطيطية، وفواصل الصفحات، والنص من اليمين إلى اليسار.\n- **Static HTML ZIP** للاستخدام دون اتصال أو للاستضافة الثابتة المستقلة. تحقق من\n  الروابط الداخلية، والبحث المحلي، والتنقل، وCSS، والأصول المنسوخة من دون Nibleaf.\n\nتنتقل عملية التشغيل عبر `PENDING` ثم `RUNNING` ثم حالة نهائية. لا تظهر روابط\nالتنزيل إلا للنواتج ذات الحالة `SUCCEEDED`، وتنتهي صلاحيتها بعد مدة قصيرة تحددها\nنسخة Nibleaf. لا تغيّر العملية الفاشلة الموقع المنشور؛ اقرأ سبب الفشل في سجل\nالتشغيل، وصحح السبب، وأنشئ تصديرًا جديدًا."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  },
+  {
+    "id": "mixed-publish",
+    "language": "mixed",
+    "question": "كيف أسوي Publish للصفحات اللي خلصتها؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "انشر إصدارًا واحدًا متماسكًا",
+        "content": "## انشر إصدارًا واحدًا متماسكًا\n\nاختر **Publish** (النشر) مرة واحدة عندما تصبح المسودة الافتراضية جاهزة. ينشئ\nNibleaf عملية نشر، ويضع مهمة النشر في قائمة الانتظار، ويسلسل المشروع وشجرة\nالصفحات، ويجهز بيانات البحث، ثم يعلن جاهزية عملية النشر. لا تعدّل وتعيد النشر\nمرارًا في محاولة لتجاوز مهمة فاشلة بالتخمين؛ افحص أولًا سبب الفشل المسجّل."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["انشر إصدارًا واحدًا متماسكًا"]
+  },
+  {
+    "id": "mixed-preview",
+    "language": "mixed",
+    "question": "كيف أراجع الصفحة في Preview قبل ما أنشرها؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "اختر وضع التحرير",
+        "content": "## اختر وضع التحرير\n\n| الوضع | استخدمه من أجل | تحقق قبل المغادرة |\n| --- | --- | --- |\n| المرئي | الكتل المنظّمة وأوامر الشرطة المائلة والجداول وإعادة ترتيب المحتوى. | استمرار احتواء المكونات المعقدة على سماتها وعناصرها الفرعية. |\n| WYSIWYG | تحرير النثر بتركيز مع تقليل عناصر واجهة المستخدم. | احتفاظ العناوين والقوائم والروابط ببنيتها المقصودة. |\n| Markdown | تعديل المصدر مباشرة والتحرير على نطاق واسع واستخدام صياغة لا تتوفر كعنصر تحكم مرئي. | توازن أسوار الشيفرة ووسوم المكونات والأسطر الفارغة. |\nإذا احتوت صفحة على مكوّن لا يستطيع المحرر المنظّم تحويله ذهابًا وإيابًا بأمان،\nيبقي Nibleaf تلك الكتلة للقراءة فقط أو يفتح الصفحة في وضع Markdown. هذا حد\nلحماية البيانات، وليس خطأ ينبغي تجاوزه.\n\nاستخدم **Preview** (المعاينة) بعد تغيير البنية أو المكونات أو الروابط أو النص\nمختلط الاتجاه. يحفظ إجراء المعاينة المحتوى المعلّق قبل فتح المسودة في علامة\nتبويب جديدة؛ اسمح بالنوافذ المنبثقة لأصل Nibleaf إذا لم تُفتح علامة التبويب."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": ["Preview"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اختر وضع التحرير"]
+  },
+  {
+    "id": "mixed-translation-follow",
+    "language": "mixed",
+    "question": "وهل لازم الـ slug يكون نفسه؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اربط الترجمات",
+        "content": "## اربط الترجمات\n\nاربط كل صفحة مترجمة بنظيرتها الفعلية. يستخدم Nibleaf هذه العلاقة الصريحة عند\nإنشاء `hreflang`؛ ولا يُشترط تطابق الأسماء المختصرة.\n\n```text\nEnglish: /getting-started\nArabic:  /البدء\n```\n\nينبغي أن تتوافق HTML الأولية في `lang` و`dir` وعنوان الصفحة ووصفها وإعدادات\nOpen Graph المحلية والرابط الأساسي والبدائل اللغوية ولغة البيانات المنظّمة."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": ["hreflang"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["اربط الترجمات"],
+    "history": [
+      {
+        "role": "user",
+        "content": "أريد ربط الصفحة العربية بترجمتها الإنجليزية في Nibleaf."
+      },
+      {
+        "role": "assistant",
+        "content": "ما الذي تريد معرفته بالتحديد؟"
+      }
+    ],
+    "rewriteTopicTerms": ["ترجم", "عرب", "slug"]
+  },
+  {
+    "id": "mixed-search",
+    "language": "mixed",
+    "question": "هل Arabic search يتعامل مع اختلاف التشكيل؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "تحقق من البحث بالعربية",
+        "content": "## تحقق من البحث بالعربية\n\n<Frame caption=\"البحث العربي يعيد عناوين ومقاطع عربية من الفهرس الخاص باللغة العربية\">\n  ![مربع البحث العربي يعرض نتائج عن النسخ الاحتياطي من صفحات التوثيق العربية](../../assets/bilingual/arabic-search.png)\n</Frame>\n\n[شاهد تبديل اللغة والاتجاه ثم البحث بالعربية](https://raw.githubusercontent.com/lord007tn/nibleaf/37a2068d9736abb0219809f3ab841ecf8f927f1b/docs/assets/bilingual/arabic-language-search.webm)\nفي تسجيل قصير من البيئة المحلية المعزولة.\n\nتفهرس المشاريع العربية الحقول المطبّعة الدقيقة وحقول الصرف ذات الوزن الأقل.\nكلاهما يزيل علامات التشكيل والتطويل، ويوحّد صيغ الألف الشائعة، ويحوّل الألف\nالمقصورة إلى ياء. ثم يطبّق مسار الصرف أداة محافظة لاشتقاق السوابق واللواحق على\nغرار Lucene Light10. وتظل الرموز المطبّعة الدقيقة متاحة ويجري ترتيبها بصورة\nمستقلة، بحيث يزيد الاشتقاق معدل الاسترجاع من دون أن يستبدل إشارة التهجئة الأصلية.\n\nهذه ليست عملية استرجاع دلالي، ولا استخراجًا للجذر الثلاثي، ولا إرجاعًا عامًا\nإلى الصيغة المعجمية. تُستبعد الرموز القصيرة والشيفرة والمعرّفات المختلطة بين\nالعربية واللاتينية والكلمات المحمية الملتبسة من المعالجة الصرفية. تظل العبارات\nالدقيقة أقوى إشارة، وتضيف المسارات المعجمية والصرفية والتقريبية المحدودة نتائج\nإضافية.\n\nاختبر الكلمات مع التشكيل ومن دونه، وصيغ الألف المختلفة، والتطويل، والسوابق\nواللواحق الشائعة، وصيغ المفرد والجمع، والعبارات التقنية الدقيقة، وأسماء المنتج\nالمكتوبة بالحرفين العربي واللاتيني. وأضف استعلامات سلبية يجب ألا تجد نتائج.\nاستخدم مفردات حقيقية من الصفحات، لا قوائم مصطنعة من الكلمات المفتاحية."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["تحقق من البحث بالعربية"]
+  },
+  {
+    "id": "mixed-rtl",
+    "language": "mixed",
+    "question": "كيف أخلي النسخة العربية RTL؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "أضف اللغة العربية",
+        "content": "## أضف اللغة العربية\n\nافتح عناصر التحكم في لغة شجرة الصفحات، وأضف العربية باستخدام رمز اللغة الصحيح\nوالاتجاه `rtl`، وحدد اللغة الافتراضية. يمكن أن تستخدم الصفحة العربية اسمًا\nمختصرًا وموقعًا مختلفين عن نظيرتها الإنجليزية.\n\nلا تنشئ نسخًا مترجمة فارغة لمجرد جعل الشجرتين متطابقتين. وينبغي ألا يُعلن عن\nالصفحات المفقودة أو غير القابلة للفهرسة أو ذات الرابط الأساسي الخارجي ضمن\nمجموعة لغات متبادلة."
+      }
+    ],
+    "requiredClaims": ["rtl"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["أضف اللغة العربية"]
+  },
+  {
+    "id": "mixed-move-follow",
+    "language": "mixed",
+    "question": "والـ old URL كيف أخليه يودّي للمكان الجديد؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "اكتب صفحة وراجعها",
+        "path": "ar/product/authoring",
+        "heading": "نظّم الصفحات حول مهام القارئ",
+        "content": "## نظّم الصفحات حول مهام القارئ\n\nاستخدم المجموعات لإنشاء تسلسل هرمي قليل العمق، والصفحات للمحتوى الذي يستطيع\nالقراء فتحه. اجعل لكل صفحة غرضًا أساسيًا واحدًا. يعرض دليل المنتج العملي عادةً\nبدء الاستخدام والمهام الشائعة والإعدادات والعمليات واستكشاف الأخطاء وإصلاحها\nوالمراجع، من دون نسخ قائمة التطبيق الداخلية.\n\nقبل نقل صفحة منشورة أو إعادة تسميتها، سجّل مسارها العام. تسهم المجموعات الأصل\nفي تكوين المسار. أضف إعادة توجيه دائمة ومباشرة من المسار القديم، وحدّث الروابط\nالداخلية حتى لا يمر القارئ بقفزة إضافية في التنقل المعتاد."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["نظّم الصفحات حول مهام القارئ"],
+    "history": [
+      {
+        "role": "user",
+        "content": "سأنقل صفحة توثيق منشورة إلى مجموعة أخرى."
+      },
+      {
+        "role": "assistant",
+        "content": "ما الذي تريد معرفته بالتحديد؟"
+      }
+    ],
+    "rewriteTopicTerms": ["صفحة", "رابط", "تحويل"]
+  },
+  {
+    "id": "mixed-api-key",
+    "language": "mixed",
+    "question": "وين أحط API key عشان أشغّل Smart AI للموقع؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "تشغيل البحث الهجين والإجابات الموثّقة",
+        "path": "ar/self-hosting/search-ai",
+        "heading": "إعداد المزوّدين",
+        "content": "## إعداد المزوّدين\n\nيمكن للمسؤول فتح **إعدادات الموقع ← مساحة العمل ← الذكاء الاصطناعي** وربط\nOpenAI أو OpenRouter بمفتاح API خاص بمساحة العمل. يتحقق زر التحقق وتحميل النماذج\nمن المفتاح ودليل النماذج بطلبات GET فقط؛ ولا ينفّذ استدلالاً مدفوعاً أو يثبت توفر\nرصيد. اختر نموذج إجابة يدعم المخرجات البنيوية الصارمة، واحفظ الاتصال، ثم اختر\nاستخدام المزوّد. الحفظ وحده لا يفعّل الخدمة. تبقى المفاتيح مخفية؛ ترك الحقل فارغاً\nيحافظ على المفتاح الحالي، واستبداله يحتاج تأكيداً صريحاً.\n\nتُحفظ المفاتيح مشفّرة في سجل تكاملات المشروع. اضبط\n`INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` نفسه على API وعامل المعالجة من إعدادات\nCoolify المعتادة، واحتفظ بنسخة آمنة منه ومن مفاتيح فك التشفير السابقة. لا تضع\nمفاتيح المزوّد في إعدادات الموقع العامة. لا يرجع اختيار مزوّد مساحة العمل تلقائياً\nإلى مفتاح النسخة. تعطيل الذكاء الاصطناعي يحافظ على المفاتيح وعلى البحث العادي.\n\nيبقى نموذج التضمين ثابتاً على مستوى النسخة لحماية توافق الفهرس والأبعاد. يحتاج\nاتصال OpenAI المباشر إلى نموذج تضمين من OpenAI. بعد التفعيل، انشر التوثيق أو أعد\nبناء فهرس البحث. لا تظهر الإجابات للقارئ حتى تصبح فهرسة النشر الحالي READY وتحتوي\nمقاطع قابلة للبحث. تُعرض جاهزية الفهرس منفصلة عن اختيار المزوّد المحفوظ.\nترسل الفهرسة التوثيق المنشور إلى المزوّد المختار، وترسل الإجابة السؤال ومقتطفات\nالمصادر المسموح بها. تُحسب التكلفة على حساب المزوّد وفق حدوده وحصص Nibleaf؛ ولا\nتوجد عملية شراء أو شحن تلقائي.\n\nيبقى OAuth الخاص بـ OpenAI/ChatGPT غير متاح حتى يحصل Nibleaf على اعتماد\nللاستخدام المستضاف. تميّز [إرشادات OpenAI](https://developers.openai.com/siwc/token-sharing-open-source)\nبين الاستخدام المحلي المفتوح المصدر والتطبيقات المستضافة. لا تعِد استخدام رموز\nجلسة Codex أو ChatGPT. تعمل مفاتيح API بصورة مستقلة عن هذا الاعتماد.\n\nلإعداد مزوّد تديره النسخة، اتبع إعدادات البيئة التالية.\n\nابدأ من `.env.production.example` واترك `SEARCH_RUNTIME=shadow"
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["إعداد المزوّدين"]
+  },
+  {
+    "id": "mixed-export-follow",
+    "language": "mixed",
+    "question": "وكيف أعمله مرة واحدة؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "إنشاء تصدير لمرة واحدة",
+        "content": "## إنشاء تصدير لمرة واحدة\n\nانشر الموقع وتحقق منه قبل التصدير. ثم افتح **إعدادات الموقع ←\nالتصديرات ← إنشاء تصدير**، واختر صيغة واحدة على الأقل، وابدأ التشغيل:\n\n- **Markdown ZIP** للحصول على مصدر قابل للنقل ونقاط تحقق للترحيل. تحقق من ملفات\n  الصفحات، والبيانات الوصفية الأمامية، والتنقل، والأصول المشار إليها.\n- **PDF** للمراجعة أو الاعتماد أو التوزيع المطبوع. تحقق من الخطوط، والشيفرة،\n  والرسومات التخطيطية، وفواصل الصفحات، والنص من اليمين إلى اليسار.\n- **Static HTML ZIP** للاستخدام دون اتصال أو للاستضافة الثابتة المستقلة. تحقق من\n  الروابط الداخلية، والبحث المحلي، والتنقل، وCSS، والأصول المنسوخة من دون Nibleaf.\n\nتنتقل عملية التشغيل عبر `PENDING` ثم `RUNNING` ثم حالة نهائية. لا تظهر روابط\nالتنزيل إلا للنواتج ذات الحالة `SUCCEEDED`، وتنتهي صلاحيتها بعد مدة قصيرة تحددها\nنسخة Nibleaf. لا تغيّر العملية الفاشلة الموقع المنشور؛ اقرأ سبب الفشل في سجل\nالتشغيل، وصحح السبب، وأنشئ تصديرًا جديدًا."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["إنشاء تصدير لمرة واحدة"],
+    "history": [
+      {
+        "role": "user",
+        "content": "أحتاج export من صفحات التوثيق للاحتفاظ بنسخة."
+      },
+      {
+        "role": "assistant",
+        "content": "ما الذي تريد معرفته بالتحديد؟"
+      }
+    ],
+    "rewriteTopicTerms": ["تصدير", "export"]
+  },
+  {
+    "id": "mixed-chat",
+    "language": "mixed",
+    "question": "كيف القارئ يفتح AI chat ويسأل عن الصفحة؟",
+    "sources": [
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "تشغيل البحث الهجين والإجابات الموثّقة",
+        "path": "ar/self-hosting/search-ai",
+        "heading": "تشغيل مساعد المحادثة بالذكاء الاصطناعي",
+        "content": "## تشغيل مساعد المحادثة بالذكاء الاصطناعي\n\nيعتمد مساعد المحادثة على المفاتيح نفسها التي تعتمد عليها الإجابات الموثّقة: إعداد\n**Grounded AI answers** في الموقع، ومزوّد صالح، وفهرس نشر جاهز. ولا يحتاج إلى خدمة\nإضافية. يفتحه القارئ من زر **Ask AI**، أو من نافذة البحث، أو من **Ask AI about this\npage** في صفحة المقال، أو برابط يحتوي على `?ask=<السؤال>`. المحادثة متعددة الأدوار\nوتبقى في تبويب المتصفح فقط، وإعادة تحميل الصفحة بالكامل تبدأ محادثة جديدة.\n\nيستدعي الموقع المنشور دالة خادم في TanStack Start، فتمرّر ملفات تعريف الارتباط\nوبيانات التفويض الخاصة بالزائر إلى `POST /api/public/sites/:id/chat` وتعيد تدفق\nالاستجابة كما هو. تستنتج نقطة Hono المستأجر والنشر والإصدار واللغة ومستوى الظهور\nوصلاحيات صفحات القارئ بالطريقة نفسها المتبعة في النتائج والإجابات، ثم تبث أحداث\nAG-UI عبر TanStack AI. لا يستطيع الطلب إلا الاختيار بين اللغات والإصدارات المنشورة،\nولا يمكنه توسيع النطاق أبداً.\n\nتمر كل جولة بالخطوات التالية:\n\n1. تُطبّق حدود الإنفاق قبل أي استدعاء للمزوّد: حد الدقيقة لكل عنوان IP، وحد\n   الأسئلة والرموز (tokens) في المحادثة، وميزانية الرموز اليومية للمشروع، والحصة\n   اليومية الحالية للإجابات (يُحسب كل سؤال مرة واحدة). وإذا تعذّر الوصول إلى Redis\n   تُرفض الجولة.\n2. يُعاد صياغة سؤال المتابعة إلى استعلام بحث مستقل اعتماداً على سجل محادثة محدود.\n   هذا استدعاء صغير إضافي للنموذج، ويتخطاه السؤال الأول في المحادثة.\n3. يجري البحث الهجين بمرشحات النطاق المعتادة. وعند وجود سياق صفحة، يبحث مسار ثانٍ\n   في تلك الصفحة وحدها ويرفع ترتيب مقاطعها قليلاً، بشرط أن يملك القارئ صلاحية قراءتها.\n4. إذا لم يكن البحث واثقاً بما يكفي، لا يُستدعى النموذج. يُخبَر القارئ بأن التوثيق\n   لم يؤكد إجابة، وتُعرض عليه أقرب المقالات صلة، ومعها رابط **تواصل مع الدعم**\n   إذا كان للموقع رابط دعم.\n5. وإلا تُبث الإجابة بصيغة Markdown مع علامات مصادر مثل `[S1]` داخل النص. وعند\n   انتهاء البث يتحقق Nibleaf منها وير"
+      }
+    ],
+    "requiredClaims": ["Ask AI"],
+    "expectedNoAnswer": false,
+    "expectedSourceHeadings": ["تشغيل مساعد المحادثة بالذكاء الاصطناعي"]
+  },
+  {
+    "id": "mixed-football",
+    "language": "mixed",
+    "question": "مين فاز في Champions League أمس؟",
+    "sources": [
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      },
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "انشر إصدارًا واحدًا متماسكًا",
+        "content": "## انشر إصدارًا واحدًا متماسكًا\n\nاختر **Publish** (النشر) مرة واحدة عندما تصبح المسودة الافتراضية جاهزة. ينشئ\nNibleaf عملية نشر، ويضع مهمة النشر في قائمة الانتظار، ويسلسل المشروع وشجرة\nالصفحات، ويجهز بيانات البحث، ثم يعلن جاهزية عملية النشر. لا تعدّل وتعيد النشر\nمرارًا في محاولة لتجاوز مهمة فاشلة بالتخمين؛ افحص أولًا سبب الفشل المسجّل."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  },
+  {
+    "id": "mixed-stocks",
+    "language": "mixed",
+    "question": "هل أشتري أسهم Apple اليوم؟",
+    "sources": [
+      {
+        "title": "انشر توثيقًا عربيًا من اليمين إلى اليسار",
+        "path": "ar/product/arabic-rtl",
+        "heading": "اختبر النص التقني المختلط",
+        "content": "## اختبر النص التقني المختلط\n\nاستخدم جملة تحتوي على نص عربي وأمر ومسار وسلسلة استعلام ورقم إصدار:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.\n```\n\nتحقق من السطر في الأوضاع المرئي وMarkdown و**Preview** (المعاينة) وفي واجهة\nالقارئ المنشورة. انسخ الأمر إلى حقل نص عادي للتحقق من ترتيبه المنطقي. وتحقق\nأيضًا من ترتيب التركيز وأسهم السابق/التالي ومسار التنقل وجدول المحتويات والقوائم\nالجانبية المتداخلة وأوزان الخطوط وقوائم الهاتف وكتل الشيفرة الطويلة وتباعد\nالعناوين.\n\n<Frame caption=\"نص عربي مختلط مع أوامر ومسارات لاتينية داخل كتل LTR مع بقاء واجهة الصفحة RTL\">\n  ![صفحة عربية من اليمين إلى اليسار تعرض كتل شيفرة لاتينية ونصًا تقنيًا مختلطًا](../../assets/bilingual/arabic-mixed-rtl-ltr.png)\n</Frame>"
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "إنشاء تصدير لمرة واحدة",
+        "content": "## إنشاء تصدير لمرة واحدة\n\nانشر الموقع وتحقق منه قبل التصدير. ثم افتح **إعدادات الموقع ←\nالتصديرات ← إنشاء تصدير**، واختر صيغة واحدة على الأقل، وابدأ التشغيل:\n\n- **Markdown ZIP** للحصول على مصدر قابل للنقل ونقاط تحقق للترحيل. تحقق من ملفات\n  الصفحات، والبيانات الوصفية الأمامية، والتنقل، والأصول المشار إليها.\n- **PDF** للمراجعة أو الاعتماد أو التوزيع المطبوع. تحقق من الخطوط، والشيفرة،\n  والرسومات التخطيطية، وفواصل الصفحات، والنص من اليمين إلى اليسار.\n- **Static HTML ZIP** للاستخدام دون اتصال أو للاستضافة الثابتة المستقلة. تحقق من\n  الروابط الداخلية، والبحث المحلي، والتنقل، وCSS، والأصول المنسوخة من دون Nibleaf.\n\nتنتقل عملية التشغيل عبر `PENDING` ثم `RUNNING` ثم حالة نهائية. لا تظهر روابط\nالتنزيل إلا للنواتج ذات الحالة `SUCCEEDED`، وتنتهي صلاحيتها بعد مدة قصيرة تحددها\nنسخة Nibleaf. لا تغيّر العملية الفاشلة الموقع المنشور؛ اقرأ سبب الفشل في سجل\nالتشغيل، وصحح السبب، وأنشئ تصديرًا جديدًا."
+      },
+      {
+        "title": "تصدير إصدار منشور من التوثيق وأرشفته",
+        "path": "ar/product/exports",
+        "heading": "جدولة لقطات الأرشفة",
+        "content": "## جدولة لقطات الأرشفة\n\nافتح **الجداول**، وأنشئ جدولًا ذا اسم، واختر:\n\n- الصيغ المراد إنشاؤها؛\n- وتيرة يومية أو أسبوعية أو شهرية؛\n- منطقة زمنية من IANA ووقت تشغيل محليًا؛\n- عدد عمليات التشغيل المكتملة المراد الاحتفاظ بها؛\n- أقصى عمر للاحتفاظ.\n\nاستخدم اسمًا من IANA مثل `Africa/Lagos`، لا إزاحة ثابتة عن UTC. يحسب Nibleaf\nموعد التشغيل التالي في تلك المنطقة الزمنية، بحيث تحافظ تغييرات التوقيت الصيفي\nعلى وقت الساعة المقصود. استخدم **التشغيل الآن** لاختبار الجدول نفسه تمامًا قبل\nالاعتماد عليه، ثم تأكد من وجود الناتج في **سجل التشغيل**.\n\nيمثل جدول التصدير نسخة إضافية للتعافي، وليس نسخة احتياطية لقاعدة البيانات. فهو\nلا يحفظ عضوية مساحة العمل أو المسودات أو التعليقات أو التحليلات أو بيانات الاعتماد\nأو الحالة التشغيلية. ولا يزال مشغّلو الاستضافة الذاتية بحاجة إلى [نسخ احتياطية\nمتزامنة من Postgres وتخزين الكائنات](/ar/self-hosting/backups-upgrades)."
+      },
+      {
+        "title": "انشر إصدارًا من التوثيق وتحقق منه",
+        "path": "ar/product/publishing",
+        "heading": "نفّذ مراجعة ما قبل النشر",
+        "content": "## نفّذ مراجعة ما قبل النشر\n\nتحقق من الصفحات التي تغيرت:\n\n- تجيب الفقرة الافتتاحية عن السؤال الأساسي للصفحة.\n- تظهر المتطلبات المسبقة قبل الإجراءات التي تعتمد عليها.\n- تطابق الأوامر وأسماء الإعدادات المستودع أو الإصدار الحالي.\n- تصل الروابط وعمليات إعادة التوجيه إلى الوجهة النهائية.\n- تحتوي الصور على نص بديل مفيد ولا تتضمن أي أسرار.\n- تكوّن العناوين مخططًا منطقيًا.\n- يكون العنوان والوصف والاسم المختصر والفهرسة وعلاقات اللغات صحيحة.\n- تكون الاستعادة بعد الفشل موثقة للمهام التدميرية أو التشغيلية.\n\nلإجراء تغيير كبير، ادمج فرع التوثيق الذي جرت مراجعته في المسودة الافتراضية\nقبل اختيار **Publish** (النشر).\n\nعند تفعيل إضافة فحوص CI، يشغّل العامل البوابات المحلية المضبوطة قبل إنشاء\nعملية نشر جاهزة. يمنع فحص الروابط المفعّل النشر دائمًا عند وجود هدف داخلي غير\nصالح. ولا يمكن تجاوز المدقق اللغوي الذي يحمل حالة المعاينة إلا عندما تكون كل\nالنتائج لغوية ويختار المحرر صراحةً النشر رغمها. يؤدي تعطيل مظلة فحوص CI إلى\nتخطي الفحصين؛ سجل أي تجاوز طارئ وأعد البوابة بعده. راجع\n[إضافات المشروع](/ar/product/add-ons)."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": []
+  }
+]

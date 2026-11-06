@@ -175,25 +175,50 @@ this from the docs" and links to the best-matching articles.
 
 Streaming is a trade-off: readers see text as it arrives, so they can briefly see
 wording that validation later removes or withdraws. The final event always
-decides what remains on screen and what is stored. Compare the strict one-shot
-policy with the chat policy on the same fixtures:
+decides what remains on screen and what is stored.
+
+Compare models and policies on Nibleaf's own docs with the bundled benchmark (see
+`packages/search/eval/README.md`):
 
 ```bash
-EVAL_MODE=both pnpm --filter @nibleaf/search eval:rag
+EVAL_FIXTURES=docs EVAL_MODE=chat EVAL_MODELS=openai/gpt-6-luna,openai/gpt-6.1-terra \
+  EVAL_JUDGE_MODEL=openai/gpt-6.1-terra pnpm --filter @nibleaf/search eval:rag
 ```
 
-On the bundled fixtures (10 English and Arabic cases, including follow-ups and
-page context; run on 2026-11-06), the chat policy answered every answerable
-question without lowering citation validity or no-answer accuracy:
+Results on 2026-11-06 with the chat policy, on 36 cases from these docs (12
+English, 12 Arabic, 12 mixed; including follow-ups, out-of-scope questions and
+vague ones). Model IDs were resolved from the live OpenRouter catalog, and costs
+are what OpenRouter reported:
 
-| Model | Policy | Answered (answerable) | Correct no-answer | Valid citations | Required facts covered |
-| --- | --- | --- | --- | --- | --- |
-| `openai/gpt-5.6-luna` | strict | 100% | 100% | 100% | 70% |
-| `openai/gpt-5.6-luna` | chat | 100% | 100% | 100% | 100% |
-| `deepseek/deepseek-v4-flash-0731` | strict | 86% | 100% | 100% | 80% |
-| `deepseek/deepseek-v4-flash-0731` | chat | 100% | 100% | 100% | 80% |
+| Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | Reply language | First token, median / p90 | Cost per 1,000 answers |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `openai/gpt-6-luna` | 100% / 100% | 100% | 90% | 89% | 4.75 | 100% | 3.4 s / 5.2 s | $0.31 |
+| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 81% | 84% | 4.75 | 100% | 2.7 s / 4.5 s | $0.67 |
+| `openai/gpt-6-luna-pro` | 100% / 100% | 100% | 88% | 74% | 4.78 | 100% | 8.6 s / 18.5 s | $0.61 |
+| `openai/gpt-6.1-terra` | 100% / 100% | 100% | 87% | 100% | 4.85 | 100% | 1.7 s / 4.0 s | $2.82 |
+| `openai/gpt-5.6-terra` | 100% / 100% | 100% | 91% | 84% | 4.81 | 100% | 1.0 s / 1.3 s | $5.36 |
 
-Re-run the evaluation when you change the answer model.
+Recommendations:
+
+- **Default answer model: `openai/gpt-6-luna`.** It grounds and cites at least as
+  well as `openai/gpt-5.6-luna` for half the cost. The first word arrives about
+  0.7 s later.
+- **Fallback: `openai/gpt-5.6-luna`**, the current default, if you prefer the
+  faster first token.
+- **When speed and completeness matter more than cost: `openai/gpt-6.1-terra`.**
+  It covered every required fact and starts in about 1.7 s, at roughly nine times
+  the cost of `openai/gpt-6-luna`.
+- **Follow-up rewriting and suggestions (`SEARCH_CHAT_UTILITY_MODEL`):
+  `openai/gpt-6-luna`.** It turned every follow-up into the right standalone
+  query for about $0.00006 each.
+- `openai/gpt-6-luna-pro` spends many reasoning tokens and is too slow for chat.
+
+Two limits apply to these numbers. The judge (`openai/gpt-6.1-terra`) also took
+part, so answers were spot-checked by hand. For the three "which editing mode
+should I pick?" cases, every model compared the modes rather than asking which
+the reader meant. The judge rated those answers 4 of 5. Questions whose subject
+is unclear, such as "How do I set it up?", do get one clarifying question. Re-run
+the benchmark when you change the answer model or the prompts.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
@@ -258,8 +283,41 @@ conversations as well.
 Workspace members find conversations, feedback, unanswered questions, and usage
 under **AI assistant** in the project sidebar. Project-bound API keys with the
 `analytics:read` scope can read the same data through the MCP tools
-`list_ai_conversations`, `get_ai_conversation`, `get_ai_feedback_summary`, and
-`list_ai_content_gaps`. Every MCP call is audited.
+`list_ai_conversations`, `get_ai_conversation`, `get_ai_feedback_summary`,
+`list_ai_content_gaps`, and `get_ai_usage`. Every MCP call is audited. When text is
+not being saved, responses say why in `captureOffReason`: `setting` (the site
+setting is off) or `instance` (no encryption key on the server).
+
+## Track how readers use the assistant
+
+Alongside each turn, Nibleaf records content-free events in ClickHouse
+(`ai_chat_events`, migration 1002). Events never contain question, answer or
+comment text:
+
+| Event | Recorded when |
+| --- | --- |
+| `chat_opened` | A reader opens the assistant, with the source: `launcher`, `page_button`, `search_handoff` or `deep_link`. |
+| `question_asked` | A question passes the spend gates, noting whether it was a follow-up and asked from a page. |
+| `first_token` | The first words of an answer are sent, with the time from the request. |
+| `answer_completed` | A turn ends: `answered`, `no_answer`, `blocked` (refused before any provider call), `failed` or `cancelled`. Includes model, provider, tokens, reported cost, latency and whether retrieval came from the cache. |
+| `citation_clicked`, `follow_up_clicked`, `copy`, `stop`, `new_chat` | The reader opens a source or a suggested question, copies an answer, stops one, or starts over. |
+| `feedback_given`, `feedback_changed` | A first rating, or a change or withdrawal (with the previous rating and the reason). |
+| `quota_reached` | A daily quota, token budget, conversation limit or rate limit refuses a question. |
+| `provider_error` | A provider call fails, by phase: `condense`, `retrieval`, `generation` or `follow_ups`. |
+
+Events follow the same rules as turns: they are queued and sealed, expire with
+`AI_CONVERSATION_RETENTION_DAYS`, are removed when a conversation or project is
+deleted, and carry a private site's visibility. A session hash is kept only when
+the visitor's consent allows it. A browser cannot claim consent is not required
+where the site's banner applies. Readers' interaction events go to
+`POST /api/public/sites/:id/chat/events` (60 a minute per IP), which accepts only
+the content-free events above.
+
+`ai_usage_daily` keeps exact totals per project, day and model: questions,
+outcomes, tokens, cost, latency, first-token time and retrieval cache hits. It is
+rebuilt from the stored turns, so deletions and late writes stay exact. The
+dashboard overview shows engagement and response times, and the MCP tool
+`get_ai_usage` returns the daily usage with totals.
 
 ## Index and evaluate
 
