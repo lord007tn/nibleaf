@@ -1,6 +1,6 @@
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonStatTile } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ArrowDown, ArrowUp, Info, Minus } from 'lucide-react';
@@ -79,6 +79,10 @@ export function KpiCard({
   const format = useInsightFormat();
   const value = compared?.value ?? null;
   const delta = compared ? compareDelta(compared, kind) : null;
+  if (loading) {
+    // Same grid cell, padding and (roughly) height as the tile, compact on phones like the real one.
+    return <SkeletonStatTile className="min-w-0 max-sm:min-h-26 max-sm:gap-2 max-sm:p-3.5 sm:min-h-44 sm:p-6" data-kpi-card="" />;
+  }
   return (
     <Card className="@container/card min-w-0 gap-3 max-sm:gap-2 max-sm:[--card-spacing:--spacing(3.5)]" data-kpi-card="">
       <CardHeader className="min-w-0">
@@ -87,16 +91,12 @@ export function KpiCard({
           <span className="min-w-0 flex-1 break-words">{label}</span>
           {hint ? <KpiHintButton hint={hint} label={label} /> : null}
         </CardDescription>
-        {loading ? (
-          <Skeleton className="mt-1 h-7 w-16 sm:h-8 sm:w-20" />
-        ) : (
-          <CardTitle className="font-semibold text-xl tabular-nums tracking-tight sm:text-2xl sm:@[220px]/card:text-3xl" data-kpi-value="">
-            {format.metric(value, kind)}
-          </CardTitle>
-        )}
+        <CardTitle className="font-semibold text-xl tabular-nums tracking-tight sm:text-2xl sm:@[220px]/card:text-3xl" data-kpi-value="">
+          {format.metric(value, kind)}
+        </CardTitle>
       </CardHeader>
       <CardFooter className="flex-col items-start gap-1 text-xs">
-        {loading ? null : delta ? (
+        {delta ? (
           <span className="flex flex-wrap items-center gap-1.5">
             <DeltaBadge delta={delta} polarity={polarity} />
             <span className="text-muted-foreground max-sm:hidden">{t('analytics.vsPrevious')}</span>

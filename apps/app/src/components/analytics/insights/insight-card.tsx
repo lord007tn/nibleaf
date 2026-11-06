@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import type { ReactNode } from 'react';
@@ -108,10 +108,10 @@ export function RankedList({
   const format = useInsightFormat();
   if (loading) {
     return (
-      <div className="space-y-3">
+      <div aria-hidden className="space-y-1" data-list-skeleton="">
         {Array.from({ length: rows }, (_, index) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders have no stable id
-          <Skeleton className="h-6 w-full" key={index} />
+          <SkeletonListRow className="px-2" key={index} withIcon={false} />
         ))}
       </div>
     );

@@ -5,7 +5,7 @@ import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel } from './insight-card';
 import { insightsState, mergeSeries } from './insights-data';
-import { InsightsEmpty, InsightsStatus } from './insights-status';
+import { InsightsEmpty, InsightsRegion, type InsightsRetry, InsightsStatus, insightsRetry } from './insights-status';
 import { deviceLabelKey } from './labels';
 import { PageInsightsLink } from './section-links';
 import { TrendChart } from './trend-chart';
@@ -20,24 +20,26 @@ type SlowPage = PerformanceInsights['slowestPages'][number];
 export function PerformanceSection() {
   const { projectId, filters, query } = useInsightsFilters();
   const result = usePerformanceInsights(projectId, query);
-  return <PerformanceView data={result.data} filters={filters} projectId={projectId} state={insightsState(result)} />;
+  return <PerformanceView data={result.data} retry={insightsRetry(result)} filters={filters} projectId={projectId} state={insightsState(result)} />;
 }
 
 function PerformanceView({
   data,
   state,
+  retry,
   projectId,
   filters,
 }: {
   data: PerformanceInsights | undefined;
   state: ReturnType<typeof insightsState>;
+  retry: InsightsRetry;
   projectId: string;
   filters: InsightsSearch;
 }) {
   const t = useT();
   const format = useInsightFormat();
   const { loading, unknown } = state;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const noSamples = data !== undefined && !unknown && data.overall.samples === 0;
   const vitalCell = (metric: 'lcp' | 'inp' | 'cls', value: number | null) => (
     <span className="inline-flex items-center justify-end gap-2">
@@ -47,8 +49,8 @@ function PerformanceView({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <InsightsStatus projectId={projectId} state={state} />
+    <InsightsRegion loading={loading}>
+      <InsightsStatus projectId={projectId} retry={retry} state={state} />
       {noSamples ? (
         <InsightsEmpty
           body={t('analytics.perf.empty.body')}
@@ -141,6 +143,6 @@ function PerformanceView({
           </InsightCard>
         </>
       )}
-    </div>
+    </InsightsRegion>
   );
 }

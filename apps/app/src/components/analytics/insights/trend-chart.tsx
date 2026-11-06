@@ -57,7 +57,21 @@ export function TrendChart({
   const format = useInsightFormat();
   const gradientPrefix = `fill-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const height = 'h-[240px]';
-  if (loading) return <Skeleton className={cn(height, 'w-full')} />;
+  if (loading) {
+    // A block the chart's height, plus the legend row when there is one, so nothing shifts when it draws.
+    return (
+      <div aria-hidden className={className} data-chart-skeleton="">
+        <Skeleton className={cn(height, 'w-full')} />
+        {series.length > 1 ? (
+          <div className="mt-3 flex flex-wrap gap-4">
+            {series.map((item) => (
+              <Skeleton className="h-4 w-20" key={item.key} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
   if (unknown || !hasValues(rows, series)) {
     return (
       <div className={cn('grid place-items-center text-center text-muted-foreground text-sm', height)}>

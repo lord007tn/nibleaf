@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   search: {} as Record<string, unknown>,
   navigate: vi.fn(),
   mutate: vi.fn(),
+  createPending: false,
+  updatePending: false,
+  refetch: vi.fn(),
   overview: vi.fn(),
   pages: vi.fn(),
   page: vi.fn(),
@@ -58,8 +61,8 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('@/hooks/api/mutations', () => ({
-  useCreatePage: () => ({ mutate: mocks.mutate, isPending: false }),
-  useUpdateProjectConfig: () => ({ mutate: mocks.updateConfig, isPending: false }),
+  useCreatePage: () => ({ mutate: mocks.mutate, isPending: mocks.createPending }),
+  useUpdateProjectConfig: () => ({ mutate: mocks.updateConfig, isPending: mocks.updatePending }),
 }));
 vi.mock('@/services/auth-client', () => ({ useSession: mocks.session }));
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
@@ -105,13 +108,15 @@ import {
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
 
-const ready = <T,>(data: T) => ({ data, isPending: false, isError: false });
-const loading = { data: undefined, isPending: true, isError: false };
-const failed = { data: undefined, isPending: false, isError: true };
+const ready = <T,>(data: T) => ({ data, isPending: false, isError: false, isFetching: false, refetch: mocks.refetch });
+const loading = { data: undefined, isPending: true, isError: false, isFetching: true, refetch: mocks.refetch };
+const failed = { data: undefined, isPending: false, isError: true, isFetching: false, refetch: mocks.refetch };
 
 beforeEach(() => {
   mocks.locale = 'en';
   mocks.search = {};
+  mocks.createPending = false;
+  mocks.updatePending = false;
   mocks.deployments.mockReturnValue({ data: [{ status: 'READY' }] });
   mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'u1' }, role: 'admin' }] }, isPending: false, isError: false });
   mocks.session.mockReturnValue({ data: { user: { id: 'u1' } }, isPending: false });
@@ -182,12 +187,6 @@ describe('Overview', () => {
     expect(view.querySelector('[dir="ltr"][title="/getting-started"]')).not.toBeNull();
   });
 
-  it('shows skeletons while loading', async () => {
-    mocks.overview.mockReturnValue(loading);
-    const view = await render(<OverviewSection />);
-    expect(view.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(4);
-  });
-
   it('invites the owner to publish when no reader has ever visited', async () => {
     mocks.overview.mockReturnValue(ready(emptyOverview()));
     const view = await render(<OverviewSection />);
@@ -207,8 +206,13 @@ describe('Overview', () => {
   it('renders unknown figures as a dash, never zero, when analytics is unavailable', async () => {
     mocks.overview.mockReturnValue(ready(emptyOverview('unavailable')));
     const view = await render(<OverviewSection />);
-    expect(text(view)).toContain('Analytics is temporarily unavailable');
-    expect(text(view)).toContain('Your docs site is not affected');
+    expect(text(view)).toContain('Analytics is taking a break');
+    expect(text(view)).toContain('Your docs site works normally');
+    expect(text(view)).toContain('“—” means not known, not zero');
+    // Calm, not a warning.
+    const notice = view.querySelector('[data-insights-unavailable]');
+    expect(notice?.className).not.toContain('warning');
+    expect(notice?.className).not.toContain('destructive');
     const values = [...view.querySelectorAll('[data-slot="card-title"]')].map(text);
     expect(values.length).toBeGreaterThan(0);
     expect(values.every((value) => value === '—' || !/^\d/.test(value))).toBe(true);
@@ -217,7 +221,29 @@ describe('Overview', () => {
   it('treats a failed request like an outage', async () => {
     mocks.overview.mockReturnValue(failed);
     const view = await render(<OverviewSection />);
-    expect(text(view)).toContain('Analytics is temporarily unavailable');
+    expect(text(view)).toContain('Analytics is taking a break');
+  });
+
+  it('checks again from the unavailable notice, showing progress on the button', async () => {
+    mocks.overview.mockReturnValue(failed);
+    const view = await render(<OverviewSection />);
+    const retry = [...view.querySelectorAll('button')].find((button) => text(button) === 'Try again');
+    expect(retry?.getAttribute('aria-busy')).toBeNull();
+    expect(retry?.disabled).toBe(false);
+    await act(async () => retry?.click());
+    expect(mocks.refetch).toHaveBeenCalledOnce();
+
+    mocks.overview.mockReturnValue({ ...failed, isFetching: true });
+    const busy = await render(<OverviewSection />);
+    const pending = [...busy.querySelectorAll('button')].find((button) => text(button) === 'Try again');
+    expect(pending?.getAttribute('aria-busy')).toBe('true');
+    expect(pending?.disabled).toBe(true);
+  });
+
+  it('offers no retry while figures are known', async () => {
+    mocks.overview.mockReturnValue(ready(overviewFixture()));
+    const view = await render(<OverviewSection />);
+    expect([...view.querySelectorAll('button')].some((button) => text(button) === 'Try again')).toBe(false);
   });
 
   it('explains how to enable ClickHouse analytics when it is not configured', async () => {
@@ -371,7 +397,12 @@ describe('Search', () => {
     expect(text(view)).toContain('sso');
     const write = view.querySelector<HTMLButtonElement>('button[aria-label="Write an article for “webhooks”"]');
     expect(write?.textContent).toContain('Write an article for this');
-    await act(async () => write?.click());
+    // A same-frame double click creates one draft, not two.
+    await act(async () => {
+      write?.click();
+      write?.click();
+    });
+    expect(mocks.mutate).toHaveBeenCalledOnce();
     expect(mocks.mutate).toHaveBeenCalledWith({ title: 'webhooks' }, expect.any(Object));
 
     const options = mocks.mutate.mock.calls[0]?.[1] as { onSuccess: (page: { id: string }) => void; onSettled: () => void };
@@ -563,7 +594,145 @@ describe('Feedback, AI visibility and performance', () => {
   ] as const)('%s shows the unavailable notice on a failed request', async (_name, Section, hook) => {
     hook.mockReturnValue(failed);
     const view = await render(<Section />);
-    expect(text(view)).toContain('Analytics is temporarily unavailable');
+    expect(text(view)).toContain('Analytics is taking a break');
+  });
+});
+
+describe('First load', () => {
+  type Shape = { tiles: number; charts: number; lists: number; tables: number[] };
+  const firstLoad: Array<[string, () => void, () => ReactElement, Shape]> = [
+    ['overview', () => mocks.overview.mockReturnValue(loading), () => <OverviewSection />, { tiles: 10, charts: 1, lists: 4, tables: [] }],
+    ['pages', () => mocks.pages.mockReturnValue(loading), () => <PagesSection />, { tiles: 0, charts: 0, lists: 0, tables: [9] }],
+    [
+      'page drill-down',
+      () => mocks.page.mockReturnValue(loading),
+      () => <PagesSection path="getting-started" />,
+      { tiles: 6, charts: 2, lists: 7, tables: [4] },
+    ],
+    ['search', () => mocks.search_.mockReturnValue(loading), () => <SearchSection />, { tiles: 6, charts: 1, lists: 0, tables: [5, 4, 2] }],
+    ['feedback', () => mocks.feedback.mockReturnValue(loading), () => <FeedbackSection />, { tiles: 4, charts: 1, lists: 0, tables: [5] }],
+    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [6, 4] }],
+    [
+      'performance',
+      () => mocks.performance.mockReturnValue(loading),
+      () => <PerformanceSection />,
+      { tiles: 0, charts: 1, lists: 0, tables: [5, 5] },
+    ],
+  ];
+
+  for (const [name, arrange, element, shape] of firstLoad) {
+    it(`shows the ${name} section's shape while its first response loads`, async () => {
+      arrange();
+      const view = await render(element());
+      // One busy region with one visually hidden status; the blocks themselves are hidden.
+      const region = view.querySelector('[data-insights-region]');
+      expect(region?.getAttribute('aria-busy')).toBe('true');
+      const statuses = view.querySelectorAll('[role="status"]');
+      expect(statuses).toHaveLength(1);
+      expect(text(statuses[0] as Element)).toBe('Loading…');
+      expect(statuses[0]?.className).toContain('sr-only');
+
+      const tiles = [...view.querySelectorAll('[data-slot="skeleton-stat-tile"]')];
+      expect(tiles).toHaveLength(shape.tiles);
+      for (const tile of tiles) {
+        // In the KPI grid, compact on phones like the real tile.
+        expect(tile.parentElement?.className).toContain('min-[340px]:grid-cols-2');
+        expect(tile.className).toContain('max-sm:p-3.5');
+        expect(tile.getAttribute('aria-hidden')).toBe('true');
+      }
+      const charts = [...view.querySelectorAll('[data-chart-skeleton]')];
+      expect(charts).toHaveLength(shape.charts);
+      for (const chart of charts) {
+        expect(chart.getAttribute('aria-hidden')).toBe('true');
+        expect(chart.querySelector('[class*="h-[240px]"]')).not.toBeNull();
+      }
+      const lists = [...view.querySelectorAll('[data-list-skeleton]')];
+      expect(lists).toHaveLength(shape.lists);
+      for (const list of lists) expect(list.querySelectorAll('[data-slot="skeleton-list-row"]').length).toBeGreaterThan(0);
+
+      // Placeholder rows sit inside the real tables, one cell per real column.
+      const tables = [...view.querySelectorAll('table')];
+      expect(tables.map((table) => table.querySelectorAll('thead th').length)).toEqual(shape.tables);
+      for (const table of tables) {
+        const columns = table.querySelectorAll('thead th').length;
+        const rows = [...table.querySelectorAll('tbody tr')];
+        expect(rows.length).toBeGreaterThan(0);
+        for (const row of rows) {
+          expect(row.getAttribute('data-slot')).toBe('skeleton-table-row');
+          expect(row.querySelectorAll('td')).toHaveLength(columns);
+        }
+      }
+      // No bare spinner on the page.
+      expect(view.querySelector('.animate-spin')).toBeNull();
+    });
+  }
+
+  it('drops the busy state and the skeletons once figures arrive', async () => {
+    mocks.overview.mockReturnValue(ready(overviewFixture()));
+    const view = await render(<OverviewSection />);
+    expect(view.querySelector('[data-insights-region]')?.getAttribute('aria-busy')).toBeNull();
+    expect(text(view.querySelector('[role="status"]') as Element)).toBe('');
+    expect(view.querySelector('[data-slot^="skeleton"]')).toBeNull();
+  });
+
+  it('keeps the shown range on screen while the next one loads', async () => {
+    // keepPreviousData: the next range is pending, but the hook still returns the previous data.
+    mocks.overview.mockReturnValue({ ...ready(overviewFixture()), isFetching: true, isPlaceholderData: true });
+    const view = await render(<OverviewSection />);
+    expect(text(view)).toContain('1,240');
+    expect(view.querySelector('[data-slot^="skeleton"]')).toBeNull();
+    expect(view.querySelector('[data-insights-region]')?.getAttribute('aria-busy')).toBeNull();
+  });
+
+  it('disables the pages filter while the table shape loads', async () => {
+    mocks.pages.mockReturnValue(loading);
+    const view = await render(<PagesSection />);
+    expect(view.querySelector<HTMLInputElement>('input[type="search"]')?.disabled).toBe(true);
+    expect(text(view)).not.toMatch(/\d+ pages?/);
+  });
+});
+
+describe('Async buttons', () => {
+  it('shows "Write an article for this" as loading while the draft is created', async () => {
+    mocks.createPending = true;
+    mocks.search_.mockReturnValue(ready(searchFixture()));
+    const view = await render(<SearchSection />);
+    const write = view.querySelector<HTMLButtonElement>('button[aria-label="Write an article for “webhooks”"]');
+    expect(write?.getAttribute('aria-busy')).toBe('true');
+    expect(write?.disabled).toBe(true);
+    expect(write?.hasAttribute('data-loading')).toBe(true);
+    // The label keeps its place (and the button its width).
+    expect(text(write as Element)).toContain('Write an article for this');
+    await act(async () => write?.click());
+    expect(mocks.mutate).not.toHaveBeenCalled();
+  });
+
+  it('reports a failed draft in plain words, never the server message', async () => {
+    mocks.search_.mockReturnValue(ready(searchFixture()));
+    const view = await render(<SearchSection />);
+    await act(async () => view.querySelector<HTMLButtonElement>('button[aria-label="Write an article for “webhooks”"]')?.click());
+    const options = mocks.mutate.mock.calls[0]?.[1] as { onError: (error: unknown) => void; onSettled: () => void };
+    await act(async () => {
+      options.onError(new Error('P2002 unique constraint failed on slug'));
+      options.onSettled();
+    });
+    expect(mocks.toast.error).toHaveBeenCalledOnce();
+    expect(String(mocks.toast.error.mock.calls[0]?.[0])).not.toContain('P2002');
+  });
+
+  it('shows "Turn on" as loading and holds Cancel while the setting saves', async () => {
+    mocks.updatePending = true;
+    mocks.search_.mockReturnValue(ready(searchFixture('disabled_by_setting')));
+    await render(<SearchSection />);
+    const turnOn = [...document.querySelectorAll('button')].find((button) => text(button) === 'Turn on search terms');
+    await act(async () => turnOn?.click());
+    const dialogButtons = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')];
+    const confirm = dialogButtons.find((button) => text(button) === 'Turn on');
+    expect(confirm?.getAttribute('aria-busy')).toBe('true');
+    expect(confirm?.disabled).toBe(true);
+    expect(dialogButtons.find((button) => text(button) === 'Cancel')?.disabled).toBe(true);
+    await act(async () => confirm?.click());
+    expect(mocks.updateConfig).not.toHaveBeenCalled();
   });
 });
 

@@ -7,7 +7,7 @@ import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
 import { CHART_GROUPS, groupCrawlerSeries, insightsState, mergeSeries } from './insights-data';
-import { InsightsEmpty, InsightsStatus } from './insights-status';
+import { InsightsEmpty, InsightsRegion, type InsightsRetry, InsightsStatus, insightsRetry } from './insights-status';
 import { DeltaBadge, KpiCard, KpiGrid } from './kpi-card';
 import { AI_SOURCE_NAMES, CRAWLER_CATEGORY_LABELS, RESOURCE_LABELS } from './labels';
 import { countDelta } from './metrics';
@@ -28,17 +28,19 @@ const EXPLAINERS: ReadonlyArray<{ category: 'ai_training' | 'ai_search' | 'ai_as
 export function AiSection() {
   const { projectId, filters, query } = useInsightsFilters();
   const result = useAiVisibilityInsights(projectId, query);
-  return <AiView data={result.data} filters={filters} projectId={projectId} state={insightsState(result)} />;
+  return <AiView data={result.data} retry={insightsRetry(result)} filters={filters} projectId={projectId} state={insightsState(result)} />;
 }
 
 function AiView({
   data,
   state,
+  retry,
   projectId,
   filters,
 }: {
   data: AiVisibilityInsights | undefined;
   state: ReturnType<typeof insightsState>;
+  retry: InsightsRetry;
   projectId: string;
   filters: InsightsSearch;
 }) {
@@ -49,7 +51,7 @@ function AiView({
   const kpis = data?.kpis;
   const compare = Boolean(data?.meta.previous);
   const granularity = data?.meta.granularity ?? 'day';
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const nothing =
     data !== undefined &&
     !unknown &&
@@ -76,8 +78,8 @@ function AiView({
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <InsightsStatus projectId={projectId} state={state} />
+    <InsightsRegion loading={loading}>
+      <InsightsStatus projectId={projectId} retry={retry} state={state} />
       {nothing ? (
         <>
           <InsightsEmpty body={t('analytics.ai.empty.body')} icon={<Bot aria-hidden className="size-5" />} title={t('analytics.ai.empty.title')} />
@@ -300,6 +302,6 @@ function AiView({
           </InsightCard>
         </>
       )}
-    </div>
+    </InsightsRegion>
   );
 }

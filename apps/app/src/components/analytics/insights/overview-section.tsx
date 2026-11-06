@@ -1,12 +1,12 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonListRow, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { Bot, Clock, Eye, MousePointerClick, ScrollText, Search, SearchX, ThumbsUp, Users } from 'lucide-react';
 import { type OverviewInsights, useOverviewInsights } from '@/hooks/api/analytics';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
 import { alignWithPrevious, dataFreshness, insightsState } from './insights-data';
-import { InsightsEmpty, InsightsStatus } from './insights-status';
+import { InsightsEmpty, InsightsRegion, type InsightsRetry, InsightsStatus, insightsRetry } from './insights-status';
 import { KpiCard, KpiGrid } from './kpi-card';
 import { CHANNEL_LABELS, REASON_HINTS, REASON_LABELS } from './labels';
 import { countDelta } from './metrics';
@@ -23,17 +23,19 @@ const isOverviewEmpty = (data: OverviewInsights) =>
 export function OverviewSection() {
   const { projectId, filters, query } = useInsightsFilters();
   const result = useOverviewInsights(projectId, query);
-  return <OverviewView data={result.data} filters={filters} projectId={projectId} state={insightsState(result)} />;
+  return <OverviewView data={result.data} retry={insightsRetry(result)} filters={filters} projectId={projectId} state={insightsState(result)} />;
 }
 
 function OverviewView({
   data,
   state,
+  retry,
   projectId,
   filters,
 }: {
   data: OverviewInsights | undefined;
   state: ReturnType<typeof insightsState>;
+  retry: InsightsRetry;
   projectId: string;
   filters: InsightsSearch;
 }) {
@@ -44,11 +46,11 @@ function OverviewView({
   const compare = Boolean(data?.meta.previous);
   const kpis = data?.kpis;
 
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   if (data && !unknown && isOverviewEmpty(data)) {
     return (
       <div className="flex flex-col gap-4">
-        <InsightsStatus projectId={projectId} state={state} />
+        <InsightsStatus projectId={projectId} retry={retry} state={state} />
         {dataFreshness(state.lastEventAt) === 'never' || dataFreshness(state.lastEventAt) === 'unknown' ? (
           <InsightsEmpty body={t('analytics.empty.noVisits.body')} title={t('analytics.empty.noVisits.title')} />
         ) : (
@@ -63,8 +65,8 @@ function OverviewView({
   const feedbackTotal = (data?.feedback.helpful ?? 0) + (data?.feedback.notHelpful ?? 0);
 
   return (
-    <div className="flex flex-col gap-4">
-      <InsightsStatus projectId={projectId} state={state} />
+    <InsightsRegion loading={loading}>
+      <InsightsStatus projectId={projectId} retry={retry} state={state} />
 
       <KpiGrid className="xl:grid-cols-4">
         <KpiCard
@@ -208,7 +210,11 @@ function OverviewView({
 
         <InsightCard description={t('analytics.overview.needsWork.description')} title={t('analytics.overview.needsWork.title')}>
           {loading ? (
-            <Skeleton className="h-40 w-full" />
+            <div aria-hidden className="divide-y divide-border" data-list-skeleton="">
+              {['a', 'b', 'c', 'd'].map((key) => (
+                <SkeletonListRow key={key} withIcon={false} />
+              ))}
+            </div>
           ) : unknown ? (
             <p className="py-6 text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</p>
           ) : (data?.pagesNeedingWork ?? []).length === 0 ? (
@@ -268,7 +274,7 @@ function OverviewView({
           title={t('analytics.overview.feedback.title')}
         >
           {loading ? (
-            <Skeleton className="h-20 w-full" />
+            <FeedbackSplitSkeleton />
           ) : unknown ? (
             <p className="py-6 text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</p>
           ) : feedbackTotal === 0 ? (
@@ -307,7 +313,7 @@ function OverviewView({
           />
         </KpiGrid>
       </InsightCard>
-    </div>
+    </InsightsRegion>
   );
 }
 
@@ -342,6 +348,23 @@ function cantFindEmpty({
   if (searches === 0) return t('analytics.empty.searches');
   if (rate === 0) return t('analytics.overview.cantFind.empty');
   return <TermsEmptyState known={known} reason={t('analytics.search.rareHidden')} />;
+}
+
+/** FeedbackSplit's shape while the first response loads: the rate, the bar and the two counts. */
+export function FeedbackSplitSkeleton() {
+  return (
+    <div aria-hidden className="flex flex-col gap-3" data-feedback-skeleton="">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <Skeleton className="h-2 w-full rounded-full" />
+      <div className="grid grid-cols-2 gap-2">
+        <SkeletonText className="gap-1" lines={2} />
+        <SkeletonText className="gap-1" lines={2} />
+      </div>
+    </div>
+  );
 }
 
 /** Helpful vs not helpful as two numbers and one proportional bar. */

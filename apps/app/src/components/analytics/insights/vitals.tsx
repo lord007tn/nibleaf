@@ -51,7 +51,7 @@ export function VitalsCards({ summary, loading, unknown }: { summary: WebVitalsS
             <CardHeader>
               <CardDescription>{t(vital.label)}</CardDescription>
               {loading ? (
-                <Skeleton className="mt-1 h-8 w-20" />
+                <Skeleton aria-hidden className="mt-1 h-8 w-20" />
               ) : (
                 <CardTitle className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-2xl tabular-nums tracking-tight">{display}</span>

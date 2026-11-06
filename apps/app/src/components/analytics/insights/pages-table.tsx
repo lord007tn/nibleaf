@@ -1,6 +1,7 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -42,8 +43,22 @@ const matchesFilter = (row: PageRow, needle: string) => {
  * Every page with traffic in the period: sortable columns, a text filter and
  * pagination (TanStack Table, client-side over the ≤500 rows the API returns).
  * Each row links to the page's drill-down. The table scrolls inside its card.
+ * While the first response loads (`loading`) the same table shows placeholder
+ * rows, so the header, filter and columns don't move when the data arrives.
  */
-export function PagesTable({ rows, projectId, filters, compare }: { rows: PageRow[]; projectId: string; filters: InsightsSearch; compare: boolean }) {
+export function PagesTable({
+  rows,
+  projectId,
+  filters,
+  compare,
+  loading = false,
+}: {
+  rows: PageRow[];
+  projectId: string;
+  filters: InsightsSearch;
+  compare: boolean;
+  loading?: boolean;
+}) {
   // TanStack Table v8 returns a stable table instance whose methods read
   // internal state; the React Compiler would memoize those reads away.
   'use no memo';
@@ -190,6 +205,7 @@ export function PagesTable({ rows, projectId, filters, compare }: { rows: PageRo
           <Search aria-hidden className="-translate-y-1/2 pointer-events-none absolute start-2.5 top-1/2 size-4 text-muted-foreground" />
           <Input
             className="ps-8"
+            disabled={loading}
             id={filterId}
             onChange={(event) => setGlobalFilter(event.target.value)}
             placeholder={t('analytics.pages.filter.placeholder')}
@@ -198,7 +214,7 @@ export function PagesTable({ rows, projectId, filters, compare }: { rows: PageRo
           />
         </label>
         <p aria-live="polite" className="text-muted-foreground text-xs">
-          {t('analytics.pages.count', { count: format.count(matching) })}
+          {loading ? null : t('analytics.pages.count', { count: format.count(matching) })}
         </p>
       </div>
       <Table>
@@ -235,7 +251,9 @@ export function PagesTable({ rows, projectId, filters, compare }: { rows: PageRo
           ))}
         </TableHeader>
         <TableBody>
-          {visible.length === 0 ? (
+          {loading ? (
+            <SkeletonTableRows columns={columns.length} rows={8} />
+          ) : visible.length === 0 ? (
             <TableRow>
               <TableCell className="py-8 text-center text-muted-foreground" colSpan={columns.length}>
                 {t('analytics.pages.filter.noMatch')}

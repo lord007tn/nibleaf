@@ -1,8 +1,8 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardContent } from '@nibleaf/design-system/components/ui/card';
-import { useLocale } from '@nibleaf/i18n/react';
-import { AlertTriangle, BarChart3, Clock, Database, ExternalLink, Info } from 'lucide-react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
+import { BarChart3, CirclePause, Clock, Database, ExternalLink, Info, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useDeployments } from '@/hooks/api';
 import { dataFreshness, type InsightsState } from './insights-data';
@@ -35,15 +35,54 @@ function FreshnessNotice({ projectId, lastEventAt }: { projectId: string; lastEv
   );
 }
 
+/** Refetching a section's query from its unavailable notice. */
+export interface InsightsRetry {
+  onRetry: () => void;
+  retrying: boolean;
+}
+
+/** The retry wiring for a section's query result. */
+export const insightsRetry = (result: { refetch: () => unknown; isFetching: boolean }): InsightsRetry => ({
+  onRetry: () => void result.refetch(),
+  retrying: result.isFetching,
+});
+
+/**
+ * A section's content region: `aria-busy` with one visually hidden status
+ * while the first response loads (the skeleton blocks themselves are hidden
+ * from assistive tech).
+ */
+export function InsightsRegion({ loading, children }: { loading: boolean; children: ReactNode }) {
+  const t = useT();
+  return (
+    <div aria-busy={loading || undefined} className="flex flex-col gap-4" data-insights-region="">
+      <p className="sr-only" role="status">
+        {loading ? t('common.loading') : null}
+      </p>
+      {children}
+    </div>
+  );
+}
+
 /** The availability notice for a section: unavailable, partial, or the not-configured setup card. */
-export function InsightsStatus({ state, projectId }: { state: InsightsState; projectId: string }) {
+export function InsightsStatus({ state, projectId, retry }: { state: InsightsState; projectId: string; retry?: InsightsRetry }) {
   const { t, locale } = useLocale();
   if (state.availability === 'unavailable') {
+    // An outage of the analytics store is not the owner's problem to fix: say so
+    // calmly, in neutral colours, and let them check again.
     return (
-      <Alert variant="warning">
-        <AlertTriangle />
+      <Alert data-insights-unavailable="">
+        <CirclePause />
         <AlertTitle>{t('analytics.status.unavailable.title')}</AlertTitle>
-        <AlertDescription>{t('analytics.status.unavailable.body')}</AlertDescription>
+        <AlertDescription className="flex flex-col items-start gap-3">
+          <span>{t('analytics.status.unavailable.body')}</span>
+          {retry ? (
+            <Button loading={retry.retrying} onClick={retry.onRetry} size="sm" variant="outline">
+              <RotateCw aria-hidden />
+              {t('analytics.status.retry')}
+            </Button>
+          ) : null}
+        </AlertDescription>
       </Alert>
     );
   }

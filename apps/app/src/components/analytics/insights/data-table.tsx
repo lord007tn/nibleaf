@@ -1,4 +1,4 @@
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -36,17 +36,7 @@ export function SimpleTable<Row>({
   unknown?: boolean;
 }) {
   const t = useT();
-  if (loading) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: 4 }, (_, index) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders have no stable id
-          <Skeleton className="h-8 w-full" key={index} />
-        ))}
-      </div>
-    );
-  }
-  if (unknown || rows.length === 0) {
+  if (!loading && (unknown || rows.length === 0)) {
     if (!unknown && typeof empty !== 'string') return empty;
     return <p className="py-6 text-center text-muted-foreground text-sm">{unknown ? t('analytics.state.unknown') : empty}</p>;
   }
@@ -63,7 +53,9 @@ export function SimpleTable<Row>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => (
+        {/* First load: placeholder rows inside the real table, same columns and row height. */}
+        {loading ? <SkeletonTableRows columns={columns.length} rows={4} /> : null}
+        {(loading ? [] : rows).map((row) => (
           <TableRow key={rowKey(row)}>
             {columns.map((column) => (
               <TableCell className={cn(column.numeric && 'text-end tabular-nums', column.className)} key={column.key}>

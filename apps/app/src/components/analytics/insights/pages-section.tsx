@@ -1,9 +1,8 @@
 import { useT } from '@nibleaf/i18n/react';
 import { usePagesInsights } from '@/hooks/api/analytics';
-import { SimpleTable } from './data-table';
 import { InsightCard } from './insight-card';
 import { dataFreshness, insightsState } from './insights-data';
-import { InsightsEmpty, InsightsStatus } from './insights-status';
+import { InsightsEmpty, InsightsRegion, InsightsStatus, insightsRetry } from './insights-status';
 import { PageDetailSection } from './page-detail-section';
 import { PagesTable } from './pages-table';
 import { useInsightsFilters } from './use-insights-filters';
@@ -23,8 +22,8 @@ function PagesOverview() {
   if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
   const noRows = data !== undefined && !state.unknown && data.rows.length === 0;
   return (
-    <div className="flex flex-col gap-4">
-      <InsightsStatus projectId={projectId} state={state} />
+    <InsightsRegion loading={state.loading}>
+      <InsightsStatus projectId={projectId} retry={insightsRetry(result)} state={state} />
       {noRows ? (
         dataFreshness(state.lastEventAt) === 'fresh' || dataFreshness(state.lastEventAt) === 'stale' ? (
           <InsightsEmpty body={t('analytics.empty.noVisitsInPeriod.body')} title={t('analytics.empty.noVisitsInPeriod.title')} />
@@ -36,21 +35,19 @@ function PagesOverview() {
           description={data?.truncated ? t('analytics.pages.truncated') : t('analytics.pages.description')}
           title={t('analytics.pages.title')}
         >
-          {state.loading || state.unknown ? (
-            <SimpleTable
-              caption={t('analytics.pages.caption')}
-              columns={[]}
-              empty=""
-              loading={state.loading}
-              rowKey={() => ''}
-              rows={[]}
-              unknown={state.unknown}
-            />
+          {state.unknown ? (
+            <p className="py-6 text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</p>
           ) : (
-            <PagesTable compare={Boolean(data?.meta.previous)} filters={filters} projectId={projectId} rows={data?.rows ?? []} />
+            <PagesTable
+              compare={Boolean(data?.meta.previous)}
+              filters={filters}
+              loading={state.loading}
+              projectId={projectId}
+              rows={data?.rows ?? []}
+            />
           )}
         </InsightCard>
       )}
-    </div>
+    </InsightsRegion>
   );
 }

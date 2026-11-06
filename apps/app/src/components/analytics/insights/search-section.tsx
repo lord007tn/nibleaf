@@ -7,7 +7,7 @@ import { SimpleTable } from './data-table';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PathText } from './insight-card';
 import { insightsState, mergeSeries } from './insights-data';
-import { InsightsEmpty, InsightsStatus } from './insights-status';
+import { InsightsEmpty, InsightsRegion, type InsightsRetry, InsightsStatus, insightsRetry } from './insights-status';
 import { KpiCard, KpiGrid } from './kpi-card';
 import { HiddenTermsEmpty, TermsEmptyState, TermsVisibilityNotice, TermText, WriteArticleButton } from './search-terms';
 import { PageInsightsLink } from './section-links';
@@ -25,17 +25,19 @@ const HIDDEN_AGGREGATE: Record<SearchTermsVisibility, MessageKey> = {
 export function SearchSection() {
   const { projectId, filters, query } = useInsightsFilters();
   const result = useSearchInsights(projectId, query);
-  return <SearchView data={result.data} filters={filters} projectId={projectId} state={insightsState(result)} />;
+  return <SearchView data={result.data} retry={insightsRetry(result)} filters={filters} projectId={projectId} state={insightsState(result)} />;
 }
 
 function SearchView({
   data,
   state,
+  retry,
   projectId,
   filters,
 }: {
   data: SearchInsights | undefined;
   state: ReturnType<typeof insightsState>;
+  retry: InsightsRetry;
   projectId: string;
   filters: InsightsSearch;
 }) {
@@ -43,7 +45,7 @@ function SearchView({
   const format = useInsightFormat();
   const { loading, unknown } = state;
   const kpis = data?.kpis;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const noSearches = data !== undefined && !unknown && data.kpis.searches.value === 0;
   const hiddenBy = data !== undefined && !unknown && data.searchTermsVisibility !== 'visible' ? data.searchTermsVisibility : null;
   const granularity = data?.meta.granularity ?? 'day';
@@ -68,8 +70,8 @@ function SearchView({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <InsightsStatus projectId={projectId} state={state} />
+    <InsightsRegion loading={loading}>
+      <InsightsStatus projectId={projectId} retry={retry} state={state} />
       {noSearches ? (
         <InsightsEmpty
           body={t('analytics.search.empty.body')}
@@ -246,7 +248,7 @@ function SearchView({
           ) : null}
         </>
       )}
-    </div>
+    </InsightsRegion>
   );
 }
 

@@ -14,7 +14,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { Eye, EyeOff, Loader2, PenLine } from 'lucide-react';
+import { Eye, EyeOff, PenLine } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useProjectMembers } from '@/hooks/api';
@@ -172,8 +172,7 @@ function TurnOnSearchTermsButton({ projectId, threshold }: { projectId: string; 
         ) : null}
         <DialogFooter>
           <DialogClose render={<Button disabled={update.isPending} variant="outline" />}>{t('common.cancel')}</DialogClose>
-          <Button disabled={update.isPending} onClick={turnOn}>
-            {update.isPending ? <Loader2 aria-hidden className="animate-spin" /> : null}
+          <Button loading={update.isPending} onClick={turnOn}>
             {t('analytics.search.enable.confirm')}
           </Button>
         </DialogFooter>
@@ -242,7 +241,9 @@ export function WriteArticleButton({ projectId, term }: { projectId: string; ter
           toast.success(t('analytics.search.write.created'));
           void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: page.id } });
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : t('analytics.search.write.failed')),
+        // Plain language, never the server's raw message. (useCreatePage is shared with
+        // the editor, which reports its own failures, so no `meta.errorMessage` there.)
+        onError: () => toast.error(t('analytics.search.write.failed')),
         onSettled: () => {
           inFlight.current = false;
         },
@@ -250,8 +251,8 @@ export function WriteArticleButton({ projectId, term }: { projectId: string; ter
     );
   };
   return (
-    <Button aria-label={t('analytics.search.write.aria', { term })} disabled={createPage.isPending} onClick={write} size="sm" variant="outline">
-      {createPage.isPending ? <Loader2 aria-hidden className="animate-spin" /> : <PenLine aria-hidden />}
+    <Button aria-label={t('analytics.search.write.aria', { term })} loading={createPage.isPending} onClick={write} size="sm" variant="outline">
+      <PenLine aria-hidden />
       {t('analytics.search.write.action')}
     </Button>
   );

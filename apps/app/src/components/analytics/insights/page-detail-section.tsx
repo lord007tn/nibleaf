@@ -8,10 +8,10 @@ import { SimpleTable } from './data-table';
 import { filterSearch, type InsightsSearch } from './filters';
 import { InsightCard, PageLabel, PathText, RankedList } from './insight-card';
 import { alignWithPrevious, insightsState, mergeSeries } from './insights-data';
-import { InsightsStatus } from './insights-status';
+import { InsightsRegion, type InsightsRetry, InsightsStatus, insightsRetry } from './insights-status';
 import { KpiCard, KpiGrid } from './kpi-card';
 import { CHANNEL_LABELS, deviceLabelKey, languageName } from './labels';
-import { FeedbackSplit } from './overview-section';
+import { FeedbackSplit, FeedbackSplitSkeleton } from './overview-section';
 import { HiddenTermsEmpty, TermsEmptyState, TermText } from './search-terms';
 import { PageInsightsLink } from './section-links';
 import { TrendChart, useSeriesSummary } from './trend-chart';
@@ -24,18 +24,29 @@ import { VitalsCards } from './vitals';
 export function PageDetailSection({ path }: { path: string }) {
   const { projectId, filters, query } = useInsightsFilters();
   const result = usePageInsights(projectId, query, path);
-  return <PageDetailView data={result.data} filters={filters} path={path} projectId={projectId} state={insightsState(result)} />;
+  return (
+    <PageDetailView
+      data={result.data}
+      retry={insightsRetry(result)}
+      filters={filters}
+      path={path}
+      projectId={projectId}
+      state={insightsState(result)}
+    />
+  );
 }
 
 function PageDetailView({
   data,
   state,
+  retry,
   projectId,
   filters,
   path,
 }: {
   data: PageDetailInsights | undefined;
   state: ReturnType<typeof insightsState>;
+  retry: InsightsRetry;
   projectId: string;
   filters: InsightsSearch;
   path: string;
@@ -61,7 +72,7 @@ function PageDetailView({
     }));
 
   return (
-    <div className="flex flex-col gap-4">
+    <InsightsRegion loading={loading}>
       <div className="flex flex-col gap-3">
         <Button
           className="-ms-2 w-fit"
@@ -74,7 +85,17 @@ function PageDetailView({
           {t('analytics.page.back')}
         </Button>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">{loading ? <Skeleton className="h-7 w-56" /> : <PageLabel path={path} title={data?.title ?? null} />}</div>
+          <div className="min-w-0">
+            {loading ? (
+              // PageLabel's shape: the title over the path.
+              <span aria-hidden className="flex flex-col gap-1">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </span>
+            ) : (
+              <PageLabel path={path} title={data?.title ?? null} />
+            )}
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button nativeButton={false} render={<a href={links.liveHref(path)} rel="noreferrer" target="_blank" />} size="sm" variant="outline">
               <ExternalLink aria-hidden />
@@ -95,7 +116,7 @@ function PageDetailView({
         </div>
       </div>
 
-      <InsightsStatus projectId={projectId} state={state} />
+      <InsightsStatus projectId={projectId} retry={retry} state={state} />
       {state.availability === 'not_configured' ? null : (
         <>
           <KpiGrid className="xl:grid-cols-3">
@@ -167,7 +188,7 @@ function PageDetailView({
           <InsightCard description={t('analytics.page.feedback.description')} title={t('analytics.overview.feedback.title')}>
             <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
               {loading ? (
-                <Skeleton className="h-24 w-full" />
+                <FeedbackSplitSkeleton />
               ) : unknown ? (
                 <p className="text-muted-foreground text-sm">{t('analytics.state.unknown')}</p>
               ) : (data?.feedback.helpful ?? 0) + (data?.feedback.notHelpful ?? 0) === 0 ? (
@@ -301,6 +322,6 @@ function PageDetailView({
           </InsightCard>
         </>
       )}
-    </div>
+    </InsightsRegion>
   );
 }
