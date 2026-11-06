@@ -1,3 +1,4 @@
+export * from './classifiers';
 export * from './client';
 export * from './events';
 export * from './initialization';
@@ -7,4 +8,5 @@ export * from './migrations';
 export * from './privacy';
 export * from './queries';
 export * from './redaction';
+export * from './tables';
 export * from './usage';

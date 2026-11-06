@@ -4,12 +4,23 @@ import { describe, expect, it } from 'vitest';
 import { getClickHouseClient, insertAnalyticsEvents } from './client';
 import { deleteProjectAnalytics, exportProjectAnalytics, rebuildProjectAnalyticsRollups } from './privacy';
 import { queryProjectAnalytics, queryWorkspaceAnalytics } from './queries';
+import { ANALYTICS_PROJECT_TABLES } from './tables';
 import { fixedAnalyticsEvent } from './testing';
 import { deleteProjectUsage, insertUsageEvents, listPendingUsagePeriods, queryUsageMeterTotals, reconcileUsageHourly } from './usage';
 
 const integration = process.env.CLICKHOUSE_INTEGRATION === '1' ? describe : describe.skip;
 
 integration('ClickHouse schema integration', () => {
+  it('registers every project table and materialized view for erasure/rebuild', async () => {
+    const result = await getClickHouseClient().query({
+      query: `SELECT DISTINCT table FROM system.columns WHERE database = currentDatabase() AND name = 'project_id' AND table NOT LIKE 'usage_%' AND table NOT LIKE 'ai_conversation%'`,
+      format: 'JSONEachRow',
+    });
+    const tables = await result.json<{ table: string }>();
+    const registered = new Set(ANALYTICS_PROJECT_TABLES.map((table) => table.name));
+    expect(tables.filter((row) => !registered.has(row.table))).toEqual([]);
+  });
+
   it('deduplicates retries in raw facts and rollups', async () => {
     const event = fixedAnalyticsEvent({ occurredAt: new Date().toISOString(), receivedAt: new Date().toISOString() });
     const otherTenantEvent = fixedAnalyticsEvent({

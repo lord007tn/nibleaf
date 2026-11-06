@@ -1,4 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client';
+import { keys } from './keys';
+import { ANALYTICS_PROJECT_TABLES, insightsRollups } from './tables';
 
 export interface ClickHouseMigration {
   version: number;
@@ -323,12 +325,47 @@ export const migrations: ClickHouseMigration[] = [
       TTL period_end + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
     ],
   },
+  {
+    version: 2_026_110_601,
+    name: 'reader_actor_search_and_web_vitals',
+    statements: [
+      `ALTER TABLE analytics_events
+        ADD COLUMN IF NOT EXISTS actor_type LowCardinality(String) DEFAULT if(device = 'bot', 'bot', 'human'),
+        ADD COLUMN IF NOT EXISTS bot_name LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bot_operator LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bot_category LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS verification LowCardinality(String) DEFAULT 'claimed',
+        ADD COLUMN IF NOT EXISTS channel LowCardinality(String) DEFAULT 'direct',
+        ADD COLUMN IF NOT EXISTS ai_source LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS search_id String DEFAULT '',
+        ADD COLUMN IF NOT EXISTS lcp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS inp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS cls_milli Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS fcp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS ttfb_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS crawled_resource LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS status_code UInt16 DEFAULT 0`,
+    ],
+  },
+  {
+    version: 2_026_110_602,
+    name: 'deduplicated_insights_snapshots',
+    statements: insightsRollups.map(
+      (table) => `CREATE TABLE IF NOT EXISTS ${table.name} (
+      tenant_id LowCardinality(String), project_id String, ${table.columns}
+    ) ENGINE = MergeTree
+      PARTITION BY toYYYYMM(${table.time})
+      ORDER BY (tenant_id, project_id, ${table.dimensions})
+      TTL ${table.time} + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+    ),
+  },
 ];
 
 export interface MigrationOptions {
   rawRetentionDays: number;
   rollupRetentionDays: number;
   sensitiveRetentionDays: number;
+  crawlerRetentionDays?: number;
 }
 
 export const runClickHouseMigrations = async (client: ClickHouseClient, options: MigrationOptions): Promise<number[]> => {
@@ -359,6 +396,20 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
       values: [{ version: migration.version, name: migration.name }],
     });
     completed.push(migration.version);
+  }
+  // Re-apply current retention even when no schema migration is pending. Do
+  // not materialize old parts here: that would turn a config edit into a costly
+  // synchronous rewrite. Background merges enforce the new policy.
+  const crawlerDays = options.crawlerRetentionDays ?? keys().CLICKHOUSE_CRAWLER_RETENTION_DAYS;
+  const periods = { raw: options.rawRetentionDays, rollup: options.rollupRetentionDays, sensitive: options.sensitiveRetentionDays };
+  for (const table of ANALYTICS_PROJECT_TABLES) {
+    if (!table.time || !table.retention) continue;
+    const days = periods[table.retention];
+    await client.command({
+      query: `ALTER TABLE ${table.name} MODIFY TTL ${table.time} + toIntervalDay(${table.name === 'analytics_events' ? "if(actor_type = 'bot', {crawler_days:UInt16}, {days:UInt16})" : '{days:UInt16}'}) DELETE`,
+      query_params: { days, crawler_days: crawlerDays },
+      clickhouse_settings: { materialize_ttl_after_modify: 0 },
+    });
   }
   return completed;
 };

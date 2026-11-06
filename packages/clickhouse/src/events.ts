@@ -1,7 +1,11 @@
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { type ActorClassification, classifyReferral, classifyUserAgent, normalizeSearchTerm } from './classifiers';
+import type { AiAssistantSource, TrafficChannel } from './insights/types';
 
 export const analyticsEventNames = [
+  'web_vitals',
+  'crawler_request',
   'page_view',
   'page_engaged',
   'navigation_clicked',
@@ -88,6 +92,7 @@ const readerPayload = z
 const searchPayload = z
   .object({
     name: z.enum(['search_query_submitted', 'search_results_returned', 'search_zero_result', 'search_result_clicked']),
+    searchId: z.uuid().optional(),
     query: z.string().trim().max(200).optional(),
     path: path.optional(),
     language: z.string().trim().max(35).optional(),
@@ -125,7 +130,36 @@ const feedbackPayload = z
   })
   .strict();
 
-export const analyticsPayloadSchema = z.discriminatedUnion('name', [readerPayload, lifecyclePayload, searchPayload, aiPayload, feedbackPayload]);
+const webVitalsPayload = z
+  .object({
+    name: z.literal('web_vitals'),
+    path: path.optional(),
+    language: z.string().max(35).optional(),
+    lcpMs: z.number().int().min(0).max(3_600_000).optional(),
+    inpMs: z.number().int().min(0).max(3_600_000).optional(),
+    clsMilli: z.number().int().min(0).max(1_000_000).optional(),
+    fcpMs: z.number().int().min(0).max(3_600_000).optional(),
+    ttfbMs: z.number().int().min(0).max(3_600_000).optional(),
+  })
+  .strict();
+const crawlerPayload = z
+  .object({
+    name: z.literal('crawler_request'),
+    path,
+    statusCode: z.number().int().min(100).max(599),
+    resource: z.enum(['page', 'markdown', 'llms_txt', 'llms_full_txt', 'sitemap', 'robots', 'openapi', 'rss', 'other']),
+  })
+  .strict();
+
+export const analyticsPayloadSchema = z.discriminatedUnion('name', [
+  readerPayload,
+  lifecyclePayload,
+  searchPayload,
+  aiPayload,
+  feedbackPayload,
+  webVitalsPayload,
+  crawlerPayload,
+]);
 export type AnalyticsPayload = z.infer<typeof analyticsPayloadSchema>;
 
 export const consentStateSchema = z.enum(['denied', 'granted', 'not_required', 'unknown']);
@@ -154,7 +188,7 @@ const publicSearchPayload = searchPayload.refine((payload) => payload.name === '
 export const publicAnalyticsEventSchema = z
   .object({
     ...analyticsEventBase,
-    payload: z.union([readerPayload, publicSearchPayload, feedbackPayload]),
+    payload: z.union([readerPayload, publicSearchPayload, feedbackPayload, webVitalsPayload]),
   })
   .strict();
 export type PublicAnalyticsEvent = z.infer<typeof publicAnalyticsEventSchema>;
@@ -172,13 +206,17 @@ export interface ServerEventContext {
   deploymentId?: string;
   source: 'api' | 'backfill' | 'dashboard' | 'public_site' | 'system' | 'worker';
   receivedAt?: Date;
+  userAgent?: string;
+  siteHost?: string;
   country?: string;
   device?: string;
   privacy: AnalyticsPrivacyPolicy;
   hashSalt: string;
 }
 
-export interface AnalyticsEventEnvelope {
+export interface AnalyticsEventEnvelope extends ActorClassification {
+  channel: TrafficChannel;
+  aiSource: AiAssistantSource | '';
   eventId: string;
   schemaVersion: 1;
   occurredAt: string;
@@ -243,12 +281,23 @@ export const buildAnalyticsEvent = (input: AnalyticsEventInput, context: ServerE
   const occurred = parsed.occurredAt ? new Date(parsed.occurredAt) : receivedAt;
   const maxSkewMs = 7 * 24 * 60 * 60 * 1000;
   const occurredAt = Math.abs(occurred.getTime() - receivedAt.getTime()) <= maxSkewMs ? occurred : receivedAt;
+  const referral = classifyReferral(
+    'referrer' in parsed.payload ? parsed.payload.referrer : undefined,
+    'utmSource' in parsed.payload ? parsed.payload.utmSource : undefined,
+    context.siteHost,
+  );
+  const actor = classifyUserAgent(context.userAgent);
   const payload = cleanPayload(structuredClone(parsed.payload), parsed.consentState, context.privacy);
-  const rawQuery = 'query' in payload ? payload.query?.trim() : undefined;
+  const rawQuery = 'query' in payload && payload.query ? normalizeSearchTerm(payload.query) : undefined;
   if ('query' in payload) delete payload.query;
   const mayStoreQuery =
-    Boolean(rawQuery) && context.privacy.visibility === 'public' && context.privacy.allowRawPublicSearchQueries && parsed.consentState === 'granted';
+    Boolean(rawQuery) &&
+    context.privacy.visibility === 'public' &&
+    context.privacy.allowRawPublicSearchQueries &&
+    ['granted', 'not_required'].includes(parsed.consentState);
   return {
+    ...actor,
+    ...referral,
     eventId: parsed.eventId ?? randomUUID(),
     schemaVersion: 1,
     occurredAt: occurredAt.toISOString(),
@@ -265,7 +314,7 @@ export const buildAnalyticsEvent = (input: AnalyticsEventInput, context: ServerE
     country: context.country?.toUpperCase().slice(0, 2) ?? null,
     device: context.device?.toLowerCase().slice(0, 32) ?? null,
     payload,
-    queryHash: rawQuery ? sha256(context.hashSalt, 'query', rawQuery.toLocaleLowerCase()) : null,
+    queryHash: rawQuery ? sha256(context.hashSalt, 'query', rawQuery) : null,
     queryLength: rawQuery?.length ?? null,
     queryTokenCount: rawQuery ? rawQuery.split(/\s+/u).filter(Boolean).length : null,
     sensitiveQueryText: mayStoreQuery ? (rawQuery?.slice(0, 200) ?? null) : null,

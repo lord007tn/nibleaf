@@ -45,6 +45,21 @@ const asString = (value: unknown) => (typeof value === 'string' ? value : '');
 export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
   const payload = event.payload;
   return {
+    actor_type: event.actorType ?? 'human',
+    bot_name: event.botName ?? '',
+    bot_operator: event.botOperator ?? '',
+    bot_category: event.botCategory ?? '',
+    verification: event.verification ?? 'claimed',
+    channel: event.channel ?? 'direct',
+    ai_source: event.aiSource ?? '',
+    search_id: asString(payloadValue(payload, 'searchId')),
+    status_code: asNumber(payloadValue(payload, 'statusCode')),
+    crawled_resource: asString(payloadValue(payload, 'resource')),
+    lcp_ms: payloadValue(payload, 'lcpMs') ?? null,
+    inp_ms: payloadValue(payload, 'inpMs') ?? null,
+    cls_milli: payloadValue(payload, 'clsMilli') ?? null,
+    fcp_ms: payloadValue(payload, 'fcpMs') ?? null,
+    ttfb_ms: payloadValue(payload, 'ttfbMs') ?? null,
     event_id: event.eventId,
     schema_version: event.schemaVersion,
     occurred_at: event.occurredAt,
