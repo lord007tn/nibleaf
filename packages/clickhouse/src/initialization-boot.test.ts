@@ -13,6 +13,9 @@ describe('background schema lifecycle', () => {
   beforeEach(() => {
     vi.stubEnv('ANALYTICS_MODE', 'dual_write');
     vi.stubEnv('CLICKHOUSE_MIGRATE_ON_BOOT', 'true');
+    // Pin values the assertions depend on, so a developer's or CI's ClickHouse env can't change them.
+    vi.stubEnv('CLICKHOUSE_DATABASE', 'nibleaf_analytics');
+    vi.stubEnv('CLICKHOUSE_RAW_RETENTION_DAYS', '180');
   });
   afterEach(() => {
     vi.unstubAllEnvs();
