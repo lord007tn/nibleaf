@@ -3,9 +3,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
-const mocks = vi.hoisted(() => ({ getSiteOpenApi: vi.fn(), getSiteChangelogRss: vi.fn(), getSitePageMarkdown: vi.fn(), answerSite: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  getSiteOpenApi: vi.fn(),
+  getSiteChangelogRss: vi.fn(),
+  getSitePageMarkdown: vi.fn(),
+  answerSite: vi.fn(),
+  recordCrawlerRequest: vi.fn(async (..._args: unknown[]) => undefined),
+}));
 
 vi.mock('@/actions/sites', () => ({
+  recordCrawlerRequest: mocks.recordCrawlerRequest,
   getSite: vi.fn(),
   getSitePage: vi.fn(),
   getSitePageMarkdown: mocks.getSitePageMarkdown,
@@ -110,5 +117,32 @@ describe('grounded answer endpoint', () => {
       (await app.request('/sites/project/answer', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"q":""}' })).status,
     ).toBe(422);
     expect(mocks.answerSite).not.toHaveBeenCalled();
+  });
+});
+
+describe('crawler observation authentication and duplicate suppression', () => {
+  it('rejects an unauthenticated internal batch before parsing it', async () => {
+    const response = await app.request('/sites/_crawler-hits', { method: 'POST', body: '{}' });
+    expect(response.status).toBe(401);
+  });
+  it('observes direct machine requests once and skips authenticated internal probes', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('INTERNAL_API_SECRET', 'fictional-internal-proof');
+    mocks.recordCrawlerRequest.mockClear();
+    const doc = { body: '# Docs', isPrivate: false };
+    mocks.getSitePageMarkdown.mockResolvedValue(doc);
+    await app.request('/sites/project/markdown?path=guide', { headers: { 'user-agent': 'GPTBot/1' } });
+    await app.request('/sites/project/markdown?path=guide', {
+      headers: { 'user-agent': 'GPTBot/1', 'x-nibleaf-internal': 'fictional-internal-proof' },
+    });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(mocks.recordCrawlerRequest).toHaveBeenCalledTimes(1);
+    expect(mocks.recordCrawlerRequest).toHaveBeenCalledWith(
+      'project',
+      expect.objectContaining({ path: 'guide.md', resource: 'markdown' }),
+      expect.any(Object),
+    );
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 });

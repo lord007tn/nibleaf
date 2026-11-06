@@ -145,6 +145,8 @@ const webVitalsPayload = z
 const crawlerPayload = z
   .object({
     name: z.literal('crawler_request'),
+    contentType: z.string().max(120).optional(),
+    durationMs: z.number().int().min(0).max(3_600_000).optional(),
     path,
     statusCode: z.number().int().min(100).max(599),
     resource: z.enum(['page', 'markdown', 'llms_txt', 'llms_full_txt', 'sitemap', 'robots', 'openapi', 'rss', 'other']),

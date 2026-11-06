@@ -359,6 +359,11 @@ export const migrations: ClickHouseMigration[] = [
       TTL ${table.time} + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
     ),
   },
+  {
+    version: 2_026_110_603,
+    name: 'crawler_response_content_type',
+    statements: ["ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS content_type LowCardinality(String) DEFAULT ''"],
+  },
 ];
 
 export interface MigrationOptions {

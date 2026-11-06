@@ -55,6 +55,7 @@ export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
     search_id: asString(payloadValue(payload, 'searchId')),
     status_code: asNumber(payloadValue(payload, 'statusCode')),
     crawled_resource: asString(payloadValue(payload, 'resource')),
+    content_type: asString(payloadValue(payload, 'contentType')),
     lcp_ms: payloadValue(payload, 'lcpMs') ?? null,
     inp_ms: payloadValue(payload, 'inpMs') ?? null,
     cls_milli: payloadValue(payload, 'clsMilli') ?? null,

@@ -134,7 +134,7 @@ export const normalizeSearchTerm = (term: string): string =>
     .slice(0, 200);
 
 export const classifyCrawledResource = (path: string): CrawledResource => {
-  const clean = path.split('?')[0]?.toLowerCase() ?? '';
+  const clean = `/${(path.split('?')[0]?.toLowerCase() ?? '').replace(/^\/+/, '')}`;
   if (clean.endsWith('/llms-full.txt')) return 'llms_full_txt';
   if (clean.endsWith('/llms.txt')) return 'llms_txt';
   if (clean.endsWith('/sitemap.xml')) return 'sitemap';

@@ -2,6 +2,7 @@ import type { ProjectConfig } from '@nibleaf/validators';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { type PublicAnalyticsPayload, type SiteAnalyticsConsent, useCreateSiteAnalyticsEvent } from '@/hooks/api/site-events';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
+import { collectSiteWebVitals } from '@/lib/site-web-vitals';
 
 export type { PublicAnalyticsPayload, SiteAnalyticsConsent } from '@/hooks/api/site-events';
 
@@ -34,6 +35,11 @@ const consentStateFn = (projectId: string, config?: ProjectConfig | null): SiteA
   return value === 'accepted' ? 'granted' : value === 'declined' ? 'denied' : 'unknown';
 };
 
+const searchIdentityReaders = new Map<string, () => { consentState: SiteAnalyticsConsent; sessionId?: string }>();
+/** Search uses the mounted reader's live consent policy. Absent providers (SSR,
+ * tests, or a blocked storage API) never assume permission to identify a visit. */
+export const getSiteSearchAnalytics = (projectId: string) => searchIdentityReaders.get(projectId)?.() ?? { consentState: 'unknown' as const };
+
 type SiteAnalyticsContextValue = { track: (payload: PublicAnalyticsPayload) => void };
 const SiteAnalyticsContext = createContext<SiteAnalyticsContextValue | null>(null);
 
@@ -57,13 +63,23 @@ export function SiteAnalyticsProvider({
   useEffect(() => {
     configRef.current = config;
   }, [config]);
+  useEffect(() => {
+    const identity = () => {
+      const consentState = consentStateFn(projectId, configRef.current);
+      return { consentState, sessionId: consentState === 'granted' || consentState === 'not_required' ? sessionIdFn() : undefined };
+    };
+    searchIdentityReaders.set(projectId, identity);
+    return () => {
+      if (searchIdentityReaders.get(projectId) === identity) searchIdentityReaders.delete(projectId);
+    };
+  }, [projectId]);
   const track = useCallback(
     (payload: PublicAnalyticsPayload) => {
       createEvent({
         eventId: randomIdFn(),
         occurredAt: new Date().toISOString(),
         consentState: consentStateFn(projectId, configRef.current),
-        sessionId: sessionIdFn(),
+        sessionId: ['granted', 'not_required'].includes(consentStateFn(projectId, configRef.current)) ? sessionIdFn() : undefined,
         payload,
       });
     },
@@ -75,7 +91,8 @@ export function SiteAnalyticsProvider({
     if (!path) return;
     const referrer = viewedDocuments.has(document) ? undefined : document.referrer || undefined;
     viewedDocuments.add(document);
-    track({ name: 'page_view', path, referrer, language });
+    const campaign = new URLSearchParams(window.location.search);
+    track({ name: 'page_view', path, referrer, language, utmSource: campaign.get('utm_source')?.slice(0, 120) || undefined });
   }, [language, path, track, version]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: engagement belongs to one version of the page.
@@ -100,13 +117,25 @@ export function SiteAnalyticsProvider({
     };
     const onVisibility = () => document.visibilityState === 'hidden' && sendEngagement();
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', sendEngagement);
     return () => {
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', sendEngagement);
       window.removeEventListener('scroll', measureScroll);
       window.removeEventListener('resize', measureScroll);
       sendEngagement();
     };
   }, [language, path, track, version]);
+
+  // Native navigation metrics describe document loads. Soft route changes emit
+  // optional vitals (unknown values), rather than relabeling the old document's LCP.
+  const vitalDocument = useRef<Document | null>(null);
+  useEffect(() => {
+    if (!path) return;
+    const initial = vitalDocument.current !== document;
+    vitalDocument.current = document;
+    return collectSiteWebVitals((vitals) => track({ name: 'web_vitals', path, language, ...vitals }), initial);
+  }, [path, language, track]);
 
   useEffect(() => {
     if (!path) return;
