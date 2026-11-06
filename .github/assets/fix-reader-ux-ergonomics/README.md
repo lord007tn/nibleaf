@@ -17,5 +17,13 @@ Screenshots and walkthroughs for the published-reader changes in this branch.
 - **Ask AI:** the demo instance has no AI provider, so the "Ask AI" row does not
   appear in these captures. Its behavior (built-in answers and the `onAskAi`
   handoff) is covered by `site-search.test.tsx`.
+- **Loading states** (`loading-*`, `navigation-skeleton-*`, `search-error-*`,
+  `search-retry-*`): Playwright slowed the reader's server-function requests
+  (about 1.5 to 2.5 s) or failed them, so placeholders stay on screen long enough
+  to capture. Nothing in the app was changed for this.
+- **Images page** (`images-frame-*`, `tooltip-*`, `image-zoom-*`): a local demo
+  page using the repository's own `public/images/first-publish/dashboard-ar-rtl.jpg`,
+  with a light/dark Frame pair, a tooltip and a zoomable image.
+- **Tablet** (`search-tablet-touch-en.png`): 820×1180 with touch emulation.
 - **Not measured:** production-build Lighthouse/LCP/CLS numbers and numeric
   contrast ratios. Captures come from the development server.
