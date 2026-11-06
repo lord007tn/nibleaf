@@ -231,6 +231,28 @@ describe('API-key actions', () => {
     expect(button(container, 'settings.apiKeys.test')?.getAttribute('aria-busy')).not.toBe('true');
   });
 
+  it('stops watching for the AI app after ten minutes and starts again on Test connection', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    try {
+      hooks.useApiKeys.mockReturnValue(response());
+      hooks.create.mutate.mockImplementation((_body, options) => options.onSuccess({ id: 'new-key', secret: 'test-once-secret' }));
+      hooks.testConnection.mockResolvedValue({ tools: 26, usedUntil: Date.now() });
+      const container = await renderTab();
+      await act(async () => button(container, 'settings.apiKeys.create')?.click());
+      expect(container.textContent).toContain('settings.apiKeys.waiting');
+      await act(async () => vi.advanceTimersByTime(10 * 60_000));
+      expect(container.textContent).toContain('settings.apiKeys.waitingStopped');
+      // The hook stops polling once the watch has ended.
+      const waiting = hooks.useApiKeys.mock.calls.at(-1)?.[1] as { until: number };
+      expect(waiting.until).toBeLessThanOrEqual(Date.now());
+      await act(async () => button(container, 'settings.apiKeys.test')?.click());
+      expect(container.textContent).not.toContain('settings.apiKeys.waitingStopped');
+      expect(container.textContent).toContain('settings.apiKeys.waiting');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('marks Create key as loading while the key is being created', async () => {
     hooks.useApiKeys.mockReturnValue(response());
     hooks.create.isPending = true;

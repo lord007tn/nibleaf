@@ -38,13 +38,16 @@ export const useProject = (projectId: string | undefined) => useQuery(projectQue
 
 export const useProjectAddons = (projectId: string) => useQuery(projectAddonsQueryOptions(projectId));
 
-/** While `waiting` is set (a key was just created or rotated), poll until that
- *  key is used after `since`, so the page can say the assistant connected. */
-export const useApiKeys = (projectId: string | undefined, waiting?: { id: string; since: number } | null) =>
+/** While `waiting` is set (a key was just created, rotated or tested), poll
+ *  until that key is used after `since` (server time), so the page can say the
+ *  AI app connected, but no longer than `until` (this computer's time). */
+export const useApiKeys = (projectId: string | undefined, waiting?: { id: string; since: number; until: number } | null) =>
   useQuery({
     ...apiKeysQueryOptions(projectId),
     refetchInterval: (query) =>
-      waiting && !query.state.data?.data.some((key) => key.id === waiting.id && key.lastUsedAt && Date.parse(key.lastUsedAt) > waiting.since)
+      waiting &&
+      Date.now() < waiting.until &&
+      !query.state.data?.data.some((key) => key.id === waiting.id && key.lastUsedAt && Date.parse(key.lastUsedAt) > waiting.since)
         ? 5000
         : false,
   });

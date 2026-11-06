@@ -7,7 +7,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { MCP_KEY_PRESETS, MCP_PRESET_MIN_ROLE, MCP_PRESET_SCOPES, MCP_SCOPES, type McpKeyPreset, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import { canAdminister, roleAtLeast } from '@nibleaf/shared/rbac';
 import { Copy, KeyRound, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
@@ -38,13 +38,25 @@ const issuableScopes = new Set<string>(MCP_SCOPES);
 const isIssuableScope = (scope: string): scope is IssuableMcpScope => issuableScopes.has(scope);
 const isRetainedScope = (scope: string): scope is Exclude<IssuableMcpScope, 'mcp:connect'> => scope !== 'mcp:connect' && isIssuableScope(scope);
 
+/** How long the page watches for the AI app's first request before it stops polling. */
+const WAIT_FOR_APP_MS = 10 * 60_000;
+
 export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
   const { number } = useFormatters();
   // The new key's id and the server time after which use counts as "your AI
   // app connected": 0 for a fresh key (never used), then the end of the
   // dashboard's own test so the test itself doesn't count.
-  const [waiting, setWaiting] = useState<{ id: string; since: number } | null>(null);
+  // `until` bounds how long the page polls; Test connection starts a new watch.
+  const [waiting, setWaiting] = useState<{ id: string; since: number; until: number } | null>(null);
+  const [, setWatchEnded] = useState(0);
+  useEffect(() => {
+    if (!waiting) return;
+    const remaining = waiting.until - Date.now();
+    if (remaining <= 0) return;
+    const timer = setTimeout(() => setWatchEnded((count) => count + 1), remaining);
+    return () => clearTimeout(timer);
+  }, [waiting]);
   const { data: response, isError, isPending } = useApiKeys(projectId, waiting);
   const create = useCreateApiKey(projectId);
   const rotate = useRotateApiKey(projectId);
@@ -77,7 +89,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     testRun.current += 1;
     setTesting(false);
     setConnection('');
-    setWaiting(id ? { id, since: 0 } : null);
+    setWaiting(id ? { id, since: 0, until: Date.now() + WAIT_FOR_APP_MS } : null);
     setSecret(value);
   };
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
@@ -157,7 +169,11 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     // The key on screen changed while this test ran: its result is about another key.
     if (run !== testRun.current) return;
     setConnection(outcome);
-    setWaiting((current) => (current && usedUntil !== undefined ? { ...current, since: Math.max(current.since, usedUntil) } : current));
+    setWaiting((current) =>
+      current
+        ? { ...current, since: usedUntil === undefined ? current.since : Math.max(current.since, usedUntil), until: Date.now() + WAIT_FOR_APP_MS }
+        : current,
+    );
     setTesting(false);
   };
   return (
@@ -370,7 +386,15 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 </Button>
                 <p role="status">{connection}</p>
               </div>
-              {waiting ? <p role="status">{connected ? t('settings.apiKeys.assistantConnected') : t('settings.apiKeys.waiting')}</p> : null}
+              {waiting ? (
+                <p role="status">
+                  {connected
+                    ? t('settings.apiKeys.assistantConnected')
+                    : Date.now() >= waiting.until
+                      ? t('settings.apiKeys.waitingStopped')
+                      : t('settings.apiKeys.waiting')}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </SettingsSection>
