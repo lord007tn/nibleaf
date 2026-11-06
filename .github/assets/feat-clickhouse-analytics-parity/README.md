@@ -25,7 +25,8 @@ The data is fictional:
 | `search-visible-*.png` | Search with terms on: failed searches with "Write an article for this" |
 | `feedback-en-desktop.png`, `performance-*.png` | Helpfulness trend and pages, real-user loading speed (p75) |
 | `ai-*.png` | AI visibility: crawler categories, bots, machine files, most crawled pages, visits from AI assistants |
-| `outage-*.png` | ClickHouse unreachable: the dashboard says analytics is temporarily unavailable and the docs site is unaffected. The reader page served normally at the same moment |
+| `skeleton-*.png` | First load: content-shaped skeletons (stat tiles, charts, table rows) while the insights responses are held back; the shell, filters and tabs render immediately |
+| `outage-*.png` | ClickHouse unreachable: the dashboard calmly says analytics is taking a break and the docs site works normally, with a "Try again" button. The reader page served normally at the same moment |
 | `overview-to-page-en.gif` | Overview → 7-day range → Pages → a page's drill-down |
 | `search-write-article-en.gif`, `search-write-article-en.webm` | Search → turn on search terms (confirm) → "Write an article for this" → the draft opens in the editor |
 | `ar-mobile-overview-ai.gif` | Arabic, 390 px: Overview and AI visibility |
