@@ -21,9 +21,16 @@ const profiles = {
 // These values are intentionally applied to gzip transfer size, not raw file
 // size. Keep enough headroom for normal feature work while preventing a large
 // shared dependency or dashboard catalog from silently returning to docs pages.
+//
+// 390_000 → 392_000 pays for the Ask AI chat assistant (#279), measured against
+// main@178fc83d (public-docs 378.56 → 382.12 KiB, +3.56): the eager chat context
+// (~0.95 KiB; the panel, launcher, page card and strings all load lazily), the AI
+// dashboard route's search schema in the route tree (~0.77), and Rolldown
+// re-splitting reader modules the lazy chat chunks share (Button/Sheet internals,
+// useMutation, query-core, a thumbs icon: ~1.6). See BUNDLE_BUDGET.md.
 const gzipBudgets = {
-  'public-docs': 390_000,
-  'public-docs-index': 390_000,
+  'public-docs': 392_000,
+  'public-docs-index': 392_000,
 };
 
 // A size budget catches overall growth; these signatures make accidental

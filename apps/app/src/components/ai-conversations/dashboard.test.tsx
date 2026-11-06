@@ -63,6 +63,14 @@ describe('AI dashboard', () => {
     });
     expect(conversationFilters(search)).toEqual({ range: '7d', language: 'ar', rating: 'down', status: 'no_answer', q: 'setup' });
     expect(aiDashboardSearch.parse({ tab: 'invalid', range: '24h', rating: 'bad' })).toEqual({ tab: 'overview', range: '30d', rating: undefined });
+    // The router parses `?q=123` to a number; out-of-range text is dropped, ids are kept verbatim.
+    expect(aiDashboardSearch.parse({ q: 123, language: ' x ', status: 'answered', conversation: ' id ' })).toEqual({
+      tab: 'overview',
+      range: '30d',
+      status: 'answered',
+      conversation: ' id ',
+    });
+    expect(aiDashboardSearch.parse({ q: 'a'.repeat(121), conversation: 'c'.repeat(257) })).toEqual({ tab: 'overview', range: '30d' });
     const params = Object.fromEntries(
       new URLSearchParams(Object.entries(conversationFilters(search)).flatMap(([key, value]) => (value === undefined ? [] : [[key, value]]))),
     );
