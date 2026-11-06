@@ -20,13 +20,24 @@ export function citationParts(text: string) {
     .map((value, index) => ({ key: index, text: value, source: /^\[(S\d+)\]$/.exec(value)?.[1] }));
 }
 /** Citation markers (`[S1]`, `[S1, S2]`) only mean something once the answer is checked. */
-const CITATION_MARKERS = /\s*\[S\d+(?:\s*[,;،]\s*S\d+)*\]/g;
-/** A marker still arriving at the end of the stream ("[", "[S", "[S6", "[S6, S"). */
-const PARTIAL_MARKER = /\s*\[(?:S\d*(?:\s*[,;،]\s*(?:S\d*)?)*)?$/;
+// Every repetition consumes a separator and an S id, and the marker starts at a
+// literal bracket (one optional space before it), so matching stays linear.
+const CITATION_MARKERS = / ?\[S\d+(?:[ \t]*[,;،][ \t]*S\d+)*\]/g;
+/** Characters a marker can hold before its closing bracket (one class, no nesting). */
+const MARKER_BODY = /^[S\d,;،\s]*$/;
+/** Drops a marker still arriving at the end of the stream ("[", "[S", "[S6",
+ * "[S6, S"). Text like `items[0` is left alone: a marker starts with S. */
+const withoutUnfinishedMarker = (text: string) => {
+  const open = text.lastIndexOf('[');
+  if (open < 0) return text;
+  const body = text.slice(open + 1);
+  if (body.length > 40 || (body && !body.startsWith('S')) || !MARKER_BODY.test(body)) return text;
+  return text.slice(0, open).trimEnd();
+};
 /** The checked answer once it arrives; until then the streamed text, without
  * markers, including one split across chunks that has not closed yet. */
 export const answerText = (streamed: string, final?: AiChatFinalEvent) =>
-  final ? final.answer : streamed.replace(CITATION_MARKERS, '').replace(PARTIAL_MARKER, '');
+  final ? final.answer : withoutUnfinishedMarker(streamed.replace(CITATION_MARKERS, ''));
 export const errorKey = (code: AiChatErrorCode | 'offline') =>
   (
     ({

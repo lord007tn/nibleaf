@@ -50,6 +50,18 @@ describe('AI archive', () => {
   it('strips URL query strings and fragments and caps text', () => {
     expect(redactConversationText('See https://docs.test/path?token=secret#private')).toBe('See https://docs.test/path');
     expect(redactConversationText('g'.repeat(17_000))).toHaveLength(16_000);
+    // Steered model output stays fast: long runs that almost match an email,
+    // a phone number or a token, and far more text than is kept.
+    const started = performance.now();
+    for (const hostile of [
+      `${'a'.repeat(20_000)}@${'b'.repeat(20_000)}`,
+      `+1${' 1'.repeat(20_000)}x`,
+      `${'a1'.repeat(20_000)}g`,
+      'x'.repeat(5_000_000),
+    ])
+      redactReaderText(hostile);
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(redactConversationText('Call +966 55 123 4567 or mail ana.b@acme-docs.example.sa')).toBe('Call [REDACTED] or mail [REDACTED]');
   });
   it('binds tenant and language and never interpolates user input', () => {
     const q = buildAiConversationQuery('ai_conversation_turns', scope, { language: "ar' OR 1=1", q: 'secret' });

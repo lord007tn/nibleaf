@@ -12,7 +12,8 @@ const plainText = (value: string): string =>
     .replace(/^\s*(?:```|~~~)[^\n]*$/gm, ' ')
     // MDX components (<Tabs>, <Card title="…">) are layout, not prose. Lowercase
     // placeholders such as `--notebook <name>` stay readable.
-    .replace(/<\/?[A-Z][\w.]*(?:\s[^<>]*)?\/?>/g, ' ')
+    // Attributes are bounded, so an unclosed tag can't make the scan quadratic.
+    .replace(/<\/?[A-Z][\w.]{0,64}(?:\s[^<>]{0,512})?\/?>/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')

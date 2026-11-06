@@ -14,17 +14,27 @@ export const redactAnalyticsDiagnostics = (value: unknown): unknown => {
   );
 };
 
-/** Redact before queueing; Unicode digits cover Arabic and Persian identifiers. */
+/** Redact before queueing; Unicode digits cover Arabic and Persian identifiers.
+ * Text may be model output steered by retrieved docs, so the input is bounded
+ * before any pattern runs and patterns whose classes overlap use bounded runs
+ * (an email's local part and domain, a phone number's digits and spacing). */
 export const redactConversationText = (text: string, limit = 16_000): string =>
   text
+    .slice(0, Math.min(limit, 16_000) + 256)
     .replace(/https?:\/\/[^\s<>]+/giu, (url) => url.split(/[?#]/u)[0] ?? '')
-    .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/giu, '[REDACTED]')
+    .replace(/[\w.+-]{1,64}@[\w.-]{1,253}\.[a-z]{2,24}/giu, '[REDACTED]')
     .replace(/\b(?:Bearer\s+\S+|sk-[\w-]+|eyJ[\w-]+\.[\w-]+\.[\w-]+|[a-f0-9]{32,})\b/giu, '[REDACTED]')
-    .replace(/\+?[\p{Nd}][\p{Nd}\s().-]{5,}[\p{Nd}]/gu, '[REDACTED]')
+    .replace(/\+?[\p{Nd}][\p{Nd}\s().-]{5,40}[\p{Nd}]/gu, '[REDACTED]')
     .slice(0, Math.min(limit, 16_000));
 
 /** Text people type (questions, comments) also loses whole links and long digit
  * runs, as search terms do (normalizeSearchTerm). Generated answers keep link
  * paths because they point into the documentation. */
 export const redactReaderText = (text: string, limit = 16_000): string =>
-  redactConversationText(text.replace(/(?:https?:\/\/|www\.)\S+/giu, '[URL]').replace(/\p{Nd}{6,}/gu, '[REDACTED]'), limit);
+  redactConversationText(
+    text
+      .slice(0, Math.min(limit, 16_000) + 256)
+      .replace(/(?:https?:\/\/|www\.)\S+/giu, '[URL]')
+      .replace(/\p{Nd}{6,}/gu, '[REDACTED]'),
+    limit,
+  );

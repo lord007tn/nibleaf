@@ -248,6 +248,20 @@ describe('follow-up suggestions', () => {
     });
     expect(result.questions).toEqual(['Are there limits on exports?']);
   });
+  it('compares suggestions with earlier questions in linear time', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: '["Can I export?"]' }]);
+    const started = performance.now();
+    const result = await suggestFollowUps({
+      adapter,
+      question: `${'?'.repeat(50_000)}x`,
+      chunks,
+      language: 'en',
+      asked: [`${'. '.repeat(25_000)}x`],
+    });
+    expect(result.questions).toEqual(['Can I export?']);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
   it.each([
     [{ error: 'boom' }, true],
     [{ text: 'not json' }, undefined],

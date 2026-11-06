@@ -186,13 +186,15 @@ export interface SuggestFollowUpsOptions {
 
 const FOLLOW_UP_LIMIT = 3;
 
-/** Case, spacing and the closing question mark (Latin or Arabic) don't make a question new. */
-const questionKey = (value: string) =>
-  stripMarkers(value)
-    .replace(/\s+/g, ' ')
-    .replace(/[\s?؟.!]+$/u, '')
-    .trim()
-    .toLocaleLowerCase();
+const QUESTION_END = new Set(['?', '؟', '.', '!']);
+/** Case, spacing and the closing question mark (Latin or Arabic) don't make a
+ * question new. The end is trimmed by a scan, not a regex run, to stay linear. */
+const questionKey = (value: string) => {
+  const text = stripMarkers(value).replace(/\s+/g, ' ');
+  let end = text.length;
+  while (end > 0 && (QUESTION_END.has(text[end - 1] ?? '') || text[end - 1] === ' ')) end -= 1;
+  return text.slice(0, end).trim().toLocaleLowerCase();
+};
 const parseQuestions = (text: string, question: string, asked: string[] = []): string[] => {
   const start = text.indexOf('[');
   const end = text.lastIndexOf(']');
