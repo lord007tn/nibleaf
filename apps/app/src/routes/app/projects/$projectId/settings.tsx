@@ -103,7 +103,7 @@ const SECTIONS = [
 const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
-const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
+const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
   component: ProjectSettingsPage,
@@ -230,7 +230,13 @@ function ProjectSettingsPage() {
               </div>
             </div>
           ) : (
-            <ActiveSection canManageSchedules={canManage} projectId={projectId} project={project} section={section} />
+            <ActiveSection
+              role={currentMember?.role ?? ''}
+              canManageSchedules={canManage}
+              projectId={projectId}
+              project={project}
+              section={section}
+            />
           )}
         </div>
       </div>
@@ -243,11 +249,13 @@ function ActiveSection({
   section,
   projectId,
   canManageSchedules,
+  role,
 }: {
   project: Project;
   section: SectionId;
   projectId: string;
   canManageSchedules: boolean;
+  role: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -261,7 +269,7 @@ function ActiveSection({
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <MembersSection key={`members-${projectId}`} projectId={projectId} />,
-    apiKeys: <ApiKeysTab key={`api-keys-${projectId}`} projectId={projectId} />,
+    apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
     plan: <PlanSection key={`plan-${project.id}`} project={project} />,
     usage: <UsageTab key={`usage-${project.id}`} project={project} />,
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
