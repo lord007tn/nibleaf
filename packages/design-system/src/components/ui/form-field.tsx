@@ -9,6 +9,6 @@ export function FieldError({ errors, ...props }: { errors: unknown[] } & Compone
   if (messages.length === 0) {
     return null;
   }
-  return <p role="status" className="text-destructive text-xs" {...props}>{messages.join(', ')}</p>;
+  return <p className="text-destructive text-xs" {...props}>{messages.join(', ')}</p>;
 }
 
