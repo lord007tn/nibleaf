@@ -518,6 +518,11 @@ export const useCreateComment = (projectId: string, _pageId?: string) => {
 type ResolveIntents = { confirmed: boolean | undefined; pending: { token: number; resolved: boolean }[] };
 const resolveIntents = new WeakMap<QueryClient, Map<string, ResolveIntents>>();
 let lastResolveToken = 0;
+// A plain function keeps the counter out of hook bodies (the React Compiler can't analyse `++` on module state).
+const nextResolveToken = () => {
+  lastResolveToken += 1;
+  return lastResolveToken;
+};
 
 /**
  * Resolve/reopen optimistically: flipping the flag has only one outcome.
@@ -573,7 +578,7 @@ export const useResolveComment = (projectId: string) => {
           .flatMap(([, comments]) => comments ?? [])
           .find((comment) => comment.id === id)?.resolved;
       }
-      const token = ++lastResolveToken;
+      const token = nextResolveToken();
       entry.pending.push({ token, resolved });
       intents.set(key, entry);
       await qc.cancelQueries(filter);
@@ -872,6 +877,10 @@ interface MarkReadState {
 }
 const markReadStates = new WeakMap<QueryClient, MarkReadState>();
 let lastMarkReadToken = 0;
+const nextMarkReadToken = () => {
+  lastMarkReadToken += 1;
+  return lastMarkReadToken;
+};
 
 /**
  * Mark notifications read — pass `{ ids }` for specific rows or `{ all: true }`.
@@ -905,7 +914,7 @@ export const useMarkNotificationsRead = () => {
     onMutate: async (body) => {
       await Promise.all([qc.cancelQueries({ queryKey: listKey, exact: true }), qc.cancelQueries({ queryKey: countKey, exact: true })]);
       const state = stateOf();
-      const token = ++lastMarkReadToken;
+      const token = nextMarkReadToken();
       const list = qc.getQueryData<NotificationList>(listKey);
       const count = qc.getQueryData<{ count: number }>(countKey);
       const readAt = new Date().toISOString();
