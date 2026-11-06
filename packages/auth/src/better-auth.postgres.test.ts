@@ -166,7 +166,13 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     return { cookie, organizationId, userId };
   };
 
+  // Signing keys are encrypted with the auth secret. A key another process
+  // (a local dev stack sharing this database) created with its own secret can't
+  // be decrypted here, and a key left behind would break that process in turn.
+  const clearSigningKeys = () => prisma.jwks.deleteMany();
+
   beforeAll(async () => {
+    await clearSigningKeys();
     ({ auth } = await import('./server'));
     const realFetch = globalThis.fetch;
     vi.stubGlobal('fetch', (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
@@ -188,6 +194,7 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
 
   afterAll(async () => {
     vi.unstubAllGlobals();
+    await clearSigningKeys();
     await prisma.$disconnect();
   });
 
