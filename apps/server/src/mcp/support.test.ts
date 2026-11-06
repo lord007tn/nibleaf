@@ -107,7 +107,8 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
           for (const [request] of mocks.query.mock.calls) {
             expect(request.query).toContain('analytics_deletion_tombstones FINAL');
             expect(request.query).toMatch(/LIMIT (1|50)\b/);
-            expect(request.query_params).toMatchObject({ tenant: 'org', project: 'project', language: 'en' });
+            // Feedback records no language, so its language filter is dropped (and reported).
+            expect(request.query_params).toMatchObject({ tenant: 'org', project: 'project', language: name === 'get_page_feedback' ? '' : 'en' });
           }
         else
           for (const [query] of mocks.sql.mock.calls) {
@@ -209,6 +210,14 @@ describe.each(['relational', 'clickhouse'])('%s output contracts', (mode) => {
       pages: [{ helpful: 1, notHelpful: 3, helpfulRatio: 0.25 }],
       comments: { available: false },
     });
+  });
+  it('does not let a language filter hide feedback, which records no language', async () => {
+    mocks.query.mockClear();
+    mocks.sql.mockClear();
+    const result = await getSupportAnalytics(principal, 'get_page_feedback', { language: 'en' });
+    expect(result).toMatchObject({ pages: [{ helpful: 1, notHelpful: 3 }] });
+    expect(result.reasons).toContain('Feedback events do not record a language, so the language filter was not applied.');
+    if (mode === 'clickhouse') expect(mocks.query.mock.calls.at(-1)?.[0].query_params.language).toBe('');
   });
   it('keeps unknown failure and click metrics explicit', async () => {
     expect(await getSupportAnalytics(principal, 'get_failed_searches', {})).toMatchObject(

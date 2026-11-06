@@ -60,7 +60,11 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
   const { id: projectId, organizationId: tenantId } = principal.project;
   const project = await prisma.project.findFirst({ where: { id: projectId, organizationId: tenantId }, select: { config: true } });
   if (!project) throw new AppError({ code: 'database:not_found', message: 'Project not found.' });
-  const range = resolveSupportRange(input);
+  const resolved = resolveSupportRange(input);
+  // Feedback events record no language, so a language filter would silently
+  // hide every row. Ignore it for feedback and say so in the response.
+  const languageIgnored = kind === 'get_page_feedback' && resolved.language !== undefined;
+  const range = languageIgnored ? { ...resolved, language: undefined } : resolved;
   // Match the existing overview: shadow_read keeps relational results authoritative.
   const source = keys().ANALYTICS_MODE === 'clickhouse' ? 'clickhouse' : 'relational';
   const termsEnabled = (project.config as ProjectConfig | null)?.analytics?.storePublicSearchTerms === true;
@@ -157,6 +161,7 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
   }
   if (source === 'clickhouse')
     reasons.push('Counts cover retained raw events; expired events cannot be reconstructed for arbitrary date boundaries.');
+  if (languageIgnored) reasons.push('Feedback events do not record a language, so the language filter was not applied.');
   const base = { source, from: range.from.toISOString(), to: range.to.toISOString(), timezone: range.timezone, reasons };
   if (searches)
     return {

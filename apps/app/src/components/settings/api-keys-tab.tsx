@@ -257,7 +257,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                     type="button"
                     key={value}
                     aria-pressed={client === value}
-                    variant={client === value ? 'secondary' : 'outline'}
+                    variant={client === value ? 'default' : 'outline'}
                     onClick={() => setClient(value)}
                   >
                     {{ claudeCode: 'Claude Code', desktop: 'Claude Desktop', cursor: 'Cursor', vscode: 'VS Code', chatgpt: 'ChatGPT' }[value]}
@@ -289,8 +289,11 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                     {t('settings.apiKeys.copy')}
                   </Button>
                   {client === 'cursor' || client === 'vscode' ? (
-                    <a className="ms-3 underline" href={client === 'cursor' ? setup.cursorLink : setup.vscodeLink}>
-                      {t('settings.apiKeys.install')}
+                    <a
+                      className="ms-2 inline-flex h-9 items-center rounded-md border border-primary/30 bg-primary/5 px-3 font-medium text-primary text-sm hover:bg-primary/10"
+                      href={client === 'cursor' ? setup.cursorLink : setup.vscodeLink}
+                    >
+                      {t(client === 'cursor' ? 'settings.apiKeys.installCursor' : 'settings.apiKeys.installVscode')}
                     </a>
                   ) : null}
                 </>
