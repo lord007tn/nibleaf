@@ -235,6 +235,8 @@ export interface ChatRetrieval {
   chunks: SearchChunk[];
   hits: HybridChunkHit[];
   confidence: number;
+  /** The main retrieval lane was served from the in-process cache. */
+  cacheHit: boolean;
 }
 
 /** Retrieval for one chat turn. The optional page lane narrows the same
@@ -254,7 +256,7 @@ export const retrieveChatContext = async (
       : Promise.resolve(null),
   ]);
   if (!pageLane || pageLane.chunks.length === 0) {
-    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence };
+    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence, cacheHit: main.cacheHit };
   }
   const merged = new Map<string, HybridChunkHit>();
   for (const hit of main.chunks) merged.set(hit.chunk.id, hit);
@@ -268,6 +270,7 @@ export const retrieveChatContext = async (
     chunks: selectAnswerChunks(hits),
     hits,
     confidence: Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE),
+    cacheHit: main.cacheHit,
   };
 };
 

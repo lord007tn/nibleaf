@@ -4,6 +4,7 @@ import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({
+  recordSiteChatEvents: vi.fn(),
   getSiteOpenApi: vi.fn(),
   getSiteChangelogRss: vi.fn(),
   getSitePageMarkdown: vi.fn(),
@@ -12,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   submitSiteChatFeedback: vi.fn(),
 }));
 
+vi.mock('@/actions/site-chat-events', () => ({ recordSiteChatEvents: mocks.recordSiteChatEvents }));
 vi.mock('@/actions/site-chat', () => ({ chatSite: mocks.chatSite, submitSiteChatFeedback: mocks.submitSiteChatFeedback }));
 
 vi.mock('@/actions/sites', () => ({
@@ -165,5 +167,20 @@ describe('reader AI chat endpoints', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(await response.json()).toEqual({ data: { saved: true } });
+  });
+});
+
+describe('chat event endpoint', () => {
+  it('validates content-free client events and sets private caching', async () => {
+    mocks.recordSiteChatEvents.mockResolvedValue({ recorded: 1 });
+    const post = (body: unknown) =>
+      app.request('/sites/project/chat/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const event = { name: 'chat_opened', source: 'launcher', conversationId: '00000000-0000-4000-8000-000000000001' };
+    const response = await post({ events: [event] });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect((await post({ events: [{ ...event, question: 'private' }] })).status).toBe(422);
+    expect((await post({ events: new Array(21).fill(event) })).status).toBe(422);
+    expect((await post({ events: [{ ...event, name: 'provider_error' }] })).status).toBe(422);
   });
 });

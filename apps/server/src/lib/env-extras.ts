@@ -21,6 +21,9 @@ export const envExtras = createEnv({
     SEARCH_CHAT_MAX_TURNS: z.coerce.number().int().min(1).max(200).default(20),
     /** Reader AI chat: provider tokens one conversation may spend. */
     SEARCH_CHAT_MAX_CONVERSATION_TOKENS: z.coerce.number().int().min(1000).max(10_000_000).default(60_000),
+    /** Reader AI chat: cheaper OpenRouter model for follow-up rewriting and suggested
+     * questions on the instance provider. Empty uses the answer model. */
+    SEARCH_CHAT_UTILITY_MODEL: z.string().trim().min(1).max(120).optional(),
     /** Reader AI chat: provider tokens one project may spend per UTC day. 0 disables this budget. */
     SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT: z.coerce.number().int().min(0).max(1_000_000_000).default(2_000_000),
     /** Per-workspace daily cap on AI draft calls. 0 disables AI drafting entirely. */

@@ -12,15 +12,18 @@ import {
   type GroundedChatResult,
   streamGroundedChat,
   suggestedArticles,
+  suggestFollowUps,
 } from '@nibleaf/search';
 import { type ChatCostSink, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
-import { defaultLanguage } from '@nibleaf/shared/site';
+import { defaultLanguage, extractHeadings } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
   type AiChatConsent,
   type AiChatErrorCode,
   type AiChatFinalEvent,
+  type AiChatFollowUpsEvent,
   type AiChatNoAnswerReason,
+  type AiChatSource,
   type AiConversationTurnStatus,
   type SiteChatBody,
   type SiteChatFeedbackBody,
@@ -30,7 +33,7 @@ import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError } from '@/errors';
 import { recordChatSpend, releaseChatTurn, reserveChatTurn } from '@/lib/ai-search/chat-budget';
-import { recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
+import { type AiChatServerEvent, recordAiChatEvents, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatContext } from '@/lib/ai-search/runtime';
@@ -77,6 +80,11 @@ export const aiChatConsentRequired = (config: unknown): boolean => {
   return consentMode && Boolean((ga4 && /^[\w-]+$/.test(ga4)) || (plausible && /^[\w.-]+$/.test(plausible)));
 };
 
+/** The reader's consent as analytics may trust it: a client cannot claim consent
+ * is not required on a site whose banner applies. */
+export const trustedChatConsent = (config: unknown, consent: AiChatConsent): AiChatConsent =>
+  consent === 'not_required' && aiChatConsentRequired(config) ? 'unknown' : consent;
+
 /** The article the reader asked from, if it is a page they may read in the
  * active language/version. Anything else is ignored rather than rejected. */
 const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) => {
@@ -86,6 +94,46 @@ const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) 
     (candidate) => candidate.kind === 'PAGE' && !candidate.hidden && candidate.languageCode === context.scope.language && candidate.path === path,
   );
   return page ? { id: page.id, title: page.title, path: page.path } : undefined;
+};
+
+const headingKey = (text: string) =>
+  text
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+/** Adds the article's own heading id (the same github-slugger ids the reader
+ * TOC uses) to each source, so a citation opens the exact section. A heading
+ * that cannot be matched leaves the source page-level rather than guessing. */
+const withSectionAnchors = (context: PublishedAnswerContext) => {
+  const byPage = new Map<string, Map<string, string>>();
+  const anchorsFor = (pageId: string) => {
+    let anchors = byPage.get(pageId);
+    if (!anchors) {
+      anchors = new Map();
+      const page = context.versionPages.find((candidate) => candidate.id === pageId);
+      for (const heading of page ? extractHeadings(page.content) : []) {
+        const key = headingKey(heading.text);
+        if (key && !anchors.has(key)) anchors.set(key, heading.id);
+      }
+      byPage.set(pageId, anchors);
+    }
+    return anchors;
+  };
+  return (sources: AiChatSource[]): AiChatSource[] =>
+    sources.map((source) => {
+      const anchor = source.heading ? anchorsFor(source.pageId).get(headingKey(source.heading)) : undefined;
+      return anchor && anchor.length <= 200 ? { ...source, anchor } : source;
+    });
+};
+
+/** Refusal codes that are a quota or budget the reader ran into. */
+const QUOTA_KIND: Partial<Record<AiChatErrorCode, Extract<AiChatServerEvent, { name: 'quota_reached' }>['kind']>> = {
+  quota_exhausted: 'daily_quota',
+  budget_exhausted: 'token_budget',
+  conversation_limit: 'conversation_limit',
+  rate_limited: 'rate_limited',
 };
 
 const usageTokens = (usage?: ChatUsage): number | undefined =>
@@ -116,6 +164,8 @@ interface TurnOutcome {
   result?: GroundedChatResult;
   usage?: ChatUsage;
   errorCode?: AiChatErrorCode;
+  /** From the request to the first visible text. */
+  firstTokenMs?: number;
 }
 
 interface ChatTurnInput {
@@ -124,6 +174,37 @@ interface ChatTurnInput {
   signal: AbortSignal;
   dimensions: { device: string; country?: string };
 }
+
+/** The workspace that owns the project; null skips analytics rows. */
+const tenantOf = (projectId: string): Promise<string | null> =>
+  prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }).then(
+    (project) => project?.organizationId ?? null,
+    () => null,
+  );
+
+type EmitChatEvents = (events: AiChatServerEvent[]) => Promise<void>;
+
+/** Content-free chat events. Never blocks or fails the reader's stream. */
+const chatEventRecorder =
+  (context: PublishedAnswerContext, reader: { consent: AiChatConsent; sessionId?: string }, tenant: Promise<string | null>): EmitChatEvents =>
+  (events) =>
+    tenant
+      .then((tenantId) =>
+        tenantId
+          ? recordAiChatEvents(
+              {
+                tenantId,
+                projectId: context.scope.projectId,
+                visibility: context.scope.visibility,
+                consent: trustedChatConsent(context.snapshot.project.config, reader.consent),
+                ...(reader.sessionId ? { sessionId: reader.sessionId } : {}),
+                language: context.scope.language,
+              },
+              events,
+            )
+          : undefined,
+      )
+      .catch(() => undefined);
 
 /** Availability and spend gates, all before any provider call. Any failure to
  * reach the counter store refuses the turn (fail closed, like the answer quota). */
@@ -154,12 +235,32 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
     { type: EventType.RUN_ERROR, message: ERROR_MESSAGES[code], code, threadId, runId, timestamp: Date.now() },
   ];
 
+  const started = performance.now();
+  const tenant = tenantOf(projectId);
+  const emit = chatEventRecorder(context, body, tenant);
   yield { type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() };
   const gate = await openChatTurn(context, body.conversationId).catch(() => ({ ok: false as const, code: 'unavailable' as const }));
-  if (!gate.ok) return yield* fail(gate.code);
+  if (!gate.ok) {
+    const kind = QUOTA_KIND[gate.code];
+    void emit([
+      ...(kind ? [{ name: 'quota_reached' as const, conversationId: threadId, kind }] : []),
+      { name: 'answer_completed', conversationId: threadId, turnId, outcome: 'blocked', reason: gate.code },
+    ]);
+    return yield* fail(gate.code);
+  }
   const { runtime, reservation, quota } = gate;
+  const page = resolvePageContext(context, body.pagePath);
+  void emit([
+    {
+      name: 'question_asked',
+      conversationId: threadId,
+      turnId,
+      turnIndex: reservation.turnIndex,
+      followUp: body.history.length > 0,
+      pageContext: Boolean(page),
+    },
+  ]);
 
-  const started = performance.now();
   const analytics = {
     source: 'public_site' as const,
     consentState: body.consent,
@@ -171,39 +272,77 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
     () => undefined,
   );
 
-  const page = resolvePageContext(context, body.pagePath);
   const outcome: TurnOutcome = { status: 'failed' };
   const cost: ChatCostSink = {};
+  const anchored = withSectionAnchors(context);
+  const supportUrl = context.request.configuration.aiSupportUrl;
+  // Side calls (suggestions) stop with the turn, even when it fails.
+  const sideCalls = new AbortController();
+  const sideSignal = AbortSignal.any([signal, sideCalls.signal]);
+  let phase: 'condense' | 'retrieval' | 'generation' = 'condense';
   let textStarted = false;
+  const firstText = () => {
+    if (outcome.firstTokenMs !== undefined) return;
+    outcome.firstTokenMs = Math.round(performance.now() - started);
+    void emit([{ name: 'first_token', conversationId: threadId, turnId, ttftMs: outcome.firstTokenMs }]);
+  };
   try {
     yield custom(AI_CHAT_EVENT.status, { phase: 'searching' });
     const adapter = workspaceChatAdapter(runtime, cost);
+    // Rewriting and suggestions are small tasks; an operator may route them to a
+    // cheaper OpenRouter model. Workspace keys on OpenAI keep the answer model.
+    const utilityModel = runtime.providerId === 'openrouter' ? envExtras.SEARCH_CHAT_UTILITY_MODEL : undefined;
+    const utilityAdapter = utilityModel ? workspaceChatAdapter({ ...runtime, answerModel: utilityModel }, cost) : adapter;
     const historyLimits = { maxMessages: envExtras.SEARCH_CHAT_HISTORY_MESSAGES, maxTokens: envExtras.SEARCH_CHAT_HISTORY_MAX_TOKENS };
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
-    const condensed = await condenseFollowUp({ adapter, question: body.question, history, language, signal, historyLimits, modelOptions });
+    const condensed = await condenseFollowUp({
+      adapter: utilityAdapter,
+      question: body.question,
+      history,
+      language,
+      signal,
+      historyLimits,
+      modelOptions,
+    });
+    if (condensed.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'condense' }]);
     outcome.usage = condensed.usage;
     outcome.rewrittenQuery = condensed.rewritten ? condensed.query : undefined;
+    phase = 'retrieval';
     const retrieval = await retrieveChatContext(context.scope, condensed.query, runtime, { page, signal });
     outcome.retrieval = retrieval;
 
     yield { type: EventType.TEXT_MESSAGE_START, messageId: turnId, role: 'assistant', timestamp: Date.now() };
     textStarted = true;
     let final: Omit<AiChatFinalEvent, 'conversationId' | 'turnId' | 'feedbackToken' | 'language' | 'limits'>;
+    let followUps: AiChatFollowUpsEvent['questions'] = [];
+    const noAnswer = (answer: string, noAnswerReason: AiChatNoAnswerReason) => ({
+      status: 'no_answer' as const,
+      answer,
+      noAnswerReason,
+      citations: [],
+      suggestions: anchored(suggestedArticles(retrieval.chunks, condensed.query)),
+      ...(supportUrl ? { supportUrl } : {}),
+    });
     if (retrieval.chunks.length === 0 || retrieval.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE) {
       // Nothing relevant enough: never let the model improvise.
       const answer = t('noAnswerGrounded');
+      firstText();
       yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: turnId, delta: answer, timestamp: Date.now() };
       Object.assign(outcome, { status: 'no_answer', noAnswerReason: 'low_confidence', answer });
-      final = {
-        status: 'no_answer',
-        answer,
-        noAnswerReason: 'low_confidence',
-        citations: [],
-        suggestions: suggestedArticles(retrieval.chunks, condensed.query),
-      };
+      final = noAnswer(answer, 'low_confidence');
     } else {
       yield custom(AI_CHAT_EVENT.status, { phase: 'writing' });
+      phase = 'generation';
+      // Prepared while the answer streams, so suggestions add no wait.
+      const suggesting = suggestFollowUps({
+        adapter: utilityAdapter,
+        question: body.question,
+        chunks: retrieval.chunks,
+        language,
+        signal: sideSignal,
+        modelOptions,
+      });
       const generation = streamGroundedChat({
         adapter,
         model: runtime.answerModel,
@@ -217,6 +356,7 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
         modelOptions,
       });
       for await (const delta of generation.deltas) {
+        firstText();
         yield { type: EventType.TEXT_MESSAGE_CONTENT, messageId: turnId, delta, timestamp: Date.now() };
       }
       yield custom(AI_CHAT_EVENT.status, { phase: 'checking' });
@@ -226,14 +366,12 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
       Object.assign(outcome, { status: result.status, noAnswerReason: result.noAnswerReason, answer: result.answer });
       final =
         result.status === 'answered'
-          ? { status: 'answered', answer: result.answer, citations: citationsToSources(result.citations), suggestions: [] }
-          : {
-              status: 'no_answer',
-              answer: result.answer,
-              noAnswerReason: result.noAnswerReason ?? 'empty',
-              citations: [],
-              suggestions: suggestedArticles(retrieval.chunks, condensed.query),
-            };
+          ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
+          : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
+      const suggested = await suggesting;
+      outcome.usage = addUsage(outcome.usage, suggested.usage);
+      if (suggested.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
+      if (result.status === 'answered') followUps = suggested.questions;
     }
     yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
     textStarted = false;
@@ -245,6 +383,7 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
       language,
       limits: { turnsRemaining: reservation.turnsRemaining, quotaRemaining: quota.remaining },
     } satisfies AiChatFinalEvent);
+    if (followUps.length) yield custom(AI_CHAT_EVENT.followUps, { turnId, questions: followUps } satisfies AiChatFollowUpsEvent);
     yield { type: EventType.RUN_FINISHED, threadId, runId, finishReason: 'stop', timestamp: Date.now() };
   } catch (error) {
     if (signal.aborted) {
@@ -252,15 +391,17 @@ async function* chatTurnEvents({ context, body, signal, dimensions }: ChatTurnIn
       return;
     }
     // Provider/retrieval details never reach the reader or the logs' message.
-    log.warn({ projectId, phase: outcome.retrieval ? 'generation' : 'retrieval', errorName: (error as Error)?.name }, 'AI chat turn failed');
+    log.warn({ projectId, phase, errorName: (error as Error)?.name }, 'AI chat turn failed');
     outcome.status = 'failed';
+    void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase }]);
     if (textStarted) yield { type: EventType.TEXT_MESSAGE_END, messageId: turnId, timestamp: Date.now() };
     yield* fail('failed');
   } finally {
+    sideCalls.abort();
     // A reader pressing "Stop" ends iteration from outside, skipping catch.
     if (signal.aborted && outcome.status === 'failed') outcome.status = 'cancelled';
     const latencyMs = Math.max(0, Math.round(performance.now() - started));
-    void finishTurn({ context, body, turnId, turnIndex: reservation.turnIndex, outcome, page, latencyMs, analytics, runtime, cost });
+    void finishTurn({ context, body, turnId, turnIndex: reservation.turnIndex, outcome, page, latencyMs, analytics, runtime, cost, tenant, emit });
   }
 }
 
@@ -276,6 +417,8 @@ const finishTurn = async ({
   analytics,
   runtime,
   cost,
+  tenant,
+  emit,
 }: {
   context: PublishedAnswerContext;
   body: SiteChatBody;
@@ -287,6 +430,8 @@ const finishTurn = async ({
   analytics: Parameters<typeof trackProjectEvent>[2];
   runtime: { providerId: string; answerModel: string };
   cost: ChatCostSink;
+  tenant: Promise<string | null>;
+  emit: EmitChatEvents;
 }): Promise<void> => {
   const projectId = context.scope.projectId;
   // Provider-reported spend (OpenRouter) is read from the response bodies.
@@ -317,13 +462,29 @@ const finishTurn = async ({
         ? { name: 'answer_cancelled' as const, ...base, noAnswerReason: 'cancelled' as const }
         : { name: 'answer_failed' as const, ...base, noAnswerReason: 'provider_error' as const };
   await trackProjectEvent(projectId, event, analytics).catch(() => undefined);
+  await emit([
+    {
+      name: 'answer_completed',
+      conversationId: body.conversationId,
+      turnId,
+      outcome: outcome.status,
+      ...(outcome.noAnswerReason ? { reason: outcome.noAnswerReason } : {}),
+      provider: runtime.providerId,
+      model: base.model,
+      ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
+      ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
+      ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+      latencyMs,
+      ...(outcome.retrieval ? { retrievalCacheHit: outcome.retrieval.cacheHit } : {}),
+    },
+  ]);
 
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }).catch(() => null);
-  if (!project) return;
+  const tenantId = await tenant;
+  if (!tenantId) return;
   const citations = outcome.result?.status === 'answered' ? outcome.result.citations : [];
   const suggestions = outcome.status === 'no_answer' && outcome.retrieval ? suggestedArticles(outcome.retrieval.chunks, body.question) : [];
   await recordAiChatTurn({
-    tenantId: project.organizationId,
+    tenantId,
     projectId,
     conversationId: body.conversationId,
     turnId,
@@ -352,8 +513,14 @@ const finishTurn = async ({
     ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
     ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
     latencyMs,
-    ...(outcome.result?.firstTokenMs !== undefined ? { firstTokenMs: Math.round(outcome.result.firstTokenMs) } : {}),
-    ...(outcome.retrieval ? { retrievalConfidence: outcome.retrieval.confidence, chunkCount: outcome.retrieval.chunks.length } : {}),
+    ...(outcome.firstTokenMs !== undefined ? { firstTokenMs: outcome.firstTokenMs } : {}),
+    ...(outcome.retrieval
+      ? {
+          retrievalConfidence: outcome.retrieval.confidence,
+          chunkCount: outcome.retrieval.chunks.length,
+          retrievalCacheHit: outcome.retrieval.cacheHit,
+        }
+      : {}),
   });
 };
 
@@ -386,6 +553,7 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
   if (!project) throw new AppError({ code: 'http:not_found', message: 'Site not found.' });
   const consent: AiChatConsent = body.consent;
+  const language = body.lang ?? defaultLanguage(context.snapshot.project).code;
   await recordAiChatFeedback({
     tenantId: project.organizationId,
     projectId,
@@ -394,12 +562,29 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
     rating: body.rating,
     ...(body.reason ? { reason: body.reason } : {}),
     ...(body.comment ? { comment: body.comment } : {}),
-    language: body.lang ?? defaultLanguage(context.snapshot.project).code,
+    language,
     consent,
     consentRequired: aiChatConsentRequired(context.snapshot.project.config),
     captureSetting: context.request.configuration.aiConversationCapture,
     visibility: context.scope.visibility,
   });
+  // A first rating is "given"; changing or withdrawing an earlier one is
+  // "changed". A reason or comment added to the same rating, or withdrawing
+  // nothing, is not a new rating (the feedback row above still keeps it).
+  const changed = body.previousRating != null;
+  if ((body.rating || changed) && body.previousRating !== body.rating) {
+    const eventConsent = trustedChatConsent(context.snapshot.project.config, consent);
+    await recordAiChatEvents({ tenantId: project.organizationId, projectId, visibility: context.scope.visibility, consent: eventConsent, language }, [
+      {
+        name: changed ? 'feedback_changed' : 'feedback_given',
+        conversationId: body.conversationId,
+        turnId: body.turnId,
+        rating: body.rating,
+        ...(body.reason ? { reason: body.reason } : {}),
+        ...(changed ? { previousRating: body.previousRating } : {}),
+      },
+    ]);
+  }
   if (body.rating) {
     await trackProjectEvent(
       projectId,

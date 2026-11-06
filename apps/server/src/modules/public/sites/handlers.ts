@@ -1,8 +1,9 @@
 import { publicAnalyticsEventSchema } from '@nibleaf/clickhouse';
-import { searchAnswerBody, searchQuery, siteChatBody, siteChatFeedbackBody } from '@nibleaf/validators';
+import { searchAnswerBody, searchQuery, siteChatBody, siteChatEventsBody, siteChatFeedbackBody } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import { z } from 'zod';
 import { chatSite, submitSiteChatFeedback } from '@/actions/site-chat';
+import { recordSiteChatEvents } from '@/actions/site-chat-events';
 import {
   answerSite,
   getSite,
@@ -49,6 +50,10 @@ const textDocument = (ctx: Context<HonoEnv>, doc: SiteTextDocument, contentType:
   });
 
 const app = new Hono<HonoEnv>()
+  .post('/:id/chat/events', ...sitesRoutes.chatEvents, validator('json', siteChatEventsBody), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    return ctx.json({ data: await recordSiteChatEvents(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
+  })
   .get('/:id', ...sitesRoutes.site, validator('query', siteQuery), async (ctx) => {
     const { lang, version } = ctx.req.valid('query');
     const data = await getSite(ctx.req.param('id'), lang, version);
