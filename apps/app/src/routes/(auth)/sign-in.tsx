@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { GoogleIcon } from '@/components/icons/brand';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
-import { authEmailErrorMessage } from '@/lib/auth-errors';
+import { friendlyAuthError } from '@/lib/auth-friendly-error';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -54,7 +54,7 @@ function SignInPage() {
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
       if (result.error) {
-        setError(authEmailErrorMessage(result.error, t('auth.otp.sendError')));
+        setError(friendlyAuthError(result.error, { fallback: t('auth.otp.sendError'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
         return;
       }
       setCodeSent(true);
@@ -72,7 +72,7 @@ function SignInPage() {
     try {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim() });
       if (result.error) {
-        setError(result.error.message ?? t('auth.otp.invalid'));
+        setError(friendlyAuthError(result.error, { fallback: t('auth.otp.invalid'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
         return;
       }
       await finishSignIn();
@@ -88,7 +88,7 @@ function SignInPage() {
     setIsGoogleSubmitting(true);
     const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath });
     if (result.error) {
-      setError(result.error.message ?? t('auth.signIn.error'));
+      setError(friendlyAuthError(result.error, { fallback: t('auth.signIn.error'), tooManyAttempts: t('auth.otp.tooManyAttempts') }));
       setIsGoogleSubmitting(false);
     }
   };

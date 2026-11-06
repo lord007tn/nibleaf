@@ -60,11 +60,11 @@ export function SidebarAccountFooter() {
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-start leading-tight">
-                  <span className="truncate font-medium text-sm" dir="auto">
-                    {visibleSession?.user?.name ?? t('nav.account')}
+                  <span className="truncate font-medium text-sm">
+                    <bdi>{visibleSession?.user?.name ?? t('nav.account')}</bdi>
                   </span>
-                  <span className="truncate text-muted-foreground text-xs" dir="ltr">
-                    {visibleSession?.user?.email ?? ''}
+                  <span className="truncate text-muted-foreground text-xs">
+                    <bdi dir="ltr">{visibleSession?.user?.email ?? ''}</bdi>
                   </span>
                 </div>
                 <ChevronsUpDown className="ms-auto size-4 text-muted-foreground" />

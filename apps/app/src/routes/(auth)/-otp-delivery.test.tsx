@@ -105,11 +105,12 @@ describe('required auth email delivery feedback', () => {
     expect(container.querySelector('[data-input-otp]')).toBeNull();
   });
 
-  it('retains an unrelated server error instead of classifying it as a delivery outage', async () => {
+  it('shows a localized rate-limit message instead of the English server text', async () => {
     mocks.send.mockResolvedValue({ error: { code: 'TOO_MANY_REQUESTS', message: 'Please wait before requesting another code.' } });
     await render(signIn);
     await submit();
-    expect(container.textContent).toContain('Please wait before requesting another code.');
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe('محاولات كثيرة جدًا. انتظر دقيقة ثم حاول مجددًا.');
+    expect(container.textContent).not.toContain('Please wait before requesting another code.');
   });
 
   it('uses the existing English translation when the interface is English', async () => {

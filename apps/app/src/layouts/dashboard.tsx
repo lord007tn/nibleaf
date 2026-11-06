@@ -4,9 +4,9 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useRouterState } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
-import { CommandPalette } from '@/components/app/command-palette';
+import { useOpenCommandPalette } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 
@@ -24,12 +24,12 @@ function titleKeyFromPathname(pathname: string): MessageKey {
   return 'dashboard.header.projects';
 }
 
-/** The signed-in workspace shell: sidebar + top bar + command palette. */
+/** The signed-in workspace shell: sidebar + top bar (the palette itself is app-wide). */
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const t = useT();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const title = t(titleKeyFromPathname(pathname));
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const openPalette = useOpenCommandPalette();
   const searchShortcut = useSearchShortcutLabel();
 
   return (
@@ -37,7 +37,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/80 px-4 backdrop-blur">
-          <SidebarTrigger className="-ms-1" />
+          <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -45,22 +45,32 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          {/* Icon-only on phones; the keyboard hint only where a keyboard is likely. */}
           <button
-            className="ms-auto flex h-8 w-56 items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-muted-foreground text-sm shadow-xs outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-            onClick={() => setPaletteOpen(true)}
+            aria-label={t('command.dialog.title')}
+            className="ms-auto flex h-8 items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-muted-foreground text-sm shadow-xs outline-none transition-colors hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-56 sm:px-3 dark:bg-input/30 pointer-coarse:h-10 pointer-coarse:min-w-10"
+            onClick={() => openPalette?.()}
             type="button"
           >
-            <Search className="size-3.5" />
-            <span className="flex-1 text-start">{t('dashboard.search.placeholder')}</span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px]" dir="ltr">
+            <Search aria-hidden className="size-3.5" />
+            <span aria-hidden className="hidden flex-1 text-start sm:inline">
+              {t('dashboard.search.placeholder')}
+            </span>
+            <kbd
+              aria-hidden
+              className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] md:inline pointer-coarse:hidden"
+              dir="ltr"
+            >
               {searchShortcut}
             </kbd>
           </button>
           <NotificationsPopover />
         </header>
-        <main className="w-full flex-1 px-6 py-8">{children}</main>
+        {/* SidebarInset is already the page's <main>; a nested one confuses screen readers. */}
+        <div className="w-full flex-1 px-4 py-6 outline-none sm:px-6 sm:py-8" id="main-content" tabIndex={-1}>
+          {children}
+        </div>
       </SidebarInset>
-      <CommandPalette onOpenChange={setPaletteOpen} open={paletteOpen} />
     </SidebarProvider>
   );
 }

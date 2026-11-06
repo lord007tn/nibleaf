@@ -1,8 +1,9 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   ArrowRight,
   BarChart3,
@@ -48,13 +49,12 @@ const siteUrl = (domain: string | null, projectId: string) => (domain ? `https:/
 function SiteOverviewPage() {
   const { projectId } = Route.useParams();
   const t = useT();
-  const navigate = useNavigate();
   const { date } = useFormatters();
   const [range, setRange] = useState<AnalyticsRange>('30d');
   const { data: project } = useProject(projectId);
-  const { data: pages } = usePages(projectId);
-  const { data: members } = useProjectMembers(projectId);
-  const { data: deployments } = useDeployments(projectId);
+  const { data: pages, isPending: pagesPending } = usePages(projectId);
+  const { data: members, isPending: membersPending } = useProjectMembers(projectId);
+  const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
   const { data: domains } = useDomains(projectId);
   const { data: analytics, isPending: analyticsPending } = useProjectAnalytics(projectId, range);
 
@@ -87,15 +87,28 @@ function SiteOverviewPage() {
           <h1 className="font-semibold text-2xl tracking-tight">{project?.name ?? t('overview.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('overview.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            nativeButton={false}
-            render={<a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />}
-            size="sm"
-            variant="outline"
-          >
-            <Eye className="size-3.5" /> {t('overview.viewSite')}
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Before the first publish there's nothing live to visit, so offer the
+              draft preview instead of a link to an empty site. */}
+          {hasReadyDeployment ? (
+            <Button
+              nativeButton={false}
+              render={<a href={liveHref} target="_blank" rel="noreferrer" aria-label={t('overview.viewSite')} />}
+              size="sm"
+              variant="outline"
+            >
+              <Eye className="size-3.5" /> {t('overview.viewSite')}
+            </Button>
+          ) : deployments ? (
+            <Button
+              nativeButton={false}
+              render={<Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />}
+              size="sm"
+              variant="outline"
+            >
+              <Eye className="size-3.5" /> {t('project.preview')}
+            </Button>
+          ) : null}
           <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} size="sm">
             <PenLine className="size-3.5" /> {t('overview.openEditor')}
           </Button>
@@ -118,9 +131,28 @@ function SiteOverviewPage() {
             </span>
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
-              <a className="truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
-                {liveDomain ?? liveHref}
-              </a>
+              {deploymentsPending ? (
+                <Skeleton className="mt-1 h-4 w-40" />
+              ) : hasReadyDeployment ? (
+                <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
+                  <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
+                </a>
+              ) : (
+                <>
+                  <p className="text-muted-foreground text-sm">{t('overview.live.unavailable')}</p>
+                  <p className="mt-1 text-muted-foreground text-xs">
+                    {t('overview.live.publishHint')}{' '}
+                    <Link
+                      className="font-medium text-primary hover:underline"
+                      params={{ projectId }}
+                      search={{ publish: true }}
+                      to="/app/projects/$projectId/editor"
+                    >
+                      {t('project.publish')}
+                    </Link>
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -155,9 +187,9 @@ function SiteOverviewPage() {
 
       {/* KPI cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SectionCard label={t('overview.stats.pages')} value={pageCount} icon={<FileText className="size-4" />} />
-        <SectionCard label={t('overview.stats.members')} value={memberCount} icon={<Users className="size-4" />} />
-        <SectionCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} />
+        <SectionCard label={t('overview.stats.pages')} value={pageCount} icon={<FileText className="size-4" />} loading={pagesPending} />
+        <SectionCard label={t('overview.stats.members')} value={memberCount} icon={<Users className="size-4" />} loading={membersPending} />
+        <SectionCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} loading={deploymentsPending} />
         <SectionCard
           label={t('overview.stats.pageviews')}
           value={analytics?.totalViews ?? 0}
@@ -205,16 +237,21 @@ function SiteOverviewPage() {
               </TableHeader>
               <TableBody>
                 {recentPages.map((page) => (
-                  <TableRow
-                    key={page.id}
-                    className="cursor-pointer"
-                    onClick={() => navigate({ to: '/app/projects/$projectId/editor', params: { projectId } })}
-                  >
+                  <TableRow key={page.id} className="relative">
                     <TableCell>
-                      <div className="flex items-center gap-2.5">
+                      {/* A real link to this page in the editor: keyboard, middle-click and
+                          screen readers all work, and the whole row stays clickable. */}
+                      <Link
+                        className="flex items-center gap-2.5 rounded-sm outline-none after:absolute after:inset-0 hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                        params={{ projectId }}
+                        search={{ page: page.id }}
+                        to="/app/projects/$projectId/editor"
+                      >
                         <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="truncate font-medium">{page.config?.sidebarTitle?.trim() || page.title}</span>
-                      </div>
+                        <span className="truncate font-medium" dir="auto">
+                          {page.config?.sidebarTitle?.trim() || page.title}
+                        </span>
+                      </Link>
                     </TableCell>
                     <TableCell className="text-end text-muted-foreground text-xs">{date(page.updatedAt)}</TableCell>
                   </TableRow>
@@ -228,19 +265,48 @@ function SiteOverviewPage() {
         <div className="flex flex-col gap-3">
           <h2 className="font-semibold text-sm">{t('overview.manage')}</h2>
           <ManageRow icon={BarChart3} title={t('overview.link.analytics')} desc={t('overview.link.analyticsDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} to="/app/projects/$projectId/analytics" />
+            <Link
+              aria-label={t('overview.link.analytics')}
+              className="absolute inset-0 rounded-xl"
+              params={{ projectId }}
+              to="/app/projects/$projectId/analytics"
+            />
           </ManageRow>
           <ManageRow icon={Users} title={t('overview.link.members')} desc={t('overview.link.membersDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'members' }} to="/app/projects/$projectId/settings" />
+            <Link
+              aria-label={t('overview.link.members')}
+              className="absolute inset-0 rounded-xl"
+              params={{ projectId }}
+              search={{ section: 'members' }}
+              to="/app/projects/$projectId/settings"
+            />
           </ManageRow>
           <ManageRow icon={Plug} title={t('overview.link.integrations')} desc={t('overview.link.integrationsDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />
+            <Link
+              aria-label={t('overview.link.integrations')}
+              className="absolute inset-0 rounded-xl"
+              params={{ projectId }}
+              search={{ section: 'integrations' }}
+              to="/app/projects/$projectId/settings"
+            />
           </ManageRow>
           <ManageRow icon={CreditCard} title={t('overview.link.billing')} desc={t('overview.link.billingDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'plan' }} to="/app/projects/$projectId/settings" />
+            <Link
+              aria-label={t('overview.link.billing')}
+              className="absolute inset-0 rounded-xl"
+              params={{ projectId }}
+              search={{ section: 'plan' }}
+              to="/app/projects/$projectId/settings"
+            />
           </ManageRow>
           <ManageRow icon={SettingsIcon} title={t('overview.link.settings')} desc={t('overview.link.settingsDesc')}>
-            <Link className="absolute inset-0" params={{ projectId }} search={{ section: 'general' }} to="/app/projects/$projectId/settings" />
+            <Link
+              aria-label={t('overview.link.settings')}
+              className="absolute inset-0 rounded-xl"
+              params={{ projectId }}
+              search={{ section: 'general' }}
+              to="/app/projects/$projectId/settings"
+            />
           </ManageRow>
         </div>
       </div>
@@ -428,7 +494,7 @@ function PublishNudge({ projectId }: { projectId: string }) {
 
 function NudgeStep({ n, title, desc, children }: { n: number; title: string; desc: string; children: React.ReactNode }) {
   return (
-    <li className="relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors hover:bg-muted/40">
+    <li className="relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none">
       <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">{n}</span>
       <div className="min-w-0 leading-snug">
         <div className="font-medium text-sm">{title}</div>
@@ -441,7 +507,7 @@ function NudgeStep({ n, title, desc, children }: { n: number; title: string; des
 
 function ManageRow({ icon: Icon, title, desc, children }: { icon: LucideIcon; title: string; desc: string; children: React.ReactNode }) {
   return (
-    <div className="relative flex items-start gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-muted/40">
+    <div className="relative flex items-start gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none">
       <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
         <Icon className="size-4" />
       </span>

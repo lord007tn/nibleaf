@@ -11,8 +11,12 @@ import { useState } from 'react';
 export function InterfaceLocaleLabel({ option }: { option: InterfaceLocale }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block truncate font-medium" lang={option.code} dir={option.direction}>
-        {option.native}
+      {/* Isolate the name's direction without changing the row's alignment, so
+          "العربية" lines up with the other names in an LTR list (and vice versa). */}
+      <span className="block truncate font-medium">
+        <bdi dir={option.direction} lang={option.code}>
+          {option.native}
+        </bdi>
       </span>
       <span className="block truncate text-muted-foreground text-xs">{option.label}</span>
     </span>

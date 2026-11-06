@@ -5,7 +5,7 @@ describe('localized transactional email rendering', () => {
   it('renders an English verification code with a plain-text body', async () => {
     const email = await renderVerificationCodeEmail({ code: '123456', purpose: 'sign-in' });
 
-    expect(email.subject).toBe('Your Nibleaf sign-in code');
+    expect(email.subject).toBe('Your Nibleaf code');
     expect(email.html).toContain('lang="en"');
     expect(email.html).toContain('123456');
     expect(email.text).toContain('123456');
