@@ -78,6 +78,10 @@ integration('AI archive SQL integration', () => {
         turn_id: randomUUID(),
         occurred_at: at(24),
         language: 'ar',
+        utility_model: 'test-mini',
+        utility_input_tokens: 5,
+        utility_output_tokens: 2,
+        utility_cost_micros: 100,
         question: '\u0643\u064a\u0641 \u0623\u0628\u062f\u0623\u061f',
         question_key: 'b'.repeat(64),
       },
@@ -191,9 +195,12 @@ integration('AI archive SQL integration', () => {
       await refreshAiUsageDaily(scope, days, client);
       await refreshAiUsageDaily(scope, days, client);
       const usage = await queryAiUsageDaily(scope, {});
-      // Usage counts every billed turn, the scripted one included.
+      // Usage counts every billed turn, the scripted one included, and attributes
+      // the utility model's tokens to it, not to the answer model.
       expect(usage.reduce((n, r) => n + Number(r.questions), 0)).toBe(6);
-      expect(usage.reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(57);
+      expect(usage.reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(62);
+      expect(usage.find((r) => r.model === 'test-mini')).toMatchObject({ questions: 0, input_tokens: 5, output_tokens: 2, cost_micros: 100 });
+      expect(usage.filter((r) => r.model === 'test').reduce((n, r) => n + Number(r.input_tokens), 0)).toBe(57);
       await client.insert({
         table: 'ai_usage_daily',
         format: 'JSONEachRow',
@@ -242,7 +249,7 @@ integration('AI archive SQL integration', () => {
       // Reader counts are people only; tokens and cost include the scripted turn.
       expect(summary.totals).toEqual({ conversations: 3, questions: 5, answered: 2, noAnswer: 2, failed: 1 });
       expect(summary.feedback).toEqual({ up: 1, down: 1, reasons: [{ reason: 'wrong', count: 1 }] });
-      expect(summary.usage).toEqual({ inputTokens: 57, outputTokens: 103, costUsd: 0.004, costComplete: false });
+      expect(summary.usage).toEqual({ inputTokens: 62, outputTokens: 105, costUsd: 0.0041, costComplete: false });
       const localDay = new Intl.DateTimeFormat('en-CA', {
         timeZone: 'America/Los_Angeles',
         year: 'numeric',

@@ -27,8 +27,8 @@ ClickHouse analytics for Nibleaf: event model, schema migrations, ingestion tran
 
 - Reader chat events are `chat_*` payloads in `analytics_events` (`aiChatPayload` in `src/events.ts`), built by the server and sent through `trackProjectEvents`, so they get the same actor classification, consent-gated hashes, write fence, micro-batching and outage replay as every other event. They are content-free: ids, enums, counts and timings. `conversation_id`, `turn_id` and `previous_feedback` are the only chat-specific columns.
 - Conversation text (questions, answers, comments) lives only in `ai_conversation_turns` / `ai_conversation_feedback`: redacted before queueing (`redactReaderText` for what people type), stored only with the project setting, an encryption key and the visitor's consent, and kept for `AI_CONVERSATION_RETENTION_DAYS`.
-- Turn rows record `actor_type`; reader metrics, gaps and the usage rollup count people only. Session hashes use the same `ANALYTICS_HASH_SALT` scheme as `analytics_events`.
-- Deleting one conversation writes a tombstone, then removes its turns, feedback and `chat_*` events and rebuilds the affected `ai_usage_daily` days.
+- Turn rows record `actor_type`; reader metrics and gaps count people only, while `ai_usage_daily` and the usage/cost totals count every turn a provider billed, automated traffic included. A turn's rewrite and suggestion calls on a separate utility model (`SEARCH_CHAT_UTILITY_MODEL`) keep their tokens and cost in `utility_*` columns, so per-model usage attributes them to that model. Session hashes use the same `ANALYTICS_HASH_SALT` scheme as `analytics_events`.
+- Deleting one conversation writes a tombstone, then removes its turns, feedback and `chat_*` events and rebuilds only that conversation's `ai_usage_daily` days, never a day whose turns may already have expired.
 
 ## Conventions for reads
 

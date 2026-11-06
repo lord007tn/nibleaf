@@ -32,6 +32,11 @@ describe('reader chat boundaries', () => {
     expect(answerText('draft')).toBe('draft');
     // Markers mean nothing until the answer is checked.
     expect(answerText('Run it. [S6]\n\nThen this [S1, S2] and [S4; S5].')).toBe('Run it.\n\nThen this and.');
+    // Streamed in pieces, a marker never flashes before it closes.
+    for (const piece of ['[', '[S', '[S6', '[S6,', '[S6, ', '[S6, S', '[S6, S2', '[S6]']) expect(answerText(`Run it ${piece}`)).toBe('Run it');
+    expect(answerText('نعم [S1، S2] تم [S3،')).toBe('نعم تم');
+    // Only an unfinished marker at the very end is held back.
+    expect(answerText('Use items[0] here')).toBe('Use items[0] here');
   });
   it('mirrors consent including blocked storage', () => {
     expect(deriveConsent(false, 'declined')).toBe('not_required');

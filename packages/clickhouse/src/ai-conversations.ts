@@ -47,6 +47,11 @@ export const aiTurnRowSchema = z
     chunk_count: uint,
     retrieval_cache_hit: uint.max(1).default(0),
     actor_type: z.enum(['human', 'bot']).default('human'),
+    // Rewriting and suggestions on a separate utility model ('' when they used the answer model).
+    utility_model: z.string().default(''),
+    utility_input_tokens: uint.default(0),
+    utility_output_tokens: uint.default(0),
+    utility_cost_micros: uint.default(0),
   })
   .strict();
 export const aiFeedbackRowSchema = z
@@ -272,9 +277,9 @@ export const queryAiConversation = async (s: AiConversationScope, conversationId
         language: t.language,
         provider: t.provider || null,
         model: t.model || null,
-        inputTokens: t.tokens_known ? Number(t.input_tokens) : null,
-        outputTokens: t.tokens_known ? Number(t.output_tokens) : null,
-        costUsd: t.cost_known ? Number(t.cost_micros) / 1e6 : null,
+        inputTokens: t.tokens_known ? Number(t.input_tokens) + Number(t.utility_input_tokens ?? 0) : null,
+        outputTokens: t.tokens_known ? Number(t.output_tokens) + Number(t.utility_output_tokens ?? 0) : null,
+        costUsd: t.cost_known ? (Number(t.cost_micros) + Number(t.utility_cost_micros ?? 0)) / 1e6 : null,
         latencyMs: t.latency_ms === null ? null : Number(t.latency_ms),
         feedback: f
           ? { rating: f.rating, reason: f.reason || null, comment: f.content_captured ? f.comment || null : null, updatedAt: iso(f.updated_at) }
@@ -344,8 +349,8 @@ interface TurnAggregate extends UsageAggregate {
   answered: Count;
   noAnswer: Count;
 }
-const usageSql = `sum(input_tokens) AS inputTokens,sum(output_tokens) AS outputTokens,
- sumIf(cost_micros,cost_known=1) AS costMicros,countIf(cost_known=1) AS knownCosts`;
+const usageSql = `sum(input_tokens+utility_input_tokens) AS inputTokens,sum(output_tokens+utility_output_tokens) AS outputTokens,
+ sumIf(cost_micros+utility_cost_micros,cost_known=1) AS costMicros,countIf(cost_known=1) AS knownCosts`;
 const usageResult = (r: UsageAggregate) => ({
   inputTokens: Number(r.inputTokens),
   outputTokens: Number(r.outputTokens),
@@ -359,7 +364,8 @@ export const queryAiConversationSummary = async (s: AiConversationScope, q: AiRe
     /* Invalid IANA zones use UTC. */
   }
   const queryParams = { ...archiveParams(s, q), timezone };
-  const ctes = `WITH turns AS (SELECT conversation_id,turn_id,status,occurred_at,language,input_tokens,output_tokens,cost_micros,cost_known
+  const ctes = `WITH turns AS (SELECT conversation_id,turn_id,status,occurred_at,language,input_tokens,output_tokens,cost_micros,cost_known,
+ utility_input_tokens,utility_output_tokens,utility_cost_micros
  FROM ai_conversation_turns FINAL WHERE ${turnsWhere}),
  active AS (SELECT turn_id,rating,reason,updated_at FROM (${feedbackSource}) WHERE turn_id IN (SELECT turn_id FROM turns))`;
   const [totals, feedback, reasons, days, languages, spend] = await Promise.all([
@@ -555,13 +561,29 @@ const dailyColumns = [
   'first_token_turns',
   'retrieval_cache_hits',
 ] as const;
+/** Per-model usage rows from turns: each turn's answer model (it carries the
+ * turn's counts and times), plus a tokens-and-cost row for its utility model when
+ * rewriting and suggestions ran on one. A turn's cost counts only when every one
+ * of its calls reported it, for both models. */
+const perModelUsage = (
+  where: string,
+  day: string,
+  keys: string,
+) => `SELECT ${keys},${day} AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} GROUP BY ${keys},day,provider,model
+ UNION ALL SELECT ${keys},${day} AS day,provider,utility_model AS model,toUInt64(0) AS questions,toUInt64(0) AS answered,toUInt64(0) AS no_answer,toUInt64(0) AS failed,toUInt64(0) AS cancelled,sum(utility_input_tokens) AS input_tokens,sum(utility_output_tokens) AS output_tokens,sumIf(utility_cost_micros,cost_known=1) AS cost_micros,toUInt64(0) AS cost_known_turns,toUInt64(0) AS latency_ms_sum,toUInt64(0) AS latency_turns,toUInt64(0) AS first_token_ms_sum,toUInt64(0) AS first_token_turns,toUInt64(0) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${where} AND utility_model!='' GROUP BY ${keys},day,provider,model`;
 export const refreshAiUsageDaily = async (s: AiConversationScope, days: string[], client = getClickHouseClient('writer')) => {
-  const parsed = z.array(z.iso.date()).parse(days);
+  // A day at or past the retention boundary may already have lost turns to TTL;
+  // rebuilding it from what is left would undercount, so it keeps its totals.
+  const oldest = new Date(Date.now() - (keys().AI_CONVERSATION_RETENTION_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
+  const parsed = z
+    .array(z.iso.date())
+    .parse(days)
+    .filter((day) => day >= oldest);
   if (!parsed.length) return;
   // Include old keys so deletion or a provider/model correction replaces obsolete totals with zero.
   await client.command({
     query: `INSERT INTO ai_usage_daily SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map((c) => `sum(${c})`).join(',')},now64(3) FROM (
- SELECT tenant_id,project_id,toDate(occurred_at,'UTC') AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${archiveWhere} AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)} GROUP BY tenant_id,project_id,day,provider,model
+ ${perModelUsage(`${archiveWhere} AND toString(toDate(occurred_at,'UTC')) IN {days:Array(String)}`, "toDate(occurred_at,'UTC')", 'tenant_id,project_id')}
  UNION ALL SELECT tenant_id,project_id,day,provider,model,${dailyColumns.map(() => 'toUInt64(0)').join(',')} FROM ai_usage_daily FINAL WHERE tenant_id={tenant:String} AND project_id={project:String} AND toString(day) IN {days:Array(String)}
  ) GROUP BY tenant_id,project_id,day,provider,model`,
     query_params: { ...params(s), days: parsed },
@@ -578,7 +600,8 @@ export const queryAiUsageDaily = async (s: AiConversationScope, q: AiReadQuery, 
   // Query the source for those boundaries; daily UTC reads use the durable rollup.
   if (q.language || timezone !== 'UTC')
     return archiveRows<Record<string, string | number>>(
-      `SELECT toString(toDate(occurred_at,{timezone:String})) AS day,provider,model,count() AS questions,countIf(status='answered') AS answered,countIf(status='no_answer') AS no_answer,countIf(status='failed') AS failed,countIf(status='cancelled') AS cancelled,sum(input_tokens) AS input_tokens,sum(output_tokens) AS output_tokens,sumIf(cost_micros,cost_known=1) AS cost_micros,countIf(cost_known=1) AS cost_known_turns,sum(ifNull(latency_ms,0)) AS latency_ms_sum,countIf(latency_ms IS NOT NULL) AS latency_turns,sum(ifNull(first_token_ms,0)) AS first_token_ms_sum,countIf(first_token_ms IS NOT NULL) AS first_token_turns,sum(retrieval_cache_hit) AS retrieval_cache_hits FROM ai_conversation_turns FINAL WHERE ${usageWhere} GROUP BY day,provider,model ORDER BY day,provider,model`,
+      `SELECT day,provider,model,${dailyColumns.map((c) => `sum(${c}) AS ${c}`).join(',')} FROM (${perModelUsage(usageWhere, 'toString(toDate(occurred_at,{timezone:String}))', 'tenant_id')})
+ GROUP BY day,provider,model ORDER BY day,provider,model`,
       { ...archiveParams(s, q), timezone },
     );
   return archiveRows<Record<string, string | number>>(

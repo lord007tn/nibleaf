@@ -15,17 +15,19 @@ const keysFor = (projectId: string, conversationId: string, now: Date) => {
   return { conversation: `${tag}:conversation:${conversationId}`, dailyTokens: `${tag}:tokens:${day(now)}` };
 };
 
-// Check every cap before counting the turn, so a refused request never consumes
-// capacity, then count the turn and reserve its estimated tokens in the same
-// atomic step: concurrent turns each see the others' reservations, so they can't
-// all pass against the same total. Returns [allowed, turnsUsed, refusal];
-// refusal 1 is the conversation cap, 2 the project's daily token budget.
+// Admit a turn only if its reserved tokens fit under each cap, so no turn can
+// start that might take spend past it. Check every cap before counting the turn,
+// so a refused request never consumes capacity, then count the turn and reserve
+// its estimated tokens in the same atomic step: concurrent turns each see the
+// others' reservations. Returns [allowed, turnsUsed, refusal]; refusal 1 is the
+// conversation cap, 2 the project's daily token budget.
 const RESERVE = `
 local turns = tonumber(redis.call('HGET', KEYS[1], 'turns') or '0')
 local tokens = tonumber(redis.call('HGET', KEYS[1], 'tokens') or '0')
 local daily = tonumber(redis.call('GET', KEYS[2]) or '0')
-if turns >= tonumber(ARGV[1]) or tokens >= tonumber(ARGV[2]) then return {0, turns, 1} end
-if tonumber(ARGV[3]) > 0 and daily >= tonumber(ARGV[3]) then return {0, turns, 2} end
+local reserve = tonumber(ARGV[5])
+if turns >= tonumber(ARGV[1]) or tokens + reserve > tonumber(ARGV[2]) then return {0, turns, 1} end
+if tonumber(ARGV[3]) > 0 and daily + reserve > tonumber(ARGV[3]) then return {0, turns, 2} end
 turns = redis.call('HINCRBY', KEYS[1], 'turns', 1)
 redis.call('HINCRBY', KEYS[1], 'tokens', ARGV[5])
 redis.call('EXPIRE', KEYS[1], ARGV[4])

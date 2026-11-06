@@ -68,6 +68,8 @@ export default function Panel(
   const [announcement, setAnnouncement] = useState('');
   const [page, setPage] = useState<PageContext>();
   const [lastQuestion, setLastQuestion] = useState('');
+  // Questions the reader stopped before a checked answer arrived (user message ids).
+  const [stopped, setStopped] = useState<string[]>([]);
   const questions = useRef<Record<string, string>>({});
   const pendingQuestion = useRef('');
   const lastRequest = useRef<number | undefined>(undefined);
@@ -176,6 +178,8 @@ export default function Panel(
     end.current?.scrollIntoView({ block: 'nearest' });
   }, [chat.messages, finals, followUps]);
   const stop = () => {
+    const asked = chat.messages.findLast((message) => message.role === 'user');
+    if (asked) setStopped((ids) => [...ids, asked.id]);
     chat.stop();
     setAnnouncement(t('aiStopped'));
     track({ name: 'stop', conversationId });
@@ -196,6 +200,7 @@ export default function Panel(
     chat.clear();
     setFinals({});
     setFollowUps({});
+    setStopped([]);
     questions.current = {};
     setCode(undefined);
     setAnnouncement('');
@@ -270,31 +275,42 @@ export default function Panel(
             const text = textOf(message);
             const final = finals[message.id];
             const inFlight = chat.isLoading && message.id === last?.id;
-            // Before the first token the typing indicator stands in; a refused
-            // run (quota, limits) leaves an empty assistant shell.
-            if (message.role !== 'user' && !text && !final) return null;
-            if (message.role !== 'user' && !final && !inFlight) {
-              // Stopped or failed before the answer was checked: its unchecked
-              // text is never shown. A failure is explained by the error below.
-              if (code && message.id === last?.id) return null;
-              const previous = chat.messages[index - 1];
-              const question = previous?.role === 'user' ? textOf(previous) : '';
+            if (message.role === 'user') {
+              const reply = chat.messages[index + 1];
+              const pending = chat.isLoading && !reply && message.id === last?.id;
+              // Stopped before a checked answer, even before any text arrived.
+              const wasStopped = stopped.includes(message.id) && !(reply && finals[reply.id]) && !pending;
               return (
-                <div key={message.id} className="space-y-2 rounded-xl border border-dashed p-4 text-muted-foreground text-sm">
-                  <p>{t('aiStopped')}</p>
-                  {question && (
-                    <Button size="sm" variant="outline" disabled={chat.isLoading} onClick={() => askAgain(question)}>
-                      {t('aiRetry')}
-                    </Button>
+                <div key={message.id} className="space-y-4">
+                  <div dir="auto" className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
+                    {text}
+                  </div>
+                  {wasStopped && (
+                    <div className="space-y-2 rounded-xl border border-dashed p-4 text-muted-foreground text-sm">
+                      <p>{t('aiStopped')}</p>
+                      <Button size="sm" variant="outline" disabled={chat.isLoading} onClick={() => askAgain(text)}>
+                        {t('aiRetry')}
+                      </Button>
+                    </div>
                   )}
                 </div>
               );
             }
-            return message.role === 'user' ? (
-              <div key={message.id} dir="auto" className="ms-8 whitespace-pre-wrap rounded-xl bg-primary/10 p-3">
-                {text}
-              </div>
-            ) : (
+            if (!final && !inFlight) {
+              // Ended without a checked answer: its unchecked text is never shown.
+              // A stopped one is noted with its question; a refused run (quota,
+              // limits) leaves an empty shell; the error box explains the latest failure.
+              const asked = chat.messages[index - 1];
+              if (!text || (asked && stopped.includes(asked.id)) || (code && message.id === last?.id)) return null;
+              return (
+                <p key={message.id} className="rounded-xl border border-dashed p-4 text-muted-foreground text-sm">
+                  {t('aiFailed')}
+                </p>
+              );
+            }
+            // Before the first token the typing indicator stands in.
+            if (!text && !final) return null;
+            return (
               <ChatMessage
                 key={message.id}
                 text={text}

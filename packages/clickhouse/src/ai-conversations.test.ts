@@ -62,7 +62,7 @@ describe('AI archive', () => {
     const versions = migrations.map((migration) => migration.version);
     expect(new Set(versions).size).toBe(versions.length);
     const ai = migrations.filter((migration) => migration.version > 2_026_110_605);
-    expect(ai.map((migration) => migration.version)).toEqual([2_026_110_606, 2_026_110_607]);
+    expect(ai.map((migration) => migration.version)).toEqual([2_026_110_606, 2_026_110_607, 2_026_110_608]);
     expect(ai.flatMap((migration) => migration.statements).every((statement) => statement.includes('IF NOT EXISTS'))).toBe(true);
     const registered = new Map(ANALYTICS_PROJECT_TABLES.map((table) => [table.name, table]));
     expect(registered.get('ai_conversation_turns')).toMatchObject({ time: 'occurred_at', retention: 'conversation' });
@@ -275,4 +275,15 @@ it('rebuilds exact rollups from FINAL rows and previous keys with bound days', a
   expect(command.mock.calls[0]?.[0].query_params.days).toEqual(['2026-11-01']);
   // Spend counts every billed turn, scripted traffic included.
   expect(command.mock.calls[0]?.[0].query).not.toContain('actor_type');
+  // A separate utility model gets its own per-model row.
+  expect(command.mock.calls[0]?.[0].query).toContain('utility_model AS model');
+  expect(command.mock.calls[0]?.[0].query).toContain("utility_model!=''");
+});
+it('never rebuilds a day whose turns may have expired, even for a late write', async () => {
+  const command = vi.fn();
+  const day = (offset: number) => new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
+  await refreshAiUsageDaily(scope, [day(90), day(120)], { command } as never);
+  expect(command).not.toHaveBeenCalled();
+  await refreshAiUsageDaily(scope, [day(120), day(89), day(0)], { command } as never);
+  expect(command.mock.calls[0]?.[0].query_params.days).toEqual([day(89), day(0)]);
 });

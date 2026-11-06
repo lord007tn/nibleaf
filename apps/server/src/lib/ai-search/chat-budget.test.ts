@@ -28,7 +28,9 @@ describe('chat budgets', () => {
     const [script, keyCount, ...rest] = mocks.eval.mock.calls[0] ?? [];
     // Both keys share one per-project hash tag so the script is atomic in Dragonfly.
     expect([keyCount, ...rest]).toEqual([2, ...keys, 20, 60_000, 2_000_000, 86_400, 8001, 172_800]);
-    // The reservation is counted in the same atomic step as the turn.
+    // The reservation must fit under each cap, and is counted in the same atomic step as the turn.
+    expect(script).toContain('tokens + reserve > tonumber(ARGV[2])');
+    expect(script).toContain('daily + reserve > tonumber(ARGV[3])');
     expect(script).toMatch(/HINCRBY', KEYS\[1\], 'tokens', ARGV\[5\][\s\S]*INCRBY', KEYS\[2\], ARGV\[5\]/);
   });
 

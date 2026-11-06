@@ -345,10 +345,15 @@ a provider billed counts against the AI budgets and in usage and cost, scripted
 traffic included.
 
 Each turn reserves its estimated tokens against the conversation and daily budgets
-before any provider call, and settles to what it actually used when it ends, so
-concurrent questions can't overshoot a budget together. A turn that is stopped or
-fails partway is charged an estimate for the calls that never reported usage; its
-stored token totals are flagged as estimates and its cost as unknown.
+before any provider call, and settles to what it actually used when it ends. A
+question is admitted only if its reservation fits under each budget, so neither
+one question nor several at once can take spend past it. A reservation is about
+10,000 tokens with the default history limits, so set
+`SEARCH_CHAT_MAX_CONVERSATION_TOKENS` and `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` well
+above that. A turn that is stopped or fails partway is charged an estimate for the
+calls that never reported usage; its stored token totals are flagged as estimates
+and its cost as unknown. When `SEARCH_CHAT_UTILITY_MODEL` routes rewriting and
+suggestions to another model, their tokens and cost are recorded under that model.
 
 `ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
 tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from

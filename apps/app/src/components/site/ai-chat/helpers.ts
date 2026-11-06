@@ -20,9 +20,13 @@ export function citationParts(text: string) {
     .map((value, index) => ({ key: index, text: value, source: /^\[(S\d+)\]$/.exec(value)?.[1] }));
 }
 /** Citation markers (`[S1]`, `[S1, S2]`) only mean something once the answer is checked. */
-const CITATION_MARKERS = /\s*\[S\d+(?:\s*[,;]\s*S\d+)*\]/g;
-/** The checked answer once it arrives; until then the streamed text, without markers. */
-export const answerText = (streamed: string, final?: AiChatFinalEvent) => (final ? final.answer : streamed.replace(CITATION_MARKERS, ''));
+const CITATION_MARKERS = /\s*\[S\d+(?:\s*[,;،]\s*S\d+)*\]/g;
+/** A marker still arriving at the end of the stream ("[", "[S", "[S6", "[S6, S"). */
+const PARTIAL_MARKER = /\s*\[(?:S\d*(?:\s*[,;،]\s*(?:S\d*)?)*)?$/;
+/** The checked answer once it arrives; until then the streamed text, without
+ * markers, including one split across chunks that has not closed yet. */
+export const answerText = (streamed: string, final?: AiChatFinalEvent) =>
+  final ? final.answer : streamed.replace(CITATION_MARKERS, '').replace(PARTIAL_MARKER, '');
 export const errorKey = (code: AiChatErrorCode | 'offline') =>
   (
     ({

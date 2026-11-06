@@ -516,6 +516,18 @@ export const migrations: ClickHouseMigration[] = [
       "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS previous_feedback LowCardinality(String) DEFAULT ''",
     ],
   },
+  {
+    // Rewriting and suggestions can run on a separate utility model; its usage is
+    // kept apart so per-model usage attributes each model's spend to it.
+    version: 2_026_110_608,
+    name: 'ai_conversation_utility_usage',
+    statements: [
+      "ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_model String DEFAULT ''",
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_input_tokens UInt64 DEFAULT 0',
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_output_tokens UInt64 DEFAULT 0',
+      'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_cost_micros UInt64 DEFAULT 0',
+    ],
+  },
 ];
 
 export interface MigrationOptions {

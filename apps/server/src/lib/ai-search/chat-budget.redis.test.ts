@@ -25,12 +25,23 @@ describe.skipIf(!enabled)('chat budgets (real Redis)', () => {
     if (keys.length) await redis.del(...keys);
   });
 
-  it('lets concurrent turns pass only while the daily budget has room', async () => {
+  it('admits concurrent turns only while their reservations fit under the daily budget', async () => {
     const projectId = `budget-test-${run}-concurrent`;
-    const results = await Promise.all(Array.from({ length: 5 }, () => budget.reserveChatTurn(projectId, randomUUID(), 6000)));
-    // 0 → 6,000 → 12,000: every later turn sees the first two reservations.
+    const results = await Promise.all(Array.from({ length: 5 }, () => budget.reserveChatTurn(projectId, randomUUID(), 4000)));
+    // 4,000 + 4,000 fits in 10,000; a third would reach 12,000, so it and every later turn wait.
     expect(results.filter((result) => result.allowed)).toHaveLength(2);
     expect(results.every((result) => result.allowed || result.reason === 'budget_exhausted')).toBe(true);
+    const daily = `{search-chat:${projectId}}:tokens:${new Date().toISOString().slice(0, 10)}`;
+    expect(Number(await redis.get(daily))).toBe(8000);
+  });
+
+  it('refuses a turn whose reservation alone would pass a cap', async () => {
+    const projectId = `budget-test-${run}-oversized`;
+    const daily = await budget.reserveChatTurn(projectId, randomUUID(), 10_001);
+    expect(daily).toEqual({ allowed: false, reason: 'budget_exhausted' });
+    const conversation = await budget.reserveChatTurn(projectId, randomUUID(), 60_001);
+    expect(conversation).toEqual({ allowed: false, reason: 'conversation_limit' });
+    expect(await redis.exists(`{search-chat:${projectId}}:tokens:${new Date().toISOString().slice(0, 10)}`)).toBe(0);
   });
 
   it('settles to actual spend, and a release never takes the counters below zero', async () => {

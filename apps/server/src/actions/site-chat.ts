@@ -149,8 +149,11 @@ interface TurnOutcome {
   rewrittenQuery?: string;
   retrieval?: ChatRetrieval;
   result?: GroundedChatResult;
-  /** Usage of the provider calls that reported it. */
+  /** Usage of the provider calls that reported it, on the answer model. */
   usage?: ChatUsage;
+  /** Set when rewriting and suggestions run on a separate utility model: their
+   * usage is kept apart so each model's spend is attributed to it. */
+  utility?: { model: string; usage?: ChatUsage };
   /** Provider calls that started but never reported usage (stopped, failed, or a
    * provider that omits it), with conservative estimates. A call leaves this
    * list only once it reports its usage. */
@@ -179,24 +182,39 @@ export const estimateChatTurnTokens = (body: Pick<SiteChatBody, 'question' | 'hi
   return 2 * conversation + 2 * CHAT_CONTEXT_RESERVE_TOKENS + outputs;
 };
 
-/** A turn's usage for budgets and records: reported calls exactly, plus an
- * estimate for every call that started without reporting. `estimated` marks
- * totals that are not provider-reported, and their cost as unknown. */
+/** A turn's usage for budgets and records, per model: the answer model's calls,
+ * and the utility model's when rewriting and suggestions run on one. Reported
+ * calls count exactly, plus an estimate for every call that started without
+ * reporting. `estimated` marks totals that are not all provider-reported, and
+ * their cost as unknown. */
 const turnUsage = (
-  outcome: Pick<TurnOutcome, 'usage' | 'unreported'>,
-  costUsd?: number,
-): { usage?: ChatUsage; tokens: number; estimated: boolean } => {
-  if (outcome.unreported.size === 0) {
-    const usage = costUsd !== undefined ? { ...outcome.usage, costUsd } : outcome.usage;
-    return { ...(usage ? { usage } : {}), tokens: usageTokens(usage) ?? 0, estimated: false };
-  }
-  let input = outcome.usage?.inputTokens ?? 0;
-  let output = outcome.usage?.outputTokens ?? 0;
-  for (const call of outcome.unreported.values()) {
-    input += call.input;
-    output += call.output;
-  }
-  return { usage: { inputTokens: input, outputTokens: output, totalTokens: input + output }, tokens: input + output, estimated: true };
+  outcome: Pick<TurnOutcome, 'usage' | 'utility' | 'unreported'>,
+  costs: { answer?: number; utility?: number },
+): { usage?: ChatUsage; utility?: { model: string; usage: ChatUsage }; tokens: number; estimated: boolean } => {
+  const estimated = outcome.unreported.size > 0;
+  const part = (reported: ChatUsage | undefined, calls: ProviderCall[], costUsd?: number): ChatUsage | undefined => {
+    let input = reported?.inputTokens;
+    let output = reported?.outputTokens;
+    for (const call of calls) {
+      const pending = outcome.unreported.get(call);
+      if (!pending) continue;
+      input = (input ?? 0) + pending.input;
+      output = (output ?? 0) + pending.output;
+    }
+    if (input === undefined && output === undefined && !reported) return;
+    if (!estimated) return costUsd !== undefined ? { ...reported, costUsd } : reported;
+    return { inputTokens: input ?? 0, outputTokens: output ?? 0, totalTokens: (input ?? 0) + (output ?? 0) };
+  };
+  const separate = outcome.utility;
+  const usage = part(outcome.usage, separate ? ['generation'] : ['condense', 'generation', 'follow_ups'], costs.answer);
+  const utilityUsage = separate ? part(separate.usage, ['condense', 'follow_ups'], costs.utility) : undefined;
+  const tokens = (usageTokens(usage) ?? 0) + (usageTokens(utilityUsage) ?? 0);
+  return {
+    ...(usage ? { usage } : {}),
+    ...(separate && utilityUsage ? { utility: { model: separate.model, usage: utilityUsage } } : {}),
+    tokens,
+    estimated,
+  };
 };
 
 interface ChatTurnInput {
@@ -312,6 +330,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
 
   const outcome: TurnOutcome = { status: 'failed', unreported: new Map(), streamed: '' };
   const cost: ChatCostSink = {};
+  // A separate utility model reports its spend apart from the answer model's.
+  const utilityCost: ChatCostSink = {};
   const anchored = withSectionAnchors(context);
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
@@ -329,8 +349,11 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     const adapter = workspaceChatAdapter(runtime, cost);
     // Rewriting and suggestions are small tasks; an operator may route them to a
     // cheaper OpenRouter model. Workspace keys on OpenAI keep the answer model.
-    const utilityModel = runtime.providerId === 'openrouter' ? envExtras.SEARCH_CHAT_UTILITY_MODEL : undefined;
-    const utilityAdapter = utilityModel ? workspaceChatAdapter({ ...runtime, answerModel: utilityModel }, cost) : adapter;
+    // That model's usage and cost are recorded under its own name.
+    const configured = runtime.providerId === 'openrouter' ? envExtras.SEARCH_CHAT_UTILITY_MODEL : undefined;
+    const utilityModel = configured && configured !== runtime.answerModel ? configured : undefined;
+    if (utilityModel) outcome.utility = { model: utilityModel };
+    const utilityAdapter = utilityModel ? workspaceChatAdapter({ ...runtime, answerModel: utilityModel }, utilityCost) : adapter;
     const historyLimits = chatHistoryLimits();
     const modelOptions = workspaceChatModelOptions(runtime);
     const history = boundChatHistory(body.history, historyLimits);
@@ -352,7 +375,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     });
     if (condensed.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'condense' }]);
     if (condensed.usage) outcome.unreported.delete('condense');
-    outcome.usage = condensed.usage;
+    if (outcome.utility) outcome.utility.usage = condensed.usage;
+    else outcome.usage = condensed.usage;
     outcome.rewrittenQuery = condensed.rewritten ? condensed.query : undefined;
     phase = 'retrieval';
     const retrieval = await retrieveChatContext(context.scope, condensed.query, runtime, { page, signal });
@@ -428,7 +452,8 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
       const suggested = await suggesting;
       if (suggested.usage) outcome.unreported.delete('follow_ups');
-      outcome.usage = addUsage(outcome.usage, suggested.usage);
+      if (outcome.utility) outcome.utility.usage = addUsage(outcome.utility.usage, suggested.usage);
+      else outcome.usage = addUsage(outcome.usage, suggested.usage);
       if (suggested.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'follow_ups' }]);
       if (result.status === 'answered') followUps = suggested.questions;
     }
@@ -479,6 +504,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       analytics,
       runtime,
       cost,
+      utilityCost,
       tenant,
       emit,
     });
@@ -498,6 +524,7 @@ const finishTurn = async ({
   analytics,
   runtime,
   cost,
+  utilityCost,
   tenant,
   emit,
 }: {
@@ -512,19 +539,21 @@ const finishTurn = async ({
   analytics: Parameters<typeof trackProjectEvent>[2];
   runtime: { providerId: string; answerModel: string };
   cost: ChatCostSink;
+  utilityCost: ChatCostSink;
   tenant: Promise<string | null>;
   emit: EmitChatEvents;
 }): Promise<void> => {
   const projectId = context.scope.projectId;
   // Provider-reported spend (OpenRouter) is read from the response bodies.
-  await Promise.allSettled(cost.pending ?? []);
-  const { usage, tokens, estimated } = turnUsage(outcome, cost.costUsd);
+  await Promise.allSettled([...(cost.pending ?? []), ...(utilityCost.pending ?? [])]);
+  const { usage, utility, tokens, estimated } = turnUsage(outcome, { answer: cost.costUsd, utility: utilityCost.costUsd });
   // Replaces the reservation with what the turn spent, estimates included.
   await settleChatSpend(projectId, body.conversationId, reservation, tokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
   );
 
-  // Estimated totals stay out of analytics events, which carry reported facts only.
+  // Estimated totals stay out of analytics events, which carry reported facts
+  // only, and they report the answer model's usage, the model they name.
   const reported = estimated ? undefined : usage;
   const costMicros = reported?.costUsd !== undefined ? Math.round(reported.costUsd * 1_000_000) : undefined;
   const base = { provider: runtime.providerId, model: outcome.result?.model ?? runtime.answerModel, latencyMs };
@@ -595,6 +624,14 @@ const finishTurn = async ({
     ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
     ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
     ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+    ...(utility
+      ? {
+          utilityModel: utility.model,
+          utilityInputTokens: utility.usage.inputTokens ?? 0,
+          utilityOutputTokens: utility.usage.outputTokens ?? 0,
+          ...(utility.usage.costUsd !== undefined ? { utilityCostUsd: utility.usage.costUsd } : {}),
+        }
+      : {}),
     ...(estimated ? { usageEstimated: true } : {}),
     latencyMs,
     ...(outcome.firstTokenMs !== undefined ? { firstTokenMs: outcome.firstTokenMs } : {}),

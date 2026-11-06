@@ -273,6 +273,54 @@ describe('reader AI chat stream', () => {
     expect(mocks.adapter).toHaveBeenCalledTimes(1);
   });
 
+  it("records a separate utility model's usage and cost apart from the answer model's", async () => {
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    // Each model's provider-reported cost lands in its own sink.
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: { costUsd?: number }) => {
+      if (sink) sink.costUsd = runtime.answerModel.endsWith('-mini') ? 0.0001 : 0.002;
+      return { kind: runtime.answerModel };
+    });
+    mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
+    mocks.stream.mockReturnValue({
+      deltas: (async function* () {
+        yield 'Run the installer. [S1]';
+      })(),
+      result: Promise.resolve({
+        status: 'answered',
+        answer: 'Run the installer. [S1]',
+        citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
+        droppedParagraphs: 0,
+        usage: { inputTokens: 900, outputTokens: 120 },
+        model: 'openai/gpt-5.6-luna',
+      }),
+    });
+    await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
+    await settle();
+    expect(mocks.recordTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: 'openai/gpt-5.6-luna',
+        inputTokens: 900,
+        outputTokens: 120,
+        costUsd: 0.002,
+        utilityModel: 'openai/gpt-5.6-luna-mini',
+        utilityInputTokens: 80,
+        utilityOutputTokens: 20,
+        utilityCostUsd: 0.0001,
+      }),
+    );
+    // Budgets count both models; the event reports the model it names.
+    expect(mocks.settle.mock.calls.at(-1)?.[3]).toBe(1120);
+    expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', model: 'openai/gpt-5.6-luna', inputTokens: 900, costUsd: 0.002 });
+
+    // Naming the answer model as the utility model is not a separate model.
+    mocks.recordTurn.mockClear();
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna';
+    await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
+    await settle();
+    expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).not.toHaveProperty('utilityModel');
+    mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
+  });
+
   it.each([
     ['conversation_limit', () => mocks.reserve.mockResolvedValue({ allowed: false, reason: 'conversation_limit' })],
     ['budget_exhausted', () => mocks.reserve.mockResolvedValue({ allowed: false, reason: 'budget_exhausted' })],
