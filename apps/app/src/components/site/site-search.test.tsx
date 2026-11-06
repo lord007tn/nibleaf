@@ -210,6 +210,16 @@ describe('published reader search', () => {
     await typeQuery('How do I start?');
     await select('searchAskAiAbout');
     expect(mocks.mutate).toHaveBeenCalledOnce();
+    // Pressing Answer keeps focus in the dialog, though the button is disabled while it loads.
+    const answerButton = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find((button) =>
+      button.textContent?.includes('answer'),
+    );
+    await act(async () => {
+      answerButton?.focus();
+      answerButton?.click();
+    });
+    expect(document.activeElement).toBe(input());
+    expect(mocks.mutate).toHaveBeenCalledTimes(2);
     mocks.answer.mockReturnValue({
       mutate: mocks.mutate,
       variables: { projectId: 'docs', query: 'How do I start?', language: 'en' },
@@ -240,7 +250,14 @@ describe('published reader search', () => {
     expect(results()?.getAttribute('aria-busy')).toBe('true');
     expect(option('Setup guide')?.getAttribute('aria-disabled')).toBe('true');
     expect(document.querySelector('[data-search-skeleton]')).toBeNull();
-    // The Ask AI row follows the typed text and stays selectable.
+    // For a keyword nothing is selected, Ask AI included: Enter waits for the new results.
+    expect(option('searchAskAiAbout')?.getAttribute('aria-disabled')).toBe('true');
+    expect(options().some((item) => item.getAttribute('aria-selected') === 'true')).toBe(false);
+    await press('Enter');
+    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain('searchBackToResults');
+    // A question still starts on "Ask AI".
+    await typeQuery('How do I bill?');
     expect(option('searchAskAiAbout')?.getAttribute('aria-selected')).toBe('true');
     // Then the query's placeholder data (the previous results) while it fetches.
     mocks.debounced = undefined;
@@ -264,6 +281,36 @@ describe('published reader search', () => {
     });
     // 44px on coarse pointers (phones and touch tablets), compact with a mouse.
     expect(document.querySelector('[aria-label="searchFilterVersion"]')?.className).toContain('pointer-coarse:h-11');
+  });
+
+  it('does not bring back results from before the field was cleared', async () => {
+    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
+    await render();
+    await typeQuery('setup');
+    expect(document.body.textContent).toContain('Setup guide');
+    mocks.debounced = 'setup';
+    await typeQuery('');
+    expect(document.body.textContent).toContain('searchPrompt');
+    // Typing again before the debounce catches up, then while the new query loads.
+    await typeQuery('billing');
+    expect(document.body.textContent).not.toContain('Setup guide');
+    expect(document.querySelector('[data-search-skeleton]')).not.toBeNull();
+    mocks.debounced = undefined;
+    mocks.search.mockReturnValue({ data: [hit], isPlaceholderData: true, isFetching: true, error: null });
+    await typeQuery('billing ');
+    expect(document.body.textContent).not.toContain('Setup guide');
+    // Fresh results show, and may stand in for the next search again.
+    mocks.search.mockReturnValue({ data: [{ ...hit, id: 'billing', title: 'Billing guide' }], isFetching: false, error: null });
+    await typeQuery('billing');
+    expect(document.body.textContent).toContain('Billing guide');
+    mocks.search.mockReturnValue({
+      data: [{ ...hit, id: 'billing', title: 'Billing guide' }],
+      isPlaceholderData: true,
+      isFetching: true,
+      error: null,
+    });
+    await typeQuery('billing plans');
+    expect(option('Billing guide')?.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('shows result-shaped skeleton rows only while a first search loads', async () => {

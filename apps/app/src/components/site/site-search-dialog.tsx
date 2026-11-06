@@ -169,6 +169,9 @@ function RowIcon({ children, className }: { children: ReactNode; className?: str
 const QUESTION =
   /[?؟]\s*$|^(how|what|why|when|where|who|which|can|could|does|do|is|are|should|will|كيف|ماذا|لماذا|هل|متى|أين|اين|ما هو|ما هي|من هو|من هي)\s/i;
 
+// A controlled value no row has. cmdk auto-selects the first row whenever the
+// value is empty, so "nothing selected" needs a value of its own.
+const NO_SELECTION = '-';
 const ROW = 'group/command-item min-h-11 gap-3 rounded-lg px-2.5 py-2 text-foreground data-selected:text-foreground';
 const GROUP = 'p-1.5 **:[[cmdk-group-heading]]:px-2.5 **:[[cmdk-group-heading]]:pt-2 **:[[cmdk-group-heading]]:pb-1.5';
 
@@ -238,6 +241,13 @@ export default function SiteSearchDialog({
     });
   };
   const [query, setQuery] = useState(initialQuery);
+  // Results from before the field was emptied don't stand in for a new search:
+  // until fresh results arrive, a new search after clearing shows skeletons.
+  const [keepPrevious, setKeepPrevious] = useState(true);
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    if (!value.trim()) setKeepPrevious(false);
+  };
   // Text typed before the dialog loaded keeps its caret at the end; a reopened
   // dialog selects its old query so typing starts a new search.
   const keepCaretRef = useRef(initialQuery !== '');
@@ -271,8 +281,9 @@ export default function SiteSearchDialog({
     Boolean(trimmed) &&
     (trimmed !== debouncedQuery.trim() || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
-  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error ? (hitsQuery.data ?? []) : [];
+  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? (hitsQuery.data ?? []) : [];
   const staleHits = queryPending && hits.length > 0;
+  const askInert = staleHits && !QUESTION.test(trimmed);
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
   const canAsk = askAiAvailable && trimmed.length >= 2;
   // A completed request belongs to the exact question and documentation scope
@@ -381,8 +392,10 @@ export default function SiteSearchDialog({
     if (recent.length > 0) itemValues.push('recent-clear');
     itemValues.push(...suggestionValues);
   } else if (staleHits) {
-    // Dimmed results can't be chosen; Enter waits for the new ones.
-    if (canAsk) itemValues.push(askValue);
+    // Dimmed results can't be chosen, and neither can "Ask AI" for a keyword:
+    // Enter waits for the new results rather than sending the keyword to the AI
+    // (cmdk would otherwise land on the first row it can). A question keeps it.
+    if (canAsk && !askInert) itemValues.push(askValue);
   } else if (hits.length > 0) {
     if (canAsk) itemValues.push(askValue);
     for (const [index, hit] of hits.entries()) {
@@ -394,7 +407,13 @@ export default function SiteSearchDialog({
     itemValues.push(...suggestionValues);
   }
   const preferred =
-    canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue) ? askValue : itemValues.includes('page-0') ? 'page-0' : itemValues[0];
+    canAsk && QUESTION.test(trimmed) && itemValues.includes(askValue)
+      ? askValue
+      : staleHits
+        ? NO_SELECTION
+        : itemValues.includes('page-0')
+          ? 'page-0'
+          : itemValues[0];
   const selectedValue = itemValues.includes(activeItem) ? activeItem : (preferred ?? '');
   // Re-select through cmdk's own pointer path so its internal selection and
   // the input's aria-activedescendant follow (a controlled value alone does not).
@@ -407,6 +426,8 @@ export default function SiteSearchDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: only a new result set or query resets the highlight.
   useEffect(() => {
     setActiveItem('');
+    // Fresh results may again stand in, dimmed, while the next search loads.
+    if (hitsQuery.data !== undefined && !hitsQuery.isPlaceholderData) setKeepPrevious(true);
   }, [hitsQuery.data, debouncedQuery]);
 
   const statusMessage =
@@ -431,7 +452,12 @@ export default function SiteSearchDialog({
 
   const askRow = canAsk ? (
     <CommandGroup className={GROUP}>
-      <CommandItem value={askValue} onSelect={askAi} className={cn(ROW, 'bg-primary/[0.04] data-selected:bg-primary/10')}>
+      <CommandItem
+        value={askValue}
+        disabled={askInert}
+        onSelect={askAi}
+        className={cn(ROW, 'bg-primary/[0.04] data-selected:bg-primary/10', askInert && 'opacity-55')}
+      >
         <RowIcon className="border-primary/25 bg-primary/10 text-primary">
           <Sparkles className="size-4" />
         </RowIcon>
@@ -517,7 +543,7 @@ export default function SiteSearchDialog({
               ref={inputRef}
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
-              onValueChange={setQuery}
+              onValueChange={changeQuery}
               maxLength={300}
               enterKeyHint={mode === 'answer' ? 'send' : 'search'}
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
@@ -739,7 +765,11 @@ export default function SiteSearchDialog({
                     disabled={trimmed.length < 2}
                     loading={answerMutation.isPending}
                     loadingText={t('checking')}
-                    onClick={ask}
+                    onClick={() => {
+                      // The button is disabled while the answer loads; keep focus in the dialog.
+                      inputRef.current?.focus();
+                      ask();
+                    }}
                     className="mt-3 pointer-coarse:min-h-11"
                   >
                     <Sparkles aria-hidden className="size-4" />
