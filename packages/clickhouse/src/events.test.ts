@@ -11,6 +11,30 @@ const context = {
 };
 
 describe('analytics event privacy contract', () => {
+  it('drops denied/unknown identities and scopes allowed hashes to tenant and project', () => {
+    const privacy = { visibility: 'public' as const, allowCampaignDimensions: false, allowRawPublicSearchQueries: true };
+    const body = {
+      consentState: 'granted' as const,
+      sessionId: 'shared-id',
+      anonymousUserId: 'same-user',
+      payload: { name: 'search_query_submitted' as const, query: 'api key' },
+    };
+    const first = buildAnalyticsEvent(body, { ...context, privacy });
+    const otherProject = buildAnalyticsEvent(body, { ...context, projectId: 'different-project', privacy });
+    const otherTenant = buildAnalyticsEvent(body, { ...context, tenantId: 'different-tenant', privacy });
+    for (const other of [otherProject, otherTenant]) {
+      expect(other.sessionHash).not.toBe(first.sessionHash);
+      expect(other.anonymousUserHash).not.toBe(first.anonymousUserHash);
+      expect(other.queryHash).not.toBe(first.queryHash);
+    }
+    for (const consentState of ['denied', 'unknown'] as const) {
+      expect(buildAnalyticsEvent({ ...body, consentState }, { ...context, privacy })).toMatchObject({
+        sessionHash: null,
+        anonymousUserHash: null,
+        sensitiveQueryText: null,
+      });
+    }
+  });
   it('rejects client-supplied tenant identity', () => {
     expect(() =>
       publicAnalyticsEventSchema.parse({

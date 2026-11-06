@@ -118,6 +118,8 @@ export function DangerSection({ project }: { project: Project }) {
               description: t('settings.danger.delete.confirm', { name: project.name }),
               label: t('settings.danger.delete.typeToConfirm', { name: project.name }),
               placeholder: project.name,
+              destructive: true,
+              validate: (value) => (value === project.name ? undefined : t('settings.danger.delete.nameMismatch')),
               confirmLabel: t('settings.danger.delete.button'),
             });
             if (typed === null) {

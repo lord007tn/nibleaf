@@ -1,14 +1,23 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/confirm';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
-import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { useT } from '@nibleaf/i18n/react';
+import { isRtl } from '@nibleaf/i18n';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useDebouncer } from '@tanstack/react-pacer';
+import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
-  Check,
   ChevronLeft,
   ChevronRight,
   Code2,
@@ -16,8 +25,10 @@ import {
   FileText,
   FolderPlus,
   Languages,
+  Layers,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRight,
@@ -27,36 +38,46 @@ import {
   SlidersHorizontal,
   Trash2,
   TriangleAlert,
-  Type as TypeIcon,
 } from 'lucide-react';
 import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
 import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
+import { deepLinkBranchDecision, publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
+import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
+import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
+import { NeverPublishedBanner, PagePublishStateBar, SaveStatus } from '@/components/editor/save-status';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
+import { useDeletePageFlow } from '@/components/editor/use-delete-page';
+import { useMediaQuery } from '@/components/editor/use-media-query';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
-import type { Language, PageNode } from '@/hooks/api';
+import type { Deployment, Language, PageNode } from '@/hooks/api';
 import {
+  addressMayFollowTitle,
+  friendlyErrorMessage,
+  pageNeverPublished,
+  queryKeys,
   useBranches,
   useComments,
   useCreatePage,
-  useDeletePage,
   useGetPublicMeta,
   useLanguages,
   usePage,
   usePages,
+  usePendingChanges,
   useProject,
   useReorderPages,
   useUpdatePage,
@@ -114,11 +135,21 @@ function EditorPage() {
   const { data: languages } = useLanguages(projectId);
   const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
-  const deletePage = useDeletePage(projectId);
   const updatePage = useUpdatePage(projectId);
   const uploadAsset = useUploadAsset(projectId);
   const reorderPages = useReorderPages(projectId);
+  const deletePageFlow = useDeletePageFlow(projectId, allPages);
+  // What the next publish would change. Shared with the Publish button (same
+  // query); autosave, create, delete and reorder invalidate it.
+  const { data: pendingChanges } = usePendingChanges(projectId);
+  const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const prompt = usePrompt();
+  const { locale } = useLocale();
+  const uiDir = isRtl(locale) ? 'rtl' : 'ltr';
+  // The comments/AI rail is a column at xl; below that it opens as a sheet.
+  const wideLayout = useMediaQuery('(min-width: 1280px)');
+  const [railSheetOpen, setRailSheetOpen] = useState(false);
   const configDirtySources = useRef(new Set<string>());
   const reportConfigDirty = useCallback((source: string, dirty: boolean) => {
     if (dirty) configDirtySources.current.add(source);
@@ -161,21 +192,45 @@ function EditorPage() {
   const defaultLanguageId = orderedLanguages[0]?.id ?? null;
 
   const [selectedId, setSelectedId] = useState<string | null>(pageParam ?? null);
-  // Follow ?page= deep links even when the editor is already mounted (e.g. a
-  // second publish-issue link). Only reacts to the param changing, so it never
-  // overrides a page the user picked from the tree afterwards.
-  useEffect(() => {
-    if (pageParam) {
-      setSelectedId(pageParam);
-    }
-  }, [pageParam]);
+  // A page switch or creation in progress. Until the target is on screen the
+  // canvas shows a loading state instead of the page being left, so nothing
+  // typed during a slow switch can land in the wrong article.
+  const [pendingSwitch, setPendingSwitch] = useState<PendingSwitch | null>(null);
+  // A freshly created page whose title should receive focus once it renders.
+  const [focusTitleFor, setFocusTitleFor] = useState<string | null>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const firstPageId = useMemo(() => (allPages ?? []).find((p) => p.kind === 'PAGE')?.id ?? null, [allPages]);
   const selectedNode = useMemo(() => (allPages ?? []).find((p) => p.id === selectedId) ?? null, [allPages, selectedId]);
   const selectedGroup = selectedNode?.kind === 'GROUP' ? selectedNode : null;
   const activeId = selectedGroup ? null : (selectedId ?? firstPageId);
   const activeTreeId = selectedId ?? activeId;
 
-  const { data: page } = usePage(projectId, activeId ?? undefined);
+  const pageQuery = usePage(projectId, activeId ?? undefined);
+  const page = pageQuery.data;
+  // The switch is over once its target is selected and on screen.
+  if (pendingSwitch && isSwitchSettled(pendingSwitch, { selectedId, groupId: selectedGroup?.id ?? null, pageId: page?.id ?? null })) {
+    setPendingSwitch(null);
+  }
+  // The page on screen failed to load (deleted elsewhere, a stale link or
+  // bookmark, offline…). This covers the first page of a visit and deep links as
+  // well as a switch: the canvas says so, with Retry and the page list, instead
+  // of spinning (or staying locked) forever.
+  const pageLoadFailed = Boolean(activeId) && !page && pageQuery.isError;
+  if (pageLoadFailed && pendingSwitch?.kind === 'open' && pendingSwitch.id === activeId) {
+    setPendingSwitch(null);
+  }
+  const switching = pendingSwitch !== null;
+
+  // Has the open page ever been published? Only a page the pending-changes
+  // check lists as "added" (or any page before the first publish) is unpublished.
+  const siteNeverPublished = pendingChanges?.hasBaseline === false;
+  const pagePublishState: 'unpublished' | 'published' | null =
+    pendingChanges && page
+      ? siteNeverPublished || pendingChanges.changes.some((change) => change.id === page.id)
+        ? 'unpublished'
+        : 'published'
+      : null;
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [requestedRailTab, setRailTab] = useState<'comments' | 'ai'>('comments');
@@ -183,7 +238,9 @@ function EditorPage() {
   // The comments/AI rail starts closed (an empty "No comments yet" panel would
   // otherwise claim 300px on the first visit); the author's toggle is persisted.
   const [railOpen, setRailOpen] = useState(false);
-  const railLabel = railOpen ? t(aiDraft ? 'editor.hideRail' : 'editor.hideComments') : t(aiDraft ? 'editor.showRail' : 'editor.showComments');
+  const railLabel = (wideLayout ? railOpen : railSheetOpen)
+    ? t(aiDraft ? 'editor.hideRail' : 'editor.hideComments')
+    : t(aiDraft ? 'editor.showRail' : 'editor.showComments');
   useEffect(() => {
     try {
       setRailOpen(window.localStorage.getItem('nibleaf.editor.railOpen') === '1');
@@ -203,14 +260,20 @@ function EditorPage() {
   const [commentMode, setCommentMode] = useState(false);
   const [pendingAnchor, setPendingAnchor] = useState<{ quote: string; from: number; to: number } | null>(null);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
-  // How the page body is edited: a visual canvas, rich text, or raw Markdown/MDX.
+  // How the page body is edited. The visual editor is the default; "wysiwyg" is
+  // the same editor with a fixed formatting toolbar (a remembered preference),
+  // and Markdown source is an advanced, per-visit choice from the "…" menu —
+  // never remembered, so one accidental click doesn't stick across sessions.
   // Preview is deliberately an action, not an editing mode: it opens the current
   // unpublished draft in its own tab through the authenticated preview route.
   const [editorMode, setEditorMode] = useState<'visual' | 'wysiwyg' | 'markdown'>('visual');
+  // Leaving source mode returns to the writer's remembered visual preference.
+  const [visualMode, setVisualMode] = useState<'visual' | 'wysiwyg'>('visual');
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem('nibleaf.editor.contentMode');
-      setEditorMode(stored === 'wysiwyg' || stored === 'markdown' ? stored : 'visual');
+      const stored = window.localStorage.getItem('nibleaf.editor.contentMode') === 'wysiwyg' ? 'wysiwyg' : 'visual';
+      setEditorMode(stored);
+      setVisualMode(stored);
     } catch {
       // Keep the default content mode when storage is unavailable.
     }
@@ -250,6 +313,7 @@ function EditorPage() {
     }
   }, [sidebarWidth]);
   useEffect(() => {
+    if (editorMode === 'markdown') return;
     try {
       window.localStorage.setItem('nibleaf.editor.contentMode', editorMode);
     } catch {
@@ -340,15 +404,37 @@ function EditorPage() {
 
   const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
+  // Read the publish state straight from the query cache at save time: a publish
+  // that just went live (or is still running) must stop the address from following
+  // the title even before this component re-renders with the new answer.
+  const addressFollowsTitleRef = useRef<(pageId: string) => boolean>(() => false);
+  // The freshest server copy we know of (a save response can be newer than the
+  // detail query, which refetches after it).
+  const lastSavedRef = useRef<PageNode | null>(null);
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
-  }, [synced, title, content, page, updatePage]);
+    addressFollowsTitleRef.current = (pageId: string) => addressFollowsTitle(queryClient, projectId, pageId);
+  }, [synced, title, content, page, updatePage, queryClient, projectId]);
   const saveQueue = useMemo(
     () =>
       createEditorSaveQueue(async (draft: PageDraft) => {
         try {
-          const saved = await updatePageRef.current.mutateAsync({ pageId: draft.id, body: { title: draft.title, content: draft.content } });
+          // An unpublished page's address keeps following its title.
+          const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
+          const slug = server
+            ? titleSlugToFollow({
+                slug: server.slug,
+                serverTitle: server.title,
+                nextTitle: draft.title,
+                unpublished: addressFollowsTitleRef.current(draft.id),
+              })
+            : undefined;
+          const saved = await updatePageRef.current.mutateAsync({
+            pageId: draft.id,
+            body: { title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
+          });
+          lastSavedRef.current = saved;
           setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
           const latest = draftRef.current;
           if (latest.synced?.id === draft.id) {
@@ -408,7 +494,7 @@ function EditorPage() {
   };
 
   const transitionInFlight = useRef(false);
-  const runAfterSavingDraft = async ({ action }: { action: () => void }) => {
+  const runAfterSavingDraft = async ({ action, onError }: { action: () => void; onError?: () => void }) => {
     if (transitionInFlight.current) return;
     transitionInFlight.current = true;
     try {
@@ -416,6 +502,7 @@ function EditorPage() {
       action();
     } catch {
       toast.error(t('editor.saveError'));
+      onError?.();
     } finally {
       transitionInFlight.current = false;
     }
@@ -480,52 +567,142 @@ function EditorPage() {
   // the same-frame double-click window immediately, so a slow request can never
   // create two pages or groups from repeated clicks.
   const creationInFlight = useRef(false);
+  const languageCodeOf = (languageId: string) => orderedLanguages.find((lang) => lang.id === languageId)?.code;
+  /** Lock the canvas, save the page being left, then run the switch. */
+  const beginSwitch = (next: PendingSwitch, action: () => void) => {
+    if (transitionInFlight.current) return;
+    setPendingSwitch(next);
+    void runAfterSavingDraft({ action, onError: () => setPendingSwitch(null) });
+  };
+  // True while a new page (not a group) is being created and its title will take focus.
+  const bufferTitleKeys = useRef(false);
+  const createAndOpen = (body: Parameters<typeof createPage.mutate>[0], options?: { focusTitle?: boolean }) => {
+    if (creationInFlight.current || transitionInFlight.current) return;
+    bufferTitleKeys.current = options?.focusTitle === true;
+    beginSwitch({ kind: 'create' }, () => {
+      creationInFlight.current = true;
+      createPage.mutate(body, {
+        onSuccess: (created) => {
+          setPendingSwitch({ kind: 'open', id: created.id });
+          setSelectedId(created.id);
+          if (options?.focusTitle) setFocusTitleFor(created.id);
+        },
+        onError: (error) => {
+          setPendingSwitch(null);
+          toast.error(friendlyErrorMessage(t, error, 'editor.createFailed'));
+        },
+        onSettled: () => {
+          creationInFlight.current = false;
+        },
+      });
+    });
+  };
   const addPage = (parentId: string | null, languageId: string) =>
-    void runAfterSavingDraft({
-      action: () => {
-        if (creationInFlight.current) return;
-        creationInFlight.current = true;
-        createPage.mutate(
-          // Localized placeholder title with a pinned 'untitled' slug: the server treats
-          // that slug as a placeholder to swap for the real title's slug on first rename,
-          // and deriving it from e.g. an Arabic title would strip to a broken 'page' slug.
-          { title: t('editor.untitled'), slug: 'untitled', parentId, languageId, ...branchScope },
-          {
-            onSuccess: (created) => void runAfterSavingDraft({ action: () => setSelectedId(created.id) }),
-            onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
-            onSettled: () => {
-              creationInFlight.current = false;
-            },
-          },
-        );
+    createAndOpen(
+      // Placeholder title in the PAGE's language with a pinned 'untitled' slug: the
+      // address then follows the real title until the page is first published.
+      {
+        title: messageInLanguage('editor.untitled', languageCodeOf(languageId), t),
+        slug: 'untitled',
+        parentId,
+        languageId,
+        ...branchScope,
+      },
+      { focusTitle: true },
+    );
+  // A group only needs a name, so ask for it instead of opening every page setting.
+  const addGroup = async (languageId: string) => {
+    if (creationInFlight.current || transitionInFlight.current) return;
+    const name = await prompt({
+      title: t('editor.newGroup'),
+      description: t('editor.groupNameHint'),
+      label: t('editor.groupName'),
+      initialValue: messageInLanguage('editor.newGroup', languageCodeOf(languageId), t),
+      confirmLabel: t('editor.createGroup'),
+    });
+    if (!name) return;
+    createAndOpen({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope });
+  };
+  const openNode = (id: string) => {
+    if (id === activeTreeId) return;
+    beginSwitch({ kind: 'open', id }, () => setSelectedId(id));
+  };
+  // Follow ?page= deep links (command palette, overview, publish issues) even when
+  // the editor is already mounted. The first value seeds the selection; later
+  // changes go through the same locked switch as a click in the page list, so the
+  // page being left is saved first and can't receive keystrokes meant for the next.
+  const handledPageParam = useRef(pageParam);
+  // The page a deep link asked for, until it has loaded. The palette and overview
+  // list default-version pages, so the link can point into another docs version
+  // than the one on screen; follow the page's version then. Normal tree navigation
+  // never sets this, so a page left over from the previous version can't flip back.
+  const deepLinkedPageId = useRef<string | null>(pageParam ?? null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: react to the URL param only; openNode is recreated every render.
+  useEffect(() => {
+    if (!pageParam || pageParam === handledPageParam.current) return;
+    handledPageParam.current = pageParam;
+    deepLinkedPageId.current = pageParam;
+    openNode(pageParam);
+  }, [pageParam]);
+  useEffect(() => {
+    const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });
+    if (decision.kind === 'wait') return;
+    deepLinkedPageId.current = null;
+    if (decision.kind === 'switch') setActiveBranchId(decision.branchId);
+  }, [page, activeBranchId, branches]);
+  const renameNode = (id: string, nextTitle: string, field: 'title' | 'sidebarTitle' = 'title') => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    // A page with its own sidebar title shows that name in the list, so renaming
+    // the row changes that name (the page title stays as it is).
+    if (field === 'sidebarTitle') {
+      if (!node) return;
+      updatePage.mutate(
+        { pageId: id, body: { config: { ...node.config, sidebarTitle: nextTitle } } },
+        { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.renameFailed')) },
+      );
+      return;
+    }
+    // The open page renames through its draft, so the editor and autosave agree.
+    if (id === activeId && synced?.id === id) {
+      setTitle(nextTitle);
+      return;
+    }
+    if (!node) return;
+    const slug = titleSlugToFollow({
+      slug: node.slug,
+      serverTitle: node.title,
+      nextTitle,
+      unpublished: addressFollowsTitle(queryClient, projectId, id),
+    });
+    updatePage.mutate(
+      { pageId: id, body: { title: nextTitle, ...(slug ? { slug } : {}) } },
+      { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.renameFailed')) },
+    );
+  };
+  const renameGroup = async (group: PageNode) => {
+    const name = await prompt({
+      title: t('editor.rename'),
+      label: t('editor.groupName'),
+      initialValue: group.title,
+      confirmLabel: t('editor.pageSettings.save'),
+    });
+    if (name && name !== group.title) renameNode(group.id, name.slice(0, 200));
+  };
+  const deleteNode = (id: string) => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    if (!node) return;
+    const removed = subtreeIds(allPages ?? [], id);
+    void deletePageFlow(node, {
+      beforeDelete: flushCurrentDraft,
+      onDeleted: () => {
+        // Leave a deleted page (or a page inside a deleted group) for the first page.
+        if (activeTreeId && removed.has(activeTreeId)) {
+          setSelectedId(null);
+          setSynced(null);
+        }
       },
     });
-  const addGroup = (languageId: string) =>
-    void runAfterSavingDraft({
-      action: () => {
-        if (creationInFlight.current) return;
-        creationInFlight.current = true;
-        createPage.mutate(
-          // The display title is localized, but the slug is pinned: deriving it from
-          // a non-Latin title (e.g. Arabic) would strip to a broken 'page' slug.
-          { title: t('editor.newGroup'), kind: 'GROUP', slug: 'new-group', languageId, ...branchScope },
-          {
-            onSuccess: (created) => {
-              void runAfterSavingDraft({
-                action: () => {
-                  setSelectedId(created.id);
-                  setSettingsForId(created.id);
-                },
-              });
-            },
-            onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.createFailed')),
-            onSettled: () => {
-              creationInFlight.current = false;
-            },
-          },
-        );
-      },
-    });
+  };
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -586,7 +763,9 @@ function EditorPage() {
     const next = !commentMode;
     if (next) {
       setEditorMode('visual');
-      setRailOpen(true);
+      // Below xl the rail is a sheet; it opens once a passage is picked, so the
+      // page stays clickable while choosing what to comment on.
+      if (wideLayout) setRailOpen(true);
       setRailTab('comments');
     } else {
       setPendingAnchor(null);
@@ -595,16 +774,92 @@ function EditorPage() {
   };
 
   const pageTitleInput = (
-    <input
-      aria-label={t('editor.pageTitlePlaceholder')}
-      className="w-full min-w-0 rounded-sm border-0 bg-transparent font-semibold text-3xl leading-[1.2] tracking-tight outline-none placeholder:text-muted-foreground/40 focus-visible:ring-2 focus-visible:ring-ring/40 sm:text-[2.1rem]"
-      dir="auto"
+    <PageTitleField
+      label={t('editor.pageTitlePlaceholder')}
       lang={activeLanguage?.code}
-      onChange={(event) => setTitle(event.target.value)}
-      placeholder={t('editor.pageTitlePlaceholder')}
+      onChange={setTitle}
+      onEnter={() => focusBodyStart(canvasRef.current)}
+      textareaRef={titleRef}
       value={title}
     />
   );
+  // Writers start typing the title right after clicking "New page". While the page
+  // is being created the canvas is locked, so keep those keystrokes and hand them to
+  // the new title instead of dropping them.
+  const typedWhileCreating = useRef('');
+  const creatingPage = pendingSwitch?.kind === 'create';
+  useEffect(() => {
+    if (!creatingPage) return;
+    typedWhileCreating.current = '';
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Only for a new page whose title will take focus, and never for keys meant for
+      // another control (command palette search, a rename field, a comment, a dialog).
+      if (!bufferTitleKeys.current) return;
+      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="combobox"]')) return;
+      if (event.key === 'Backspace') typedWhileCreating.current = typedWhileCreating.current.slice(0, -1);
+      else if (event.key.length === 1) typedWhileCreating.current += event.key;
+      else return;
+      event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [creatingPage]);
+
+  // A new page opens with its placeholder title selected, so typing replaces it.
+  useEffect(() => {
+    if (!focusTitleFor || switching || page?.id !== focusTitleFor) return;
+    const element = titleRef.current;
+    if (!element) return;
+    element.focus();
+    const typed = typedWhileCreating.current.trimStart();
+    typedWhileCreating.current = '';
+    if (typed) {
+      // Write the DOM value and caret synchronously so keys typed from now on land
+      // after the buffered text; React then renders the same value.
+      element.value = typed;
+      element.setSelectionRange(typed.length, typed.length);
+      setTitle(typed);
+    } else {
+      element.select();
+    }
+    setFocusTitleFor(null);
+  }, [focusTitleFor, switching, page?.id]);
+
+  const openRail = () => {
+    if (wideLayout) setRailOpen(true);
+    else setRailSheetOpen(true);
+  };
+  const railPanel = activeId ? (
+    <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
+      {aiDraft ? (
+        <TabsList className="m-2 self-start">
+          <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
+          <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
+        </TabsList>
+      ) : null}
+      <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', aiDraft && 'pt-0')}>
+        {railTab === 'comments' ? (
+          <CommentsPanel
+            pageId={activeId}
+            projectId={projectId}
+            pendingAnchor={pendingAnchor}
+            onClearPending={() => setPendingAnchor(null)}
+            activeCommentId={activeCommentId}
+            onSelectComment={setActiveCommentId}
+            commentMode={commentMode}
+          />
+        ) : (
+          <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
+        )}
+      </div>
+    </Tabs>
+  ) : null;
+  const showBranchSwitcher = (branches?.length ?? 0) > 1;
+  const [newVersionOpen, setNewVersionOpen] = useState(false);
+  const newPageLanguageId = page?.languageId ?? selectedGroup?.languageId ?? defaultLanguageId;
+  const newPageLanguage = orderedLanguages.find((lang) => lang.id === newPageLanguageId);
 
   return (
     <div className="flex h-screen flex-col">
@@ -614,7 +869,8 @@ function EditorPage() {
         <Link
           to="/app/projects/$projectId"
           params={{ projectId }}
-          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label={t('editor.backToDashboard')}
+          className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground pointer-coarse:min-h-10 pointer-coarse:min-w-10 pointer-coarse:justify-center"
           title={t('editor.backToDashboard')}
         >
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
@@ -622,14 +878,20 @@ function EditorPage() {
         </Link>
         {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
         {project?.name ? <span className="hidden h-5 w-px bg-border sm:block" /> : null}
+        {/* Versions only matter once a site has more than one; until then the
+            switcher stays out of the way ("New version" lives in the … menu). */}
         <BranchSwitcher
           projectId={projectId}
           branches={branches ?? []}
           activeBranchId={activeBranchId}
           beforeChange={flushCurrentDraft}
+          hideTrigger={!showBranchSwitcher}
+          createOpen={newVersionOpen}
+          onCreateOpenChange={setNewVersionOpen}
           onSwitch={(id) => {
             void runAfterSavingDraft({
               action: () => {
+                deepLinkedPageId.current = null;
                 setActiveBranchId(id);
                 setSelectedId(null);
                 setSynced(null);
@@ -637,17 +899,9 @@ function EditorPage() {
             });
           }}
         />
-        <span className="hidden items-center gap-1.5 text-muted-foreground text-xs lg:flex">
-          {status === 'saving' ? (
-            <>
-              <Loader2 className="size-3 animate-spin" /> {t('editor.savingShort')}
-            </>
-          ) : status === 'saved' ? (
-            <>
-              <Check className="size-3 text-primary" /> {t('editor.savedShort')}
-            </>
-          ) : null}
-        </span>
+        {view === 'content' && page && !switching ? (
+          <SaveStatus state={status} publishState={pagePublishState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
+        ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
           <Button
             aria-label={t('editor.mode.configuration')}
@@ -667,11 +921,32 @@ function EditorPage() {
             <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
           </Button>
           <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
-            <Eye className="size-3.5" /> <span className="hidden md:inline">{t('project.preview')}</span>
+            <Eye className="size-3.5" /> <span>{t('project.preview')}</span>
           </Button>
-          {project ? <PublishControl project={project} initialPublishOpen={publishParam} beforePublish={preparePublish} /> : null}
+          {project ? (
+            <PublishControl
+              beforePublish={preparePublish}
+              currentPage={
+                page
+                  ? {
+                      path: page.path,
+                      title: page.title,
+                      languageCode: activeLanguage?.code,
+                      versionSlug: publishedVersionSlugFor(branches, page.branchId ?? activeBranchId),
+                    }
+                  : undefined
+              }
+              initialPublishOpen={publishParam}
+              project={project}
+            />
+          ) : null}
         </div>
       </header>
+      {siteNeverPublished && view === 'content' ? (
+        <NeverPublishedBanner />
+      ) : view === 'content' && page && !switching && pagePublishState ? (
+        <PagePublishStateBar state={pagePublishState} />
+      ) : null}
 
       {/* Editor grid: page-tree sidebar + canvas (+ comments rail). The single row is
           pinned to the container height (minmax(0,1fr)) so each column is bounded and
@@ -693,10 +968,17 @@ function EditorPage() {
             className="absolute inset-0 z-20 cursor-default bg-background/40"
             onClick={closeFocusedTree}
           />
+        ) : mobileSidebarOpen && !navigationHidden ? (
+          <button
+            type="button"
+            aria-label={t('editor.hideSidebar')}
+            className="absolute inset-0 z-20 cursor-default bg-background/60 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
         ) : null}
         <aside
           className={cn(
-            'relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar/95',
+            'relative flex min-h-0 flex-col overflow-hidden border-border border-e bg-sidebar',
             // Below lg the tree is an on-demand drawer; in the focused Markdown layout
             // it is a drawer at every size (the grid column stays collapsed).
             treeOverlay
@@ -749,6 +1031,23 @@ function EditorPage() {
                 <p className="px-2 text-muted-foreground text-sm">{t('common.loading')}</p>
               ) : (
                 <>
+                  {newPageLanguage ? (
+                    <Button
+                      className="mb-2 w-full cursor-pointer justify-start"
+                      disabled={createPage.isPending || switching}
+                      onClick={() => {
+                        expandLang(newPageLanguage.id);
+                        addPage(null, newPageLanguage.id);
+                      }}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Plus className="size-4" />
+                      <span className="truncate">
+                        {orderedLanguages.length > 1 ? t('editor.newPageIn', { language: newPageLanguage.label }) : t('editor.newPage')}
+                      </span>
+                    </Button>
+                  ) : null}
                   {orderedLanguages.map((lang) => {
                     const dir = lang.direction === 'RTL' ? 'rtl' : 'ltr';
                     const langPages = pagesByLanguage.get(lang.id) ?? [];
@@ -762,8 +1061,7 @@ function EditorPage() {
                             onClick={() => toggleLang(lang.id)}
                             aria-expanded={!langCollapsed}
                             title={langCollapsed ? t('editor.expand') : t('editor.collapse')}
-                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 font-semibold text-[12.5px] text-foreground"
-                            dir={dir}
+                            className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start font-semibold text-[12.5px] text-foreground"
                           >
                             <ChevronRight
                               className={cn(
@@ -775,7 +1073,9 @@ function EditorPage() {
                             {/* The label owns the row's flexible space: the code lives in its
                               tooltip and the badge never shrinks, so "English" only truncates
                               when the sidebar is genuinely too narrow for it. */}
-                            <span className="min-w-0 truncate" title={`${lang.label} (${lang.code})`}>
+                            {/* Only the name takes the language's direction, so an Arabic row
+                                stays aligned with the rest of an English sidebar (and vice versa). */}
+                            <span className="min-w-0 truncate" dir={dir} title={`${lang.label} (${lang.code})`}>
                               {lang.label}
                             </span>
                             {lang.isDefault ? (
@@ -784,7 +1084,7 @@ function EditorPage() {
                               </span>
                             ) : null}
                           </button>
-                          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+                          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
                             <Button
                               size="icon-xs"
                               variant="ghost"
@@ -801,11 +1101,11 @@ function EditorPage() {
                               className="cursor-pointer"
                               onClick={() => {
                                 expandLang(lang.id);
-                                addGroup(lang.id);
+                                void addGroup(lang.id);
                               }}
                               aria-label={t('editor.newGroup')}
                               title={t('editor.newGroup')}
-                              disabled={createPage.isPending}
+                              disabled={createPage.isPending || switching}
                             >
                               <FolderPlus className="size-3" />
                             </Button>
@@ -817,9 +1117,9 @@ function EditorPage() {
                                 expandLang(lang.id);
                                 addPage(null, lang.id);
                               }}
-                              aria-label={t('editor.newPage')}
-                              title={t('editor.newPage')}
-                              disabled={createPage.isPending}
+                              aria-label={t('editor.newPageIn', { language: lang.label })}
+                              title={t('editor.newPageIn', { language: lang.label })}
+                              disabled={createPage.isPending || switching}
                             >
                               <Plus className="size-3" />
                             </Button>
@@ -836,19 +1136,23 @@ function EditorPage() {
                                 pages={langPages}
                                 activeId={activeTreeId}
                                 treeKey={lang.id}
+                                dir={dir}
                                 onSelect={(id) => {
-                                  void runAfterSavingDraft({
-                                    action: () => {
-                                      if (treeOverlay) closeFocusedTree();
-                                      setSelectedId(id);
-                                      setMobileSidebarOpen(false);
-                                      setFocusedTreeOpen(false);
-                                    },
-                                  });
+                                  if (treeOverlay) closeFocusedTree();
+                                  setMobileSidebarOpen(false);
+                                  setFocusedTreeOpen(false);
+                                  openNode(id);
                                 }}
                                 onAddChild={(parentId) => addPage(parentId, lang.id)}
                                 onSettings={(id) => void runAfterSavingDraft({ action: () => setSettingsForId(id) })}
-                                onMove={(items) => reorderPages.mutate({ items })}
+                                onMove={(items) =>
+                                  reorderPages.mutate(
+                                    { items },
+                                    { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.reorderFailed')) },
+                                  )
+                                }
+                                onRename={renameNode}
+                                onDelete={deleteNode}
                               />
                             )}
                           </div>
@@ -885,315 +1189,370 @@ function EditorPage() {
                 // title so saving settings cannot restore the stale tree title.
                 const settingsPage = target && synced?.id === target.id ? { ...target, title: synced.title } : target;
                 return settingsPage ? (
-                  <PageSettingsDialog projectId={projectId} page={settingsPage} open onOpenChange={(o) => !o && setSettingsForId(null)} />
+                  <PageSettingsDialog
+                    projectId={projectId}
+                    page={settingsPage}
+                    published={pendingChanges ? !pageNeverPublished(settingsPage.id, pendingChanges) : false}
+                    open
+                    onOpenChange={(o) => !o && setSettingsForId(null)}
+                  />
                 ) : null;
               })()
             : null}
         </aside>
 
-        {/* Main area: site configuration */}
-        {view === 'config' ? (
-          <section className="min-h-0 min-w-0 overflow-y-auto">
-            {/* A muted overline so it reads as "Site configuration › <section>"
+        {/* The one main landmark, for every canvas state (configuration, loading,
+            group, page, empty): "Skip to main content" lands here. */}
+        <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
+          {/* Main area: site configuration */}
+          {view === 'config' ? (
+            <section className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+              {/* A muted overline so it reads as "Site configuration › <section>"
               rather than competing with each section's own heading. */}
-            <div className="border-border border-b px-6 py-3">
-              <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
-            </div>
-            <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
-              {project ? (
-                <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
-                  <ConfigDirtyProvider report={reportConfigDirty}>
-                    <ConfigSection project={project} section={configSection} />
-                  </ConfigDirtyProvider>
+              <div className="border-border border-b px-6 py-3">
+                <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
+              </div>
+              <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
+                {project ? (
+                  <div className={cn('w-full', configSection === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
+                    <ConfigDirtyProvider report={reportConfigDirty}>
+                      <ConfigSection project={project} section={configSection} />
+                    </ConfigDirtyProvider>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
+                )}
+              </div>
+            </section>
+          ) : switching ? (
+            // Locked while switching or creating: the page being left is gone from
+            // the screen, so nothing typed now can end up in it.
+            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
+              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                {pendingSwitch?.kind === 'create' ? t('editor.creatingPage') : t('editor.openingPage')}
+              </p>
+            </section>
+          ) : selectedGroup ? (
+            <section className="grid flex-1 place-items-center px-6 text-center">
+              <div className="max-w-md">
+                <FolderPlus className="mx-auto size-7 text-muted-foreground" />
+                <h1 className="mt-3 break-words font-semibold text-xl tracking-tight" dir="auto">
+                  {selectedGroup.title}
+                </h1>
+                <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {selectedGroup.languageId ? (
+                    <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
+                      <Plus className="size-4" /> {t('editor.addPageInside')}
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => void renameGroup(selectedGroup)}>
+                    <Pencil className="size-4" /> {t('editor.rename')}
+                  </Button>
+                  <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
+                    <Settings2 className="size-4" /> {t('editor.groupSettings')}
+                  </Button>
+                  <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteNode(selectedGroup.id)}>
+                    <Trash2 className="size-4" /> {t('editor.deleteGroup')}
+                  </Button>
                 </div>
-              ) : (
-                <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
-              )}
-            </div>
-          </section>
-        ) : selectedGroup ? (
-          <section className="grid place-items-center px-6 text-center">
-            <div className="max-w-sm">
-              <FolderPlus className="mx-auto size-7 text-muted-foreground" />
-              <h1 className="mt-3 font-semibold text-xl tracking-tight">{selectedGroup.title}</h1>
-              <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
-              <div className="mt-4 flex justify-center gap-2">
-                <Button variant="outline" onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}>
-                  <Settings2 className="size-4" /> {t('editor.pageSettings.title')}
+              </div>
+            </section>
+          ) : pageLoadFailed ? (
+            <section className="grid flex-1 place-items-center px-6 text-center">
+              <div className="max-w-sm" role="alert">
+                <TriangleAlert aria-hidden className="mx-auto size-7 text-destructive" />
+                <p className="mt-3 font-medium">{friendlyErrorMessage(t, pageQuery.error, 'editor.openPageFailed')}</p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Button disabled={pageQuery.isFetching} onClick={() => void pageQuery.refetch()}>
+                    {pageQuery.isFetching ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
+                    {t('common.retry')}
+                  </Button>
+                  {/* Pick another page: the list is a drawer on small screens (and may be collapsed). */}
+                  <Button
+                    className={cn(!sidebarCollapsed && 'lg:hidden')}
+                    onClick={() => {
+                      setSidebarCollapsed(false);
+                      setMobileSidebarOpen(true);
+                    }}
+                    variant="outline"
+                  >
+                    <PanelLeftOpen aria-hidden className="size-4 rtl:-scale-x-100" /> {t('editor.showPages')}
+                  </Button>
+                </div>
+              </div>
+            </section>
+          ) : activeId && !page ? (
+            <section className="grid flex-1 place-items-center text-center" aria-busy="true">
+              <p role="status" className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Loader2 aria-hidden className="size-5 animate-spin" />
+                {t('editor.openingPage')}
+              </p>
+            </section>
+          ) : activeId && page ? (
+            /* Main area: page editor */
+            <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+              {status === 'error' ? (
+                <div
+                  role="alert"
+                  className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
+                >
+                  <TriangleAlert className="size-4 shrink-0" />
+                  <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
+                  <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
+                    {t('editor.retrySave')}
+                  </Button>
+                </div>
+              ) : null}
+              {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
+              document mode/view controls. */}
+              <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+                {markdownFocused ? (
+                  // The focused layout hides the tree; this floats it over the canvas so
+                  // the author can still switch pages without leaving Markdown mode.
+                  <Button
+                    ref={showPagesTrigger}
+                    size="icon-sm"
+                    variant="ghost"
+                    className="cursor-pointer"
+                    onClick={() => setFocusedTreeOpen(true)}
+                    aria-expanded={treeOverlay}
+                    aria-label={t('editor.showPages')}
+                    title={t('editor.showPages')}
+                  >
+                    <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+                  </Button>
+                ) : !mobileSidebarOpen ? (
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className={cn('cursor-pointer', !sidebarCollapsed && 'lg:hidden')}
+                    onClick={() => {
+                      setSidebarCollapsed(false);
+                      setMobileSidebarOpen(true);
+                    }}
+                    aria-label={t('editor.showSidebar')}
+                    title={t('editor.showSidebar')}
+                  >
+                    <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+                  </Button>
+                ) : null}
+                {effectiveMode === 'markdown' ? (
+                  <Button size="sm" variant="secondary" className="ms-auto cursor-pointer" onClick={() => setEditorMode(visualMode)}>
+                    <Pencil className="size-3.5" /> {t('editor.backToVisual')}
+                  </Button>
+                ) : (
+                  <span className="ms-auto" />
+                )}
+                <Button
+                  size="sm"
+                  variant={commentMode ? 'secondary' : 'ghost'}
+                  aria-pressed={commentMode}
+                  aria-label={commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
+                  className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
+                  onClick={toggleCommentMode}
+                  title={t('editor.comments.modeHint')}
+                >
+                  <MessageSquare className="size-4" />
+                  <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
                 </Button>
-                {selectedGroup.languageId ? (
-                  <Button disabled={createPage.isPending} onClick={() => addPage(selectedGroup.id, selectedGroup.languageId)}>
+                {!markdownFocused ? (
+                  <Button
+                    aria-label={railLabel}
+                    aria-pressed={wideLayout ? railOpen : railSheetOpen}
+                    className="cursor-pointer"
+                    onClick={() => (wideLayout ? setRailOpen((v) => !v) : setRailSheetOpen((v) => !v))}
+                    size="icon-sm"
+                    title={railLabel}
+                    variant={(wideLayout ? railOpen : railSheetOpen) ? 'secondary' : 'ghost'}
+                  >
+                    <PanelRight className="size-4 rtl:-scale-x-100" />
+                  </Button>
+                ) : null}
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="cursor-pointer"
+                  onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
+                  aria-label={t('editor.pageSettings.title')}
+                  title={t('editor.pageSettings.title')}
+                >
+                  <Settings2 className="size-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="cursor-pointer"
+                        aria-label={t('editor.moreActions')}
+                        title={t('editor.moreActions')}
+                      />
+                    }
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64">
+                    <DropdownMenuCheckboxItem
+                      checked={effectiveMode === 'wysiwyg'}
+                      disabled={effectiveMode === 'markdown'}
+                      onCheckedChange={(checked) => {
+                        const next = checked ? 'wysiwyg' : 'visual';
+                        setVisualMode(next);
+                        setEditorMode(next);
+                      }}
+                    >
+                      {t('editor.showToolbar')}
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (commentMode) toggleCommentMode();
+                        setEditorMode(effectiveMode === 'markdown' ? visualMode : 'markdown');
+                      }}
+                    >
+                      <Code2 />
+                      <span className="flex min-w-0 flex-col">
+                        <span>{effectiveMode === 'markdown' ? t('editor.backToVisual') : t('editor.editSource')}</span>
+                        {effectiveMode === 'markdown' ? null : <span className="text-muted-foreground text-xs">{t('editor.editSourceHint')}</span>}
+                      </span>
+                    </DropdownMenuItem>
+                    {!showBranchSwitcher ? (
+                      <DropdownMenuItem onClick={() => setNewVersionOpen(true)}>
+                        <Layers /> {t('editor.branch.new')}
+                      </DropdownMenuItem>
+                    ) : null}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem variant="destructive" onClick={() => deleteNode(page.id)}>
+                      <Trash2 /> {t('editor.deletePage')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <div
+                ref={canvasRef}
+                className={cn(
+                  'min-h-0 flex-1',
+                  effectiveMode === 'markdown'
+                    ? 'flex flex-col overflow-hidden'
+                    : effectiveMode === 'wysiwyg'
+                      ? 'flex flex-col overflow-hidden'
+                      : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
+                )}
+              >
+                {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
+                  <div
+                    className={cn(
+                      'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
+                      effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
+                    )}
+                    role="status"
+                  >
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                    <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
+                  </div>
+                ) : null}
+                {/* Visual mode keeps its reading measure. Rich Text and Markdown
+                render their toolbar and title inside their full-height canvas. */}
+                {effectiveMode === 'visual' ? <div className="mx-auto max-w-[720px]">{pageTitleInput}</div> : null}
+                {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
+                  // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
+                  // gutter for the block handle — so it is NOT wrapped in a narrow box.
+                  // Keyed by page id: every page gets its own TipTap instance, so a
+                  // document can never linger across a page switch.
+                  // The link picker searches the version this page belongs to.
+                  <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
+                    <TiptapEditor
+                      key={page.id}
+                      value={content}
+                      onChange={setContent}
+                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                      dir={activeLangDir}
+                      lang={activeLanguage?.code}
+                      style={typographyVars(project?.config?.typography)}
+                      onUpload={onUploadImage}
+                      comments={commentMarkers}
+                      activeCommentId={activeCommentId}
+                      commentMode={commentMode}
+                      onAddComment={(anchor) => {
+                        setPendingAnchor(anchor);
+                        openRail();
+                        setRailTab('comments');
+                      }}
+                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                    />
+                  </ActiveBranchContext.Provider>
+                ) : (
+                  <MarkdownSourceEditor
+                    key={page.id}
+                    dir={activeLangDir}
+                    label={t('editor.markdownPlaceholder')}
+                    value={content}
+                    onChange={setContent}
+                    placeholder={t('editor.markdownPlaceholder')}
+                    titleSlot={pageTitleInput}
+                  />
+                )}
+              </div>
+            </section>
+          ) : (
+            <section className="grid flex-1 place-items-center text-center">
+              <div>
+                <FileText className="mx-auto size-7 text-muted-foreground" />
+                <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
+                <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
+                {defaultLanguageId ? (
+                  <Button
+                    className="mt-4 cursor-pointer"
+                    disabled={createPage.isPending || switching}
+                    onClick={() => addPage(null, defaultLanguageId)}
+                  >
                     <Plus className="size-4" /> {t('editor.newPage')}
                   </Button>
                 ) : null}
               </div>
-            </div>
-          </section>
-        ) : activeId && !page ? (
-          <section className="grid place-items-center text-center">
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          </section>
-        ) : activeId && page ? (
-          /* Main area: page editor */
-          <section className="flex min-h-0 min-w-0 flex-col">
-            {status === 'error' ? (
-              <div
-                role="alert"
-                className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
-              >
-                <TriangleAlert className="size-4 shrink-0" />
-                <span className="min-w-0 flex-1">{t('editor.saveError')}</span>
-                <Button size="sm" variant="outline" onClick={() => void runAfterSavingDraft({ action: () => undefined })}>
-                  {t('editor.retrySave')}
-                </Button>
-              </div>
-            ) : null}
-            {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
-              document mode/view controls. */}
-            <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
-              {markdownFocused ? (
-                // The focused layout hides the tree; this floats it over the canvas so
-                // the author can still switch pages without leaving Markdown mode.
-                <Button
-                  ref={showPagesTrigger}
-                  size="icon-sm"
-                  variant="ghost"
-                  className="cursor-pointer"
-                  onClick={() => setFocusedTreeOpen(true)}
-                  aria-expanded={treeOverlay}
-                  aria-label={t('editor.showPages')}
-                  title={t('editor.showPages')}
-                >
-                  <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
-                </Button>
-              ) : !mobileSidebarOpen ? (
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  className={cn('cursor-pointer', !sidebarCollapsed && 'lg:hidden')}
-                  onClick={() => {
-                    setSidebarCollapsed(false);
-                    setMobileSidebarOpen(true);
-                  }}
-                  aria-label={t('editor.showSidebar')}
-                  title={t('editor.showSidebar')}
-                >
-                  <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
-                </Button>
-              ) : null}
-              <SegmentedControl density="compact" className="ms-auto">
-                <SegButton active={effectiveMode === 'visual'} onClick={() => setEditorMode('visual')} icon={<Pencil className="size-3.5" />}>
-                  {t('editor.mode.visual')}
-                </SegButton>
-                <SegButton active={effectiveMode === 'wysiwyg'} onClick={() => setEditorMode('wysiwyg')} icon={<TypeIcon className="size-3.5" />}>
-                  {t('editor.mode.wysiwyg')}
-                </SegButton>
-                <SegButton active={effectiveMode === 'markdown'} onClick={() => setEditorMode('markdown')} icon={<Code2 className="size-3.5" />}>
-                  {t('editor.mode.markdown')}
-                </SegButton>
-              </SegmentedControl>
-              <Button
-                size="sm"
-                variant={commentMode ? 'secondary' : 'ghost'}
-                aria-pressed={commentMode}
-                className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
-                onClick={toggleCommentMode}
-                title={t('editor.comments.mode')}
-              >
-                <MessageSquare className="size-4" />
-                <span className="hidden md:inline">{commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}</span>
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
-                aria-label={t('editor.pageSettings.title')}
-                title={t('editor.pageSettings.title')}
-              >
-                <Settings2 className="size-4" />
-              </Button>
-              <Button
-                size="icon-sm"
-                variant="ghost"
-                className="cursor-pointer"
-                aria-label={t('editor.deletePage')}
-                title={t('editor.deletePage')}
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: t('editor.deletePage'),
-                    description: t('editor.deletePageConfirm'),
-                    confirmLabel: t('editor.deletePage'),
-                    destructive: true,
-                  });
-                  if (ok) {
-                    void runAfterSavingDraft({
-                      action: () =>
-                        deletePage.mutate(page.id, {
-                          onSuccess: () => setSelectedId(null),
-                          onError: (error) => toast.error(error.message),
-                        }),
-                    });
-                  }
-                }}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-              {!markdownFocused ? (
-                <Button
-                  aria-label={railLabel}
-                  aria-pressed={railOpen}
-                  className="hidden cursor-pointer xl:inline-flex"
-                  onClick={() => setRailOpen((v) => !v)}
-                  size="icon-sm"
-                  title={railLabel}
-                  variant={railOpen ? 'secondary' : 'ghost'}
-                >
-                  <PanelRight className="size-4" />
-                </Button>
-              ) : null}
-            </div>
+            </section>
+          )}
+        </main>
 
-            <div
-              className={cn(
-                'min-h-0 flex-1',
-                effectiveMode === 'markdown'
-                  ? 'flex flex-col overflow-hidden'
-                  : effectiveMode === 'wysiwyg'
-                    ? 'flex flex-col overflow-hidden'
-                    : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
-              )}
-            >
-              {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
-                <div
-                  className={cn(
-                    'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
-                    effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
-                  )}
-                  role="status"
-                >
-                  <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                  <p>{t('editor.unsupportedMdx.banner', { tags: unsupportedTags.join(', ') })}</p>
-                </div>
-              ) : null}
-              {/* Visual mode keeps its reading measure. Rich Text and Markdown
-                render their toolbar and title inside their full-height canvas. */}
-              {effectiveMode === 'visual' ? <div className="mx-auto max-w-[720px]">{pageTitleInput}</div> : null}
-              {effectiveMode === 'visual' || effectiveMode === 'wysiwyg' ? (
-                // .ProseMirror self-centers at the 720px measure (tiptap.css), leaving a
-                // gutter for the block handle — so it is NOT wrapped in a narrow box.
-                // Keyed by page id: every page gets its own TipTap instance, so a
-                // document can never linger across a page switch.
-                <TiptapEditor
-                  key={page.id}
-                  value={content}
-                  onChange={setContent}
-                  className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                  dir={activeLangDir}
-                  lang={activeLanguage?.code}
-                  style={typographyVars(project?.config?.typography)}
-                  onUpload={onUploadImage}
-                  comments={commentMarkers}
-                  activeCommentId={activeCommentId}
-                  commentMode={commentMode}
-                  onAddComment={(anchor) => {
-                    setPendingAnchor(anchor);
-                    setRailOpen(true);
-                    setRailTab('comments');
-                  }}
-                  titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                  variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
-                />
-              ) : (
-                <MarkdownSourceEditor
-                  key={page.id}
-                  dir={activeLangDir}
-                  label={t('editor.markdownPlaceholder')}
-                  value={content}
-                  onChange={setContent}
-                  placeholder={t('editor.markdownPlaceholder')}
-                  titleSlot={pageTitleInput}
-                />
-              )}
-            </div>
-          </section>
-        ) : (
-          <section className="grid place-items-center text-center">
-            <div>
-              <FileText className="mx-auto size-7 text-muted-foreground" />
-              <p className="mt-3 font-medium">{t('editor.noPageSelected')}</p>
-              <p className="mt-1 text-muted-foreground text-sm">{t('editor.noPageSelectedHint')}</p>
-              {defaultLanguageId ? (
-                <Button className="mt-4 cursor-pointer" disabled={createPage.isPending} onClick={() => addPage(null, defaultLanguageId)}>
-                  <Plus className="size-4" /> {t('editor.newPage')}
-                </Button>
-              ) : null}
-            </div>
-          </section>
-        )}
-
-        {/* Right rail: Figma-style tabbed panel — Comments / AI */}
-        {showRail && activeId ? (
-          <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">
-            <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
-              {aiDraft ? (
-                <TabsList className="m-2 self-start">
-                  <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
-                  <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
-                </TabsList>
-              ) : null}
-              <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', aiDraft && 'pt-0')}>
-                {railTab === 'comments' ? (
-                  <CommentsPanel
-                    pageId={activeId}
-                    projectId={projectId}
-                    pendingAnchor={pendingAnchor}
-                    onClearPending={() => setPendingAnchor(null)}
-                    activeCommentId={activeCommentId}
-                    onSelectComment={setActiveCommentId}
-                    commentMode={commentMode}
-                  />
-                ) : (
-                  <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
-                )}
-              </div>
-            </Tabs>
-          </aside>
+        {/* Right rail: Figma-style tabbed panel — Comments / AI. A column at xl… */}
+        {showRail && wideLayout && railPanel ? (
+          <aside className="hidden min-h-0 flex-col overflow-hidden border-border border-s bg-sidebar/40 xl:flex">{railPanel}</aside>
         ) : null}
       </div>
+      {/* …and a sheet on smaller screens, so comments work on laptops and phones. */}
+      <Sheet open={!wideLayout && railSheetOpen && Boolean(railPanel)} onOpenChange={setRailSheetOpen}>
+        <SheetContent side={uiDir === 'rtl' ? 'left' : 'right'} className="w-[min(92vw,380px)] gap-0 p-0">
+          <SheetHeader className="border-border border-b px-4 py-3">
+            <SheetTitle>{t('editor.comments')}</SheetTitle>
+            <SheetDescription className="sr-only">{t('editor.comments.modeHint')}</SheetDescription>
+          </SheetHeader>
+          {railPanel}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
 
-/** A segmented-control button used for the editor mode toggle (Visual / Rich text / Markdown). */
-function SegButton({
-  active,
-  onClick,
-  icon,
-  children,
-  disabled = false,
-  title,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  disabled?: boolean;
-  title?: string;
-}) {
-  return (
-    <SegmentedControlItem
-      active={active}
-      aria-label={typeof children === 'string' ? children : title}
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-    >
-      {icon}
-      <span className="hidden sm:inline">{children}</span>
-    </SegmentedControlItem>
+type PendingChangesData = ReturnType<typeof usePendingChanges>['data'];
+
+/** Whether a page's address may still follow its title, from the freshest cached
+ *  publish state (see addressMayFollowTitle). */
+function addressFollowsTitle(queryClient: QueryClient, projectId: string, pageId: string): boolean {
+  return addressMayFollowTitle(
+    pageId,
+    queryClient.getQueryData<PendingChangesData>(queryKeys.deployments.changes(projectId)),
+    queryClient.getQueryData<Deployment[]>(queryKeys.deployments.all(projectId)),
   );
+}
+
+/** The newer of two server copies of the same page (by revision stamp). */
+function freshestServerCopy(id: string, a: PageNode | null | undefined, b: PageNode | null | undefined): PageNode | null {
+  const candidates = [a, b].filter((copy): copy is PageNode => copy?.id === id);
+  return candidates.sort((x, y) => Date.parse(y.updatedAt) - Date.parse(x.updatedAt))[0] ?? null;
 }
 
 /** Drag handle on the sidebar's inline-end edge to resize it (200–520px). Width

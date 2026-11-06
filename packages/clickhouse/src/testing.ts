@@ -1,6 +1,13 @@
 import type { AnalyticsEventEnvelope } from './events';
 
 export const fixedAnalyticsEvent = (overrides: Partial<AnalyticsEventEnvelope> = {}): AnalyticsEventEnvelope => ({
+  actorType: 'human',
+  botName: '',
+  botOperator: '',
+  botCategory: '',
+  verification: 'claimed',
+  channel: 'direct',
+  aiSource: '',
   eventId: '00000000-0000-4000-8000-000000000001',
   schemaVersion: 1,
   occurredAt: '2026-01-01T00:00:00.000Z',

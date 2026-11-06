@@ -2,6 +2,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
+import { isDeploymentInFlight } from './deployment-cache';
 import { queryKeys } from './query-keys';
 import {
   branchesQueryOptions,
@@ -65,14 +66,14 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
 
 // Publishing is async (worker builds the snapshot). Poll while a deployment is
 // in flight so the dashboard transitions PENDING/BUILDING → READY/FAILED on its
-// own instead of appearing stuck until a manual refresh.
-const isInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
-
+// own instead of appearing stuck until a manual refresh. The factory's fetch
+// also checks whether a publish just went live, so published-state UI never
+// trusts the pre-publish answer (see syncPublishReceipt).
 export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) =>
   useQuery({
     ...deploymentsQueryOptions(projectId),
     enabled: options?.enabled ?? true,
-    refetchInterval: (query) => (query.state.data?.some((d) => isInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
+    refetchInterval: (query) => (query.state.data?.some((d) => isDeploymentInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
   });
 
 // What the next publish will change vs. the last deploy (Mintlify-style "show

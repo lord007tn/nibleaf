@@ -11,6 +11,7 @@ import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, Git
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
+import { DirtyStateReporter } from '@/components/project-settings/shared';
 import type { Deployment } from '@/hooks/api';
 import {
   useBranches,
@@ -459,6 +460,9 @@ export function GitTab({ projectId }: { projectId?: string }) {
         form.handleSubmit();
       }}
     >
+      <form.Subscribe selector={(state) => !state.isDefaultValue}>
+        {(dirty) => <DirtyStateReporter dirty={dirty || provider !== (git.provider ?? 'github')} />}
+      </form.Subscribe>
       <div className="mb-4 grid grid-cols-3 gap-2">
         <Button
           className="justify-start"

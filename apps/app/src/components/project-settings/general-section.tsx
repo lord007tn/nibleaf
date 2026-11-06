@@ -112,6 +112,12 @@ export function GeneralSection({ project }: { project: Project }) {
           );
         });
         await saveTranslations();
+        // Advance the baseline without discarding edits made during the request.
+        const current = form.state.values;
+        form.reset({ name: value.name.trim(), slug: value.slug.trim(), description: value.description.trim() });
+        for (const key of ['name', 'slug', 'description'] as const) {
+          if (current[key] !== value[key]) form.setFieldValue(key, current[key]);
+        }
         toast.success(t('common.saved'));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : t('settings.saveError'));
@@ -250,12 +256,14 @@ export function GeneralSection({ project }: { project: Project }) {
                         className={FIELD_INPUT}
                         dir={dirOf(defaultLanguage)}
                         id="set-name"
+                        aria-invalid={field.state.meta.errors.length > 0}
+                        aria-describedby={field.state.meta.errors.length ? 'set-name-error' : undefined}
                         lang={defaultLanguage?.code}
                         onBlur={field.handleBlur}
                         onChange={(e) => field.handleChange(e.target.value)}
                         value={field.state.value}
                       />
-                      <FieldError errors={field.state.meta.errors} />
+                      <FieldError id="set-name-error" errors={field.state.meta.errors} />
                     </Field>
                     <Field className="mb-0" htmlFor="set-lang-name" label={t('settings.general.name.label')}>
                       <Input
@@ -322,12 +330,14 @@ export function GeneralSection({ project }: { project: Project }) {
                   className={FIELD_INPUT}
                   dir={dirOf(defaultLanguage)}
                   id="set-name"
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={field.state.meta.errors.length ? 'set-name-error' : undefined}
                   lang={defaultLanguage?.code}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   value={field.state.value}
                 />
-                <FieldError errors={field.state.meta.errors} />
+                <FieldError id="set-name-error" errors={field.state.meta.errors} />
               </Field>
             )}
           </form.Field>
@@ -362,6 +372,8 @@ export function GeneralSection({ project }: { project: Project }) {
               <Input
                 className="h-full min-h-0 min-w-0 flex-1 rounded-s-md rounded-e-none border-0 bg-transparent px-2.5 font-mono text-[13px] focus-visible:ring-0"
                 id="set-slug"
+                aria-invalid={field.state.meta.errors.length > 0}
+                aria-describedby={field.state.meta.errors.length ? 'set-slug-error' : undefined}
                 onBlur={field.handleBlur}
                 onChange={(e) => field.handleChange(slugify(e.target.value))}
                 value={field.state.value}
@@ -372,7 +384,7 @@ export function GeneralSection({ project }: { project: Project }) {
                 </span>
               ) : null}
             </div>
-            <FieldError errors={field.state.meta.errors} />
+            <FieldError id="set-slug-error" errors={field.state.meta.errors} />
             <div className="mt-1.5 font-mono text-[12px] text-muted-foreground rtl:text-end" dir="ltr">
               {siteBaseDomain ? (field.state.value ? `${field.state.value}.${siteBaseDomain}` : `.${siteBaseDomain}`) : `/sites/${project.id}`}
             </div>
@@ -380,7 +392,7 @@ export function GeneralSection({ project }: { project: Project }) {
         )}
       </form.Field>
 
-      <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+      <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue] as const}>
         {([isSubmitting, isDirty]) => (
           <SaveBar disabled={!isDirty && icon === (project.icon ?? null) && !translationsDirty} isSubmitting={isSubmitting} />
         )}

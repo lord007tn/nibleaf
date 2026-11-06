@@ -1,4 +1,5 @@
 import { ConfirmProvider as DesignConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { DialogLabelsProvider } from '@nibleaf/design-system/components/ui/dialog';
 import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
 import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
@@ -22,8 +23,10 @@ export function LocalizedProductProviders({ children }: { children: ReactNode })
 function LocalizedSurfaces({ children }: { children: ReactNode }) {
   const t = useT();
   return (
-    <DesignConfirmProvider labels={{ cancel: t('common.cancel'), delete: t('common.delete'), save: t('common.save') }}>
-      {children}
-    </DesignConfirmProvider>
+    <DialogLabelsProvider close={t('deploy.close')}>
+      <DesignConfirmProvider labels={{ cancel: t('common.cancel'), delete: t('common.delete'), save: t('common.save') }}>
+        {children}
+      </DesignConfirmProvider>
+    </DialogLabelsProvider>
   );
 }

@@ -256,6 +256,7 @@ export default function SiteSearchDialog({
                         onSelect={() => {
                           track({
                             name: 'search_result_clicked',
+                            searchId: hit.searchId,
                             path: hit.path,
                             resultId: hit.id,
                             resultPosition: index + 1,

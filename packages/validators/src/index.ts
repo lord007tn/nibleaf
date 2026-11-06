@@ -811,6 +811,33 @@ export const analyticsQuery = z.object({
 });
 export type AnalyticsQuery = z.infer<typeof analyticsQuery>;
 
+/** Docs-owner insights: a preset or a custom inclusive day range (in `timezone`),
+ * optionally compared with the equally long period immediately before it. */
+const analyticsInsightsBase = z.object({
+  range: z.enum(['24h', '7d', '30d', '90d', 'custom']).default('30d'),
+  from: z.iso.date().optional(),
+  to: z.iso.date().optional(),
+  timezone: z.string().trim().min(1).max(64).default('UTC'),
+  compare: z.enum(['previous', 'none']).default('previous'),
+});
+const MAX_INSIGHTS_RANGE_DAYS = 366;
+const refineInsightsRange = (value: { range: string; from?: string; to?: string }, ctx: z.RefinementCtx) => {
+  if (value.range !== 'custom') return;
+  if (!(value.from && value.to)) {
+    ctx.addIssue({ code: 'custom', message: 'A custom range needs both from and to.', path: ['from'] });
+    return;
+  }
+  const days = (Date.parse(value.to) - Date.parse(value.from)) / 86_400_000;
+  if (days < 0) ctx.addIssue({ code: 'custom', message: 'from must not be after to.', path: ['from'] });
+  if (days >= MAX_INSIGHTS_RANGE_DAYS) ctx.addIssue({ code: 'custom', message: 'A custom range can span at most 366 days.', path: ['to'] });
+};
+export const analyticsInsightsQuery = analyticsInsightsBase.superRefine(refineInsightsRange);
+export type AnalyticsInsightsQuery = z.infer<typeof analyticsInsightsQuery>;
+export const analyticsPageInsightsQuery = analyticsInsightsBase
+  .extend({ path: z.string().trim().max(512).default('') })
+  .superRefine(refineInsightsRange);
+export type AnalyticsPageInsightsQuery = z.infer<typeof analyticsPageInsightsQuery>;
+
 export const trackEventBody = z.object({
   type: z.enum(['pageview', 'search', 'feedback']).default('pageview'),
   path: z.string().max(512).optional(),

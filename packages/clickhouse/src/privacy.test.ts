@@ -1,6 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client';
 import { describe, expect, it, vi } from 'vitest';
 import { deleteProjectAnalytics, exportProjectAnalytics, rebuildProjectAnalyticsRollups } from './privacy';
+import { ANALYTICS_PROJECT_TABLES } from './tables';
 
 describe('analytics privacy tombstones', () => {
   it('persists the tombstone before synchronously deleting every retained analytics table', async () => {
@@ -14,7 +15,7 @@ describe('analytics privacy tombstones', () => {
       }),
     );
     expect(insert.mock.invocationCallOrder[0]).toBeLessThan(command.mock.invocationCallOrder[0] ?? 0);
-    expect(command).toHaveBeenCalledTimes(6);
+    expect(command).toHaveBeenCalledTimes(ANALYTICS_PROJECT_TABLES.filter((table) => !table.preserve).length);
   });
 
   it('excludes tombstoned scopes from rebuilds and exports even if physical mutations lag', async () => {

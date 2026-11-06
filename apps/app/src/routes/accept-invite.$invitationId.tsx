@@ -63,7 +63,8 @@ function AcceptInviteContent() {
           if (readPendingInvitation() === invitationId) clearPendingInvitation();
           setError(t('auth.invite.expiredError'));
         } else {
-          setError(acceptError.message ?? t('auth.invite.error'));
+          // Better Auth's message is English and technical; keep the localized one.
+          setError(t('auth.invite.error'));
         }
         return;
       }
@@ -93,6 +94,13 @@ function AcceptInviteContent() {
     }
   };
 
+  // Expired / missing invitations still need a way forward.
+  const nextStep = (
+    <Button className="mt-4 w-full" nativeButton={false} render={<Link to={session ? '/app' : '/sign-in'} />} variant="outline">
+      {session ? t('auth.invite.goToApp') : t('auth.backToSignIn')}
+    </Button>
+  );
+
   const subtitle = info?.organizationName ? t('auth.invite.joinPrompt', { org: info.organizationName }) : t('auth.invite.subtitle');
 
   if (isPending || invitation.isPending) {
@@ -116,6 +124,7 @@ function AcceptInviteContent() {
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
           {t('auth.invite.notFound')}
         </p>
+        {nextStep}
       </AuthLayout>
     );
   }
@@ -126,6 +135,7 @@ function AcceptInviteContent() {
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
           {t('auth.invite.expiredError')}
         </p>
+        {nextStep}
       </AuthLayout>
     );
   }

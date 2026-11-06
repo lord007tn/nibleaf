@@ -64,3 +64,5 @@ export type AnalyticsJobData =
   | RollupAnalyticsJobData
   | TrackAnalyticsEventJobData
   | LegacyTrackAnalyticsEventJobData;
+
+export { analyticsEventJobOptions, shouldShedAnalyticsEvent } from './analytics-policy';

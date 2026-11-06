@@ -3,7 +3,8 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
 import type { AiConversationListItem } from '@nibleaf/validators';
-import { type ColumnDef, flexRender, useTable } from '@tanstack/react-table';
+import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import { useMemo } from 'react';
 import { useFormatters } from '@/lib/format';
 
 function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'noAnswer' | 'failed'> }) {
@@ -19,40 +20,43 @@ function Results({ item }: { item: Pick<AiConversationListItem, 'answered' | 'no
 export function ConversationList({ items, onOpen }: { items: AiConversationListItem[]; onOpen: (id: string) => void }) {
   const t = useT();
   const f = useFormatters();
-  const rating = (item: AiConversationListItem) => t(`dashboard.ai.${item.rating ?? 'unrated'}`);
-  const columns: ColumnDef<Record<string, never>, AiConversationListItem>[] = [
-    {
-      accessorKey: 'firstQuestion',
-      header: t('dashboard.ai.question'),
-      cell: ({ row }) => (
-        <Button
-          variant="link"
-          className="h-auto whitespace-normal p-0 text-start"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(row.id);
-          }}
-        >
-          {row.original.firstQuestion ?? t('dashboard.ai.notSaved')}
-        </Button>
-      ),
-    },
-    { accessorKey: 'language', header: t('dashboard.ai.language') },
-    { accessorKey: 'turns', header: t('dashboard.ai.count'), cell: ({ row }) => f.number(row.original.turns) },
-    { id: 'result', header: t('dashboard.ai.result'), cell: ({ row }) => <Results item={row.original} /> },
-    { accessorKey: 'rating', header: t('dashboard.ai.rating'), cell: ({ row }) => rating(row.original) },
-    { accessorKey: 'pagePath', header: t('dashboard.ai.page'), cell: ({ row }) => <span dir="auto">{row.original.pagePath ?? '\u2014'}</span> },
-    {
-      accessorKey: 'lastActivityAt',
-      header: t('dashboard.ai.activity'),
-      cell: ({ row }) => (
-        <time dateTime={row.original.lastActivityAt} title={f.dateTime(row.original.lastActivityAt)}>
-          {f.relativeTime(row.original.lastActivityAt)}
-        </time>
-      ),
-    },
-  ];
-  const table = useTable({ features: {}, data: items, columns, getRowId: (row) => row.conversationId });
+  // Stable columns: the table only rebuilds them when the locale or formatter changes.
+  const columns = useMemo<ColumnDef<AiConversationListItem>[]>(
+    () => [
+      {
+        accessorKey: 'firstQuestion',
+        header: t('dashboard.ai.question'),
+        cell: ({ row }) => (
+          <Button
+            variant="link"
+            className="h-auto whitespace-normal p-0 text-start"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(row.id);
+            }}
+          >
+            {row.original.firstQuestion ?? t('dashboard.ai.notSaved')}
+          </Button>
+        ),
+      },
+      { accessorKey: 'language', header: t('dashboard.ai.language') },
+      { accessorKey: 'turns', header: t('dashboard.ai.count'), cell: ({ row }) => f.number(row.original.turns) },
+      { id: 'result', header: t('dashboard.ai.result'), cell: ({ row }) => <Results item={row.original} /> },
+      { accessorKey: 'rating', header: t('dashboard.ai.rating'), cell: ({ row }) => t(`dashboard.ai.${row.original.rating ?? 'unrated'}`) },
+      { accessorKey: 'pagePath', header: t('dashboard.ai.page'), cell: ({ row }) => <span dir="auto">{row.original.pagePath ?? '\u2014'}</span> },
+      {
+        accessorKey: 'lastActivityAt',
+        header: t('dashboard.ai.activity'),
+        cell: ({ row }) => (
+          <time dateTime={row.original.lastActivityAt} title={f.dateTime(row.original.lastActivityAt)}>
+            {f.relativeTime(row.original.lastActivityAt)}
+          </time>
+        ),
+      },
+    ],
+    [t, f, onOpen],
+  );
+  const table = useReactTable({ data: items, columns, getCoreRowModel: getCoreRowModel(), getRowId: (row) => row.conversationId });
   return (
     <>
       <div className="hidden md:block">
@@ -98,7 +102,7 @@ export function ConversationList({ items, onOpen }: { items: AiConversationListI
             </p>
             <Results item={item} />
             <p className="text-muted-foreground text-sm">
-              {item.language} · {t('dashboard.ai.count')}: {f.number(item.turns)} · {rating(item)}
+              {item.language} · {t('dashboard.ai.count')}: {f.number(item.turns)} · {t(`dashboard.ai.${item.rating ?? 'unrated'}`)}
             </p>
             <p dir="auto" className="truncate text-sm">
               {item.pagePath ?? '—'}

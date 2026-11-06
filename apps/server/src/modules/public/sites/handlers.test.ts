@@ -11,12 +11,14 @@ const mocks = vi.hoisted(() => ({
   answerSite: vi.fn(),
   chatSite: vi.fn(),
   submitSiteChatFeedback: vi.fn(),
+  recordCrawlerRequest: vi.fn(async (..._args: unknown[]) => undefined),
 }));
 
 vi.mock('@/actions/site-chat-events', () => ({ recordSiteChatEvents: mocks.recordSiteChatEvents }));
 vi.mock('@/actions/site-chat', () => ({ chatSite: mocks.chatSite, submitSiteChatFeedback: mocks.submitSiteChatFeedback }));
 
 vi.mock('@/actions/sites', () => ({
+  recordCrawlerRequest: mocks.recordCrawlerRequest,
   getSite: vi.fn(),
   getSitePage: vi.fn(),
   getSitePageMarkdown: mocks.getSitePageMarkdown,
@@ -182,5 +184,35 @@ describe('chat event endpoint', () => {
     expect((await post({ events: [{ ...event, question: 'private' }] })).status).toBe(422);
     expect((await post({ events: new Array(21).fill(event) })).status).toBe(422);
     expect((await post({ events: [{ ...event, name: 'provider_error' }] })).status).toBe(422);
+  });
+});
+
+describe('crawler observation authentication and duplicate suppression', () => {
+  it('rejects an unauthenticated internal batch before parsing it', async () => {
+    const response = await app.request('/sites/_crawler-hits', { method: 'POST', body: '{}' });
+    expect(response.status).toBe(401);
+  });
+  it('observes direct machine requests once and skips authenticated internal probes', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('INTERNAL_API_SECRET', 'fictional-internal-proof');
+    mocks.recordCrawlerRequest.mockClear();
+    const doc = { body: '# Docs', isPrivate: false };
+    mocks.getSitePageMarkdown.mockResolvedValue(doc);
+    await app.request('/sites/project/markdown?path=guide', { headers: { 'user-agent': 'GPTBot/1' } });
+    await app.request('/sites/project/markdown?path=guide', {
+      headers: { 'user-agent': 'GPTBot/1', 'x-nibleaf-internal': 'fictional-internal-proof' },
+    });
+    // Without a configured secret, the app server's SSR hint still prevents double counting.
+    vi.stubEnv('INTERNAL_API_SECRET', '');
+    await app.request('/sites/project/markdown?path=guide', { headers: { 'user-agent': 'GPTBot/1', 'x-nibleaf-ssr': '1' } });
+    await vi.advanceTimersByTimeAsync(250);
+    expect(mocks.recordCrawlerRequest).toHaveBeenCalledTimes(1);
+    expect(mocks.recordCrawlerRequest).toHaveBeenCalledWith(
+      'project',
+      expect.objectContaining({ path: 'guide.md', resource: 'markdown' }),
+      expect.any(Object),
+    );
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
   });
 });

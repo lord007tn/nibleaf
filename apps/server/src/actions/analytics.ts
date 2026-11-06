@@ -321,6 +321,7 @@ const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
  *  DB write in the request path; if enqueueing fails (redis down / slow), we
  *  fall back to the direct insert so no event is lost. */
 const legacyEvent = (envelope: AnalyticsEventEnvelope) => {
+  if (envelope.actorType === 'bot') return null;
   const payload = envelope.payload;
   const type =
     payload.name === 'page_view'
@@ -356,6 +357,8 @@ export interface TrackEventContext {
   privacy: AnalyticsPrivacyPolicy;
   country?: string;
   device?: string;
+  userAgent?: string;
+  siteHost?: string;
 }
 
 /** Queue one server-enriched event. Tenant/project identity never comes from the
@@ -375,6 +378,8 @@ const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput)
     siteId: context.siteId ?? context.projectId,
     deploymentId: context.deploymentId,
     source: context.source,
+    userAgent: context.userAgent,
+    siteHost: context.siteHost,
     country: context.country,
     device: context.device,
     privacy: context.privacy,
@@ -391,14 +396,17 @@ const trackEvent = async (context: TrackEventContext, body: AnalyticsEventInput)
   }
 };
 
-export const trackProjectEvent = async (
+export const trackProjectEvents = async (
   projectId: string,
-  payload: AnalyticsPayload,
+  payloads: AnalyticsPayload[],
   options: {
     source?: TrackEventContext['source'];
     consentState?: PublicAnalyticsEvent['consentState'];
     eventId?: string;
     sessionId?: string;
+    occurredAt?: string;
+    userAgent?: string;
+    siteHost?: string;
     country?: string;
     device?: string;
   } = {},
@@ -410,24 +418,34 @@ export const trackProjectEvent = async (
   if (!project) return;
   const projectConfig = project.config as ProjectConfig | null;
   const visibility = project.accessMode === 'PUBLIC' && projectConfig?.visibility !== 'private' ? 'public' : 'private';
-  await trackEvent(
-    {
-      tenantId: project.organizationId,
-      projectId: project.id,
-      source: options.source ?? 'system',
-      country: options.country,
-      device: options.device,
-      privacy: {
-        visibility,
-        allowCampaignDimensions: projectConfig?.analytics?.campaignDimensions === true,
-        allowRawPublicSearchQueries: projectConfig?.analytics?.storePublicSearchTerms === true,
-      },
-    },
-    {
-      ...(options.eventId ? { eventId: options.eventId } : {}),
-      consentState: options.consentState ?? 'not_required',
-      ...(options.sessionId ? { sessionId: options.sessionId } : {}),
-      payload,
-    },
+  await Promise.all(
+    payloads.map((payload) =>
+      trackEvent(
+        {
+          tenantId: project.organizationId,
+          projectId: project.id,
+          userAgent: options.userAgent,
+          siteHost: options.siteHost,
+          source: options.source ?? 'system',
+          country: options.country,
+          device: options.device,
+          privacy: {
+            visibility,
+            allowCampaignDimensions: projectConfig?.analytics?.campaignDimensions === true,
+            allowRawPublicSearchQueries: projectConfig?.analytics?.storePublicSearchTerms === true,
+          },
+        },
+        {
+          ...(options.occurredAt ? { occurredAt: options.occurredAt } : {}),
+          ...(options.eventId ? { eventId: options.eventId } : {}),
+          consentState: options.consentState ?? 'not_required',
+          ...(options.sessionId ? { sessionId: options.sessionId } : {}),
+          payload,
+        },
+      ),
+    ),
   );
 };
+
+export const trackProjectEvent = (projectId: string, payload: AnalyticsPayload, options: Parameters<typeof trackProjectEvents>[2] = {}) =>
+  trackProjectEvents(projectId, [payload], options);

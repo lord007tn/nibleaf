@@ -1,7 +1,8 @@
-import { createJob, getJob, QueueNames } from '@nibleaf/bullmq';
+import { createJob, getJob, getQueue, QueueNames } from '@nibleaf/bullmq';
 import {
   type AnalyticsJobData,
   type AnalyticsJobName,
+  analyticsEventJobOptions,
   analyticsIngestJobId,
   ingestUsageJobDataSchema,
   type LegacyTrackAnalyticsEventJobData,
@@ -9,12 +10,16 @@ import {
 } from '@nibleaf/bullmq/jobs/analytics';
 import {
   type AnalyticsEventEnvelope,
+  clickHouseHealth,
   keys as clickHouseKeys,
   clickHouseWritesEnabled,
   insertAnalyticsEvents,
   insertUsageEvents,
+  listActiveAnalyticsProjects,
   listPendingUsagePeriods,
   reconcileUsageHourly,
+  redactAnalyticsDiagnostics,
+  refreshProjectInsightsRollups,
   relationalWritesEnabled,
   usageEventsFromAnalytics,
 } from '@nibleaf/clickhouse';
@@ -28,12 +33,24 @@ import {
 } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { isLateUsageEvent, type UsageEvent, usageEventBatchSchema, utcBillingPeriod } from '@nibleaf/usage';
-import type { Job } from 'bullmq';
+import { DelayedError, type Job } from 'bullmq';
 import { z } from 'zod';
+import { AnalyticsEventBatcher } from '../analytics/event-batcher';
 import { legacyAnalyticsJobToEnvelope } from '../analytics/legacy-job';
 import { handleAiConversationJob } from './ai-conversations';
 
 const log = createLogger({ processor: 'analytics' });
+
+let eventBatcher: AnalyticsEventBatcher | undefined;
+const batchAnalyticsEvent = (event: AnalyticsEventEnvelope) => {
+  const config = clickHouseKeys();
+  eventBatcher ??= new AnalyticsEventBatcher((events) => insertAnalyticsEvents(events, { tombstoneCacheMs: 1000 }), {
+    maxBatchSize: config.CLICKHOUSE_MAX_BATCH_SIZE ?? 500,
+    maxBufferedEvents: config.CLICKHOUSE_MAX_BUFFERED_EVENTS ?? 10_000,
+    waitMs: 25,
+  });
+  return eventBatcher.enqueue(event);
+};
 
 const RETENTION_DAYS = 180;
 const USAGE_CHECKPOINT_RETENTION_DAYS = 1;
@@ -55,7 +72,7 @@ const reconcileLateUsage = async (usageEvents: UsageEvent[]) => {
 
 async function insertTrackedEvent(event: AnalyticsEventEnvelope, checkpointId: string): Promise<{ inserted: number }> {
   const config = clickHouseKeys();
-  if (relationalWritesEnabled(config.ANALYTICS_MODE)) {
+  if (relationalWritesEnabled(config.ANALYTICS_MODE) && event.actorType !== 'bot') {
     const payload = event.payload;
     const type =
       payload.name === 'page_view'
@@ -96,7 +113,7 @@ async function insertTrackedEvent(event: AnalyticsEventEnvelope, checkpointId: s
       });
     }
     const analyticsWrite = await runWithTenantAnalyticsWriteFence(event.tenantId, event.projectId, usageEvents.length > 0 ? checkpointId : null, () =>
-      insertAnalyticsEvents([event]),
+      batchAnalyticsEvent(event),
     );
     if (!analyticsWrite.accepted) return { inserted: 0 };
     if (usageEvents.length > 0) await insertUsageBatch(checkpointId);
@@ -138,7 +155,7 @@ const dispatchPendingUsage = async () => {
       await createJob(
         QueueNames.ANALYTICS,
         { name: 'ingest-usage', data: { kind: 'ingest-usage', checkpointId: checkpoint.id } },
-        { jobId: checkpoint.id, attempts: 8, backoff: { type: 'exponential', delay: 1000 }, removeOnComplete: 10_000 },
+        { ...analyticsEventJobOptions, jobId: checkpoint.id },
       );
     } else if ((await existing.getState()) === 'failed') {
       await existing.retry();
@@ -158,12 +175,36 @@ async function pruneOldEvents(): Promise<{ pruned: number }> {
     relationalWritesEnabled(mode) ? prisma.analyticsEvent.deleteMany({ where: { createdAt: { lt: cutoff } } }) : Promise.resolve({ count: 0 }),
     prisma.usageIngestCheckpoint.deleteMany({ where: { writtenAt: { not: null, lt: checkpointCutoff } } }),
   ]);
+  if (clickHouseWritesEnabled(mode)) {
+    for (const project of await listActiveAnalyticsProjects()) {
+      await refreshProjectInsightsRollups(project.tenantId, project.projectId, undefined, {
+        writeFence: (write) => runWithTenantAnalyticsWriteFence(project.tenantId, project.projectId, null, write),
+      });
+    }
+  }
   log.info({ pruned: events.count, checkpointReceiptsPruned: checkpoints.count, cutoff, checkpointCutoff }, 'analytics rollup complete');
   return { pruned: events.count };
 }
 
+let failedReplayOffset = 0;
+const replayFailedAnalytics = async () => {
+  if ((await clickHouseHealth()).status !== 'ok') return;
+  const queue = getQueue(QueueNames.ANALYTICS);
+  const failed = await queue.getJobs(['failed'], failedReplayOffset, failedReplayOffset + 99);
+  let replayed = 0;
+  for (const job of failed) {
+    if (job.name !== 'track-event' && job.name !== 'ingest-usage') continue;
+    await job.retry();
+    replayed += 1;
+  }
+  // Unrelated failed housekeeping jobs cannot starve tracking receipts.
+  failedReplayOffset = failed.length === 100 ? failedReplayOffset + failed.length - replayed : 0;
+  if (replayed) log.info({ replayed }, 'failed analytics jobs replayed with original event ids');
+};
+
 async function reconcilePendingUsage(): Promise<{ reconciled: number }> {
   if (!clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) return { reconciled: 0 };
+  await replayFailedAnalytics();
   const dispatched = await dispatchPendingUsage();
   const periods = await listPendingUsagePeriods();
   for (const period of periods) {
@@ -217,7 +258,7 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
 
 /** ANALYTICS queue processor: high-volume event inserts (off the API hot path)
  *  plus the daily retention prune. */
-export async function handleAnalyticsJobs(
+async function processAnalyticsJob(
   job: Job<AnalyticsJobData, unknown, AnalyticsJobName>,
 ): Promise<{ inserted: number } | { pruned: number } | { reconciled: number }> {
   if (job.name === 'ai-chat-events' || job.name === 'ai-conversation-turn' || job.name === 'ai-conversation-feedback')
@@ -241,4 +282,28 @@ export async function handleAnalyticsJobs(
   }
   if (job.name === 'reconcile-usage') return reconcilePendingUsage();
   return pruneOldEvents();
+}
+
+/** Also protects jobs enqueued by older API/worker nodes with the old two-minute
+ * retry budget. Move storage failures to delayed while the lock is held; they
+ * never reach a count-limited failed-job eviction policy during an outage. */
+export async function handleAnalyticsJobs(job: Job<AnalyticsJobData, unknown, AnalyticsJobName>) {
+  try {
+    return await processAnalyticsJob(job);
+  } catch (error) {
+    if ((job.name === 'track-event' || job.name === 'ingest-usage') && job.token) {
+      await job.moveToDelayed(Date.now() + 30_000, job.token);
+      log.warn(
+        {
+          jobId: job.id,
+          error: redactAnalyticsDiagnostics(error),
+          retryMs: 30_000,
+          queueAgeMs: Number.isFinite(job.timestamp) ? Math.max(0, Date.now() - job.timestamp) : null,
+        },
+        'analytics job retained for storage recovery',
+      );
+      throw new DelayedError();
+    }
+    throw error;
+  }
 }

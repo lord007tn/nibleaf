@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
@@ -38,6 +39,22 @@ function MembersPage() {
   const invite = useInviteMember();
   const remove = useRemoveMember();
   const updateRole = useUpdateMemberRole();
+  const confirm = useConfirm();
+  // Removing someone is not undoable here, so ask first (same copy as site settings → Members).
+  const removeMember = async (member: { id: string; user: { name: string | null; email: string } }) => {
+    const name = member.user.name || member.user.email;
+    const ok = await confirm({
+      title: t('members.remove'),
+      description: t('settings.members.removeConfirm', { name }),
+      confirmLabel: t('members.remove'),
+      destructive: true,
+    });
+    if (!ok) return;
+    remove.mutate(member.id, {
+      onSuccess: () => toast.success(t('members.toast.removed')),
+      onError: () => toast.error(t('settings.members.toast.removeError')),
+    });
+  };
   // No `owner` option: invitations and role changes can never grant ownership.
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
   const roleOptions = [
@@ -185,7 +202,8 @@ function MembersPage() {
                         variant="ghost"
                         aria-label={t('members.remove')}
                         title={t('members.remove')}
-                        onClick={() => remove.mutate(member.id, { onSuccess: () => toast.success(t('members.toast.removed')) })}
+                        disabled={remove.isPending}
+                        onClick={() => void removeMember(member)}
                       >
                         <Trash2 className="size-4" />
                       </Button>

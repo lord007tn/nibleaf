@@ -14,18 +14,29 @@ const mocks = vi.hoisted(() => ({
   checkpointFindUnique: vi.fn(),
   checkpointFindMany: vi.fn(),
   createJob: vi.fn(),
+  queueGetJobs: vi.fn(),
+  listActiveAnalyticsProjects: vi.fn(),
   getJob: vi.fn(),
   markUsageStorageQueued: vi.fn(),
   markAnalyticsStoragePending: vi.fn(),
   runWithTenantAnalyticsWriteFence: vi.fn(),
 }));
 
-vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, getJob: mocks.getJob, QueueNames: { ANALYTICS: 'analytics' } }));
+vi.mock('@nibleaf/bullmq', () => ({
+  createJob: mocks.createJob,
+  getQueue: () => ({ getJobs: mocks.queueGetJobs }),
+  getJob: mocks.getJob,
+  QueueNames: { ANALYTICS: 'analytics' },
+}));
 vi.mock('@nibleaf/clickhouse', () => ({
   keys: () => ({ ANALYTICS_MODE: 'clickhouse', ANALYTICS_HASH_SALT: 'salt' }),
   clickHouseWritesEnabled: () => true,
+  clickHouseHealth: async () => ({ status: 'ok' }),
   relationalWritesEnabled: () => false,
   insertAnalyticsEvents: mocks.insertAnalyticsEvents,
+  listActiveAnalyticsProjects: mocks.listActiveAnalyticsProjects,
+  refreshProjectInsightsRollups: vi.fn(),
+  redactAnalyticsDiagnostics: () => 'storage unavailable',
   insertUsageEvents: mocks.insertUsageEvents,
   listPendingUsagePeriods: mocks.listPendingUsagePeriods,
   reconcileUsageHourly: mocks.reconcileUsageHourly,
@@ -70,6 +81,8 @@ describe('durable usage ingestion and reconciliation worker path', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.insertAnalyticsEvents.mockResolvedValue(undefined);
+    mocks.queueGetJobs.mockResolvedValue([]);
+    mocks.listActiveAnalyticsProjects.mockResolvedValue([]);
     mocks.insertUsageEvents.mockResolvedValue(undefined);
     mocks.markUsageStoragePending.mockResolvedValue(undefined);
     mocks.markUsageStorageDrained.mockResolvedValue(undefined);
@@ -144,7 +157,7 @@ describe('durable usage ingestion and reconciliation worker path', () => {
     expect(mocks.createJob).toHaveBeenCalledWith(
       'analytics',
       { name: 'ingest-usage', data: { kind: 'ingest-usage', checkpointId: 'usage-job-a' } },
-      expect.objectContaining({ jobId: 'usage-job-a', attempts: 8 }),
+      expect.objectContaining({ jobId: 'usage-job-a', attempts: 2880, removeOnFail: false }),
     );
     expect(mocks.markUsageStorageQueued).toHaveBeenCalledWith('usage-job-a', 'org-a');
   });
@@ -154,4 +167,33 @@ describe('durable usage ingestion and reconciliation worker path', () => {
     expect(mocks.analyticsDeleteMany).not.toHaveBeenCalled();
     expect(mocks.checkpointDeleteMany).toHaveBeenCalledWith({ where: { writtenAt: { not: null, lt: expect.any(Date) } } });
   });
+});
+
+it('retains old short-budget tracking jobs in delayed state on storage failure', async () => {
+  mocks.usageEventsFromAnalytics.mockReturnValue([]);
+  mocks.markAnalyticsStoragePending.mockResolvedValue({ accepted: true });
+  mocks.runWithTenantAnalyticsWriteFence.mockImplementation(async (_t: string, _p: string, _c: string | null, action: () => Promise<unknown>) => ({
+    accepted: true,
+    value: await action(),
+  }));
+  mocks.insertAnalyticsEvents.mockRejectedValueOnce(new Error('storage down'));
+  const moveToDelayed = vi.fn(async () => undefined);
+  await expect(
+    handleAnalyticsJobs({ name: 'track-event', data: { kind: 'track-event', envelope }, id: 'old-job', token: 'owned-lock', moveToDelayed } as never),
+  ).rejects.toThrow();
+  expect(moveToDelayed).toHaveBeenCalledWith(expect.any(Number), 'owned-lock');
+});
+
+it('replays failed tracking jobs without touching unrelated queue jobs', async () => {
+  const retry = vi.fn(async () => undefined);
+  const unrelated = vi.fn(async () => undefined);
+  mocks.queueGetJobs.mockResolvedValue([
+    { name: 'track-event', retry },
+    { name: 'rollup-analytics', retry: unrelated },
+  ]);
+  mocks.checkpointFindMany.mockResolvedValue([]);
+  mocks.listPendingUsagePeriods.mockResolvedValue([]);
+  await handleAnalyticsJobs({ name: 'reconcile-usage', data: {} } as never);
+  expect(retry).toHaveBeenCalledOnce();
+  expect(unrelated).not.toHaveBeenCalled();
 });

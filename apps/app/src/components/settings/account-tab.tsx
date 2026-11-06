@@ -8,8 +8,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
-import { authEmailErrorMessage } from '@/lib/auth-errors';
+import { DirtyStateReporter } from '@/components/project-settings/shared';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { required, email as validateEmail } from '@/lib/form';
 import { authClient, useSession } from '@/services/auth-client';
 import { GradientAvatar, SettingsSection } from './section';
@@ -27,6 +29,9 @@ function NameForm({ initialName }: { initialName: string }) {
           toast.error(res.error.message ?? t('settings.account.name.error'));
           return;
         }
+        const currentName = form.state.values.name;
+        form.reset({ name: value.name.trim() });
+        if (currentName !== value.name) form.setFieldValue('name', currentName);
         toast.success(t('settings.account.profileUpdated'));
       } catch (err) {
         toast.error(err instanceof Error ? err.message : t('settings.account.name.error'));
@@ -41,17 +46,25 @@ function NameForm({ initialName }: { initialName: string }) {
         form.handleSubmit();
       }}
     >
+      <form.Subscribe selector={(state) => !state.isDefaultValue}>{(dirty) => <DirtyStateReporter dirty={dirty} />}</form.Subscribe>
       <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.account.name.label'), t)(value) }}>
         {(field) => (
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="acct-name">{t('settings.account.name.label')}</Label>
-            <Input id="acct-name" onBlur={field.handleBlur} onChange={(e) => field.handleChange(e.target.value)} value={field.state.value} />
-            <FieldError errors={field.state.meta.errors} />
+            <Input
+              id="acct-name"
+              aria-invalid={field.state.meta.errors.length > 0}
+              aria-describedby={field.state.meta.errors.length ? 'acct-name-error' : undefined}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+              value={field.state.value}
+            />
+            <FieldError id="acct-name-error" errors={field.state.meta.errors} />
           </div>
         )}
       </form.Field>
       <div className="mt-4 flex justify-end">
-        <form.Subscribe selector={(state) => [state.isSubmitting, state.isDirty] as const}>
+        <form.Subscribe selector={(state) => [state.isSubmitting, !state.isDefaultValue] as const}>
           {([isSubmitting, isDirty]) => (
             <Button disabled={isSubmitting || !isDirty} type="submit">
               {isSubmitting ? t('common.saving') : t('common.save')}
@@ -85,7 +98,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (res.error) {
-          toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError')));
+          toast.error(emailChangeError(res.error, t, t('settings.account.email.sendError')));
           return;
         }
         toast.success(t('settings.account.email.currentVerificationSent'));
@@ -102,7 +115,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
     try {
       const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
       if (res.error) {
-        toast.error(authEmailErrorMessage(res.error, t('settings.account.email.sendError'), t('settings.account.email.verifyError')));
+        toast.error(emailChangeError(res.error, t, t('settings.account.email.verifyError')));
         return;
       }
       toast.success(t('settings.account.email.verificationSent', { email: newEmail }));
@@ -124,6 +137,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         return;
       }
       toast.success(t('settings.account.email.changed'));
+      flushSync(reset);
       window.location.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('settings.account.email.verifyError'));
@@ -134,6 +148,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
 
   return (
     <div className="flex flex-col gap-1.5">
+      <editForm.Subscribe selector={(state) => !state.isDefaultValue}>
+        {(dirty) => <DirtyStateReporter dirty={stage !== 'idle' && (dirty || Boolean(newEmail) || Boolean(otp))} />}
+      </editForm.Subscribe>
       <Label htmlFor="acct-email">{t('settings.account.email.label')}</Label>
 
       {stage === 'idle' ? (
@@ -170,13 +187,15 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
                   autoFocus
                   dir="ltr"
                   id="acct-email"
+                  aria-invalid={field.state.meta.errors.length > 0}
+                  aria-describedby={field.state.meta.errors.length ? 'acct-email-error' : undefined}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                   placeholder={t('settings.account.email.placeholder')}
                   type="email"
                   value={field.state.value}
                 />
-                <FieldError errors={field.state.meta.errors} />
+                <FieldError id="acct-email-error" errors={field.state.meta.errors} />
               </div>
             )}
           </editForm.Field>
@@ -330,4 +349,10 @@ export function AccountTab() {
       </div>
     </SettingsSection>
   );
+}
+
+/** Email-change failures: an undeliverable address gets the delivery message;
+ *  everything else goes through the shared plain-language auth policy. */
+function emailChangeError(error: Parameters<typeof friendlyAuthError>[0], t: ReturnType<typeof useT>, fallback: string): string {
+  return error?.code === 'AUTH_EMAIL_UNAVAILABLE' ? t('settings.account.email.sendError') : friendlyAuthError(error, t, fallback);
 }

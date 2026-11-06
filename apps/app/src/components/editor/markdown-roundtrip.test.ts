@@ -12,7 +12,7 @@
 import { Editor } from '@tiptap/core';
 import TextAlign from '@tiptap/extension-text-align';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
+import { blockDirection, buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
 
@@ -162,5 +162,45 @@ describe('text alignment (why the align buttons were removed)', () => {
     } finally {
       aligned.destroy();
     }
+  });
+});
+
+describe('mixed language blocks', () => {
+  it('inherits page direction for empty blocks, neutral commands and numbers', () => {
+    expect(blockDirection('', 'rtl')).toBe('rtl');
+    expect(blockDirection('/', 'rtl')).toBe('rtl');
+    expect(blockDirection('1. ', 'rtl')).toBe('rtl');
+    expect(blockDirection('', 'ltr')).toBe('ltr');
+  });
+  it('assigns RTL to list containers and empty paragraphs', () => {
+    const rtl = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions({ dir: 'rtl' }) });
+    try {
+      rtl.commands.setContent('<ol><li><p>مرحبا</p></li></ol><p></p>');
+      expect(rtl.view.dom.querySelector('ol')?.getAttribute('dir')).toBe('rtl');
+      expect(rtl.view.dom.lastElementChild?.getAttribute('dir')).toBe('rtl');
+    } finally {
+      rtl.destroy();
+    }
+  });
+  it('uses the first letter for mixed content', () => {
+    expect(blockDirection('مرحبا hello', 'ltr')).toBe('rtl');
+    expect(blockDirection('Hello مرحبا', 'rtl')).toBe('ltr');
+  });
+  it('exits an empty final callout paragraph on Enter', () => {
+    editor.commands.setContent({
+      type: 'doc',
+      content: [
+        {
+          type: 'callout',
+          attrs: { variant: 'note' },
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] }, { type: 'paragraph' }],
+        },
+      ],
+    });
+    editor.commands.setTextSelection(11);
+    const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+    editor.view.dom.dispatchEvent(event);
+    expect(editor.state.doc.lastChild?.type.name).toBe('paragraph');
+    expect(editor.state.doc.firstChild?.textContent).toBe('Keep me');
   });
 });

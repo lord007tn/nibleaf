@@ -3,7 +3,19 @@ import { api } from '@/services/api';
 
 export type SiteAnalyticsConsent = 'denied' | 'granted' | 'not_required' | 'unknown';
 export type PublicAnalyticsPayload =
-  | { name: 'page_view' | 'page_engaged'; path: string; language?: string; referrer?: string; engagementMs?: number; scrollDepth?: number }
+  | {
+      name: 'page_view' | 'page_engaged';
+      path: string;
+      language?: string;
+      referrer?: string;
+      engagementMs?: number;
+      scrollDepth?: number;
+      utmSource?: string;
+      utmMedium?: string;
+      utmCampaign?: string;
+      utmContent?: string;
+      utmTerm?: string;
+    }
   | {
       name: 'navigation_clicked' | 'cta_clicked' | 'outbound_link_clicked';
       path?: string;
@@ -12,7 +24,8 @@ export type PublicAnalyticsPayload =
       language?: string;
     }
   | { name: 'code_copied'; path?: string; placement?: string; language?: string }
-  | { name: 'search_result_clicked'; path?: string; resultId?: string; resultPosition?: number; language?: string }
+  | { name: 'web_vitals'; path?: string; language?: string; lcpMs?: number; inpMs?: number; clsMilli?: number; fcpMs?: number; ttfbMs?: number }
+  | { name: 'search_result_clicked'; searchId?: string; path?: string; resultId?: string; resultPosition?: number; language?: string }
   | { name: 'feedback_submitted'; path?: string; feedback: 'helpful' | 'not_helpful'; target: 'page' };
 
 interface SiteAnalyticsEvent {
@@ -26,7 +39,7 @@ interface SiteAnalyticsEvent {
 export const useCreateSiteAnalyticsEvent = (projectId: string) =>
   useMutation({
     mutationFn: async (event: SiteAnalyticsEvent) => {
-      const response = await api.public.sites[':id'].events.$post({ param: { id: projectId }, json: event });
+      const response = await api.public.sites[':id'].events.$post({ param: { id: projectId }, json: event }, { init: { keepalive: true } });
       if (!response.ok) {
         throw new Error('Could not record the analytics event.');
       }

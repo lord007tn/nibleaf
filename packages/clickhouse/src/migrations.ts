@@ -1,5 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client';
 import { aiConversationMigrations } from './ai-conversations';
+import { keys } from './keys';
+import { ANALYTICS_PROJECT_TABLES, insightsRollups } from './tables';
 
 export interface ClickHouseMigration {
   version: number;
@@ -324,12 +326,155 @@ export const migrations: ClickHouseMigration[] = [
       TTL period_end + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
     ],
   },
+  {
+    version: 2_026_110_601,
+    name: 'reader_actor_search_and_web_vitals',
+    statements: [
+      `ALTER TABLE analytics_events
+        ADD COLUMN IF NOT EXISTS actor_type LowCardinality(String) DEFAULT if(device = 'bot', 'bot', 'human'),
+        ADD COLUMN IF NOT EXISTS bot_name LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bot_operator LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS bot_category LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS verification LowCardinality(String) DEFAULT 'claimed',
+        ADD COLUMN IF NOT EXISTS channel LowCardinality(String) DEFAULT 'direct',
+        ADD COLUMN IF NOT EXISTS ai_source LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS search_id String DEFAULT '',
+        ADD COLUMN IF NOT EXISTS lcp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS inp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS cls_milli Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS fcp_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS ttfb_ms Nullable(UInt32),
+        ADD COLUMN IF NOT EXISTS crawled_resource LowCardinality(String) DEFAULT '',
+        ADD COLUMN IF NOT EXISTS status_code UInt16 DEFAULT 0`,
+    ],
+  },
+  {
+    version: 2_026_110_602,
+    name: 'deduplicated_insights_snapshots',
+    statements: insightsRollups.map(
+      (table) => `CREATE TABLE IF NOT EXISTS ${table.name} (
+      tenant_id LowCardinality(String), project_id String, ${table.columns}
+    ) ENGINE = MergeTree
+      PARTITION BY toYYYYMM(${table.time})
+      ORDER BY (tenant_id, project_id, ${table.dimensions})
+      TTL ${table.time} + toIntervalDay({rollup_retention_days:UInt16}) DELETE`,
+    ),
+  },
+  {
+    version: 2_026_110_603,
+    name: 'crawler_response_content_type',
+    statements: ["ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS content_type LowCardinality(String) DEFAULT ''"],
+  },
+  {
+    version: 2_026_110_604,
+    name: 'human_only_legacy_projections',
+    statements: [
+      'DROP VIEW IF EXISTS analytics_daily_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_daily_mv TO analytics_daily AS
+      SELECT
+        toDate(occurred_at) AS day,
+        tenant_id,
+        project_id,
+        event_name,
+        path,
+        language,
+        device,
+        referrer_domain,
+        uniqCombined64State(event_id) AS event_ids,
+        uniqCombined64State(session_hash) AS sessions
+      FROM analytics_events WHERE actor_type = 'human'
+      GROUP BY day, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
+      'DROP VIEW IF EXISTS analytics_search_daily_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_search_daily_mv TO analytics_search_daily AS
+      SELECT
+        toDate(occurred_at) AS day,
+        tenant_id,
+        project_id,
+        event_id,
+        received_at,
+        event_name,
+        provider,
+        model,
+        cache_status,
+        no_answer_reason,
+        latency_ms,
+        latency_known,
+        result_count,
+        prompt_tokens,
+        completion_tokens,
+        cost_micros,
+        prompt_tokens_known,
+        completion_tokens_known,
+        cost_micros_known
+      FROM analytics_events
+      WHERE actor_type = 'human' AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')
+      `,
+      'DROP VIEW IF EXISTS analytics_hourly_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_hourly_mv TO analytics_hourly AS
+      SELECT
+        toStartOfHour(occurred_at) AS hour,
+        tenant_id,
+        project_id,
+        event_name,
+        path,
+        language,
+        device,
+        referrer_domain,
+        uniqCombined64State(event_id) AS event_ids,
+        uniqCombined64State(session_hash) AS sessions
+      FROM analytics_events WHERE actor_type = 'human'
+      GROUP BY hour, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
+      'DROP VIEW IF EXISTS analytics_search_hourly_mv',
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_search_hourly_mv TO analytics_search_hourly AS
+      SELECT
+        toStartOfHour(occurred_at) AS hour,
+        tenant_id,
+        project_id,
+        event_id,
+        received_at,
+        event_name,
+        provider,
+        model,
+        cache_status,
+        no_answer_reason,
+        latency_ms,
+        latency_known,
+        result_count,
+        prompt_tokens,
+        completion_tokens,
+        cost_micros,
+        prompt_tokens_known,
+        completion_tokens_known,
+        cost_micros_known
+      FROM analytics_events
+      WHERE actor_type = 'human' AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
+    ],
+  },
+  {
+    version: 2_026_110_605,
+    name: 'project_human_activity_watermark',
+    statements: [
+      `CREATE TABLE IF NOT EXISTS analytics_project_activity (
+        tenant_id LowCardinality(String), project_id String, last_human_event_at DateTime64(3, 'UTC')
+      ) ENGINE = ReplacingMergeTree(last_human_event_at) ORDER BY (tenant_id, project_id)`,
+      `CREATE MATERIALIZED VIEW IF NOT EXISTS analytics_project_activity_mv TO analytics_project_activity AS
+        SELECT tenant_id, project_id, max(received_at) AS last_human_event_at FROM analytics_events
+        WHERE actor_type = 'human' AND (tenant_id, project_id) NOT IN
+          (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
+        GROUP BY tenant_id, project_id`,
+      `INSERT INTO analytics_project_activity SELECT tenant_id, project_id, max(received_at)
+        FROM analytics_events FINAL WHERE actor_type = 'human' AND (tenant_id, project_id) NOT IN
+          (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
+        GROUP BY tenant_id, project_id`,
+    ],
+  },
 ];
 
 export interface MigrationOptions {
   rawRetentionDays: number;
   rollupRetentionDays: number;
   sensitiveRetentionDays: number;
+  crawlerRetentionDays?: number;
 }
 
 export const runClickHouseMigrations = async (client: ClickHouseClient, options: MigrationOptions): Promise<number[]> => {
@@ -360,6 +505,32 @@ export const runClickHouseMigrations = async (client: ClickHouseClient, options:
       values: [{ version: migration.version, name: migration.name }],
     });
     completed.push(migration.version);
+  }
+  // Re-apply current retention even when no schema migration is pending. Do
+  // not materialize old parts here: that would turn a config edit into a costly
+  // synchronous rewrite. Background merges enforce the new policy.
+  const crawlerDays = options.crawlerRetentionDays ?? keys().CLICKHOUSE_CRAWLER_RETENTION_DAYS;
+  const periods = { raw: options.rawRetentionDays, rollup: options.rollupRetentionDays, sensitive: options.sensitiveRetentionDays };
+  for (const table of ANALYTICS_PROJECT_TABLES) {
+    if (!table.time || !table.retention) continue;
+    const days = periods[table.retention];
+    await client.command({
+      query: `ALTER TABLE ${table.name} MODIFY TTL ${table.time} + toIntervalDay(${table.name === 'analytics_events' ? "if(actor_type = 'bot', {crawler_days:UInt16}, {days:UInt16})" : '{days:UInt16}'}) DELETE`,
+      query_params: { days, crawler_days: crawlerDays },
+      clickhouse_settings: { materialize_ttl_after_modify: 0 },
+    });
+  }
+  for (const [table, column, days] of [
+    ['usage_events', 'occurred_at', options.rawRetentionDays],
+    ['usage_hourly', 'hour', options.rollupRetentionDays],
+    ['usage_reconciliation_state', 'period_end', options.rollupRetentionDays],
+    ['usage_reconciliation_coverage', 'period_end', options.rollupRetentionDays],
+  ] as const) {
+    await client.command({
+      query: `ALTER TABLE ${table} MODIFY TTL ${column} + toIntervalDay({days:UInt16}) DELETE`,
+      query_params: { days },
+      clickhouse_settings: { materialize_ttl_after_modify: 0 },
+    });
   }
   return completed;
 };

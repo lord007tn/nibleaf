@@ -85,8 +85,12 @@ function SitesPage() {
                   <NibleafMark className="size-7" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-semibold">{project.name}</span>
-                  <span className="block truncate font-mono text-muted-foreground text-xs">/{project.slug}</span>
+                  <span className="block truncate font-semibold">
+                    <bdi>{project.name}</bdi>
+                  </span>
+                  <span className="block truncate font-mono text-muted-foreground text-xs">
+                    <bdi dir="ltr">/{project.slug}</bdi>
+                  </span>
                 </span>
                 <ArrowUpRight className="size-4.5 text-muted-foreground transition group-hover:text-primary rtl:-scale-x-100" />
               </div>
