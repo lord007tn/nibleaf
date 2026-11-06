@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { ProjectConfig } from '@nibleaf/validators';
-import { act } from 'react';
+import { act, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -163,7 +163,10 @@ it('keeps the page view and engagement timer when equivalent shell config is ref
   now = 2300;
   await act(async () => roots[0]?.unmount());
   roots.splice(0);
-  expect(mocks.createEvent.mock.lastCall?.[0].payload).toMatchObject({ name: 'page_engaged', engagementMs: 2300 });
+  expect(mocks.createEvent.mock.calls.findLast(([event]) => event.payload.name === 'page_engaged')?.[0].payload).toMatchObject({
+    name: 'page_engaged',
+    engagementMs: 2300,
+  });
 });
 
 it('uses the latest consent config without restarting the page lifecycle', async () => {
@@ -179,4 +182,42 @@ it('uses the latest consent config without restarting the page lifecycle', async
   await act(async () => container.querySelector('button')?.click());
   expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe('denied');
   expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view')).toHaveLength(1);
+});
+
+it('records one page view when StrictMode replays the effect', async () => {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  roots.push(root);
+  await act(async () =>
+    root.render(
+      <StrictMode>
+        <SiteAnalyticsProvider projectId="docs" path="strict" language="en">
+          <ReaderContent />
+        </SiteAnalyticsProvider>
+      </StrictMode>,
+    ),
+  );
+  expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'page_view' && event.payload.path === 'strict')).toHaveLength(1);
+  // The replay keeps one vitals collector: leaving the page reports vitals once.
+  await act(async () => window.dispatchEvent(new Event('pagehide')));
+  expect(mocks.createEvent.mock.calls.filter(([event]) => event.payload.name === 'web_vitals' && event.payload.path === 'strict')).toHaveLength(1);
+});
+
+it.each([
+  [false, 'not_required'],
+  [true, 'denied'],
+] as const)('maps a disabled consent banner with consent required=%s to %s', async (cookieConsent, expected) => {
+  const banner = { enabled: false, placement: 'bottom-end', presentation: 'comfortable', buttonLayout: 'inline' } as const;
+  const container = await render({ analytics: { cookieConsent }, addons: { consentBanner: banner } });
+  await act(async () => container.querySelector('button')?.click());
+  expect(mocks.createEvent.mock.lastCall?.[0].consentState).toBe(expected);
+  expect(Boolean(mocks.createEvent.mock.lastCall?.[0].sessionId)).toBe(expected === 'not_required');
+});
+
+it.each(['declined', 'unset'])('does not create session identity while consent is %s', async (choice) => {
+  if (choice === 'declined') window.localStorage.setItem('nibleaf.analytics.consent.docs', choice);
+  await render({ analytics: { cookieConsent: true } });
+  expect(window.sessionStorage.getItem('nibleaf.sid')).toBeNull();
+  expect(mocks.createEvent.mock.calls[0]?.[0].sessionId).toBeUndefined();
 });

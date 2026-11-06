@@ -1,6 +1,7 @@
 import { queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
+import { syncPublishReceipt } from './deployment-cache';
 import { queryKeys } from './query-keys';
 import type { Branch, Deployment, Language, PageNode, Project } from './types';
 
@@ -63,6 +64,13 @@ export const deploymentsQueryOptions = (projectId: string | undefined) =>
   queryOptions({
     queryKey: queryKeys.deployments.all(projectId ?? ''),
     queryFn: projectId
-      ? async () => getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments')
+      ? async ({ client }) => {
+          const previous = client.getQueryData<Deployment[]>(queryKeys.deployments.all(projectId));
+          const next = await getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments');
+          // Every read (hook, loader prefetch, poll) notices a publish that just went
+          // live, so published-state UI never trusts the pre-publish answer.
+          syncPublishReceipt(client, projectId, previous, next);
+          return next;
+        }
       : skipToken,
   });

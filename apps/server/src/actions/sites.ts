@@ -1,4 +1,5 @@
-import type { PublicAnalyticsEvent } from '@nibleaf/clickhouse';
+import { randomUUID } from 'node:crypto';
+import type { AnalyticsPayload, ConsentState, PublicAnalyticsEvent } from '@nibleaf/clickhouse';
 import { prisma } from '@nibleaf/database';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
@@ -39,7 +40,7 @@ import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
 import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from '@/lib/search-configuration';
 import { matchedSearchSection, type SearchHitSection } from '@/lib/search-sections';
-import { trackProjectEvent } from './analytics';
+import { trackProjectEvent, trackProjectEvents } from './analytics';
 import { stableHash } from './importers/content';
 import { createNotificationsForOrgMembers } from './notifications';
 import { resolveViewerAccess, type ViewerAccess } from './reader-access';
@@ -556,7 +557,15 @@ type LocalizedSearchHit = SearchHit & { language: string; section?: SearchHitSec
 /** Full-text + fuzzy search over a published site; records a search analytics event.
  *  The reader UI searches every published language. An explicit `lang` remains
  *  supported for API clients that intentionally want a single-language scope. */
-export const searchSite = async (identifier: string, query: string, lang?: string, limit?: number, version?: string) => {
+export const searchSite = async (
+  identifier: string,
+  query: string,
+  lang?: string,
+  limit?: number,
+  version?: string,
+  analytics: { sessionId?: string; consentState?: ConsentState } = {},
+) => {
+  const searchId = randomUUID();
   const analyticsStartedAt = performance.now();
   const { snapshot, deploymentId, viewer } = await getPublished(identifier);
   const request = resolvePublishedSearchContext(snapshot, { language: lang, version, limit });
@@ -613,31 +622,35 @@ export const searchSite = async (identifier: string, query: string, lang?: strin
         ? 'shadow'
         : 'legacy';
   const analyticsLanguage = lang ? request.language : 'all';
-  // Only track queries of a meaningful length so the search-terms analytics
-  // aren't flooded with single-keystroke typeahead fragments (i, in, int…).
-  if (query.trim().length >= 3) {
-    const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
-    const base = { source: 'public_site' as const, consentState: 'unknown' as const };
-    void Promise.allSettled([
-      trackProjectEvent(snapshot.project.id, { name: 'search_query_submitted', query: query.trim(), language: analyticsLanguage }, base),
-      trackProjectEvent(
-        snapshot.project.id,
-        { name: 'search_results_returned', resultCount: hits.length, latencyMs, cacheStatus: 'unknown', language: analyticsLanguage },
-        base,
-      ),
-      ...(hits.length === 0
-        ? [
-            trackProjectEvent(
-              snapshot.project.id,
-              { name: 'search_zero_result', resultCount: 0, latencyMs, noAnswerReason: 'no_match', language: analyticsLanguage },
-              base,
-            ),
-          ]
-        : []),
-    ]);
-  }
+  const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
+  const payloads: AnalyticsPayload[] = [
+    { name: 'search_query_submitted', searchId, query: query.trim().slice(0, 200), language: analyticsLanguage },
+    { name: 'search_results_returned', searchId, resultCount: hits.length, latencyMs, cacheStatus: 'unknown', language: analyticsLanguage },
+    ...(hits.length === 0
+      ? [
+          {
+            name: 'search_zero_result' as const,
+            searchId,
+            resultCount: 0,
+            latencyMs,
+            noAnswerReason: 'no_match' as const,
+            language: analyticsLanguage,
+          },
+        ]
+      : []),
+  ];
+  // One project lookup for the whole request, outside the search response path.
+  // Settled-search SQL collapses typeahead rather than dropping short queries.
+  const headers = getContext<HonoEnv>().req.raw.headers;
+  void trackProjectEvents(snapshot.project.id, payloads, {
+    source: 'public_site',
+    consentState: analytics.consentState ?? 'unknown',
+    sessionId: analytics.sessionId,
+    userAgent: headers.get('user-agent') ?? undefined,
+  }).catch(() => undefined);
   return {
     hits,
+    searchId,
     runtime,
     capabilities: { answer: request.configuration.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId)) },
   };
@@ -781,6 +794,9 @@ export const recordSiteEvent = async (identifier: string, body: PublicAnalyticsE
   await trackProjectEvent(projectId, body.payload, {
     source: 'public_site',
     consentState: body.consentState,
+    occurredAt: body.occurredAt,
+    userAgent: headers.get('user-agent') ?? undefined,
+    siteHost: headers.get('origin') ?? undefined,
     eventId: body.eventId,
     sessionId: body.sessionId,
     country,
@@ -956,4 +972,16 @@ export const resolveDomainHost = async (host: string): Promise<string | null> =>
   }
   const project = await prisma.project.findFirst({ where: { slug }, select: { id: true }, orderBy: { createdAt: 'asc' } });
   return project?.id ?? null;
+};
+
+/** Used only by the authenticated internal collector / direct API observer.
+ * Project identity is resolved here, never trusted as tenant context. */
+export const recordCrawlerRequest = async (
+  identifier: string,
+  payload: AnalyticsPayload,
+  options: { userAgent: string; eventId: string; occurredAt: string },
+) => {
+  const projectId = await resolveProjectId(identifier);
+  if (await isProjectTakenDown(projectId)) return;
+  await trackProjectEvent(projectId, payload, { ...options, source: 'public_site', consentState: 'unknown', device: 'bot' });
 };

@@ -344,6 +344,7 @@ export default function SiteSearchDialog({
     if (analytics) {
       track({
         name: 'search_result_clicked',
+        searchId: analytics.hit.searchId,
         path: analytics.hit.path,
         resultId: analytics.hit.id,
         resultPosition: analytics.position,

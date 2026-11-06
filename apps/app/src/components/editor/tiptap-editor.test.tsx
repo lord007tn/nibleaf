@@ -106,7 +106,8 @@ describe('TiptapEditor', () => {
     expect(page?.querySelector('[aria-label="Document title"]')).not.toBeNull();
     expect(page?.contains(prose())).toBe(true);
     expect(prose()?.getAttribute('dir')).toBe('rtl');
-    expect(prose()?.querySelector('p')?.getAttribute('dir')).toBe('auto');
+    // The first English letter makes this mixed paragraph LTR inside the RTL page.
+    expect(prose()?.querySelector('p')?.getAttribute('dir')).toBe('ltr');
   });
 
   it('mounts with the given markdown', async () => {

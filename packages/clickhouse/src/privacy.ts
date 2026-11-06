@@ -1,5 +1,7 @@
 import type { ClickHouseClient } from '@clickhouse/client';
 import { getClickHouseClient } from './client';
+import { invalidateInsightsCache } from './insights/cache';
+import { ANALYTICS_PROJECT_TABLES } from './tables';
 
 export const deleteProjectAnalytics = async (
   tenantId: string,
@@ -12,38 +14,16 @@ export const deleteProjectAnalytics = async (
     format: 'JSONEachRow',
     values: [{ tenant_id: tenantId, project_id: projectId, deleted_at: new Date().toISOString(), reason: 'privacy_deletion' }],
   });
-  await Promise.all([
-    client.command({
-      query: 'ALTER TABLE analytics_events DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-    client.command({
-      query: 'ALTER TABLE analytics_sensitive_queries DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-    client.command({
-      query: 'ALTER TABLE analytics_daily DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-    client.command({
-      query: 'ALTER TABLE analytics_search_daily DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-    client.command({
-      query: 'ALTER TABLE analytics_hourly DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-    client.command({
-      query: 'ALTER TABLE analytics_search_hourly DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}',
-      query_params: params,
-      clickhouse_settings: { mutations_sync: '1' },
-    }),
-  ]);
+  invalidateInsightsCache(tenantId, projectId);
+  await Promise.all(
+    ANALYTICS_PROJECT_TABLES.filter((table) => !table.preserve).map((table) =>
+      client.command({
+        query: `ALTER TABLE ${table.name} DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}`,
+        query_params: params,
+        clickhouse_settings: { mutations_sync: '1' },
+      }),
+    ),
+  );
 };
 
 /** Rebuild one project's projections from deduplicated raw facts. Run while
@@ -55,53 +35,15 @@ export const rebuildProjectAnalyticsRollups = async (
   client: ClickHouseClient = getClickHouseClient('writer'),
 ): Promise<void> => {
   const queryParams = { tenant_id: tenantId, project_id: projectId };
-  for (const table of ['analytics_daily', 'analytics_search_daily', 'analytics_hourly', 'analytics_search_hourly']) {
+  for (const table of ANALYTICS_PROJECT_TABLES) {
+    if (!table.rebuild) continue;
     await client.command({
-      query: `ALTER TABLE ${table} DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}`,
+      query: `ALTER TABLE ${table.name} DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}`,
       query_params: queryParams,
       clickhouse_settings: { mutations_sync: '1' },
     });
+    await client.command({ query: `INSERT INTO ${table.name} ${table.rebuild}`, query_params: queryParams });
   }
-  await client.command({
-    query: `INSERT INTO analytics_daily
-      SELECT toDate(occurred_at) AS day, tenant_id, project_id, event_name, path, language, device, referrer_domain,
-        uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
-      FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
-        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
-      GROUP BY day, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
-    query_params: queryParams,
-  });
-  await client.command({
-    query: `INSERT INTO analytics_search_daily
-      SELECT toDate(occurred_at), tenant_id, project_id, event_id, received_at, event_name, provider, model, cache_status, no_answer_reason,
-        latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
-      FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
-        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
-        AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
-    query_params: queryParams,
-  });
-  await client.command({
-    query: `INSERT INTO analytics_hourly
-      SELECT toStartOfHour(occurred_at) AS hour, tenant_id, project_id, event_name, path, language, device, referrer_domain,
-        uniqCombined64State(event_id) AS event_ids, uniqCombined64State(session_hash) AS sessions
-      FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
-        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
-      GROUP BY hour, tenant_id, project_id, event_name, path, language, device, referrer_domain`,
-    query_params: queryParams,
-  });
-  await client.command({
-    query: `INSERT INTO analytics_search_hourly
-      SELECT toStartOfHour(occurred_at), tenant_id, project_id, event_id, received_at, event_name, provider, model, cache_status, no_answer_reason,
-        latency_ms, latency_known, result_count, prompt_tokens, completion_tokens, cost_micros, prompt_tokens_known, completion_tokens_known, cost_micros_known
-      FROM analytics_events FINAL
-      WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
-        AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)
-        AND (event_name LIKE 'search_%' OR event_name LIKE 'answer_%' OR event_name LIKE 'citation_%')`,
-    query_params: queryParams,
-  });
 };
 
 export interface ExportedAnalyticsEvent {
@@ -123,7 +65,14 @@ export interface ExportedAnalyticsEvent {
 }
 
 /** Content-free data-subject/project export. Raw search terms, query hashes,
- * session hashes, answer content, and credentials are intentionally excluded. */
+ * session hashes, answer content, and credentials are intentionally excluded.
+ * Derived snapshots in ANALYTICS_PROJECT_TABLES are explicitly excluded:
+ * analytics_project_activity (only a project freshness timestamp) is also excluded.
+ * The watermark has no TTL: the newest receipt must survive all fact retention.
+ * The export is an event audit, not a snapshot download. Performance samples,
+ * crawler attribution and derived aggregates are intentionally omitted. Sensitive queries and
+ * permanent deletion tombstones remain excluded to avoid exposing search text
+ * or stable visit hashes. No new table introduces separate subject data. */
 export const exportProjectAnalytics = async (
   tenantId: string,
   projectId: string,

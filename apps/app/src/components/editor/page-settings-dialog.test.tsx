@@ -6,7 +6,7 @@ import type { PageNode } from '@/hooks/api/types';
 import { PageSettingsDialog } from './page-settings-dialog';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
-vi.mock('@/hooks/api', () => ({ useUpdatePage: () => ({ isPending: false, mutate: vi.fn() }) }));
+vi.mock('@/hooks/api', () => ({ friendlyErrorMessage: () => 'error', useUpdatePage: () => ({ isPending: false, mutate: vi.fn() }) }));
 
 const page: PageNode = {
   id: 'page-a',

@@ -552,6 +552,14 @@ const uniqueVersionSlug = (name: string, fallback: string, used: Set<string>): s
   return candidate;
 };
 
+/** Published version slug for each branch id, exactly as publishing assigns them.
+ *  `branches` must be in publish order (default first, then oldest first) because
+ *  a clashing name keeps its slug for the earlier branch. */
+export const publishedVersionSlugs = (branches: readonly { id: string; name: string }[]): Map<string, string> => {
+  const used = new Set<string>();
+  return new Map(branches.map((branch) => [branch.id, uniqueVersionSlug(branch.name, branch.id, used)]));
+};
+
 type LanguageRow = {
   code: string;
   label: string;
@@ -612,11 +620,11 @@ export const buildSnapshot = (project: ProjectRow, pages: PageRow[], generatedAt
   if (branchRows.length === 0) {
     throw new Error(`Project ${project.id} must have a branch before publishing.`);
   }
-  const usedVersionSlugs = new Set<string>();
+  const versionSlugs = publishedVersionSlugs(branchRows);
   const versions: SnapshotVersion[] = branchRows.map((branch) => ({
     id: branch.id,
     name: branch.name,
-    slug: uniqueVersionSlug(branch.name, branch.id, usedVersionSlugs),
+    slug: versionSlugs.get(branch.id) ?? branch.id,
     isDefault: branch.isDefault,
   }));
   if (versions.filter((version) => version.isDefault).length !== 1) {

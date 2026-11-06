@@ -29,7 +29,7 @@ vi.mock('@/lib/ai-search/runtime', () => ({
   runPublishedSearch: mocks.runPublishedSearch,
 }));
 vi.mock('@/lib/search-cache', () => ({ getCachedIndex: mocks.getCachedIndex }));
-vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn() }));
+vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: vi.fn(async () => undefined) }));
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 

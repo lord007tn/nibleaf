@@ -39,6 +39,7 @@ const LOCALE_ITEMS = INTERFACE_LOCALES.map((option) => ({ value: option.code, la
 function ThemeCard({ option, label, selected, onSelect }: { option: ThemeOption; label: string; selected: boolean; onSelect: () => void }) {
   return (
     <button
+      aria-pressed={selected}
       className={cn(
         'rounded-xl border p-3 text-start transition-colors',
         selected ? 'border-primary ring-1 ring-primary' : 'border-border hover:bg-muted/40',

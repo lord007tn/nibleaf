@@ -7,17 +7,20 @@
   "exports": {
     ".": "./src/index.ts",
     "./keys": "./src/keys.ts",
-    "./testing": "./src/testing.ts"
+    "./testing": "./src/testing.ts",
+    "./classifiers": "./src/classifiers.ts"
   },
   "scripts": {
     "benchmark": "tsx ./scripts/benchmark.ts",
     "build": "tsdown",
     "migrate": "tsx ./scripts/migrate.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:demo": "tsx ./scripts/seed-demo.ts"
   },
   "dependencies": {
     "@clickhouse/client": "1.24.1",
+    "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/usage": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",

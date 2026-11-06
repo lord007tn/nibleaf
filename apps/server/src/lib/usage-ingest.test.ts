@@ -2,13 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createJob: vi.fn(),
+  queueGetJobCounts: vi.fn(),
   markUsageStoragePending: vi.fn(),
   markUsageStorageQueued: vi.fn(),
   markAnalyticsStoragePending: vi.fn(),
   usageEventsFromAnalytics: vi.fn(),
 }));
 
-vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.createJob, QueueNames: { ANALYTICS: 'analytics' } }));
+vi.mock('@nibleaf/bullmq', () => ({
+  createJob: mocks.createJob,
+  getQueue: () => ({ getJobCounts: mocks.queueGetJobCounts }),
+  QueueNames: { ANALYTICS: 'analytics' },
+}));
 vi.mock('@nibleaf/clickhouse', () => ({
   keys: () => ({ ANALYTICS_MODE: 'clickhouse' }),
   clickHouseWritesEnabled: () => true,
@@ -62,4 +67,23 @@ describe('server durable usage enqueue boundary', () => {
     expect(mocks.markUsageStorageQueued).toHaveBeenCalledTimes(2);
     expect(mocks.markUsageStorageQueued).toHaveBeenCalledAfter(mocks.createJob);
   });
+});
+
+it('sheds optional events by backlog tier without dropping page views or creating outbox markers', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+  mocks.queueGetJobCounts.mockResolvedValue({ wait: 50_000, active: 0, delayed: 0 });
+  mocks.usageEventsFromAnalytics.mockReturnValue([]);
+  mocks.createJob.mockResolvedValue({ id: 'job' });
+  mocks.markAnalyticsStoragePending.mockResolvedValue({ accepted: true });
+  const event = { eventId: 'event-load', tenantId: 'org-a', projectId: 'project-a', payload: { name: 'crawler_request' } };
+  mocks.createJob.mockClear();
+  mocks.markAnalyticsStoragePending.mockClear();
+  expect(await enqueueAnalyticsEvent(event as never)).toMatchObject({ shed: true });
+  expect(mocks.createJob).not.toHaveBeenCalled();
+  expect(mocks.markAnalyticsStoragePending).not.toHaveBeenCalled();
+  await enqueueAnalyticsEvent({ ...event, payload: { name: 'page_view' } } as never);
+  expect(mocks.createJob).toHaveBeenCalledOnce();
+  expect(mocks.createJob.mock.calls[0]?.[2]).toMatchObject({ attempts: 2880, removeOnFail: false });
+  vi.useRealTimers();
 });

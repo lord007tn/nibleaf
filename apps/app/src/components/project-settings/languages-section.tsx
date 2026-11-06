@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
 import { SectionHeader, sortLanguagesDefaultFirst } from './shared';
@@ -34,7 +35,8 @@ function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 
 export function LanguagesSection({ project }: { project: Project }) {
   const t = useT();
   const confirm = useConfirm();
-  const { data: languages } = useLanguages(project.id);
+  const query = useLanguages(project.id);
+  const { data: languages } = query;
   const update = useUpdateLanguage(project.id);
   const remove = useDeleteLanguage(project.id);
   const [addOpen, setAddOpen] = useState(false);
@@ -69,8 +71,12 @@ export function LanguagesSection({ project }: { project: Project }) {
     }
   };
 
+  if (query.isError && !languages) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+  if (!languages) return <p role="status">{t('common.loading')}</p>;
+
   return (
     <div>
+      {query.isError ? <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <SectionHeader description={t('settings.languages.description')} icon="◫" title={t('settings.languages')} />
 
       {rows.length > 0 ? (

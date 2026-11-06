@@ -96,3 +96,15 @@ alerts and upgrades.
 
 Complete [backup and restore](/self-hosting/backups-upgrades) before the first
 production content publish.
+
+
+## Analytics capacity and recovery
+
+Keep analytics health independent from core readiness. The bundled ClickHouse budget
+is a starting point for small hosts; measure disk headroom before enabling ingestion.
+Review [analytics operations](/self-hosting/clickhouse-analytics) and perform the
+[isolated analytics restore drill](/self-hosting/backups-upgrades) before upgrades.
+Non-Coolify inline Compose configs require Docker Compose 2.23.1 or newer.
+The Coolify file instead uses its documented bind-mount `content:` extension to
+create the ClickHouse XML file. Plain `docker compose config` rejects this
+Coolify-only extension; deploy that file through Coolify.

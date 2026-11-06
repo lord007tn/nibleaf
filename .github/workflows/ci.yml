@@ -136,6 +136,8 @@ jobs:
           CLICKHOUSE_WRITER_PASSWORD: nibleaf
           CLICKHOUSE_WRITER_USERNAME: nibleaf
           CLICKHOUSE_INTEGRATION: "1"
+          # The migration runner serializes workers and the CLI with a PostgreSQL advisory lock.
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
         run: |
           pnpm --filter @nibleaf/clickhouse migrate
           pnpm --filter @nibleaf/clickhouse test

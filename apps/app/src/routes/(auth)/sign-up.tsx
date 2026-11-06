@@ -12,7 +12,7 @@ import { GoogleIcon } from '@/components/icons/brand';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetPublicMeta } from '@/hooks/api/public';
 import { AuthLayout } from '@/layouts/auth';
-import { authEmailErrorMessage } from '@/lib/auth-errors';
+import { friendlyAuthError } from '@/lib/auth-errors';
 import { readPendingInvitation } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -39,6 +39,8 @@ function SignUpPage() {
   const [otp, setOtp] = useState('');
   const [codeSent, setCodeSent] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Buttons stay enabled; pressing one without the terms ticked says why instead.
+  const [termsError, setTermsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,13 +68,13 @@ function SignUpPage() {
     try {
       const result = await authClient.emailOtp.sendVerificationOtp({ email: normalizedEmail, type: 'sign-in' });
       if (result.error) {
-        setError(authEmailErrorMessage(result.error, t('auth.otp.sendError')));
+        setError(friendlyAuthError(result.error, t, t('auth.otp.sendError')));
         return;
       }
       setCodeSent(true);
       startCountdown();
     } catch {
-      setError(t('auth.otp.sendError'));
+      setError(t('auth.error.tryAgain'));
     } finally {
       setIsSubmitting(false);
     }
@@ -84,12 +86,12 @@ function SignUpPage() {
     try {
       const result = await authClient.signIn.emailOtp({ email: normalizedEmail, otp: otp.trim(), name: name.trim() });
       if (result.error) {
-        setError(result.error.message ?? t('auth.otp.invalid'));
+        setError(friendlyAuthError(result.error, t, t('auth.otp.invalid')));
         return;
       }
       await finishSignUp();
     } catch {
-      setError(t('auth.otp.invalid'));
+      setError(t('auth.error.tryAgain'));
     } finally {
       setIsSubmitting(false);
     }
@@ -100,15 +102,25 @@ function SignUpPage() {
     setIsGoogleSubmitting(true);
     const result = await signIn.social({ provider: 'google', callbackURL: afterAuthPath });
     if (result.error) {
-      setError(result.error.message ?? t('auth.signUp.error'));
+      setError(friendlyAuthError(result.error, t, t('auth.signUp.error')));
       setIsGoogleSubmitting(false);
     }
   };
 
+  const requireTerms = () => {
+    if (agreedToTerms) return true;
+    setTermsError(true);
+    document.getElementById('agree-terms')?.focus();
+    return false;
+  };
+
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (codeSent) await verifyCode();
-    else await requestCode();
+    if (codeSent) {
+      await verifyCode();
+    } else if (requireTerms()) {
+      await requestCode();
+    }
   };
 
   if (metaPending) {
@@ -147,12 +159,15 @@ function SignUpPage() {
 
   return (
     <AuthLayout subtitle={codeSent ? t('auth.otp.checkEmail', { email: normalizedEmail }) : t('auth.signUp.subtitle')}>
-      {!codeSent && googleEnabled ? (
+      {/* An invitation is tied to one address, so Google (which may pick another) is hidden. */}
+      {!codeSent && googleEnabled && !lockedEmail ? (
         <>
           <Button
             className="mb-4 w-full gap-2"
-            disabled={isGoogleSubmitting || lockedEmail || !agreedToTerms}
-            onClick={signUpWithGoogle}
+            disabled={isGoogleSubmitting}
+            onClick={() => {
+              if (requireTerms()) void signUpWithGoogle();
+            }}
             type="button"
             variant="outline"
           >
@@ -197,11 +212,15 @@ function SignUpPage() {
             </div>
             <label className="flex items-start gap-2.5 text-muted-foreground text-sm" htmlFor="agree-terms">
               <input
+                aria-describedby={termsError ? 'agree-terms-error' : undefined}
+                aria-invalid={termsError || undefined}
                 checked={agreedToTerms}
                 className="mt-0.5 size-4 shrink-0 accent-primary"
                 id="agree-terms"
-                onChange={(event) => setAgreedToTerms(event.target.checked)}
-                required
+                onChange={(event) => {
+                  setAgreedToTerms(event.target.checked);
+                  if (event.target.checked) setTermsError(false);
+                }}
                 type="checkbox"
               />
               <span>
@@ -216,6 +235,11 @@ function SignUpPage() {
                 {t('auth.legal.agreeSuffix')}
               </span>
             </label>
+            {termsError ? (
+              <p className="-mt-2 text-destructive text-sm" id="agree-terms-error" role="alert">
+                {t('auth.legal.agreeFirst')}
+              </p>
+            ) : null}
           </>
         ) : (
           <div className="flex flex-col items-center gap-2" dir="ltr">
@@ -250,11 +274,7 @@ function SignUpPage() {
             {error}
           </p>
         ) : null}
-        <Button
-          className="mt-1 w-full"
-          disabled={isSubmitting || (codeSent ? otp.length !== 6 : !agreedToTerms || !name.trim() || !normalizedEmail)}
-          type="submit"
-        >
+        <Button className="mt-1 w-full" disabled={isSubmitting || (codeSent && otp.length !== 6)} type="submit">
           {isSubmitting
             ? codeSent
               ? t('auth.otp.verifying')

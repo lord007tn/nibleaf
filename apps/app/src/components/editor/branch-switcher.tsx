@@ -19,11 +19,11 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
-import { Check, GitBranch, GitMerge, Plus } from 'lucide-react';
+import { Check, GitMerge, Layers, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Branch } from '@/hooks/api';
-import { useCreateBranch, useMergeBranch } from '@/hooks/api';
+import { friendlyErrorMessage, useCreateBranch, useMergeBranch } from '@/hooks/api';
 
 /** Docs version switcher for the editor. Internally versions are backed by the
  *  existing Branch model, but authors see v1/v2-style docs versions. */
@@ -33,16 +33,29 @@ export function BranchSwitcher({
   activeBranchId,
   onSwitch,
   beforeChange,
+  hideTrigger = false,
+  createOpen: controlledCreateOpen,
+  onCreateOpenChange,
 }: {
   projectId: string;
   branches: Branch[];
   activeBranchId: string | null;
   onSwitch: (id: string) => void;
   beforeChange?: () => Promise<void>;
+  /** Render only the "New version" dialog (e.g. while the site has a single version). */
+  hideTrigger?: boolean;
+  /** Control the "New version" dialog from outside (e.g. an overflow menu item). */
+  createOpen?: boolean;
+  onCreateOpenChange?: (open: boolean) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
-  const [createOpen, setCreateOpen] = useState(false);
+  const [uncontrolledCreateOpen, setUncontrolledCreateOpen] = useState(false);
+  const createOpen = controlledCreateOpen ?? uncontrolledCreateOpen;
+  const setCreateOpen = (open: boolean) => {
+    setUncontrolledCreateOpen(open);
+    onCreateOpenChange?.(open);
+  };
   const [name, setName] = useState('');
   const create = useCreateBranch(projectId);
   const merge = useMergeBranch(projectId);
@@ -75,7 +88,7 @@ export function BranchSwitcher({
           onSwitch(main.id);
         }
       },
-      onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.branch.mergeError')),
+      onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.branch.mergeError')),
     });
   };
 
@@ -99,46 +112,49 @@ export function BranchSwitcher({
           setName('');
           onSwitch(branch.id);
         },
-        onError: (e) => toast.error(e instanceof Error ? e.message : t('editor.branch.createError')),
+        onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.branch.createError')),
       },
     );
   };
 
+  const triggerLabel = t('editor.branch.trigger', { name: active?.name ?? 'main' });
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5">
-              <GitBranch className="size-3.5" />
-              <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]" dir="ltr">
-                {active?.name ?? 'main'}
-              </span>
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="start" className="w-56">
-          {branches.map((b) => (
-            <DropdownMenuItem key={b.id} onClick={() => onSwitch(b.id)}>
-              <GitBranch className="size-3.5 text-muted-foreground" />
-              <span className="flex-1 truncate" dir="ltr">
-                {b.name}
-              </span>
-              {b.isDefault ? <span className="text-[10px] text-muted-foreground">{t('editor.branch.default')}</span> : null}
-              {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
+      {hideTrigger ? null : (
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button size="sm" variant="outline" className="h-7 gap-1.5 px-2.5" aria-label={triggerLabel} title={triggerLabel}>
+                <Layers className="size-3.5" />
+                <span className="max-w-[54px] truncate font-medium text-[12.5px] sm:max-w-[140px]" dir="ltr">
+                  {active?.name ?? 'main'}
+                </span>
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="start" className="w-56">
+            {branches.map((b) => (
+              <DropdownMenuItem key={b.id} onClick={() => onSwitch(b.id)}>
+                <Layers className="size-3.5 text-muted-foreground" />
+                <span className="flex-1 truncate" dir="ltr">
+                  {b.name}
+                </span>
+                {b.isDefault ? <span className="text-[10px] text-muted-foreground">{t('editor.branch.default')}</span> : null}
+                {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            {active && !active.isDefault ? (
+              <DropdownMenuItem onClick={mergeActive}>
+                <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem onClick={() => setCreateOpen(true)}>
+              <Plus className="size-3.5" /> {t('editor.branch.new')}
             </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          {active && !active.isDefault ? (
-            <DropdownMenuItem onClick={mergeActive}>
-              <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-            <Plus className="size-3.5" /> {t('editor.branch.new')}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>

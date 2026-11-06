@@ -1,0 +1,57 @@
+---
+title: 'Understand your documentation analytics'
+description: 'Find popular pages, search gaps, reader feedback, AI visibility, and slow pages.'
+audience: 'documentation owners and self-hosted operators'
+content_type: 'how-to'
+last_reviewed: '2026-11-06'
+verified_against: 'packages/clickhouse/src/initialization.ts and analytics insights contract'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/analytics'
+---
+
+Open **Analytics** in your project. Choose a date range and time zone; enable
+comparison to see the equally long preceding period. Human metrics exclude
+classified bots. A visit is a session in one browser tab, not a unique person.
+Visit counts include only readers whose consent is `granted` or `not_required`.
+With `denied` or `unknown` consent, content-free page views and search counts
+still count, but session and anonymous identifiers are neither created nor
+accepted. Page-view totals can therefore include traffic absent from visit totals.
+
+| Section | What it answers |
+| --- | --- |
+| Overview | What are people reading, where do they arrive from, and what needs attention? |
+| Pages | Which articles attract visits, hold attention, or frequently end a visit? Open a page for paths before and after it. |
+| Search | What cannot readers find? Compare zero-result searches, result clicks and refinements. Typeahead keystrokes are collapsed into settled searches. |
+| Feedback | Which pages receive helpful or not-helpful votes? Low sample counts need care. |
+| AI visibility | Which crawlers fetch documentation, and which assistants send human visitors? |
+| Performance | Are real readers seeing slow or unstable pages? Headlines use the 75th percentile, not an average. |
+
+An exit is not automatically a failure: a reader may have found the answer.
+Engaged time and scroll depth describe observed browser activity, not comprehension.
+Performance samples depend on browser support; missing samples are unknown.
+
+## Read AI traffic correctly
+
+`ai_training` collects content for model training; `ai_search` indexes content for
+AI answers; `ai_assistant` fetches content live for a user request. `search_engine`
+is traditional search, while `seo`, `social`, `monitor` and `other` classify other
+bots. Crawler categories describe their claimed User-Agent; **claimed** does not
+mean verified identity. Requests are not proof of citations, rankings or training.
+Assistant referrals count people following links from assistants, separately
+from automated fetches. Markdown, llms.txt, sitemaps and pages are different
+resources a crawler may request. Requests served entirely by a CDN or edge cache
+never reach Nibleaf origin-side capture and are absent from these crawler counts.
+
+## Why search terms can be hidden
+
+Text is off by default. Only public sites with the project opt-in and eligible
+reader consent can retain redacted terms. A term needs at least **2 distinct
+visits** before its text appears; others remain in hidden-term totals. Private
+sites never show retained raw terms. Sensitive text expires sooner than most
+analytics, so counts can remain after text disappears.
+
+**Analytics unavailable** means metrics cannot currently be loaded; your docs
+site continues working. Missing values are unknown, not zero. A partial result
+has incomplete metrics. If analytics is not configured, ask your operator to
+check the [analytics mode](/self-hosting/clickhouse-analytics).

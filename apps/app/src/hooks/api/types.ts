@@ -83,6 +83,8 @@ type PageKind = 'PAGE' | 'GROUP';
 export interface PageNode {
   id: string;
   parentId: string | null;
+  /** The docs version (branch) the page belongs to; the API always returns it. */
+  branchId?: string;
   languageId: string;
   kind: PageKind;
   title: string;
@@ -373,6 +375,8 @@ export interface SiteSearchHit {
   /** The heading whose section matched the query, when the match is inside a
    * section rather than the page title. `id` is the heading's DOM anchor. */
   section?: { id: string; title: string };
+  /** The search that returned this hit, so a click is attributed to it in analytics. */
+  searchId?: string;
 }
 
 export interface SearchAnswer {

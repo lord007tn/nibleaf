@@ -7,12 +7,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   useProjects: vi.fn(),
+  usePages: vi.fn(),
+  params: {} as { projectId?: string },
   t: vi.fn((key: string) => key),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.t }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
-vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects }));
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => mocks.navigate,
+  useRouterState: ({ select }: { select: (state: { matches: Array<{ params: unknown }> }) => unknown }) =>
+    select({ matches: [{ params: {} }, { params: mocks.params }] }),
+}));
+vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects, usePages: mocks.usePages }));
+vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageDialog: () => null }));
 
 import { CommandPalette } from './command-palette';
 
@@ -32,6 +39,15 @@ beforeEach(() => {
   );
   Element.prototype.scrollIntoView = vi.fn();
   mocks.t.mockImplementation((key: string) => key);
+  mocks.params = {};
+  mocks.usePages.mockImplementation((projectId?: string) => ({
+    data: projectId
+      ? [
+          { id: 'page-1', kind: 'PAGE', title: 'Reset your password', slug: 'reset', updatedAt: '2026-11-01T00:00:00.000Z' },
+          { id: 'group-1', kind: 'GROUP', title: 'Account', slug: 'account', updatedAt: '2026-11-02T00:00:00.000Z' },
+        ]
+      : undefined,
+  }));
   mocks.useProjects.mockReturnValue({
     data: [
       { id: 'project-1', name: 'Nibleaf Docs' },
@@ -144,6 +160,10 @@ describe('CommandPalette', () => {
     await pressCtrlK();
     expect(onOpenChange).toHaveBeenCalledWith(true);
 
+    // The app mounts a single palette; drop the closed one before mounting an open one.
+    for (const root of roots.splice(0)) {
+      await act(async () => root.unmount());
+    }
     const closeHandler = await render(true);
     await pressCtrlK();
     expect(closeHandler).toHaveBeenCalledWith(false);
@@ -158,5 +178,59 @@ describe('CommandPalette', () => {
     });
 
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('lists the current site pages and opens the chosen one in the editor', async () => {
+    mocks.params = { projectId: 'project-1' };
+    const onOpenChange = await render(true);
+    expect(mocks.usePages).toHaveBeenCalledWith('project-1');
+    expect(itemLabels()).toContain('Reset your password');
+    expect(itemLabels()).not.toContain('Account');
+    const page = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) =>
+      node.textContent?.includes('Reset your password'),
+    );
+    await act(async () => page?.click());
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/app/projects/$projectId/editor',
+      params: { projectId: 'project-1' },
+      search: { page: 'page-1' },
+    });
+  });
+
+  it('finds a site setting such as the domain and deep-links to its section', async () => {
+    mocks.params = { projectId: 'project-1' };
+    await render(true);
+    await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'domain');
+    const domain = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) =>
+      node.textContent?.includes('settings.domain'),
+    );
+    expect(domain).toBeDefined();
+    await act(async () => domain?.click());
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: '/app/projects/$projectId/settings',
+      params: { projectId: 'project-1' },
+      search: { section: 'domain' },
+    });
+  });
+
+  it('offers common actions everywhere', async () => {
+    await render(true);
+    for (const key of ['dashboard.newProject', 'account.language', 'account.darkMode']) {
+      expect(itemLabels()).toContain(key);
+    }
+    // Outside a site there is no page list and no per-site invite shortcut.
+    expect(mocks.usePages).toHaveBeenCalledWith(undefined);
+    expect(itemLabels()).not.toContain('command.invite');
+  });
+
+  it('leaves Ctrl/⌘+K alone when a focused widget already handled it', async () => {
+    const onOpenChange = await render(false);
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true, cancelable: true });
+    event.preventDefault();
+    act(() => {
+      document.dispatchEvent(event);
+    });
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });
