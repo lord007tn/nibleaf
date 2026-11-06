@@ -2010,7 +2010,7 @@
   "email_brand_name": "نيبليف",
   "email_brand_footer": "أُرسلت هذه الرسالة الآلية من نيبليف. إذا لم تطلبها، يمكنك تجاهلها بأمان.",
   "email_brand_fallbacklink": "إذا لم يعمل الزر، انسخ هذا الرابط والصقه في المتصفح:",
-  "email_otp_signin_subject": "رمز نيبليف الخاص بك",
+  "email_otp_signin_subject": "رمز تسجيل الدخول إلى نيبليف",
   "email_otp_signin_preview": "استخدم هذا الرمز لمرة واحدة لتسجيل الدخول أو لإكمال إنشاء حسابك.",
   "email_otp_signin_message": "استخدم هذا الرمز لمرة واحدة لتسجيل الدخول أو لإكمال إنشاء حسابك.",
   "email_otp_changeemail_subject": "رمز نيبليف لتغيير بريدك الإلكتروني",
