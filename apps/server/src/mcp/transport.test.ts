@@ -26,7 +26,7 @@ vi.mock('./rate-limit', () => ({
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
 
 const principal = {
-  apiKey: { id: 'key-1', name: 'test', scopes: ['mcp:connect'] as const, expiresAt: new Date('2030-01-01T00:00:00.000Z') },
+  credential: { kind: 'api_key', id: 'key-1', name: 'test', scopes: ['mcp:connect'] as const, expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
   actor: null,
 };
@@ -110,7 +110,7 @@ describe('MCP HTTP transport boundary', () => {
   it('audits a write call that the key is not allowed to make, then answers it as an unknown tool', async () => {
     mocks.authenticate.mockResolvedValue({
       ...principal,
-      apiKey: { ...principal.apiKey, scopes: ['mcp:connect', 'pages:read'] },
+      credential: { ...principal.credential, scopes: ['mcp:connect', 'pages:read'] },
       actor: { userId: 'user-1', role: 'member' },
     });
     const headers = { host: 'api.nibleaf.test', authorization: `Bearer plm_live_${'a'.repeat(32)}` };

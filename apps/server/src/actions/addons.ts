@@ -49,7 +49,8 @@ const authorizeProjectAddons = async (ctx: Context<HonoEnv>, projectId: string, 
       select: { id: true, organizationId: true },
     });
     if (!project) throw notFound('project', { id: projectId });
-    return { organizationId: project.organizationId, actorUserId: null, actorApiKeyId: apiKey.id };
+    // An MCP OAuth connection is not an API key: never record its grant id as one.
+    return { organizationId: project.organizationId, actorUserId: null, actorApiKeyId: apiKey.kind === 'oauth' ? null : apiKey.id };
   }
 
   const user = ctx.get('user');

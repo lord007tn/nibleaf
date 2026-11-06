@@ -3,6 +3,7 @@ import { createLogger } from '@nibleaf/logger';
 import type { Context } from 'hono';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
+import { mcpCredentialColumns } from './credential';
 import type { McpAuditTarget, McpPrincipal } from './types';
 
 const log = createLogger({ module: 'mcp-audit' });
@@ -27,7 +28,7 @@ export const recordMcpAudit = async (
     await prisma.mcpAuditEvent.create({
       data: {
         projectId: principal.project.id,
-        apiKeyId: principal.apiKey.id,
+        ...mcpCredentialColumns(principal.credential),
         actorUserId: principal.actor?.userId ?? null,
         requestId: ctx.get('requestId'),
         kind: event.kind,

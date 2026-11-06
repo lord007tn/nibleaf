@@ -11,6 +11,10 @@ const rollback = await readFile(new URL('rollback.sql', migrationDirectory), 'ut
 const writeMigrationDirectory = new URL('../prisma/migrations/20261106090000_mcp_write_audit_idempotency/', import.meta.url);
 const writeMigration = await readFile(new URL('migration.sql', writeMigrationDirectory), 'utf8');
 const writeRollback = await readFile(new URL('rollback.sql', writeMigrationDirectory), 'utf8');
+const oauthMigrationDirectory = new URL('../prisma/migrations/20261106120000_mcp_oauth/', import.meta.url);
+const oauthMigration = await readFile(new URL('migration.sql', oauthMigrationDirectory), 'utf8');
+const oauthRollback = await readFile(new URL('rollback.sql', oauthMigrationDirectory), 'utf8');
+const nullableRowsSchema = z.array(z.object({ nullable: z.string() }));
 const nameRowsSchema = z.array(z.object({ name: z.string() }));
 const scopeRowsSchema = z.array(z.object({ scopes: z.array(z.string()) }));
 const prisma = getDb({ connectionString });
@@ -23,6 +27,7 @@ try {
       await tx.$executeRawUnsafe(`
         CREATE TABLE "user" (id TEXT PRIMARY KEY);
         CREATE TABLE project (id TEXT PRIMARY KEY);
+        CREATE TABLE session (id TEXT PRIMARY KEY);
         CREATE TABLE api_key (
           id TEXT PRIMARY KEY,
           scopes TEXT[] NOT NULL,
@@ -87,6 +92,50 @@ try {
       await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT duplicate_idempotency_key');
       if (!duplicateRejected) throw new Error('MCP idempotency cache accepted a duplicate clientRequestId');
 
+      // The OAuth migration adds a grant column beside apiKeyId: an OAuth replay
+      // row has no API key, keeps its own unique key, and audit rows name the
+      // grant. Its rollback must restore the API-key requirement.
+      await tx.$executeRawUnsafe(oauthMigration);
+      await tx.$executeRawUnsafe(`
+        INSERT INTO oauth_client (id, "clientId", "redirectUris") VALUES ('client-row-1', 'client-1', ARRAY['https://claude.ai/api/mcp/auth_callback']);
+        INSERT INTO mcp_oauth_grant (id, "userId", "projectId", "clientId", "clientName", preset, scopes)
+        VALUES ('grant-1', 'user-1', 'project-1', 'client-1', 'Claude', 'read_only', ARRAY['mcp:connect']);
+        INSERT INTO mcp_audit_event (id, "projectId", "oauthGrantId", "actorUserId", "requestId", kind, operation, capability, outcome, "durationMs")
+        VALUES ('audit-3', 'project-1', 'grant-1', 'user-1', 'request-3', 'tool', 'get_project', 'projects:read', 'succeeded', 1);
+        INSERT INTO mcp_idempotency_record (id, "projectId", "oauthGrantId", operation, "clientRequestId", "argsHash", status, "expiresAt")
+        VALUES ('idem-oauth-1', 'project-1', 'grant-1', 'update_page', 'retry-0001', 'hash', 'pending', now() + interval '1 day');
+      `);
+      await tx.$executeRawUnsafe('SAVEPOINT duplicate_oauth_idempotency_key');
+      let duplicateOAuthRejected = false;
+      try {
+        await tx.$executeRawUnsafe(`
+          INSERT INTO mcp_idempotency_record (id, "projectId", "oauthGrantId", operation, "clientRequestId", "argsHash", status, "expiresAt")
+          VALUES ('idem-oauth-2', 'project-1', 'grant-1', 'update_page', 'retry-0001', 'other', 'pending', now() + interval '1 day');
+        `);
+      } catch {
+        duplicateOAuthRejected = true;
+      }
+      await tx.$executeRawUnsafe('ROLLBACK TO SAVEPOINT duplicate_oauth_idempotency_key');
+      if (!duplicateOAuthRejected) throw new Error('MCP idempotency cache accepted a duplicate OAuth clientRequestId');
+
+      await tx.$executeRawUnsafe(oauthRollback);
+      const remainingOAuthTables = nameRowsSchema.parse(
+        await tx.$queryRawUnsafe(`
+          SELECT table_name AS name
+          FROM information_schema.tables
+          WHERE table_schema = 'mcp_migration_smoke' AND (table_name LIKE 'oauth_%' OR table_name IN ('jwks', 'mcp_oauth_grant'))
+        `),
+      );
+      if (remainingOAuthTables.length !== 0) throw new Error('OAuth rollback retained OAuth tables');
+      const apiKeyNullability = nullableRowsSchema.parse(
+        await tx.$queryRawUnsafe(`
+          SELECT is_nullable AS nullable
+          FROM information_schema.columns
+          WHERE table_schema = 'mcp_migration_smoke' AND table_name = 'mcp_idempotency_record' AND column_name = 'apiKeyId'
+        `),
+      );
+      if (apiKeyNullability[0]?.nullable !== 'NO') throw new Error('OAuth rollback did not restore the apiKeyId requirement');
+
       await tx.$executeRawUnsafe(writeRollback);
       const remainingWriteColumns = nameRowsSchema.parse(
         await tx.$queryRawUnsafe(`
@@ -141,7 +190,7 @@ try {
     },
     { timeout: 30_000 },
   );
-  console.log('MCP migration ownership, wildcard normalization, audit, idempotency, and rollback checks passed.');
+  console.log('MCP migration ownership, wildcard normalization, audit, idempotency, OAuth, and rollback checks passed.');
 } finally {
   await prisma.$disconnect();
 }

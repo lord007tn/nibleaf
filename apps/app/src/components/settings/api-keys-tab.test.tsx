@@ -17,6 +17,8 @@ vi.mock('@/hooks/api', () => ({
   useRotateApiKey: () => hooks.mutation,
 }));
 
+vi.mock('./connected-apps', () => ({ ConnectedApps: () => null }));
+
 import { ApiKeysTab } from './api-keys-tab';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);

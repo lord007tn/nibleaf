@@ -63,9 +63,9 @@ const getCapabilityDto = (principal: McpPrincipal) => ({
   schemaVersion: 1,
   /** `read_only_with_preview`: reads plus non-writing previews. `draft_writes_with_confirmed_publish`:
    *  write tools change only the working copy; going live needs preview_publish + a confirmed publish_changes. */
-  mode: principal.apiKey.scopes.some(isMcpWriteScope) ? ('draft_writes_with_confirmed_publish' as const) : ('read_only_with_preview' as const),
+  mode: principal.credential.scopes.some(isMcpWriteScope) ? ('draft_writes_with_confirmed_publish' as const) : ('read_only_with_preview' as const),
   project: { id: principal.project.id, name: principal.project.name },
-  grantedScopes: principal.apiKey.scopes,
+  grantedScopes: principal.credential.scopes,
   /** The key acts as its creator with this current project role; null = read-only key. */
   actor: principal.actor ? { role: principal.actor.role } : null,
   rateLimit: {
@@ -75,15 +75,15 @@ const getCapabilityDto = (principal: McpPrincipal) => ({
     publishesPerHour: env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR,
     deploymentWideProtection: 'upstream_required' as const,
   },
-  tools: availableTools.filter(([, scope]) => principal.apiKey.scopes.includes(scope)).map(([name, scope]) => ({ name, scope })),
+  tools: availableTools.filter(([, scope]) => principal.credential.scopes.includes(scope)).map(([name, scope]) => ({ name, scope })),
   resources: availableResources(principal.project.id)
-    .filter(([, scope]) => principal.apiKey.scopes.includes(scope))
+    .filter(([, scope]) => principal.credential.scopes.includes(scope))
     .map(([uri, scope]) => ({ uri, scope })),
   prompts: supportPrompts
-    .filter(([, scopes]) => scopes.every((scope) => principal.apiKey.scopes.includes(scope)))
+    .filter(([, scopes]) => scopes.every((scope) => principal.credential.scopes.includes(scope)))
     .map(([name, scopes]) => ({ name, scopes })),
   unavailable: [
-    ...(principal.apiKey.scopes.some(isMcpWriteScope)
+    ...(principal.credential.scopes.some(isMcpWriteScope)
       ? []
       : [
           {

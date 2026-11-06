@@ -94,3 +94,61 @@ export const MCP_PRESET_MIN_ROLE: Record<McpKeyPreset, MemberRole> = {
   support_writer: MemberRole.MEMBER,
   full_admin: MemberRole.ADMIN,
 };
+
+// ─── OAuth connections ───────────────────────────────────────────────────────
+
+/** Authorization-server scopes MCP clients may also request: identity (OIDC)
+ *  and `offline_access`, which is what earns a refresh token. They grant no
+ *  MCP capability on their own. */
+export const MCP_OAUTH_IDENTITY_SCOPES = ['openid', 'profile', 'email', 'offline_access'] as const;
+
+/** Every scope the authorization server accepts in an OAuth request. */
+export const MCP_OAUTH_SCOPES = [...MCP_SCOPES, ...MCP_OAUTH_IDENTITY_SCOPES] as const;
+
+/** Scopes advertised in the MCP endpoint's 401 challenge, so a client that
+ *  follows it asks for the full MCP set plus a refresh token. The person still
+ *  narrows the connection to one preset when they approve it. */
+export const MCP_OAUTH_CHALLENGE_SCOPES = [...MCP_SCOPES, 'offline_access'] as const;
+
+/** Dashboard pages of the OAuth flow (relative to the app origin). */
+export const MCP_OAUTH_PAGES = {
+  'sign-in': '/sign-in',
+  project: '/oauth/project',
+  consent: '/oauth/consent',
+} as const;
+
+export type McpOAuthStep = keyof typeof MCP_OAUTH_PAGES;
+
+/** Better Auth sends people to `<handoff>/<step>?<signed query>`. The API
+ *  hands off to the page with that query wrapped in ONE opaque parameter: the
+ *  router would otherwise rewrite the repeated `ba_param` values and break the
+ *  signature. */
+export const MCP_OAUTH_HANDOFF_PATH = '/api/app/mcp-oauth/handoff';
+export const MCP_OAUTH_REQUEST_PARAM = 'oauth_request';
+
+/** Access-token claims that bind a token to its connection and project. */
+export const MCP_OAUTH_GRANT_CLAIM = 'nibleaf_grant';
+export const MCP_OAUTH_PROJECT_CLAIM = 'nibleaf_project';
+
+/** Protected-resource and authorization-server URLs for one public origin
+ *  (BETTER_AUTH_URL, which is the dashboard origin). */
+export const mcpOAuthUrls = (publicUrl: string) => {
+  const origin = new URL(publicUrl).origin;
+  return {
+    origin,
+    issuer: `${origin}/api/auth`,
+    resource: `${origin}/api/mcp`,
+    resourceMetadata: `${origin}/.well-known/oauth-protected-resource/api/mcp`,
+    authorizationServerMetadata: `${origin}/.well-known/oauth-authorization-server/api/auth`,
+  };
+};
+
+/** The scopes a connection made with `preset` carries for a member with
+ *  `role`, or null when the role may not pick that preset. Same rules as
+ *  personal keys: the preset's minimum role, then the role's scope ceiling. */
+export const mcpPresetScopesForRole = (preset: McpKeyPreset, role: string): McpScope[] | null => {
+  if (!roleAtLeast(role, MCP_PRESET_MIN_ROLE[preset])) return null;
+  const allowed = new Set(mcpScopesForRole(role));
+  const scopes = MCP_PRESET_SCOPES[preset].filter((scope) => allowed.has(scope));
+  return scopes.includes('mcp:connect') ? scopes : null;
+};

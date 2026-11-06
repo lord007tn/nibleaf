@@ -9,7 +9,7 @@ import { recordMcpAudit } from './audit';
 
 const context = { get: (key: string) => (key === 'requestId' ? 'request-1' : undefined) } as never;
 const principal = {
-  apiKey: { id: 'key-1', name: 'Reader', scopes: ['mcp:connect'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
+  credential: { kind: 'api_key', id: 'key-1', name: 'Reader', scopes: ['mcp:connect'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
   actor: null,
 } as never;
@@ -37,7 +37,13 @@ describe('MCP audit row contents', () => {
   it('records the actor, target, and clientRequestId of a write but never its inputs', async () => {
     mocks.create.mockResolvedValueOnce({ id: 'audit-1' });
     const writer = {
-      apiKey: { id: 'key-1', name: 'Writer', scopes: ['mcp:connect', 'pages:write'], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
+      credential: {
+        kind: 'api_key',
+        id: 'key-1',
+        name: 'Writer',
+        scopes: ['mcp:connect', 'pages:write'],
+        expiresAt: new Date('2030-01-01T00:00:00.000Z'),
+      },
       project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
       actor: { userId: 'user-1', role: 'member' },
     } as never;

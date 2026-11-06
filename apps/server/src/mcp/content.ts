@@ -22,7 +22,7 @@ const boundPageId = (principal: McpPrincipal, variables: unknown) => {
 };
 
 export const registerContentSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (principal.apiKey.scopes.includes('projects:read')) {
+  if (principal.credential.scopes.includes('projects:read')) {
     server.registerTool(
       'get_project',
       { title: 'Get project', description: 'Get a safe summary of the bound Nibleaf project.', annotations: readOnly },
@@ -38,7 +38,7 @@ export const registerContentSurface = (server: McpServer, ctx: Context<HonoEnv>,
     );
   }
 
-  if (principal.apiKey.scopes.includes('pages:read')) {
+  if (principal.credential.scopes.includes('pages:read')) {
     server.registerTool(
       'list_pages',
       {
@@ -99,7 +99,7 @@ export const registerContentSurface = (server: McpServer, ctx: Context<HonoEnv>,
     );
   }
 
-  if (principal.apiKey.scopes.includes('languages:read')) {
+  if (principal.credential.scopes.includes('languages:read')) {
     server.registerTool(
       'list_languages',
       { title: 'List languages', description: 'List languages configured for the bound project.', annotations: readOnly },
@@ -113,7 +113,7 @@ export const registerContentSurface = (server: McpServer, ctx: Context<HonoEnv>,
     );
   }
 
-  if (principal.apiKey.scopes.includes('versions:read')) {
+  if (principal.credential.scopes.includes('versions:read')) {
     server.registerTool(
       'list_versions',
       { title: 'List versions', description: 'List documentation versions; version IDs are the shared branch IDs.', annotations: readOnly },

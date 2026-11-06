@@ -30,6 +30,16 @@ export function assistantSetup(endpoint: string, secret: string) {
   };
 }
 
+/** Sign-in (OAuth) setup: the URL is all a client needs; it opens Nibleaf's
+ *  sign-in page on first use. */
+export function oauthAssistantSetup(endpoint: string) {
+  return {
+    claudeCode: `claude mcp add --transport http nibleaf ${JSON.stringify(endpoint)}`,
+    editors: JSON.stringify({ mcpServers: { nibleaf: { url: endpoint } } }, null, 2),
+    vscode: JSON.stringify({ servers: { nibleaf: { type: 'http', url: endpoint } } }, null, 2),
+  };
+}
+
 export class ConnectionError extends Error {}
 
 /** Streamable HTTP may return either JSON or SSE. Never expose response bodies in errors. */

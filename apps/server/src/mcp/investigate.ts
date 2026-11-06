@@ -46,7 +46,7 @@ const toolText: Record<(typeof investigationTools)[number][0], { title: string; 
 
 export const registerInvestigationSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
   for (const [name, scope] of investigationTools) {
-    if (!principal.apiKey.scopes.includes(scope)) continue;
+    if (!principal.credential.scopes.includes(scope)) continue;
     server.registerTool(
       name,
       {

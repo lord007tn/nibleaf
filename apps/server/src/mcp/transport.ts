@@ -6,6 +6,7 @@ import { env } from '@/env';
 import type { HonoEnv } from '@/lib/hono/context';
 import { recordMcpAudit } from './audit';
 import { authenticateMcpRequest, mcpAuthInfo } from './auth';
+import { mcpCredentialKey } from './credential';
 import { auditDeniedWriteCalls, bufferMcpRequest, mayMakeDeniedWriteCalls } from './denied-calls';
 import { checkMcpRateLimit, finalizeMcpRateLimitRejectionAudit } from './rate-limit';
 import { createNibleafMcpServer } from './server';
@@ -130,7 +131,8 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
   const authenticated = await authenticateMcpRequest(ctx);
   if (authenticated instanceof Response) return authenticated;
 
-  const limit = checkMcpRateLimit(authenticated.apiKey.id);
+  const budgetKey = mcpCredentialKey(authenticated.credential);
+  const limit = checkMcpRateLimit(budgetKey);
   if (!limit.allowed) {
     if (limit.shouldAuditRejection) {
       try {
@@ -142,9 +144,9 @@ export const handleMcpRequest = async (ctx: Context<HonoEnv>): Promise<Response>
           errorCode: 'http:rate_limited',
           durationMs: 0,
         });
-        finalizeMcpRateLimitRejectionAudit(authenticated.apiKey.id, limit.resetAt, true);
+        finalizeMcpRateLimitRejectionAudit(budgetKey, limit.resetAt, true);
       } catch {
-        finalizeMcpRateLimitRejectionAudit(authenticated.apiKey.id, limit.resetAt, false);
+        finalizeMcpRateLimitRejectionAudit(budgetKey, limit.resetAt, false);
         return auditUnavailableResponse();
       }
     }

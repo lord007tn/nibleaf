@@ -22,7 +22,7 @@ const targetOf = (args: unknown, principal: McpPrincipal): McpAuditTarget => {
 
 /** Whether this key lacks any write scope, i.e. could make a denied write call. */
 export const mayMakeDeniedWriteCalls = (principal: McpPrincipal) =>
-  [...writeToolScopes.values()].some((scope) => !principal.apiKey.scopes.includes(scope));
+  [...writeToolScopes.values()].some((scope) => !principal.credential.scopes.includes(scope));
 
 /**
  * Read the request body once, up to `maxBytes + 1` bytes, and return a request
@@ -73,7 +73,7 @@ export const auditDeniedWriteCalls = async (ctx: Context<HonoEnv>, principal: Mc
   for (const call of calls) {
     if (call?.method !== 'tools/call' || typeof call.params?.name !== 'string') continue;
     const scope = writeToolScopes.get(call.params.name);
-    if (!scope || principal.apiKey.scopes.includes(scope)) continue;
+    if (!scope || principal.credential.scopes.includes(scope)) continue;
     const args = call.params.arguments as Record<string, unknown> | undefined;
     const clientRequestId = typeof args?.clientRequestId === 'string' && requestIdShaped.test(args.clientRequestId) ? args.clientRequestId : null;
     await recordMcpAudit(ctx, principal, {

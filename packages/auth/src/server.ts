@@ -23,10 +23,18 @@ import { reassignOrDeleteOrgs } from './account-deletion';
 import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
+import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
 import { googleOAuthEnabled } from './providers';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
+
+/** OAuth for MCP clients, or null when MCP is off or the public URL cannot
+ *  host an OAuth 2.1 server (plain HTTP outside loopback). */
+export const mcpOAuth = resolveMcpOAuthConfig(env);
+if (env.MCP_ENABLED && !mcpOAuth) {
+  log.warn('MCP OAuth sign-in is off: BETTER_AUTH_URL must be HTTPS (or a loopback URL in development). API keys still work.');
+}
 
 const sanitizeEmailErrorField = (value: string) => value.replace(/https?:\/\/[^\s"'<>]+/gi, '[redacted-url]').slice(0, 500);
 
@@ -702,7 +710,7 @@ const authInstance = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   // Invitations go through `inviteMember`, which enforces the single-owner and
   // role rules. Better Auth's endpoint would let an owner invite a second owner.
-  disabledPaths: ['/organization/invite-member'],
+  disabledPaths: ['/organization/invite-member', ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
   hooks: { after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
@@ -861,6 +869,7 @@ const authInstance = betterAuth({
         },
       },
     }),
+    ...(mcpOAuth ? mcpOAuthPlugins(mcpOAuth) : []),
   ],
   databaseHooks: {
     user: {
@@ -932,3 +941,10 @@ const authInstance = betterAuth({
 });
 
 export const auth = withRequiredAuthEmailScope(authInstance);
+
+/** Verifies an MCP OAuth access token against this instance's own JWKS. */
+export const verifyMcpAccessToken = mcpOAuth
+  ? createMcpAccessTokenVerifier(mcpOAuth, () =>
+      (auth.api as unknown as { getJwks: () => Promise<{ keys: Array<Record<string, unknown>> }> }).getJwks(),
+    )
+  : null;

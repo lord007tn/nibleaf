@@ -719,6 +719,16 @@ export type CreateApiKeyBody = z.infer<typeof createApiKeyBody>;
 export const rotateApiKeyBody = z.object(keyPermissions).refine(onePermissionSource, { message: 'Provide exactly one of preset or scopes.' });
 export type RotateApiKeyBody = z.infer<typeof rotateApiKeyBody>;
 
+/** The signed authorization query Better Auth appends to the OAuth pages. */
+const oauthQuery = z.string().trim().min(1).max(8192);
+export const mcpOAuthAuthorizationQuery = z.object({ oauthQuery });
+export const createMcpOAuthGrantBody = z.object({
+  oauthQuery,
+  projectId: z.string().trim().min(1).max(64),
+  preset: z.enum(MCP_KEY_PRESETS),
+});
+export type CreateMcpOAuthGrantBody = z.infer<typeof createMcpOAuthGrantBody>;
+
 // ─── Assets ──────────────────────────────────────────────────────────────—
 
 export const presignAssetBody = z.object({

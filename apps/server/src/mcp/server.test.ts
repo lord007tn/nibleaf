@@ -94,7 +94,7 @@ vi.mock('@/actions/integrations', () => ({
 }));
 
 const principal = {
-  apiKey: { id: 'key-1', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
+  credential: { kind: 'api_key' as const, id: 'key-1', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00.000Z') },
   project: { id: 'project-1', name: 'Docs', organizationId: 'org-1' },
   actor: null,
 };
@@ -371,7 +371,7 @@ describe('Nibleaf MCP protocol surface', () => {
   ] as const)('registers only the tools granted by %s', async (scope, expectedTools) => {
     const scopedPrincipal: McpPrincipal = {
       ...principal,
-      apiKey: { ...principal.apiKey, scopes: scope === 'mcp:connect' ? ['mcp:connect'] : ['mcp:connect', scope] },
+      credential: { ...principal.credential, scopes: scope === 'mcp:connect' ? ['mcp:connect'] : ['mcp:connect', scope] },
     };
     const { server, clientTransport, request } = await createProtocolClient(scopedPrincipal);
     const tools = await request<{ tools: Array<{ name: string }> }>('tools/list');
@@ -405,7 +405,7 @@ describe('Nibleaf MCP protocol surface', () => {
     const writer: McpPrincipal = { ...principal, actor: { userId: 'user-1', role: 'member' } };
     const reader: McpPrincipal = {
       ...principal,
-      apiKey: { ...principal.apiKey, scopes: MCP_SCOPES.filter((scope) => scope !== 'pages:write' && scope !== 'deployments:publish') },
+      credential: { ...principal.credential, scopes: MCP_SCOPES.filter((scope) => scope !== 'pages:write' && scope !== 'deployments:publish') },
     };
     type Capabilities = { mode: string; actor: unknown; unavailable: Array<{ domain: string }>; rateLimit: Record<string, number | string> };
     const discover = async (current: McpPrincipal) => {

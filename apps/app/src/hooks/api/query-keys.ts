@@ -33,6 +33,12 @@ export const queryKeys = {
   apiKeys: {
     all: (projectId: string) => ['api-keys', projectId] as const,
   },
+  connectedApps: {
+    all: (projectId: string) => ['connected-apps', projectId] as const,
+  },
+  mcpOAuth: {
+    authorization: (oauthQuery: string) => ['mcp-oauth', 'authorization', oauthQuery] as const,
+  },
   assets: {
     all: (projectId: string) => ['assets', projectId] as const,
   },

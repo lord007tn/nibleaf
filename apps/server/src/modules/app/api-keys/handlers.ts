@@ -1,3 +1,4 @@
+import { mcpOAuth } from '@nibleaf/auth/server';
 import { createApiKeyBody, rotateApiKeyBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -15,7 +16,12 @@ const app = new Hono<HonoEnv>()
     return ctx.json(
       {
         data: await listApiKeys(getContextOrganizationIdOrThrow(), projectId, actor()),
-        meta: { mcpEnabled: env.MCP_ENABLED, mcpEndpoint: `${env.APP_URL.replace(/\/$/, '')}/api/mcp` },
+        meta: {
+          mcpEnabled: env.MCP_ENABLED,
+          mcpEndpoint: `${env.APP_URL.replace(/\/$/, '')}/api/mcp`,
+          // Sign-in connections (ChatGPT, claude.ai, …) need HTTPS outside loopback.
+          mcpOAuthEnabled: mcpOAuth !== null,
+        },
       },
       200,
     );

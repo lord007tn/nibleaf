@@ -2,10 +2,14 @@ import { createFileRoute, Navigate, Outlet, redirect, useLocation } from '@tanst
 import { AuthProviders } from '@/components/auth-providers';
 import { getSessionFn } from '@/functions/session';
 import { QueryProvider } from '@/integrations/tanstack-query/root-provider';
+import { isOAuthAuthorizationSearch } from '@/lib/mcp-oauth';
 import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)')({
   beforeLoad: async ({ location }) => {
+    // An MCP OAuth request lands here when Better Auth wants a (fresh) sign-in;
+    // Better Auth continues the flow after it, so never redirect to /app.
+    if (isOAuthAuthorizationSearch(location.searchStr)) return;
     if (await getSessionFn()) {
       const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
       throw redirect({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
@@ -37,7 +41,7 @@ function AuthGuard() {
 
   // Do not replace the outlet while better-auth revalidates on window focus.
   // Unmounting here erased the email/OTP step when users switched to their inbox.
-  if (session) {
+  if (session && !isOAuthAuthorizationSearch(location.searchStr)) {
     const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
     return <Navigate to="/app" search={firstPublish ? { firstPublish: true } : {}} />;
   }

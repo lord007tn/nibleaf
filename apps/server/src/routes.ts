@@ -1,4 +1,4 @@
-import { auth } from '@nibleaf/auth/server';
+import { auth, mcpOAuth } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { Hono } from 'hono';
 import { env } from './env';
@@ -6,6 +6,7 @@ import type { HonoEnv } from './lib/hono/context';
 import { rateLimit } from './middlewares/rate-limit';
 import modules from './modules';
 import mcp from './modules/mcp';
+import { oauthDiscovery } from './modules/mcp/oauth-discovery';
 import baseApp from './server';
 
 const adminOrigin = new URL(env.ADMIN_URL);
@@ -43,9 +44,16 @@ const isPlatformAdminEmail = async (email: string | null): Promise<boolean> => {
   return user?.role === 'admin';
 };
 
+/** OAuth endpoints MCP clients call from servers (ChatGPT, claude.ai) share a
+ *  few egress addresses across many people, so they get their own, larger
+ *  per-IP bucket; Better Auth still applies its per-endpoint limits. */
+const oauthMachinePath = /\/auth\/(?:oauth2\/(?:token|register|revoke|introspect|userinfo)|jwks)$/;
+const browserAuthLimit = rateLimit({ windowMs: 60_000, max: 30 });
+const oauthMachineLimit = rateLimit({ windowMs: 60_000, max: 300 });
+
 const apiApp = new Hono<HonoEnv>()
   // Throttle better-auth endpoints to blunt credential-stuffing / brute-force attempts.
-  .use('/auth/*', rateLimit({ windowMs: 60_000, max: 30 }))
+  .use('/auth/*', (ctx, next) => (mcpOAuth && oauthMachinePath.test(ctx.req.path) ? oauthMachineLimit : browserAuthLimit)(ctx, next))
   .use('/auth/email-otp/send-verification-otp', async (ctx, next) => {
     if (ctx.req.method === 'POST' && isAdminOriginRequest(ctx.req.raw)) {
       const email = await emailFromJsonBody(ctx.req.raw);
@@ -72,6 +80,6 @@ const apiApp = new Hono<HonoEnv>()
   .route('/mcp', mcp)
   .route('/', modules);
 
-const app = baseApp.route('/api', apiApp);
+const app = baseApp.route('/.well-known', oauthDiscovery).route('/api', apiApp);
 
 export default app;

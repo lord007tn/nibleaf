@@ -47,7 +47,7 @@ const promptDescriptions = {
 
 export const registerSupportPrompts = (server: McpServer, principal: McpPrincipal) => {
   for (const [name, scopes] of supportPrompts) {
-    if (!scopes.every((scope) => principal.apiKey.scopes.includes(scope))) continue;
+    if (!scopes.every((scope) => principal.credential.scopes.includes(scope))) continue;
     const argsSchema =
       name === 'draft_article'
         ? z.object({ topic: z.string().trim().min(1).max(500), language }).strict()

@@ -16,6 +16,7 @@ import type { z } from 'zod';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { recordMcpAudit } from './audit';
+import { mcpCredentialKey } from './credential';
 import {
   abandonMcpIdempotentWrite,
   beginMcpIdempotentWrite,
@@ -69,7 +70,7 @@ export const runMcpReadTool = async (
 ): Promise<CallToolResult> => {
   const startedAt = performance.now();
   try {
-    if (!principal.apiKey.scopes.includes(capability)) {
+    if (!principal.credential.scopes.includes(capability)) {
       throw new AppError({ code: 'mcp:scope_required', message: `This tool requires the ${capability} scope.` });
     }
     const envelope: McpSuccessEnvelope = {
@@ -120,7 +121,7 @@ export const runMcpResource = async (
 ): Promise<ReadResourceResult> => {
   const startedAt = performance.now();
   try {
-    if (!principal.apiKey.scopes.includes(capability)) {
+    if (!principal.credential.scopes.includes(capability)) {
       throw new AppError({ code: 'mcp:scope_required', message: `This resource requires the ${capability} scope.` });
     }
     const data = await action();
@@ -256,7 +257,7 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
   let outcome: 'succeeded' | 'replayed' = 'succeeded';
   let wrote = false;
   try {
-    if (!principal.apiKey.scopes.includes(spec.capability)) {
+    if (!principal.credential.scopes.includes(spec.capability)) {
       throw new AppError({ code: 'mcp:scope_required', message: `This tool requires the ${spec.capability} scope.` });
     }
     const actor = principal.actor;
@@ -272,7 +273,7 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
     const parsed = spec.schema.safeParse(raw);
     if (!parsed.success) throw validationError(parsed.error.issues);
     if (spec.rateLimited) {
-      const limit = checkMcpWriteRateLimit(principal.apiKey.id);
+      const limit = checkMcpWriteRateLimit(mcpCredentialKey(principal.credential));
       if (!limit.allowed) {
         const retryAfterSeconds = Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000));
         throw new AppError({
@@ -285,7 +286,7 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
 
     const start = clientRequestId
       ? await beginMcpIdempotentWrite(
-          { projectId: principal.project.id, apiKeyId: principal.apiKey.id, operation: spec.operation, clientRequestId },
+          { projectId: principal.project.id, credential: principal.credential, operation: spec.operation, clientRequestId },
           hashMcpArguments(parsed.data as Record<string, unknown>),
         )
       : null;

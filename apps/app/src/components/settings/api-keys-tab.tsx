@@ -22,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './api-key-alert-dialog';
-import { assistantSetup, ConnectionError, testAssistantConnection } from './assistant-setup';
+import { assistantSetup, ConnectionError, oauthAssistantSetup, testAssistantConnection } from './assistant-setup';
+import { ConnectedApps } from './connected-apps';
 import { SettingsSection } from './section';
 
 type IssuableMcpScope = (typeof MCP_SCOPES)[number];
@@ -51,6 +52,8 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const keys = response?.data ?? [];
   const enabled = response?.meta.mcpEnabled === true;
   const endpoint = response?.meta.mcpEndpoint ?? '';
+  const oauthEnabled = enabled && response?.meta.mcpOAuthEnabled === true;
+  const oauthSetup = endpoint ? oauthAssistantSetup(endpoint) : null;
   const allowedScopes = mcpScopesForRole(role);
   const [preset, setPreset] = useState<McpKeyPreset | 'custom'>('support_writer');
   const [client, setClient] = useState('claudeCode');
@@ -123,9 +126,9 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const snippets: Record<string, string> = setup
     ? { claudeCode: setup.claudeCode, desktop: setup.desktop, cursor: setup.cursor, vscode: setup.vscode }
     : {};
-  const copy = (value: string) =>
+  const copy = (value: string, copied = t('settings.apiKeys.copied')) =>
     navigator.clipboard.writeText(value).then(
-      () => toast.success(t('settings.apiKeys.copied')),
+      () => toast.success(copied),
       () => toast.error(t('settings.apiKeys.createError')),
     );
   const testConnection = async () => {
@@ -158,6 +161,53 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
           <p role="status" className="mt-3 rounded-lg border p-3 text-sm">
             {t('settings.apiKeys.disabled')}
           </p>
+        ) : null}
+        {response && enabled ? (
+          <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <h3 className="font-medium">{t('settings.apiKeys.oauthTitle')}</h3>
+                <p className="mt-1 text-muted-foreground">
+                  {oauthEnabled ? t('settings.apiKeys.oauthDescription') : t('settings.apiKeys.oauthUnavailable')}
+                </p>
+              </div>
+              {oauthEnabled ? (
+                <Button
+                  className="shrink-0"
+                  onClick={() => void copy(endpoint, t('settings.apiKeys.urlCopied'))}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Copy aria-hidden />
+                  {t('settings.apiKeys.oauthCopyUrl')}
+                </Button>
+              ) : null}
+            </div>
+            {oauthEnabled && oauthSetup ? (
+              <>
+                <ul className="mt-3 flex list-disc flex-col gap-1.5 ps-5">
+                  <li>{t('settings.apiKeys.oauthChatgpt')}</li>
+                  <li>{t('settings.apiKeys.oauthClaude')}</li>
+                  <li>{t('settings.apiKeys.oauthClaudeCode')}</li>
+                  <li>{t('settings.apiKeys.oauthEditors')}</li>
+                </ul>
+                <pre dir="ltr" className="mt-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                  <code>{oauthSetup.claudeCode}</code>
+                </pre>
+                <details className="mt-2">
+                  <summary className="cursor-pointer">{t('settings.apiKeys.oauthEditorConfig')}</summary>
+                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                    <code>{oauthSetup.editors}</code>
+                  </pre>
+                  <pre dir="ltr" className="mt-2 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+                    <code>{oauthSetup.vscode}</code>
+                  </pre>
+                </details>
+                <p className="mt-3 text-muted-foreground">{t('settings.apiKeys.keyAlternative')}</p>
+              </>
+            ) : null}
+          </div>
         ) : null}
         <div className="mt-4 flex flex-col gap-3">
           <fieldset className="grid gap-3 sm:grid-cols-3">
@@ -265,12 +315,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 ))}
               </fieldset>
               {client === 'chatgpt' ? (
-                <p>
-                  {t('settings.apiKeys.chatgptUnavailable')}{' '}
-                  <a className="underline" href="https://developers.openai.com/plugins/build/auth" target="_blank" rel="noreferrer">
-                    {t('settings.apiKeys.docs')}
-                  </a>
-                </p>
+                <p>{oauthEnabled ? t('settings.apiKeys.chatgptOAuth') : t('settings.apiKeys.oauthUnavailable')}</p>
               ) : (
                 <>
                   {client === 'desktop' ? (
@@ -412,6 +457,8 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
           </div>
         )}
       </SettingsSection>
+
+      <ConnectedApps projectId={projectId} role={role} />
 
       <AlertDialog onOpenChange={(open) => (open ? undefined : setRevokeCandidate(null))} open={Boolean(revokeCandidate)}>
         <AlertDialogContent>

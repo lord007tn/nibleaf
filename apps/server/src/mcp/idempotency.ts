@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { type Prisma, prisma } from '@nibleaf/database';
 import { z } from 'zod';
 import { AppError } from '@/errors';
+import { mcpCredentialColumns } from './credential';
+import type { McpPrincipal } from './types';
 
 /** Replay records live this long; expired rows are pruned lazily per project. */
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;
@@ -45,10 +47,16 @@ export const isUniqueViolation = (error: unknown) =>
 
 interface IdempotencyScope {
   projectId: string;
-  apiKeyId: string;
+  credential: Pick<McpPrincipal['credential'], 'kind' | 'id'>;
   operation: string;
   clientRequestId: string;
 }
+
+/** The unique replay key of a credential: per API key, or per OAuth grant. */
+const replayKey = ({ credential, operation, clientRequestId }: IdempotencyScope) =>
+  credential.kind === 'oauth'
+    ? { oauthGrantId_operation_clientRequestId: { oauthGrantId: credential.id, operation, clientRequestId } }
+    : { apiKeyId_operation_clientRequestId: { apiKeyId: credential.id, operation, clientRequestId } };
 
 type IdempotencyStart = { kind: 'execute'; recordId: string } | { kind: 'replay'; result: Prisma.JsonValue };
 
@@ -61,13 +69,21 @@ const inProgress = () =>
 
 /** Claim `clientRequestId` for this call, or return the stored result of an
  *  identical earlier call. The insert is the claim: the unique key
- *  (apiKeyId, operation, clientRequestId) makes a concurrent duplicate fail with
+ *  (apiKeyId or oauthGrantId, operation, clientRequestId) makes a concurrent duplicate fail with
  *  P2002, and that loser then inspects the winner's row instead of writing. */
 export const beginMcpIdempotentWrite = async (scope: IdempotencyScope, argsHash: string, now = new Date()): Promise<IdempotencyStart> => {
   await prisma.mcpIdempotencyRecord.deleteMany({ where: { projectId: scope.projectId, expiresAt: { lte: now } } });
   try {
     const record = await prisma.mcpIdempotencyRecord.create({
-      data: { ...scope, argsHash, status: 'pending', expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS) },
+      data: {
+        projectId: scope.projectId,
+        ...mcpCredentialColumns(scope.credential),
+        operation: scope.operation,
+        clientRequestId: scope.clientRequestId,
+        argsHash,
+        status: 'pending',
+        expiresAt: new Date(now.getTime() + IDEMPOTENCY_TTL_MS),
+      },
       select: { id: true },
     });
     return { kind: 'execute', recordId: record.id };
@@ -75,9 +91,7 @@ export const beginMcpIdempotentWrite = async (scope: IdempotencyScope, argsHash:
     if (!isUniqueViolation(error)) throw error;
   }
   const existing = await prisma.mcpIdempotencyRecord.findUnique({
-    where: {
-      apiKeyId_operation_clientRequestId: { apiKeyId: scope.apiKeyId, operation: scope.operation, clientRequestId: scope.clientRequestId },
-    },
+    where: replayKey(scope),
     select: { argsHash: true, status: true, result: true },
   });
   // Deleted between our failed insert and this read: the other call failed and

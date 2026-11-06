@@ -18,7 +18,7 @@ vi.mock('@nibleaf/clickhouse', () => ({ keys: () => ({ ANALYTICS_MODE: mocks.mod
 vi.mock('./audit', () => ({ recordMcpAudit: mocks.audit }));
 vi.mock('@/actions/search', () => ({ getProjectSearchIndexDiagnostics: mocks.diagnostics }));
 const principal: McpPrincipal = {
-  apiKey: { id: 'key', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00Z') },
+  credential: { kind: 'api_key', id: 'key', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00Z') },
   project: { id: 'project', organizationId: 'org', name: 'Docs' },
   actor: null,
 };
@@ -53,16 +53,16 @@ beforeEach(() => {
   });
 });
 
-const connect = async (scopes = principal.apiKey.scopes) => {
+const connect = async (scopes = principal.credential.scopes) => {
   const server = new McpServer({ name: 'support-test', version: '1' });
   const app = new Hono<HonoEnv>();
   app.get('/', (ctx) => {
     ctx.set('requestId', 'request');
-    registerInvestigationSurface(server, ctx, { ...principal, apiKey: { ...principal.apiKey, scopes } });
+    registerInvestigationSurface(server, ctx, { ...principal, credential: { ...principal.credential, scopes } });
     return ctx.text('ok');
   });
   await app.request('/');
-  registerSupportPrompts(server, { ...principal, apiKey: { ...principal.apiKey, scopes } });
+  registerSupportPrompts(server, { ...principal, credential: { ...principal.credential, scopes } });
   const [client, transport] = InMemoryTransport.createLinkedPair();
   await server.connect(transport);
   await client.start();
@@ -137,7 +137,7 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
 });
 
 it.each(investigationTools)('hides %s without its scope', async (name, scope) => {
-  const client = await connect(principal.apiKey.scopes.filter((value) => value !== scope));
+  const client = await connect(principal.credential.scopes.filter((value) => value !== scope));
   try {
     const result = await client.request('tools/list');
     expect(JSON.stringify(result)).not.toContain(`"name":"${name}"`);
@@ -165,7 +165,7 @@ it.each(supportPrompts)('lists and gets %s with quoted data and safety constrain
     await client.close();
   }
   for (const scope of scopes) {
-    const limited = await connect(principal.apiKey.scopes.filter((value) => value !== scope));
+    const limited = await connect(principal.credential.scopes.filter((value) => value !== scope));
     try {
       expect(JSON.stringify(await limited.request('prompts/list'))).not.toContain(`"name":"${name}"`);
     } finally {

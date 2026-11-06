@@ -43,6 +43,11 @@ model User {
   exportJobs      ExportJob[]      @relation("ExportJobCreator")
   exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
   apiKeysCreated  ApiKey[]         @relation("ApiKeyCreator")
+  oauthClients       OauthClient[]
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
+  oauthConsents      OauthConsent[]
+  mcpOAuthGrants     McpOAuthGrant[]
 
   @@map("user")
 }
@@ -61,6 +66,9 @@ model Session {
   /// Present only for short-lived support sessions created by a platform admin.
   /// The customer app uses it to show a persistent warning and a safe exit.
   impersonatedBy       String?
+
+  oauthRefreshTokens OauthRefreshToken[]
+  oauthAccessTokens  OauthAccessToken[]
 
   @@index([userId])
   @@index([impersonatedBy])
@@ -287,6 +295,205 @@ model Invitation {
   @@map("invitation")
 }
 
+// ─── MCP OAuth (better-auth jwt + @better-auth/mcp + @better-auth/cimd) ──────
+// These models mirror the plugin schemas field for field: better-auth checks
+// the generated client against them on every auth request (a missing column
+// breaks all sign-in), so keep names, optionality, and defaults in step with
+// `npx auth generate`. They exist even while MCP is disabled for an instance.
+
+/// Signing keys for OAuth access tokens and the public `/api/auth/jwks` set.
+model Jwks {
+  id         String    @id
+  publicKey  String
+  privateKey String
+  createdAt  DateTime
+  expiresAt  DateTime?
+  alg        String?
+  crv        String?
+
+  @@map("jwks")
+}
+
+/// An MCP client: registered dynamically (RFC 7591) or discovered from its
+/// Client ID Metadata Document (`clientDiscoveryId`).
+model OauthClient {
+  id                               String    @id
+  clientId                         String    @unique
+  clientSecret                     String?
+  clientDiscoveryId                String?
+  disabled                         Boolean?  @default(false)
+  skipConsent                      Boolean?
+  enableEndSession                 Boolean?
+  subjectType                      String?
+  scopes                           String[]
+  clientCredentialsScopes          String[]  @default([])
+  userId                           String?
+  user                             User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                        DateTime?
+  updatedAt                        DateTime?
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[]
+  tos                              String?
+  policy                           String?
+  softwareId                       String?
+  softwareVersion                  String?
+  softwareStatement                String?
+  redirectUris                     String[]
+  postLogoutRedirectUris           String[]
+  backchannelLogoutUri             String?
+  backchannelLogoutSessionRequired Boolean?
+  tokenEndpointAuthMethod          String?
+  applicationType                  String?
+  jwks                             String?
+  jwksUri                          String?
+  grantTypes                       String[]
+  responseTypes                    String[]
+  requirePKCE                      Boolean?
+  dpopBoundAccessTokens            Boolean?  @default(false)
+  referenceId                      String?
+  metadata                         Json?
+
+  resources      OauthClientResource[]
+  refreshTokens  OauthRefreshToken[]
+  accessTokens   OauthAccessToken[]
+  consents       OauthConsent[]
+  mcpOAuthGrants McpOAuthGrant[]
+
+  @@index([userId])
+  @@map("oauth_client")
+}
+
+/// A protected resource tokens are audience-bound to (the MCP endpoint).
+model OauthResource {
+  id                            String    @id
+  identifier                    String    @unique
+  name                          String
+  accessTokenTtl                Int?
+  refreshTokenTtl               Int?
+  signingAlgorithm              String?
+  signingKeyId                  String?
+  allowedScopes                 String[]
+  customClaims                  Json?
+  dpopBoundAccessTokensRequired Boolean?  @default(false)
+  disabled                      Boolean?  @default(false)
+  createdAt                     DateTime?
+  updatedAt                     DateTime?
+  policyVersion                 Int?      @default(1)
+  metadata                      Json?
+
+  clients OauthClientResource[]
+
+  @@map("oauth_resource")
+}
+
+model OauthClientResource {
+  id         String        @id
+  clientId   String
+  client     OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId String
+  resource   OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata   Json?
+  createdAt  DateTime?
+
+  @@unique([clientId, resourceId])
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauth_client_resource")
+}
+
+/// `referenceId` is the McpOAuthGrant the token was issued for.
+model OauthRefreshToken {
+  id                      String             @id
+  token                   String             @unique
+  clientId                String
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String
+  user                    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  rotatedAt               DateTime?
+  rotationReplayResponse  String?
+  rotationReplayExpiresAt DateTime?
+  authTime                DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  accessTokens OauthAccessToken[]
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([referenceId])
+  @@map("oauth_refresh_token")
+}
+
+/// Opaque access tokens only; JWT access tokens are never stored.
+model OauthAccessToken {
+  id                      String             @id
+  token                   String             @unique
+  clientId                String
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  authorizationCodeId     String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  refreshId               String?
+  refresh                 OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: Cascade)
+  expiresAt               DateTime
+  createdAt               DateTime
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
+
+  @@index([clientId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([authorizationCodeId])
+  @@index([refreshId])
+  @@index([referenceId])
+  @@map("oauth_access_token")
+}
+
+model OauthConsent {
+  id                      String      @id
+  clientId                String
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?
+  resources               String[]
+  requestedUserInfoClaims String[]
+  scopes                  String[]
+  createdAt               DateTime
+  updatedAt               DateTime
+
+  @@index([clientId])
+  @@index([userId])
+  @@map("oauth_consent")
+}
+
+/// Single-use replay tombstones for client assertions (`id` is the jti key).
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime
+
+  @@map("oauth_client_assertion")
+}
+
 // ─── Documentation domain ──────────────────────────────────────────────────—
 
 enum PageKind {
@@ -424,6 +631,7 @@ model Project {
   integrationIdempotencyRecords IntegrationIdempotencyRecord[]
   mcpAuditEvents  McpAuditEvent[]
   mcpIdempotencyRecords McpIdempotencyRecord[]
+  mcpOAuthGrants  McpOAuthGrant[]
 
   @@unique([organizationId, slug])
   @@unique([slug])
@@ -1333,6 +1541,8 @@ model McpAuditEvent {
   projectId       String
   project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   apiKeyId        String?
+  /// Set instead of `apiKeyId` when the call came through an OAuth connection.
+  oauthGrantId    String?
   actorUserId     String?
   requestId       String
   kind            String
@@ -1348,6 +1558,7 @@ model McpAuditEvent {
 
   @@index([projectId, createdAt])
   @@index([apiKeyId, createdAt])
+  @@index([oauthGrantId, createdAt])
   @@index([actorUserId, createdAt])
   @@index([requestId])
   @@map("mcp_audit_event")
@@ -1362,7 +1573,9 @@ model McpIdempotencyRecord {
   id              String    @id @default(cuid())
   projectId       String
   project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  apiKeyId        String
+  /// Exactly one of `apiKeyId` / `oauthGrantId` names the credential.
+  apiKeyId        String?
+  oauthGrantId    String?
   operation       String
   clientRequestId String
   argsHash        String
@@ -1373,8 +1586,42 @@ model McpIdempotencyRecord {
   expiresAt       DateTime
 
   @@unique([apiKeyId, operation, clientRequestId])
+  @@unique([oauthGrantId, operation, clientRequestId])
   @@index([projectId, expiresAt])
   @@map("mcp_idempotency_record")
+}
+
+/// One OAuth connection of an MCP client to ONE project, with the permission
+/// preset the signed-in person chose. Its id is the better-auth consent
+/// reference and travels in every access token (`nibleaf_grant`); the MCP
+/// server re-reads it on each request, so revoking it cuts the client off at
+/// once. A row stays pending (`activatedAt` null) between the project choice
+/// and the first token, bound to the browser session that made the choice.
+model McpOAuthGrant {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// `oauth_client.clientId` (a random id, or the CIMD document URL).
+  clientId    String
+  client      OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  /// Client name as shown at consent time.
+  clientName  String
+  sessionId   String?
+  preset      String
+  scopes      String[]
+  createdAt   DateTime    @default(now())
+  activatedAt DateTime?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  revokedById String?
+
+  @@index([projectId, createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId, clientId])
+  @@index([clientId])
+  @@map("mcp_oauth_grant")
 }
 
 

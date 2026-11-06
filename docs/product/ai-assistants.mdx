@@ -1,10 +1,10 @@
 ---
 title: 'Work on your docs with an AI assistant'
-description: 'Connect Claude, Cursor, or VS Code to one Nibleaf project with a personal key, investigate reader questions, draft fixes, and publish only after review.'
+description: 'Connect ChatGPT, Claude, Cursor, or VS Code to one Nibleaf project by signing in or with a personal key, investigate reader questions, and publish after review.'
 audience: 'support staff and documentation editors'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
-verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, apps/app/src/components/settings/api-keys-tab.tsx and assistant-setup.ts, and packages/i18n/messages'
+verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, apps/app/src/components/settings/api-keys-tab.tsx, connected-apps.tsx and assistant-setup.ts, apps/app/src/components/oauth/mcp-oauth-steps.tsx, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/ai-assistants'
@@ -12,8 +12,9 @@ translation_key: 'product/ai-assistants'
 
 An AI assistant connected to Nibleaf can answer "what are readers failing to
 find?", read the pages involved, draft a fix, and prepare it for publishing,
-all inside one project. It uses the Model Context Protocol (MCP) and a personal
-key that you create yourself. The assistant can never do more than you can do in
+all inside one project. It uses the Model Context Protocol (MCP); you connect
+it by signing in to Nibleaf from the assistant, or with a personal key that you
+create yourself. The assistant can never do more than you can do in
 the dashboard, and nothing it writes reaches readers until a person reviews the
 changes and confirms the publish.
 
@@ -23,15 +24,16 @@ changes and confirms the publish.
   operator enables it; see [Connect MCP clients securely](/self-hosting/mcp). If
   it is off, the settings page says that AI connections are disabled on this
   instance, and every client receives `mcp:disabled`.
-- You need to be a member of the project's workspace. Any member can create a
-  key for themselves.
-- Install the assistant you plan to use: Claude Code, Claude Desktop, Cursor, or
-  VS Code with an MCP-capable chat extension.
+- You need to be a member of the project's workspace. Any member can connect an
+  assistant or create a key for themselves.
+- Install the assistant you plan to use: ChatGPT, Claude (claude.ai or Claude
+  Desktop), Claude Code, Cursor, or VS Code with an MCP-capable chat extension.
 
 ## Choose what the assistant may do
 
-Each key starts from a preset, shown under **Assistant permissions**. Pick the
-smallest one that covers the task.
+Each connection and each key starts from a preset, shown under **Assistant
+permissions** (or **What the app can do** when you connect by signing in). Pick
+the smallest one that covers the task.
 
 | Preset | Who can choose it | The assistant can | The assistant cannot |
 | --- | --- | --- | --- |
@@ -44,14 +46,102 @@ select it.
 
 Two rules apply on top of every preset:
 
-- **The key acts as you.** On every request Nibleaf re-checks your current role
-  and account status. If an admin removes you from the workspace or suspends
-  you, or your account is deleted, your keys stop working on their next
-  request.
+- **The connection or key acts as you.** On every request Nibleaf re-checks
+  your current role and account status. If an admin removes you from the
+  workspace or suspends you, or your account is deleted, your connected apps and
+  keys stop working on their next request.
 - **Search terms are optional data.** Individual search terms are available
   only under the conditions in
   [What analytics can and cannot tell you](#what-analytics-can-and-cannot-tell-you).
   Otherwise the search-term tools return counts without terms and say why.
+
+## Connect by signing in
+
+Signing in is the quickest way to connect, and the only way for ChatGPT and for
+the claude.ai and Claude Desktop connectors. You add one URL to the assistant;
+there is no key to copy or store. **Settings → AI assistants (MCP)** shows the
+URL under **Connect by signing in (recommended)**: your dashboard address
+followed by `/api/mcp`. The examples below use `https://docs.example.com/api/mcp`.
+If that box says sign-in needs HTTPS, the instance is not served over HTTPS; use
+a [personal key](#create-your-personal-key) instead.
+
+1. Add the URL to your assistant, as described for each client below.
+2. The assistant opens Nibleaf in your browser. Sign in as usual, with your email
+   code or Google.
+3. Choose the project this connection is for and what the assistant may do
+   there: **Read only**, **Support writer**, or **Full admin** (admins and owners
+   only). The presets are the ones described in
+   [Choose what the assistant may do](#choose-what-the-assistant-may-do).
+4. Review the summary: the app, the project, and in plain words what it will and
+   will not be able to do. Select **Allow**. You return to the assistant, which is
+   now connected to that one project.
+
+An app that registered itself shows a warning that its name is not verified,
+and the page shows where you will be sent back to. Continue only if you started
+the connection from that app. To work on another project, connect the assistant
+again and choose that project.
+
+### Sign in from ChatGPT
+
+In ChatGPT's connector settings (developer mode), create a custom connector,
+paste the URL, choose OAuth as its authentication, and sign in when ChatGPT
+opens Nibleaf.
+
+### Sign in from Claude
+
+In claude.ai or Claude Desktop, open **Settings → Connectors → Add custom
+connector**, paste the URL, then select **Connect** and sign in. The connector is
+available in both.
+
+### Sign in from Claude Code
+
+Add the server with its URL only:
+
+```bash
+claude mcp add --transport http nibleaf "https://docs.example.com/api/mcp"
+```
+
+Start Claude Code, run `/mcp`, select `nibleaf`, and choose **Authenticate**.
+Claude Code keeps the tokens in its own credential store and refreshes them.
+
+### Sign in from Cursor or VS Code
+
+Add the server with only its URL; the editor opens the sign-in page the first
+time it connects. For Cursor, save this as `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "nibleaf": {
+      "url": "https://docs.example.com/api/mcp"
+    }
+  }
+}
+```
+
+For VS Code, save this as `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "nibleaf": {
+      "type": "http",
+      "url": "https://docs.example.com/api/mcp"
+    }
+  }
+}
+```
+
+### Manage connected apps
+
+Apps you connected by signing in appear under **Settings → AI assistants (MCP)
+→ Connected apps**, with their preset, when they were last used, and their
+latest activity; admins also see who connected each one. Select **Disconnect**
+to stop an app at once. Members see and disconnect their own apps; admins and
+owners see and disconnect everyone's. A connection also stops when the person
+who made it leaves the workspace or is suspended. A disconnected app has to be
+connected and signed in again. Connecting the same app to the same project again
+replaces your earlier connection.
 
 ## Create your personal key
 
@@ -194,12 +284,9 @@ bridge receives it intact on every operating system.
 
 ### ChatGPT
 
-ChatGPT is not available with API keys. ChatGPT requires OAuth for
-authenticated custom connectors (see
-[OpenAI's authentication guide](https://developers.openai.com/plugins/build/auth)),
-and the claude.ai connector screens likewise sign in through OAuth. Nibleaf
-does not offer OAuth sign-in for MCP in this release; the evaluation and plan
-are in [OAuth for MCP clients](/self-hosting/mcp#oauth-for-mcp-clients).
+ChatGPT connects by signing in, not with a key; follow
+[Sign in from ChatGPT](#sign-in-from-chatgpt). The claude.ai and Claude Desktop
+connector screens also sign in; see [Sign in from Claude](#sign-in-from-claude).
 
 ### Check the connection from the assistant
 
@@ -320,6 +407,8 @@ Other limits:
 | --- | --- | --- |
 | `mcp:disabled` | MCP is off on the instance. | Ask your operator to enable it. |
 | `auth:invalid_api_key` (HTTP 401) | The key expired, was revoked, was pasted incompletely, or its owner was removed, suspended, or deleted. | Create a new key and update the client. |
+| `auth:invalid_token` (HTTP 401) | The signed-in connection was disconnected, or the person who connected it was removed or suspended. | Connect the assistant again and sign in. |
+| "This connection request expired" in the browser | More than 10 minutes passed between starting to connect and approving. | Start connecting again from the assistant. |
 | `auth:insufficient_scope`, `mcp:scope_required`, or a tool is missing | The key's preset does not include it, or your current role does not allow it. | Create a key with a larger preset, or ask an admin about your role. |
 | `auth:insufficient_role` | Your current role no longer allows this change. | Ask an admin about your role. |
 | `mcp:actor_required` | The key has no live owner, so it cannot write. | Create a new key of your own. |

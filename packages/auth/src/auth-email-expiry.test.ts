@@ -18,14 +18,14 @@ describe('auth OTP email deadline', () => {
     expect(result).toEqual({ purpose: 'otp', expiresAt: expiresAt.getTime() });
   });
 
-  it('uses both current and new addresses for a change-email verification record', async () => {
+  it('binds a change-email verification record to the requesting account and the new address', async () => {
     const expiresAt = new Date('2026-10-15T12:05:00Z');
     const findVerificationValue = vi.fn().mockResolvedValue({ value, expiresAt });
     const result = await authOtpEmailMetadata(
       { ...request, type: 'change-email' },
-      { context: { session: { user: { email: 'Current@Example.test' } }, internalAdapter: { findVerificationValue } } },
+      { context: { session: { user: { id: 'user-1', email: 'Current@Example.test' } }, internalAdapter: { findVerificationValue } } },
     );
-    expect(findVerificationValue).toHaveBeenCalledWith('change-email-otp-current@example.test-recipient@example.test');
+    expect(findVerificationValue).toHaveBeenCalledWith('change-email-otp-user-1:recipient@example.test');
     expect(result?.expiresAt).toBe(expiresAt.getTime());
   });
 

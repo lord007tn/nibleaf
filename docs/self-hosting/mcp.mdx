@@ -1,19 +1,22 @@
 ---
 title: 'Connect MCP clients securely'
-description: 'Enable the project-bound Nibleaf MCP endpoint, understand personal keys and live RBAC, and operate write safety, audit, rate limits, and rollback.'
+description: 'Enable the project-bound Nibleaf MCP endpoint, connect clients by OAuth sign-in or personal keys, and operate write safety, audit, rate limits, and rollback.'
 audience: 'self-hosted Nibleaf operators and project administrators'
 content_type: 'how-to'
 last_reviewed: '2026-11-06'
-verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, packages/database/prisma/migrations/20261106090000_mcp_write_audit_idempotency, better-auth 1.7.14 package exports, and the official Model Context Protocol server SDK 2.0.0'
+verified_against: 'apps/server/src/mcp, packages/auth/src/mcp-oauth.ts, packages/shared/src/mcp.ts, migrations 20261106090000_mcp_write_audit_idempotency and 20261106120000_mcp_oauth, better-auth, @better-auth/mcp and @better-auth/cimd 1.7.18, and the official Model Context Protocol server SDK 2.0.0'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/mcp'
 ---
 
 Nibleaf exposes an authenticated HTTP MCP endpoint at `/api/mcp`. It is off by
-default. Every key is bound to one project, belongs to the member who created
+default. Clients connect either by signing in with OAuth, which binds the
+connection to one project and a preset the person chooses, or with a personal
+API key. Every key is bound to one project, belongs to the member who created
 it, carries explicit scopes, and expires. The server derives the project and
-organization from the key; tools never accept either as caller authority.
+organization from the key or connection; tools never accept either as caller
+authority.
 
 Read tools cover content, analytics, search, usage, add-ons, themes, exports,
 deployments, and integrations. Support-writer tools can create and edit page
@@ -112,11 +115,11 @@ for each snippet. First call `tools/list`, then `get_capabilities`. A successful
 includes both MCP protocol content and a structured envelope with the request
 ID, bound project ID, and required capability.
 
-Clients that only connect through OAuth, such as ChatGPT connectors and the
-claude.ai connector screens, cannot use API keys. ChatGPT requires OAuth for
-authenticated custom connectors
-([OpenAI's authentication guide](https://developers.openai.com/plugins/build/auth)).
-See [OAuth for MCP clients](#oauth-for-mcp-clients).
+Clients that connect through OAuth (ChatGPT, the claude.ai and Claude Desktop
+connectors, and, if their users prefer, Claude Code, Cursor, and VS Code) need
+only the URL `<APP_URL>/api/mcp`; see [OAuth for MCP clients](#oauth-for-mcp-clients).
+OAuth tokens are bound to that exact URL, so give those clients the dashboard
+origin rather than another host listed in `MCP_ALLOWED_HOSTS`.
 
 ## Write and publish safety
 
@@ -243,7 +246,8 @@ Every tool and resource call appends a privacy-minimized audit event to the
 `mcp_audit_event` table before success is returned. Every write attempt is
 audited, whether it succeeds or ends in a validation error, an authorization
 denial, a conflict, a rate limit, or an idempotent replay. The event records the
-project, API key, acting user (`actorUserId`), request ID, operation,
+project, the API key or OAuth connection (`apiKeyId` or `oauthGrantId`), acting
+user (`actorUserId`), request ID, operation,
 capability, target type and ID (`targetType`, `targetId`, such as a page or
 deployment), outcome, stable error code, duration, client request ID
 (`clientRequestId`), and timestamp. It never stores tool inputs, results, page
@@ -251,7 +255,7 @@ content, bearer tokens, provider payloads, IP addresses, or raw client keys. If
 audit persistence fails, the operation fails closed with a sanitized storage
 error.
 
-Three limits apply per key, per API process:
+Three limits apply per key or OAuth connection, per API process:
 
 | Variable | Default | Counts |
 | --- | --- | --- |
@@ -311,69 +315,149 @@ integration schema. Follow the complete reverse order in the
 
 ## OAuth for MCP clients
 
-Some clients connect to remote MCP servers only through OAuth: the claude.ai and
-Claude Desktop connector screens, and ChatGPT connectors. They cannot send a
-Nibleaf API key, so they cannot connect to this release.
+ChatGPT connectors, the claude.ai and Claude Desktop custom connectors, Claude
+Code, Cursor, and VS Code can connect by URL alone: the person adds
+`<APP_URL>/api/mcp` to the client, signs in to Nibleaf in the browser, chooses
+one project and a permission preset, and approves. No key is copied. Personal
+API keys keep working unchanged beside OAuth.
 
-### Evaluation
+Nibleaf's authentication server (Better Auth 1.7.18) is the OAuth 2.1
+authorization server, through the official `@better-auth/mcp` plugin with
+`@better-auth/cimd` and the `jwt` plugin. It turns on together with the MCP
+endpoint, so `MCP_ENABLED=true` on the API service is the only switch.
 
-The MCP authorization specification for remote servers expects:
+### Requirements
 
-- protected resource metadata (RFC 9728) published by the MCP host;
-- authorization server metadata (RFC 8414);
-- dynamic client registration (RFC 7591), because clients are not known ahead of
-  time;
-- the authorization code flow with PKCE;
-- resource indicators (RFC 8707), so each token's audience is the MCP endpoint.
+- `BETTER_AUTH_URL` is the public dashboard origin (the same value as
+  `APP_URL` in the bundled Compose files). It must use HTTPS; plain HTTP is
+  accepted only for `localhost` and loopback addresses in development. On any
+  other HTTP origin OAuth stays off, the API logs a warning, and the settings
+  page tells people to use a personal key.
+- The dashboard must reach the API for `/api/**` and for the three discovery
+  prefixes below. The bundled dashboard already proxies them; a reverse proxy
+  in front of it must pass them through unchanged.
+- Apply the migration `20261106120000_mcp_oauth` before enabling MCP. It creates
+  the OAuth tables even while MCP stays off.
 
-Nibleaf authenticates with better-auth 1.7.14. That version no longer ships the
-`mcp` or `oidc-provider` plugins; its OAuth-related exports are `jwt`,
-`generic-oauth`, `oauth-proxy`, and `device-authorization`, none of which acts as
-an authorization server for third-party clients. Supporting OAuth therefore
-needs the separate `@better-auth/oauth-provider` package. Its current release
-expects a newer better-auth than 1.7.14, so the upgrade comes first.
+```dotenv
+BETTER_AUTH_URL=https://docs.example.com
+MCP_ENABLED=true
+```
 
-The package adds its own auth tables. Since 1.7.3, better-auth validates its
-tables against the Prisma schema on every auth request, and a mismatch breaks
-all sign-in, not only MCP. Tests that use the in-memory adapter do not catch
-this. A consent screen is also required: the user must bind the grant to one
-project and one preset, as a key does today.
+### Discovery and endpoints
 
-### Decision for this release
+| URL | Purpose |
+| --- | --- |
+| `<APP_URL>/api/mcp` | The protected MCP resource. Access tokens are audience-bound to exactly this URL. |
+| `<APP_URL>/.well-known/oauth-protected-resource/api/mcp` | RFC 9728 protected resource metadata (also served without the `/api/mcp` suffix). |
+| `<APP_URL>/.well-known/oauth-authorization-server/api/auth` | RFC 8414 authorization server metadata for the issuer `<APP_URL>/api/auth` (also served at the root path). |
+| `<APP_URL>/api/auth/.well-known/openid-configuration` | OpenID metadata (also served at `/.well-known/openid-configuration` and its `/api/auth` form). |
+| `<APP_URL>/api/auth/oauth2/register` | Dynamic client registration (RFC 7591) for public clients. |
+| `<APP_URL>/api/auth/oauth2/authorize`, `/oauth2/token`, `/oauth2/revoke` | Authorization code with PKCE (S256), token, and revocation endpoints. |
 
-Keep project-bound personal API keys. They already give per-person attribution,
-live role checks, expiry, and revocation, and they work in Claude Code, Claude
-Desktop through `mcp-remote`, Cursor, and VS Code. OAuth is deferred until it can
-ship without risking sign-in.
+Every `401` from `/api/mcp` carries an RFC 6750 challenge with the RFC 9728
+`resource_metadata` pointer, which is how a client finds the sign-in flow. Check
+an instance with:
 
-### Plan
+```bash
+curl -s https://docs.example.com/.well-known/oauth-protected-resource/api/mcp
+curl -si -X POST https://docs.example.com/api/mcp | grep -i www-authenticate
+```
 
-1. **Package and migration.** Upgrade better-auth, add
-   `@better-auth/oauth-provider`, and ship its tables as a reviewed Prisma
-   migration. Gate it with auth tests against a real PostgreSQL database that
-   cover email, Google, and invitation sign-in before and after the migration.
-   Review every endpoint the plugin mounts and disable any that would bypass
-   Nibleaf's own membership and project rules.
-2. **Discovery.** Serve `/.well-known/oauth-protected-resource` on the MCP host,
-   pointing at the authorization server metadata, and return a
-   `WWW-Authenticate` challenge that references it from `/api/mcp`.
-3. **Consent.** Build a consent screen that issues a key-equivalent grant bound
-   to one project, one preset, and an expiry. The grant passes through the same
-   live RBAC, suspension, scope, audit, and rate-limit checks as an API key.
-4. **Token audience.** Accept only tokens whose audience is the MCP endpoint
-   (RFC 8707), and keep dynamically registered clients on PKCE.
-5. **Revocation.** List OAuth grants beside API keys in
-   **Settings → AI assistants (MCP)**, with the same owner and admin revocation
-   rules.
+The challenge looks like this; a token that lacks `mcp:connect` gets
+`error="insufficient_scope"` with `scope="mcp:connect"` and status `403`:
 
-When these steps ship, OAuth unlocks the claude.ai and Claude Desktop connector
-screens and ChatGPT connectors. API keys remain supported.
+```text
+WWW-Authenticate: Bearer realm="Nibleaf MCP", scope="mcp:connect projects:read ... offline_access", resource_metadata="https://docs.example.com/.well-known/oauth-protected-resource/api/mcp"
+```
+
+### Client registration
+
+Clients register themselves. ChatGPT and claude.ai use dynamic client
+registration: open registration is enabled for public clients
+(`token_endpoint_auth_method: none`), PKCE is required, and the
+`client_credentials` grant is not offered, because every token must act as a
+person. Clients that publish a Client ID Metadata Document use its HTTPS URL as
+their client ID; Nibleaf fetches and validates the document (MCP 2026-07-28
+profile) and shows its domain on the consent page as verified. A dynamically
+registered client chooses its own name, so the consent page marks it as
+unverified and shows where the person will be sent back to.
+
+Session-backed client management (`/api/auth/oauth2/create-client`,
+`update-client`, `delete-client`, `get-client`, `get-clients`,
+`client/rotate-secret`) and Better Auth's session-JWT route
+(`/api/auth/token`) are disabled.
+
+### Project and preset binding
+
+After sign-in, Nibleaf asks the person which project the connection is for and
+which preset it gets (Read only, Support writer, or Full admin). The rules are
+the ones for personal keys: the person must belong to the project, and Full
+admin is offered only to admins and owners. The choice is stored as an
+`mcp_oauth_grant` row; its ID is Better Auth's consent reference and travels in
+every access token as the `nibleaf_grant` claim, beside `nibleaf_project`. The
+consent page then shows the app, the project, and in plain language what the
+app will and will not be able to do. Support sessions (impersonation) cannot
+connect apps.
+
+On every MCP request the server verifies the token locally against the
+instance's own signing keys (signature, issuer `<APP_URL>/api/auth`, audience
+`<APP_URL>/api/mcp`, expiry, `at+jwt` type), then re-reads the grant, the
+person's membership, and suspension state. The effective scopes are the grant's
+preset ∩ the token's scopes ∩ what the person's current role allows. Revoking
+the connection, removing or suspending the person, or lowering their role takes
+effect on the next request. Sender-constrained (DPoP) tokens are refused.
+
+Access tokens are JWTs that last one hour. Refresh tokens are issued when the
+client asks for `offline_access`, last 30 days, and rotate strictly: a refresh
+token works once. Every refresh re-checks that the connection is still live.
+
+### Connected apps and revocation
+
+**Settings → AI assistants (MCP) → Connected apps** lists live connections with
+the app, the preset, who connected it, the last use, and the latest activity.
+Members see and disconnect their own; admins and owners see and disconnect
+everyone's. Disconnecting revokes the grant, its refresh tokens, and its consent
+at once. Connecting the same app to the same project again replaces the
+person's earlier connection.
+
+Audit rows for OAuth calls record the grant in `mcp_audit_event.oauthGrantId`
+(the API-key column stays empty), so every call is attributable to the person
+and the connection. The request, write, and publish limits count per connection
+exactly as they count per key. Because hosted clients call the token and
+registration endpoints from shared addresses, those endpoints get their own,
+larger per-IP bucket.
+
+### Upgrade and rollback
+
+1. Deploy the release and run the normal migration step (`pnpm db:deploy`). The
+   migration `20261106120000_mcp_oauth` creates `jwks`, `oauth_client`,
+   `oauth_resource`, `oauth_client_resource`, `oauth_refresh_token`,
+   `oauth_access_token`, `oauth_consent`, `oauth_client_assertion`, and
+   `mcp_oauth_grant`, adds the nullable `oauthGrantId` column to
+   `mcp_audit_event` and `mcp_idempotency_record`, and makes
+   `mcp_idempotency_record.apiKeyId` nullable. It does not touch existing rows.
+2. Set `BETTER_AUTH_URL` to the HTTPS dashboard origin and keep
+   `MCP_ENABLED=true` on the API service, then recreate the service.
+3. Check the two `curl` commands above, then connect one client end to end.
+
+Better Auth validates its tables on every authentication request while the MCP
+plugins are loaded. Enabling MCP on an image that runs before this migration
+breaks all sign-in, not only MCP; apply the migration first. To roll back,
+disable MCP, deploy the previous image, and only then apply the migration's
+`rollback.sql` as a reviewed forward migration. It removes OAuth replay rows,
+restores the `apiKeyId` requirement, and drops the OAuth tables, which signs
+every OAuth client out.
 
 ## Troubleshoot safely
 
 - `503 mcp:disabled`: enable MCP on the API service and recreate it.
 - `400 mcp:invalid_request`: correct malformed or ambiguous host/origin forwarding.
 - `401 auth:invalid_api_key`: replace a malformed, expired, revoked, or null-expiry key, or a key whose owner was removed, suspended, or deleted.
+- `401 auth:invalid_token`: the OAuth access token expired, was issued for another URL, or its connection was disconnected, or its person was removed or suspended. The client refreshes or signs in again.
+- `403` with `error="insufficient_scope"`: the client requested too few scopes; reconnect it so that it asks for `mcp:connect`.
+- `404` from `/.well-known/oauth-protected-resource/api/mcp`: MCP is off, or `BETTER_AUTH_URL` is not HTTPS (or loopback); OAuth stays off in both cases.
+- "This connection request expired" in the browser: the signed request is older than 10 minutes; start connecting again from the client.
 - `403 auth:insufficient_scope` or `mcp:scope_required`: create or rotate the key with `mcp:connect` and the exact scope; the owner's current role must also allow it.
 - `auth:insufficient_role`: the key owner's current role no longer allows the change.
 - `mcp:actor_required`: the key has no live owner, so writes are impossible; the owner creates a new key.

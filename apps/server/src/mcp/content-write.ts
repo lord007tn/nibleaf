@@ -12,6 +12,7 @@ import { assertLanguageInProject } from '@/actions/languages';
 import { createPage, getPage, updatePage } from '@/actions/pages';
 import { AppError, badRequest } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
+import { mcpCredentialColumns, mcpCredentialKey } from './credential';
 import { pageRevision } from './dto';
 import { clientRequestIdSchema, isUniqueViolation } from './idempotency';
 import { MAX_MCP_MARKDOWN_BYTES, normalizeMcpLine, type PreparedMarkdown, prepareMcpMarkdown } from './markdown';
@@ -658,7 +659,7 @@ const consumePreviewToken = async (principal: McpPrincipal, token: string) => {
     await prisma.mcpIdempotencyRecord.create({
       data: {
         projectId: principal.project.id,
-        apiKeyId: principal.apiKey.id,
+        ...mcpCredentialColumns(principal.credential),
         operation: TOKEN_CONSUMED,
         clientRequestId: createHash('sha256').update(token).digest('hex'),
         argsHash: 'preview-token',
@@ -679,9 +680,10 @@ const consumePreviewToken = async (principal: McpPrincipal, token: string) => {
   }
 };
 
-const publishMessage = (message: string | undefined, keyName: string) => {
+const publishMessage = (message: string | undefined, credential: McpPrincipal['credential']) => {
   const note = normalizeMcpLine(message ?? '') || 'Published';
-  return `${note} (via MCP key "${normalizeMcpLine(keyName).slice(0, 60)}")`.slice(0, 300);
+  const via = credential.kind === 'oauth' ? 'MCP app' : 'MCP key';
+  return `${note} (via ${via} "${normalizeMcpLine(credential.name).slice(0, 60)}")`.slice(0, 300);
 };
 
 const publishChanges = async (
@@ -711,7 +713,7 @@ const publishChanges = async (
     });
   }
   await assertNoPublishInFlight(projectId);
-  const limit = checkMcpPublishRateLimit(principal.apiKey.id);
+  const limit = checkMcpPublishRateLimit(mcpCredentialKey(principal.credential));
   if (!limit.allowed) {
     const retryAfterSeconds = Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000));
     throw new AppError({
@@ -725,7 +727,7 @@ const publishChanges = async (
     principal.project.organizationId,
     projectId,
     actor.userId,
-    { message: publishMessage(args.message, principal.apiKey.name) },
+    { message: publishMessage(args.message, principal.credential) },
     ctx.get('locale'),
   );
   return {
@@ -778,7 +780,7 @@ const editAnnotations = { readOnlyHint: false, destructiveHint: false, idempoten
  *  are static and factual; page text is never treated as instructions. */
 export const registerContentWriteSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
   const projectId = principal.project.id;
-  const scopes = principal.apiKey.scopes;
+  const scopes = principal.credential.scopes;
 
   if (scopes.includes('pages:read')) {
     server.registerTool(

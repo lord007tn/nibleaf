@@ -33,7 +33,7 @@ const getSearchIndexDiagnosticsDto = async (ctx: Context<HonoEnv>, projectId: st
 };
 
 export const registerSearchSurface = (server: McpServer, ctx: Context<HonoEnv>, principal: McpPrincipal) => {
-  if (!principal.apiKey.scopes.includes('search:read')) return;
+  if (!principal.credential.scopes.includes('search:read')) return;
   server.registerTool(
     'get_search_configuration',
     {

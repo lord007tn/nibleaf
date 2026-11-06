@@ -10,6 +10,8 @@ vi.mock('@nibleaf/database', () => ({
   prisma: { apiKey: { findUnique: mocks.findUnique, update: mocks.update }, member: { findUnique: mocks.memberFindUnique } },
 }));
 vi.mock('@/env', () => ({ env: mocks.env }));
+// OAuth off here: these cases cover personal API keys (oauth.test.ts covers tokens).
+vi.mock('@nibleaf/auth/server', () => ({ mcpOAuth: null, verifyMcpAccessToken: null }));
 
 const secret = `plm_live_${'a'.repeat(32)}`;
 const key = (overrides: Record<string, unknown> = {}) => ({
@@ -78,15 +80,15 @@ describe('MCP bearer authentication', () => {
     mocks.findUnique.mockResolvedValue(key());
     const response = await requestAuth(`Bearer ${secret}`);
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { project: { id: string; organizationId: string }; apiKey: { scopes: string[] } };
+    const body = (await response.json()) as { project: { id: string; organizationId: string }; credential: { scopes: string[] } };
     expect(body.project).toEqual({ id: 'project-1', name: 'Docs', organizationId: 'org-1' });
-    expect(body.apiKey.scopes).toEqual(['mcp:connect', 'projects:read']);
+    expect(body.credential.scopes).toEqual(['mcp:connect', 'projects:read']);
     expect(mocks.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { hashedSecret: hashApiKeySecret(secret) } }));
   });
 });
 
 const writerScopes = ['mcp:connect', 'projects:read', 'pages:read', 'pages:write', 'deployments:publish'];
-type AuthBody = { apiKey: { scopes: string[] }; actor: { userId: string; role: string } | null };
+type AuthBody = { credential: { scopes: string[] }; actor: { userId: string; role: string } | null };
 
 describe('MCP key actor binding', () => {
   it('acts as the creator with their current organization role and suspension state', async () => {
@@ -96,7 +98,7 @@ describe('MCP key actor binding', () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as AuthBody;
     expect(body.actor).toEqual({ userId: 'user-1', role: 'member' });
-    expect(body.apiKey.scopes).toEqual(writerScopes);
+    expect(body.credential.scopes).toEqual(writerScopes);
     expect(mocks.memberFindUnique).toHaveBeenCalledWith({
       where: { organizationId_userId: { organizationId: 'org-1', userId: 'user-1' } },
       select: { role: true, user: { select: { suspendedAt: true } } },

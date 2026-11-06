@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { diffSchema, getExpectedSchema } from '@better-auth/core/db/internal';
 import { prisma } from '@nibleaf/database';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -14,6 +14,9 @@ const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.ho
     BETTER_AUTH_URL: APP_ORIGIN,
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: 'google-client-secret',
+    // Every case runs with the MCP OAuth plugins on: their tables are part of
+    // Better Auth's per-request schema check, so ordinary sign-in proves them.
+    MCP_ENABLED: 'true',
     TRUSTED_ORIGINS: `${APP_ORIGIN},${ADMIN_ORIGIN}`,
   });
   return {
@@ -193,7 +196,13 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(context.explicitSchemaCheck, 'schema check registered').toBeTypeOf('function');
     await context.explicitSchemaCheck?.();
 
-    // The Prisma check reads the generated client, so also compare the real tables.
+    // The Prisma check reads the generated client, so also compare the real
+    // tables, addressed the way the adapter addresses them (`@@map` names).
+    const runtimeModels = (prisma as unknown as { _runtimeDataModel: { models: Record<string, { dbName: string | null }> } })._runtimeDataModel
+      .models;
+    const modelByTable = new Map(
+      Object.entries(runtimeModels).map(([model, { dbName }]) => [dbName ?? model, model.charAt(0).toLowerCase() + model.slice(1)]),
+    );
     const rows = await prisma.$queryRaw<{ columnDefault: string | null; columnName: string; isNullable: string; tableName: string }[]>`
       SELECT table_name AS "tableName", column_name AS "columnName", is_nullable AS "isNullable", column_default AS "columnDefault"
       FROM information_schema.columns
@@ -201,14 +210,31 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     `;
     const tables = new Map<string, { hasDefault: boolean; name: string; nullable: boolean }[]>();
     for (const { columnDefault, columnName, isNullable, tableName } of rows) {
-      const columns = tables.get(tableName) ?? [];
+      const name = modelByTable.get(tableName) ?? tableName;
+      const columns = tables.get(name) ?? [];
       columns.push({ hasDefault: columnDefault !== null, name: columnName, nullable: isNullable === 'YES' });
-      tables.set(tableName, columns);
+      tables.set(name, columns);
     }
     const database = [...tables].map(([name, columns]) => ({ columns, name }));
     const expected = getExpectedSchema(context.options);
     expect(Object.keys(expected)).toEqual(
-      expect.arrayContaining(['account', 'invitation', 'member', 'organization', 'session', 'user', 'verification']),
+      expect.arrayContaining([
+        'account',
+        'invitation',
+        'member',
+        'organization',
+        'session',
+        'user',
+        'verification',
+        'jwks',
+        'oauthClient',
+        'oauthResource',
+        'oauthClientResource',
+        'oauthRefreshToken',
+        'oauthAccessToken',
+        'oauthConsent',
+        'oauthClientAssertion',
+      ]),
     );
     expect(diffSchema(expected, database)).toEqual([]);
 
@@ -426,5 +452,204 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(response.status).toBe(302);
     expect(response.headers.get('location')).toContain('error=internal_server_error');
     expect(setCookiePairs(response).some((pair) => pair?.startsWith(`${SESSION_COOKIE}=`))).toBe(false);
+  });
+
+  // ─── MCP OAuth (jwt + @better-auth/mcp + @better-auth/cimd) ────────────────
+
+  const RESOURCE = `${APP_ORIGIN}/api/mcp`;
+  const ISSUER = `${APP_ORIGIN}/api/auth`;
+  const REDIRECT_URI = 'https://claude.ai/api/mcp/auth_callback';
+  const OAUTH_SCOPE = 'mcp:connect projects:read pages:read pages:write deployments:publish analytics:search_terms offline_access';
+
+  const raw = (path: string, init: RequestInit = {}) => auth.handler(new Request(`${APP_ORIGIN}${path}`, init));
+  const form = (path: string, fields: Record<string, string>) =>
+    raw(path, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(fields).toString() });
+  const signedQueryOf = (location: string | null, step: 'sign-in' | 'project' | 'consent') => {
+    const url = new URL(location ?? '', APP_ORIGIN);
+    expect(url.pathname).toBe(`/api/app/mcp-oauth/handoff/${step}`);
+    return url.search.slice(1);
+  };
+
+  const registerClient = async () => {
+    const response = await raw('/api/auth/oauth2/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'Claude',
+        redirect_uris: [REDIRECT_URI],
+        token_endpoint_auth_method: 'none',
+        grant_types: ['authorization_code', 'refresh_token'],
+        response_types: ['code'],
+      }),
+    });
+    expect(response.status).toBe(201);
+    const client = (await response.json()) as { client_id: string; client_secret?: string };
+    expect(client.client_secret).toBeUndefined();
+    return client.client_id;
+  };
+
+  const startAuthorization = async (clientId: string, cookie?: string) => {
+    const verifier = randomBytes(32).toString('base64url');
+    const url = new URL(`${APP_ORIGIN}/api/auth/oauth2/authorize`);
+    for (const [name, value] of Object.entries({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      scope: OAUTH_SCOPE,
+      state: `state-${run}`,
+      code_challenge: createHash('sha256').update(verifier).digest('base64url'),
+      code_challenge_method: 'S256',
+      resource: RESOURCE,
+    }))
+      url.searchParams.set(name, value);
+    const response = await auth.handler(new Request(url, cookie ? { headers: { cookie } } : {}));
+    expect(response.status).toBe(302);
+    return { location: response.headers.get('location'), verifier };
+  };
+
+  it('publishes RFC 9728 and RFC 8414 discovery for the MCP endpoint', async () => {
+    for (const path of ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/api/mcp']) {
+      const response = await raw(path);
+      expect(response.status, path).toBe(200);
+      const metadata = (await response.json()) as { resource: string; authorization_servers: string[]; scopes_supported: string[] };
+      expect(metadata.resource).toBe(RESOURCE);
+      expect(metadata.authorization_servers).toEqual([ISSUER]);
+      expect(metadata.scopes_supported).toEqual(expect.arrayContaining(['mcp:connect', 'pages:write', 'deployments:publish']));
+      expect(metadata.scopes_supported).not.toContain('offline_access');
+    }
+    for (const path of ['/.well-known/oauth-authorization-server/api/auth', '/api/auth/.well-known/openid-configuration']) {
+      const response = await raw(path);
+      expect(response.status, path).toBe(200);
+      const metadata = (await response.json()) as Record<string, unknown>;
+      expect(metadata.issuer).toBe(ISSUER);
+      expect(metadata.authorization_endpoint).toBe(`${ISSUER}/oauth2/authorize`);
+      expect(metadata.token_endpoint).toBe(`${ISSUER}/oauth2/token`);
+      expect(metadata.registration_endpoint).toBe(`${ISSUER}/oauth2/register`);
+      expect(metadata.code_challenge_methods_supported).toEqual(['S256']);
+      expect(metadata.client_id_metadata_document_supported).toBe(true);
+      expect(metadata.grant_types_supported).toEqual(expect.arrayContaining(['authorization_code', 'refresh_token']));
+      expect(metadata.grant_types_supported).not.toContain('client_credentials');
+      expect(metadata.scopes_supported).toEqual(expect.arrayContaining(['mcp:connect', 'offline_access']));
+    }
+    // The session-JWT route shares the signing key; it must stay closed.
+    expect((await send('/token')).status).toBe(404);
+  });
+
+  it('connects an MCP client to one project and preset: sign-in, project, consent, tokens, refresh, revoke', async () => {
+    const { readSignedOAuthQuery } = await import('./mcp-oauth');
+    const { verifyMcpAccessToken } = await import('./server');
+    const clientId = await registerClient();
+
+    // 1. No session: Better Auth hands off to sign-in with a signed request.
+    const first = await startAuthorization(clientId);
+    const loginQuery = signedQueryOf(first.location, 'sign-in');
+    expect((await readSignedOAuthQuery(loginQuery, AUTH_SECRET))?.clientId).toBe(clientId);
+
+    // 2. Email-code sign-in carrying that request resumes it at the project step.
+    const email = addressFor('mcp-oauth');
+    expect((await send('/email-otp/send-verification-otp', { body: { email, type: 'sign-in' } })).status).toBe(200);
+    const signedIn = await send('/sign-in/email-otp', { body: { email, otp: mocks.codes.get(email), oauth_query: loginQuery } });
+    expect(signedIn.status).toBe(200);
+    const cookie = sessionCookie(signedIn);
+    const projectStep = (await signedIn.json()) as { redirect: boolean; url: string };
+    expect(projectStep.redirect).toBe(true);
+    const projectQuery = signedQueryOf(projectStep.url, 'project');
+
+    // 3. Continuing without choosing a project goes back to the project step.
+    const skipped = await send('/oauth2/continue', { body: { postLogin: true, oauth_query: projectQuery }, cookie });
+    signedQueryOf(((await skipped.json()) as { url: string }).url, 'project');
+
+    // 4. The project page records the choice (as createMcpOAuthGrant does).
+    const session = await readSession(cookie);
+    const userId = session?.user.id as string;
+    const sessionRow = await prisma.session.findFirstOrThrow({ where: { userId }, orderBy: { createdAt: 'desc' } });
+    const membership = await prisma.member.findFirstOrThrow({
+      where: { userId },
+      select: { organization: { select: { projects: { select: { id: true } } } } },
+    });
+    const projectId = membership.organization.projects[0]?.id as string;
+    const scopes = ['mcp:connect', 'projects:read', 'pages:read', 'pages:write', 'deployments:publish'];
+    const grant = await prisma.mcpOAuthGrant.create({
+      data: { userId, projectId, clientId, clientName: 'Claude', sessionId: sessionRow.id, preset: 'support_writer', scopes },
+    });
+
+    const continued = await send('/oauth2/continue', { body: { postLogin: true, oauth_query: projectQuery }, cookie });
+    expect(continued.status).toBe(200);
+    const consentQuery = signedQueryOf(((await continued.json()) as { url: string }).url, 'consent');
+
+    // 5. Consent narrows the token to the preset (plus offline_access).
+    const consented = await send('/oauth2/consent', {
+      body: { accept: true, scope: [...scopes, 'offline_access'].join(' '), oauth_query: consentQuery },
+      cookie,
+    });
+    expect(consented.status).toBe(200);
+    const callback = new URL(((await consented.json()) as { url: string }).url);
+    expect(`${callback.origin}${callback.pathname}`).toBe(REDIRECT_URI);
+    expect(callback.searchParams.get('state')).toBe(`state-${run}`);
+    expect(await prisma.oauthConsent.count({ where: { clientId, userId, referenceId: grant.id } })).toBe(1);
+
+    // An earlier live connection of the same app to the same project is replaced.
+    const earlier = await prisma.mcpOAuthGrant.create({
+      data: { userId, projectId, clientId, clientName: 'Claude', preset: 'read_only', scopes: ['mcp:connect'], activatedAt: new Date() },
+    });
+
+    // 6. Code exchange (public client + PKCE) returns an audience-bound JWT.
+    const exchanged = await form('/api/auth/oauth2/token', {
+      grant_type: 'authorization_code',
+      code: callback.searchParams.get('code') as string,
+      redirect_uri: REDIRECT_URI,
+      client_id: clientId,
+      code_verifier: first.verifier,
+      resource: RESOURCE,
+    });
+    expect(exchanged.status).toBe(200);
+    const tokens = (await exchanged.json()) as { access_token: string; refresh_token: string; scope: string };
+    expect(tokens.refresh_token).toMatch(/^nlrt_/);
+    expect(tokens.scope.split(' ').sort()).toEqual([...scopes, 'offline_access'].sort());
+    const verified = await verifyMcpAccessToken?.(tokens.access_token);
+    expect(verified).toMatchObject({ userId, clientId, grantId: grant.id, projectId });
+    expect((await prisma.mcpOAuthGrant.findUniqueOrThrow({ where: { id: grant.id } })).activatedAt).toBeInstanceOf(Date);
+    expect((await prisma.mcpOAuthGrant.findUniqueOrThrow({ where: { id: earlier.id } })).revokedAt).toBeInstanceOf(Date);
+
+    // 7. Refresh keeps the connection; a revoked connection cannot refresh.
+    const refreshed = await form('/api/auth/oauth2/token', {
+      grant_type: 'refresh_token',
+      refresh_token: tokens.refresh_token,
+      client_id: clientId,
+      resource: RESOURCE,
+    });
+    expect(refreshed.status).toBe(200);
+    const next = (await refreshed.json()) as { access_token: string; refresh_token: string };
+    expect((await verifyMcpAccessToken?.(next.access_token))?.grantId).toBe(grant.id);
+    // Strict rotation: the old refresh token is spent.
+    expect(
+      (
+        await form('/api/auth/oauth2/token', {
+          grant_type: 'refresh_token',
+          refresh_token: tokens.refresh_token,
+          client_id: clientId,
+          resource: RESOURCE,
+        })
+      ).status,
+    ).toBe(400);
+
+    await prisma.mcpOAuthGrant.update({ where: { id: grant.id }, data: { revokedAt: new Date() } });
+    const afterRevoke = await form('/api/auth/oauth2/token', {
+      grant_type: 'refresh_token',
+      refresh_token: next.refresh_token,
+      client_id: clientId,
+      resource: RESOURCE,
+    });
+    expect(afterRevoke.status).toBe(400);
+    expect(((await afterRevoke.json()) as { error: string }).error).toBe('invalid_grant');
+  });
+
+  it('keeps OAuth client management closed to signed-in people', async () => {
+    const { cookie } = await signInAsOwner();
+    for (const path of ['/oauth2/create-client', '/oauth2/update-client', '/oauth2/delete-client', '/oauth2/client/rotate-secret']) {
+      const response = await send(path, { body: { client_id: 'x', redirect_uris: [REDIRECT_URI] }, cookie });
+      expect(response.status, path).toBe(404);
+    }
+    expect((await send('/oauth2/get-clients', { cookie })).status).toBe(404);
   });
 });

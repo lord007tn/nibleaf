@@ -56,3 +56,44 @@ describe('MCP write-path migration contract', () => {
       expect(writeRollback).toContain(`DROP COLUMN IF EXISTS "${column}"`);
   });
 });
+
+const oauthMigrationDirectory = new URL('../../../../packages/database/prisma/migrations/20261106120000_mcp_oauth/', import.meta.url);
+const oauthMigration = readFileSync(new URL('migration.sql', oauthMigrationDirectory), 'utf8');
+const oauthRollback = readFileSync(new URL('rollback.sql', oauthMigrationDirectory), 'utf8');
+
+describe('MCP OAuth migration contract', () => {
+  it('creates every Better Auth plugin table and the project grant', () => {
+    for (const table of [
+      'jwks',
+      'oauth_client',
+      'oauth_resource',
+      'oauth_client_resource',
+      'oauth_refresh_token',
+      'oauth_access_token',
+      'oauth_consent',
+      'oauth_client_assertion',
+      'mcp_oauth_grant',
+    ])
+      expect(oauthMigration).toContain(`CREATE TABLE "${table}"`);
+    expect(oauthMigration).toContain('CREATE UNIQUE INDEX "oauth_client_resource_clientId_resourceId_key"');
+  });
+
+  it('only adds nullable grant columns to existing MCP tables', () => {
+    expect(oauthMigration).toMatch(/ALTER TABLE "mcp_audit_event" ADD COLUMN\s+"oauthGrantId" TEXT;/);
+    expect(oauthMigration).toMatch(/ALTER TABLE "mcp_idempotency_record" ADD COLUMN\s+"oauthGrantId" TEXT,\nALTER COLUMN "apiKeyId" DROP NOT NULL;/);
+    expect(oauthMigration).not.toMatch(/ALTER TABLE "(?:api_key|user|session|member|project)"/);
+    expect(oauthMigration).not.toMatch(/DELETE FROM|^UPDATE /m);
+  });
+
+  it('rolls back OAuth replay rows before requiring apiKeyId again, and drops children first', () => {
+    expect(oauthRollback.indexOf('DELETE FROM "mcp_idempotency_record" WHERE "apiKeyId" IS NULL')).toBeLessThan(
+      oauthRollback.indexOf('ALTER COLUMN "apiKeyId" SET NOT NULL'),
+    );
+    expect(oauthRollback.indexOf('DROP TABLE IF EXISTS "mcp_oauth_grant"')).toBeLessThan(
+      oauthRollback.indexOf('DROP TABLE IF EXISTS "oauth_client";'),
+    );
+    expect(oauthRollback.indexOf('DROP TABLE IF EXISTS "oauth_access_token"')).toBeLessThan(
+      oauthRollback.indexOf('DROP TABLE IF EXISTS "oauth_refresh_token"'),
+    );
+  });
+});

@@ -179,7 +179,8 @@ const snapshot = () => ({
 
 let principalSequence = 0;
 const makePrincipal = (overrides: { scopes?: McpScope[]; actor?: McpPrincipal['actor'] } = {}): McpPrincipal => ({
-  apiKey: {
+  credential: {
+    kind: 'api_key',
     id: `key-${++principalSequence}`,
     name: 'Support bot',
     scopes: overrides.scopes ?? [...MCP_SCOPES],
@@ -652,7 +653,7 @@ describe('clientRequestId idempotency', () => {
     state.records.set('record-race', {
       id: 'record-race',
       projectId: 'project-1',
-      apiKeyId: principal.apiKey.id,
+      apiKeyId: principal.credential.id,
       operation: 'create_page_draft',
       clientRequestId: 'draft-refunds-1',
       argsHash: 'unknown-yet',
@@ -689,7 +690,7 @@ describe('clientRequestId idempotency', () => {
     state.records.set('record-old', {
       id: 'record-old',
       projectId: 'project-1',
-      apiKeyId: principal.apiKey.id,
+      apiKeyId: principal.credential.id,
       operation: 'create_page_draft',
       clientRequestId: 'draft-refunds-1',
       argsHash: 'other',
@@ -1141,7 +1142,7 @@ describe('preview and publish', () => {
     await mocks.idempotency.create({
       data: {
         projectId: 'project-1',
-        apiKeyId: principal.apiKey.id,
+        apiKeyId: principal.credential.id,
         operation: 'publish_changes:preview_token',
         clientRequestId: (await import('node:crypto')).createHash('sha256').update(String(approved.previewToken)).digest('hex'),
         argsHash: 'preview-token',
