@@ -7,7 +7,8 @@ import { getClickHouseClient } from './client';
 const integration = process.env.CLICKHOUSE_URL ? describe : describe.skip;
 integration('AI archive SQL integration', () => {
   it('aggregates isolated fixtures, filters and pages without leaking deleted content', async () => {
-    expect(process.env.CLICKHOUSE_DATABASE).toBe('nibleaf_chat');
+    // Synthetic rows go to a dedicated database (CI's or a local namespace), never the server default.
+    expect(process.env.CLICKHOUSE_DATABASE ?? 'default').not.toBe('default');
     const client = getClickHouseClient('writer');
     const tenant = randomUUID();
     const project = randomUUID();
