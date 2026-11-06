@@ -5,7 +5,7 @@ vi.mock('@/env', () => ({ env: { BETTER_AUTH_SECRET: 'test-secret-that-is-at-lea
 vi.mock('@nibleaf/database', () => ({ prisma: {} }));
 vi.mock('@/actions/deployments', () => ({}));
 
-import { createPublishPreviewToken, PREVIEW_TOKEN_TTL_MS, publishStateDigest, readPublishPreviewToken } from './publish';
+import { changedSiteSettings, createPublishPreviewToken, PREVIEW_TOKEN_TTL_MS, publishStateDigest, readPublishPreviewToken } from './publish';
 
 const pageEntry = (id: string, content: string, updatedAt = '2026-11-02T00:00:00.000Z') => ({
   id,
@@ -69,10 +69,32 @@ describe('MCP publish preview token', () => {
     ] as const) {
       expect(() => readPublishPreviewToken(candidate, actorId, projectId, now)).toThrow(expect.objectContaining({ code: 'mcp:preview_invalid' }));
     }
+    // Another spelling of the same signature bytes is a different single-use key, so it is refused.
+    const padded = Buffer.from(signature ?? '', 'base64url').toString('base64');
+    expect(padded).not.toBe(signature);
+    expect(() => readPublishPreviewToken(`${version}.${payload}.${padded}`, 'user-1', 'project-1', now)).toThrow(
+      expect.objectContaining({ code: 'mcp:preview_invalid' }),
+    );
     // An expired forgery is still reported as invalid, never as merely expired.
     expect(() => readPublishPreviewToken(`${version}.${swapped}.${signature}`, 'user-1', 'project-1', now + 2 * PREVIEW_TOKEN_TTL_MS)).toThrow(
       expect.objectContaining({ code: 'mcp:preview_invalid' }),
     );
+  });
+});
+
+describe('MCP pending site settings', () => {
+  const project = snapshot([]).project;
+  it('names changed project fields and config sections, never their values', () => {
+    const changed = changedSiteSettings(
+      { ...project, name: 'Docs v2', config: { theme: 'nightfall', navigation: { links: [] } } },
+      { ...project, config: { theme: 'harbor', footer: 'x' } },
+    );
+    expect(changed).toEqual(['name', 'config.footer', 'config.navigation', 'config.theme']);
+    expect(JSON.stringify(changed)).not.toContain('nightfall');
+  });
+  it('is empty when nothing changed or nothing was published yet', () => {
+    expect(changedSiteSettings(project, structuredClone(project))).toEqual([]);
+    expect(changedSiteSettings(project, null)).toEqual([]);
   });
 });
 

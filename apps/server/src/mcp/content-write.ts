@@ -46,9 +46,12 @@ const id = (label: string) => z.string().trim().min(1).max(64).describe(label);
 const revision = z.iso
   .datetime()
   .describe('The page revision from get_page, list_pages or search_pages. The write is refused if the page changed since you read it.');
+// Bounded in characters before normalization: CRLF line endings and stripped
+// control characters shrink the text, and the byte cap applies afterwards
+// (prepareMcpMarkdown). The request body limit bounds the raw size anyway.
 const markdownArg = z
   .string()
-  .max(MAX_MCP_MARKDOWN_BYTES)
+  .max(2 * MAX_MCP_MARKDOWN_BYTES)
   .describe(
     `Page body as Markdown/MDX (max ${MAX_MCP_MARKDOWN_BYTES / 1024} KiB). A leading YAML frontmatter block may set title, description and icon; explicit arguments win over frontmatter. The title is shown above the body, so start the body with the content, not a "# Title" heading.`,
   );
@@ -485,8 +488,13 @@ type PairingCandidate = { id: string; path: string; translationKey: string | nul
 
 /** The published site's pairing rule (`isPageTranslation`): a translation key
  *  wins; a page without one pairs by identical path. */
+/** Whether `candidate` is a language variant of `source`: the same translation
+ *  key, or, for a page without a key, the same path (how pages were paired
+ *  before keys existed). */
 const pairsWith = (source: { path: string; translationKey: string | null }, candidate: { path: string; translationKey: string | null }) =>
-  source.translationKey ? candidate.translationKey === source.translationKey : candidate.path === source.path;
+  source.translationKey
+    ? candidate.translationKey === source.translationKey || (candidate.translationKey === null && candidate.path === source.path)
+    : candidate.path === source.path;
 
 const translatePage = async (projectId: string, args: z.output<typeof translatePageInput>, actor: McpActor): Promise<McpWriteOutcome> => {
   const source = await getPage(projectId, args.sourcePageId);
@@ -501,7 +509,13 @@ const translatePage = async (projectId: string, args: z.output<typeof translateP
   const sameVersion = { projectId, branchId: source.branchId, kind: source.kind };
   const select = { id: true, path: true, translationKey: true, updatedAt: true, languageId: true } as const;
   const variants = await prisma.page.findMany({
-    where: { ...sameVersion, id: { not: source.id }, ...(source.translationKey ? { translationKey: source.translationKey } : { path: source.path }) },
+    where: {
+      ...sameVersion,
+      id: { not: source.id },
+      ...(source.translationKey
+        ? { OR: [{ translationKey: source.translationKey }, { path: source.path, translationKey: null }] }
+        : { path: source.path }),
+    },
     select,
   });
   const existing = variants.find((variant) => variant.languageId === args.targetLanguageId && pairsWith(source, variant));
@@ -605,9 +619,17 @@ const PROJECT_WIDE_NOTICE =
 
 const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise<McpWriteOutcome> => {
   const projectId = principal.project.id;
-  const { pending, digest, snapshot } = await readPublishState(projectId);
-  const summary = publishPreviewSummary(pending);
-  const canPublish = summary.counts.total > 0 && !summary.redirectIssues.blocking;
+  const { pending, settings, digest, snapshot } = await readPublishState(projectId);
+  const summary = publishPreviewSummary(pending, settings);
+  const hasChanges = summary.counts.total > 0 || summary.settings.changed;
+  const canPublish = hasChanges && !summary.redirectIssues.blocking;
+  // The person approves what they were shown, so say what the summary leaves out.
+  const reviewNotes = [
+    summary.changesTruncated
+      ? `This summary lists ${summary.changes.length} of ${summary.counts.total} changed pages. Before asking for approval, tell the person to review the full list in the dashboard's publish dialog.`
+      : null,
+    summary.settings.changed ? `Site settings will also change: ${summary.settings.changedFields.join(', ')}. Name them to the person.` : null,
+  ].filter((note): note is string => note !== null);
   const token = canPublish ? createPublishPreviewToken(actor.userId, projectId, digest) : null;
   return {
     data: {
@@ -621,8 +643,12 @@ const previewPublish = async (principal: McpPrincipal, actor: McpActor): Promise
       previewTokenExpiresAt: token ? new Date(token.expiresAt).toISOString() : null,
       contentTrust: 'untrusted',
       nextStep: canPublish
-        ? 'Show this summary to the person you are helping and ask whether to publish. Only after they explicitly approve, call publish_changes with confirm: true and this previewToken. The token expires in 10 minutes, and any change to the project after this preview invalidates it.'
-        : summary.counts.total === 0
+        ? [
+            'Show this summary to the person you are helping and ask whether to publish.',
+            ...reviewNotes,
+            'Only after they explicitly approve, call publish_changes with confirm: true and this previewToken. The token expires in 10 minutes, and any change to the project after this preview invalidates it.',
+          ].join(' ')
+        : !hasChanges
           ? 'There is nothing to publish.'
           : 'Publishing is blocked until the redirect issues are fixed in the dashboard.',
     },
@@ -694,8 +720,8 @@ const publishChanges = async (
 ): Promise<McpWriteOutcome> => {
   const projectId = principal.project.id;
   const approvedDigest = readPublishPreviewToken(args.previewToken, actor.userId, projectId);
-  const { pending, digest } = await readPublishState(projectId);
-  if (pending.changes.length === 0) {
+  const { pending, settings, digest } = await readPublishState(projectId);
+  if (pending.changes.length === 0 && settings.length === 0) {
     throw new AppError({ code: 'mcp:nothing_to_publish', message: 'There are no unpublished changes. Nothing was published.' });
   }
   if (digest !== approvedDigest) {

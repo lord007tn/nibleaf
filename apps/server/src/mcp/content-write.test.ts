@@ -47,6 +47,8 @@ const state = vi.hoisted(() => ({
   records: new Map<string, IdempotencyRow>(),
   deployments: [] as Array<{ id: string; version: number; status: string; commitMessage: string | null; createdAt?: Date }>,
   redirectIssues: [] as Array<{ code: string; message: string; sequence: string[]; rowIndexes: number[] }>,
+  /** Project settings in the last READY snapshot; null means nothing was published yet. */
+  publishedProject: null as Record<string, unknown> | null,
   tick: 0,
   sequence: 0,
 }));
@@ -251,6 +253,7 @@ beforeEach(() => {
   state.records = new Map();
   state.deployments = [];
   state.redirectIssues = [];
+  state.publishedProject = null;
   state.tick = 0;
   state.sequence = 0;
   mocks.env.MCP_WRITE_RATE_LIMIT_PER_MIN = 50;
@@ -330,8 +333,10 @@ beforeEach(() => {
     for (const row of rows) Object.assign(row, data, { updatedAt: nextDate() });
     return { count: rows.length };
   });
-  mocks.deploymentFindFirst.mockImplementation(
-    async () => state.deployments.find((deployment) => deployment.status === 'PENDING' || deployment.status === 'BUILDING') ?? null,
+  mocks.deploymentFindFirst.mockImplementation(async (query?: { where?: { status?: unknown } }) =>
+    query?.where?.status === 'READY'
+      ? state.publishedProject && { snapshot: { ...snapshot(), project: state.publishedProject } }
+      : (state.deployments.find((deployment) => deployment.status === 'PENDING' || deployment.status === 'BUILDING') ?? null),
   );
   mocks.getCurrentSnapshot.mockImplementation(async () => snapshot());
   mocks.getPendingChanges.mockImplementation(async (_projectId: string, current: ReturnType<typeof snapshot>) => ({
@@ -909,6 +914,15 @@ describe('translate_page', () => {
     await client.close();
   });
 
+  it('finds an existing translation without a key at the same path', async () => {
+    state.pages = [page({ translationKey: 'install' }), page({ id: 'page-ar', languageId: 'lang-ar', translationKey: null })];
+    const client = await connect(makePrincipal());
+    const response = await client.call('translate_page', { sourcePageId: 'page-1', targetLanguageId: 'lang-ar', title: 'x', markdown: 'y' });
+    expect(response.structuredContent.error).toMatchObject({ code: 'mcp:translation_exists', data: { pageId: 'page-ar' } });
+    expect(mocks.createPage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
   it('keeps existing path-paired variants paired when it introduces a key', async () => {
     state.pages = [page(), page({ id: 'page-fr', languageId: 'lang-fr' })];
     mocks.assertLanguageInProject.mockResolvedValue({ id: 'lang-ar' });
@@ -1042,6 +1056,33 @@ describe('preview and publish', () => {
     state.pages = [];
     const empty = await preview(client);
     expect(empty).toMatchObject({ canPublish: false, previewToken: null, counts: { total: 0 } });
+    await client.close();
+  });
+
+  it('tells the assistant to send the person to the dashboard when the change list is cut short', async () => {
+    state.pages = Array.from({ length: 60 }, (_, index) => page({ id: `page-${index}`, slug: `p${index}`, path: `p${index}` }));
+    const client = await connect(makePrincipal());
+    const capped = await preview(client);
+    expect(capped.nextStep).toContain('lists 50 of 60 changed pages');
+    expect(capped.nextStep).toContain("dashboard's publish dialog");
+    await client.close();
+  });
+
+  it('names pending site settings in the approval summary, and can publish settings alone', async () => {
+    const published = snapshot().project;
+    state.publishedProject = { ...published, name: 'Old docs', config: { theme: 'harbor' } };
+    state.pages = [];
+    const client = await connect(makePrincipal());
+    const data = await preview(client);
+    expect(data).toMatchObject({
+      counts: { total: 0 },
+      settings: { changed: true, changedFields: ['name', 'config.theme'] },
+      canPublish: true,
+    });
+    expect(data.nextStep).toContain('Site settings will also change: name, config.theme.');
+    const publishedSettings = await client.call('publish_changes', { confirm: true, previewToken: data.previewToken });
+    expect(publishedSettings.isError).not.toBe(true);
+    expect(mocks.createDeployment).toHaveBeenCalledOnce();
     await client.close();
   });
 

@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@nibleaf/database';
 import { summarizeRedirectIssues } from '@nibleaf/shared/redirects';
-import type { SiteSnapshot } from '@nibleaf/shared/site';
+import type { SiteSnapshot, SnapshotProject } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { getCurrentSnapshot, getPendingChanges, listDeployments, type PendingChanges } from '@/actions/deployments';
 import { env } from '@/env';
@@ -39,8 +39,11 @@ const invalidPreview = () =>
 export const readPublishPreviewToken = (token: string, actorUserId: string, projectId: string, now = Date.now()): string => {
   const [version, payload, signature, ...rest] = token.split('.');
   if (version !== PREVIEW_TOKEN_VERSION || !(payload && signature) || rest.length > 0) throw invalidPreview();
-  const expected = Buffer.from(previewSignature(payload), 'base64url');
-  const received = Buffer.from(signature, 'base64url');
+  // Compare the canonical base64url text, not decoded bytes: lenient decoding
+  // accepts other spellings of the same signature, and each spelling would be
+  // a different single-use consumption key.
+  const expected = Buffer.from(previewSignature(payload), 'utf8');
+  const received = Buffer.from(signature, 'utf8');
   if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw invalidPreview();
   let decoded: z.infer<typeof previewPayloadSchema>;
   try {
@@ -79,15 +82,42 @@ export const publishStateDigest = (snapshot: SiteSnapshot, baselineVersion: numb
       .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...page }) => page),
   });
 
+const PROJECT_SETTING_FIELDS = ['name', 'slug', 'description', 'icon', 'languages', 'versions'] as const;
+
+/** Site settings the next publish would change compared with the last READY
+ *  snapshot: project fields and top-level `config` sections (theme, navigation
+ *  and the like), which ship with a publish just like pages. Names only, never
+ *  values. Empty for a first publish, where everything is new anyway. */
+export const changedSiteSettings = (current: SnapshotProject, published: SnapshotProject | null | undefined): string[] => {
+  if (!published) return [];
+  const differs = (left: unknown, right: unknown) => canonicalHash(left ?? null) !== canonicalHash(right ?? null);
+  const fields = PROJECT_SETTING_FIELDS.filter((field) => differs(current[field], published[field]));
+  const config = current.config ?? {};
+  const before = published.config ?? {};
+  const sections = [...new Set([...Object.keys(config), ...Object.keys(before)])]
+    .filter((key) => differs(config[key], before[key]))
+    .sort()
+    .map((key) => `config.${key}`);
+  return [...fields, ...sections];
+};
+
 /** Read the publishable state once: the snapshot, the pending changes computed
- *  from that same snapshot, and its digest. */
-export const readPublishState = async (projectId: string): Promise<{ pending: PendingChanges; digest: string; snapshot: SiteSnapshot }> => {
+ *  from that same snapshot, the site settings that differ, and its digest. */
+export const readPublishState = async (
+  projectId: string,
+): Promise<{ pending: PendingChanges; settings: string[]; digest: string; snapshot: SiteSnapshot }> => {
   // Read the newest version BEFORE the snapshot: a deployment created in
   // between then makes a later recompute differ (fail closed), never match.
   const newestVersion = (await listDeployments(projectId))[0]?.version ?? null;
   const snapshot = await getCurrentSnapshot(projectId);
   const pending = await getPendingChanges(projectId, snapshot);
-  return { pending, digest: publishStateDigest(snapshot, pending.lastVersion, newestVersion), snapshot };
+  const published = await prisma.deployment.findFirst({
+    where: { projectId, status: 'READY' },
+    orderBy: { version: 'desc' },
+    select: { snapshot: true },
+  });
+  const settings = changedSiteSettings(snapshot.project, (published?.snapshot as unknown as SiteSnapshot | null)?.project);
+  return { pending, settings, digest: publishStateDigest(snapshot, pending.lastVersion, newestVersion), snapshot };
 };
 
 const normalizeBaseDomain = (value: string | undefined) => value?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
@@ -106,7 +136,7 @@ export const publishedSiteUrl = async (projectId: string, projectSlug: string) =
 };
 
 /** The human-facing summary `preview_publish` returns (no diff lines or content). */
-export const publishPreviewSummary = (pending: PendingChanges) => {
+export const publishPreviewSummary = (pending: PendingChanges, settings: string[]) => {
   const count = (status: 'added' | 'modified' | 'removed') => pending.changes.filter((change) => change.status === status).length;
   return {
     counts: { total: pending.changes.length, added: count('added'), modified: count('modified'), removed: count('removed') },
@@ -122,6 +152,7 @@ export const publishPreviewSummary = (pending: PendingChanges) => {
       deletions: change.deletions,
     })),
     changesTruncated: pending.changes.length > MAX_PREVIEW_CHANGES,
+    settings: { changed: settings.length > 0, changedFields: settings },
     redirectIssues: {
       count: pending.redirectIssues.length,
       blocking: pending.redirectIssues.length > 0,

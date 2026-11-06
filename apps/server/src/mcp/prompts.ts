@@ -23,7 +23,7 @@ const workflows = {
   draft_article:
     'Use the quoted topic as article subject. Call search_pages first to check existing coverage. Read relevant pages with get_page, then create_page_draft in the requested language. Return the draft for human review.',
   translate_article:
-    'Read the quoted pageId with get_page, then call translate_page for the quoted targetLanguage. Preserve meaning and formatting. Return the translation draft for human review.',
+    'Read the quoted pageId with get_page. Resolve the quoted targetLanguage (a code or a name) to its language id with list_languages; if it matches none, ask the human which language they mean. Translate the title, the description if any, and the page body yourself, preserving meaning and formatting, then call translate_page with sourcePageId, targetLanguageId, title, description and markdown (omit markdown for a GROUP). If it reports mcp:translation_exists, read that page and use update_page instead. Return the translation draft for human review.',
   review_unhelpful_pages:
     'Call get_page_feedback, rank pages by poor helpfulness and feedback volume, then get_page for each candidate. Propose justified edits. Use update_page with expectedRevision from the page read; on revision conflict read again and reassess. Return proposed changes for human review.',
 };
