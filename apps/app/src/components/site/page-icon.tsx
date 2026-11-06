@@ -27,6 +27,7 @@ import {
   Info,
   Key,
   Layers,
+  LifeBuoy,
   Lightbulb,
   Link as LinkIcon,
   Lock,
@@ -94,6 +95,11 @@ const ICONS: Record<string, LucideIcon> = {
   key: Key,
   layers: Layers,
   lightbulb: Lightbulb,
+  'life-buoy': LifeBuoy,
+  lifebuoy: LifeBuoy,
+  'circle-help': HelpCircle,
+  house: Home,
+  'link-2': LinkIcon,
   link: LinkIcon,
   lock: Lock,
   mail: Mail,
@@ -126,17 +132,18 @@ const ICONS: Record<string, LucideIcon> = {
 const normalize = (name: string): string =>
   name
     .trim()
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
     .toLowerCase()
     .replace(/[\s_]+/g, '-');
 
-/** Render the named icon, or null when the name is empty/unrecognized so callers
- *  can decide on a fallback. */
+/** Render known icons and use a document icon for unknown authored names. */
 export function PageIcon({ name, className }: { name?: string | null; className?: string }) {
   if (!name) {
     return null;
   }
   const Icon = ICONS[normalize(name)];
-  return Icon ? <Icon className={className} aria-hidden /> : null;
+  const ResolvedIcon = Icon ?? FileText;
+  return <ResolvedIcon className={className} aria-hidden />;
 }
 
 /** Whether an authored icon name resolves to a real icon. */

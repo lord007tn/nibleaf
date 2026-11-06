@@ -102,32 +102,22 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
 // ─── Steps ──────────────────────────────────────────────────────────────────
 
 export function Steps({ children }: { children?: ReactNode }) {
-  const steps = Children.toArray(children).filter(isValidElement);
   return (
-    <div className="my-5 flex flex-col gap-6 border-border border-s ps-6">
-      {steps.map((step, i) => (
-        <div key={step.key} className="relative">
-          {/* size-6 chip at -start-9 centers exactly on the 1.5rem rail line. */}
-          <span className="-start-9 absolute grid size-6 place-items-center rounded-full border border-border bg-muted font-semibold text-foreground text-xs">
-            {i + 1}
-          </span>
-          {step}
-        </div>
-      ))}
-    </div>
+    // biome-ignore lint/a11y/noRedundantRoles: preserves list semantics in Safari when list-style is none.
+    <ol className="reader-steps my-5 flex list-none flex-col gap-6 border-border border-s ps-6" role="list">
+      {children}
+    </ol>
   );
 }
 
 export function Step({ title, children }: { title?: string; children?: ReactNode }) {
   return (
-    <div className="[&>:first-child]:mt-0 [&>:last-child]:mb-0">
+    <li className="relative [&>:first-child]:mt-0 [&>:last-child]:mb-0">
       {title ? <div className="mb-1 font-semibold">{title}</div> : null}
       {children}
-    </div>
+    </li>
   );
 }
-
-// ─── Tabs ───────────────────────────────────────────────────────────────────
 
 const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
 
@@ -267,21 +257,55 @@ export function Accordion({
 export function Frame({ caption, children }: { caption?: string; children?: ReactNode }) {
   return (
     <figure className="my-5 overflow-hidden rounded-xl border border-border bg-muted/30 p-3">
-      <div className="overflow-hidden rounded-lg [&>img]:my-0 [&>img]:w-full">{children}</div>
+      <div className="overflow-hidden rounded-lg [&>img]:my-0 [&>img]:w-full [&>.reader-image]:block [&>.reader-image>img]:my-0 [&>.reader-image>img]:w-full">
+        {children}
+      </div>
       {caption ? <figcaption className="mt-2 text-center text-muted-foreground text-xs">{caption}</figcaption> : null}
     </figure>
   );
 }
 
 export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const pointerOpen = useRef(false);
+  if (!tip) return <>{children}</>;
   return (
-    <span className="cursor-help underline decoration-dotted underline-offset-2" title={tip}>
-      {children}
+    <span className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onPointerDown={() => {
+          pointerOpen.current = open;
+        }}
+        tabIndex={0}
+        aria-describedby={id}
+        aria-expanded={open}
+        className="cursor-help underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={(event) => setOpen(event.detail ? !pointerOpen.current : !open)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            setOpen(false);
+          }
+        }}
+      >
+        {children}
+      </button>
+      <span
+        id={id}
+        role="tooltip"
+        hidden={!open}
+        className="absolute start-0 bottom-full z-20 mb-2 w-max max-w-[min(20rem,80vw)] rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md"
+      >
+        {tip}
+      </span>
     </span>
   );
 }
-
-// ─── Inline icon ──────────────────────────────────────────────────────────────
 
 export function Icon({ icon, name, color, size }: { icon?: string; name?: string; color?: string; size?: string | number }) {
   const resolved = icon ?? name;
