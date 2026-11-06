@@ -2,6 +2,7 @@ import { auth, mcpOAuth } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { Hono } from 'hono';
 import { env } from './env';
+import { restoreNavigationFetchMetadata } from './lib/fetch-metadata';
 import type { HonoEnv } from './lib/hono/context';
 import { rateLimit } from './middlewares/rate-limit';
 import modules from './modules';
@@ -76,7 +77,7 @@ const apiApp = new Hono<HonoEnv>()
   // Historical reset emails pointed at Better Auth's API token route. Password
   // auth is disabled now, so take those recipients to the passwordless flow.
   .get('/auth/reset-password/:token', (ctx) => ctx.redirect(new URL('/sign-in', env.APP_URL).toString(), 302))
-  .on(['POST', 'GET'], '/auth/*', (ctx) => auth.handler(ctx.req.raw))
+  .on(['POST', 'GET'], '/auth/*', (ctx) => auth.handler(restoreNavigationFetchMetadata(ctx.req.raw)))
   .route('/mcp', mcp)
   .route('/', modules);
 
