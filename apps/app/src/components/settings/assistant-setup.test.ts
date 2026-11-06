@@ -30,6 +30,32 @@ describe('assistant setup', () => {
       Accept: 'application/json, text/event-stream',
     });
   });
+  it('reads the response for its own request from an SSE reply with several events', async () => {
+    const sse = (body: string) => new Response(body, { headers: { 'content-type': 'text/event-stream' } });
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(sse('event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25"}}\n\n'))
+        .mockResolvedValueOnce(new Response(null, { status: 202 }))
+        .mockResolvedValueOnce(
+          sse(
+            [
+              'event: message',
+              'data: {"jsonrpc":"2.0","method":"notifications/progress","params":{"progress":1}}',
+              '',
+              'event: message',
+              'data: {"jsonrpc":"2.0","id":2,',
+              'data: "result":{"structuredContent":{"data":{"tools":[{"name":"a"},{"name":"b"}]}}}}',
+              '',
+              '',
+            ].join('\n'),
+          ),
+        ),
+    );
+    expect((await testAssistantConnection('key')).tools).toBe(2);
+  });
+
   it("dates the test's own key usage by the server clock, not the computer's", async () => {
     // The computer's clock is an hour fast; the server's `Date` is what counts.
     vi.useFakeTimers({ now: Date.parse('2026-11-06T13:00:00Z'), toFake: ['Date'] });

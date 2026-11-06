@@ -61,6 +61,22 @@ export type AssistantTestResult = {
   usedUntil: number;
 };
 
+/** The JSON-RPC response with this `id` from an SSE reply. Each event carries
+ *  one message (its `data:` lines joined), and notifications may come first. */
+const sseResponse = (text: string, id: number) =>
+  text
+    .split(/\r?\n\r?\n/)
+    .map((event) =>
+      event
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.slice(5).replace(/^ /, ''))
+        .join('\n'),
+    )
+    .filter((data) => data !== '')
+    .map((data) => JSON.parse(data) as { id?: unknown; result?: { isError?: boolean } & Record<string, unknown>; error?: unknown })
+    .find((message) => message.id === id);
+
 /** Streamable HTTP may return either JSON or SSE. Never expose response bodies in errors. */
 export async function testAssistantConnection(secret: string): Promise<AssistantTestResult> {
   const headers: Record<string, string> = {
@@ -93,16 +109,8 @@ export async function testAssistantConnection(secret: string): Promise<Assistant
       return;
     }
     const text = await response.text();
-    const payload = response.headers.get('content-type')?.includes('text/event-stream')
-      ? JSON.parse(
-          text
-            .split(/\r?\n/)
-            .filter((line) => line.startsWith('data:'))
-            .map((line) => line.slice(5).trim())
-            .join('\n'),
-        )
-      : JSON.parse(text);
-    if (payload.error || payload.result?.isError) throw new ConnectionError('connectionError', usedUntil());
+    const payload = response.headers.get('content-type')?.includes('text/event-stream') ? sseResponse(text, id) : JSON.parse(text);
+    if (!payload || payload.error || payload.result?.isError) throw new ConnectionError('connectionError', usedUntil());
     return payload.result;
   };
   const initialized = await call(
