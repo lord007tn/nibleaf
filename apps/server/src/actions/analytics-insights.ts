@@ -45,6 +45,7 @@ const resolveMeta = (query: AnalyticsInsightsQuery, availability: InsightsMeta['
     previous: query.compare === 'previous' ? { from: new Date(from - span).toISOString(), to: new Date(from).toISOString() } : null,
     granularity: query.range === '24h' ? 'hour' : 'day',
     generatedAt: new Date(now).toISOString(),
+    lastEventAt: null,
   };
 };
 

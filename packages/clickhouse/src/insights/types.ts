@@ -40,6 +40,8 @@ export interface InsightsMeta {
   /** Granularity of every timeseries in this response. */
   granularity: 'hour' | 'day';
   generatedAt: string;
+  /** Newest human event received for the project (any time), ISO-8601; null when none was ever received or unknown. */
+  lastEventAt: string | null;
 }
 
 /** A metric and the same metric over the comparison period. */

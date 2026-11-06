@@ -58,6 +58,12 @@ import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
 import { Route as AppProjectsProjectIdSettingsRouteImport } from './routes/app/projects/$projectId/settings'
+import { Route as AppProjectsProjectIdAnalyticsIndexRouteImport } from './routes/app/projects/$projectId/analytics.index'
+import { Route as AppProjectsProjectIdAnalyticsAiRouteImport } from './routes/app/projects/$projectId/analytics.ai'
+import { Route as AppProjectsProjectIdAnalyticsFeedbackRouteImport } from './routes/app/projects/$projectId/analytics.feedback'
+import { Route as AppProjectsProjectIdAnalyticsPagesRouteImport } from './routes/app/projects/$projectId/analytics.pages'
+import { Route as AppProjectsProjectIdAnalyticsPerformanceRouteImport } from './routes/app/projects/$projectId/analytics.performance'
+import { Route as AppProjectsProjectIdAnalyticsSearchRouteImport } from './routes/app/projects/$projectId/analytics.search'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -313,6 +319,42 @@ const AppProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
+const AppProjectsProjectIdAnalyticsIndexRoute =
+  AppProjectsProjectIdAnalyticsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
+const AppProjectsProjectIdAnalyticsAiRoute =
+  AppProjectsProjectIdAnalyticsAiRouteImport.update({
+    id: '/ai',
+    path: '/ai',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
+const AppProjectsProjectIdAnalyticsFeedbackRoute =
+  AppProjectsProjectIdAnalyticsFeedbackRouteImport.update({
+    id: '/feedback',
+    path: '/feedback',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
+const AppProjectsProjectIdAnalyticsPagesRoute =
+  AppProjectsProjectIdAnalyticsPagesRouteImport.update({
+    id: '/pages',
+    path: '/pages',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
+const AppProjectsProjectIdAnalyticsPerformanceRoute =
+  AppProjectsProjectIdAnalyticsPerformanceRouteImport.update({
+    id: '/performance',
+    path: '/performance',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
+const AppProjectsProjectIdAnalyticsSearchRoute =
+  AppProjectsProjectIdAnalyticsSearchRouteImport.update({
+    id: '/search',
+    path: '/search',
+    getParentRoute: () => AppProjectsProjectIdAnalyticsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -357,11 +399,17 @@ export interface FileRoutesByFullPath {
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
-  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
+  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRouteWithChildren
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
+  '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
+  '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
+  '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
+  '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
+  '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/analytics/': typeof AppProjectsProjectIdAnalyticsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -402,11 +450,16 @@ export interface FileRoutesByTo {
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/sites/$projectId': typeof SitesProjectIdIndexRoute
-  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
+  '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
+  '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
+  '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
+  '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
+  '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -454,11 +507,17 @@ export interface FileRoutesById {
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/(dashboard)/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
-  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRoute
+  '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRouteWithChildren
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
+  '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
+  '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
+  '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
+  '/app/projects/$projectId/analytics/performance': typeof AppProjectsProjectIdAnalyticsPerformanceRoute
+  '/app/projects/$projectId/analytics/search': typeof AppProjectsProjectIdAnalyticsSearchRoute
+  '/app/projects/$projectId/analytics/': typeof AppProjectsProjectIdAnalyticsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -510,6 +569,12 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId/'
+    | '/app/projects/$projectId/analytics/ai'
+    | '/app/projects/$projectId/analytics/feedback'
+    | '/app/projects/$projectId/analytics/pages'
+    | '/app/projects/$projectId/analytics/performance'
+    | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/analytics/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -550,11 +615,16 @@ export interface FileRouteTypes {
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/sites/$projectId'
-    | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId'
+    | '/app/projects/$projectId/analytics/ai'
+    | '/app/projects/$projectId/analytics/feedback'
+    | '/app/projects/$projectId/analytics/pages'
+    | '/app/projects/$projectId/analytics/performance'
+    | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/analytics'
   id:
     | '__root__'
     | '/'
@@ -606,6 +676,12 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId/'
+    | '/app/projects/$projectId/analytics/ai'
+    | '/app/projects/$projectId/analytics/feedback'
+    | '/app/projects/$projectId/analytics/pages'
+    | '/app/projects/$projectId/analytics/performance'
+    | '/app/projects/$projectId/analytics/search'
+    | '/app/projects/$projectId/analytics/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -982,6 +1058,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdSettingsRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
+    '/app/projects/$projectId/analytics/': {
+      id: '/app/projects/$projectId/analytics/'
+      path: '/'
+      fullPath: '/app/projects/$projectId/analytics/'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsIndexRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
+    '/app/projects/$projectId/analytics/ai': {
+      id: '/app/projects/$projectId/analytics/ai'
+      path: '/ai'
+      fullPath: '/app/projects/$projectId/analytics/ai'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsAiRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
+    '/app/projects/$projectId/analytics/feedback': {
+      id: '/app/projects/$projectId/analytics/feedback'
+      path: '/feedback'
+      fullPath: '/app/projects/$projectId/analytics/feedback'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsFeedbackRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
+    '/app/projects/$projectId/analytics/pages': {
+      id: '/app/projects/$projectId/analytics/pages'
+      path: '/pages'
+      fullPath: '/app/projects/$projectId/analytics/pages'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsPagesRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
+    '/app/projects/$projectId/analytics/performance': {
+      id: '/app/projects/$projectId/analytics/performance'
+      path: '/performance'
+      fullPath: '/app/projects/$projectId/analytics/performance'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsPerformanceRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
+    '/app/projects/$projectId/analytics/search': {
+      id: '/app/projects/$projectId/analytics/search'
+      path: '/search'
+      fullPath: '/app/projects/$projectId/analytics/search'
+      preLoaderRoute: typeof AppProjectsProjectIdAnalyticsSearchRouteImport
+      parentRoute: typeof AppProjectsProjectIdAnalyticsRoute
+    }
   }
 }
 
@@ -1024,8 +1142,37 @@ const AppdashboardRouteRouteChildren: AppdashboardRouteRouteChildren = {
 const AppdashboardRouteRouteWithChildren =
   AppdashboardRouteRoute._addFileChildren(AppdashboardRouteRouteChildren)
 
+interface AppProjectsProjectIdAnalyticsRouteChildren {
+  AppProjectsProjectIdAnalyticsAiRoute: typeof AppProjectsProjectIdAnalyticsAiRoute
+  AppProjectsProjectIdAnalyticsFeedbackRoute: typeof AppProjectsProjectIdAnalyticsFeedbackRoute
+  AppProjectsProjectIdAnalyticsPagesRoute: typeof AppProjectsProjectIdAnalyticsPagesRoute
+  AppProjectsProjectIdAnalyticsPerformanceRoute: typeof AppProjectsProjectIdAnalyticsPerformanceRoute
+  AppProjectsProjectIdAnalyticsSearchRoute: typeof AppProjectsProjectIdAnalyticsSearchRoute
+  AppProjectsProjectIdAnalyticsIndexRoute: typeof AppProjectsProjectIdAnalyticsIndexRoute
+}
+
+const AppProjectsProjectIdAnalyticsRouteChildren: AppProjectsProjectIdAnalyticsRouteChildren =
+  {
+    AppProjectsProjectIdAnalyticsAiRoute: AppProjectsProjectIdAnalyticsAiRoute,
+    AppProjectsProjectIdAnalyticsFeedbackRoute:
+      AppProjectsProjectIdAnalyticsFeedbackRoute,
+    AppProjectsProjectIdAnalyticsPagesRoute:
+      AppProjectsProjectIdAnalyticsPagesRoute,
+    AppProjectsProjectIdAnalyticsPerformanceRoute:
+      AppProjectsProjectIdAnalyticsPerformanceRoute,
+    AppProjectsProjectIdAnalyticsSearchRoute:
+      AppProjectsProjectIdAnalyticsSearchRoute,
+    AppProjectsProjectIdAnalyticsIndexRoute:
+      AppProjectsProjectIdAnalyticsIndexRoute,
+  }
+
+const AppProjectsProjectIdAnalyticsRouteWithChildren =
+  AppProjectsProjectIdAnalyticsRoute._addFileChildren(
+    AppProjectsProjectIdAnalyticsRouteChildren,
+  )
+
 interface AppProjectsProjectIdRouteRouteChildren {
-  AppProjectsProjectIdAnalyticsRoute: typeof AppProjectsProjectIdAnalyticsRoute
+  AppProjectsProjectIdAnalyticsRoute: typeof AppProjectsProjectIdAnalyticsRouteWithChildren
   AppProjectsProjectIdEditorRoute: typeof AppProjectsProjectIdEditorRoute
   AppProjectsProjectIdPreviewRoute: typeof AppProjectsProjectIdPreviewRoute
   AppProjectsProjectIdSettingsRoute: typeof AppProjectsProjectIdSettingsRoute
@@ -1034,7 +1181,8 @@ interface AppProjectsProjectIdRouteRouteChildren {
 
 const AppProjectsProjectIdRouteRouteChildren: AppProjectsProjectIdRouteRouteChildren =
   {
-    AppProjectsProjectIdAnalyticsRoute: AppProjectsProjectIdAnalyticsRoute,
+    AppProjectsProjectIdAnalyticsRoute:
+      AppProjectsProjectIdAnalyticsRouteWithChildren,
     AppProjectsProjectIdEditorRoute: AppProjectsProjectIdEditorRoute,
     AppProjectsProjectIdPreviewRoute: AppProjectsProjectIdPreviewRoute,
     AppProjectsProjectIdSettingsRoute: AppProjectsProjectIdSettingsRoute,
