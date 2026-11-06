@@ -17,6 +17,7 @@ describe('background schema lifecycle', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('does no work when analytics or boot migrations are disabled', async () => {
@@ -70,6 +71,42 @@ describe('background schema lifecycle', () => {
   it('reports schema_outdated for a missing table or a missing applied version', async () => {
     expect((await getAnalyticsHealth({ client: client([[{ count: 0 }]]) })).status).toBe('schema_outdated');
     expect((await getAnalyticsHealth({ client: client([[{ count: 1 }], [{ version: 2 }]]) })).status).toBe('schema_outdated');
+  });
+
+  it('shares concurrent probes, caches for ten seconds, and bypasses the cache while migrating', async () => {
+    let now = 1000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    const fake = client([[{ count: 1 }], [{ version: 1 }], [{ count: 1 }], [{ version: 1 }, { version: 2 }]]);
+    const results = await Promise.all([getAnalyticsHealth({ client: fake }), getAnalyticsHealth({ client: fake })]);
+    expect(results.map((result) => result.status)).toEqual(['schema_outdated', 'schema_outdated']);
+    expect(fake.query).toHaveBeenCalledTimes(2);
+    now = 10_999;
+    expect((await getAnalyticsHealth({ client: fake })).status).toBe('schema_outdated');
+    expect((await getAnalyticsHealth({ client: fake, migrating: true })).status).toBe('migrating');
+    expect(fake.query).toHaveBeenCalledTimes(2);
+    now = 11_000;
+    expect((await getAnalyticsHealth({ client: fake })).status).toBe('ok');
+    expect(fake.query).toHaveBeenCalledTimes(4);
+  });
+
+  it('caches outages and immediately reflects local migration start and completion', async () => {
+    const fake = { query: vi.fn().mockRejectedValue(new Error('down')) } as unknown as ClickHouseClient;
+    expect((await getAnalyticsHealth({ client: fake })).status).toBe('unavailable');
+    expect((await getAnalyticsHealth({ client: fake })).status).toBe('unavailable');
+    expect(fake.query).toHaveBeenCalledOnce();
+    fake.query = vi
+      .fn()
+      .mockResolvedValueOnce({ json: async () => [{ count: 1 }] })
+      .mockResolvedValueOnce({ json: async () => [{ version: 1 }, { version: 2 }] });
+    await runClickHouseBootMigrations({
+      migrate: async () => {
+        expect((await getAnalyticsHealth({ client: fake })).status).toBe('migrating');
+        expect(fake.query).not.toHaveBeenCalled();
+        return true;
+      },
+    });
+    expect((await getAnalyticsHealth({ client: fake })).status).toBe('ok');
+    expect(fake.query).toHaveBeenCalledTimes(2);
   });
 
   it('bounds a stalled health probe independently of the transport timeout', async () => {

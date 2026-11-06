@@ -14,9 +14,9 @@ export async function initializeClickHouseFn(
 ) {
   const config = keys();
   const roles = [...new Set<ClickHouseClientRole>(options.roles ?? ['reader'])];
-  if (!config.ANALYTICS_HASH_SALT && process.env.NODE_ENV === 'production') {
+  if (!config.ANALYTICS_HASH_SALT && config.ANALYTICS_MODE !== 'disabled') {
     log.warn(
-      'ANALYTICS_HASH_SALT is not set; reader identifiers are hashed with a public fallback salt. Set it to a random value (openssl rand -hex 32).',
+      'ANALYTICS_HASH_SALT is not set; analytics events are dropped while ClickHouse analytics is enabled. Configure a salt (openssl rand -hex 32 for a new installation); preserve an existing salt.',
     );
   }
   if (config.ANALYTICS_MODE === 'disabled') return { configured: false, latencyMs: null, roles: [], status: 'disabled' };
@@ -51,12 +51,28 @@ export interface AnalyticsSchemaHealth {
 let migrating = false;
 let migrationStarted = false;
 
-/** Check versions on every probe so separate API processes observe worker progress. */
+let healthCache = new WeakMap<ClickHouseClient, { expiresAt: number; result: Promise<AnalyticsSchemaHealth> }>();
+
+/** Cache both healthy and unavailable probes, sharing concurrent requests. Local
+ * migration state takes precedence immediately and never enters the cache. */
 export async function getAnalyticsHealth(options: { client?: ClickHouseClient; migrating?: boolean } = {}): Promise<AnalyticsSchemaHealth> {
   if (keys().ANALYTICS_MODE === 'disabled') return { configured: false, latencyMs: null, status: 'disabled' };
-  const started = performance.now();
+  if (options.migrating ?? migrating) return { configured: true, latencyMs: null, status: 'migrating' };
   try {
     const client = options.client ?? getClickHouseClient('reader');
+    const cached = healthCache.get(client);
+    if (cached && cached.expiresAt > Date.now()) return await cached.result;
+    const result = probeAnalyticsSchema(client);
+    healthCache.set(client, { expiresAt: Date.now() + 10_000, result });
+    return await result;
+  } catch {
+    return { configured: true, latencyMs: null, status: 'unavailable' };
+  }
+}
+
+async function probeAnalyticsSchema(client: ClickHouseClient): Promise<AnalyticsSchemaHealth> {
+  const started = performance.now();
+  try {
     // Keep optional analytics well inside Docker's core healthcheck timeout.
     const abortSignal = AbortSignal.timeout(750);
     const tables = await client.query({
@@ -79,7 +95,7 @@ export async function getAnalyticsHealth(options: { client?: ClickHouseClient; m
     return {
       configured: true,
       latencyMs: Math.round(performance.now() - started),
-      status: (options.migrating ?? migrating) ? 'migrating' : current ? 'ok' : 'schema_outdated',
+      status: current ? 'ok' : 'schema_outdated',
     };
   } catch {
     return { configured: true, latencyMs: null, status: 'unavailable' };
@@ -153,6 +169,7 @@ export async function runClickHouseBootMigrations(
   try {
     if (keys().ANALYTICS_MODE === 'disabled' || !keys().CLICKHOUSE_MIGRATE_ON_BOOT) return;
     for (;;) {
+      healthCache = new WeakMap();
       migrating = true;
       try {
         if (await (options.migrate ?? migrateClickHouseSchema)()) return;
@@ -174,6 +191,7 @@ export async function runClickHouseBootMigrations(
     log.warn({ error: redactAnalyticsDiagnostics(error) }, 'ClickHouse boot migration configuration invalid; core boot continues');
   } finally {
     migrating = false;
+    healthCache = new WeakMap();
   }
 }
 
