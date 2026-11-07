@@ -273,8 +273,9 @@ const baselineMissing = async (db: Prisma.TransactionClient, projectId: string, 
  *  (its foreign key needs a KEY SHARE lock) until the promote ends.
  *
  *  Main-side page creates are held off by the project lock `createPage` takes
- *  from #301, which must merge first. Until then `mergeBranch` re-reads main's
- *  addresses after locking and refuses if a new page would collide.
+ *  (#301). As a backstop for any writer that skips it, `mergeBranch` also
+ *  re-reads main's addresses after locking and refuses if a new page would
+ *  collide.
  *
  *  Without `lock` it is a plain read (the preview). A version without a
  *  baseline returns no plan: promote refuses it. */
@@ -401,8 +402,8 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
         // A main page created after the read, at the address the promote gives
         // a version page, would end up a duplicate. The late page's own address
         // is where it lands after the promote: under its parent's final path.
-        // (#301's project lock in createPage rules late pages out; this covers
-        // the gap until it merges.)
+        // (createPage's project lock, from #301, rules late pages out; this is
+        // the backstop for any writer that skips it.)
         const incoming = new Set(plan.incoming.map((a) => `${a.languageId}\u0000${a.path}`));
         if (incoming.size > 0) {
           const mainNow = await tx.page.findMany({
