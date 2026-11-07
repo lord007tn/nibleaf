@@ -55,7 +55,7 @@ vi.mock('./pages', () => ({
       config: body.config ?? null,
     };
     mocks.rows.push(row);
-    return row;
+    return { ...row };
   }),
 }));
 
@@ -114,6 +114,16 @@ beforeEach(() => {
   });
   Object.assign(mocks.prisma.page, {
     deleteMany: vi.fn(async ({ where }: { where: { id: string } }) => deletePage(where.id)),
+    // Field equality on whatever the fake row stores, plus "no child pages".
+    findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> & { id: string } }) => {
+      const row = mocks.rows.find((candidate) => candidate.id === where.id) as Record<string, unknown> | undefined;
+      if (!row) return null;
+      const fieldsMatch = Object.entries(where).every(
+        ([key, value]) => ['projectId', 'children', 'comments', 'audienceGrants'].includes(key) || value === undefined || row[key] === value,
+      );
+      const childless = !mocks.rows.some((candidate) => candidate.parentId === where.id);
+      return fieldsMatch && childless ? { id: where.id } : null;
+    }),
   });
   Object.assign(mocks.prisma, {
     $queryRaw: vi.fn(async () => []),
@@ -323,6 +333,43 @@ describe('importFromGitProvider', () => {
     expect(mocks.rows).toEqual([]);
     const [lock] = (mocks.prisma as unknown as { $queryRaw: { mock: { calls: Array<[string[]]> } } }).$queryRaw.mock.calls[0] ?? [[]];
     expect(lock.join('?')).toContain('FOR NO KEY UPDATE');
+  });
+
+  it.each([
+    [
+      'a save',
+      () => {
+        const page = mocks.rows.find((row) => row.kind === 'PAGE');
+        if (page) page.content = 'Saved by a writer';
+      },
+    ],
+    [
+      'a new child page',
+      () => {
+        const page = mocks.rows.find((row) => row.kind === 'PAGE');
+        mocks.rows.push({ id: 'child', parentId: page?.id ?? null, kind: 'PAGE', slug: 'child', title: 'Child', content: 'Child', config: null });
+      },
+    ],
+  ])('keeps its duplicate page, unlinked, when %s lands before the cleanup lock', async (_what, commitBeforeLock) => {
+    mocks.files.set('docs/intro.md', 'A');
+    mocks.prisma.pageGitImportSource.create.mockImplementationOnce(async () => {
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    });
+    // The writer's transaction commits while the cleanup waits for the page row.
+    const queryRaw = (mocks.prisma as unknown as { $queryRaw: ReturnType<typeof vi.fn> }).$queryRaw;
+    queryRaw
+      .mockImplementationOnce(async () => [])
+      .mockImplementationOnce(async () => {
+        commitBeforeLock();
+        return [];
+      });
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
+    const duplicate = mocks.rows.find((row) => row.slug === 'intro');
+    expect(duplicate).toBeDefined();
+    expect(mocks.rows.some((row) => row.id === 'child') || duplicate?.content === 'Saved by a writer').toBe(true);
+    expect(mocks.sources).toEqual([]);
+    expect(String(queryRaw.mock.calls[1]?.[0])).toContain('FOR UPDATE');
   });
 
   it('drops a stale row whose path another page already holds here, and never adopts its page', async () => {

@@ -494,11 +494,31 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       // A concurrent import created this file's page first: drop the duplicate
-      // instead of leaving a page no import will ever update. A deletion is a
-      // structural write: project lock first, as the page-write protocol requires.
+      // instead of leaving a page no import will ever update — but only while
+      // it is still exactly what this import wrote. A writer may already have
+      // saved it or added a page, comment or grant under it (all of which a
+      // delete would take with it); then it stays, simply unlinked. A deletion
+      // is a structural write: project lock first, then the page row, as the
+      // page-write protocol requires.
       await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
-        await tx.page.deleteMany({ where: { id: created.id, projectId } });
+        await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" = ${created.id} FOR UPDATE`;
+        const untouched = await tx.page.findFirst({
+          where: {
+            id: created.id,
+            projectId,
+            updatedAt: created.updatedAt,
+            title: created.title,
+            content: created.content,
+            description: created.description,
+            icon: created.icon,
+            children: { none: {} },
+            comments: { none: {} },
+            audienceGrants: { none: {} },
+          },
+          select: { id: true },
+        });
+        if (untouched) await tx.page.deleteMany({ where: { id: created.id, projectId } });
       });
       summary.skipped++;
       continue;

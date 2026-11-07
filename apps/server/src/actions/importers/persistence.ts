@@ -51,18 +51,19 @@ type StarterCandidate = {
 
 /** Whether a root starter page is exactly as Nibleaf created it: every field
  * sign-up sets (title, icon, text) still matches, and every field it leaves
- * empty (description, settings, translation key, hidden) still is. Covers the
- * sign-up Getting started page and an older blank Welcome page. Whitespace
- * differences in the text are ignored; any other edit — a rename included —
- * makes the page the writer's. */
+ * empty (description, settings, translation key, hidden) still is. Only the
+ * sign-up Getting started page qualifies (no sign-up flow, past or present,
+ * created any other root starter page). Whitespace differences in the text
+ * are ignored; any other edit — a rename included — makes the page the writer's. */
 export const isPristineStarterPage = (page: StarterCandidate): boolean => {
   const untouchedSettings = page.description === null && !page.hidden && page.config === null && page.translationKey === null;
   if (!untouchedSettings) return false;
-  const content = normalizeWhitespace(page.content);
-  if (page.slug === 'getting-started') {
-    return page.title === STARTER_GETTING_STARTED_TITLE && page.icon === STARTER_GETTING_STARTED_ICON && content === PRISTINE_GETTING_STARTED;
-  }
-  return page.slug === 'welcome' && page.title === 'Welcome' && page.icon === null && content === '';
+  return (
+    page.slug === 'getting-started' &&
+    page.title === STARTER_GETTING_STARTED_TITLE &&
+    page.icon === STARTER_GETTING_STARTED_ICON &&
+    normalizeWhitespace(page.content) === PRISTINE_GETTING_STARTED
+  );
 };
 
 /**
@@ -74,18 +75,23 @@ export const isPristineStarterPage = (page: StarterCandidate): boolean => {
  * (`FOR NO KEY UPDATE`, which also holds off new child pages), then the
  * candidate rows `FOR UPDATE` in ascending id order, which waits for any
  * autosave in flight. Each candidate is re-read and re-checked there —
- * signature and "nothing under it" — and only rows that still qualify go.
+ * signature, and no child pages, comments or audience grants (all would go
+ * with it) — and only rows that still qualify go.
  */
 export const removeImportPlaceholders = async (target: ImportTarget): Promise<number> => {
   const scope = { projectId: target.projectId, branchId: target.branchId, languageId: target.languageId, parentId: null, kind: 'PAGE' as const };
-  const where = { ...scope, slug: { in: ['welcome', 'getting-started'] } };
+  const where = { ...scope, slug: 'getting-started' };
   const candidates = (await prisma.page.findMany({ where, select: starterFields })).filter(isPristineStarterPage).map((page) => page.id);
   if (candidates.length === 0) return 0;
   const ids = [...candidates].sort();
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${target.projectId} FOR NO KEY UPDATE`;
     await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
-    const pristine = (await tx.page.findMany({ where: { ...where, id: { in: ids } }, select: starterFields }))
+    // Comments and audience grants cascade with their page: a page that
+    // gathered either is no longer just the starter.
+    const pristine = (
+      await tx.page.findMany({ where: { ...where, id: { in: ids }, comments: { none: {} }, audienceGrants: { none: {} } }, select: starterFields })
+    )
       .filter(isPristineStarterPage)
       .map((page) => page.id);
     if (pristine.length === 0) return 0;

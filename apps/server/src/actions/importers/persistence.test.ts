@@ -12,8 +12,17 @@ type Row = {
   config: unknown;
   translationKey: string | null;
   content: string;
+  /** Comments and audience grants attached to the page (fake relation counts). */
+  comments?: number;
+  audienceGrants?: number;
 };
-type Where = { id?: { in: string[] }; parentId?: null | { in: string[] }; slug?: { in: string[] } };
+type Where = {
+  id?: { in: string[] };
+  parentId?: null | { in: string[] };
+  slug?: string;
+  comments?: { none: object };
+  audienceGrants?: { none: object };
+};
 
 const mocks = vi.hoisted(() => ({
   rows: [] as Row[],
@@ -43,8 +52,6 @@ const starter = (fields: Partial<Row> = {}): Row => ({
   content: STARTER_GETTING_STARTED_CONTENT,
   ...fields,
 });
-const blankWelcome = (fields: Partial<Row> = {}): Row =>
-  starter({ id: 'welcome', slug: 'welcome', title: 'Welcome', icon: null, content: '', ...fields });
 const locks = () => mocks.prisma.$queryRaw.mock.calls.map(([sql]) => (sql as string[]).join('?'));
 
 beforeEach(() => {
@@ -55,7 +62,9 @@ beforeEach(() => {
     mocks.rows
       .filter((row) => {
         if (where.id && !where.id.in.includes(row.id)) return false;
-        if (where.slug && !where.slug.in.includes(row.slug)) return false;
+        if (where.slug && where.slug !== row.slug) return false;
+        if (where.comments && (row.comments ?? 0) > 0) return false;
+        if (where.audienceGrants && (row.audienceGrants ?? 0) > 0) return false;
         if (where.parentId === null) return row.parentId === null;
         if (where.parentId) return where.parentId.in.includes(row.parentId ?? '');
         return true;
@@ -77,32 +86,29 @@ beforeEach(() => {
 describe('removeImportPlaceholders', () => {
   it('removes a starter page that is still exactly as sign-up made it, ignoring whitespace', async () => {
     mocks.rows.push(starter({ content: STARTER_GETTING_STARTED_CONTENT.replace(/\n/g, '\n\n  ') }));
-    mocks.rows.push(blankWelcome({ content: ' \n ' }));
 
-    await expect(removeImportPlaceholders(target)).resolves.toBe(2);
+    await expect(removeImportPlaceholders(target)).resolves.toBe(1);
     expect(mocks.rows).toEqual([]);
     // Project lock first, then the candidate rows in ascending id order.
     expect(locks()[0]).toContain('FROM "project"');
     expect(locks()[0]).toContain('FOR NO KEY UPDATE');
     expect(locks()[1]).toContain('ORDER BY "id" FOR UPDATE');
-    expect(mocks.prisma.$queryRaw.mock.calls[1]?.[1]).toEqual(['starter', 'welcome']);
+    expect(mocks.prisma.$queryRaw.mock.calls[1]?.[1]).toEqual(['starter']);
   });
 
   it('keeps a starter page whose intro stays but which has new writing', async () => {
-    mocks.rows.push(starter({ id: 'edited', content: `${STARTER_GETTING_STARTED_CONTENT}\n\nOur product syncs invoices.` }));
-    mocks.rows.push(blankWelcome({ content: 'Welcome to your new documentation site.\n\nOur product syncs invoices.' }));
+    mocks.rows.push(starter({ content: `${STARTER_GETTING_STARTED_CONTENT}\n\nOur product syncs invoices.` }));
 
     await expect(removeImportPlaceholders(target)).resolves.toBe(0);
-    expect(mocks.rows.map((row) => row.id)).toEqual(['edited', 'welcome']);
+    expect(mocks.rows).toHaveLength(1);
     expect(mocks.prisma.page.deleteMany).not.toHaveBeenCalled();
   });
 
   it('keeps a starter page the writer renamed, even with its text untouched', async () => {
     mocks.rows.push(starter({ title: 'Introduction' }));
-    mocks.rows.push(blankWelcome({ title: 'Start here' }));
 
     await expect(removeImportPlaceholders(target)).resolves.toBe(0);
-    expect(mocks.rows).toHaveLength(2);
+    expect(mocks.rows).toHaveLength(1);
   });
 
   it.each([
@@ -113,6 +119,24 @@ describe('removeImportPlaceholders', () => {
     ['translation link', { translationKey: 'intro' }],
   ])('keeps a starter page whose %s changed, even with its text untouched', async (_field, fields) => {
     mocks.rows.push(starter(fields));
+
+    await expect(removeImportPlaceholders(target)).resolves.toBe(0);
+    expect(mocks.rows).toHaveLength(1);
+  });
+
+  it.each([
+    ['a comment', { comments: 1 }],
+    ['an audience grant', { audienceGrants: 1 }],
+  ])('keeps an untouched starter page that has %s', async (_what, fields) => {
+    mocks.rows.push(starter(fields));
+
+    await expect(removeImportPlaceholders(target)).resolves.toBe(0);
+    expect(mocks.rows).toHaveLength(1);
+    expect(mocks.prisma.page.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('never treats a blank Welcome page as a starter: no sign-up flow created one', async () => {
+    mocks.rows.push(starter({ slug: 'welcome', title: 'Welcome', icon: null, content: '' }));
 
     await expect(removeImportPlaceholders(target)).resolves.toBe(0);
     expect(mocks.rows).toHaveLength(1);
@@ -154,7 +178,6 @@ describe('removeImportPlaceholders', () => {
   it('recognises only the exact signature', () => {
     expect(isPristineStarterPage(starter())).toBe(true);
     expect(isPristineStarterPage(starter({ content: STARTER_GETTING_STARTED_CONTENT.replace('your product', 'Acme') }))).toBe(false);
-    expect(isPristineStarterPage(blankWelcome())).toBe(true);
-    expect(isPristineStarterPage(blankWelcome({ content: 'Welcome to your new documentation site.' }))).toBe(false);
+    expect(isPristineStarterPage(starter({ slug: 'welcome', title: 'Welcome', icon: null, content: '' }))).toBe(false);
   });
 });
