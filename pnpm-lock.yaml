@@ -533,9 +533,6 @@ importers:
       '@nibleaf/validators':
         specifier: workspace:*
         version: link:../../packages/validators
-      '@openrouter/sdk':
-        specifier: 1.5.28
-        version: 1.5.28
       '@scalar/hono-api-reference':
         specifier: ^0.12.17
         version: 0.12.17(hono@4.13.14)

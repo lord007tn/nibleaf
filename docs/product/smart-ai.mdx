@@ -1,17 +1,18 @@
 ---
 title: 'Connect your own AI provider'
-description: 'Use your own OpenAI or OpenRouter key to power Ask AI answers on your published docs, choose a model, and keep the search index ready.'
+description: 'Use your own OpenAI or OpenRouter key to power Ask AI answers on your published docs and AI assist in the editor, choose a model, and keep the search index ready.'
 audience: 'site owners and admins'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/smart-ai-section.tsx, apps/app/src/hooks/api/workspace-ai.ts, apps/server/src/actions/workspace-ai.ts, apps/server/src/lib/ai-search/runtime.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
+verified_against: 'apps/app/src/components/project-settings/smart-ai-section.tsx, apps/app/src/hooks/api/workspace-ai.ts, apps/server/src/actions/workspace-ai.ts, apps/server/src/actions/ai.ts, apps/server/src/lib/ai-quota.ts, apps/server/src/lib/ai-search/runtime.ts, packages/search/src/workspace.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/smart-ai'
 ---
 
 **Smart AI** connects your site to an AI provider so readers can use
-[Ask AI](/product/ai-assistant) on your published docs. You can bring your own
+[Ask AI](/product/ai-assistant) on your published docs, and writers can use
+**AI assist** in the editor. You can bring your own
 provider key, so usage is billed to your own provider account, or use the
 provider your Nibleaf host already set up.
 
@@ -82,8 +83,16 @@ AI only reads published pages that the reader is allowed to see.
 Signing in with an OpenAI or ChatGPT account is not available yet. Use an OpenAI
 API key instead.
 
-Smart AI powers Ask AI for readers. The editor's **AI assist** uses only the AI
-service set up by your Nibleaf host. It never uses the key you connect here.
+## Use AI assist in the editor
+
+The editor's **AI assist** uses your site's selected connection when it is
+usable: your draft and instructions are sent to that provider to write the text.
+If the site has no usable connection, AI assist uses the provider from your
+Nibleaf host, when one is set up. Selecting **Turn off workspace AI** also turns
+off AI assist.
+
+Drafting has a daily limit shared by the workspace, including requests made with
+your own key. If you reach it, wait for it to reset.
 
 ## Troubleshoot
 

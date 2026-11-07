@@ -11,6 +11,13 @@ const mocks = vi.hoisted(() => ({
   locale: 'en',
   navigate: vi.fn(),
   prefetch: vi.fn(),
+  pages: [] as Array<Record<string, unknown>>,
+  page: undefined as Record<string, unknown> | undefined,
+  capability: { isPending: false, data: undefined } as {
+    isPending: boolean;
+    isError?: boolean;
+    data?: { available: boolean; reason: string | null };
+  },
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: mocks.locale }) }));
 vi.mock('@tanstack/react-router', () => ({
@@ -29,11 +36,16 @@ vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({}) }));
 vi.mock('@/hooks/api', () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
-  useGetPublicMeta: () => ({ data: {} }),
+  useAiDraftCapability: () => mocks.capability,
+  addressMayFollowTitle: () => false,
+  friendlyErrorMessage: () => '',
+  pageNeverPublished: () => false,
+  pagePublishState: () => 'unchanged',
+  queryKeys: { pages: { allForProject: (id: string) => ['pages', id] } },
   useBranches: () => ({}),
   useLanguages: () => ({}),
-  usePages: () => ({ data: [], isPending: false }),
-  usePage: () => ({}),
+  usePages: () => ({ data: mocks.pages, isPending: false }),
+  usePage: () => ({ data: mocks.page }),
   usePendingChanges: () => ({}),
   useComments: () => ({}),
   useCreatePage: () => ({}),
@@ -42,8 +54,8 @@ vi.mock('@/hooks/api', () => ({
   useReorderPages: () => ({}),
 }));
 vi.mock('@/hooks/api/query-options', () => ({
+  aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
-  getPublicMetaQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));
@@ -91,6 +103,9 @@ describe('editor site settings permissions', () => {
     mocks.membersPending = false;
     mocks.sessionPending = false;
     mocks.locale = 'en';
+    mocks.pages = [];
+    mocks.page = undefined;
+    mocks.capability = { isPending: false, data: undefined };
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -175,5 +190,82 @@ describe('editor site settings permissions', () => {
     const loader = Route.options.loader as (args: unknown) => void;
     loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
     expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['members', 'project-1'] });
+  });
+
+  it("prefetches the site's AI drafting capability instead of the instance-wide flag", () => {
+    const loader = Route.options.loader as (args: unknown) => void;
+    loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
+    expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['workspace-ai', 'project-1', 'draft-capability'] });
+  });
+});
+
+describe('editor AI assist availability', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const page = { id: 'page-1', kind: 'PAGE', title: 'Guide', slug: 'guide', content: 'Body', languageId: 'lang-en', parentId: null, order: 0 };
+  const render = () => act(async () => root.render(<Editor />));
+  const aiTab = () => [...container.querySelectorAll('[role="tab"]')].find((tab) => tab.textContent === 'editor.ai');
+  const railToggle = () => container.querySelector<HTMLButtonElement>('button[title="editor.hideRail"], button[title="editor.hideComments"]');
+
+  beforeEach(() => {
+    mocks.role = 'member';
+    mocks.membersPending = false;
+    mocks.sessionPending = false;
+    mocks.locale = 'en';
+    mocks.pages = [page];
+    mocks.page = page;
+    window.localStorage.setItem('nibleaf.editor.railOpen', '1');
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    window.localStorage.clear();
+  });
+
+  it('shows AI assist when only the workspace connection can draft (no instance key)', async () => {
+    mocks.capability = { isPending: false, data: { available: true, reason: null } };
+    await render();
+    expect(aiTab()).toBeDefined();
+    expect(container.querySelector('[data-testid="ai-tab-placeholder"]')).toBeNull();
+    expect(railToggle()?.title).toBe('editor.hideRail');
+  });
+
+  it.each(['site_disabled', 'instance_disabled', 'quota', 'quota_unavailable'])(
+    'keeps AI assist reachable for %s so the panel can explain it',
+    async (reason) => {
+      mocks.capability = { isPending: false, data: { available: false, reason } };
+      await render();
+      expect(aiTab()).toBeDefined();
+    },
+  );
+
+  it('hides AI assist only when the site has no way to draft', async () => {
+    mocks.capability = { isPending: false, data: { available: false, reason: 'not_configured' } };
+    await render();
+    expect(aiTab()).toBeUndefined();
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(railToggle()?.title).toBe('editor.hideComments');
+  });
+
+  it('keeps AI assist reachable when the capability request fails, since unknown is not "no"', async () => {
+    mocks.capability = { isPending: false, isError: true, data: undefined };
+    await render();
+    expect(aiTab()).toBeDefined();
+  });
+
+  it('holds the AI tab place while the capability loads, without offering or removing it', async () => {
+    mocks.capability = { isPending: true, data: undefined };
+    await render();
+    expect(aiTab()).toBeUndefined();
+    expect(container.querySelector('[role="tablist"]')?.getAttribute('aria-busy')).toBe('true');
+    expect(container.querySelector('[data-testid="ai-tab-placeholder"]')?.getAttribute('aria-hidden')).toBe('true');
+    expect(railToggle()?.title).toBe('editor.hideRail');
+    mocks.capability = { isPending: false, data: { available: true, reason: null } };
+    await render();
+    expect(aiTab()).toBeDefined();
+    expect(container.querySelector('[data-testid="ai-tab-placeholder"]')).toBeNull();
   });
 });

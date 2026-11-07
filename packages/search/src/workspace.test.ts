@@ -4,7 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection } } }));
 
-import { type ChatCostSink, costReportingFetch, knownChatCost, resolveWorkspaceAi, workspaceChatModelOptions } from './workspace';
+import {
+  type ChatCostSink,
+  costReportingFetch,
+  knownChatCost,
+  resolveWorkspaceAi,
+  resolveWorkspaceAiConfiguration,
+  workspaceChatModelOptions,
+} from './workspace';
 
 const key = Buffer.alloc(32, 13).toString('base64');
 const encrypted = (projectId = 'workspace-a', providerId = 'openai', apiKey = 'workspace-owned-secret') =>
@@ -51,6 +58,21 @@ describe('workspace AI credential ownership', () => {
     },
   );
 
+  it('allows only drafting to opt into the instance fallback', async () => {
+    db.connection.mockResolvedValue(null);
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true })).resolves.toMatchObject({
+      runtime: { providerId: 'openrouter', apiKey: 'instance-secret-must-not-be-used', revision: 'instance' },
+      reason: null,
+    });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+
+  it('never overrides explicit disable even with drafting fallback enabled', async () => {
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'disabled' } } });
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true })).resolves.toEqual({ runtime: null, reason: 'disabled' });
+    expect(db.connection).not.toHaveBeenCalled();
+  });
+
   it('rejects a credential envelope copied from another workspace', async () => {
     db.connection.mockResolvedValue(connection({ credentialEncrypted: encrypted('workspace-b') }));
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
@@ -77,6 +99,36 @@ describe('workspace AI credential ownership', () => {
   it('does not query a different embedding model against an existing index', async () => {
     db.connection.mockResolvedValue(connection({ config: { answerModel: 'gpt-test', embeddingModel: 'other/model' } }));
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+
+  it.each([
+    ['openai', { answerModel: 'gpt-test', embeddingModel: 'other/model' }],
+    ['openai', { answerModel: 'gpt-test', embeddingModel: 'text-embedding-3-small' }],
+    ['openrouter', { answerModel: 'site/model', embeddingModel: 'other/model' }],
+  ] as const)('drafts with a healthy %s connection whose embedding model differs, but never searches with it', async (providerId, config) => {
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    db.project.mockResolvedValue({ config: { search: { aiProvider: providerId, aiAnswers: true } } });
+    db.connection.mockResolvedValue(connection({ config, credentialEncrypted: encrypted('workspace-a', providerId) }));
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true, textOnly: true })).resolves.toEqual({
+      runtime: expect.objectContaining({ providerId, apiKey: 'workspace-owned-secret', answerModel: config.answerModel, revision: 'connection-a:1' }),
+      reason: null,
+    });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+
+  it.each([
+    connection({ status: 'INACTIVE' }),
+    connection({ lastVerificationStatus: 'UNHEALTHY' }),
+    connection({ credentialEncrypted: encrypted('workspace-b') }),
+    connection({ credentialEncrypted: encrypted('workspace-a', 'openrouter') }),
+    connection({ config: { answerModel: 'gpt-test' } }),
+  ])('keeps status, health, credential and binding checks for text-only drafting', async (row) => {
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    db.connection.mockResolvedValue(row);
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true, textOnly: true })).resolves.toEqual({
+      runtime: null,
+      reason: 'not_configured',
+    });
   });
 
   it.each([{}, null])('preserves the instance provider for an unmodified workspace with config %j', async (config) => {
