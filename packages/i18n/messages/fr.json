@@ -357,6 +357,7 @@
   "editor_ai_sectiondrafted": "Article rédigé.",
   "editor_ai_drafterror": "Impossible de rédiger le contenu.",
   "editor_ai_ratelimited": "Limite quotidienne d’IA atteinte. Réessayez demain.",
+  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_summarylabel": "Résumé",
   "editor_ai_suggestionlabel": "Suggestions",
   "editor_ai_replace": "Remplacer",
