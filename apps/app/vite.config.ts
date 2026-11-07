@@ -47,9 +47,11 @@ const LAZY_SITE_MESSAGES = new RegExp(
 
 /** Routes whose loaders only serve the dashboard and its sign-in pages. */
 const DASHBOARD_ROUTE = /^\/(?:app(?:\/|$)|\(auth\)(?:\/|$)|accept-invite\/|oauth\/)/;
-/** The router's default groupings, plus the loader in its own lazy chunk. */
-const DASHBOARD_SPLIT_GROUPINGS = [['loader'], ['component'], ['pendingComponent'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
-  Array<'loader' | 'component' | 'pendingComponent' | 'errorComponent' | 'notFoundComponent'>
+/** The router's default groupings (component, errorComponent, notFoundComponent;
+ *  pendingComponent stays eager so a pending UI can show at once), plus the
+ *  loader in its own lazy chunk. */
+const DASHBOARD_SPLIT_GROUPINGS = [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
+  Array<'loader' | 'component' | 'errorComponent' | 'notFoundComponent'>
 >;
 
 export default defineConfig(({ mode }) => {

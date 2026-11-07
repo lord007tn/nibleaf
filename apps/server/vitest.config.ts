@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config';
 // The `@` alias mirrors tsconfig paths so modules under test that import
 // `@/…` (e.g. `@/errors`) resolve without loading the app entrypoint.
 export default defineConfig({
+  // Unit tests must not inherit a developer's local .env files.
+  envDir: false,
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
