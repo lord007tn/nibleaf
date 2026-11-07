@@ -128,9 +128,15 @@ type ForkBaselineEntry = {
   reachedMain?: boolean;
 };
 
+/** Marks a baseline this code wrote. #334 wrote the same v2 shape without the
+ *  bookkeeping a merge needs (per-field values, the source's own pages, mirror
+ *  entries, landing records), and nothing else tells its baselines apart, by
+ *  timing or by content. A baseline without the marker is not trusted. */
+const PROVENANCE = 'three-way';
+
 /** Main's pages at the fork, keyed by main page id (or, for `origin:
  *  'version'` entries, by the source version's page id). */
-type ForkBaseline = { version: 2; pages: Record<string, ForkBaselineEntry> };
+type ForkBaseline = { version: 2; provenance: typeof PROVENANCE; pages: Record<string, ForkBaselineEntry> };
 
 /** One page row as promote reads it (both branches, one locked query). */
 export type PromotePageRow = PageFields & {
@@ -242,7 +248,7 @@ export const buildForkBaseline = (
       ...(copy.configHash !== p.configHash ? { copyConfigHash: copy.configHash } : {}),
     };
   }
-  return { version: 2, pages } satisfies ForkBaseline;
+  return { version: 2, provenance: PROVENANCE, pages } satisfies ForkBaseline;
 };
 
 /** The baseline for a version forked from another version (`source`): the
@@ -284,7 +290,7 @@ export const inheritForkBaseline = (
       origin: 'version',
     };
   }
-  return { version: 2, pages } satisfies ForkBaseline;
+  return { version: 2, provenance: PROVENANCE, pages } satisfies ForkBaseline;
 };
 
 const isFields = (value: unknown): value is PageFields => {
@@ -327,36 +333,20 @@ const isEntry = (value: unknown): value is ForkBaselineEntry => {
   );
 };
 
-/** Read a stored baseline. Anything unexpected (including the unreleased v1
- *  shape) is treated as "no baseline" rather than trusted. */
+/** Read a stored baseline. Anything unexpected is treated as "no baseline"
+ *  rather than trusted: the unreleased v1 shape, and any baseline without
+ *  this code's provenance marker (a fresh or inherited #334 baseline), however
+ *  its timestamps look. Such a version is refused (`branch:baseline_missing`),
+ *  and a version forked from it gets no baseline either. */
 const parseForkBaseline = (value: Prisma.JsonValue | null): ForkBaseline | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const { version, pages } = value as Record<string, unknown>;
-  if (version !== 2 || !pages || typeof pages !== 'object' || Array.isArray(pages)) return null;
+  const { version, provenance, pages } = value as Record<string, unknown>;
+  if (version !== 2 || provenance !== PROVENANCE || !pages || typeof pages !== 'object' || Array.isArray(pages)) return null;
   return Object.values(pages).every(isEntry) ? (value as ForkBaseline) : null;
 };
 
-/** How far a fresh fork's `forkedAt` may sit before its `createdAt` (the two
- *  come from different clocks). An inherited fork point is the source's, made
- *  long before the version itself. */
-const INHERITED_FORK_GAP_MS = 5000;
-
-/** #334 recorded none of the keys #326 adds. Inheriting a baseline, it copied
- *  the entries without `origin: 'version'` entries for the source's own pages,
- *  mirror entries or landing records, so pages the source created can't be
- *  told from new ones: promoting could duplicate them, or bring back one main
- *  deleted. Such a baseline is not trusted (the version is refused, and a
- *  version forked from it gets no baseline either). A fresh #334 fork of main
- *  is fine: every page in it came from main. */
-const isUntrackedInheritance = (branch: { createdAt: Date; forkedAt: Date }, baseline: ForkBaseline) =>
-  branch.forkedAt.getTime() < branch.createdAt.getTime() - INHERITED_FORK_GAP_MS &&
-  !Object.values(baseline.pages).some((e) => e.fields || e.aka || e.origin || e.reachedMain);
-
-export const baselineOf = (branch: { createdAt: Date; forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkBaseline | null => {
-  if (!branch.forkedAt) return null;
-  const baseline = parseForkBaseline(branch.forkBaseline);
-  return baseline && !isUntrackedInheritance({ createdAt: branch.createdAt, forkedAt: branch.forkedAt }, baseline) ? baseline : null;
-};
+export const baselineOf = (branch: { forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkBaseline | null =>
+  branch.forkedAt ? parseForkBaseline(branch.forkBaseline) : null;
 
 /** The source version's baseline after forking it: for each page the source
  *  created, an `origin: 'version'` entry keyed by the new copy's id (whose
@@ -390,7 +380,7 @@ export const addForkCounterparts = (
       origin: 'version',
     };
   }
-  return { version: 2, pages } satisfies ForkBaseline;
+  return { version: 2, provenance: PROVENANCE, pages } satisfies ForkBaseline;
 };
 
 /** Another version's baseline after a promote put `landed` pages onto main:
@@ -411,7 +401,7 @@ export const recordLanded = (baseline: ForkBaseline, landed: PromotePlan['landed
     const aka = mainId === key || e.aka?.includes(mainId) ? e.aka : [...(e.aka ?? []), mainId];
     pages[key] = { ...e, ...(aka ? { aka } : {}), reachedMain: true };
   }
-  return changed ? ({ version: 2, pages } satisfies ForkBaseline) : null;
+  return changed ? ({ version: 2, provenance: PROVENANCE, pages } satisfies ForkBaseline) : null;
 };
 
 const byPath = (a: ChangedOnMainPage, b: ChangedOnMainPage) =>

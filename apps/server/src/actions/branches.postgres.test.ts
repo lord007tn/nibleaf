@@ -522,9 +522,10 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
   });
 
   /** V2 forked from main and V3 forked from V2, both recorded exactly as #334
-   *  records them: no fields, aka, origin or reachedMain, and V3 carrying
-   *  V2's fork time. V2 created guide/faq before V3 was forked. */
-  const legacyChain = async () => {
+   *  records them: no provenance marker, no fields, aka, origin or
+   *  reachedMain, and V3 carrying V2's fork time, `gapMs` before V3 was
+   *  created. V2 created guide/faq before V3 was forked. */
+  const legacyChain = async (gapMs: number) => {
     const setup = await fixture();
     const { projectId, version: v2, base } = setup;
     const v2Guide = await copyIn(v2.id, 'guide');
@@ -533,7 +534,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     type Entry = Record<string, unknown> & { copyId: string };
     const strip = ({ fields: _f, copyConfigHash: _c, origin: _o, aka: _a, reachedMain: _r, ...entry }: Entry) => entry;
     const stored = (await db.prisma.branch.findUniqueOrThrow({ where: { id: v2.id } })).forkBaseline as { pages: Record<string, Entry> };
-    // #334's fresh fork of main: main entries only, no additive keys.
+    // #334's fresh fork of main: main entries only, no marker, no additive keys.
     const v2Pages = Object.fromEntries(Object.entries(stored.pages).flatMap(([key, e]) => (e.origin ? [] : [[key, strip(e)]])));
     // #334's inheritance: the same entries, copy ids remapped onto V3's copies (by address).
     const v2Rows = await db.prisma.page.findMany({ where: { branchId: v2.id }, select: { id: true, path: true } });
@@ -546,29 +547,54 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       where: { id: v2.id },
       data: { createdAt: forkedAt, forkedAt, forkBaseline: { version: 2, pages: v2Pages } as never },
     });
-    await db.prisma.branch.update({ where: { id: v3.id }, data: { forkedAt, forkBaseline: { version: 2, pages: v3Pages } as never } });
+    await db.prisma.branch.update({
+      where: { id: v3.id },
+      data: { createdAt: new Date(forkedAt.getTime() + gapMs), forkedAt, forkBaseline: { version: 2, pages: v3Pages } as never },
+    });
     return { ...setup, v2, v3 };
   };
+  /** Promote exactly as the dialog would: confirm the preview just fetched.
+   *  Without the refusal this writes; the outcome is the error, or null. */
+  const promoteConfirmed = async (projectId: string, versionId: string) => {
+    const preview = await branches.getMergePreview(projectId, versionId);
+    return branches.mergeBranch(projectId, versionId, { confirmPreview: preview.fingerprint }).then(
+      () => null,
+      (error: unknown) => error,
+    );
+  };
+  const refusedForBaseline = { status: 409, code: 'branch:baseline_missing' };
+  const gaps = [
+    ['2 s after its source (a short gap)', 2000],
+    ['an hour after its source', 60 * 60_000],
+  ] as const;
 
-  it('refuses a version #334 made from another version, after that one was promoted and main deleted its page', {
-    timeout: DB_TEST_TIMEOUT_MS,
-  }, async () => {
-    const { projectId, main, v2, v3 } = await legacyChain();
-    // V2 itself (a fresh #334 fork of main) still promotes.
-    await branches.mergeBranch(projectId, v2.id);
-    await db.prisma.page.deleteMany({ where: { branchId: main.id, path: 'guide/faq' } });
-    await expect(branches.mergeBranch(projectId, v3.id)).rejects.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
-    await expect(branches.getMergePreview(projectId, v3.id)).resolves.toMatchObject({ baselineComplete: false });
-    expect((await pagesOn(projectId, main.id)).map((p) => p.path)).not.toContain('guide/faq');
-  });
+  it.each(gaps)(
+    'refuses #334 versions, forked %s, instead of restoring a page main deleted',
+    { timeout: DB_TEST_TIMEOUT_MS },
+    async (_label, gapMs) => {
+      const { projectId, main, v2, v3 } = await legacyChain(gapMs);
+      // Trusted, V2 would put guide/faq on main; main then deletes it; V3,
+      // untouched, would bring it back with an empty preview.
+      const v2Outcome = await promoteConfirmed(projectId, v2.id);
+      await db.prisma.page.deleteMany({ where: { branchId: main.id, path: 'guide/faq' } });
+      const v3Outcome = await promoteConfirmed(projectId, v3.id);
+      expect((await pagesOn(projectId, main.id)).map((p) => p.path)).not.toContain('guide/faq');
+      expect(v3Outcome).toMatchObject(refusedForBaseline);
+      expect(v2Outcome).toMatchObject(refusedForBaseline);
+      await expect(branches.getMergePreview(projectId, v3.id)).resolves.toMatchObject({ baselineComplete: false });
+    },
+  );
 
-  it('refuses a version #334 made from another version, after that one was promoted, instead of duplicating its page', {
-    timeout: DB_TEST_TIMEOUT_MS,
-  }, async () => {
-    const { projectId, main, v2, v3 } = await legacyChain();
-    await branches.mergeBranch(projectId, v2.id);
-    await expect(branches.mergeBranch(projectId, v3.id)).rejects.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
-    expect((await pagesOn(projectId, main.id)).filter((p) => p.path.startsWith('guide/faq')).map((p) => p.path)).toEqual(['guide/faq']);
+  it.each(gaps)('refuses #334 versions, forked %s, instead of duplicating a page', { timeout: DB_TEST_TIMEOUT_MS }, async (_label, gapMs) => {
+    const { projectId, main, v2, v3 } = await legacyChain(gapMs);
+    // Trusted, V2 would put guide/faq on main and V3 would add its own copy as guide/faq-2.
+    const v2Outcome = await promoteConfirmed(projectId, v2.id);
+    const v3Outcome = await promoteConfirmed(projectId, v3.id);
+    const faqs = (await pagesOn(projectId, main.id)).filter((p) => p.path.startsWith('guide/faq')).map((p) => p.path);
+    expect(faqs).not.toContain('guide/faq-2');
+    expect(faqs.length).toBeLessThanOrEqual(1);
+    expect(v3Outcome).toMatchObject(refusedForBaseline);
+    expect(v2Outcome).toMatchObject(refusedForBaseline);
   });
 
   it('refuses a promote whose moves would put two pages inside each other', { timeout: DB_TEST_TIMEOUT_MS }, async () => {

@@ -54,7 +54,7 @@ const rename = (p: PromotePageRow, from: string, to: string) =>
   withHash({ ...p, id: p.id.replace(`${from}-`, `${to}-`), parentId: p.parentId?.replace(`${from}-`, `${to}-`) ?? null });
 
 const parse = (forkBaseline: unknown): Baseline => {
-  const baseline = baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: forkBaseline as never });
+  const baseline = baselineOf({ forkedAt: FORK, forkBaseline: forkBaseline as never });
   if (!baseline) throw new Error('baseline did not parse');
   return baseline;
 };
@@ -183,22 +183,43 @@ describe('analyzePromote: preview', () => {
     expect(analyzePromote([], untouchedVersion, forkOf(atFork), codes)).not.toBeNull();
   });
 
-  it("refuses a baseline #334 inherited from another version, but keeps #334's fresh forks of main", () => {
-    // #334's shape: no fields, aka, origin or reachedMain anywhere.
-    const legacy = withoutFields(forkOf(atFork));
-    const later = new Date(FORK.getTime() + 60_000);
-    // Fresh fork of main: forkedAt is the version's own creation time.
-    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: legacy as never })).not.toBeNull();
-    // Inherited: forkedAt is the source's, well before this version existed.
-    expect(baselineOf({ createdAt: later, forkedAt: FORK, forkBaseline: legacy as never })).toBeNull();
-    // The same inheritance recorded by #326 carries its metadata, and is trusted.
-    expect(baselineOf({ createdAt: later, forkedAt: FORK, forkBaseline: forkOf(atFork) as never })).not.toBeNull();
+  it('trusts only baselines this code wrote: both #334 shapes are refused, whatever the timing', () => {
+    // #334 wrote the v2 shape without the provenance marker or the additive keys.
+    const { provenance: _marker, ...fresh334 } = withoutFields(forkOf(atFork));
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: fresh334 as never })).toBeNull();
+    // #334's inheritance: the same entries with copy ids remapped onto the new copies.
+    const chained334 = {
+      version: 2,
+      pages: Object.fromEntries(Object.entries(fresh334.pages).map(([key, e]) => [key, { ...e, copyId: e.copyId.replace('v-', 'v3-') }])),
+    };
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: chained334 as never })).toBeNull();
+    // Even #334's shape with every additive key, but no marker, is refused.
+    const { provenance: _also, ...unmarked } = forkOf(atFork);
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: unmarked as never })).toBeNull();
+  });
+
+  it('trusts every baseline this code writes: fresh, inherited from a version, and empty', () => {
+    expect(forkOf(atFork)).toMatchObject({ version: 2, provenance: 'three-way' });
+    const versionPages = untouchedVersion.map((p) => rename(p, 'v', 'v2'));
+    const inherited = parse(
+      inheritForkBaseline(forkOf(atFork), untouchedVersion, (id) => {
+        const row = untouchedVersion.find((p) => p.id === id);
+        return row ? { id: id.replace('v-', 'v2-'), hash: row.hash, configHash: row.configHash } : undefined;
+      }),
+    );
+    expect(inherited).toMatchObject({ provenance: 'three-way' });
+    expect(analyze(atFork, versionPages, inherited).preview.changedOnMainSinceFork).toEqual([]);
+    // A fork of an empty main: the baseline has no pages, and still promotes.
+    const empty = parse(buildForkBaseline([], () => ({ id: 'none', hash: '', configHash: '' })));
+    expect(empty).toEqual({ version: 2, provenance: 'three-way', pages: {} });
+    const { plan } = analyze([], [page('v-new')], empty);
+    expect(plan.moves).toEqual([{ id: 'v-new', data: { parentId: null } }]);
   });
 
   it('treats a malformed or unreleased v1 baseline, or none, as no baseline', () => {
-    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } })).toBeNull();
-    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 1, pages: {} } })).toBeNull();
-    expect(baselineOf({ createdAt: FORK, forkedAt: null, forkBaseline: null })).toBeNull();
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 2, provenance: 'three-way', pages: { a: { copyId: 1 } } } })).toBeNull();
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 1, pages: {} } })).toBeNull();
+    expect(baselineOf({ forkedAt: null, forkBaseline: null })).toBeNull();
   });
 });
 
