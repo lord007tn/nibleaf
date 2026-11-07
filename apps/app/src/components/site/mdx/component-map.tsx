@@ -60,7 +60,11 @@ export function readerMdxComponents(site: SiteLinkContext | undefined): RichMdxC
         {children}
       </Update>
     ),
-    codegroup: ({ children }: MdxProps) => <CodeGroup language={site?.lang}>{children}</CodeGroup>,
+    codegroup: ({ children, dropdown }: MdxProps) => (
+      <CodeGroup language={site?.lang} dropdown={dropdown as string | boolean | undefined}>
+        {children}
+      </CodeGroup>
+    ),
     expandable: ({ title, defaultopen, children }: MdxProps) => (
       <Expandable title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
         {children}

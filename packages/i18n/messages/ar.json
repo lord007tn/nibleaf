@@ -415,6 +415,17 @@
   "editor_wordcount": "الكلمات: {words} · الأحرف: {characters}",
   "editor_codeblock_language": "لغة الشيفرة",
   "editor_codeblock_plain": "نص عادي",
+  "editor_codeblock_title": "العنوان",
+  "editor_codeblock_lines": "أرقام الأسطر",
+  "editor_codeblock_wrap": "التفاف الأسطر الطويلة",
+  "editor_codeblock_nocopy": "إخفاء زر النسخ",
+  "editor_codeblock_expandable": "طي الشيفرة الطويلة",
+  "editor_codeblock_highlight": "تمييز الأسطر",
+  "editor_codeblock_invalidlines": "أدخل أرقام الأسطر أو نطاقاتها، مثل 1, 3-5 (حتى 10000).",
+  "editor_codeblock_diffhint": "أضف // [!code ++] في نهاية السطر لتمييزه كمضاف، أو // [!code --] لتمييزه كمحذوف. استخدم صيغة التعليقات الخاصة بلغة الشيفرة.",
+  "editor_codeblock_titleplaceholder": "أضف عنوانًا، مثل اسم ملف",
+  "editor_codeblock_options": "الخيارات",
+  "editor_codeblock_diffhelp": "كيفية تمييز الأسطر المضافة أو المحذوفة",
   "editor_table_addrowabove": "إضافة صف أعلى",
   "editor_table_addrowbelow": "إضافة صف أسفل",
   "editor_table_addcolbefore": "إضافة عمود قبل",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "وقت الانتظار المعتاد لظهور الكلمات الأولى",
   "dashboard_ai_medianLatencyMs": "الوقت المعتاد للإجابة",
   "dashboard_ai_noTiming": "لا تتوفر بيانات عن الوقت بعد",
-  "dashboard_ai_milliseconds": "{value} مللي ثانية"
+  "dashboard_ai_milliseconds": "{value} مللي ثانية",
+  "site_showmore": "عرض المزيد",
+  "site_showless": "عرض أقل",
+  "site_codelanguage": "لغة الشيفرة"
 }

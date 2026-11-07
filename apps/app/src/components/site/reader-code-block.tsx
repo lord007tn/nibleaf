@@ -1,16 +1,19 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Check, Copy } from 'lucide-react';
-import { type ComponentProps, useRef, useState } from 'react';
+import { type ComponentProps, lazy, type ReactNode, Suspense, useRef, useState } from 'react';
 import { announce } from '@/components/site/reader-content-controls';
+
+const CodeIcon = lazy(() => import('./reader-code-icon'));
 
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
  *  filename header bar is drawn; otherwise the language shows as a floating badge. */
-export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) {
+export function Pre({ locale, headerControl, ...props }: ComponentProps<'pre'> & { locale?: string; headerControl?: ReactNode }) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const t = siteContentT(locale);
   // Language + optional title come from the fence meta. mdast→hast may attach
   // them to this <pre> or to the child <code>, so check both.
@@ -19,6 +22,11 @@ export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: str
   const cls = child?.props?.className ?? '';
   const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
   const title = ownProps['data-title'] ?? child?.props?.['data-title'];
+  const options = { ...child?.props, ...props } as Record<string, unknown>;
+  const nocopy = options['data-nocopy'];
+  const expandable = options['data-expandable'];
+  const icon = options['data-icon'] as string | undefined;
+  const hasHeader = title || icon || headerControl;
   const copy = async () => {
     setCopied(false);
     setFailed(false);
@@ -41,7 +49,7 @@ export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: str
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
         'reader-code-copy reader-control grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
-        title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+        hasHeader ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
       )}
     >
       {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
@@ -55,13 +63,28 @@ export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: str
       className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-black/20 bg-[#0d1117] shadow-xs dark:border-white/10"
       data-theme-component="code"
       data-not-typeset
+      data-wrap={options['data-wrap'] ? 'true' : undefined}
+      data-collapsed={expandable && !expanded ? 'true' : undefined}
     >
-      {title ? (
-        <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
-          <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
+      {hasHeader ? (
+        <div
+          className={cn(
+            'flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2',
+            headerControl && 'reader-code-header',
+            !headerControl && '[direction:ltr]',
+          )}
+        >
+          <span className={cn('truncate font-mono text-[12px] text-white/60', icon && 'flex items-center gap-2')}>
+            {icon ? (
+              <Suspense fallback={null}>
+                <CodeIcon name={icon} className="size-4" />
+              </Suspense>
+            ) : null}
+            {title || (headerControl ? lang : null)}
+          </span>
           <div className="flex shrink-0 items-center gap-2">
-            {lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null}
-            {copyButton}
+            {headerControl ?? (lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null)}
+            {nocopy ? null : copyButton}
           </div>
         </div>
       ) : (
@@ -71,7 +94,7 @@ export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: str
               {lang}
             </span>
           ) : null}
-          {copyButton}
+          {nocopy ? null : copyButton}
         </>
       )}
       {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
@@ -79,9 +102,24 @@ export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: str
       <pre
         dir="ltr"
         ref={ref}
-        className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && 'reader-code-untitled', !title && lang && 'pt-9')}
+        tabIndex={options['data-focus'] ? 0 : undefined}
+        className={cn(
+          'overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]',
+          !hasHeader && 'reader-code-untitled',
+          !hasHeader && lang && 'pt-9',
+        )}
         {...props}
       />
+      {expandable ? (
+        <button
+          type="button"
+          className="reader-control code-expand w-full border-t p-3 text-sm"
+          aria-expanded={expanded}
+          onClick={() => setExpanded(!expanded)}
+        >
+          {t(expanded ? 'showLess' : 'showMore')}
+        </button>
+      ) : null}
     </div>
   );
 }

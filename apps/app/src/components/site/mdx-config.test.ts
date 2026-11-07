@@ -166,6 +166,7 @@ const COMPONENT_ATTRIBUTES: Record<string, string[]> = {
   callout: ['type'],
   card: ['title', 'href', 'icon'],
   cardgroup: ['cols'],
+  codegroup: ['dropdown'],
   tab: ['title'],
   accordion: ['title', 'defaultOpen', 'defaultopen'],
   step: ['title'],
@@ -210,8 +211,32 @@ describe('reader config derived from the component registry', () => {
     const { '*': star, pre, code, ...rest } = sanitizeSchema.attributes ?? {};
     const { '*': defaultStar, pre: defaultPre, code: _defaultCode, ...defaultRest } = defaultSchema.attributes ?? {};
     expect(star).toEqual([...(defaultStar ?? []), 'className', 'id']);
-    expect(pre).toEqual([...(defaultPre ?? []), 'dataTitle', 'dataLang']);
-    expect(code).toEqual([['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang']);
+    expect(pre).toEqual([
+      ...(defaultPre ?? []),
+      'dataTitle',
+      'dataLang',
+      'dataIcon',
+      'dataWrap',
+      'dataNocopy',
+      'dataExpandable',
+      'dataLines',
+      'dataHighlight',
+      'dataFocus',
+      'dataDiff',
+    ]);
+    expect(code).toEqual([
+      ['className', /^language-./, 'math-inline', 'math-display'],
+      'dataTitle',
+      'dataLang',
+      'dataIcon',
+      'dataWrap',
+      'dataNocopy',
+      'dataExpandable',
+      'dataLines',
+      'dataHighlight',
+      'dataFocus',
+      'dataDiff',
+    ]);
     for (const [tag, attributes] of Object.entries(defaultRest)) {
       if (!(tag in COMPONENT_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
     }

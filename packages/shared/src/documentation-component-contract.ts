@@ -58,7 +58,7 @@ export const DOCUMENTATION_COMPONENT_CONTRACT = {
   AccordionGroup: { kind: 'block', attributes: {}, markdownBody: true },
   Accordion: { kind: 'block', attributes: { title: 'string', defaultOpen: 'boolean' }, markdownBody: true, structural: true },
   // Holds fenced code blocks only, so its tags are left exactly as authored.
-  CodeGroup: { kind: 'block', attributes: {} },
+  CodeGroup: { kind: 'block', attributes: { dropdown: 'boolean' } },
   // `frame` is a real (deprecated) HTML element that the HTML5 parser drops outside a frameset.
   Frame: { kind: 'block', attributes: { caption: 'string' }, markdownBody: true, readerTag: 'mdxframe' },
   ParamField: {

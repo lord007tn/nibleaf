@@ -1,4 +1,5 @@
 import { normalizeType } from '@nibleaf/shared/callouts';
+import { codeDiffLines, parseCodeBlockMeta } from '@nibleaf/shared/code-block-meta';
 import {
   type DocumentationComponentContract,
   documentationComponentContractEntries,
@@ -152,10 +153,34 @@ export const sanitizeSchema: SanitizeOptions = {
     // `dataTitle`/`dataLang` (hast camelCase → data-title/data-lang) carry the
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.
-    pre: [...(defaultSchema.attributes?.pre ?? []), 'dataTitle', 'dataLang'],
+    pre: [
+      ...(defaultSchema.attributes?.pre ?? []),
+      'dataTitle',
+      'dataLang',
+      'dataIcon',
+      'dataWrap',
+      'dataNocopy',
+      'dataExpandable',
+      'dataLines',
+      'dataHighlight',
+      'dataFocus',
+      'dataDiff',
+    ],
     // Keep only the code classes used by highlighting and the trusted math
     // renderer. MathML and layout styles are generated after sanitization.
-    code: [['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang'],
+    code: [
+      ['className', /^language-./, 'math-inline', 'math-display'],
+      'dataTitle',
+      'dataLang',
+      'dataIcon',
+      'dataWrap',
+      'dataNocopy',
+      'dataExpandable',
+      'dataLines',
+      'dataHighlight',
+      'dataFocus',
+      'dataDiff',
+    ],
   },
 };
 
@@ -209,44 +234,29 @@ export function remarkCallouts() {
   };
 }
 
-const CODE_TITLE = /title="([^"]*)"|title='([^']*)'/;
-
-/** remark plugin: lift a fenced code block's info string (``` lang title="x")
- *  onto the rendered `<code>` as `data-title`/`data-lang`, so the Pre renderer
- *  can draw a Mintlify-style filename header. */
+/** Share fence interpretation with the editor and static exports. */
 export function remarkCodeMeta() {
   return (tree: Root) => {
     walk(tree as unknown as AnyNode, 'code', (node) => {
-      const meta = node.meta?.trim();
-      let title: string | undefined;
-      if (meta) {
-        const match = CODE_TITLE.exec(meta);
-        if (match) {
-          title = match[1] ?? match[2];
-        } else if (!meta.startsWith('{')) {
-          // Bare `lang Some Title` form — take the whole meta as the title.
-          title = meta.replace(/^["']|["']$/g, '') || undefined;
-        }
+      const meta = parseCodeBlockMeta(`${node.lang ?? ''} ${node.meta ?? ''}`.trim());
+      node.lang = meta.language || undefined;
+      const diff = node.value?.includes('[!code ') ? codeDiffLines(node.value) : [];
+      const hasDiff = diff.some((line) => line.diff);
+      if (hasDiff) node.value = diff.map((line) => line.text).join('\n');
+      const props: Record<string, unknown> = { ...node.data?.hProperties };
+      if (meta.title) props.dataTitle = meta.title;
+      if (meta.language) props.dataLang = meta.language;
+      if (meta.icon) props.dataIcon = meta.icon;
+      for (const key of ['wrap', 'nocopy', 'expandable', 'lines'] as const) {
+        if (meta[key]) props[`data${key[0]?.toUpperCase()}${key.slice(1)}`] = 'true';
       }
-      if (!title && !node.lang) {
-        return;
-      }
-      node.data = node.data ?? {};
-      const props = (node.data.hProperties ?? {}) as Record<string, unknown>;
-      // hast property names are camelCase; mdast→hast/sanitize round-trip these
-      // to the `data-title`/`data-lang` DOM attributes the Pre renderer reads.
-      if (title) {
-        props.dataTitle = title;
-      }
-      if (node.lang) {
-        props.dataLang = node.lang;
-      }
-      node.data.hProperties = props;
+      if (meta.highlight.length) props.dataHighlight = meta.highlight.join(',');
+      if (meta.focus.length) props.dataFocus = meta.focus.join(',');
+      if (hasDiff) props.dataDiff = diff.map((line) => line.diff ?? '').join(',');
+      if (Object.keys(props).length) node.data = { ...node.data, hProperties: props };
     });
   };
 }
-
-// ─── Mermaid ─────────────────────────────────────────────────────────────────
 
 type HastNode = { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: HastNode[] };
 

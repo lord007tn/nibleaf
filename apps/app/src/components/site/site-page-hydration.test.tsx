@@ -69,7 +69,7 @@ it.each(['en', 'ar'])(
         id: 'page-1',
         title: 'Guide',
         path: 'guide',
-        content: `${body}\n\n[Details](/details)`,
+        content: `${body}\n\n[Details](/details)\n\n\`\`\`js\nconst ready = true;\n\`\`\``,
         description: null,
         excerpt: '',
         icon: null,
@@ -131,6 +131,8 @@ it.each(['en', 'ar'])(
       expect(paragraphs()).toEqual([originalParagraph]);
       expect(observedCounts.every((count) => count === 1)).toBe(true);
       expect(container.querySelectorAll('article a[href*="/details"]')).toHaveLength(1);
+      expect(container.querySelector('article pre')?.textContent).toBe('const ready = true;\n');
+      expect(container.querySelector('article .code-line')).toBeNull();
       expect(recoverableErrors).toEqual([]);
     } finally {
       observer.disconnect();

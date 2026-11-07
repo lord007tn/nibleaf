@@ -204,3 +204,39 @@ describe('mixed language blocks', () => {
     expect(editor.state.doc.firstChild?.textContent).toBe('Keep me');
   });
 });
+
+describe('code option round trips', () => {
+  const source =
+    "~~~~typescript  Original title  icon='terminal' {1,3-5} focus={2} lines wrap expandable nocopy theme={null} custom={keep this}\nconst x = 1; // [!code ++:2]\nconst y = 2;\n~~~~";
+  it('keeps every authored fence byte and stored diff marker unchanged', () => {
+    expect(roundTrip(source)).toBe(source);
+    expect(editor.state.doc.firstChild?.attrs.codeOptions.title).toBe('Original title');
+    expect(editor.state.doc.firstChild?.attrs.codeOptions.lines).toBe(true);
+  });
+  it('writes canonical edited options and preserves unknown tokens', () => {
+    editor.commands.setContent(source, { emitUpdate: false });
+    editor.commands.selectAll();
+    const options = editor.getAttributes('codeBlock').codeOptions;
+    editor.commands.updateAttributes('codeBlock', {
+      codeOptions: { ...options, title: 'Example.ts', lines: false, highlight: [2], wrap: false, expandable: false, nocopy: false },
+    });
+    const output = getMarkdown(editor);
+    expect(output).toContain('title="Example.ts"');
+    expect(output).toContain('highlight={2}');
+    expect(output).toContain("icon='terminal'");
+    expect(output).toContain('focus={2}');
+    expect(output).toContain('theme={null} custom={keep this}');
+    expect(output).not.toMatch(/\blines\b|\bwrap\b|\bexpandable\b|\bnocopy\b/);
+    expect(roundTrip(output)).toBe(output);
+  });
+});
+
+it('creates options on a new code block and retains a language-free nocopy fence', () => {
+  expect(roundTrip('```nocopy\nplain text\n```')).toBe('```nocopy\nplain text\n```');
+  editor.commands.setContent('<pre><code>sample</code></pre>', { emitUpdate: false });
+  editor.commands.selectAll();
+  editor.commands.updateAttributes('codeBlock', { language: 'js', codeOptions: { title: 'New block', lines: true } });
+  const output = getMarkdown(editor);
+  expect(output).toContain('```js title="New block" lines');
+  expect(roundTrip(output)).toBe(output);
+});

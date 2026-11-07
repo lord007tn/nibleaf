@@ -20,6 +20,7 @@ import { MermaidBlock } from '@/components/site/mermaid-block';
 import { Pre } from '@/components/site/reader-code-block';
 import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { rehypeCodeLines } from './site/rehype-code-lines';
 
 /** Link context for a published site: lets the renderer rewrite authored
  *  root-relative doc links (`/guide`) to the site's base path so they don't
@@ -193,6 +194,7 @@ export function MarkdownRenderer({
           // (not link color/underline); tabIndex -1 keeps it out of the tab order.
           [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: 'heading-anchor', tabIndex: -1 } }],
           rehypeHighlight,
+          rehypeCodeLines,
         ]}
       >
         {normalizeMdxBlocks(content)}

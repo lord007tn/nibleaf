@@ -381,6 +381,17 @@
   "editor_wordcount": "Palavras: {words} · Caracteres: {characters}",
   "editor_codeblock_language": "Linguagem de código",
   "editor_codeblock_plain": "Texto simples",
+  "editor_codeblock_title": "Título",
+  "editor_codeblock_lines": "Números de linha",
+  "editor_codeblock_wrap": "Quebrar linhas longas",
+  "editor_codeblock_nocopy": "Ocultar botão de copiar",
+  "editor_codeblock_expandable": "Recolher código longo",
+  "editor_codeblock_highlight": "Destacar linhas",
+  "editor_codeblock_invalidlines": "Insira números ou intervalos de linhas, por exemplo 1, 3-5 (até 10000).",
+  "editor_codeblock_diffhint": "Adicione // [!code ++] ao final de uma linha para marcá-la como adicionada, ou // [!code --] como removida. Use a sintaxe de comentários da linguagem.",
+  "editor_codeblock_titleplaceholder": "Adicione um título, como um nome de arquivo",
+  "editor_codeblock_options": "Opções",
+  "editor_codeblock_diffhelp": "Como marcar linhas adicionadas ou removidas",
   "editor_table_addrowabove": "Adicionar linha acima",
   "editor_table_addrowbelow": "Adicionar linha abaixo",
   "editor_table_addcolbefore": "Adicionar coluna antes",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "Mostrar mais",
+  "site_showless": "Mostrar menos",
+  "site_codelanguage": "Linguagem do código"
 }

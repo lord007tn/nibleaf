@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
+import { codeDiffLines, parseCodeBlockMeta } from '@nibleaf/shared/code-block-meta';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
@@ -88,6 +89,15 @@ const marked = new Marked({
     (token as CalloutBlockquote).callout = normalizeType(match[1]);
   },
   renderer: {
+    code(token) {
+      const meta = parseCodeBlockMeta(token.lang ?? '');
+      if (!meta.title && !token.text.includes('[!code ')) return false;
+      const title = meta.title ? `<div class="code-title">${escapeHtml(meta.title)}</div>` : '';
+      const text = codeDiffLines(token.text)
+        .map((line) => line.text)
+        .join('\n');
+      return `${title}<pre dir="ltr"><code${meta.language ? ` class="language-${escapeHtml(meta.language)}"` : ''}>${escapeHtml(text)}</code></pre>\n`;
+    },
     // Published Markdown may contain MDX/HTML. Static exports display unknown
     // markup as source instead of executing scripts or event handlers.
     html(token) {

@@ -149,7 +149,7 @@
     "tag": "CodeGroup",
     "category": "api",
     "kind": "block",
-    "attributes": [],
+    "attributes": ["dropdown"],
     "visualEditor": true,
     "interactive": true
   },

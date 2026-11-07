@@ -11,6 +11,7 @@ export interface MdxProps {
   href?: unknown;
   icon?: unknown;
   cols?: unknown;
+  dropdown?: unknown;
   defaultopen?: unknown;
   caption?: unknown;
   tip?: unknown;

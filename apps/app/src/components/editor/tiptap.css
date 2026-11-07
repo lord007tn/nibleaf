@@ -255,39 +255,19 @@
   cursor: pointer;
 }
 
-/* Code block — dark chrome with a language label bar.
-   The label is driven by the node's data-language attribute via ::before. */
+/* Code text uses a dark surface and keeps its own LTR typography. */
 .pl-editor .ProseMirror pre {
   position: relative;
   direction: ltr;
   background: #0f0f14;
   border-radius: 12px;
   margin: 0.8em 0;
-  padding: 42px 16px 16px;
+  padding: 16px;
   overflow-x: auto;
   color: #d6d6e2;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 13px;
   line-height: 1.7;
-}
-.pl-editor .ProseMirror pre::before {
-  content: attr(data-language);
-  position: absolute;
-  top: 0;
-  inset-inline: 0;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border-bottom: 1px solid #232330;
-  color: #8a8a98;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
-  text-transform: lowercase;
-}
-.pl-editor .ProseMirror pre:not([data-language])::before,
-.pl-editor .ProseMirror pre[data-language="null"]::before {
-  content: "code";
 }
 .pl-editor .ProseMirror pre code {
   background: none;
@@ -720,4 +700,132 @@
   display: flex;
   min-height: 100%;
   flex-direction: column;
+}
+
+.pl-editor .ProseMirror pre[data-wrap] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pl-editor .ProseMirror pre code {
+  font-family: inherit;
+}
+.pl-editor .ProseMirror .editor-code-highlight {
+  background: #ffffff18;
+}
+.pl-editor .ProseMirror .editor-code-add {
+  background: #123b27;
+  color: #dcfce7;
+}
+.pl-editor .ProseMirror .editor-code-remove {
+  background: #4c1820;
+  color: #ffe4e6;
+}
+
+.pl-editor .ProseMirror pre :is(.editor-code-add, .editor-code-remove) * {
+  color: inherit;
+}
+
+/* Actual node headers replace the old generated label; the code stays LTR. */
+.pl-editor .ProseMirror .editor-code-block {
+  margin: 0.8em 0;
+  border-radius: 12px;
+  background: #0f0f14;
+  color: #d6d6e2;
+  overflow: hidden;
+}
+.editor-code-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  border-bottom: 1px solid #232330;
+}
+.editor-code-header .editor-code-title {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 0.375rem;
+  border-color: transparent;
+  box-shadow: none;
+  color: #d6d6e2;
+  font-size: 12px;
+}
+.editor-code-language {
+  flex: 0 1 10ch;
+  width: 10ch;
+  min-width: 0;
+  min-height: 2rem;
+  background: #0f0f14;
+  color: #d6d6e2;
+  border-radius: 4px;
+  font: 11px var(--font-mono, monospace);
+}
+.editor-code-options-trigger {
+  display: grid;
+  place-items: center;
+  flex: 0 0 2rem;
+  width: 2rem;
+  height: 2rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.editor-code-options-trigger:focus-visible,
+.editor-code-language:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 1px;
+}
+.editor-code-options {
+  max-width: calc(100vw - 1rem);
+  max-height: min(24rem, var(--available-height));
+  overflow-y: auto;
+}
+.pl-editor .ProseMirror .editor-code-block pre {
+  margin: 0;
+  border-radius: 0;
+  padding: 12px;
+}
+
+.pl-editor .ProseMirror .editor-code-block[data-wrap] pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.editor-code-gutter {
+  display: inline-grid;
+  grid-template-columns: var(--editor-code-number, 0ch) var(
+      --editor-code-marker,
+      0ch
+    );
+  margin-right: 1ch;
+  direction: ltr;
+  user-select: none;
+}
+.editor-code-gutter[data-number] {
+  --editor-code-number: 4ch;
+}
+.editor-code-gutter[data-diff] {
+  --editor-code-marker: 1ch;
+}
+.editor-code-gutter::before {
+  content: attr(data-number);
+  text-align: right;
+}
+.editor-code-gutter::after {
+  content: "";
+  text-align: center;
+}
+.editor-code-gutter[data-diff="add"]::after {
+  content: "+";
+  color: #dcfce7;
+}
+.editor-code-gutter[data-diff="remove"]::after {
+  content: "−";
+  color: #ffe4e6;
+}
+@media (pointer: coarse) {
+  .editor-code-options-trigger {
+    min-height: 2.75rem;
+    flex-basis: 2.75rem;
+  }
+  .editor-code-language {
+    min-height: 2.75rem;
+  }
 }

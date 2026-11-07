@@ -30,7 +30,7 @@ const EXPECTED: Readonly<Record<string, SupportedDefinition>> = {
   },
   paramfield: { canonical: 'ParamField', attrs: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'] },
   responsefield: { canonical: 'ResponseField', attrs: ['name', 'type', 'required', 'default', 'deprecated'] },
-  codegroup: { canonical: 'CodeGroup', attrs: [] },
+  codegroup: { canonical: 'CodeGroup', attrs: ['dropdown'] },
   columns: { canonical: 'Columns', attrs: [] },
   column: { canonical: 'Column', attrs: [] },
   banner: { canonical: 'Banner', attrs: ['type', 'dismissible'] },

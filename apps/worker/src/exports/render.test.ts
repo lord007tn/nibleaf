@@ -525,3 +525,15 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(() => selectPublishedAssets(snapshot, manifest, 2)).toThrow('2-byte limit');
   });
 });
+
+it('renders escaped fence titles in HTML and PDF, strips diff comments and keeps Markdown authored', () => {
+  const content = '```ts title="<Example>" lines\nnewValue // [!code ++:2]\nnext\noldValue /* [!code --] */\n```';
+  const fixture = { ...snapshot, pages: [{ ...required(snapshot.pages[0]), content }] };
+  const files = unzipSync(renderStaticHtml(fixture, []).bytes);
+  for (const html of [text(required(files['main/ar/intro/index.html'])), renderPdfHtml(fixture, [])]) {
+    expect(html).toContain('class="code-title">&lt;Example&gt;</div>');
+    expect(html).toContain('newValue\nnext\noldValue');
+    expect(html).not.toContain('[!code');
+  }
+  expect(text(required(files['main/ar/intro/index.md']))).toContain(content);
+});

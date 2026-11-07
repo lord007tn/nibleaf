@@ -381,6 +381,17 @@
   "editor_wordcount": "শব্দ: {words} · অক্ষর: {characters}",
   "editor_codeblock_language": "কোড ভাষা",
   "editor_codeblock_plain": "সরল পাঠ্য",
+  "editor_codeblock_title": "শিরোনাম",
+  "editor_codeblock_lines": "লাইন নম্বর",
+  "editor_codeblock_wrap": "লম্বা লাইন মোড়ানো",
+  "editor_codeblock_nocopy": "কপি বোতাম লুকান",
+  "editor_codeblock_expandable": "লম্বা কোড গুটিয়ে রাখুন",
+  "editor_codeblock_highlight": "লাইন হাইলাইট করুন",
+  "editor_codeblock_invalidlines": "লাইন নম্বর বা পরিসর লিখুন, যেমন 1, 3-5 (10000 পর্যন্ত)।",
+  "editor_codeblock_diffhint": "কোনো লাইন যোগ করা হয়েছে বোঝাতে শেষে // [!code ++] অথবা মুছে ফেলা হয়েছে বোঝাতে // [!code --] যোগ করুন। ভাষাটির মন্তব্যের নিয়ম ব্যবহার করুন।",
+  "editor_codeblock_titleplaceholder": "শিরোনাম যোগ করুন, যেমন ফাইলের নাম",
+  "editor_codeblock_options": "বিকল্প",
+  "editor_codeblock_diffhelp": "যোগ করা বা মুছে ফেলা লাইন চিহ্নিত করার নিয়ম",
   "editor_table_addrowabove": "উপরে সারি যোগ করুন",
   "editor_table_addrowbelow": "নীচে সারি যোগ করুন",
   "editor_table_addcolbefore": "আগে কলাম যোগ করুন",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "আরও দেখান",
+  "site_showless": "কম দেখান",
+  "site_codelanguage": "কোডের ভাষা"
 }

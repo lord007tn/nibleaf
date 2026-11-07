@@ -286,3 +286,39 @@ it('renders card body cells as text with generic types and comparisons intact', 
   expect(html).toContain('a&lt;b and c&gt;d');
   expect(html).not.toMatch(/<K|<b and/);
 });
+
+describe('code fence features', () => {
+  it('renders multiline tokens as complete per-line spans and removes diff directives', async () => {
+    const html = await render(
+      '```js title="Example" icon="terminal" {2} focus={1} lines wrap expandable nocopy\n/* first\nsecond */ // [!code ++]\nlast\n```',
+      'ar',
+    );
+    expect(html).toContain('data-highlight="true"');
+    expect(html).toContain('data-dim="true"');
+    expect(html).toContain('data-diff="add"');
+    expect(html).toContain('data-number="2"');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('data-wrap="true"');
+    expect(html).not.toContain('[!code');
+    expect(html).not.toContain('reader-code-copy ');
+    expect(html.match(/class="hljs-comment"/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(html).toContain('dir="ltr"');
+  });
+  it('keeps plain blocks free of line wrappers', async () => {
+    const html = await render('```js\nconst x = 1;\n```');
+    expect(html).not.toContain('code-line');
+    expect(html).not.toContain('code-gutter');
+    expect(html).not.toContain('data-collapsed');
+  });
+  it('renders an accessible native CodeGroup dropdown while tabs remain the default', async () => {
+    const content = '<CodeGroup dropdown>\n\n```js First\none\n```\n\n```py Second\ntwo\n```\n\n</CodeGroup>';
+    const html = await render(content, 'ar');
+    expect(html).toContain('<select');
+    expect(html).toContain('<label');
+    expect(html).toContain('>First</option>');
+    expect(html).toContain('>Second</option>');
+    expect(html).not.toContain('role="tablist"');
+    expect(await render(content.replace(' dropdown', ''))).toContain('role="tablist"');
+  });
+});

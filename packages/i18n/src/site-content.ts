@@ -1,6 +1,7 @@
 import { resolveLocale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
 import { site_closeimage } from './paraglide/messages/site_closeimage.js';
+import { site_codelanguage } from './paraglide/messages/site_codelanguage.js';
 import { site_copied } from './paraglide/messages/site_copied.js';
 import { site_copycode } from './paraglide/messages/site_copycode.js';
 import { site_copyfailed } from './paraglide/messages/site_copyfailed.js';
@@ -9,6 +10,8 @@ import { site_defaultvalue } from './paraglide/messages/site_defaultvalue.js';
 import { site_deprecated } from './paraglide/messages/site_deprecated.js';
 import { site_details } from './paraglide/messages/site_details.js';
 import { site_required } from './paraglide/messages/site_required.js';
+import { site_showless } from './paraglide/messages/site_showless.js';
+import { site_showmore } from './paraglide/messages/site_showmore.js';
 import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_tab } from './paraglide/messages/site_tab.js';
 import { site_viewfullsize } from './paraglide/messages/site_viewfullsize.js';
@@ -27,6 +30,9 @@ const contentVariableMessages = {
 };
 
 const contentMessages = {
+  showMore: site_showmore,
+  showLess: site_showless,
+  codeLanguage: site_codelanguage,
   closeImage: site_closeimage,
   copied: site_copied,
   copyCode: site_copycode,

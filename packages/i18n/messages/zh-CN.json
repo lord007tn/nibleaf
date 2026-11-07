@@ -381,6 +381,17 @@
   "editor_wordcount": "单词：{words} · 字符：{characters}",
   "editor_codeblock_language": "代码语言",
   "editor_codeblock_plain": "纯文本",
+  "editor_codeblock_title": "标题",
+  "editor_codeblock_lines": "行号",
+  "editor_codeblock_wrap": "自动换行",
+  "editor_codeblock_nocopy": "隐藏复制按钮",
+  "editor_codeblock_expandable": "折叠长代码",
+  "editor_codeblock_highlight": "高亮行",
+  "editor_codeblock_invalidlines": "请输入行号或范围，例如 1, 3-5（最大 10000）。",
+  "editor_codeblock_diffhint": "在行尾添加 // [!code ++] 标记新增行，或 // [!code --] 标记删除行。请使用相应语言的注释语法。",
+  "editor_codeblock_titleplaceholder": "添加标题，例如文件名",
+  "editor_codeblock_options": "选项",
+  "editor_codeblock_diffhelp": "如何标记新增或删除的行",
   "editor_table_addrowabove": "在上方添加行",
   "editor_table_addrowbelow": "添加下面的行",
   "editor_table_addcolbefore": "之前添加列",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "显示更多",
+  "site_showless": "收起",
+  "site_codelanguage": "代码语言"
 }

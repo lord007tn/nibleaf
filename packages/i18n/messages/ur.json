@@ -381,6 +381,17 @@
   "editor_wordcount": "الفاظ: {words} · حروف: {characters}",
   "editor_codeblock_language": "کوڈ کی زبان",
   "editor_codeblock_plain": "سادہ متن",
+  "editor_codeblock_title": "عنوان",
+  "editor_codeblock_lines": "سطروں کے نمبر",
+  "editor_codeblock_wrap": "لمبی سطریں لپیٹیں",
+  "editor_codeblock_nocopy": "کاپی بٹن چھپائیں",
+  "editor_codeblock_expandable": "لمبا کوڈ سمیٹیں",
+  "editor_codeblock_highlight": "سطریں نمایاں کریں",
+  "editor_codeblock_invalidlines": "سطروں کے نمبر یا حدود درج کریں، مثلاً 1, 3-5 (10000 تک)۔",
+  "editor_codeblock_diffhint": "سطر کو شامل شدہ دکھانے کے لیے آخر میں // [!code ++] یا حذف شدہ دکھانے کے لیے // [!code --] لگائیں۔ اپنی زبان کے تبصرے کی ترکیب استعمال کریں۔",
+  "editor_codeblock_titleplaceholder": "عنوان شامل کریں، مثلاً فائل کا نام",
+  "editor_codeblock_options": "اختیارات",
+  "editor_codeblock_diffhelp": "شامل یا حذف شدہ سطروں کو نشان زد کرنے کا طریقہ",
   "editor_table_addrowabove": "اوپر قطار شامل کریں۔",
   "editor_table_addrowbelow": "نیچے قطار شامل کریں۔",
   "editor_table_addcolbefore": "پہلے کالم شامل کریں۔",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "مزید دکھائیں",
+  "site_showless": "کم دکھائیں",
+  "site_codelanguage": "کوڈ کی زبان"
 }

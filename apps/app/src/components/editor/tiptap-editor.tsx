@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { codeDiffLines, parseCodeBlockMeta, serializeCodeBlockMeta } from '@nibleaf/shared/code-block-meta';
 import { type Editor, Extension } from '@tiptap/core';
 import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -21,7 +22,7 @@ import Typography from '@tiptap/extension-typography';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
@@ -99,15 +100,6 @@ const BlockImage = Image.extend({
 
 const fenceParsers = new WeakSet<object>();
 
-const replaceFenceLanguage = (opening: string, language: string): string => {
-  const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
-  if (!match) return opening;
-  const prefix = match[1] ?? '```';
-  const rest = match[4] ?? '';
-  if (!language) return `${prefix}${rest.trimStart() ? ` ${rest.trimStart()}` : ''}`;
-  return `${prefix}${match[2] ?? ''}${language}${rest}`;
-};
-
 /** Typed accessor for the tiptap-markdown storage (not part of the core Storage type). */
 export function getMarkdown(editor: Editor): string {
   const storage = editor.storage as { markdown?: { getMarkdown(): string } };
@@ -134,12 +126,27 @@ function getCounts(editor: Editor): { words: number; characters: number } {
   return { words: storage.characterCount?.words() ?? 0, characters: storage.characterCount?.characters() ?? 0 };
 }
 
-/** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
- * so the dark chrome's label bar (CSS ::before) can display it. */
+/** Preserve authored fences while exposing code options to the visual editor. */
 const CodeBlock = CodeBlockLowlight.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      language: {
+        default: null,
+        rendered: false,
+        parseHTML: (element) => {
+          const source = decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-open'));
+          return source
+            ? parseCodeBlockMeta(source.replace(/^\s*(?:`{3,}|~{3,})/, '')).language || null
+            : (/language-([^\s]+)/.exec(element.firstElementChild?.className ?? '')?.[1] ?? null);
+        },
+      },
+      codeOptions: {
+        default: null,
+        parseHTML: (element) =>
+          parseCodeBlockMeta(decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-open')).replace(/^\s*(?:`{3,}|~{3,})/, '')),
+        rendered: false,
+      },
       sourceFenceOpen: {
         default: '',
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-open')),
@@ -150,16 +157,71 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-close')),
         rendered: false,
       },
-      sourceFenceLanguage: {
-        default: '',
-        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-language')),
-        rendered: false,
-      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
     const language = node.attrs.language || null;
-    return ['pre', { ...HTMLAttributes, 'data-language': language ?? 'code' }, ['code', { class: language ? `language-${language}` : undefined }, 0]];
+    return [
+      'pre',
+      {
+        ...HTMLAttributes,
+        'data-language': language ?? 'code',
+        'data-title': node.attrs.codeOptions?.title || undefined,
+        'data-wrap': node.attrs.codeOptions?.wrap || undefined,
+      },
+      ['code', { class: language ? `language-${language}` : undefined }, 0],
+    ];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(CodeBlockMenu, { contentDOMElementTag: 'span' });
+  },
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        key: new PluginKey('code-options'),
+        props: {
+          decorations(state) {
+            const decorations: Decoration[] = [];
+            state.doc.descendants((node, pos) => {
+              if (node.type.name !== 'codeBlock') return;
+              const options = node.attrs.codeOptions;
+              let offset = pos + 1;
+              const diffs = codeDiffLines(node.textContent);
+              const hasDiff = diffs.some((line) => line.diff);
+              node.textContent.split('\n').forEach((line, index) => {
+                if (options?.lines || hasDiff) {
+                  decorations.push(
+                    Decoration.widget(
+                      offset,
+                      () => {
+                        const gutter = document.createElement('span');
+                        gutter.className = 'editor-code-gutter';
+                        gutter.contentEditable = 'false';
+                        gutter.setAttribute('aria-hidden', 'true');
+                        if (options?.lines) gutter.dataset.number = String(index + 1);
+                        if (hasDiff) gutter.dataset.diff = diffs[index]?.diff ?? 'none';
+                        return gutter;
+                      },
+                      { side: -1 },
+                    ),
+                  );
+                }
+                const classes = [
+                  options?.highlight?.includes(index + 1) ? 'editor-code-highlight' : '',
+                  diffs[index]?.diff ? `editor-code-${diffs[index]?.diff}` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ');
+                if (classes && line.length) decorations.push(Decoration.inline(offset, offset + line.length, { class: classes }));
+                offset += line.length + 1;
+              });
+            });
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
   },
   addStorage() {
     return {
@@ -168,8 +230,9 @@ const CodeBlock = CodeBlockLowlight.extend({
           const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
           if (sourceOpen) {
             const language = String(node.attrs.language ?? '');
-            const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-            state.write(language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language));
+            const match = /^(\s*(?:`{3,}|~{3,}))(.*)$/.exec(sourceOpen);
+            const { rest: _rest, ...options } = node.attrs.codeOptions ?? {};
+            state.write(match ? match[1] + serializeCodeBlockMeta(match[2] ?? '', { ...options, language }) : sourceOpen);
             state.write('\n');
             state.text(node.textContent, false);
             state.ensureNewLine();
@@ -177,7 +240,8 @@ const CodeBlock = CodeBlockLowlight.extend({
             state.closeBlock(node);
             return;
           }
-          state.write(`\`\`\`${node.attrs.language || ''}\n`);
+          const { rest: _rest, ...options } = node.attrs.codeOptions ?? {};
+          state.write(`\`\`\`${serializeCodeBlockMeta('', { ...options, language: node.attrs.language || '' })}\n`);
           state.text(node.textContent, false);
           state.ensureNewLine();
           state.write('```');
@@ -193,10 +257,8 @@ const CodeBlock = CodeBlockLowlight.extend({
                 if (token.type !== 'fence' || !token.map) continue;
                 const open = lines[token.map[0]] ?? '';
                 const close = lines[Math.max(token.map[0], token.map[1] - 1)] ?? '';
-                const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
                 token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
                 token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
-                token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
               }
             });
             fenceParsers.add(markdownit);
@@ -876,7 +938,6 @@ export function TiptapEditor({
       {editor && !commentMode ? <ImageDescription editor={editor} /> : null}
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
       {editor && !commentMode ? <TableBubbleMenu editor={editor} /> : null}
-      {editor && !commentMode ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
       {editor && !commentMode && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       {variant === 'wysiwyg' ? (

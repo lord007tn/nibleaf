@@ -415,6 +415,17 @@
   "editor_wordcount": "Words: {words} · Characters: {characters}",
   "editor_codeblock_language": "Code language",
   "editor_codeblock_plain": "Plain text",
+  "editor_codeblock_title": "Title",
+  "editor_codeblock_lines": "Line numbers",
+  "editor_codeblock_wrap": "Wrap long lines",
+  "editor_codeblock_nocopy": "Hide copy button",
+  "editor_codeblock_expandable": "Collapse long code",
+  "editor_codeblock_highlight": "Highlight lines",
+  "editor_codeblock_invalidlines": "Enter line numbers or ranges, for example 1, 3-5 (up to 10000).",
+  "editor_codeblock_diffhint": "Add // [!code ++] at the end of a line to mark it as added, or // [!code --] to mark it as removed. Use your language’s comment syntax.",
+  "editor_codeblock_titleplaceholder": "Add a title, e.g. a file name",
+  "editor_codeblock_options": "Options",
+  "editor_codeblock_diffhelp": "How to mark added or removed lines",
   "editor_table_addrowabove": "Add row above",
   "editor_table_addrowbelow": "Add row below",
   "editor_table_addcolbefore": "Add column before",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "Show more",
+  "site_showless": "Show less",
+  "site_codelanguage": "Code language"
 }

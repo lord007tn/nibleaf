@@ -381,6 +381,17 @@
   "editor_wordcount": "Kata-kata: {words} · Karakter: {characters}",
   "editor_codeblock_language": "Bahasa kode",
   "editor_codeblock_plain": "Teks biasa",
+  "editor_codeblock_title": "Judul",
+  "editor_codeblock_lines": "Nomor baris",
+  "editor_codeblock_wrap": "Bungkus baris panjang",
+  "editor_codeblock_nocopy": "Sembunyikan tombol salin",
+  "editor_codeblock_expandable": "Ciutkan kode panjang",
+  "editor_codeblock_highlight": "Sorot baris",
+  "editor_codeblock_invalidlines": "Masukkan nomor atau rentang baris, misalnya 1, 3-5 (hingga 10000).",
+  "editor_codeblock_diffhint": "Tambahkan // [!code ++] di akhir baris untuk menandainya sebagai tambahan, atau // [!code --] sebagai penghapusan. Gunakan sintaks komentar bahasa tersebut.",
+  "editor_codeblock_titleplaceholder": "Tambahkan judul, misalnya nama berkas",
+  "editor_codeblock_options": "Opsi",
+  "editor_codeblock_diffhelp": "Cara menandai baris yang ditambahkan atau dihapus",
   "editor_table_addrowabove": "Tambahkan baris di atas",
   "editor_table_addrowbelow": "Tambahkan baris di bawah",
   "editor_table_addcolbefore": "Tambahkan kolom sebelumnya",
@@ -3526,5 +3537,8 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms"
+  "dashboard_ai_milliseconds": "{value} ms",
+  "site_showmore": "Tampilkan lebih banyak",
+  "site_showless": "Tampilkan lebih sedikit",
+  "site_codelanguage": "Bahasa kode"
 }

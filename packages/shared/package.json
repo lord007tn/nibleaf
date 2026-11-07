@@ -15,6 +15,7 @@
     "./integrations": "./src/integrations.ts",
     "./mcp": "./src/mcp.ts",
     "./markdown-discovery": "./src/markdown-discovery.ts",
+    "./code-block-meta": "./src/code-block-meta.ts",
     "./markdown-code": "./src/markdown-code.ts",
     "./public-markdown": "./src/public-markdown.ts",
     "./public-markdown-content": "./src/public-markdown-content.ts",

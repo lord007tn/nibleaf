@@ -655,3 +655,115 @@
     padding-block-start: 3.5rem;
   }
 }
+
+/* Chrome opts out of typeset; :lang(ar) also matches inherited token languages. */
+.nibleaf-site-chrome [data-theme-component="code"] :is(pre, code, code *) {
+  font-family: var(
+    --typeset-font-mono,
+    var(--font-mono, ui-monospace, monospace)
+  );
+}
+[data-theme-component="code"] [data-dim="true"] {
+  opacity: 0.45;
+}
+[data-theme-component="code"]:is(:hover, :focus-within) [data-dim] {
+  opacity: 1;
+}
+[data-theme-component="code"] .code-line {
+  display: block;
+  min-width: 100%;
+  min-height: 1lh;
+}
+[data-theme-component="code"] [data-highlight="true"] {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+[data-theme-component="code"] .code-line[data-diff="add"] {
+  background: #123b27;
+  color: #dcfce7;
+}
+[data-theme-component="code"] .code-line[data-diff="remove"] {
+  background: #4c1820;
+  color: #ffe4e6;
+}
+[data-theme-component="code"] .code-line[data-diff] :not(.code-gutter) {
+  color: inherit;
+}
+
+[data-theme-component="code"] code[data-code-lines] {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  direction: ltr;
+}
+.code-gutter {
+  display: inline-grid;
+  grid-template-columns: var(--code-number-width, 0ch) var(
+      --code-marker-width,
+      0ch
+    );
+  margin-right: 1ch;
+  user-select: none;
+  direction: ltr;
+}
+.code-gutter[data-number] {
+  --code-number-width: 4ch;
+}
+.code-gutter[data-diff] {
+  --code-marker-width: 1ch;
+}
+.code-gutter::before {
+  content: attr(data-number);
+  grid-column: 1;
+  text-align: right;
+}
+.code-gutter::after {
+  content: "";
+  grid-column: 2;
+  text-align: center;
+}
+.code-gutter[data-diff="add"]::after {
+  content: "+";
+}
+.code-gutter[data-diff="remove"]::after {
+  content: "−";
+}
+.reader-code-language-select select {
+  min-height: 2.75rem;
+  max-width: 12rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  padding-inline: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--theme-code-foreground, #e2e8f0);
+  background: var(--theme-code, #0d1117);
+  color-scheme: dark;
+}
+.reader-code-language-select select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+[data-theme-component="code"][data-wrap] :is(pre, code) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+[data-theme-component="code"][data-collapsed] pre {
+  max-height: 22rem;
+  overflow-y: hidden;
+}
+[data-theme-component="code"] .code-expand {
+  color: var(--theme-code-foreground, #e2e8f0);
+  background: var(--theme-code, #0d1117);
+}
+@media print {
+  [data-theme-component="code"][data-collapsed] pre {
+    max-height: none;
+  }
+  [data-theme-component="code"] .code-line[data-dim] {
+    opacity: 1;
+  }
+}
+
+[data-theme-component="code"][data-wrap] code[data-code-lines] {
+  width: auto;
+  min-width: 0;
+}
