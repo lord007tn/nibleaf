@@ -22,6 +22,29 @@ export function verifiedInstallCommand(version, installerSha256) {
   return `set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" ${baseUrl}/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=\${actual##* }; [ "$actual" = "${installerSha256}" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"`;
 }
 
+const LATEST_RELEASE = { origin: 'https://github.com', pathname: '/lord007tn/nibleaf/releases/latest' };
+
+/** Link targets in Markdown: `[text](url)`, `<url>` autolinks and HTML `href="url"`. */
+export function markdownLinkTargets(markdown) {
+  const targets = [];
+  for (const match of markdown.matchAll(/\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)|<(https?:\/\/[^>\s]+)>|href=["']([^"']+)["']/g)) {
+    targets.push(match[1] ?? match[2] ?? match[3]);
+  }
+  return targets;
+}
+
+/** True when the README links readers to this repository's latest release page. */
+export function linksToLatestRelease(markdown) {
+  return markdownLinkTargets(markdown).some((target) => {
+    try {
+      const url = new URL(target);
+      return url.origin === LATEST_RELEASE.origin && url.pathname.replace(/\/$/, '') === LATEST_RELEASE.pathname;
+    } catch {
+      return false;
+    }
+  });
+}
+
 export async function buildSelfHostRelease() {
   const [manifestSource, installerTemplate, compose, readme] = await Promise.all([
     readFile(manifestPath, 'utf8'),
@@ -42,7 +65,7 @@ export async function buildSelfHostRelease() {
   // Source pins can describe a release still being prepared. The README may
   // direct readers to published release instructions instead of advertising
   // that unpublished installer. Generated asset hashes remain mandatory below.
-  if (!readme.includes(command) && !readme.includes('https://github.com/lord007tn/nibleaf/releases/latest')) {
+  if (!readme.includes(command) && !linksToLatestRelease(readme)) {
     throw new Error('README.md must link to the latest release or contain the verified install command generated from release/self-host.json');
   }
 
