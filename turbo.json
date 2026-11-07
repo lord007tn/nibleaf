@@ -7,7 +7,14 @@
   "tasks": {
     "build": {
       "dependsOn": ["^setup", "^build"],
-      "outputs": ["dist/**", ".output/**", ".nitro/**", "src/generated/**"]
+      "env": ["BUNDLE_ANALYZE"],
+      "outputs": [
+        "dist/**",
+        ".output/**",
+        ".nitro/**",
+        ".bundle-analysis/**",
+        "src/generated/**"
+      ]
     },
     "dev": {
       "cache": false,

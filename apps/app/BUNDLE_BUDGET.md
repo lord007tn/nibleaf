@@ -1,18 +1,23 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 393,000-byte gzip JavaScript budget. The
+Public documentation pages have a 365,000-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
-`scripts/check-bundle-budget.mjs` and keeps a regression buffer above the
-August 2026 baseline. CI also rejects public profiles that contain known
-dashboard/auth chunks or dashboard translation keys.
+`scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
+measured size. CI also rejects public profiles that contain known
+dashboard/auth chunks, dashboard translation keys, marketing or blog modules, or
+marketing and blog copy from the English and Arabic catalogs.
 
 ## Reproduce the report
 
 ```sh
-pnpm build:app
+BUNDLE_ANALYZE=true pnpm build:app
 pnpm --filter @nibleaf/app bundle:report
 pnpm --filter @nibleaf/app bundle:check
 ```
+
+CI builds with `BUNDLE_ANALYZE=true`, so the check can also reject forbidden
+modules by path. Without that report the module check is skipped locally (and
+fails in CI); the copy check still runs.
 
 The reporter reads TanStack Start's generated server manifest. For each route
 profile it collects the unique JavaScript scripts and preloads across the exact
@@ -31,7 +36,49 @@ prints the largest assets, and the analysis report identifies modules inside
 them. Increase the threshold only when an intentional public feature justifies
 the transfer cost, and record the new measured route totals in the pull request.
 
+## Import boundaries
+
+Every route file's non-split parts, `validateSearch`, `beforeLoad`,
+`loader`, `head`, and anything the file exports, sit in the router's eager
+chunk, which every page loads, published docs included. So:
+
+- Export only `Route` from a route file (a `head` factory is fine). Put page
+  components in `src/components/**`: an exported component keeps its whole
+  import graph eager, because the router's code splitter can't drop exports.
+- Keep heavy or page-specific copy out of `head`. A loader can import it
+  lazily and hand it to `head` through `loaderData` (see
+  `src/lib/arabic-marketing-copy.ts`).
+- Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
+
 ## Budget history
+
+### 393,000 → 365,000 bytes: marketing out of the reader (#291)
+
+Measured with `pnpm --filter @nibleaf/app bundle:report` on production builds
+(gzip level 9):
+
+| Build | public-docs | public-docs-index |
+| --- | --- | --- |
+| main@ed15240e | 383.79 KiB | 382.99 KiB |
+| this change | 352.57 KiB | 351.76 KiB |
+
+Two leaks put the marketing site into every published docs page:
+
+- **Exported page components, ~30 KiB.** `routes/about.tsx` and
+  `routes/developers.tsx` exported their page components for tests. The
+  router's code splitter keeps exports in the eager route module, so
+  `cloud-marketing.tsx` (the landing page and marketing shell, 13.8 KiB) came
+  in with its imports: the blog manifest (11 KiB), its Arabic copy, the privacy
+  choices dialog and several icons. The components now live in
+  `components/marketing/`.
+- **Arabic marketing head copy, ~0.5 KiB.** The `/ar` and
+  `/ar/documentation-platforms` heads read seven long Arabic strings through
+  `siteT`, the reader's own translator, and a Vite group pinned them to the
+  reader's eager messages chunk. The routes' loaders now import the copy lazily.
+
+Still eager, and small: `lib/marketing-seo.ts`, `lib/blog-seo.ts` and
+`lib/marketing-faqs.ts` (about 2.5 KiB), because marketing routes' `head`
+functions use them.
 
 ### 390,000 → 393,000 bytes: Ask AI chat assistant (#279)
 
