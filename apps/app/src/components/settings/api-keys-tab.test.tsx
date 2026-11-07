@@ -9,6 +9,9 @@ const hooks = vi.hoisted(() => {
   return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn() };
 });
 
+const toasts = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
+vi.mock('sonner', () => ({ toast: toasts }));
+
 vi.mock('@nibleaf/i18n/react', () => ({
   useLocale: () => ({ locale: 'en', t: (key: string, params?: Record<string, string>) => (params?.tool ? `${key}:${params.tool}` : key) }),
 }));
@@ -39,6 +42,8 @@ const ADMIN = 'admin';
 const roots: Array<ReturnType<typeof createRoot>> = [];
 
 beforeEach(() => {
+  toasts.error.mockClear();
+  toasts.success.mockClear();
   for (const mutation of [hooks.create, hooks.rotate, hooks.revoke]) {
     mutation.isPending = false;
     mutation.variables = undefined;
@@ -192,6 +197,37 @@ describe('API-key actions', () => {
     expect(container.querySelector('pre')?.textContent).toContain('https://docs.example/api/mcp');
     await act(async () => button(container, 'settings.apiKeys.dismissSecret')?.click());
     expect(container.textContent).not.toContain('test-once-secret');
+  });
+
+  it.each(['missing', 'rejected', 'copied'])('reports clipboard outcome: %s', async (outcome) => {
+    const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    const writeText = vi.fn();
+    if (outcome === 'rejected') writeText.mockRejectedValue(new Error('Clipboard denied'));
+    else writeText.mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: outcome === 'missing' ? undefined : { writeText } });
+    try {
+      hooks.useApiKeys.mockReturnValue(response());
+      hooks.create.mutate.mockImplementation((_body, options) => options.onSuccess({ id: 'new-key', secret: 'test-once-secret' }));
+      const container = await renderTab();
+      await act(async () => button(container, 'settings.apiKeys.create')?.click());
+      expect([...container.querySelectorAll('code')].find((code) => code.textContent === 'test-once-secret')?.classList.contains('select-all')).toBe(
+        true,
+      );
+      toasts.error.mockClear();
+      toasts.success.mockClear();
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="settings.apiKeys.copy"]')?.click());
+      if (outcome === 'copied') {
+        expect(writeText).toHaveBeenCalledWith('test-once-secret');
+        expect(toasts.success).toHaveBeenCalledWith('settings.apiKeys.copied');
+        expect(toasts.error).not.toHaveBeenCalled();
+      } else {
+        expect(toasts.error).toHaveBeenCalledWith('settings.apiKeys.copyFailed');
+        expect(toasts.error).not.toHaveBeenCalledWith('settings.apiKeys.createError');
+      }
+    } finally {
+      if (original) Object.defineProperty(navigator, 'clipboard', original);
+      else Reflect.deleteProperty(navigator, 'clipboard');
+    }
   });
 
   it('disables Create when the role no longer allows the selected preset', async () => {

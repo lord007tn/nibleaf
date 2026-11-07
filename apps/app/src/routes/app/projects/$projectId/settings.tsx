@@ -28,7 +28,6 @@ import {
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
@@ -45,7 +44,6 @@ import {
   ConfigDirtyProvider,
   DirtyStateReporter,
   SettingsFormSkeleton,
-  useConfirmSettingsDiscard,
   useDirtySources,
   useSettingsDirtyGuard,
 } from '@/components/project-settings/shared';
@@ -147,14 +145,29 @@ const SECTIONS = [
 const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
 
 const isSectionId = (value: unknown): value is SectionId => (SECTION_IDS as readonly unknown[]).includes(value);
+const APPEARANCE_SECTION_IDS = [
+  'branding',
+  'themes',
+  'styling',
+  'typography',
+  'navbar',
+  'footer',
+  'banner',
+  'seo',
+  'search',
+  'variables',
+  'redirects',
+] as const satisfies readonly ConfigSectionId[];
+const isAppearanceSectionId = (value: unknown): value is ConfigSectionId => (APPEARANCE_SECTION_IDS as readonly unknown[]).includes(value);
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
 const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  validateSearch: (search: Record<string, unknown>): { section: SectionId } => ({
+  validateSearch: (search: Record<string, unknown>): { section: SectionId; appearanceSection?: ConfigSectionId } => ({
     // Analytics moved under Integrations — keep old ?section=analytics links working.
     section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : 'general',
+    ...(search.section === 'appearance' && isAppearanceSectionId(search.appearanceSection) ? { appearanceSection: search.appearanceSection } : {}),
   }),
   loaderDeps: ({ search }) => ({ section: search.section }),
   loader: ({ context: { queryClient }, params: { projectId }, deps: { section } }) => {
@@ -230,7 +243,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section } = Route.useSearch();
+  const { section, appearanceSection } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const {
     data: project,
@@ -365,6 +378,7 @@ function ProjectSettingsPage() {
                 projectId={projectId}
                 project={project}
                 role={currentMember?.role ?? ''}
+                appearanceSection={appearanceSection}
                 section={section}
               />
             )}
@@ -381,16 +395,18 @@ function ActiveSection({
   projectId,
   canManageSchedules,
   role,
+  appearanceSection,
 }: {
   project: Project;
   section: SectionId;
   projectId: string;
   canManageSchedules: boolean;
   role: string;
+  appearanceSection?: ConfigSectionId;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
-    appearance: <SiteAppearance key={project.id} project={project} />,
+    appearance: <SiteAppearance key={project.id} project={project} section={appearanceSection ?? 'branding'} />,
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
     languages: <LanguagesSection key={`languages-${project.id}`} project={project} />,
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
@@ -414,10 +430,9 @@ function ActiveSection({
   return <div className={cn('w-full', wideSection ? 'max-w-6xl' : 'max-w-4xl')}>{sections[section]}</div>;
 }
 
-function SiteAppearance({ project }: { project: Project }) {
-  const confirmDiscard = useConfirmSettingsDiscard();
-  const [section, setSection] = useState<ConfigSectionId>('branding');
-  // Report to the route as well as guarding the local appearance section picker.
+function SiteAppearance({ project, section }: { project: Project; section: ConfigSectionId }) {
+  const navigate = useNavigate({ from: Route.fullPath });
+  // Subsection navigation uses the route's existing unsaved-change guard.
   const { sources, report } = useDirtySources();
   return (
     <>
@@ -425,10 +440,9 @@ function SiteAppearance({ project }: { project: Project }) {
       <div className="mb-6">
         <ConfigSectionList
           active={section}
-          onSelect={async (next) => {
+          onSelect={(next) => {
             if (next === section) return;
-            if (sources.size > 0 && !(await confirmDiscard())) return;
-            setSection(next);
+            void navigate({ search: { section: 'appearance', appearanceSection: next } });
           }}
         />
       </div>

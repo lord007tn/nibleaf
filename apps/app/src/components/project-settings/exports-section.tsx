@@ -10,6 +10,7 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
+import { FailureMessage } from '@/components/failure-message';
 import { useDeployments, useProject } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
@@ -254,9 +255,10 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                   ) : null}
                 </div>
                 {run.error ? (
-                  <p className="mt-3 rounded-md bg-destructive/10 p-2 text-destructive text-xs">
-                    {t('settings.exports.workflow.attempt', { count: run.attempts })}: <span dir="auto">{run.error}</span>
-                  </p>
+                  <div className="mt-3 min-w-0 rounded-md bg-destructive/10 p-2">
+                    <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.attempt', { count: run.attempts })}</p>
+                    <FailureMessage context="export" error={run.error} />
+                  </div>
                 ) : null}
                 {run.artifacts.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -546,7 +548,7 @@ function ScheduleRow({
   const run = useRunExportSchedule(projectId, schedule.id);
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-      <div>
+      <div className="min-w-0">
         <div className="flex items-center gap-2 font-medium text-sm">
           <span dir="auto">{schedule.name}</span>
           <Badge variant="secondary">{schedule.enabled ? t('settings.exports.workflow.enabled') : t('settings.exports.workflow.disabled')}</Badge>
@@ -559,11 +561,7 @@ function ScheduleRow({
           · {t('settings.exports.workflow.next')} {formatDate(schedule.nextRunAt, locale)} ·{' '}
           {t('settings.exports.workflow.runCount', { count: schedule._count.jobs })}
         </div>
-        {schedule.lastError ? (
-          <div className="mt-1 text-destructive text-xs" dir="auto">
-            {schedule.lastError}
-          </div>
-        ) : null}
+        {schedule.lastError ? <FailureMessage context="export" error={schedule.lastError} /> : null}
       </div>
       {canManage ? (
         <div className="flex gap-2">
