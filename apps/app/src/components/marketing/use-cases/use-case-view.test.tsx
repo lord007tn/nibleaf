@@ -152,3 +152,16 @@ describe('use-case media honesty', () => {
     expect(section?.querySelector('img, picture, video')).toBeNull();
   });
 });
+
+describe('use-case release honesty', () => {
+  it.each(pages)('qualifies %s features newer than the latest self-hosted release', (lang, Page, copies) => {
+    const themes = copies['product-docs'].solutions.find((solution) => solution.id === 'themes');
+    expect(themes?.note).toBe(availabilityNote('readerThemes', lang));
+    expect(copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.note).toContain(availabilityNote('readerThemes', lang));
+    for (const copy of Object.values(copies)) {
+      for (const step of copy.workflow.steps) expect(step.body).not.toContain('GitBook');
+    }
+    const root = markup(renderToStaticMarkup(<Page slug="product-docs" stars={0} />));
+    expect(root.querySelector('section#themes')?.textContent).toContain(`${themes?.noteLabel}: ${themes?.note}`);
+  });
+});

@@ -1,4 +1,4 @@
-import { availabilityNote, heroAvailabilityNote } from './availability';
+import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
 // Written as Arabic, not translated line by line. Facts match use-cases.en.ts;
@@ -124,7 +124,7 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
     workflow: {
       title: 'روتين أسبوعي لفريق الدعم',
       steps: [
-        { title: 'انقل مقالاتك', body: 'اكتب في المحرر البصري، أو استورد مستودع Mintlify أو GitBook عامًّا من GitHub.' },
+        { title: 'انقل مقالاتك', body: 'اكتب في المحرر البصري، أو استورد مستودع Mintlify عامًّا من GitHub.' },
         { title: 'فعّل المساعد', body: 'اربط مفتاح مزوّد الذكاء الاصطناعي، وشغّل المساعد للموقع، وأضف رابط الدعم.' },
         { title: 'راجع ما تعثّر', body: 'تفقّد مرة في الأسبوع عمليات البحث المتعثّرة والصفحات غير المفيدة والأسئلة التي بقيت بلا جواب.' },
         { title: 'اكتب الإصلاحات', body: 'اكتب في المحرر، أو دع مساعدك الذكي يكتب المقالات الناقصة ويترجمها.' },
@@ -234,6 +234,8 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
         title: 'وثائق تشبه منتجك.',
         body: 'اختر أحد تخطيطات القارئ الثلاثة، Harbor أو Manuscript أو Signal، وأضف شعارك وألوانك ونطاقك الخاص.',
         bullets: ['لكل قالب وضع فاتح وآخر داكن', 'كل القوالب تعمل من اليمين إلى اليسار', 'بدّل القالب دون أن تعيد كتابة المحتوى'],
+        noteLabel: 'التوفر',
+        note: availabilityNote('readerThemes', 'ar'),
         media: media.themes,
       },
       {
@@ -253,7 +255,7 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
     workflow: {
       title: 'من المسودة إلى الإصدار المنشور',
       steps: [
-        { title: 'اكتب أو استورد', body: 'ابدأ في المحرر البصري، أو استورد مستودع Mintlify أو GitBook عامًّا من GitHub.' },
+        { title: 'اكتب أو استورد', body: 'ابدأ في المحرر البصري، أو استورد مستودع Mintlify عامًّا من GitHub.' },
         { title: 'راجع', body: 'يعلّق الزملاء على النص، أو يراجع المهندسون التغيير كطلب دمج على GitHub.' },
         { title: 'عاين', body: 'تحقّق من التغيير بعيدًا عن القرّاء قبل أن يروه.' },
         { title: 'انشر', body: 'انشر للإصدار واللغة المناسبين، وارجع إلى نشر سابق إن احتجت.' },
@@ -350,6 +352,8 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
           'اكتب الأدلة بجانب المرجع، مع مجموعات الشيفرة وأمثلة الطلب والاستجابة',
           'قالب Signal مصمّم للوثائق الغنية بالشيفرة',
         ],
+        noteLabel: 'التوفر',
+        note: groupAvailabilityNote('قوالب القارئ، ومنها Signal', ['readerThemes'], 'ar'),
       },
       {
         id: 'markdown-git',

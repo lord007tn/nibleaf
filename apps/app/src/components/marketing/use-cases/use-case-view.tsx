@@ -107,7 +107,7 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
                   </div>
                   {feature.note && (
                     <p className="mt-6 border-border border-s-2 ps-4 text-muted-foreground text-xs leading-6">
-                      <span className="font-medium text-foreground">{text.requirements}</span>
+                      <span className="font-medium text-foreground">{feature.noteLabel ? `${feature.noteLabel}: ` : text.requirements}</span>
                       {feature.note}
                     </p>
                   )}

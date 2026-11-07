@@ -1,4 +1,4 @@
-import { availabilityNote, heroAvailabilityNote } from './availability';
+import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
 // Evidence for every claim is in
@@ -133,7 +133,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
     workflow: {
       title: 'A weekly routine for your support team',
       steps: [
-        { title: 'Bring your articles in', body: 'Write in the visual editor, or import a public Mintlify or GitBook repository from GitHub.' },
+        { title: 'Bring your articles in', body: 'Write in the visual editor, or import a public Mintlify repository from GitHub.' },
         { title: 'Turn on Ask AI', body: 'Connect an AI provider key, switch Ask AI on for the site, and add your support link.' },
         { title: 'Review what failed', body: 'Check failed searches, unhelpful pages and unanswered questions once a week.' },
         { title: 'Draft the fixes', body: 'Write in the editor, or let your AI assistant draft and translate the missing articles.' },
@@ -247,6 +247,8 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         title: 'Docs that look like your product.',
         body: 'Pick one of three reader layouts, Harbor, Manuscript or Signal, and add your logo, colors and custom domain.',
         bullets: ['Each theme comes in light and dark', 'Every theme works right to left', 'Switch themes without rewriting your content'],
+        noteLabel: 'Availability',
+        note: availabilityNote('readerThemes', 'en'),
         media: media.themes,
       },
       {
@@ -266,7 +268,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
     workflow: {
       title: 'From draft to published release',
       steps: [
-        { title: 'Write or import', body: 'Start in the visual editor, or import a public Mintlify or GitBook repository from GitHub.' },
+        { title: 'Write or import', body: 'Start in the visual editor, or import a public Mintlify repository from GitHub.' },
         { title: 'Review', body: 'Teammates comment on the text, or engineers review the change as a GitHub pull request.' },
         { title: 'Preview', body: 'Check the change privately before readers see it.' },
         { title: 'Publish', body: 'Publish for the right product version and language. Roll back to an earlier publish if you need to.' },
@@ -359,6 +361,8 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Write guides alongside the reference with code groups and request and response examples',
           'The Signal theme is laid out for code-heavy docs',
         ],
+        noteLabel: 'Availability',
+        note: groupAvailabilityNote('Reader themes, including Signal', ['readerThemes'], 'en'),
       },
       {
         id: 'markdown-git',
