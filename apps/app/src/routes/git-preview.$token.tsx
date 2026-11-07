@@ -79,7 +79,11 @@ function GitPreviewPage() {
               <button
                 className={`mb-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm ${item.id === page?.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
                 key={item.id}
-                onClick={() => setPageId(item.id)}
+                onClick={() => {
+                  setPageId(item.id);
+                  // Open the page at its top, as an article link does.
+                  setScrollTarget({ fragment: '' });
+                }}
                 type="button"
               >
                 <FileText className="size-3.5" />

@@ -122,3 +122,22 @@ it('opens the page in the language an authored ?lang= link names', async () => {
   expect(container.querySelector('article h1')?.textContent).toBe('الإعداد');
   await act(async () => root.unmount());
 });
+
+it('opens a sidebar page at its top', async () => {
+  window.scrollTo = vi.fn();
+  window.history.replaceState(null, '', '/git-preview/token');
+  vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot } as never);
+  const Page = Route.options.component as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Page />));
+
+  const setup = [...container.querySelectorAll<HTMLButtonElement>('nav[aria-label="Preview pages"] button')].find(
+    (button) => button.textContent === 'Setup',
+  );
+  await act(async () => setup?.click());
+  expect(container.querySelector('article h1')?.textContent).toBe('Setup');
+  expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 });
+  await act(async () => root.unmount());
+});

@@ -30,4 +30,11 @@ describe('reader search shortcuts', () => {
     expect(isShortcutKey({ ...base, key: 'Process', code: 'KeyK' }, 'k', 'KeyK')).toBe(false);
     expect(isShortcutKey({ ...base, isComposing: true, key: 'k', code: 'KeyK' }, 'k', 'KeyK')).toBe(false);
   });
+
+  it('never opens on Alt+/ or an AltGr character, even when it is the shortcut character', () => {
+    const base = { altKey: false, isComposing: false };
+    expect(isShortcutKey({ ...base, altKey: true, key: '/', code: 'Slash' }, '/', 'Slash')).toBe(false);
+    expect(isShortcutKey({ ...base, key: '/', code: 'Digit7', getModifierState: (name) => name === 'AltGraph' }, '/', 'Slash')).toBe(false);
+    expect(isShortcutKey({ ...base, altKey: true, key: 'k', code: 'KeyK' }, 'k', 'KeyK')).toBe(false);
+  });
 });

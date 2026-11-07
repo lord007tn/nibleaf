@@ -7,11 +7,12 @@ type ShortcutEvent = Pick<KeyboardEvent, 'key' | 'code' | 'altKey' | 'isComposin
  * but reads "ن" for Ctrl+K on an Arabic layout and "K" under Caps Lock. So the
  * character matches case-insensitively, and the physical key (`event.code`)
  * stands in only when the layout typed one non-Latin character there. Never
- * for AltGr (Windows reports it as Ctrl+Alt), dead keys or an IME, where the
- * reader is typing a character, not asking for search.
+ * with Alt or AltGr held (Windows reports AltGr as Ctrl+Alt), a dead key or an
+ * IME, where the reader is typing a character, not asking for search.
  */
 export const isShortcutKey = (event: ShortcutEvent, key: string, code: string): boolean => {
   if (event.isComposing || event.key === 'Dead' || event.key === 'Process') return false;
+  if (event.altKey || event.getModifierState?.('AltGraph')) return false;
   if (event.key.toLowerCase() === key) return true;
-  return event.key.length === 1 && !event.altKey && !event.getModifierState?.('AltGraph') && event.code === code && !/^[ -~]$/u.test(event.key);
+  return event.key.length === 1 && event.code === code && !/^[ -~]$/u.test(event.key);
 };

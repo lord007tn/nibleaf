@@ -40,7 +40,8 @@ export function isCustomDomainSite(projectId?: string): boolean {
     return false;
   }
   const pathname = window.location.pathname;
-  if (/^\/(app|sign-in|sign-up|forgot-password|reset-password|verify-email|accept-invite|git-preview)\b/.test(pathname)) {
+  // Whole path segments only: `/git-preview-guide` is a published page.
+  if (/^\/(?:app|sign-in|sign-up|forgot-password|reset-password|verify-email|accept-invite|git-preview)(?:\/|$)/.test(pathname)) {
     return false;
   }
   return projectId ? !pathname.startsWith(`/sites/${projectId}`) : !pathname.startsWith('/sites/');
