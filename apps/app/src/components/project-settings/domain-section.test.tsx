@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   domains: undefined as unknown,
   domainsPending: false,
   toast: { success: vi.fn(), info: vi.fn(), error: vi.fn(), warning: vi.fn() },
+  copy: vi.fn(async () => true),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, variables?: Record<string, string>) => (variables ? `${key} ${JSON.stringify(variables)}` : key),
@@ -22,6 +23,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
+vi.mock('@/lib/invitations', () => ({ copyToClipboard: mocks.copy }));
 vi.mock('@/hooks/api', async () => ({
   ...(await vi.importActual<object>('@/hooks/api/domain-state')),
   useDomains: () => (mocks.domainsPending ? { data: undefined, isPending: true } : { data: mocks.domains, isPending: false }),
@@ -217,6 +219,51 @@ describe('a check that demotes the main address says so', () => {
     options.onError(new ApiResponseError('no answer', 503, 'domain:check_inconclusive', undefined, undefined, undefined, undefined, {}));
     options.onSuccess({ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE', demoted: false });
     expect(mocks.toast.warning).not.toHaveBeenCalled();
+  });
+});
+
+describe('restoring a TXT record removed after setup', () => {
+  it('lets the owner open the folded DNS records of a live domain and copy the TXT value again', async () => {
+    mocks.domains = [
+      domainRow('a', {
+        verified: true,
+        isPrimary: true,
+        dnsStatus: 'VERIFIED',
+        sslStatus: 'ACTIVE',
+        records: [
+          { type: 'CNAME', name: 'a.example.com', value: 'cname.nibleaf.test', ttl: 3600 },
+          { type: 'TXT', name: '_nibleaf.a.example.com', value: 'nibleaf-verify=token', ttl: 3600 },
+        ],
+      }),
+    ];
+    await render();
+    const [row] = rows();
+    if (!row) throw new Error('Expected a domain row');
+    // Live: the records start folded away.
+    expect(row.textContent).not.toContain('nibleaf-verify=token');
+
+    // Check again: still live, but the TXT record is gone.
+    await act(async () => button(row, 'settings.domain.retry')?.click());
+    const [, options] = mocks.verify.mutate.mock.calls[0] as [string, { onSuccess: (domain: unknown) => void }];
+    options.onSuccess({ verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE', demoted: false, ownershipRecordMissing: true });
+    expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringContaining('settings.domain.toast.txtMissing'));
+
+    // The records can be opened on the live domain…
+    const trigger = button(row, 'settings.domain.configuration');
+    expect(trigger).toBeDefined();
+    await act(async () => trigger?.click());
+    expect(row.textContent).toContain('nibleaf-verify=token');
+    expect(row.textContent).toContain('settings.domain.dns.purpose.txt');
+
+    // …and the TXT value copied straight from there.
+    const copyValue = [...row.querySelectorAll('button')].find(
+      (b) =>
+        b.getAttribute('aria-label') === 'settings.domain.dns.copy: settings.domain.dns.value' &&
+        b.closest('div.rounded-lg')?.textContent?.includes('TXT'),
+    );
+    await act(async () => copyValue?.click());
+    expect(mocks.copy).toHaveBeenCalledWith('nibleaf-verify=token');
+    expect(mocks.toast.success).toHaveBeenCalledWith('settings.domain.dns.copied');
   });
 });
 

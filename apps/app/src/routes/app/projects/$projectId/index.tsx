@@ -46,6 +46,7 @@ import { analyticsTimezone, projectAnalyticsQueryOptions } from '@/hooks/api/ana
 import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
 import { useSiteAdminState } from '@/hooks/use-site-admin-state';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { isolate } from '@/lib/bidi';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
 
@@ -196,7 +197,7 @@ function SiteOverviewPage() {
                   </a>
                   {connectingDomain ? (
                     <p className="mt-1 text-muted-foreground text-xs">
-                      {t('overview.live.domainConnecting', { domain: `\u2068${connectingDomain.domain}\u2069` })}
+                      {t('overview.live.domainConnecting', { domain: isolate(connectingDomain.domain) })}
                       {adminState === 'admin' ? (
                         <>
                           {' '}

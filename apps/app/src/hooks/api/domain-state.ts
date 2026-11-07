@@ -1,5 +1,6 @@
 import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
 import { pickLiveDomain } from '@nibleaf/shared/domains';
+import { isolate } from '@/lib/bidi';
 import { ApiResponseError } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 import type { Domain } from './types';
@@ -28,9 +29,6 @@ const DOMAIN_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
   'domain:not_ready': 'settings.domain.error.notReady',
   'domain:check_inconclusive': 'settings.domain.error.checkInconclusive',
 };
-
-/** Keep a site or domain name in one reading direction inside Arabic sentences. */
-const isolate = (value: string) => `\u2068${value}\u2069`;
 
 /** A domain request's failure in plain words: what went wrong and what to do next. */
 export function domainErrorMessage(t: Translate, error: unknown, fallbackKey: MessageKey): string {

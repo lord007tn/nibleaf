@@ -25,6 +25,7 @@ import {
   useSetPrimaryDomain,
   useVerifyDomain,
 } from '@/hooks/api';
+import { isolate } from '@/lib/bidi';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
@@ -50,9 +51,6 @@ const CHECK_RESULT: Record<DomainStage, { key: MessageKey; kind: 'success' | 'in
   dnsProblem: { key: 'settings.domain.toast.needsAttention', kind: 'error' },
   httpsProblem: { key: 'settings.domain.toast.needsAttention', kind: 'error' },
 };
-
-/** Keep a domain name in one reading direction inside Arabic sentences. */
-const isolate = (value: string) => `⁨${value}⁩`;
 
 /** A root domain (`example.com`, `example.co.uk`) often can't take a CNAME record. */
 const isApexDomain = (domain: string) => getDomain(domain) === domain;
@@ -271,12 +269,12 @@ export function DomainSection({ project }: { project: Project }) {
                   {d.isPrimary ? <p className="mt-1 text-muted-foreground text-xs">{t('settings.domain.primaryHint')}</p> : null}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {stage !== 'live' ? (
-                    <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
-                      {t('settings.domain.configuration')}
-                      <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
-                    </CollapsibleTrigger>
-                  ) : null}
+                  {/* Also on a live domain (folded by default): an owner who removed the TXT record
+                      needs its value again to add it back. */}
+                  <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
+                    {t('settings.domain.configuration')}
+                    <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
+                  </CollapsibleTrigger>
                   {/* Also on a live domain: after changing DNS, the owner can confirm it still works. */}
                   <Button
                     className="cursor-pointer"
