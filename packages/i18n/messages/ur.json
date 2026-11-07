@@ -233,6 +233,7 @@
   "editor_branch_merged": "\"{name}\" کو مین میں ترقی دی گئی۔",
   "editor_branch_mergeerror": "ورژن کو فروغ نہیں دیا جا سکا",
   "editor_branch_trigger": "ورژن: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "ایک زبان شامل کریں۔",
   "editor_addlanguage_desc": "اس سائٹ کے صفحات کا ایک نیا مقامی ورژن بنائیں۔",
   "editor_addlanguage_adding": "شامل کیا جا رہا ہے…",

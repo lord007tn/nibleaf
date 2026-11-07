@@ -233,6 +233,7 @@
   "editor_branch_merged": "Promovido “{name}” para principal",
   "editor_branch_mergeerror": "Não foi possível promover a versão",
   "editor_branch_trigger": "Versão: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Adicionar um idioma",
   "editor_addlanguage_desc": "Crie uma nova versão localizada das páginas deste site.",
   "editor_addlanguage_adding": "Adicionando…",

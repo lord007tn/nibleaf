@@ -267,6 +267,7 @@
   "editor_branch_merged": "تمت ترقية «{name}» إلى main",
   "editor_branch_mergeerror": "تعذّرت ترقية الإصدار",
   "editor_branch_trigger": "الإصدار: {name}",
+  "editor_branch_switchtomain": "انتقل إلى main",
   "editor_addlanguage_title": "إضافة لغة",
   "editor_addlanguage_desc": "أنشئ نسخة مترجمة جديدة من صفحات هذا الموقع.",
   "editor_addlanguage_adding": "جارٍ الإضافة…",

@@ -233,6 +233,7 @@
   "editor_branch_merged": "将“{name}”提升到主干",
   "editor_branch_mergeerror": "无法升级版本",
   "editor_branch_trigger": "版本：{name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "添加语言",
   "editor_addlanguage_desc": "创建该网站页面的新本地化版本。",
   "editor_addlanguage_adding": "添加...",
