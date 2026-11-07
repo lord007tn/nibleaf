@@ -98,19 +98,17 @@ such as `v1` and `v2`.
   use a version as a private draft for a rewrite.
 
 **Promote into main** replaces all of main's pages with this version's pages and
-then removes the version. Any edits made to main after the version was created
-are lost. You can't undo this, so download your drafts first: open
-**Settings → Exports → One-time export** and select
+then removes the version. You can't undo this, so download your drafts first:
+open **Settings → Exports → One-time export** and select
 **Download the original Markdown ZIP**. A regular export contains only your
 latest published version, not unpublished edits.
 
-**Promote into main** replaces main's pages with the version's pages. If any
-page on main was edited, added, deleted or moved under a different parent since
-the version's pages were copied from it, Promote stops, says why, and changes
-nothing. Reordering pages doesn't count. To promote your edits anyway, switch to
-main, create a new version there, copy this version's edits into it, then promote
-the new version. A new version created while another version is open is a copy
-of that version, so it's refused for the same reason.
+If any page on main was edited, added, deleted or moved under a different parent
+since the version's pages were copied from it, Promote stops, says why, and
+changes nothing. Reordering pages doesn't count. To promote your edits anyway,
+switch to main, create a new version there, copy this version's edits into it,
+then promote the new version. A new version created while another version is
+open is a copy of that version, so it's refused for the same reason.
 
 A version can't be promoted either if it was created before this update, was
 imported, was copied from such a version, or main's pages were replaced since it
