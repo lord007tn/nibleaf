@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { analyzePromote, buildForkBaseline, forkPointOf, inheritForkBaseline, type PromotePageRow, previewFingerprint } from './branch-fork';
+import {
+  addForkCounterparts,
+  analyzePromote,
+  baselineOf,
+  buildForkBaseline,
+  inheritForkBaseline,
+  type PromotePageRow,
+  previewFingerprint,
+  recordLanded,
+} from './branch-fork';
 
 const FORK = new Date('2026-11-01T10:00:00.000Z');
 const BEFORE = new Date('2026-10-30T10:00:00.000Z');
@@ -9,7 +18,7 @@ const codes = new Map([
   ['ar', 'ar'],
 ]);
 
-type Baseline = NonNullable<ReturnType<typeof forkPointOf>['baseline']>;
+type Baseline = NonNullable<ReturnType<typeof baselineOf>>;
 
 /** The content hash stands in for the SQL one: any field change changes it. */
 const withHash = (p: Omit<PromotePageRow, 'hash'> & { hash?: string }): PromotePageRow => ({
@@ -45,7 +54,7 @@ const rename = (p: PromotePageRow, from: string, to: string) =>
   withHash({ ...p, id: p.id.replace(`${from}-`, `${to}-`), parentId: p.parentId?.replace(`${from}-`, `${to}-`) ?? null });
 
 const parse = (forkBaseline: unknown): Baseline => {
-  const { baseline } = forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: forkBaseline as never });
+  const baseline = baselineOf({ forkedAt: FORK, forkBaseline: forkBaseline as never });
   if (!baseline) throw new Error('baseline did not parse');
   return baseline;
 };
@@ -69,9 +78,13 @@ const forkVersion = (source: Baseline, pages: PromotePageRow[], from: string, to
 const withoutFields = (baseline: Baseline): Baseline =>
   ({
     version: 2,
-    pages: Object.fromEntries(Object.entries(baseline.pages).map(([k, { fields: _fields, ...e }]) => [k, e])),
+    pages: Object.fromEntries(Object.entries(baseline.pages).map(([k, e]) => [k, { ...e, fields: undefined }])),
   }) as Baseline;
-const analyze = (main: PromotePageRow[], version: PromotePageRow[], baseline: Baseline) => analyzePromote(main, version, baseline, codes);
+const analyze = (main: PromotePageRow[], version: PromotePageRow[], baseline: Baseline) => {
+  const result = analyzePromote(main, version, baseline, codes);
+  if (!result) throw new Error('baseline matched nothing on main');
+  return result;
+};
 const at = <T>(list: T[], i: number) => list[i] as T;
 
 describe('analyzePromote: preview', () => {
@@ -148,18 +161,32 @@ describe('analyzePromote: preview', () => {
     expect(plan.mainUpdates).toEqual([]);
   });
 
-  it('fingerprints exactly what was listed, so a later edit on main changes it', () => {
+  it('fingerprints what would be lost: a later edit to a page the version overwrites changes it', () => {
+    const versionEdited = [copyOf(at(atFork, 0), { contentHash: 'version text' }), ...untouchedVersion.slice(1)];
     const edited = [page('billing', { contentHash: 'one', updatedAt: AFTER }), ...atFork.slice(1)];
-    const first = analyze(edited, untouchedVersion, forkOf(atFork)).preview;
+    const first = analyze(edited, versionEdited, forkOf(atFork)).preview;
+    expect(first.changedOnMainSinceFork).toEqual([
+      expect.objectContaining({ pageId: 'billing', onPromote: 'replaced', replacedFields: ['content'] }),
+    ]);
     expect(first.fingerprint).toBe(previewFingerprint(first.changedOnMainSinceFork));
     const again = [page('billing', { contentHash: 'two', updatedAt: new Date(AFTER.getTime() + 1000) }), ...atFork.slice(1)];
-    expect(analyze(again, untouchedVersion, forkOf(atFork)).preview.fingerprint).not.toBe(first.fingerprint);
+    expect(analyze(again, versionEdited, forkOf(atFork)).preview.fingerprint).not.toBe(first.fingerprint);
+    // Main edits that promote keeps ('kept') don't invalidate a confirmation.
+    const keptOnce = analyze(edited, untouchedVersion, forkOf(atFork)).preview.fingerprint;
+    expect(analyze(again, untouchedVersion, forkOf(atFork)).preview.fingerprint).toBe(keptOnce);
+  });
+
+  it('refuses a baseline that knows none of main pages any more (main was replaced)', () => {
+    const reimported = atFork.map((p) => withHash({ ...p, id: `new-${p.id}`, parentId: p.parentId ? `new-${p.parentId}` : null }));
+    expect(analyzePromote(reimported, untouchedVersion, forkOf(atFork), codes)).toBeNull();
+    // An empty main is not a replacement: everything just reads as deleted on main.
+    expect(analyzePromote([], untouchedVersion, forkOf(atFork), codes)).not.toBeNull();
   });
 
   it('treats a malformed or unreleased v1 baseline, or none, as no baseline', () => {
-    expect(forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } }).baseline).toBeNull();
-    expect(forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 1, pages: {} } }).baseline).toBeNull();
-    expect(forkPointOf({ createdAt: FORK, forkedAt: null, forkBaseline: null }).baseline).toBeNull();
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } })).toBeNull();
+    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 1, pages: {} } })).toBeNull();
+    expect(baselineOf({ forkedAt: null, forkBaseline: null })).toBeNull();
   });
 });
 
@@ -191,10 +218,11 @@ describe('analyzePromote: field-by-field merge', () => {
     const { preview, plan } = analyze(now, version, withoutFields(forkOf(atFork)));
     expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'pricing', change: 'modified', onPromote: 'replaced' })]);
     expect(plan.mainUpdates).toEqual([
-      { id: 'pricing', contentFrom: 'v-pricing', data: { slug: 'pricing' } },
       // Main did not touch "faq": taking the copy whole reverts nothing.
       { id: 'faq', data: { title: 'FAQ' } },
+      { id: 'pricing', contentFrom: 'v-pricing', data: { slug: 'pricing' } },
     ]);
+    expect(preview.changedOnMainSinceFork[0]?.replacedFields).toEqual(['content', 'slug']);
   });
 });
 
@@ -418,5 +446,76 @@ describe('inheritForkBaseline (a version made from another version)', () => {
     const { plan } = analyze(afterV2, v3, baseline);
     expect(plan.consumed).toContainEqual({ copyId: 'v3-old', mainId: 'v2-old' });
     expect(plan.moves).toEqual([]);
+  });
+});
+
+describe('chained versions, promoted in either order', () => {
+  // main: guide/intro. V2 forks main and creates guide/faq; V3 and V4 fork V2.
+  const main = [page('guide', { kind: 'GROUP' }), page('intro', { parentId: 'guide', path: 'guide/intro' })];
+  const v2Pages = [
+    copyOf(at(main, 0), {}, 'v2'),
+    copyOf(at(main, 1), {}, 'v2'),
+    page('v2-faq', { parentId: 'v2-guide', slug: 'faq', path: 'guide/faq', contentHash: 'faq text' }),
+  ];
+  const copies = (to: string) => (id: string) => {
+    const row = v2Pages.find((p) => p.id === id);
+    return row ? { id: id.replace('v2-', `${to}-`), hash: row.hash, configHash: row.configHash } : undefined;
+  };
+  const v3Fork = parse(inheritForkBaseline(forkOf(main, 'v2'), v2Pages, copies('v3')));
+  const v4Fork = parse(inheritForkBaseline(forkOf(main, 'v2'), v2Pages, copies('v4')));
+  const v2Fork = parse(addForkCounterparts(forkOf(main, 'v2'), v2Pages, copies('v3')));
+  const v3Pages = v2Pages.map((p) => rename(p, 'v2', 'v3'));
+  const v4Pages = v2Pages.map((p) => rename(p, 'v2', 'v4'));
+  const landed = (main: PromotePageRow[], pages: PromotePageRow[], baseline: Baseline) => analyze(main, pages, baseline).plan.landed;
+  const after = (base: Baseline, landedPages: ReturnType<typeof landed>) => parse(recordLanded(base, landedPages) ?? base);
+
+  it('V2 then V3: V3 folds into the FAQ V2 put on main', () => {
+    const v2Landed = landed(main, v2Pages, v2Fork);
+    expect(v2Landed).toEqual([{ id: 'v2-faq', lineage: ['v2-faq', 'v3-faq'] }]);
+    const v3 = after(v3Fork, v2Landed);
+    expect(v3.pages['v2-faq']).toMatchObject({ reachedMain: true });
+    const mainAfterV2 = [...main, withHash({ ...at(v2Pages, 2), parentId: 'guide' })];
+    const { plan, preview } = analyze(mainAfterV2, v3Pages, v3);
+    expect(plan.moves).toEqual([]);
+    expect(plan.consumed).toContainEqual({ copyId: 'v3-faq', mainId: 'v2-faq' });
+    expect(preview.changedOnMainSinceFork).toEqual([]);
+  });
+
+  it('V2, then main deletes the FAQ, then V3: an untouched FAQ stays deleted, an edited one is listed as restored', () => {
+    const v3 = after(v3Fork, landed(main, v2Pages, v2Fork));
+    const untouched = analyze(main, v3Pages, v3);
+    expect(untouched.plan.moves).toEqual([]);
+    expect(untouched.plan.dropVersionIds).toEqual(['v3-faq']);
+    expect(untouched.preview.changedOnMainSinceFork).toEqual([
+      expect.objectContaining({ pageId: 'v2-faq', change: 'deleted', onPromote: 'removed' }),
+    ]);
+    const edited = v3Pages.map((p) => (p.id === 'v3-faq' ? withHash({ ...p, contentHash: 'v3 answers' }) : p));
+    const restore = analyze(main, edited, v3);
+    expect(restore.plan.moves).toEqual([{ id: 'v3-faq', data: { parentId: 'guide' } }]);
+    expect(restore.preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v2-faq', change: 'deleted', onPromote: 'restored' })]);
+  });
+
+  it("V3 then V2: V2 folds into V3's FAQ and keeps V3's newer edits", () => {
+    const v3Edited = v3Pages.map((p) => (p.id === 'v3-faq' ? withHash({ ...p, contentHash: 'v3 answers' }) : p));
+    const v3Landed = landed(main, v3Edited, v3Fork);
+    expect(v3Landed).toEqual([{ id: 'v3-faq', lineage: ['v3-faq', 'v2-faq'] }]);
+    const v2 = after(v2Fork, v3Landed);
+    const mainAfterV3 = [...main, withHash({ ...at(v3Edited, 2), parentId: 'guide' })];
+    const { plan, preview } = analyze(mainAfterV3, v2Pages, v2);
+    expect(plan.moves).toEqual([]);
+    expect(plan.consumed).toContainEqual({ copyId: 'v2-faq', mainId: 'v3-faq' });
+    // V2 didn't touch the FAQ after V3 forked: V3's text on main stays.
+    expect(plan.mainUpdates).toEqual([]);
+    expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v3-faq', change: 'modified', onPromote: 'kept' })]);
+  });
+
+  it("two versions made from V2: the second folds into the first one's FAQ", () => {
+    const v3Landed = landed(main, v3Pages, v3Fork);
+    const v4 = after(v4Fork, v3Landed);
+    expect(v4.pages['v2-faq']).toMatchObject({ aka: ['v3-faq'], reachedMain: true });
+    const mainAfterV3 = [...main, withHash({ ...at(v3Pages, 2), parentId: 'guide' })];
+    const { plan } = analyze(mainAfterV3, v4Pages, v4);
+    expect(plan.moves).toEqual([]);
+    expect(plan.consumed).toContainEqual({ copyId: 'v4-faq', mainId: 'v3-faq' });
   });
 });

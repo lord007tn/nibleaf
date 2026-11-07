@@ -244,7 +244,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     const comment = await db.prisma.comment.create({ data: { projectId, pageId: billing.id, userId: user.id, body: 'Check the price' } });
     const audience = await db.prisma.audience.create({ data: { projectId, name: 'Partners' } });
     const grant = await db.prisma.audienceGrant.create({
-      data: { projectId, audienceId: audience.id, pageId: billing.id, scopeKey: `page:${billing.id}` },
+      data: { projectId, audienceId: audience.id, pageId: billing.id, scopeKey: `PAGE:${billing.id}` },
     });
     // V2 edits billing; V3 is made from V2 (as the editor does from the open version).
     await db.prisma.page.update({ where: { id: (await copyIn(v2.id, 'guide/billing')).id }, data: { content: 'V2 price' } });
@@ -461,6 +461,64 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       pageId: billing.id,
       scopeKey: `PAGE:${billing.id}`,
     });
+  });
+
+  it('refuses a version after an import replaced main, instead of duplicating its pages', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, base } = await fixture();
+    // An import builds a replacement tree with the same paths and new ids, then swaps it in.
+    const replacement = await branches.createImportReplacementBranch(projectId, 'gitbook', false);
+    const guide = await db.prisma.page.create({
+      data: { ...base, branchId: replacement.id, kind: 'GROUP', title: 'Guide', slug: 'guide', path: 'guide' },
+    });
+    await db.prisma.page.create({
+      data: { ...base, branchId: replacement.id, parentId: guide.id, title: 'Billing', slug: 'billing', path: 'guide/billing' },
+    });
+    await branches.promoteImportReplacementBranch(projectId, replacement.id);
+    expect(await db.prisma.branch.findUniqueOrThrow({ where: { id: version.id } })).toMatchObject({ forkedAt: null, forkBaseline: null });
+    await expect(branches.mergeBranch(projectId, version.id)).rejects.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toEqual(['guide', 'guide/billing']);
+  });
+
+  it('refuses a version whose baseline knows none of main pages, even if nobody cleared it', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, base } = await fixture();
+    // Main's pages replaced behind the version's back (same paths, new ids).
+    await db.prisma.page.deleteMany({ where: { branchId: main.id } });
+    await db.prisma.page.create({ data: { ...base, kind: 'GROUP', title: 'Guide', slug: 'guide', path: 'guide' } });
+    await expect(branches.mergeBranch(projectId, version.id)).rejects.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
+    await expect(branches.getMergePreview(projectId, version.id)).resolves.toMatchObject({ baselineComplete: false });
+  });
+
+  it('keeps a page deleted on main deleted when a later version made from its source is promoted untouched', {
+    timeout: DB_TEST_TIMEOUT_MS,
+  }, async () => {
+    const { projectId, main, version: v2, base } = await fixture();
+    const v2Guide = await copyIn(v2.id, 'guide');
+    await db.prisma.page.create({ data: { ...base, branchId: v2.id, parentId: v2Guide.id, title: 'FAQ', slug: 'faq', path: 'guide/faq' } });
+    const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
+    await branches.mergeBranch(projectId, v2.id);
+    // Main deletes the FAQ V2 brought in; V3 never touched its copy.
+    await db.prisma.page.deleteMany({ where: { branchId: main.id, path: 'guide/faq' } });
+    const preview = await branches.getMergePreview(projectId, v3.id);
+    expect(preview.changedOnMainSinceFork).toContainEqual(expect.objectContaining({ path: 'guide/faq', change: 'deleted', onPromote: 'removed' }));
+    await branches.mergeBranch(projectId, v3.id, { confirmPreview: preview.fingerprint });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.path)).not.toContain('guide/faq');
+  });
+
+  it('promotes a version made from another version first, then that one, keeping the newer edits and one page', {
+    timeout: DB_TEST_TIMEOUT_MS,
+  }, async () => {
+    const { projectId, main, version: v2, base } = await fixture();
+    const v2Guide = await copyIn(v2.id, 'guide');
+    await db.prisma.page.create({
+      data: { ...base, branchId: v2.id, parentId: v2Guide.id, title: 'FAQ', slug: 'faq', path: 'guide/faq', content: 'V2 answers' },
+    });
+    const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
+    await db.prisma.page.update({ where: { id: (await copyIn(v3.id, 'guide/faq')).id }, data: { content: 'V3 answers' } });
+
+    await branches.mergeBranch(projectId, v3.id);
+    await branches.mergeBranch(projectId, v2.id, await confirmed(projectId, v2.id));
+    const faqs = (await pagesOn(projectId, main.id)).filter((p) => p.path.startsWith('guide/faq'));
+    expect(faqs.map((p) => [p.path, p.content])).toEqual([['guide/faq', 'V3 answers']]);
   });
 
   it('refuses a promote whose moves would put two pages inside each other', { timeout: DB_TEST_TIMEOUT_MS }, async () => {

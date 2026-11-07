@@ -1,12 +1,12 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
 const db = vi.hoisted(() => ({
-  branch: { findMany: vi.fn(), findFirst: vi.fn(), delete: vi.fn() },
+  branch: { findMany: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), updateMany: vi.fn() },
   page: { findMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
   project: { findUniqueOrThrow: vi.fn(), update: vi.fn() },
   $transaction: vi.fn(),
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: db }));
+vi.mock('@nibleaf/database', () => ({ prisma: db, Prisma: { DbNull: 'DbNull' } }));
 
 import { captureImportDraft, promoteImportReplacementBranch } from './branches';
 
@@ -32,6 +32,11 @@ it('promotes an unchanged snapshot in a serializable transaction', async () => {
   const snapshot = await captureImportDraft('project');
   await promoteImportReplacementBranch('project', 'import', undefined, snapshot);
   expect(db.page.deleteMany).toHaveBeenCalledOnce();
+  // Main's pages get new ids: every other version forgets its fork point.
+  expect(db.branch.updateMany).toHaveBeenCalledWith({
+    where: { projectId: 'project', isDefault: false, id: { not: 'import' } },
+    data: { forkBaseline: 'DbNull', forkedAt: null },
+  });
   expect(db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 30_000 });
 });
 

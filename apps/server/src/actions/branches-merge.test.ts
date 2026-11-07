@@ -185,8 +185,9 @@ describe('mergeBranch', () => {
   });
 
   it('refuses until the confirmation matches the preview computed under the locks', async () => {
-    await forkMain();
+    const copyOf = await forkMain();
     edit('billing', { title: 'Billing (typo fixed)', updatedAt: AFTER });
+    edit(copyOf('billing'), { contentHash: 'version text', updatedAt: AFTER });
     const first = await attempt();
     expect(first).toMatchObject({ status: 409, code: 'branch:main_changed' });
     expect(first?.details?.fingerprint).toMatch(/^[0-9a-f]{64}$/);
@@ -220,7 +221,7 @@ describe('mergeBranch', () => {
     await expect(attempt()).resolves.toMatchObject({
       status: 409,
       code: 'branch:baseline_missing',
-      details: { since: FORK.toISOString(), mainPagesEditedOrCreatedSince: 3 },
+      details: { since: (state.branches.v2 as { forkedAt: Date }).forkedAt.toISOString(), mainPagesEditedOrCreatedSince: 3 },
     });
     expect(db.page.deleteMany).not.toHaveBeenCalled();
   });
@@ -229,7 +230,12 @@ describe('mergeBranch', () => {
     await forkMain();
     state.rows.push(row('v-new', 'v2', { slug: 'refunds', path: 'refunds' }));
     db.page.findMany.mockImplementation(async ({ where }) =>
-      where.branchId === 'main' ? [...state.rows.filter((r) => r.branchId === 'main'), { id: 'late', languageId: 'lang-en', path: 'refunds' }] : [],
+      where.branchId === 'main'
+        ? [
+            ...state.rows.filter((r) => r.branchId === 'main'),
+            { id: 'late', languageId: 'lang-en', path: 'refunds', slug: 'refunds', parentId: null },
+          ]
+        : [],
     );
     await expect(attempt()).resolves.toMatchObject({ status: 409, details: { reason: 'promote_raced' } });
     expect(db.page.deleteMany).not.toHaveBeenCalled();
@@ -262,6 +268,15 @@ describe('mergeBranch', () => {
     db.page.count.mockImplementation(async ({ where }) => (where.branchId === 'v2' ? 1 : 0));
     await expect(attempt()).resolves.toMatchObject({ details: { reason: 'promote_raced' } });
     expect(db.branch.delete).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a serialization failure', { code: 'P2034' }],
+    ['a deadlock', { code: 'P2010', meta: { code: '40P01' } }],
+  ])('turns %s into a retryable promote_raced', async (_label, failure) => {
+    await forkMain();
+    db.$transaction.mockRejectedValueOnce(failure);
+    await expect(attempt()).resolves.toMatchObject({ status: 409, code: 'database:conflict', details: { reason: 'promote_raced' } });
   });
 
   it('answers not found when the version disappears before the lock', async () => {
