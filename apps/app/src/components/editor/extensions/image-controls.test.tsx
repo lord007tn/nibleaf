@@ -34,6 +34,23 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+/** The size control: the shared Select's combobox, named by the visible "Image size" label. */
+const sizeTrigger = () => {
+  const trigger = container.querySelector<HTMLElement>('[role="dialog"] [role="combobox"]');
+  if (!trigger) throw new Error('missing size control');
+  expect(document.getElementById(trigger.getAttribute('aria-labelledby') ?? '')?.textContent).toBe('Image size');
+  return trigger;
+};
+const press = async (element: HTMLElement) => {
+  await act(async () => {
+    element.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+    element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+    element.click();
+  });
+};
+const sizeOptions = () => [...document.querySelectorAll<HTMLElement>('[data-image-size-options] [role="option"]')];
+
 describe('image description controls', () => {
   it('keeps a validated percentage width visible and editable without turning it into NaN', async () => {
     await mount();
@@ -41,12 +58,24 @@ describe('image description controls', () => {
       editor.commands.setContent('<img src="/image.png" width="49%" />', { emitUpdate: false });
       editor.commands.setNodeSelection(0);
     });
-    const size = container.querySelector<HTMLSelectElement>('select');
-    expect(size?.value).toBe('49%');
-    await act(async () => {
-      size?.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    expect(sizeTrigger().textContent).toContain('49%');
     expect(getMarkdown(editor)).toContain('width="49%"');
+  });
+
+  it('uses the shared Select for sizes, and choosing from its list keeps the controls open', async () => {
+    await mount();
+    await act(async () => {
+      editor.commands.setImage({ src: '/image.png', alt: 'Chart' });
+    });
+    expect(container.querySelector('select')).toBeNull();
+    expect(sizeTrigger().textContent).toContain('Original size');
+    await press(sizeTrigger());
+    expect(sizeOptions().map((option) => option.textContent)).toEqual(['Original size', 'Small', 'Medium', 'Large', 'Full width']);
+    await press(sizeOptions()[2] as HTMLElement);
+    expect(getMarkdown(editor)).toContain('width="480"');
+    // The list opens in a portal; picking from it isn't clicking away.
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(sizeTrigger().textContent).toContain('Medium');
   });
   it('resets dismissal for a different selected image and guards caption focus after destruction (11)', async () => {
     await mount();
@@ -123,14 +152,13 @@ describe('image description controls', () => {
     });
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog?.getAttribute('dir')).toBe('rtl');
-    const size = container.querySelector<HTMLSelectElement>('select');
-    expect(size?.options).toHaveLength(5);
-    await act(async () => {
-      if (size) {
-        size.value = '480';
-        size.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
+    await press(sizeTrigger());
+    expect(sizeOptions()).toHaveLength(5);
+    // The list follows the page direction.
+    expect(document.querySelector('[data-image-size-options]')?.getAttribute('dir')).toBe('rtl');
+    const medium = sizeOptions().find((option) => option.textContent === 'Medium');
+    if (!medium) throw new Error('size list has no Medium');
+    await press(medium);
     expect(getMarkdown(editor)).toContain('width="480"');
     const caption = Array.from(container.querySelectorAll('button')).find((button) => button.textContent === 'Add caption');
     await act(async () => {
@@ -157,9 +185,8 @@ describe('image description controls', () => {
     await act(async () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
-    const size = container.querySelector<HTMLSelectElement>('select');
     await act(async () => {
-      size?.focus();
+      sizeTrigger().focus();
     });
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
     const outside = document.createElement('button');

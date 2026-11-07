@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
@@ -24,6 +25,7 @@ export function addImageCaption(editor: Editor): number | null {
 export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   const t = useT();
   const hintId = useId();
+  const sizeLabelId = useId();
   const input = useRef<HTMLInputElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const dismissed = useRef(false);
@@ -63,6 +65,8 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
     const onOutside = (event: Event) => {
       const target = event.target;
       if (!(target instanceof Node) || menu.current?.contains(target) || editor.isDestroyed) return;
+      // The size list opens in a portal outside the menu; choosing from it isn't clicking away.
+      if (target instanceof Element && target.closest('[data-image-size-options]')) return;
       if (target === editor.view.dom || (target instanceof Element && editor.view.dom.contains(target) && target.closest('.editor-image'))) {
         const selectedImage = editor.isActive('image') ? editor.view.nodeDOM(editor.state.selection.from) : null;
         const reopen = dismissed.current && editor.isEditable && (target === editor.view.dom || selectedImage?.contains(target));
@@ -115,6 +119,17 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
     dismiss();
   };
   if (!state.canEdit) return null;
+  const sizeOptions: Array<{ value: string; label: string }> = [
+    ...(typeof state.width === 'number' && ![240, 480, 720].includes(state.width)
+      ? [{ value: String(state.width), label: t('editor.image.customSize', { width: state.width }) }]
+      : []),
+    ...(typeof state.width === 'string' && state.width !== '100%' ? [{ value: state.width, label: state.width }] : []),
+    { value: '', label: t('editor.image.originalSize') },
+    { value: '240', label: t('editor.image.small') },
+    { value: '480', label: t('editor.image.medium') },
+    { value: '720', label: t('editor.image.large') },
+    { value: '100%', label: t('editor.image.fullWidth') },
+  ];
   return (
     <BubbleMenu
       data-editor-bubble-menu=""
@@ -151,32 +166,29 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
         <p id={hintId} className="text-muted-foreground text-xs">
           {t('editor.image.descriptionHint')}
         </p>
-        <label className="flex items-center justify-between gap-2">
-          {t('editor.image.size')}
-          <select
-            onKeyDown={onEscape}
-            aria-label={t('editor.image.size')}
-            className="min-h-11 rounded border border-border bg-background px-2 focus-visible:outline-2 focus-visible:outline-ring"
-            value={state.width ?? ''}
-            onChange={(event) =>
-              canEditImages(editor) &&
-              editor.commands.updateAttributes('image', {
-                width: event.target.value.endsWith('%') ? event.target.value : event.target.value ? Number(event.target.value) : null,
-                height: null,
-              })
-            }
+        <div className="flex items-center justify-between gap-2">
+          <span id={sizeLabelId}>{t('editor.image.size')}</span>
+          <Select
+            items={sizeOptions}
+            value={state.width == null ? '' : String(state.width)}
+            onValueChange={(next) => {
+              if (!canEditImages(editor) || next == null) return;
+              const value = String(next);
+              editor.commands.updateAttributes('image', { width: value.endsWith('%') ? value : value ? Number(value) : null, height: null });
+            }}
           >
-            {typeof state.width === 'number' && ![240, 480, 720].includes(state.width) ? (
-              <option value={state.width}>{t('editor.image.customSize', { width: state.width })}</option>
-            ) : null}
-            {typeof state.width === 'string' && state.width !== '100%' ? <option value={state.width}>{state.width}</option> : null}
-            <option value="">{t('editor.image.originalSize')}</option>
-            <option value="240">{t('editor.image.small')}</option>
-            <option value="480">{t('editor.image.medium')}</option>
-            <option value="720">{t('editor.image.large')}</option>
-            <option value="100%">{t('editor.image.fullWidth')}</option>
-          </select>
-        </label>
+            <SelectTrigger onKeyDown={onEscape} aria-labelledby={sizeLabelId} className="min-h-11 min-w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent data-image-size-options="" dir={dir}>
+              {sizeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button
           onKeyDown={onEscape}
           variant="outline"
