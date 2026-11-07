@@ -61,11 +61,26 @@ const mdxContainer = (source: string, tag: string, render: (attributes: string, 
   return current;
 };
 
+/** How projected attribute text enters the output: as is, or held aside so
+ *  later passes over authored markup can't read it as markup. */
+type Projector = { text: (value?: string) => string; link: (value?: string) => string | undefined };
+const projector = (keep: (value: string) => string): Projector => ({
+  text: (value) => {
+    const text = markdownText(value);
+    return text ? keep(text) : '';
+  },
+  link: (value) => {
+    const href = safeHref(value);
+    return href ? keep(href) : undefined;
+  },
+});
+const asIs = projector((value) => value);
+
 /** A RelatedCard as a list item: its linked title and its description. */
-const relatedCardItem = (attributes: string): string => {
-  const title = markdownText(mdxAttribute(attributes, 'title'));
-  const description = markdownText(mdxAttribute(attributes, 'description'));
-  const href = safeHref(mdxAttribute(attributes, 'href'));
+const relatedCardItem = (attributes: string, { text, link }: Projector): string => {
+  const title = text(mdxAttribute(attributes, 'title'));
+  const description = text(mdxAttribute(attributes, 'description'));
+  const href = link(mdxAttribute(attributes, 'href'));
   return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
 };
 
@@ -84,16 +99,19 @@ const flagAttribute = (attributes: string, name: string): boolean => {
  * stays literal, so a component written as an example isn't rewritten. */
 export const portablePublicMdxMarkdown = (source: string): string => {
   const code = protectMarkdownCode(source);
-  return code.restore(projectComponents(code.content));
+  return code.restore(projectComponents(code.content, asIs));
 };
 
-const projectComponents = (source: string): string => {
+const projectComponents = (source: string, project: Projector): string => {
+  const { text, link } = project;
   let output = source.replace(atomPattern('File'), (_match, attributes: string) => {
-    const name = markdownText(mdxAttribute(attributes, 'name'));
+    const name = text(mdxAttribute(attributes, 'name'));
     return name ? `- \`${name}\`` : '';
   });
   // Self-closing cards first, so a pair after one can't be read as its body.
-  output = output.replace(new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}\/>`, 'gi'), (_match, attributes: string) => relatedCardItem(attributes));
+  output = output.replace(new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}\/>`, 'gi'), (_match, attributes: string) =>
+    relatedCardItem(attributes, project),
+  );
   output = output.replace(atomPattern('Icon'), '');
 
   for (const tag of ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger']) {
@@ -105,14 +123,14 @@ const projectComponents = (source: string): string => {
     );
   }
   output = mdxContainer(output, 'Folder', (attributes, body) => {
-    const name = markdownText(mdxAttribute(attributes, 'name'));
+    const name = text(mdxAttribute(attributes, 'name'));
     const nested = body
       .split('\n')
       .map((line) => (line ? `  ${line}` : line))
       .join('\n');
     return `${name ? `- **${name}/**` : '-'}\n${nested}`;
   });
-  output = mdxContainer(output, 'RelatedCard', (attributes, body) => `${relatedCardItem(attributes)}${body ? `\n  ${body}` : ''}`);
+  output = mdxContainer(output, 'RelatedCard', (attributes, body) => `${relatedCardItem(attributes, project)}${body ? `\n  ${body}` : ''}`);
 
   const titledContainers: ReadonlyArray<readonly [string, number]> = [
     ['RelatedContent', 2],
@@ -127,9 +145,9 @@ const projectComponents = (source: string): string => {
   ];
   for (const [tag, level] of titledContainers) {
     output = mdxContainer(output, tag, (attributes, body) => {
-      const title = markdownText(mdxAttribute(attributes, 'title'));
-      const status = tag === 'ResponseExample' ? markdownText(mdxAttribute(attributes, 'status')) : '';
-      const href = tag === 'Card' ? safeHref(mdxAttribute(attributes, 'href')) : undefined;
+      const title = text(mdxAttribute(attributes, 'title'));
+      const status = tag === 'ResponseExample' ? text(mdxAttribute(attributes, 'status')) : '';
+      const href = tag === 'Card' ? link(mdxAttribute(attributes, 'href')) : undefined;
       const label = title ? (href ? `[${title}](${href})` : title) : '';
       return `${label || status ? `${'#'.repeat(level)} ${label}${status ? ` · ${status}` : ''}\n\n` : ''}${body}`;
     });
@@ -140,10 +158,10 @@ const projectComponents = (source: string): string => {
       const authoredName = ['path', 'query', 'header', 'body', 'name']
         .map((key) => mdxAttribute(attributes, key))
         .find((value) => value !== undefined);
-      const name = markdownText(authoredName);
-      const defaultValue = markdownText(mdxAttribute(attributes, 'default'));
+      const name = text(authoredName);
+      const defaultValue = text(mdxAttribute(attributes, 'default'));
       const details = [
-        markdownText(mdxAttribute(attributes, 'type')),
+        text(mdxAttribute(attributes, 'type')),
         flagAttribute(attributes, 'required') ? 'required' : '',
         defaultValue ? `default: ${defaultValue}` : '',
         flagAttribute(attributes, 'deprecated') ? 'deprecated' : '',
@@ -152,16 +170,16 @@ const projectComponents = (source: string): string => {
     });
   }
   output = mdxContainer(output, 'Frame', (attributes, body) => {
-    const caption = markdownText(mdxAttribute(attributes, 'caption'));
+    const caption = text(mdxAttribute(attributes, 'caption'));
     return `${body}${caption ? `\n\n_${caption}_` : ''}`;
   });
   output = mdxContainer(output, 'Button', (attributes, body) => {
-    const href = safeHref(mdxAttribute(attributes, 'href'));
+    const href = link(mdxAttribute(attributes, 'href'));
     return href ? `[${body}](${href})` : body;
   });
   // Keep the tip as readable text: `API (Application programming interface)`.
   output = mdxContainer(output, 'Tooltip', (attributes, body) => {
-    const tip = markdownText(mdxAttribute(attributes, 'tip'));
+    const tip = text(mdxAttribute(attributes, 'tip'));
     return tip ? `${body} (${tip})` : body;
   });
   output = mdxContainer(output, 'Badge', (_attributes, body) => `**${body}**`);
@@ -251,9 +269,26 @@ const restoreScriptPairs = (paragraph: string): string => {
   return paragraph.replace(escapedScriptTag, (_match, slash: string, tag: string) => (matched.has(index++) ? `<${slash}${tag.toLowerCase()}>` : ''));
 };
 
+/** Hold values aside behind private placeholders, then put them back. */
+const literalStore = (source: string) => {
+  let prefix = `\uE002${crypto.randomUUID()}:`;
+  while (source.includes(prefix)) prefix = `\uE002${crypto.randomUUID()}:`;
+  const values: string[] = [];
+  const placeholder = new RegExp(`${prefix}(\\d+)\uE003`, 'g');
+  return {
+    keep: (value: string) => `${prefix}${values.push(value) - 1}\uE003`,
+    restore: (output: string, transform: (value: string) => string) =>
+      output.replace(placeholder, (_match, index: string) => transform(values[Number(index)] ?? '')),
+  };
+};
+
 const sanitizeAuthoredProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content))
+  // Projected attribute text (a tip, a title) is plain text: it is held aside
+  // while authored markup is scanned, so `tip="The <style> element"` can't be
+  // read as an active tag, then put back HTML-escaped.
+  const projected = literalStore(protectedCode.content);
+  const withoutActiveBlocks = stripActiveMarkup(projectComponents(protectedCode.content, projector(projected.keep)))
     .replace(underlineTag, '')
     .replace(scriptOpenerWithAttributes, '<$1>');
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
@@ -261,7 +296,7 @@ const sanitizeAuthoredProse = (source: string): string => {
     .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
     .join('\n')
     .replace(PARAGRAPH, (paragraph) => restoreScriptPairs(paragraph));
-  return protectedCode.restore(sanitized);
+  return protectedCode.restore(projected.restore(sanitized, escapeHtml));
 };
 
 export const normalizePublicMarkdownContent = (markdown: string): string => {

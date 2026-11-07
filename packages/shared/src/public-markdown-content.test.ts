@@ -88,6 +88,17 @@ import Example from './example'
     ).toBe('- [A](/a)\n- B — Second\n  Body of B.');
   });
 
+  it('keeps projected attribute text out of the active-markup scan', () => {
+    expect(normalizePublicMarkdownContent('<Tooltip tip="The &lt;style&gt; element">CSS</Tooltip> and more text.\n\nNext paragraph.')).toBe(
+      'CSS (The &lt;style&gt; element) and more text.\n\nNext paragraph.',
+    );
+    expect(normalizePublicMarkdownContent('<Card title="Use <script> carefully">\n\nBody text.\n\n</Card>\n\nAfter.')).toBe(
+      '### Use &lt;script&gt; carefully\n\nBody text.\n\nAfter.',
+    );
+    // Authored active markup is still removed.
+    expect(normalizePublicMarkdownContent('Before <style>p { color: red }</style> after.')).not.toContain('color');
+  });
+
   it('leaves components written as examples in code untouched', () => {
     const source = 'Write `<Icon icon="star"></Icon>` inline.\n\n```mdx\n<FileTree>\n<File name="example.ts"></File>\n</FileTree>\n```';
     expect(portablePublicMdxMarkdown(source)).toBe(source);
