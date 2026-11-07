@@ -18,6 +18,59 @@ afterEach(() => {
 const aligned = '| Name | Count | Status |\n| :--- | :---: | ---: |\n| Ada | 42 | Ready |';
 
 describe('table column alignment', () => {
+  it.each(['addRowBefore', 'addRowAfter', 'addColumnAfter'] as const)('inherits column alignment on %s and keeps pipe syntax (A, 8)', (command) => {
+    const editor = makeEditor(aligned);
+    editor.commands.setTextSelection(4);
+    editor.commands[command]();
+    const saved = getMarkdown(editor);
+    expect(saved).not.toContain('<table');
+    expect(saved).toContain(command === 'addColumnAfter' ? '| :--- | :--- | :---: | ---: |' : '| :--- | :---: | ---: |');
+    const header = editor.state.doc.firstChild?.firstChild;
+    editor.state.doc.firstChild?.forEach((row) => {
+      row.forEach((cell, _offset, column) => {
+        expect(cell.attrs.align).toBe(header?.child(column).attrs.align);
+      });
+    });
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(getMarkdown(editor)).toBe(saved);
+  });
+  it('reloads pipes in code, escaped prose, bold, link text and destinations semantically (B, 2)', () => {
+    const source = '| Code | Text | Bold | Link |\n| --- | --- | --- | --- |\n| `a\\|b` | x \\| y | **a\\|b** | [a\\|b](https://example.com/a%7Cb) |';
+    const editor = makeEditor(source);
+    // Include a literal pipe in the link destination too, not just its encoded spelling.
+    editor.state.doc.descendants((node, pos) => {
+      const mark = node.marks.find((item) => item.type.name === 'link');
+      if (mark)
+        editor.view.dispatch(editor.state.tr.addMark(pos, pos + node.nodeSize, mark.type.create({ ...mark.attrs, href: 'https://example.com/a|b' })));
+    });
+    const semantic = () => {
+      const cells: { text: string; marks: { type: string; href?: string }[] }[] = [];
+      editor.state.doc.descendants((cell) => {
+        if (!['tableHeader', 'tableCell'].includes(cell.type.name)) return;
+        const marks: { type: string; href?: string }[] = [];
+        cell.descendants((child) => {
+          for (const mark of child.marks)
+            marks.push({ type: mark.type.name, ...(mark.type.name === 'link' ? { href: decodeURI(mark.attrs.href) } : {}) });
+        });
+        cells.push({ text: cell.textContent, marks });
+      });
+      return cells;
+    };
+    const before = semantic();
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('`a\\|b`');
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(semantic()).toEqual(before);
+  });
+  it('encodes blank lines in HTML fallback code cells and writes physical align attributes (C, 8)', () => {
+    const editor = makeEditor('<table><tr><td align="right"><pre><code>first&#10;&#10;last</code></pre></td></tr></table>');
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('align="right"');
+    expect(saved).not.toContain('style=');
+    expect(saved).toContain('first&#10;&#10;last');
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(editor.state.doc.firstChild?.firstChild?.firstChild?.textContent).toBe('first\n\nlast');
+  });
   it('keeps existing alignment after editing elsewhere and reloading', () => {
     const editor = makeEditor(`${aligned}\n\nAfter.`);
     editor.commands.insertContentAt(editor.state.doc.content.size - 1, ' Updated.');
@@ -56,7 +109,7 @@ describe('table column alignment', () => {
     const editor = makeEditor('<table><tr><td colspan="2" style="text-align: right"><p>Wide cell</p></td></tr><tr><td>A</td><td>B</td></tr></table>');
     const output = getMarkdown(editor);
     expect(output).toContain('colspan="2"');
-    expect(output).toContain('text-align: right');
+    expect(output).toContain('align="right"');
     editor.commands.setContent(output, { emitUpdate: false });
     expect(getMarkdown(editor)).toBe(output);
   });

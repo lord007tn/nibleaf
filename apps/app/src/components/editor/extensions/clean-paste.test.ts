@@ -95,7 +95,7 @@ describe('clipboard HTML cleanup', () => {
     const html =
       '<main><h3 class="title">Web</h3><custom-box>Unknown <span>text</span></custom-box><p><a href="javascript:alert(1)">Bad</a> <a href="data:text/html,x">Data</a> <a href="mailto:a@example.com">Email</a> <a href="tel:123">Call</a> <a href="../next">Next</a></p><script>evil()</script><style>body{}</style><form>Form</form><button>Menu</button></main>';
     expect(cleanPastedHTML(html)).toBe(
-      '<h3>Web</h3>Unknown text<p><a>Bad</a> <a>Data</a> <a href="mailto:a@example.com">Email</a> <a href="tel:123">Call</a> <a href="../next">Next</a></p>',
+      '<h3>Web</h3>Unknown text<p><a>Bad</a> <a>Data</a> <a href="mailto:a@example.com">Email</a> <a href="tel:123">Call</a> <a href="../next">Next</a></p>Form',
     );
     const markdown = getMarkdown(paste(html));
     expect(markdown).toContain('Unknown text');
@@ -141,8 +141,8 @@ describe('clipboard HTML cleanup', () => {
         }) as unknown as ClipboardEvent,
       );
     editor.commands.setTextSelection({ from: 1, to: 9 });
-    pasteText('/help');
-    expect(getMarkdown(editor)).toBe('[One](/help)\n\n[Two](/help)');
+    pasteText('https://example.com/help');
+    expect(getMarkdown(editor)).toBe('[One](https://example.com/help)\n\n[Two](https://example.com/help)');
     editor.commands.setContent('```text\nReplace\n```', { emitUpdate: false });
     editor.commands.setTextSelection({ from: 1, to: 8 });
     pasteText('https://example.com');

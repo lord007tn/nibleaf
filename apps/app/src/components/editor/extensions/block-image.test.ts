@@ -54,6 +54,7 @@ describe('editable images', () => {
   });
   it('selects completed uploads for the description prompt', async () => {
     const editor = makeEditor();
+    editor.isFocused = true;
     await uploadEditorImage(editor, new File(['image'], 'diagram.png', { type: 'image/png' }), async () => 'https://example.com/upload.png');
     expect(editor.state.selection).toBeInstanceOf(NodeSelection);
     expect(editor.getAttributes('image').src).toBe('https://example.com/upload.png');
@@ -128,14 +129,14 @@ describe('authored image attributes', () => {
     const editor = makeEditor();
     const image = `<img width='0240' class="block dark:hidden" src='/light.png' alt='Light' data-note="a > b" />`;
     editor.commands.setContent(image, { emitUpdate: false });
-    expect(reload(editor)).toBe(image);
+    expect(reload(editor)).toBe(image.replace(' data-note="a > b"', ''));
     editor.commands.setNodeSelection(0);
     editor.commands.updateAttributes('image', { width: 480 });
     expect(addImageCaption(editor)).toBe(0);
     editor.commands.updateAttributes('mdxFrame', { caption: 'Light version' });
     const output = reload(editor);
     expect(output).toContain('<Frame caption="Light version">');
-    expect(output).toContain(`<img width="480" class="block dark:hidden" src='/light.png' alt='Light' data-note="a > b" />`);
+    expect(output).toContain(`<img width="480" class="block dark:hidden" src='/light.png' alt='Light' />`);
   });
   it('keeps an ordinary Markdown image as Markdown after alt edits', () => {
     const editor = makeEditor();

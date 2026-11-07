@@ -1,25 +1,20 @@
+import { translateFn } from '@nibleaf/i18n';
 import Image from '@tiptap/extension-image';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { imageAttributeNames, setupImageSource, snapshotImageSource } from './image-source';
-import { preservedOpeningTag, sourceMetadataAttributes } from './mdx-roundtrip';
+import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
+import { imageAttributeNames, safeImageTag, setupImageSource, snapshotImageSource } from './image-source';
+import { canEditImages } from './image-upload';
+import { sourceMetadataAttributes } from './mdx-roundtrip';
 
 export const imagePromptKey = new PluginKey<number>('image-description-prompt');
-const htmlAttribute = (value: unknown) =>
-  String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-const dimension = (value: unknown, key: string): number | '100%' | null => {
-  if (key === 'width' && value === '100%') return value;
-  const number = Number(value);
-  return Number.isFinite(number) && number > 0 ? Math.round(number) : null;
-};
 
 /** Block boundaries and dimensions must survive both Markdown and HTML image syntax. */
 export const BlockImage = Image.extend({
+  parseHTML() {
+    return [{ tag: 'img[src]', getAttrs: (element) => (allowedURL(element.getAttribute('src') ?? '', ['http', 'https']) ? null : false) }];
+  },
   addNodeView() {
     return ({ node, getPos, editor }) => {
       let current = node;
@@ -28,22 +23,49 @@ export const BlockImage = Image.extend({
       const image = document.createElement('img');
       image.draggable = true;
       dom.append(image);
+      const version = document.createElement('span');
+      version.className = 'text-xs text-muted-foreground';
+      dom.append(version);
+      const describe = document.createElement('button');
+      describe.type = 'button';
+      describe.className = 'min-h-11 px-2 text-sm focus-visible:outline-2';
+      describe.textContent = translateFn('editor.image.describe');
+      describe.onclick = () => {
+        const pos = getPos();
+        if (pos === undefined || !canEditImages(editor)) return;
+        editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)).setMeta(imagePromptKey, true));
+      };
+      dom.append(describe);
       const sync = () => {
         for (const key of ['src', 'alt', 'title']) {
           if (key === 'alt' || current.attrs[key] != null) image.setAttribute(key, String(current.attrs[key] ?? ''));
           else image.removeAttribute(key);
         }
-        dom.style.width = current.attrs.width === '100%' ? '100%' : current.attrs.width ? `${current.attrs.width}px` : 'fit-content';
+        dom.style.width =
+          typeof current.attrs.width === 'string' && current.attrs.width.endsWith('%')
+            ? current.attrs.width
+            : current.attrs.width
+              ? `${current.attrs.width}px`
+              : 'fit-content';
         image.style.width = current.attrs.width ? '100%' : '';
+        const classes = `${current.attrs.class ?? ''} ${current.attrs.className ?? ''}`.split(/\s+/);
+        // Show both variants deliberately so writers can select and describe either.
+        version.textContent = classes.includes('dark:hidden')
+          ? translateFn('editor.image.lightVersion')
+          : classes.includes('dark:block') || classes.includes('dark:inline') || classes.includes('dark:inline-block')
+            ? translateFn('editor.image.darkVersion')
+            : '';
+        describe.hidden = current.type.name !== 'image' || !!current.attrs.alt || !canEditImages(editor);
       };
       sync();
       let cancelDrag: (() => void) | undefined;
       for (const side of ['left', 'right'] as const) {
+        if (current.type.name !== 'image') continue;
         const handle = document.createElement('span');
         handle.className = `editor-image-handle editor-image-handle-${side}`;
         handle.setAttribute('aria-hidden', 'true');
         handle.onpointerdown = (event) => {
-          if (!editor.isEditable) return;
+          if (!canEditImages(editor)) return;
           event.preventDefault();
           cancelDrag?.();
           const position = getPos();
@@ -55,7 +77,7 @@ export const BlockImage = Image.extend({
           const move = (next: PointerEvent) => {
             width = Math.max(
               80,
-              Math.min(dom.parentElement?.clientWidth || 1600, Math.round(initial + (next.clientX - start) * (side === 'left' ? -1 : 1))),
+              Math.min(4000, dom.parentElement?.clientWidth || 1600, Math.round(initial + (next.clientX - start) * (side === 'left' ? -1 : 1))),
             );
             dom.style.width = `${width}px`;
             image.style.width = '100%';
@@ -63,7 +85,7 @@ export const BlockImage = Image.extend({
           const finish = () => {
             cancelDrag?.();
             const pos = getPos();
-            if (pos !== undefined && !editor.isDestroyed)
+            if (pos !== undefined && !editor.isDestroyed && canEditImages(editor))
               editor.chain().setNodeSelection(pos).updateAttributes('image', { width, height: null }).run();
           };
           cancelDrag = () => {
@@ -96,7 +118,8 @@ export const BlockImage = Image.extend({
         deselectNode() {
           dom.classList.remove('ProseMirror-selectednode');
         },
-        stopEvent: (event) => event.target instanceof HTMLElement && event.target.classList.contains('editor-image-handle'),
+        stopEvent: (event) =>
+          event.target === describe || (event.target instanceof HTMLElement && event.target.classList.contains('editor-image-handle')),
         ignoreMutation: () => true,
         destroy() {
           cancelDrag?.();
@@ -110,20 +133,22 @@ export const BlockImage = Image.extend({
       ...sourceMetadataAttributes(),
       class: {
         default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute('class'),
+        parseHTML: (element: HTMLElement) => imageClasses(element.getAttribute('class')),
+        renderHTML: (attributes: Record<string, unknown>) => (imageClasses(attributes.class) ? { class: imageClasses(attributes.class) } : {}),
       },
       className: {
         default: null,
-        parseHTML: (element: HTMLElement) => element.getAttribute('className'),
-        renderHTML: (attributes: Record<string, unknown>) => (attributes.className ? { class: attributes.className } : {}),
+        parseHTML: (element: HTMLElement) => imageClasses(element.getAttribute('className')),
+        renderHTML: (attributes: Record<string, unknown>) =>
+          imageClasses(attributes.className) ? { class: imageClasses(attributes.className) } : {},
       },
       ...Object.fromEntries(
         ['width', 'height'].map((key) => [
           key,
           {
             default: null,
-            parseHTML: (element: HTMLElement) => dimension(element.getAttribute(key), key),
-            renderHTML: (attributes: Record<string, unknown>) => (dimension(attributes[key], key) ? { [key]: dimension(attributes[key], key) } : {}),
+            parseHTML: (element: HTMLElement) => imageDimension(element.getAttribute(key)),
+            renderHTML: (attributes: Record<string, unknown>) => (imageDimension(attributes[key]) ? { [key]: imageDimension(attributes[key]) } : {}),
           },
         ]),
       ),
@@ -133,13 +158,19 @@ export const BlockImage = Image.extend({
     return {
       markdown: {
         serialize(state, node) {
+          const legacy = node.type.name === 'legacyImage';
+          if (!legacy && !allowedURL(String(node.attrs.src ?? ''), ['http', 'https'])) {
+            state.write(escapeImageAttribute(state.esc(String(node.attrs.alt ?? ''))));
+            state.closeBlock(node);
+            return;
+          }
           if (node.attrs.sourceOpen) {
-            state.write(preservedOpeningTag(node, 'img', [...imageAttributeNames], true));
-          } else if (node.attrs.width || node.attrs.height || node.attrs.class || node.attrs.className) {
+            state.write(safeImageTag(String(node.attrs.sourceOpen), node.attrs, legacy));
+          } else if (node.attrs.width || node.attrs.height || node.attrs.class || node.attrs.className || /[\s"<>]/.test(String(node.attrs.src))) {
             const attributes = imageAttributeNames
               .filter((key) => key === 'alt' || (node.attrs[key] !== null && node.attrs[key] !== undefined))
-              .map((key) => `${key}="${htmlAttribute(node.attrs[key])}"`);
-            state.write(`<img ${attributes.join(' ')} />`);
+              .map((key) => `${key}="${escapeImageAttribute(node.attrs[key])}"`);
+            state.write(safeImageTag(`<img ${attributes.join(' ')} />`));
           } else {
             const src = String(node.attrs.src ?? '').replace(/[\\()]/g, '\\$&');
             const title = node.attrs.title ? ` "${String(node.attrs.title).replace(/[\\"]/g, '\\$&')}"` : '';
@@ -149,7 +180,7 @@ export const BlockImage = Image.extend({
         },
         parse: {
           setup: setupImageSource,
-          updateDOM: (element) => snapshotImageSource(element, dimension),
+          updateDOM: snapshotImageSource,
         },
       } satisfies MarkdownNodeSpec,
     };
@@ -161,6 +192,7 @@ export const BlockImage = Image.extend({
         key: imagePromptKey,
         state: { init: () => 0, apply: (tr, version) => (tr.getMeta(imagePromptKey) ? version + 1 : version) },
         appendTransaction(transactions, oldState, state) {
+          if (transactions.some((tr) => tr.getMeta('image-auto-prompt') === false)) return null;
           if (!transactions.some((tr) => tr.docChanged) || transactions.some((tr) => tr.getMeta('preventUpdate') || tr.getMeta(imagePromptKey)))
             return null;
           // Ordinary typing must not scan a whole pasted article just to check for images.
@@ -180,17 +212,40 @@ export const BlockImage = Image.extend({
           // Attribute edits replace a node too; only prompt when the number of images grows,
           // or the clipboard/drop explicitly replaces an existing image.
           let count = 0;
-          let inserted: number | null = null;
+          const inserted: number[] = [];
           state.doc.descendants((node, pos) => {
             if (node.type.name !== 'image') return;
             count++;
-            if (!previous.has(node)) inserted = pos;
+            if (!previous.has(node)) inserted.push(pos);
           });
           const clipboard = transactions.some((tr) => ['paste', 'drop'].includes(tr.getMeta('uiEvent')));
-          if (inserted === null || (count <= previous.size && !clipboard)) return null;
-          return state.tr.setSelection(NodeSelection.create(state.doc, inserted)).setMeta(imagePromptKey, true);
+          const insertedAt = inserted[0];
+          if (inserted.length !== 1 || insertedAt === undefined || (count <= previous.size && !clipboard)) return null;
+          return state.tr.setSelection(NodeSelection.create(state.doc, insertedAt)).setMeta(imagePromptKey, true);
         },
       }),
     ];
+  },
+});
+
+/** Source-only compatibility: saved inline images remain visible and lossless.
+ * The ordinary image node has allowBase64:false; clipboard handling uploads or
+ * rejects legacy nodes before they can be inserted as new inline data images. */
+export const LegacyImage = BlockImage.extend({
+  name: 'legacyImage',
+  addCommands() {
+    return {};
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'img[data-nibleaf-legacy="true"]',
+        getAttrs: (element) =>
+          /^data:image\//i.test(normalizedURL((element.getAttribute('src') ?? '').split(',', 1)[0] ?? '') ?? '') ? null : false,
+      },
+    ];
+  },
+  addProseMirrorPlugins() {
+    return [];
   },
 });

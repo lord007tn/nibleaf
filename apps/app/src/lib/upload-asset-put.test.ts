@@ -4,12 +4,43 @@ import { putAsset } from './upload-asset-put';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('asset PUT progress', () => {
+  it('cancels an in-flight XHR through AbortSignal and rejects pre-aborted requests (K, 5)', async () => {
+    let request!: FakeRequest;
+    class FakeRequest {
+      upload = {};
+      onabort?: () => void;
+      onloadend?: () => void;
+      open = vi.fn();
+      setRequestHeader = vi.fn();
+      send = vi.fn();
+      abort = vi.fn(() => {
+        this.onabort?.();
+        this.onloadend?.();
+      });
+      constructor() {
+        request = this;
+      }
+    }
+    vi.stubGlobal('XMLHttpRequest', FakeRequest);
+    const controller = new AbortController();
+    const file = new File(['bytes'], 'a.png', { type: 'image/png' });
+    const pending = putAsset('/storage', file, file.type, vi.fn(), controller.signal);
+    controller.abort();
+    await expect(pending).rejects.toThrow('Upload cancelled');
+    expect(request.abort).toHaveBeenCalledOnce();
+    await expect(putAsset('/storage', file, file.type, vi.fn(), controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+  });
   it('preserves the existing fetch upload path and HTTP error status', async () => {
     const file = new File(['bytes'], 'a.png', { type: 'image/png' });
     const fetcher = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetcher);
     await putAsset('https://storage.example/signed', file, file.type);
-    expect(fetcher).toHaveBeenCalledWith('https://storage.example/signed', { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+    expect(fetcher).toHaveBeenCalledWith('https://storage.example/signed', {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+      signal: undefined,
+    });
     fetcher.mockResolvedValueOnce({ ok: false, status: 413 });
     await expect(putAsset('https://storage.example/signed', file, file.type)).rejects.toMatchObject({ status: 413 });
   });

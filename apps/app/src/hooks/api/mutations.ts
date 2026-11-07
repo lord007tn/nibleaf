@@ -403,23 +403,33 @@ const uploadContentType = (file: File): string => file.type.trim() || inferSafeI
 export const useUploadAsset = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: File | { file: File; onProgress?: (percent: number) => void }): Promise<Asset> => {
+    mutationFn: async (
+      input: File | { file: File; onProgress?: (percent: number) => void; signal?: AbortSignal; onFinishing?: () => void },
+    ): Promise<Asset> => {
       const file = input instanceof File ? input : input.file;
       const onProgress = input instanceof File ? undefined : input.onProgress;
+      const signal = input instanceof File ? undefined : input.signal;
       const contentType = uploadContentType(file);
       const presign = await mutateData(
-        await api.app.projects[':projectId'].assets.presign.$post({
-          param: { projectId },
-          json: { filename: file.name, contentType, size: file.size },
-        }),
+        await api.app.projects[':projectId'].assets.presign.$post(
+          {
+            param: { projectId },
+            json: { filename: file.name, contentType, size: file.size },
+          },
+          { init: { signal } },
+        ),
         'Could not start the upload.',
       );
-      await putAsset(presign.uploadUrl, file, contentType, onProgress);
+      await putAsset(presign.uploadUrl, file, contentType, onProgress, signal);
+      if (!(input instanceof File)) input.onFinishing?.();
       return mutateData(
-        await api.app.projects[':projectId'].assets.confirm.$post({
-          param: { projectId },
-          json: { key: presign.key, contentType, size: file.size },
-        }),
+        await api.app.projects[':projectId'].assets.confirm.$post(
+          {
+            param: { projectId },
+            json: { key: presign.key, contentType, size: file.size },
+          },
+          { init: { signal } },
+        ),
         'Could not finalize the upload.',
       );
     },

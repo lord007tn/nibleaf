@@ -761,6 +761,11 @@
 .pl-editor .ProseMirror .editor-image-handle-right {
   right: -22px;
 }
+
+.pl-editor.is-comment-mode .editor-image-handle,
+.pl-editor.is-comment-mode .editor-image button {
+  display: none;
+}
 .pl-editor
   .ProseMirror
   .editor-image.ProseMirror-selectednode
@@ -771,4 +776,13 @@
    space, but hide its pill so floating controls cannot cover it on phones. */
 .pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {
   visibility: hidden;
+}
+.pl-editor .ProseMirror :is(td, th)[align="left"] {
+  text-align: left;
+}
+.pl-editor .ProseMirror :is(td, th)[align="center"] {
+  text-align: center;
+}
+.pl-editor .ProseMirror :is(td, th)[align="right"] {
+  text-align: right;
 }

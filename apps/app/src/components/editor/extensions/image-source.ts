@@ -1,32 +1,97 @@
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
 import { encodeMdxSource } from './mdx-roundtrip';
 
 export const imageAttributeNames = ['src', 'alt', 'title', 'width', 'height', 'class', 'className'] as const;
 const imageParsers = new WeakSet<object>();
+// loading/decoding are browser delivery hints, never styling or executable content.
+const sourceAttributes = new Set<string>([...imageAttributeNames.map((name) => name.toLowerCase()), 'loading', 'decoding']);
+
+function imageValue(name: string, value: unknown, preserveData = false): string | number | null {
+  if (value === null || value === undefined) return null;
+  if (name === 'width' || name === 'height') return imageDimension(value);
+  if (name === 'class' || name === 'classname') return imageClasses(value);
+  if (
+    name === 'src' &&
+    !(preserveData && /^data:image\//i.test(normalizedURL(String(value).split(',', 1)[0] ?? '') ?? '')) &&
+    !allowedURL(String(value), ['http', 'https'])
+  )
+    return null;
+  return String(value);
+}
+
+/** Preserve safe, untouched attribute spelling/order, but never replay unsafe cached HTML. */
+export function safeImageTag(raw: string, overrides: Record<string, unknown> = {}, preserveData = false): string {
+  const container = document.implementation.createHTMLDocument('').createElement('div');
+  container.innerHTML = raw;
+  const image = container.querySelector('img');
+  if (!image) return '';
+  const opening = /^<img\b/i.exec(raw)?.[0] ?? '<img';
+  const attributes = /\s+([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g;
+  attributes.lastIndex = opening.length;
+  let result = opening;
+  let end = opening.length;
+  const seen = new Set<string>();
+  for (let match = attributes.exec(raw); match; match = attributes.exec(raw)) {
+    const spelling = match[1] ?? '';
+    const name = spelling.toLowerCase();
+    const key = name === 'classname' ? 'className' : name;
+    const original = image.getAttribute(name);
+    const value = imageValue(name, Object.hasOwn(overrides, key) ? overrides[key] : original, preserveData);
+    if (sourceAttributes.has(name) && !seen.has(name) && value !== null) {
+      const encoded = match[2] ?? match[3] ?? match[4] ?? '';
+      const unsafeEncoding = /["<>]/.test(encoded) || /&(?!(?:[a-z][a-z\d]*|#\d+|#x[\da-f]+);)/i.test(encoded);
+      const unchanged = name === 'width' || name === 'height' ? imageDimension(original) === value : String(value) === original;
+      result += unchanged && !unsafeEncoding ? match[0] : `${/^\s+/.exec(match[0])?.[0] ?? ' '}${spelling}="${escapeImageAttribute(value)}"`;
+    }
+    seen.add(name);
+    end = attributes.lastIndex;
+  }
+  for (const key of imageAttributeNames) {
+    if (seen.has(key.toLowerCase()) || !Object.hasOwn(overrides, key)) continue;
+    const value = imageValue(key.toLowerCase(), overrides[key]);
+    if (value !== null) result += ` ${key}="${escapeImageAttribute(value)}"`;
+  }
+  const tail = raw.slice(end);
+  return result + (/^\s*\/?>$/.test(tail) ? tail : ' />');
+}
 
 /** Capture authored HTML before the DOM lowercases className and normalizes quotes/order. */
 export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] = (markdownit) => {
   if (imageParsers.has(markdownit)) return;
-  for (const rule of ['html_block', 'html_inline']) {
+  const validateLink = markdownit.validateLink.bind(markdownit);
+  // Existing inline images have a separate preservation node. New clipboard
+  // images still pass through the upload policy, never this source-only path.
+  markdownit.validateLink = (url) => /^data:image\//i.test(normalizedURL(url.split(',', 1)[0] ?? '') ?? '') || validateLink(url);
+  for (const rule of ['html_block', 'html_inline', 'image']) {
     const render = markdownit.renderer.rules[rule];
     if (!render) continue;
     markdownit.renderer.rules[rule] = (...args) =>
-      render(...args).replace(/<img(?=[\s/>])(?:[^<>"']|"[^"]*"|'[^']*')*\/?>/gi, (raw) =>
-        raw.replace(/\s*\/?>$/, (ending) => ` data-mdx-source-open="${encodeMdxSource(raw)}"${ending}`),
-      );
+      render(...args).replace(/<img(?=[\s/>])(?:[^<>"']|"[^"]*"|'[^']*')*\/?>/gi, (raw) => {
+        const container = document.implementation.createHTMLDocument('').createElement('div');
+        container.innerHTML = raw;
+        const image = container.querySelector('img');
+        const src = image?.getAttribute('src') ?? '';
+        // Only the saved-source parser creates this compatibility node. Clipboard slices
+        // are scrubbed separately, and regular image nodes never accept base64.
+        if (/^data:image\//i.test(normalizedURL(src.split(',', 1)[0] ?? '') ?? ''))
+          return safeImageTag(raw, {}, true).replace(
+            /\s*\/?>$/,
+            (ending) => ` data-nibleaf-legacy="true" data-mdx-source-open="${encodeMdxSource(safeImageTag(raw, {}, true))}"${ending}`,
+          );
+        if (!allowedURL(src, ['http', 'https'])) return escapeImageAttribute(image?.getAttribute('alt') ?? '');
+        if (rule === 'image') return raw;
+        const safe = safeImageTag(raw);
+        return safe.replace(/\s*\/?>$/, (ending) => ` data-mdx-source-open="${encodeMdxSource(safe)}"${ending}`);
+      });
   }
   imageParsers.add(markdownit);
 };
 
 /** The snapshot uses parsed values, so equivalent spellings such as width='0480' remain untouched. */
-export function snapshotImageSource(element: HTMLElement, parseDimension: (value: unknown, key: string) => number | '100%' | null) {
+export function snapshotImageSource(element: HTMLElement) {
   for (const image of element.querySelectorAll('img[data-mdx-source-open]')) {
-    const original = Object.fromEntries(
-      imageAttributeNames.map((name) => [
-        name,
-        name === 'width' || name === 'height' ? parseDimension(image.getAttribute(name), name) : image.getAttribute(name),
-      ]),
-    );
+    const original = Object.fromEntries(imageAttributeNames.map((name) => [name, imageValue(name.toLowerCase(), image.getAttribute(name))]));
     image.setAttribute('data-mdx-source-original', encodeMdxSource(JSON.stringify(original)));
   }
 }

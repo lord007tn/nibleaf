@@ -36,6 +36,7 @@ interface TableAction {
   enabled: boolean;
   destructive?: boolean;
   separatorBefore?: boolean;
+  pressed?: boolean;
 }
 
 /**
@@ -50,6 +51,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
     editor,
     selector: ({ editor: current }) => ({
       inTable: current.isActive('table'),
+      alignment: current.getAttributes(current.isActive('tableHeader') ? 'tableHeader' : 'tableCell').align ?? null,
       canAddRowBefore: current.can().addRowBefore(),
       canAddRowAfter: current.can().addRowAfter(),
       canAddColBefore: current.can().addColumnBefore(),
@@ -63,15 +65,27 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
 
   const actions: TableAction[] = [
     {
+      labelKey: 'editor.table.alignDefault',
+      content: <span aria-hidden="true">—</span>,
+      run: () => {
+        alignTableColumns(editor, null);
+      },
+      enabled: state.inTable,
+      pressed: state.alignment === null,
+    },
+    {
       labelKey: 'editor.table.alignStart',
       content: <AlignmentGlyph align={dir === 'rtl' ? 'right' : 'left'} />,
       run: () => {
         alignTableColumns(editor, dir === 'rtl' ? 'right' : 'left');
       },
       enabled: state.inTable,
+      // Markdown and the reader use physical alignment: RTL "start" writes ---:.
+      pressed: state.alignment === (dir === 'rtl' ? 'right' : 'left'),
     },
     {
       labelKey: 'editor.table.alignCenter',
+      pressed: state.alignment === 'center',
       content: <AlignmentGlyph align="center" />,
       run: () => {
         alignTableColumns(editor, 'center');
@@ -80,6 +94,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
     },
     {
       labelKey: 'editor.table.alignEnd',
+      pressed: state.alignment === (dir === 'rtl' ? 'left' : 'right'),
       content: <AlignmentGlyph align={dir === 'rtl' ? 'left' : 'right'} />,
       run: () => {
         alignTableColumns(editor, dir === 'rtl' ? 'left' : 'right');
@@ -166,6 +181,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
             {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
             <Button
               aria-label={label}
+              aria-pressed={action.pressed}
               className={cn('size-11 text-foreground/80', action.destructive && 'hover:bg-destructive/10 hover:text-destructive')}
               disabled={!action.enabled}
               onClick={action.run}

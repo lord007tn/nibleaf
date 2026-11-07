@@ -51,7 +51,7 @@ import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
-import { BlockImage } from './extensions/block-image';
+import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
@@ -190,6 +190,8 @@ const CodeBlock = CodeBlockLowlight.extend({
 interface BuildExtensionsOptions {
   /** Upload a picked/pasted image, returning its hosted URL (or null). */
   onUpload?: ImageUploader;
+  getUpload?: () => ImageUploader | undefined;
+  canEdit?: () => boolean;
   /** Comment markers rendered as highlight decorations. */
   getComments?: () => CommentMarker[];
   /** The focused comment id (drawn stronger). */
@@ -312,6 +314,8 @@ const AutomaticBlockDirection = Extension.create<{ dir: 'ltr' | 'rtl' }>({
  */
 export function buildEditorExtensions({
   onUpload,
+  getUpload,
+  canEdit = () => true,
   getComments,
   getActiveId,
   dir = 'ltr',
@@ -325,8 +329,8 @@ export function buildEditorExtensions({
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
     AutomaticBlockDirection.configure({ dir }),
-    ImageUpload,
-    CleanPaste,
+    ImageUpload.configure({ canEdit }),
+    CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload) }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
@@ -339,7 +343,8 @@ export function buildEditorExtensions({
     Subscript,
     Superscript,
     Typography,
-    BlockImage.configure({ inline: false, allowBase64: true }),
+    BlockImage.configure({ inline: false, allowBase64: false }),
+    LegacyImage.configure({ inline: false, allowBase64: false }),
     TaskList,
     TaskItem.configure({ nested: true }),
     // Column resizing is LTR-only in prosemirror-tables — in RTL the drag
@@ -720,20 +725,23 @@ export function TiptapEditor({
   }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload, value]);
 
   // Upload an image file and insert it at the current selection.
-  const insertUploadedImage = (file: File, position?: number) => {
+  const insertUploadedImage = (file: File, position?: number, autoPrompt = true) => {
     const upload = onUploadRef.current;
     const ed = editorRef.current;
     if (!upload || !ed) {
       return;
     }
-    void uploadEditorImage(ed, file, upload, position);
+    void uploadEditorImage(ed, file, upload, position, {}, autoPrompt);
   };
 
   const editor = useEditor(
     {
       editable,
       extensions: buildEditorExtensions({
-        onUpload: (file: File, onProgress?: (percent: number) => void) => onUploadRef.current?.(file, onProgress) ?? Promise.resolve(null),
+        getUpload: () => onUploadRef.current,
+        canEdit: () => !commentModeRef.current,
+        onUpload: (file: File, onProgress?: (percent: number) => void, signal?: AbortSignal, onFinishing?: () => void) =>
+          onUploadRef.current?.(file, onProgress, signal, onFinishing) ?? Promise.resolve(null),
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
         dir,
@@ -781,7 +789,7 @@ export function TiptapEditor({
           }
           event.preventDefault();
           for (const file of files) {
-            insertUploadedImage(file);
+            insertUploadedImage(file, undefined, files.length === 1);
           }
           return true;
         },
@@ -794,7 +802,7 @@ export function TiptapEditor({
           event.preventDefault();
           for (const file of files) {
             const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-            insertUploadedImage(file, position);
+            insertUploadedImage(file, position, files.length === 1);
           }
           return true;
         },
@@ -846,7 +854,7 @@ export function TiptapEditor({
         editor.view.dispatch(editor.state.tr);
       }
     });
-  }, [comments, activeCommentId, editor]);
+  }, [comments, activeCommentId, commentMode, editor]);
 
   return (
     <div

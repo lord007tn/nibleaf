@@ -3,17 +3,19 @@ import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { DOMSerializer, type Node as PMNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { CellSelection, TableMap } from '@tiptap/pm/tables';
+import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 
-export type ColumnAlignment = 'left' | 'center' | 'right';
+export type ColumnAlignment = 'left' | 'center' | 'right' | null;
 const alignAttribute = {
   default: null,
   parseHTML: (element: HTMLElement) => {
     const align = element.style.textAlign || element.getAttribute('align');
     return align && /^(left|center|right)$/.test(align) ? align : null;
   },
-  renderHTML: (attributes: Record<string, unknown>) => (attributes.align ? { style: `text-align: ${attributes.align}` } : {}),
+  renderHTML: (attributes: Record<string, unknown>) => (/^(left|center|right)$/.test(String(attributes.align)) ? { align: attributes.align } : {}),
 };
 export const AlignedTableCell = TableCell.extend({
   addAttributes() {
@@ -57,14 +59,13 @@ export function alignTableColumns(editor: Editor, alignment: ColumnAlignment): b
 function markdownTable(node: PMNode): boolean {
   let valid = node.childCount > 0;
   node.forEach((row, _offset, index) => {
-    row.forEach((cell, _cellOffset, column) => {
+    row.forEach((cell) => {
       if (
         cell.attrs.colspan > 1 ||
         cell.attrs.rowspan > 1 ||
         cell.childCount !== 1 ||
         cell.firstChild?.type.name !== 'paragraph' ||
-        (index === 0 ? cell.type.name !== 'tableHeader' : cell.type.name !== 'tableCell') ||
-        (index > 0 && cell.attrs.align !== node.firstChild?.maybeChild(column)?.attrs.align)
+        (index === 0 ? cell.type.name !== 'tableHeader' : cell.type.name !== 'tableCell')
       )
         valid = false;
     });
@@ -73,6 +74,66 @@ function markdownTable(node: PMNode): boolean {
 }
 
 export const AlignedTable = Table.extend({
+  addProseMirrorPlugins() {
+    const key = new PluginKey('column-alignment');
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        key,
+        appendTransaction(transactions, oldState, state) {
+          if (!transactions.some((tr) => tr.docChanged) || transactions.some((tr) => tr.getMeta('preventUpdate') || tr.getMeta(key))) return null;
+          let newCells = false;
+          for (const transaction of transactions)
+            for (const step of transaction.steps) {
+              if (!(step instanceof ReplaceStep || step instanceof ReplaceAroundStep)) continue;
+              step.slice.content.descendants((node) => {
+                if (['tableCell', 'tableHeader'].includes(node.type.name)) newCells = true;
+              });
+            }
+          // Typing elsewhere must not scan the article to maintain table columns.
+          if (!newCells) return null;
+          const oldTables = new Map<number, PMNode>();
+          oldState.doc.descendants((node, pos) => {
+            if (node.type.name !== 'table') return;
+            let mapped = pos;
+            for (const transaction of transactions) mapped = transaction.mapping.map(mapped);
+            oldTables.set(mapped, node);
+          });
+          const tr = state.tr;
+          state.doc.descendants((table, pos) => {
+            if (table.type.name !== 'table') return;
+            const old = oldTables.get(pos);
+            if (!old || (old.childCount === table.childCount && TableMap.get(old).width === TableMap.get(table).width)) return;
+            const first = table.firstChild;
+            const oldHeaderMoved = old.firstChild && table.content.content.indexOf(old.firstChild) > 0;
+            if (
+              !first ||
+              !(oldHeaderMoved ? old.firstChild : first)?.content.content.every(
+                (cell) => cell.type.name === 'tableHeader' && cell.attrs.colspan === 1,
+              )
+            )
+              return;
+            const header = oldHeaderMoved ? old.firstChild : first;
+            const alignments =
+              header?.content.content.map((cell, column) => {
+                if (!oldHeaderMoved && first.childCount > (old.firstChild?.childCount ?? 0) && !old.firstChild?.content.content.includes(cell))
+                  return first.maybeChild(column - 1)?.attrs.align ?? first.maybeChild(column + 1)?.attrs.align ?? null;
+                return cell.attrs.align ?? null;
+              }) ?? [];
+            table.forEach((row, rowOffset, index) => {
+              row.forEach((cell, cellOffset, column) => {
+                const align = alignments[column] ?? null;
+                const type = oldHeaderMoved ? state.schema.nodes[index === 0 ? 'tableHeader' : 'tableCell'] : cell.type;
+                if (cell.attrs.align !== align || cell.type !== type)
+                  tr.setNodeMarkup(pos + 2 + rowOffset + cellOffset, type, { ...cell.attrs, align });
+              });
+            });
+          });
+          return tr.docChanged ? tr.setMeta(key, true) : null;
+        },
+      }),
+    ];
+  },
   addStorage() {
     return {
       markdown: {
@@ -81,24 +142,31 @@ export const AlignedTable = Table.extend({
           if (!markdownTable(node)) {
             const container = document.createElement('div');
             container.append(DOMSerializer.fromSchema(node.type.schema).serializeNode(node));
-            state.write(container.innerHTML);
+            for (const element of container.querySelectorAll('[style]')) element.removeAttribute('style');
+            for (const element of container.querySelectorAll('colgroup')) element.remove();
+            // Literal blank lines would terminate a CommonMark HTML block.
+            state.write(container.innerHTML.replace(/\n/g, '&#10;'));
             state.closeBlock(node);
             return;
           }
-          const tableState = state as typeof state & { inTable: boolean };
+          const tableState = state as typeof state & { inTable: boolean; out: string };
           tableState.inTable = true;
           node.forEach((row, _offset, index) => {
             state.write('| ');
             row.forEach((cell, _cellOffset, column) => {
               if (column) state.write(' | ');
-              if (cell.firstChild) state.renderInline(cell.firstChild);
+              if (cell.firstChild) {
+                const start = tableState.out.length;
+                state.renderInline(cell.firstChild);
+                tableState.out = tableState.out.slice(0, start) + tableState.out.slice(start).replace(/\|/g, '\\|');
+              }
             });
             state.write(' |');
             state.ensureNewLine();
             if (index === 0) {
               const delimiters: string[] = [];
               row.forEach((cell) => {
-                delimiters.push({ left: ':---', center: ':---:', right: '---:' }[cell.attrs.align as ColumnAlignment] ?? '---');
+                delimiters.push({ left: ':---', center: ':---:', right: '---:' }[cell.attrs.align as 'left' | 'center' | 'right'] ?? '---');
               });
               state.write(`| ${delimiters.join(' | ')} |`);
               state.ensureNewLine();

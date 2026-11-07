@@ -1,5 +1,13 @@
 import { Extension } from '@tiptap/core';
+import { DOMParser, DOMSerializer, Fragment, type Node as PMNode, Slice } from '@tiptap/pm/model';
 import { Plugin, TextSelection } from '@tiptap/pm/state';
+import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
+import { type ImageUploader, uploadEditorImage } from './image-upload';
+import { encodeMdxSource } from './mdx-roundtrip';
+import { fileFromPastedImage } from './pasted-image';
+
+// A ProseMirror marker alone is public and can occur in untrusted web HTML.
+const clipboardToken = crypto.randomUUID();
 
 const semanticTags = new Set(
   'p h1 h2 h3 h4 h5 h6 strong b em i u s strike del sup sub mark a ul ol li blockquote pre code table thead tbody tfoot tr th td img hr br'.split(
@@ -10,9 +18,7 @@ const blocks = 'p,h1,h2,h3,h4,h5,h6,ul,ol,li,blockquote,pre,table,div,hr';
 
 /** Clipboard links may be relative, but may never introduce an active URL scheme. */
 export function safePasteHref(value: string): boolean {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: browsers ignore ASCII controls in URL schemes; reject obfuscated active links too.
-  const compact = value.replace(/[\u0000-\u0020\u007f]/g, '');
-  return !/^[a-z][a-z\d+.-]*:/i.test(compact) || /^(https?:|mailto:|tel:)/i.test(compact);
+  return allowedURL(value, ['http', 'https', 'mailto', 'tel']);
 }
 
 /** Word's downlevel-revealed conditionals contain marker spans without mso-list:Ignore. */
@@ -44,9 +50,9 @@ function removeSupportListMarkers(paragraph: Element): string | null {
 
 function wordLists(root: HTMLElement) {
   for (const parent of [root, ...root.querySelectorAll<HTMLElement>('div,td,blockquote')]) {
-    const stack: { list: HTMLOListElement | HTMLUListElement; level: number; id: string }[] = [];
+    const stack: { list: HTMLOListElement | HTMLUListElement; level: number; id: string; ordinal?: number }[] = [];
     for (const child of Array.from(parent.children)) {
-      const match = /mso-list:\s*(l\d+)\s+level(\d+)/i.exec(child.getAttribute('style') ?? '');
+      const match = /mso-list:\s*(l\d+)\s+level(\d+)(?:\s+(lfo\d+))?/i.exec(child.getAttribute('style') ?? '');
       if (child.tagName !== 'P' || !match) {
         stack.length = 0;
         continue;
@@ -55,18 +61,12 @@ function wordLists(root: HTMLElement) {
       const markers = Array.from(child.querySelectorAll<HTMLElement>('span')).filter((span) =>
         /mso-list:\s*ignore/i.test(span.getAttribute('style') ?? ''),
       );
-      const glyph = (supportGlyph ?? markers[0]?.textContent ?? child.textContent ?? '').trimStart();
+      const glyph = (supportGlyph ?? markers[0]?.textContent ?? '').trimStart();
       const number = /^(\d+|[a-z]|[ivxlcdm]+)[.)]/i.exec(glyph);
       const kind = number ? 'ol' : 'ul';
       const level = Number(match[2]);
-      const id = match[1] ?? '';
+      const id = `${match[1]}:${match[3] ?? ''}`;
       for (const marker of markers) marker.remove();
-      if (supportGlyph === null && !markers.length) {
-        // Some Word versions put the marker in an unstyled leading span/text node.
-        const walker = root.ownerDocument.createTreeWalker(child, 4);
-        const first = walker.nextNode();
-        if (first) first.textContent = (first.textContent ?? '').replace(/^\s*(?:(?:\d+|[a-z]|[ivxlcdm]+)[.)]\s+|[•·▪○\uf0b7]\s*|o\s+)/i, '');
-      }
       const text = root.ownerDocument.createTreeWalker(child, 4);
       while (text.nextNode()) {
         text.currentNode.textContent = (text.currentNode.textContent ?? '').trimStart();
@@ -78,7 +78,13 @@ function wordLists(root: HTMLElement) {
         stack.pop();
       }
       let current = stack.at(-1);
-      if (!current || current.level !== level || current.list.localName !== kind) {
+      const ordinal = number && /^\d+$/.test(number[1] ?? '') ? Number(number[1]) : undefined;
+      if (
+        !current ||
+        current.level !== level ||
+        current.list.localName !== kind ||
+        (ordinal !== undefined && current.ordinal !== undefined && ordinal <= current.ordinal)
+      ) {
         if (current?.level === level) {
           stack.pop();
           current = stack.at(-1);
@@ -92,6 +98,7 @@ function wordLists(root: HTMLElement) {
         current = { list, level, id };
         stack.push(current);
       }
+      current.ordinal = ordinal;
       const item = root.ownerDocument.createElement('li');
       item.append(...child.childNodes);
       current.list.append(item);
@@ -103,9 +110,11 @@ function wordLists(root: HTMLElement) {
 /** Mutates an inert clipboard container. No editor state or document globals required. */
 export function cleanPasteDOM(root: HTMLElement): HTMLElement {
   const doc = root.ownerDocument;
-  root.querySelectorAll('script,style,meta,link,form,button,nav,o\\:p').forEach((node) => {
-    node.remove();
-  });
+  root
+    .querySelectorAll('script,style,meta,link,button,input:not([type="checkbox"]),select,textarea,option,nav,svg,iframe,object,embed,math,o\\:p')
+    .forEach((node) => {
+      node.remove();
+    });
   wordLists(root);
   const comments = doc.createTreeWalker(root, 128);
   const discarded: Node[] = [];
@@ -121,6 +130,12 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
     if (!marker.textContent?.trim()) marker.remove();
   }
 
+  const linkContents = new WeakSet<Element>();
+  for (const link of root.querySelectorAll('a')) {
+    linkContents.add(link);
+    for (const child of link.querySelectorAll('*')) linkContents.add(child);
+  }
+  const styledText = new Set('span p h1 h2 h3 h4 h5 h6 b strong i em u s strike del sup sub a font'.split(' '));
   for (const element of Array.from(root.querySelectorAll<HTMLElement>('*')).reverse()) {
     if (element.localName === 'input') {
       const item = element.closest('li');
@@ -133,7 +148,7 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
       continue;
     }
     const style = element.style;
-    const insideLink = element.closest('a') !== null;
+    const insideLink = linkContents.has(element);
     const marks = [
       [/^(bold|[7-9]00)$/i.test(style.fontWeight), 'strong'],
       [style.fontStyle === 'italic', 'em'],
@@ -143,7 +158,7 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
       [style.verticalAlign === 'sub', 'sub'],
     ] as const;
     for (const [enabled, tag] of marks) {
-      if (!enabled || element.localName === tag) continue;
+      if (!enabled || !styledText.has(element.localName) || element.localName === tag) continue;
       const wrapper = doc.createElement(tag);
       wrapper.append(...element.childNodes);
       element.append(wrapper);
@@ -155,13 +170,17 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
       if (href && safePasteHref(href)) attributes.href = href;
     }
     if (element.localName === 'img') {
+      if (!allowedURL(element.getAttribute('src') ?? '', ['http', 'https'])) {
+        element.replaceWith(doc.createTextNode(element.getAttribute('alt') ?? ''));
+        continue;
+      }
       for (const key of ['src', 'alt', 'title', 'width']) {
         const value = element.getAttribute(key);
-        if (
-          value !== null &&
-          (key !== 'src' || !/^[a-z][a-z\d+.-]*:/i.test(value) || /^(https?:|data:image\/(?:png|jpeg|gif|webp|avif|x-icon);)/i.test(value))
-        )
-          attributes[key] = value;
+        if (value !== null && (key !== 'width' || imageDimension(value) !== null)) attributes[key] = value;
+      }
+      for (const key of ['class', 'className']) {
+        const value = imageClasses(element.getAttribute(key));
+        if (value) attributes[key] = value;
       }
     }
     if (element.localName === 'code') {
@@ -174,7 +193,7 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
         if (value && /^\d+$/.test(value)) attributes[key] = value;
       }
       const align = style.textAlign || element.getAttribute('align');
-      if (align && /^(left|center|right)$/.test(align)) attributes.style = `text-align: ${align}`;
+      if (align && /^(left|center|right)$/.test(align)) attributes.align = align;
     }
     const start = element.getAttribute('start');
     if (element.localName === 'ol' && start && /^\d+$/.test(start)) attributes.start = start;
@@ -213,21 +232,186 @@ export function cleanPastedHTML(html: string): string {
   return cleanPasteDOM(root).innerHTML;
 }
 
-export const CleanPaste = Extension.create({
+export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | undefined }>({
   name: 'cleanPaste',
+  // Consume URL replacements before Link's linkOnPaste handler links old text.
+  priority: 1100,
+  addOptions: () => ({ getUpload: () => undefined }),
   addProseMirrorPlugins() {
     const editor = this.editor;
+    const getUpload = this.options.getUpload;
+    let internal = false;
+    const base = DOMSerializer.fromSchema(editor.schema);
+    const serializer = new DOMSerializer(
+      Object.fromEntries(
+        Object.entries(base.nodes).map(([name, render]) => [
+          name,
+          (node: PMNode) => {
+            const spec = DOMSerializer.renderSpec(document, render(node));
+            if (spec.dom instanceof Element) {
+              spec.dom.querySelector('.pl-callout-icon')?.remove();
+              if (node.type.name === 'legacyImage') spec.dom.setAttribute('data-nibleaf-legacy', 'true');
+              spec.dom.setAttribute('data-nibleaf-clipboard', clipboardToken);
+              for (const key of ['Open', 'Close', 'Original'])
+                if (node.attrs[`source${key}`])
+                  spec.dom.setAttribute(`data-mdx-source-${key.toLowerCase()}`, encodeMdxSource(node.attrs[`source${key}`]));
+              for (const key of ['Open', 'Close', 'Language'])
+                if (node.attrs[`sourceFence${key}`])
+                  spec.dom
+                    .querySelector('code')
+                    ?.setAttribute(`data-mdx-fence-${key.toLowerCase()}`, encodeMdxSource(node.attrs[`sourceFence${key}`]));
+            }
+            return spec;
+          },
+        ]),
+      ),
+      base.marks,
+    );
+    const uploads = new Map<string, { file: File; attributes: Record<string, unknown> }>();
+    const rootFor = (html: string) => {
+      const root = document.implementation.createHTMLDocument('').createElement('div');
+      root.innerHTML = html;
+      for (const image of root.querySelectorAll('img')) {
+        if (
+          !normalizedURL((image.getAttribute('src') ?? '').split(',', 1)[0] ?? '')
+            ?.toLowerCase()
+            .startsWith('data:')
+        )
+          continue;
+        const file = fileFromPastedImage(image.getAttribute('src') ?? '');
+        if (!file || !getUpload()) {
+          image.replaceWith(root.ownerDocument.createTextNode(image.getAttribute('alt') ?? ''));
+          continue;
+        }
+        const marker = `/__nibleaf-paste-upload-${crypto.randomUUID()}`;
+        uploads.set(marker, {
+          file,
+          attributes: {
+            alt: image.getAttribute('alt'),
+            title: image.getAttribute('title'),
+            width: imageDimension(image.getAttribute('width')),
+            class: imageClasses(image.getAttribute('class')),
+            className: imageClasses(image.getAttribute('className')),
+          },
+        });
+        image.setAttribute('src', marker);
+      }
+      return cleanPasteDOM(root);
+    };
+    const sanitize = (node: PMNode): PMNode[] => {
+      if (internal) return [node];
+      if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') {
+        const clean = DOMParser.fromSchema(editor.schema).parseSlice(rootFor(String(node.attrs.source ?? '')));
+        if (node.isInline)
+          return clean.content.textBetween(0, clean.content.size) ? [editor.schema.text(clean.content.textBetween(0, clean.content.size))] : [];
+        return Array.from(clean.content.content);
+      }
+      const marks = node.marks.filter((mark) => mark.type.name !== 'link' || safePasteHref(String(mark.attrs.href ?? '')));
+      if (node.isText) return [node.mark(marks)];
+      const attrs = { ...node.attrs };
+      if (typeof attrs.href === 'string' && !safePasteHref(attrs.href)) attrs.href = '';
+      // Clipboard nodes cannot carry a raw-source cache around the allow list.
+      for (const key of ['sourceOpen', 'sourceClose', 'sourceOriginal']) if (key in attrs) attrs[key] = '';
+      if (['image', 'legacyImage'].includes(node.type.name)) {
+        if (
+          normalizedURL(String(attrs.src ?? '').split(',', 1)[0] ?? '')
+            ?.toLowerCase()
+            .startsWith('data:')
+        ) {
+          const root = rootFor(`<img src="${escapeImageAttribute(attrs.src)}" alt="${escapeImageAttribute(attrs.alt)}" />`);
+          return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(root).content.content);
+        }
+        if (!allowedURL(String(attrs.src ?? ''), ['http', 'https']))
+          return [editor.schema.node('paragraph', null, attrs.alt ? editor.schema.text(String(attrs.alt)) : undefined)];
+        attrs.width = imageDimension(attrs.width);
+        attrs.height = imageDimension(attrs.height);
+        attrs.class = imageClasses(attrs.class);
+        attrs.className = imageClasses(attrs.className);
+      }
+      const content: PMNode[] = [];
+      node.forEach((child) => {
+        content.push(...sanitize(child));
+      });
+      return [node.type.create(attrs, content, marks)];
+    };
     return [
       new Plugin({
         props: {
-          transformPastedHTML: cleanPastedHTML,
-          handlePaste(_view, event) {
+          clipboardSerializer: serializer,
+          transformPastedHTML: (html) => {
+            uploads.clear();
+            internal = false;
+            // Ordinary web pastes need only one inert DOM parse. Never attach
+            // untrusted image handlers or iframe content to the active document.
+            if (html.includes(clipboardToken) && html.includes('data-pm-slice')) {
+              const probe = document.implementation.createHTMLDocument('').createElement('div');
+              probe.innerHTML = html;
+              internal = !!probe.querySelector(
+                `[data-pm-slice][data-nibleaf-clipboard="${clipboardToken}"], [data-pm-slice] [data-nibleaf-clipboard="${clipboardToken}"]`,
+              );
+            }
+            if (internal) return html;
+            return rootFor(html).innerHTML;
+          },
+          transformPasted: (slice) => {
+            const content: PMNode[] = [];
+            slice.content.forEach((node) => {
+              content.push(...sanitize(node));
+            });
+            internal = false;
+            return new Slice(Fragment.fromArray(content), slice.openStart, slice.openEnd);
+          },
+          handlePaste(view, event, slice) {
+            const pending: { pos: number; size: number; marker: string }[] = [];
+            slice.content.descendants((node) => {
+              if (node.type.name === 'image' && uploads.has(node.attrs.src)) pending.push({ pos: 0, size: 0, marker: node.attrs.src });
+            });
+            if (pending.length) {
+              const tr = view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste');
+              const points: typeof pending = [];
+              tr.doc.descendants((node, pos) => {
+                if (node.type.name === 'image' && uploads.has(node.attrs.src)) points.push({ pos, size: node.nodeSize, marker: node.attrs.src });
+              });
+              const mappingStart = tr.mapping.maps.length;
+              for (const point of [...points].reverse()) tr.delete(point.pos, point.pos + point.size);
+              const jobs = points.map((point) => ({
+                ...point,
+                pos: tr.mapping.slice(mappingStart).map(point.pos, -1),
+                job: uploads.get(point.marker),
+              }));
+              uploads.clear();
+              view.dispatch(tr);
+              const upload = getUpload();
+              for (const { pos, job } of jobs)
+                if (job && upload) void uploadEditorImage(editor, job.file, upload, pos, job.attributes, jobs.length === 1);
+              return true;
+            }
             const url = event.clipboardData?.getData('text/plain').trim() ?? '';
-            if (!/^(https?:\/\/|mailto:|tel:|\/|\.{1,2}\/)\S+$/i.test(url) || !safePasteHref(url)) return false;
+            if (!/^(https?:\/\/|mailto:)\S+$/i.test(url) || !safePasteHref(url)) return false;
+            let parsed: URL;
+            try {
+              parsed = new URL(url);
+            } catch {
+              return false;
+            }
             const { selection } = editor.state;
+            if (
+              !selection.empty &&
+              /^(?:[a-z][\w+.-]*:|\/|\.{1,2}\/|www\.)|^[\w.-]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(
+                editor.state.doc.textBetween(selection.from, selection.to),
+              )
+            ) {
+              // Consume the paste before Link's own linkOnPaste handler can link
+              // the old URL text. Preserve the normal parsed replacement slice.
+              view.dispatch(view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste'));
+              return true;
+            }
             const link = editor.schema.marks.link;
             if (
               !selection.empty &&
+              !/^(?:[a-z][\w+.-]*:|\/|\.{1,2}\/|www\.)|^[\w.-]+\.[a-z]{2,}(?:[/:?#]|$)/i.test(
+                editor.state.doc.textBetween(selection.from, selection.to),
+              ) &&
               selection instanceof TextSelection &&
               link &&
               selection.$from.parent.type.allowsMarkType(link) &&
@@ -240,7 +424,8 @@ export const CleanPaste = Extension.create({
               selection.empty &&
               selection.$from.parent.type.name === 'paragraph' &&
               !selection.$from.parent.content.size &&
-              /^https?:\/\/[^\s]+\.(png|jpe?g|gif|webp|avif|ico)(?:[?#][^\s]*)?$/i.test(url)
+              /^https?:\/\//i.test(url) &&
+              /\.(png|jpe?g|gif|webp|avif|ico)$/i.test(parsed.pathname)
             ) {
               editor.commands.setImage({ src: url });
               return true;

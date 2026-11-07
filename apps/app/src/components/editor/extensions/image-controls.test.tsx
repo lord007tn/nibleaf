@@ -35,6 +35,61 @@ afterEach(async () => {
 });
 
 describe('image description controls', () => {
+  it('keeps a validated percentage width visible and editable without turning it into NaN', async () => {
+    await mount();
+    await act(async () => {
+      editor.commands.setContent('<img src="/image.png" width="49%" />', { emitUpdate: false });
+      editor.commands.setNodeSelection(0);
+    });
+    const size = container.querySelector<HTMLSelectElement>('select');
+    expect(size?.value).toBe('49%');
+    await act(async () => {
+      size?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    expect(getMarkdown(editor)).toContain('width="49%"');
+  });
+  it('resets dismissal for a different selected image and guards caption focus after destruction (11)', async () => {
+    await mount();
+    await act(async () => {
+      editor.commands.setContent('![First](/first.png)\n\n![Second](/second.png)', { emitUpdate: false });
+      editor.commands.setNodeSelection(0);
+    });
+    const outside = document.createElement('button');
+    container.append(outside);
+    await act(async () => {
+      outside.focus();
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    // A remapped position is still the same selected image, not a new selection.
+    await act(async () => {
+      editor.commands.insertContentAt(0, { type: 'paragraph', content: [{ type: 'text', text: 'Before' }] });
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    let second = 0;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image' && node.attrs.src === '/second.png') second = pos;
+    });
+    await act(async () => {
+      editor.commands.setNodeSelection(second);
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    await act(async () => {
+      Array.from(container.querySelectorAll('button'))
+        .find((button) => button.textContent === 'Add caption')
+        ?.click();
+    });
+    await act(async () => {
+      editor.destroy();
+    });
+    expect(() => {
+      for (const frame of frames) frame(0);
+    }).not.toThrow();
+  });
   it('focuses a labelled description after insertion, and Escape returns to writing', async () => {
     await mount();
     await act(async () => {
