@@ -23,12 +23,14 @@ const loaded = {
   openaiOAuth: { documentation: 'https://example.com' },
 };
 const state = vi.hoisted(() => ({
+  confirm: vi.fn(),
   query: { isPending: true, isError: false, isFetching: true, data: undefined as unknown, refetch: vi.fn() },
   select: { isPending: false, variables: undefined as { providerId: string } | undefined, mutate: vi.fn() },
   models: { isPending: false, isSuccess: false, data: undefined, mutate: vi.fn(), reset: vi.fn() },
   save: { isPending: false, mutate: vi.fn() },
   reindex: { isPending: false, mutate: vi.fn() },
 }));
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
 vi.mock('@/hooks/api/workspace-ai', () => ({
   useWorkspaceAi: () => state.query,
   useSelectWorkspaceAi: () => state.select,
@@ -94,4 +96,17 @@ describe('Smart AI settings', () => {
     await act(async () => button('settings.smartAi.reindex')?.click());
     expect(state.reindex.mutate).toHaveBeenCalledWith();
   });
+});
+
+it.each([false, true])('requires confirmation before turning off workspace AI (approved: %s)', async (approved) => {
+  Object.assign(state.query, { isPending: false, isError: false, data: loaded });
+  Object.assign(state.select, { isPending: false });
+  state.confirm.mockResolvedValue(approved);
+  await mount();
+  await act(async () => button('settings.smartAi.disable')?.click());
+  expect(state.confirm).toHaveBeenCalledWith(
+    expect.objectContaining({ description: 'settings.smartAi.disableConfirm.description', destructive: true }),
+  );
+  expect(state.select.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
+  if (approved) expect(state.select.mutate).toHaveBeenCalledWith({ providerId: 'disabled', answersEnabled: false }, expect.any(Object));
 });

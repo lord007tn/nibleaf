@@ -229,11 +229,23 @@ function ProjectForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
       </fieldset>
       {error ? <Notice>{error}</Notice> : null}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button disabled={busy !== null} onClick={() => void cancel()} type="button" variant="outline">
+        <Button
+          disabled={busy === 'continue'}
+          loading={busy === 'cancel'}
+          loadingText={t('oauth.project.cancelling')}
+          onClick={() => void cancel()}
+          type="button"
+          variant="outline"
+        >
           {t('oauth.project.cancel')}
         </Button>
-        <Button disabled={busy !== null || !project || !presetAllowed} type="submit">
-          {busy === 'continue' ? t('oauth.project.continuing') : t('oauth.project.continue')}
+        <Button
+          disabled={busy === 'cancel' || !project || !presetAllowed}
+          loading={busy === 'continue'}
+          loadingText={t('oauth.project.continuing')}
+          type="submit"
+        >
+          {t('oauth.project.continue')}
         </Button>
       </div>
     </form>
@@ -340,11 +352,24 @@ function ConsentForm({ authorization, oauthQuery }: { authorization: McpOAuthAut
           {t('oauth.consent.changeProject')}
         </a>
         <div className="flex flex-col-reverse gap-2 sm:flex-row">
-          <Button disabled={busy !== null} onClick={() => void decide(false)} type="button" variant="outline">
+          <Button
+            disabled={busy === 'allow'}
+            loading={busy === 'deny'}
+            loadingText={t('oauth.consent.denying')}
+            onClick={() => void decide(false)}
+            type="button"
+            variant="outline"
+          >
             {t('oauth.consent.deny')}
           </Button>
-          <Button disabled={busy !== null} onClick={() => void decide(true)} type="button">
-            {busy === 'allow' ? t('oauth.consent.allowing') : t('oauth.consent.allow')}
+          <Button
+            disabled={busy === 'deny'}
+            loading={busy === 'allow'}
+            loadingText={t('oauth.consent.allowing')}
+            onClick={() => void decide(true)}
+            type="button"
+          >
+            {t('oauth.consent.allow')}
           </Button>
         </div>
       </div>

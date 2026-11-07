@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useRevokeConnectedApp } from './mcp-oauth';
 import { useRevokeApiKey } from './mutations';
 import { queryKeys } from './query-keys';
@@ -114,6 +115,28 @@ describe('optimistic revoke of MCP credentials', () => {
     });
     expect(queryClient.getQueryData<ApiKeyList>(queryKeys.apiKeys.all(projectId))).toEqual(keyList);
     expect(queryClient.getMutationCache().getAll()[0]?.meta?.errorMessage).toBe('settings.apiKeys.revokeError');
+  });
+
+  it.each(['success', 'failure'])('ignores delayed revoke %s after switching accounts', async (outcome) => {
+    syncDashboardSession(queryClient, 'alice');
+    queryClient.setQueryData(queryKeys.apiKeys.all(projectId), keyList);
+    const response = deferred();
+    mocks.revokeKey.mockReturnValue(response.promise);
+    const revoke = await mount(() => useRevokeApiKey(projectId));
+    let settled: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      settled = revoke.current?.mutateAsync(key.id).catch((error: unknown) => error) ?? settled;
+    });
+    syncDashboardSession(queryClient, 'bob');
+    const bobKeys = { ...keyList, data: [{ ...key, id: 'bob-key', name: 'Bob private key' }] };
+    queryClient.setQueryData(queryKeys.apiKeys.all(projectId), bobKeys);
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    await act(async () => {
+      response.resolve(outcome === 'failure' ? failure() : new Response(JSON.stringify({ data: key }), { status: 200 }));
+      await settled;
+    });
+    expect(queryClient.getQueryData(queryKeys.apiKeys.all(projectId))).toEqual(bobKeys);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it('invalidates the key list through queryKeys once a revoke settles', async () => {
