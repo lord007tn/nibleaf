@@ -43,7 +43,9 @@ your content stays in your database.
 - 📦 **Versioned publishing** — every publish is an immutable snapshot; the live site is
   always served from a READY deployment, so readers never see a half-written page.
 - 🏠 **Self-hosted** — Docker Compose or Coolify, bring-your-own Postgres + S3-compatible
-  storage. Your data never leaves your infrastructure.
+  storage. You control where data is stored; configured AI providers
+  (OpenRouter/OpenAI) and external storage or email providers receive the data
+  needed for those features.
 
 ## 📸 Screenshots
 
@@ -65,9 +67,13 @@ Private customer documentation supports dedicated reader accounts, audience/page
 - **Rich editor** — rich-text and raw Markdown/MDX editing with draft preview in a separate tab, a Notion-style
   block handle + slash menu, and a drag-and-drop, nestable page tree.
 - **MDX components** — callouts, cards, steps, tabs, code groups, accordions,
-  param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid — all
-  round-trip losslessly between visual and source. Custom components and expressions are
-  preserved as local read-only blocks, so surrounding content and anchored comments stay editable.
+  param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid.
+  Markdown ZIP export retains authored Markdown/MDX bodies, and Git sync preserves
+  component source while serializing supported page metadata and normalizing leading
+  blank lines. Visual editing supports the components in the
+  [component reference](https://docs.nibleaf.com/product/markdown-mdx); custom components
+  and expressions are retained as read-only source, with surrounding content editable.
+  Static HTML and PDF use portable rendering with different component limits.
 - **Versioned publishing** — immutable snapshots; atomic roll-forward; readers never see a
   half-written page.
 - **Validated redirects** — [route-aware redirect graphs](docs/redirects.md) are flattened to
@@ -79,7 +85,7 @@ Private customer documentation supports dedicated reader accounts, audience/page
   into `main`.
 - **Anchored comments** — Figma-style review comments pinned to the exact block.
 - **Tenant-safe search** — built-in Orama full-text/fuzzy search remains the default and
-  immediate rollback; v0.2.0 adds an optional Qdrant BM25+dense hybrid path, privacy-safe
+  immediate rollback; source builds also support an optional Qdrant BM25+dense hybrid path, privacy-safe
   diagnostics, and opt-in grounded answers for English, Arabic, and mixed content. The hybrid
   path needs a Qdrant service, and embeddings and answers need an AI provider key.
 - **Usage and entitlements** — provider-neutral usage events, ClickHouse rollups, explicit
@@ -143,45 +149,35 @@ or private examples in a document you intend to publish.
 
 ## 🚀 Quick start
 
-On a Linux `amd64` server, the pinned bootstrap downloads the v0.2.0 installer, verifies
-its committed SHA-256 digest, and only then executes it. The verified installer
-also verifies the release's production Compose file before it writes a mode-600
-`.env` or starts the stack:
+Use the assets and installation instructions on [the latest release](https://github.com/lord007tn/nibleaf/releases/latest).
+Verify the published checksums before executing its installer, and check the
+release's supported architectures. Use the production Compose file and image
+from the same release; source `main` can contain release pins that are not yet
+published. The repository's self-host manifest is a release-preparation contract,
+not proof that its assets are available to download.
 
-```bash
-set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
-```
+For manual installation, follow the release's instructions and the
+**[production guide](https://docs.nibleaf.com/self-hosting/production)**. The pull-based
+stack uses a prebuilt image; it does not compile the application on your server.
+Set the public dashboard origin, browser-reachable storage endpoints, and strong
+secrets. Configure Postmark or SMTP for email-code sign-in, or configure Google
+sign-in before inviting users.
 
-For manual setup, the recommended path below **pulls the prebuilt image** from
-GHCR (`ghcr.io/lord007tn/nibleaf`) — nothing is compiled on your server, so it
-runs fine on a small VPS:
-
-```bash
-git clone https://github.com/lord007tn/nibleaf
-cd nibleaf && cp .env.production.example .env
-
-# Edit .env — set APP_URL (your dashboard origin), the storage endpoints, and
-# fresh secrets (openssl rand -hex 32). The stack fails fast if one is missing.
-# Configure Postmark or SMTP too: sign-in uses email codes, so the first owner
-# can't sign in without it unless Google sign-in is configured.
-
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
-# → dashboard  http://127.0.0.1:4310   (put a TLS reverse proxy in front)
-```
-
-Database migrations run automatically (the one-shot `migrate` service), and the
-image tag is **pinned** via `NIBLEAF_VERSION`. Read the
+Database migrations run through the one-shot `migrate` service. Follow the
 **[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
-before changing it, and don't re-run the installer to upgrade. Moving from v0.1.2 to
-v0.2.0 has a required staged step, covered in the
-**[upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2)**. Open
-**`$APP_URL/sign-up`** and create the first
-account — it's provisioned with a workspace and a starter docs project
-automatically (no demo credentials are seeded in production). The full production
-guide — reverse proxy, TLS, wildcard subdomains, custom-domain TLS automation,
-backups, and restore testing — is in the
-**[Nibleaf documentation](https://docs.nibleaf.com/self-hosting/production)**.
+and the target release's migration instructions before changing image versions;
+do not re-run the installer to upgrade. The v0.1.2 to v0.2.0 transition requires
+the [staged upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2).
+Open **`$APP_URL/sign-up`** to create the
+first account and starter workspace; production does not seed demo credentials.
+
+For the repository backup script on Coolify, run from
+`/data/coolify/services/<uuid>/`, set `COMPOSE_FILE` to the generated Compose
+filename, and set `PGUSER` to the deployed `SERVICE_USER_POSTGRES` (also set
+`PGDATABASE` if `POSTGRES_DB` is customized). Run `bash /path/to/nibleaf/scripts/backup.sh`
+from that directory. The script checks the running server's storage endpoint;
+external storage requires `BACKUP_STORAGE=external`, which creates a database-only
+backup and leaves bucket backup to your provider tooling.
 
 <details>
 <summary><b>Build from source instead</b> (needs ~5–6 GB free RAM)</summary>
@@ -196,7 +192,13 @@ sed -i "s/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=$(openssl rand -hex 32)/" .e
 docker compose up -d --build
 # → dashboard  http://localhost:4310   (open /sign-up to create your account)
 # → API        http://localhost:4311/docs
+# → sign-in codes http://localhost:8025 (bundled Mailpit)
 ```
+
+The source stack uses `smtp://mailpit:1025` inside containers, independently of
+the host-development `SMTP_URL` in `.env`. Set `SOURCE_SMTP_URL` to use an external
+SMTP provider reachable from the containers. Configure a real email provider for
+production; Mailpit captures messages locally and does not deliver them externally.
 
 </details>
 
@@ -209,7 +211,9 @@ docker compose up -d --build
   at [`docker-compose.coolify.yml`](docker-compose.coolify.yml), assign domains
   to the `app` / `admin` / `maxio` services (Coolify auto-generates the
   `SERVICE_*` secrets), set `SITE_BASE_DOMAIN` + `CUSTOM_DOMAIN_CNAME_TARGET`,
-  and deploy. Pin a build with `NIBLEAF_IMAGE_TAG=v0.2.0`.
+  and deploy. Set `NIBLEAF_IMAGE_TAG` to an image tag published for the configuration
+  you are deploying; check [the latest release](https://github.com/lord007tn/nibleaf/releases/latest)
+  for released installation assets.
 - **Nibleaf Cloud** — don't want to run servers? The hosted beta at
   [nibleaf.com](https://nibleaf.com) is free while in beta.
 
@@ -271,10 +275,10 @@ better-auth session cookies stay first-party with no CORS dance.
 TanStack Start · React 19 · Hono · better-auth · Prisma · PostgreSQL · BullMQ · Dragonfly ·
 Orama · optional Qdrant and ClickHouse · shadcn/ui (Base UI) · Tailwind CSS v4 · Zod · Pino · tsdown · Vite · Biome.
 
-> **Release boundary:** the capabilities above ship in v0.2.0, the release that the checksummed
-> installer and pinned public container install. The image is published for `linux/amd64` only.
-> Source `main` can move ahead of the latest release, so do not treat a source merge as an image
-> or deployment receipt.
+> **Release boundary:** this README describes the source checkout; it does not establish
+> which capabilities are available in a published image. Check [the latest release](https://github.com/lord007tn/nibleaf/releases/latest)
+> for shipped features, installation assets, and supported architectures. Source `main`
+> can move ahead of a release, so a source merge is not an image or deployment receipt.
 
 ## 💻 Local development
 
@@ -284,15 +288,16 @@ Prerequisites: **Node ≥ 22**, **pnpm 10**, **Docker**.
 pnpm install
 cp .env.example .env
 
-# start infra only (Postgres, Dragonfly, maxio)
+# start development datastores and Mailpit (local email capture)
 docker compose -f docker-compose.dev.yml up -d
 
-# create the schema + seed a demo workspace
+# generate the client, create the schema, and seed a demo workspace
+pnpm db:generate
 pnpm db:deploy      # or: pnpm db:migrate  (creates a new migration)
 pnpm db:seed
 
-# run server + worker + the app (add the admin app with: pnpm dev:full)
-pnpm dev
+# load the root .env and run server + worker + app (include admin: append full)
+node scripts/dev.mjs
 ```
 
 | App        | URL                          |
@@ -302,14 +307,16 @@ pnpm dev
 | Worker ops | http://localhost:4312/jobs   |
 
 Demo login (after `pnpm db:seed`): `demo@nibleaf.test`, using an email verification
-code. Without an email provider, read the code from the latest email job at
-http://localhost:4312/jobs in your local development environment.
+code. The development stack includes Mailpit, a local SMTP capture service: keep
+`SMTP_URL=smtp://127.0.0.1:1025` in the root `.env` and read the code at
+http://localhost:8025. No external email provider is needed. The worker must be
+running so sign-in can acknowledge successful delivery to Mailpit.
 
 ## 📜 Scripts
 
 | Command           | Description                               |
 | ----------------- | ----------------------------------------- |
-| `pnpm dev`        | server + worker + dashboard (watch mode)  |
+| `node scripts/dev.mjs` | load root .env; server + worker + dashboard (watch mode) |
 | `pnpm build`      | build every app and package               |
 | `pnpm typecheck`  | type-check the whole workspace            |
 | `pnpm test`       | run the unit test suites (Vitest)         |
