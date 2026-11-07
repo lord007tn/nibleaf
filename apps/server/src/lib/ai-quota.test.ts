@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), incr: vi.fn(), expire: vi.fn(), exec: vi.fn(), extras: { AI_DAILY_LIMIT: 2 } }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn(), incr: vi.fn(), exec: vi.fn(), extras: { AI_DAILY_LIMIT: 2 } }));
 vi.mock('@nibleaf/bullmq/keys', () => ({ keys: () => ({ REDIS_HOST: 'test', REDIS_PORT: 6379, REDIS_DB: 0 }) }));
 vi.mock('ioredis', () => ({
   Redis: class {
     get = mocks.get;
     multi() {
-      return { incr: mocks.incr, expire: mocks.expire, exec: mocks.exec };
+      return { set: mocks.set, incr: mocks.incr, exec: mocks.exec };
     }
     on = vi.fn();
   },
@@ -19,16 +19,18 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.extras.AI_DAILY_LIMIT = 2;
   mocks.get.mockResolvedValue(null);
+  mocks.set.mockReturnThis();
   mocks.incr.mockReturnThis();
-  mocks.expire.mockReturnThis();
   mocks.exec.mockResolvedValue([
-    [null, 1],
+    [null, 'OK'],
     [null, 1],
   ]);
 });
+
 describe('non-consuming drafting quota reads', () => {
   it.each([
     [null, false],
+    ['0', false],
     ['1', false],
     ['2', true],
     ['3', true],
@@ -36,8 +38,8 @@ describe('non-consuming drafting quota reads', () => {
     mocks.get.mockResolvedValue(used);
     expect(await isAiQuotaExhausted('org')).toBe(exhausted);
     expect(mocks.get).toHaveBeenCalledWith(`nibleaf:ai-quota:org:${new Date().toISOString().slice(0, 10)}`);
+    expect(mocks.set).not.toHaveBeenCalled();
     expect(mocks.incr).not.toHaveBeenCalled();
-    expect(mocks.expire).not.toHaveBeenCalled();
   });
   it('treats zero limit as exhausted without Redis', async () => {
     mocks.extras.AI_DAILY_LIMIT = 0;
@@ -53,26 +55,28 @@ describe('non-consuming drafting quota reads', () => {
     await expect(isAiQuotaExhausted('org')).rejects.toMatchObject({ code: 'usage:unavailable', status: 503 });
   });
 });
+
 describe('fail-closed quota consumption', () => {
-  it('increments once per draft and sets an NX expiry in the same transaction', async () => {
+  it('creates the day counter with its expiry only once, then counts, in one transaction', async () => {
     await assertAiQuota('org');
+    // SET ... EX ... NX works on every Redis version and never extends an existing window.
+    expect(mocks.set).toHaveBeenCalledWith(expect.stringContaining(':org:'), 0, 'EX', 86_400, 'NX');
     expect(mocks.incr).toHaveBeenCalledTimes(1);
-    expect(mocks.expire).toHaveBeenCalledWith(expect.any(String), 86_400, 'NX');
     mocks.exec.mockResolvedValue([
+      [null, null],
       [null, 2],
-      [null, 0],
     ]);
     await expect(assertAiQuota('org')).resolves.toBeUndefined();
   });
   it('allows the final request and rejects the next with the existing quota error', async () => {
     mocks.exec.mockResolvedValue([
+      [null, null],
       [null, 2],
-      [null, 0],
     ]);
     await expect(assertAiQuota('org')).resolves.toBeUndefined();
     mocks.exec.mockResolvedValue([
+      [null, null],
       [null, 3],
-      [null, 0],
     ]);
     await expect(assertAiQuota('org')).rejects.toMatchObject({ code: 'http:rate_limited', status: 429 });
   });
@@ -80,10 +84,17 @@ describe('fail-closed quota consumption', () => {
     mocks.exec.mockRejectedValue(new Error('Redis unavailable'));
     await expect(assertAiQuota('org')).rejects.toMatchObject({ code: 'usage:unavailable', status: 503 });
   });
-  it('fails closed if the expiry command fails', async () => {
+  it('fails closed if the counter cannot be created', async () => {
     mocks.exec.mockResolvedValue([
+      [new Error('set failed'), null],
       [null, 1],
-      [new Error('expiry failed'), null],
+    ]);
+    await expect(assertAiQuota('org')).rejects.toMatchObject({ code: 'usage:unavailable', status: 503 });
+  });
+  it('fails closed if the counter cannot be incremented', async () => {
+    mocks.exec.mockResolvedValue([
+      [null, 'OK'],
+      [new Error('incr failed'), null],
     ]);
     await expect(assertAiQuota('org')).rejects.toMatchObject({ code: 'usage:unavailable', status: 503 });
   });
