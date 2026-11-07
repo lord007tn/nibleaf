@@ -259,7 +259,7 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'Built-in privacy-friendly analytics',
       nibleaf: yes(
-        'First-party analytics; owner insights cover search gaps, feedback, AI crawler activity, and vitals with ClickHouse. New insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
+        'First-party analytics. Docs-owner insights (search gaps, feedback, AI crawler activity and web vitals; optional ClickHouse when self-hosting) are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
       ),
       competitor: partial(
         'Analytics on Pro/Enterprise, including traffic, search, assistant, and feedback; Advanced insights is a separate Enterprise item',
@@ -538,7 +538,7 @@ export const nibleafVsDocusaurus: Comparison = {
     {
       feature: 'Built-in reader analytics',
       nibleaf: yes(
-        'First-party event analytics with consent and search-text controls; advanced owner insights require optional ClickHouse when self-hosting and are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
+        'First-party event analytics with consent. Search-text controls and docs-owner insights (optional ClickHouse when self-hosting) are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
       ),
       competitor: no('Bring your own'),
     },

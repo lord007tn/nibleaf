@@ -2796,7 +2796,7 @@
   "settings_integrations_verifiedtoast": "Integration verified",
   "settings_integrations_deletedtoast": "Integration deleted",
   "settings_integrations_testmessage": "Nibleaf integration verification succeeded.",
-  "marketing.release.searchPublishing": "Built-in full-text/fuzzy search with section links on each publish",
+  "marketing.release.searchPublishing": "Built-in full-text and fuzzy search on every publish",
   "marketing.release.searchCapability": "Built-in full-text and fuzzy search",
   "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, built-in search, S3-compatible storage, and optional Qdrant and ClickHouse services form the deployment architecture. The self-hosted release provides source and Docker Compose deployment configuration; check release assets and prerequisites before installing.",
   "marketing.release.mcpTitle": "Support MCP for investigation and confirmed publishing",

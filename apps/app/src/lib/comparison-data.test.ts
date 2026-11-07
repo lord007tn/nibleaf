@@ -1,5 +1,7 @@
+import { 'marketing.release.searchPublishing' as searchPublishing } from '@nibleaf/i18n/messages';
 import { describe, expect, it } from 'vitest';
 import { AS_OF, comparisons, roundups } from './comparison-data';
+import { marketingFaqs } from './marketing-faqs';
 
 const serialized = JSON.stringify([...comparisons, ...roundups]);
 
@@ -35,5 +37,13 @@ describe('competitor facts', () => {
     expect(serialized).toContain('optional ClickHouse when self-hosting');
     expect(serialized).toContain('publish only after a confirmed preview');
     expect(serialized).toContain('The editor writing assistant uses the instance key.');
+  });
+
+  it('keeps features newer than the latest self-hosted release out of shared copy as shipped', () => {
+    expect(JSON.stringify(marketingFaqs)).not.toMatch(/optional Qdrant/);
+    expect(serialized).not.toMatch(/hashed identities|New insights are/);
+    for (const locale of ['en', 'ar'] as const) {
+      expect(searchPublishing({}, { locale })).not.toMatch(/section links|روابط للأقسام/);
+    }
   });
 });

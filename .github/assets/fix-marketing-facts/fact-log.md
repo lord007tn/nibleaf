@@ -248,3 +248,12 @@ Task-owned files:
 | Sitemap `lastmod` for `/`, `/about`, `/developers` | → 2026-11-07 | freshness | They render values changed here: the FAQ and `marketing.release.*` |
 | `/pricing` FAQ in the eager route chunk | The route's `head` imported `marketingFaqs` statically, so the FAQ copy shipped to every page. It now loads in the route loader. | bundle | public-docs 344.30 → **343.40 KiB** gzip, below `main` (344.15) |
 | Claim checked and kept: "12 interface locales" | unchanged | true in v0.1.2 | v0.1.2 has `en` and `ar` inline in `apps/app/src/lib/i18n/messages.ts` and 10 catalogs, and `locales.ts` lists 12 codes. |
+
+## Round-3 scoring fixes — 2026-11-07
+
+| Change | Old text → new text | Verdict | Evidence |
+| --- | --- | --- | --- |
+| Marketing FAQ, Ask AI prerequisites | "optional Qdrant when self-hosting" → "the Qdrant service when self-hosting" | misleading (fixed) | `apps/server/src/lib/ai-search/runtime.ts:60` (`if (!qdrant) return false;`) |
+| `marketing.release.searchPublishing` (home Publishing showcase) | "…with section links on each publish" → restored to `main`'s "Built-in full-text and fuzzy search on every publish" (Arabic restored too) | overclaim (fixed) | v0.1.2's `site-search.tsx` navigates to the page path with no section anchor; `apps/server/src/lib/search-sections.ts` exists only on `main` |
+| Analytics in the Mintlify and Docusaurus rows and in `llms.txt` | Kept as current: "first-party event analytics with consent". Moved under the release wording: hashed identities, search-text controls and docs-owner insights (search gaps, feedback, AI crawler activity, web vitals). | overclaim (fixed) | `git grep -il clickhouse v0.1.2` finds nothing; `sessionHash` exists only on `main`; v0.1.2 has `site-analytics-consent.tsx` |
+| `/pricing` meta description | "installed with a pinned container" → "Nibleaf Cloud is free during the beta, with no card at sign-up. The AGPL-3.0 release can be self-hosted with Docker Compose." | consistency | Same wording as the page body |

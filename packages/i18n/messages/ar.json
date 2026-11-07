@@ -2796,7 +2796,7 @@
   "settings_integrations_verifiedtoast": "تم التحقق من التكامل",
   "settings_integrations_deletedtoast": "تم حذف التكامل",
   "settings_integrations_testmessage": "نجح التحقق من تكامل Nibleaf.",
-  "marketing.release.searchPublishing": "بحث نصي كامل وتقريبي مع روابط للأقسام عند كل نشر",
+  "marketing.release.searchPublishing": "بحث نصي كامل وتقريبي مدمج مع كل نشر",
   "marketing.release.searchCapability": "بحث نصي كامل وتقريبي مدمج",
   "marketing.release.stack": "تتكون بنية النشر من PostgreSQL وHono وTanStack Start وBullMQ والبحث المدمج والتخزين المتوافق مع S3، مع خدمتي Qdrant وClickHouse الاختياريتين. يوفر إصدار الاستضافة الذاتية المصدر وإعدادات النشر عبر Docker Compose؛ تحقق من ملفات الإصدار ومتطلبات التشغيل قبل التثبيت.",
   "marketing.release.mcpTitle": "MCP للدعم والاستقصاء والنشر المؤكد",
