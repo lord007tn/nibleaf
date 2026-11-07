@@ -10,7 +10,8 @@
     "./mcp-oauth": "./src/mcp-oauth.ts",
     "./tenant-erasure": "./src/tenant-erasure.ts",
     "./keys.server": "./src/keys.server.ts",
-    "./providers": "./src/providers.ts"
+    "./providers": "./src/providers.ts",
+    "./starter-content": "./src/starter-content.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

@@ -5,17 +5,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { prisma } from '@nibleaf/database';
-import { slugify } from '@nibleaf/shared';
+import { slugify, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { GitConfig } from '@nibleaf/validators';
 import got from 'got';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
+import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './importers/cleanup-locks';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
 import { getGitHubTextFile, listGitHubFiles } from './importers/github';
-import { ensureGroupPage, type ImportTarget, upsertLeafPage } from './importers/persistence';
+import { ensureGroupPage, type ImportTarget } from './importers/persistence';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
+import { createPage } from './pages';
 import { assertProjectInOrg } from './projects';
 
 const execFileAsync = promisify(execFile);
@@ -218,11 +220,66 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
   }
 };
 
+/** Where one repository file lands: the folder (`dir`, repo-relative) whose
+ * page group it joins and the name its slug derives from. `dir/index.md` and
+ * `dir/README.md` stand for the folder itself, one level up. */
+const importFileLocation = (relativePath: string): { dir: string; name: string } => {
+  const segments = relativePath.split('/');
+  const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
+  const relDir = segments.join('/');
+  if (!/^(index|readme)$/i.test(fileBase)) return { dir: relDir, name: fileBase };
+  return { dir: relDir.split('/').slice(0, -1).join('/'), name: relDir.split('/').filter(Boolean).pop() ?? fileBase };
+};
+
+/**
+ * Each Git-imported page is linked to the repository file it came from by a
+ * `PageGitImportSource` row (one path ↔ one page per branch/language). Re-imports
+ * match files to pages through that row, never by position in a list of
+ * look-alike names, so adding, renaming or removing a sibling (`Intro.md` next
+ * to `intro.md`) cannot move one file's text onto another file's page. The row
+ * is server-only: page settings, tree edits and published snapshots never see
+ * it, and it is deleted with its page.
+ */
+type ScopePage = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string };
+
+/**
+ * Pages imported before identities existed have no source row. Adopt such a
+ * page only when it sits where this file's earlier import put it: its Unicode
+ * slug, the older ASCII-only slug (`café.md` → `caf`), or that slug's `-2` when
+ * a folder group took the plain slug first. A page that already belongs to
+ * another path is never taken.
+ *
+ * The older importer gave every name without ASCII letters (all Arabic names)
+ * the slug `page`, so those files also try `page` / `page-2`. Several files
+ * collapsed onto that one page, so it is adopted only by the file whose text
+ * it holds exactly (`exactOnly`).
+ */
+const legacyImportedPage = (
+  siblings: readonly ScopePage[],
+  name: string,
+  isAvailable: (page: ScopePage) => boolean,
+): { page: ScopePage; exactOnly: boolean } | null => {
+  const ascii = slugify(name);
+  const candidates = [...new Set([slugifyUnicode(name), ascii].filter(Boolean))].map((slug) => ({ slug, exactOnly: false }));
+  if (!ascii) candidates.push({ slug: 'page', exactOnly: true });
+  for (const { slug, exactOnly } of candidates) {
+    const options = siblings.some((page) => page.kind === 'GROUP' && page.slug === slug) ? [slug, `${slug}-2`] : [slug];
+    for (const option of options) {
+      const page = siblings.find((candidate) => candidate.kind === 'PAGE' && candidate.slug === option && isAvailable(candidate));
+      if (page) return { page, exactOnly };
+    }
+  }
+  return null;
+};
+
+const hasPrismaCode = (error: unknown, code: string) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === code;
+const isUniqueViolation = (error: unknown) => hasPrismaCode(error, 'P2002');
+
 /**
  * One-way import: pull Markdown/MDX files from a PUBLIC Git source (the configured
  * repo/branch/path on the project's org) into a configured or default branch/language,
  * recreating the folder structure as page groups. Idempotent — re-importing updates a
- * page in place (matched by parent + slug) instead of duplicating it. Public GitHub,
+ * page in place (matched by its source file, see PageGitImportSource) instead of duplicating it. Public GitHub,
  * GitLab, and generic http(s) Git repositories are supported; private/OAuth/webhook/
  * two-way sync is intentionally outside this import path.
  */
@@ -301,7 +358,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         parentId = cached;
         continue;
       }
-      const groupId = await ensureGroupPage(target, { parentId, title: humanize(part), slug: slugify(part) });
+      const groupId = await ensureGroupPage(target, { parentId, title: humanize(part), slug: slugifyUnicode(part) || 'group' });
       groupCache.set(cumulative, groupId);
       parentId = groupId;
     }
@@ -310,38 +367,183 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
 
   const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0 };
 
-  for (const file of mdFiles) {
+  // Download every file before writing anything, so a fetch failure part-way
+  // through cannot leave a half-imported draft behind.
+  const loaded: Array<{ source: string; rel: string; text: string }> = [];
+  for (const file of [...mdFiles].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
     const text = await file.read();
     if (text === null) {
       summary.skipped++;
       continue;
     }
-    const { meta, body } = parseFrontmatter(text);
+    loaded.push({ source: file.path, rel: file.path.slice(prefix.length), text });
+  }
 
-    const rel = file.path.slice(prefix.length);
-    const segments = rel.split('/');
-    const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
-    const relDir = segments.join('/');
-    const isFolderIndex = /^(index|readme)$/i.test(fileBase);
+  const scope = { projectId, branchId: target.branchId, languageId: target.languageId };
+  // Identity follows the page: rows are found through the page's CURRENT
+  // branch and language, so a page moved by a branch merge or an import
+  // promotion keeps its source. Rows whose stored scope went stale are moved
+  // onto the page's scope before anything is written, which keeps the unique
+  // (branch, language, path) key true to where the page lives.
+  const [scopePages, linked] = await Promise.all([
+    prisma.page.findMany({ where: scope, select: { id: true, parentId: true, kind: true, slug: true } }) as Promise<ScopePage[]>,
+    prisma.pageGitImportSource.findMany({
+      where: { projectId, page: { branchId: target.branchId, languageId: target.languageId } },
+      orderBy: { createdAt: 'asc' },
+      select: { pageId: true, path: true, branchId: true, languageId: true },
+    }),
+  ]);
+  const sources: typeof linked = [];
+  for (const source of linked) {
+    if (source.branchId === target.branchId && source.languageId === target.languageId) {
+      sources.push(source);
+      continue;
+    }
+    try {
+      await prisma.pageGitImportSource.update({
+        where: { pageId: source.pageId },
+        data: { branchId: target.branchId, languageId: target.languageId },
+      });
+      sources.push(source);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Another page here already holds this path: that one keeps it.
+      await prisma.pageGitImportSource.delete({ where: { pageId: source.pageId } });
+    }
+  }
+  const pageIdBySource = new Map(sources.map((source) => [source.path, source.pageId]));
+  const owned = new Set(linked.map((source) => source.pageId));
 
-    // `dir/index.md` / `dir/README.md` represent the folder itself → live one level up
-    // with the folder's name; everything else is a leaf inside its directory.
-    const folderName = relDir.split('/').filter(Boolean).pop() ?? fileBase;
-    const targetDir = isFolderIndex ? relDir.split('/').slice(0, -1).join('/') : relDir;
-    const nameForSlug = isFolderIndex ? folderName : fileBase;
-    const slug = slugify(nameForSlug) || 'page';
-    const parentId = await ensureGroups(targetDir);
-    const title = deriveTitle(meta, body, nameForSlug);
+  type Plan = {
+    file: (typeof loaded)[number];
+    name: string;
+    body: string;
+    fields: { title: string; content: string; description?: string; icon?: string };
+    parentId: string | null;
+    pageId: string | null;
+    adopted: boolean;
+  };
+  const plans: Plan[] = loaded.map((file) => {
+    const { meta, body } = parseFrontmatter(file.text);
+    const { name } = importFileLocation(file.rel);
+    return {
+      file,
+      name,
+      body,
+      fields: {
+        title: deriveTitle(meta, body, name),
+        content: body,
+        ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
+        ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+      },
+      parentId: null,
+      pageId: pageIdBySource.get(file.source) ?? null,
+      adopted: false,
+    };
+  });
 
-    const outcome = await upsertLeafPage(target, {
-      parentId,
-      slug,
-      title,
-      content: body,
-      ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-      ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+  // Files without a source row: place them and look for the page an older
+  // import left for them.
+  const contenders = new Map<string, Array<{ plan: Plan; exactOnly: boolean }>>();
+  for (const plan of plans) {
+    if (plan.pageId) continue;
+    plan.parentId = await ensureGroups(importFileLocation(plan.file.rel).dir);
+    const siblings = scopePages.filter((page) => page.parentId === plan.parentId);
+    const legacy = legacyImportedPage(siblings, plan.name, (page) => !owned.has(page.id));
+    if (legacy) contenders.set(legacy.page.id, [...(contenders.get(legacy.page.id) ?? []), { plan, exactOnly: legacy.exactOnly }]);
+  }
+  if (contenders.size > 0) {
+    const stored = await prisma.page.findMany({ where: { id: { in: [...contenders.keys()] } }, select: { id: true, content: true } });
+    for (const page of stored) {
+      const rivals = contenders.get(page.id) ?? [];
+      // Look-alike files (`Intro.md`, `intro.md`) once overwrote one shared
+      // page. Keep it with the file whose text it holds, else with the last
+      // file in path order — the older importer's last writer — so the text at
+      // that URL does not switch files. A `page` fallback needs the exact text.
+      const keeper = rivals.find(({ plan }) => plan.body === page.content) ?? rivals.filter(({ exactOnly }) => !exactOnly).at(-1);
+      if (keeper) Object.assign(keeper.plan, { pageId: page.id, adopted: true });
+    }
+  }
+
+  for (const plan of plans) {
+    if (plan.pageId) {
+      if (plan.adopted) {
+        // Claim the page before writing to it: if a concurrent import claimed
+        // this path or page first (P2002), or removed the page as its own
+        // duplicate (P2003, the page is gone), leave the file to that import.
+        try {
+          await prisma.pageGitImportSource.create({ data: { ...scope, pageId: plan.pageId, path: plan.file.source } });
+        } catch (error) {
+          if (!(isUniqueViolation(error) || hasPrismaCode(error, 'P2003'))) throw error;
+          summary.skipped++;
+          continue;
+        }
+      }
+      try {
+        await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
+      } catch (error) {
+        // The page was deleted after it was read: nothing left to update.
+        if (!hasPrismaCode(error, 'P2025')) throw error;
+        summary.skipped++;
+        continue;
+      }
+      summary.updated++;
+      continue;
+    }
+    // A new file always gets a new page; createPage picks a slug no sibling
+    // (page or folder group) uses yet, and the source row keeps it stable.
+    const created = await createPage(projectId, {
+      ...plan.fields,
+      slug: slugifyUnicode(plan.name) || 'page',
+      parentId: plan.parentId,
+      branchId: target.branchId,
+      languageId: target.languageId,
     });
-    summary[outcome === 'imported' ? 'imported' : 'updated']++;
+    try {
+      await prisma.pageGitImportSource.create({ data: { ...scope, pageId: created.id, path: plan.file.source } });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // A concurrent import created this file's page first: drop the duplicate
+      // instead of leaving a page no import will ever update — but only while
+      // it is still exactly what this import wrote. A writer may already have
+      // saved it or added a page, comment or grant under it (all of which a
+      // delete would take with it); then it stays, simply unlinked. A deletion
+      // is a structural write: project lock first, then the page row, as the
+      // page-write protocol requires. If a lock stays busy for 10 s (a long Git
+      // sync holds the project lock), the page is simply left unlinked rather
+      // than failing the import.
+      try {
+        await prisma.$transaction(async (tx) => {
+          await limitCleanupLockWait(tx);
+          await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+          await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" = ${created.id} FOR UPDATE`;
+          const untouched = await tx.page.findFirst({
+            where: {
+              id: created.id,
+              projectId,
+              updatedAt: created.updatedAt,
+              title: created.title,
+              content: created.content,
+              description: created.description,
+              icon: created.icon,
+              children: { none: {} },
+              comments: { none: {} },
+              audienceGrants: { none: {} },
+              // Another import may have adopted this page meanwhile; its
+              // identity row would go with the page.
+              gitImportSource: { is: null },
+            },
+            select: { id: true },
+          });
+          if (untouched) await tx.page.deleteMany({ where: { id: created.id, projectId } });
+        }, CLEANUP_TRANSACTION);
+      } catch (error) {
+        if (!isCleanupLockTimeout(error)) throw error;
+      }
+      summary.skipped++;
+      continue;
+    }
+    summary.imported++;
   }
 
   // Record that this repo is connected + when it last imported.
