@@ -67,6 +67,7 @@ const app = new Hono<HonoEnv>()
       projectId,
       {
         type: 'import_completed',
+        params: { imported: summary.imported, updated: summary.updated, source: 'git' },
         title: 'Content import completed',
         body: `${summary.imported} pages imported and ${summary.updated} updated from the connected Git repository.`,
         href: `/app/projects/${projectId}`,

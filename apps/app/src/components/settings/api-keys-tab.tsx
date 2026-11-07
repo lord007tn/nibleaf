@@ -1,5 +1,6 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
@@ -13,6 +14,7 @@ import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
+import { copyToClipboard } from '@/lib/invitations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +45,7 @@ const WAIT_FOR_APP_MS = 10 * 60_000;
 
 export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
+  const confirm = useConfirm();
   const { number } = useFormatters();
   // The new key's id and the server time after which use counts as "your AI
   // app connected": 0 for a fresh key (never used), then the end of the
@@ -115,10 +118,23 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     );
   };
 
-  const rotateKey = (key: ApiKey) => {
+  const rotateKey = async (key: ApiKey) => {
+    const approved = await confirm({
+      title: t('settings.apiKeys.rotateConfirm.title'),
+      description: t(
+        !key.expiresAt
+          ? 'settings.apiKeys.rotateConfirm.legacyDescription'
+          : Date.parse(key.expiresAt) > Date.now()
+            ? 'settings.apiKeys.rotateConfirm.description'
+            : 'settings.apiKeys.rotateConfirm.expiredDescription',
+      ),
+      confirmLabel: t('settings.apiKeys.rotate'),
+      destructive: true,
+    });
+    if (!approved) return;
     const retainedScopes = key.scopes.filter(isRetainedScope).filter((scope) => allowedScopes.includes(scope));
     rotate.mutate(
-      { id: key.id, body: { scopes: ['mcp:connect', ...retainedScopes], expiresInDays: expiryDays } },
+      { id: key.id, body: { scopes: ['mcp:connect', ...retainedScopes], expiresInDays: 90 } },
       {
         onSuccess: (created) => {
           showKey(created.id, created.secret);
@@ -146,11 +162,10 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const snippets: Record<string, string> = setup
     ? { claudeCode: setup.claudeCode, desktop: setup.desktop, cursor: setup.cursor, vscode: setup.vscode }
     : {};
-  const copy = (value: string, copied = t('settings.apiKeys.copied')) =>
-    navigator.clipboard.writeText(value).then(
-      () => toast.success(copied),
-      () => toast.error(t('settings.apiKeys.createError')),
-    );
+  const copy = async (value: string, copied = t('settings.apiKeys.copied')) => {
+    if (await copyToClipboard(value)) toast.success(copied);
+    else toast.error(t('settings.apiKeys.copyFailed'));
+  };
   const testConnection = async () => {
     if (!secret) return;
     const run = ++testRun.current;
@@ -319,7 +334,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       {secret ? (
         <SettingsSection description={t('settings.apiKeys.created.description')} title={t('settings.apiKeys.created.title')}>
           <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
-            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap px-1 text-sm" dir="ltr">
+            <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap px-1 text-sm" dir="ltr">
               {secret}
             </code>
             <Button aria-label={t('settings.apiKeys.copy')} onClick={() => void copy(secret)} size="icon" type="button" variant="outline">
@@ -466,7 +481,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                       className="h-9"
                       disabled={!enabled || !allowedScopes.length || Boolean(key.revokedAt) || (rotate.isPending && rotate.variables?.id !== key.id)}
                       loading={rotate.isPending && rotate.variables?.id === key.id}
-                      onClick={() => rotateKey(key)}
+                      onClick={() => void rotateKey(key)}
                       type="button"
                       variant="outline"
                     >

@@ -10,15 +10,18 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { Markdown } from '@/components/markdown';
+import { QueryErrorState } from '@/components/query-error-state';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
-import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
+import { useBranches, useLanguages, usePage, usePages, useProject, useProjectMembers } from '@/hooks/api';
 import { pageQueryOptions } from '@/hooks/api/query-options';
 import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import type { PageNode } from '@/hooks/api/types';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
+import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
+import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   validateSearch: (search) =>
@@ -52,7 +55,15 @@ function ProjectPreview() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const t = useT();
-  const { data: project } = useProject(projectId);
+  const projectQuery = useProject(projectId);
+  const { data: project } = projectQuery;
+  const membersQuery = useProjectMembers(projectId);
+  const { data: members } = membersQuery;
+  const { data: session, isPending: sessionPending } = useSession();
+  const previewAccess = resolveProjectSettingsAccess(
+    members?.members.find((member) => member.user.id === session?.user.id)?.role,
+    membersQuery.isPending || sessionPending || !members || !session,
+  );
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
   const activeLanguageId = search.languageId ?? defaultScopeId(languages);
@@ -108,6 +119,24 @@ function ProjectPreview() {
     </>
   );
 
+  if (projectQuery.isPending) {
+    return (
+      <div aria-busy="true" className="mx-auto w-full max-w-2xl space-y-4 px-8 py-12">
+        <p className="sr-only" role="status">
+          {t('common.loading')}
+        </p>
+        <Skeleton aria-hidden className="h-7 w-40" />
+        <SkeletonText lines={3} />
+      </div>
+    );
+  }
+  if (!project) {
+    return (
+      <div className="mx-auto max-w-2xl px-8 py-12">
+        <QueryErrorState onRetry={() => void projectQuery.refetch()} retrying={projectQuery.isFetching} />
+      </div>
+    );
+  }
   if (!previewEnabled) {
     return (
       <div className="mx-auto max-w-2xl px-8 py-12 outline-none" id="main-content" tabIndex={-1}>
@@ -115,6 +144,23 @@ function ProjectPreview() {
           <Eye className="size-5 text-muted-foreground" /> {t('preview.title')}
         </div>
         <p className="text-muted-foreground text-sm">{t('preview.disabled')}</p>
+        {membersQuery.isError && !members ? (
+          <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
+        ) : previewAccess === 'pending' ? (
+          <div aria-busy="true" className="mt-4">
+            <Skeleton aria-hidden className="h-11 w-44" />
+          </div>
+        ) : previewAccess === 'admin' ? (
+          <Button
+            className="mt-4"
+            nativeButton={false}
+            render={<Link params={{ projectId }} search={{ section: 'addons' }} to="/app/projects/$projectId/settings" />}
+          >
+            {t('preview.enablePreviews')}
+          </Button>
+        ) : (
+          <p className="mt-4 text-muted-foreground text-sm">{t('preview.disabledAskAdmin')}</p>
+        )}
       </div>
     );
   }
