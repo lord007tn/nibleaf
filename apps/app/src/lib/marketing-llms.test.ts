@@ -21,6 +21,7 @@ describe('machine-readable marketing copy', () => {
     expect(text).toContain('editor writing assistant separately uses the instance key');
     expect(text).toContain('Rollback creates a new ready deployment from an earlier published snapshot');
     expect(text).toContain('SEARCH_ANSWER_ENABLED=true');
+    expect(text).toContain('A guided dashboard home with a start-here checklist is in the open-source code now');
     expect(text).toContain('No paid cloud plan is offered today');
     expect(text).toContain('no card at sign-up');
   });
