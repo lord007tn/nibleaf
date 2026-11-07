@@ -45,11 +45,11 @@ as the query.
 ## Configure providers
 
 Administrators can open **Site settings → Workspace → Smart AI** to connect
-OpenAI or OpenRouter with a workspace API key. **Verify and load models** checks
+OpenAI or OpenRouter with a workspace API key. **Verify key and load models** checks
 the key and the provider catalog using GET requests; it does not run a paid
 inference request or prove that the account has credit. Choose an answer model
 that supports strict structured outputs, save the connection, then choose
-**Use this provider**. Saving alone does not enable it. Existing keys stay hidden;
+**Enable with this provider**. Saving alone does not enable it. Existing keys stay hidden;
 leaving the key blank preserves it, and replacement requires explicit confirmation.
 
 Workspace credentials use the existing encrypted project integration store.
@@ -62,7 +62,7 @@ Disabling Smart AI preserves saved connections and keeps ordinary search availab
 
 The embedding model is fixed by the instance so all workspaces use the existing
 index format and dimensions. Direct OpenAI connections require an OpenAI embedding
-model. After enabling, publish documentation or choose **Rebuild search index**.
+model. After enabling, publish documentation or choose **Build or refresh index**.
 The reader offers AI answers only after the current publication has a READY index
 with searchable chunks. The settings screen reports index readiness separately
 from the saved provider selection. Indexing sends published documentation to the

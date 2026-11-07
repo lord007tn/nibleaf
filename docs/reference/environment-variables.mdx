@@ -31,8 +31,8 @@ does not reach a container unless Compose passes it in `environment` or
 | `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
 | `APP_PORT` | No | `4310` | Host port mapped to the app container. |
 | `BETTER_AUTH_URL` | No | `APP_URL` | Explicit authentication base override. |
-| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. Include both `APP_URL` and `ADMIN_URL` when the admin console is exposed so native support impersonation can begin there. |
-| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. Include both `APP_URL` and `ADMIN_URL` when the admin console calls the shared API directly. |
+| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. Include both `APP_URL` and `ADMIN_URL` when the operator console is exposed so native support impersonation can begin there. |
+| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. Include both `APP_URL` and `ADMIN_URL` when the operator console calls the shared API directly. |
 | `PINO_LOG_LEVEL` | No | `info` in production | Minimum structured log level. |
 | `PINO_LOG_FILE` | No | Empty | Deprecated compatibility setting in current source: only its parent directory selects the evlog file drain; the requested filename is not preserved. Prefer `EVLOG_FS_DIR`. Mount the directory to persist logs. |
 

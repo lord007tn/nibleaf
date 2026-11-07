@@ -111,7 +111,7 @@ Your portal's address must also be allowed to call Nibleaf from a browser:
   separate entries with commas, for example
   `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://admin.example.com,https://app.example.com`
   for your `APP_URL`, your `ADMIN_URL`, and the portal. Replacing the existing
-  values can lock out the admin console and other apps already allowed. If the
+  values can lock out the operator console and other apps already allowed. If the
   variable was never set, the production Compose file defaults it to `APP_URL`,
   and the Coolify Compose file defaults it to `https://nibleaf.com`,
   `https://www.nibleaf.com`, and `https://admin.nibleaf.com`; those defaults
