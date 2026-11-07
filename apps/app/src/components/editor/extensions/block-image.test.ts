@@ -27,9 +27,8 @@ describe('editable images', () => {
     editor.commands.updateAttributes('image', { width: 480, alt: 'A "quote" & <arrow>' });
     const output = getMarkdown(editor);
     expect(output).toBe('<img src="https://example.com/a.png" alt="A &quot;quote&quot; &amp; &lt;arrow&gt;" width="480" />');
-    const json = editor.getJSON();
     editor.commands.setContent(output, { emitUpdate: false });
-    expect(editor.getJSON()).toEqual(json);
+    expect(editor.getJSON().content?.[0]?.attrs).toMatchObject({ src: 'https://example.com/a.png', alt: 'A "quote" & <arrow>', width: 480 });
     expect(getMarkdown(editor)).toBe(output);
     expect(imagePromptKey.getState(editor.state)).toBe(1);
   });
@@ -83,5 +82,86 @@ describe('editable images', () => {
     document.dispatchEvent(new Event('pointerup'));
     expect(editor.getAttributes('image').width).toBe(300);
     expect(getMarkdown(editor)).toContain('width="300"');
+  });
+});
+
+describe('authored image attributes', () => {
+  const light = `<img src='/light.png' alt="Light" class='block dark:hidden' loading="lazy" />`;
+  const dark = '<img class="hidden dark:block" alt="Dark" src="/dark.png" />';
+  function reload(editor: Editor) {
+    const output = getMarkdown(editor);
+    editor.commands.setContent(output, { emitUpdate: false });
+    expect(getMarkdown(editor)).toBe(output);
+    return output;
+  }
+  it('keeps the light/dark pair and untouched attribute spelling/order after an edit elsewhere', () => {
+    const editor = makeEditor();
+    editor.commands.setContent(`${light}\n${dark}\n\nAfter.`, { emitUpdate: false });
+    expect(editor.getJSON().content?.[0]?.attrs?.class).toBe('block dark:hidden');
+    expect(editor.getJSON().content?.[1]?.attrs?.class).toBe('hidden dark:block');
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, ' Updated.');
+    const output = reload(editor);
+    expect(output).toContain(light);
+    expect(output).toContain(dark);
+    expect(output).toContain('After. Updated.');
+  });
+  it('changes only alt text on a light/dark pair, preserving all other authored attributes', () => {
+    const editor = makeEditor();
+    editor.commands.setContent(`${light}\n${dark}`, { emitUpdate: false });
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { alt: 'Light & "new"' });
+    const output = reload(editor);
+    expect(output).toContain(`<img src='/light.png' alt="Light &amp; &quot;new&quot;" class='block dark:hidden' loading="lazy" />`);
+    expect(output).toContain(dark);
+  });
+  it('preserves className in its original JSX spelling through alt and width edits', () => {
+    const editor = makeEditor();
+    const image = `<img decoding='async' className="block dark:hidden" alt='Original' width='240' src='/light.png' />`;
+    editor.commands.setContent(image, { emitUpdate: false });
+    expect(editor.getJSON().content?.[0]?.attrs?.className).toBe('block dark:hidden');
+    expect(reload(editor)).toBe(image);
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { alt: 'New', width: 480 });
+    expect(reload(editor)).toBe(`<img decoding='async' className="block dark:hidden" alt="New" width="480" src='/light.png' />`);
+  });
+  it('keeps width and class together when resizing and adding a Frame caption', () => {
+    const editor = makeEditor();
+    const image = `<img width='0240' class="block dark:hidden" src='/light.png' alt='Light' data-note="a > b" />`;
+    editor.commands.setContent(image, { emitUpdate: false });
+    expect(reload(editor)).toBe(image);
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { width: 480 });
+    expect(addImageCaption(editor)).toBe(0);
+    editor.commands.updateAttributes('mdxFrame', { caption: 'Light version' });
+    const output = reload(editor);
+    expect(output).toContain('<Frame caption="Light version">');
+    expect(output).toContain(`<img width="480" class="block dark:hidden" src='/light.png' alt='Light' data-note="a > b" />`);
+  });
+  it('keeps an ordinary Markdown image as Markdown after alt edits', () => {
+    const editor = makeEditor();
+    editor.commands.setContent('![Original](/image.png)', { emitUpdate: false });
+    expect(reload(editor)).toBe('![Original](/image.png)');
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { alt: 'Edited' });
+    expect(reload(editor)).toBe('![Edited](/image.png)');
+  });
+  it.each([null, 240, 480, 720, '100%'])('keeps an authored className through the %s size preset', (width) => {
+    const editor = makeEditor();
+    editor.commands.setContent(`<img className='block dark:hidden' width="320" src="/light.png" alt="Light" />`, { emitUpdate: false });
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { width, height: null });
+    expect(reload(editor)).toContain("className='block dark:hidden'");
+    expect(editor.getJSON().content?.[0]?.attrs).toMatchObject({ width, className: 'block dark:hidden' });
+  });
+  it('does not rewrite image-looking code or lose multiline/raw attribute formatting', () => {
+    const editor = makeEditor();
+    const image = `<img\n  className = 'hidden dark:block'\n  ALT="Dark" src="/dark.png" width="480"\n/>`;
+    editor.commands.setContent(`${image}\n\n\`<img class="example" src="/code.png" />\``, { emitUpdate: false });
+    expect(reload(editor)).toContain(image);
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes('image', { alt: 'Updated' });
+    const output = reload(editor);
+    expect(output).toContain(image.replace('ALT="Dark"', 'ALT="Updated"'));
+    expect(output).toContain('`<img class="example" src="/code.png" />`');
   });
 });

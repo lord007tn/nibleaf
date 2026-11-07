@@ -2,6 +2,8 @@ import Image from '@tiptap/extension-image';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { imageAttributeNames, setupImageSource, snapshotImageSource } from './image-source';
+import { preservedOpeningTag, sourceMetadataAttributes } from './mdx-roundtrip';
 
 export const imagePromptKey = new PluginKey<number>('image-description-prompt');
 const htmlAttribute = (value: unknown) =>
@@ -105,6 +107,16 @@ export const BlockImage = Image.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      ...sourceMetadataAttributes(),
+      class: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('class'),
+      },
+      className: {
+        default: null,
+        parseHTML: (element: HTMLElement) => element.getAttribute('className'),
+        renderHTML: (attributes: Record<string, unknown>) => (attributes.className ? { class: attributes.className } : {}),
+      },
       ...Object.fromEntries(
         ['width', 'height'].map((key) => [
           key,
@@ -121,8 +133,10 @@ export const BlockImage = Image.extend({
     return {
       markdown: {
         serialize(state, node) {
-          if (node.attrs.width || node.attrs.height) {
-            const attributes = ['src', 'alt', 'title', 'width', 'height']
+          if (node.attrs.sourceOpen) {
+            state.write(preservedOpeningTag(node, 'img', [...imageAttributeNames], true));
+          } else if (node.attrs.width || node.attrs.height || node.attrs.class || node.attrs.className) {
+            const attributes = imageAttributeNames
               .filter((key) => key === 'alt' || (node.attrs[key] !== null && node.attrs[key] !== undefined))
               .map((key) => `${key}="${htmlAttribute(node.attrs[key])}"`);
             state.write(`<img ${attributes.join(' ')} />`);
@@ -133,7 +147,10 @@ export const BlockImage = Image.extend({
           }
           state.closeBlock(node);
         },
-        parse: {},
+        parse: {
+          setup: setupImageSource,
+          updateDOM: (element) => snapshotImageSource(element, dimension),
+        },
       } satisfies MarkdownNodeSpec,
     };
   },
