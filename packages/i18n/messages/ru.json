@@ -1831,6 +1831,8 @@
   "error_signedout": "Сеанс завершён. Войдите снова, чтобы продолжить.",
   "error_notfound": "Этого больше нет — возможно, кто-то это удалил. Обновите страницу и попробуйте ещё раз.",
   "error_conflict": "Кто-то другой изменил это одновременно с вами. Обновите страницу и попробуйте ещё раз.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Слишком большой размер. Попробуйте файл поменьше.",
   "error_ratelimited": "Слишком много попыток. Подождите немного и попробуйте ещё раз.",
   "notfound_badge": "404",

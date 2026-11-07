@@ -1831,6 +1831,8 @@
   "error_signedout": "আপনার সেশন শেষ হয়ে গেছে। চালিয়ে যেতে আবার সাইন ইন করুন।",
   "error_notfound": "এটি আর নেই — হয়তো কেউ মুছে ফেলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
   "error_conflict": "একই সময়ে অন্য কেউ এটি বদলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "এটি খুব বড়। একটি ছোট ফাইল চেষ্টা করুন।",
   "error_ratelimited": "অনেকবার চেষ্টা করা হয়েছে। একটু অপেক্ষা করে আবার চেষ্টা করুন।",
   "notfound_badge": "404",

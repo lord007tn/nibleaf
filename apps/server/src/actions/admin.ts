@@ -62,7 +62,7 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
     await tx.language.create({
       data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
     });
-    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
     return { organization, project };
   });
 

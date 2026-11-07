@@ -1831,6 +1831,8 @@
   "error_signedout": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
   "error_notfound": "Das gibt es nicht mehr – vielleicht wurde es gelöscht. Laden Sie die Seite neu und versuchen Sie es erneut.",
   "error_conflict": "Jemand anderes hat das gleichzeitig geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Das ist zu groß. Versuchen Sie es mit einer kleineren Datei.",
   "error_ratelimited": "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.",
   "notfound_badge": "404",

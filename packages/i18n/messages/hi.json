@@ -1831,6 +1831,8 @@
   "error_signedout": "आपका सत्र समाप्त हो गया है। जारी रखने के लिए फिर से साइन इन करें।",
   "error_notfound": "यह अब मौजूद नहीं है — शायद किसी ने इसे हटा दिया है। पेज रीफ़्रेश करें और फिर से कोशिश करें।",
   "error_conflict": "किसी और ने इसे उसी समय बदल दिया। पेज रीफ़्रेश करें और फिर से कोशिश करें।",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "यह बहुत बड़ा है। कोई छोटी फ़ाइल आज़माएँ।",
   "error_ratelimited": "बहुत अधिक प्रयास हुए। थोड़ी देर रुककर फिर से कोशिश करें।",
   "notfound_badge": "404",

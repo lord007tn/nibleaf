@@ -1831,6 +1831,8 @@
   "error_signedout": "Tu sesión ha terminado. Vuelve a iniciar sesión para continuar.",
   "error_notfound": "Esto ya no existe; puede que alguien lo haya eliminado. Actualiza la página e inténtalo de nuevo.",
   "error_conflict": "Otra persona cambió esto al mismo tiempo. Actualiza la página e inténtalo de nuevo.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Es demasiado grande. Prueba con un archivo más pequeño.",
   "error_ratelimited": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
   "notfound_badge": "404",
