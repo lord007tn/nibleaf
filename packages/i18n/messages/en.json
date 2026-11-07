@@ -267,6 +267,7 @@
   "editor_branch_merged": "Promoted “{name}” into main",
   "editor_branch_mergeerror": "Could not promote the version",
   "editor_branch_trigger": "Version: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Add a language",
   "editor_addlanguage_desc": "Create a new localized version of this site's pages.",
   "editor_addlanguage_adding": "Adding…",

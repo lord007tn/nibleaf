@@ -233,6 +233,7 @@
   "editor_branch_merged": "«{name}» повышен до основного.",
   "editor_branch_mergeerror": "Не удалось продвигать версию",
   "editor_branch_trigger": "Версия: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Добавить язык",
   "editor_addlanguage_desc": "Создайте новую локализованную версию страниц этого сайта.",
   "editor_addlanguage_adding": "Добавление…",

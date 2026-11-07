@@ -233,6 +233,7 @@
   "editor_branch_merged": "Promu « {name} » dans le menu principal",
   "editor_branch_mergeerror": "Impossible de promouvoir la version",
   "editor_branch_trigger": "Version : {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Ajouter une langue",
   "editor_addlanguage_desc": "Créez une nouvelle version localisée des pages de ce site.",
   "editor_addlanguage_adding": "Ajout…",

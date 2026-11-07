@@ -7,11 +7,11 @@ describe('marketing sitemap', () => {
 
     expect(lastmodByPath).toEqual({
       '/': '2026-11-07',
-      '/ar': '2026-08-22',
+      '/ar': '2026-11-07',
       '/documentation-platforms': '2026-11-07',
       '/ar/documentation-platforms': '2026-11-07',
       '/ar/guides': '2026-11-02',
-      '/cloud': '2026-07-13',
+      '/cloud': '2026-11-07',
       '/pricing': '2026-11-07',
       '/self-hosting': '2026-08-15',
       '/about': '2026-11-07',
@@ -36,7 +36,7 @@ describe('marketing sitemap', () => {
 
     expect(xml.match(/<url>/g)).toHaveLength(entries.length);
     expect(xml).toContain('<loc>https://nibleaf.com/pricing</loc>\n    <lastmod>2026-11-07</lastmod>');
-    expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-07-13</lastmod>');
+    expect(xml).toContain('<loc>https://nibleaf.com/cloud</loc>\n    <lastmod>2026-11-07</lastmod>');
     expect(xml).not.toContain('<priority>');
     expect(xml).not.toContain('<changefreq>');
   });

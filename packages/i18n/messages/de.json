@@ -233,6 +233,7 @@
   "editor_branch_merged": "„{name}“ in die Hauptdatei hochgestuft",
   "editor_branch_mergeerror": "Die Version konnte nicht hochgestuft werden",
   "editor_branch_trigger": "Version: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Fügen Sie eine Sprache hinzu",
   "editor_addlanguage_desc": "Erstellen Sie eine neue lokalisierte Version der Seiten dieser Website.",
   "editor_addlanguage_adding": "Hinzufügen…",
