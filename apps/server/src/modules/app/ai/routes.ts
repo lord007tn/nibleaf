@@ -4,6 +4,12 @@ import { createRouteConfig } from '@/lib/hono/route-config';
 import { isAuthenticated, requireProjectRole } from '@/middlewares/guard';
 
 const aiRoutes = {
+  draftCapability: createRouteConfig({
+    guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],
+    tags: ['ai'],
+    description: 'Read editor AI drafting availability, connection source, provider, and quota state without consuming a request.',
+    responses: { 200: { description: 'Current project drafting capability; no credentials or model configuration.' }, ...errorResponses },
+  }),
   draft: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.MEMBER)],
     tags: ['ai'],

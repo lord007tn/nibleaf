@@ -72,10 +72,10 @@ import {
   pageNeverPublished,
   pagePublishState,
   queryKeys,
+  useAiDraftCapability,
   useBranches,
   useComments,
   useCreatePage,
-  useGetPublicMeta,
   useLanguages,
   usePage,
   usePages,
@@ -86,7 +86,7 @@ import {
   useUpdatePage,
   useUploadAsset,
 } from '@/hooks/api';
-import { commentsQueryOptions, getPublicMetaQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
@@ -108,12 +108,13 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
       .parse(search),
   loaderDeps: ({ search: { page } }) => ({ page }),
   // The parent route prefetches the site, languages, branches and publishes. This
-  // adds the page tree (every language, default branch), the AI switch and, for a
-  // deep link, the page and its comments. The pending-changes check is left to the
-  // component: it is always stale, so a prefetch would only fetch it twice.
+  // adds the page tree (every language, default branch), the site's AI drafting
+  // capability and, for a deep link, the page and its comments. The pending-changes
+  // check is left to the component: it is always stale, so a prefetch would only
+  // fetch it twice.
   loader: ({ context: { queryClient }, params: { projectId }, deps: { page } }) => {
     prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
-    prefetchRouteData(queryClient, getPublicMetaQueryOptions());
+    prefetchRouteData(queryClient, aiDraftCapabilityQueryOptions(projectId));
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
     if (page) {
       prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
@@ -133,8 +134,25 @@ function EditorPage() {
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
   const permissionsPending = membersPending || sessionPending;
   const canManageSettings = !permissionsPending && canAdminister(currentMember?.role ?? '');
-  const { data: publicMeta } = useGetPublicMeta();
-  const aiDraft = publicMeta?.ai?.draft === true;
+  // AI assist follows this site's own drafting capability (its Smart AI
+  // connection or the instance key), not the instance-wide public flag. Disabled
+  // and quota states keep the tab: the panel explains them when a draft is
+  // refused. Only a site with no way to draft hides it. While the capability
+  // loads, the tab keeps its place as a placeholder: unknown is not "no".
+  const aiCapability = useAiDraftCapability(projectId);
+  // A failed capability request is unknown, not "no": keep AI assist reachable
+  // so the panel can report the failure, instead of hiding it for the session.
+  const aiAssist = aiCapability.isPending
+    ? 'loading'
+    : aiCapability.data
+      ? aiCapability.data.reason !== 'not_configured'
+        ? 'shown'
+        : 'hidden'
+      : aiCapability.isError
+        ? 'shown'
+        : 'hidden';
+  const aiDraft = aiAssist === 'shown';
+  const aiTabs = aiAssist !== 'hidden';
 
   useEffect(() => {
     if (firstPublish && project) void recordFirstPublishStage('editor_entered');
@@ -258,8 +276,8 @@ function EditorPage() {
   // otherwise claim 300px on the first visit); the author's toggle is persisted.
   const [railOpen, setRailOpen] = useState(false);
   const railLabel = (wideLayout ? railOpen : railSheetOpen)
-    ? t(aiDraft ? 'editor.hideRail' : 'editor.hideComments')
-    : t(aiDraft ? 'editor.showRail' : 'editor.showComments');
+    ? t(aiTabs ? 'editor.hideRail' : 'editor.hideComments')
+    : t(aiTabs ? 'editor.showRail' : 'editor.showComments');
   useEffect(() => {
     try {
       setRailOpen(window.localStorage.getItem('nibleaf.editor.railOpen') === '1');
@@ -866,13 +884,17 @@ function EditorPage() {
   };
   const railPanel = activeId ? (
     <Tabs value={railTab} onValueChange={(value) => setRailTab(value === 'ai' ? 'ai' : 'comments')} className="flex min-h-0 flex-1 flex-col">
-      {aiDraft ? (
-        <TabsList className="m-2 self-start">
+      {aiTabs ? (
+        <TabsList aria-busy={aiDraft ? undefined : true} className="m-2 self-start">
           <TabsTrigger value="comments">{t('editor.comments')}</TabsTrigger>
-          <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
+          {aiDraft ? (
+            <TabsTrigger value="ai">{t('editor.ai')}</TabsTrigger>
+          ) : (
+            <Skeleton aria-hidden className="mx-2 h-5 w-12" data-testid="ai-tab-placeholder" />
+          )}
         </TabsList>
       ) : null}
-      <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', aiDraft && 'pt-0')}>
+      <div className={cn('min-h-0 flex-1 overflow-y-auto p-4', aiTabs && 'pt-0')}>
         {railTab === 'comments' ? (
           <CommentsPanel
             pageId={activeId}

@@ -11,6 +11,20 @@ const context = {
 };
 
 describe('analytics event privacy contract', () => {
+  it('retains the drafting connection source and rejects credential fields', () => {
+    const input = {
+      consentState: 'unknown' as const,
+      payload: { name: 'answer_completed' as const, provider: 'openai', connectionSource: 'workspace' as const },
+    };
+    const eventContext = {
+      ...context,
+      source: 'dashboard' as const,
+      privacy: { visibility: 'private' as const, allowCampaignDimensions: false, allowRawPublicSearchQueries: false },
+    };
+    expect(buildAnalyticsEvent(input, eventContext).payload).toEqual(input.payload);
+    const invalid = { ...input, payload: { ...input.payload, apiKey: 'secret' } };
+    expect(() => buildAnalyticsEvent(invalid, eventContext)).toThrow();
+  });
   it('drops denied/unknown identities and scopes allowed hashes to tenant and project', () => {
     const privacy = { visibility: 'public' as const, allowCampaignDimensions: false, allowRawPublicSearchQueries: true };
     const body = {

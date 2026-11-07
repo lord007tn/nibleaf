@@ -30,10 +30,18 @@ describe('AI draft failure messages', () => {
     vi.restoreAllMocks();
   });
   it.each([
-    [503, 'editor.ai.unavailable'],
-    [429, 'editor.ai.rateLimited'],
-  ] as const)('shows the action-specific message for HTTP %s', async (status, message) => {
-    mocks.draft.mockResolvedValue(new Response(JSON.stringify({ error: { code: 'usage:unavailable' } }), { status }));
+    [503, 'usage:unavailable', 'editor.ai.unavailable', undefined],
+    [429, 'http:rate_limited', 'editor.ai.rateLimited', undefined],
+    [503, 'ai:not_configured', 'editor.ai.notConfigured', undefined],
+    [403, 'ai:disabled', 'editor.ai.disabled', 'site_disabled'],
+    [403, 'ai:disabled', 'editor.ai.instanceDisabled', 'instance_disabled'],
+    [403, 'ai:disabled', 'editor.ai.disabled', undefined],
+    [403, 'auth:insufficient_role', 'error.noPermission', undefined],
+    [502, 'ai:provider_response', 'editor.ai.draftError', undefined],
+  ] as const)('shows the action-specific message for HTTP %s / %s', async (status, code, message, reason) => {
+    mocks.draft.mockResolvedValue(
+      new Response(JSON.stringify({ error: { code, message: 'Internal provider detail', details: { reason } } }), { status }),
+    );
     let draft: ReturnType<typeof useAiDraft> | undefined;
     function Probe() {
       draft = useAiDraft('project');
@@ -44,5 +52,6 @@ describe('AI draft failure messages', () => {
       await draft?.mutateAsync({ mode: 'outline', content: 'Synthetic introduction' }).catch(() => undefined);
     });
     await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith(message));
+    expect(mocks.toast).toHaveBeenCalledTimes(1);
   });
 });

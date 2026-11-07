@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { isDeploymentInFlight } from './deployment-cache';
 import {
+  aiDraftCapabilityQueryOptions,
   apiKeysQueryOptions,
   branchesQueryOptions,
   commentsQueryOptions,
@@ -104,6 +105,8 @@ export const useMembers = () => useQuery(membersQueryOptions());
 
 /** Members + pending invitations for a single site (its own organization). */
 export const useProjectMembers = (projectId: string | undefined) => useQuery(projectMembersQueryOptions(projectId));
+
+export const useAiDraftCapability = (projectId: string) => useQuery(aiDraftCapabilityQueryOptions(projectId));
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 

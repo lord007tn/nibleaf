@@ -64,6 +64,15 @@ it.each([
   expect(error).toMatchObject({ status: 422, message: 'Invalid request query: is too long', reason: 'fixture', details });
 });
 
+it.each(['site_disabled', 'instance_disabled'])('retains the AI disable reason %s in mutation errors', async (reason) => {
+  const response = Response.json({ error: { code: 'ai:disabled', details: { reason } } }, { status: 403 });
+  await expect(mutateData(response, 'Draft failed')).rejects.toMatchObject({ code: 'ai:disabled', reason });
+});
+it('retains error reasons in query failures', async () => {
+  const response = Response.json({ error: { code: 'ai:disabled', details: { reason: 'instance_disabled' } } }, { status: 403 });
+  await expect(getData(response, 'AI capability')).rejects.toMatchObject({ code: 'ai:disabled', reason: 'instance_disabled' });
+});
+
 it('keeps the server reason so a specific case can get its own message', async () => {
   const response = Response.json(
     { error: { code: 'database:conflict', message: 'Pages changed', details: { reason: 'promote_raced' } } },
