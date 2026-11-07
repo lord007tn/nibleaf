@@ -17,7 +17,9 @@ export function SiteNotFound() {
       <span className="grid size-12 place-items-center rounded-full bg-muted text-muted-foreground" aria-hidden>
         <FileQuestion className="size-6" />
       </span>
-      <h1 className="mt-5 font-semibold text-2xl text-foreground tracking-tight">{t('notFoundTitle')}</h1>
+      <h1 tabIndex={-1} className="mt-5 font-semibold text-2xl text-foreground tracking-tight outline-none">
+        {t('notFoundTitle')}
+      </h1>
       <p className="mt-3 text-muted-foreground">{t('notFoundBody')}</p>
       <div className="mt-8 flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
         {openSearch ? (

@@ -136,6 +136,18 @@ describe('published reader search', () => {
     expect(props.onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('never opens while the reader types with AltGr (Ctrl+Alt on Windows) in a field', async () => {
+    const { props } = await render({ open: false });
+    const field = document.createElement('input');
+    document.body.append(field);
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'ĸ', code: 'KeyK', ctrlKey: true, altKey: true, bubbles: true, cancelable: true }));
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, altKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(props.onOpenChange).not.toHaveBeenCalled();
+    field.remove();
+  });
+
   it.each([
     ['en', 'Search documentation', 'Results'],
     ['ar', 'البحث في الوثائق', 'النتائج'],
@@ -152,6 +164,9 @@ describe('published reader search', () => {
     expect(field?.getAttribute('aria-controls')).toBe(list?.id);
     await typeQuery('setup');
     expect(list?.querySelector('[role="option"]')?.textContent).toContain('Setup guide');
+    // Every language is searched; the reader's own is preferred in the ranking.
+    expect(mocks.search).toHaveBeenLastCalledWith('docs', expect.any(String), expect.objectContaining({ prefer: lang }));
+    expect(mocks.search.mock.lastCall?.[2]).not.toHaveProperty('language');
   });
 
   it('closes with a keyboard Esc hint or a plain Cancel action instead of an icon-only X', async () => {

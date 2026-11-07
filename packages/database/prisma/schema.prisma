@@ -711,6 +711,16 @@ model Branch {
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// When this version was copied from main (a version made from another
+  /// version inherits that one's). Null on versions created before fork
+  /// tracking; those fall back to `createdAt`.
+  forkedAt     DateTime?
+  /// Main's pages at the fork: { version: 2, pages: { [mainPageId]: { copyId,
+  /// hash, copyHash, parentId, position, updatedAt, title, path, languageId,
+  /// kind } } }. Promote compares both sides against it, three-way (see
+  /// apps/server/src/actions/branch-fork.ts). A version made from another
+  /// version inherits it with copy ids remapped.
+  forkBaseline Json?
 
   pages Page[]
 

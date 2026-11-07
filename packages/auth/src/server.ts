@@ -483,7 +483,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
           const language = await tx.language.create({
             data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
           });
-          const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+          const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, omit: { forkBaseline: true } });
           return { project, language, branch };
         });
       } catch (error) {

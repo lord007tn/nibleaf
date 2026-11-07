@@ -230,29 +230,28 @@ const prepare = (markdown: string | undefined): PreparedMarkdown | null => (mark
  *  reordered these siblings meanwhile, nothing is written and we report a
  *  revision conflict instead of replacing their order. Positions do not affect
  *  paths, so no recompute is needed. */
-const placeAmongSiblings = async (projectId: string, page: Page, position: number | undefined): Promise<Page> => {
-  const siblings = await prisma.page.findMany({
-    where: { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId, id: { not: page.id } },
-    orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-    select: { id: true, position: true },
-  });
-  const index = Math.min(position ?? siblings.length, siblings.length);
-  const ordered = [...siblings.slice(0, index), { id: page.id, position: page.position }, ...siblings.slice(index)];
-  const renumbered = ordered.map((node, nextPosition) => ({ id: node.id, position: nextPosition, changed: node.position !== nextPosition }));
-  if (!renumbered.some((item) => item.changed)) return page;
-  // The page's own row is always checked, so a move away from this parent made
-  // meanwhile rolls the whole placement back, even when its position is unchanged.
-  const items = renumbered.filter((item) => item.changed || item.id === page.id);
-  const guard = { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId };
-  const observed = new Map(ordered.map((node) => [node.id, node.position]));
+export const placeAmongSiblings = async (projectId: string, page: Page, position: number | undefined): Promise<Page> => {
   const SIBLINGS_CHANGED = 'siblings changed';
   try {
     await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "page"
+        WHERE "projectId" = ${projectId} AND (id = ${page.id} OR
+          ("branchId" = ${page.branchId} AND "languageId" = ${page.languageId} AND "parentId" IS NOT DISTINCT FROM ${page.parentId}))
+        ORDER BY id FOR NO KEY UPDATE`;
+      const siblings = await tx.page.findMany({
+        where: { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId, id: { not: page.id } },
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, position: true },
+      });
+      const index = Math.min(position ?? siblings.length, siblings.length);
+      const ordered = [...siblings.slice(0, index), { id: page.id, position: page.position }, ...siblings.slice(index)];
+      const items = ordered
+        .map((node, nextPosition) => ({ id: node.id, previous: node.position, position: nextPosition }))
+        .filter((item) => item.previous !== item.position || item.id === page.id);
+      const guard = { projectId, branchId: page.branchId, languageId: page.languageId, parentId: page.parentId };
       for (const item of items) {
-        const { count } = await tx.page.updateMany({
-          where: { ...guard, id: item.id, position: observed.get(item.id) },
-          data: { position: item.position },
-        });
+        const { count } = await tx.page.updateMany({ where: { ...guard, id: item.id, position: item.previous }, data: { position: item.position } });
         if (count === 0) throw new Error(SIBLINGS_CHANGED);
       }
     });
