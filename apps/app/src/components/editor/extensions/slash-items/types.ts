@@ -2,6 +2,7 @@ import type { Locale, MessageKey, MessageVariables } from '@nibleaf/i18n';
 import { translateFn } from '@nibleaf/i18n/react';
 import type { Editor, Range } from '@tiptap/core';
 import type { ComponentType } from 'react';
+import type { ImageUploader } from '../image-upload';
 
 interface SlashCommandProps {
   editor: Editor;
@@ -20,8 +21,8 @@ export interface SlashItem {
   command: (props: SlashCommandProps) => void;
 }
 
-/** Uploads a picked image and returns its hosted URL (or null on failure). */
-export type UploadFn = (file: File) => Promise<string | null>;
+/** Uploads a picked image and returns its hosted URL (or null on failure), reporting progress. */
+export type UploadFn = ImageUploader;
 
 /** Default text for an inserted block, written in the page language (an Arabic
  *  page gets Arabic placeholders whatever the dashboard locale is). */

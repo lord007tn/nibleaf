@@ -1,0 +1,212 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { useT } from '@nibleaf/i18n/react';
+import type { Editor } from '@tiptap/core';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
+import { useEditorState } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef } from 'react';
+import { imagePromptKey } from './block-image';
+import { canEditImages } from './image-upload';
+
+export function addImageCaption(editor: Editor): number | null {
+  if (!canEditImages(editor)) return null;
+  const { selection } = editor.state;
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'image') return null;
+  for (let depth = selection.$from.depth; depth > 0; depth--) {
+    if (selection.$from.node(depth).type.name === 'mdxFrame') return selection.$from.before(depth);
+  }
+  const frame = editor.schema.nodes.mdxFrame;
+  if (!frame) return null;
+  editor.view.dispatch(editor.state.tr.replaceWith(selection.from, selection.to, frame.create({ caption: '' }, selection.node)));
+  return selection.from;
+}
+
+export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
+  const t = useT();
+  const hintId = useId();
+  const sizeLabelId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const dismissed = useRef(false);
+  const previousImage = useRef<{ key: string; node: NodeSelection['node'] | null }>({ key: '', node: null });
+  const hide = useCallback(() => {
+    if (editor.isDestroyed || dismissed.current) return;
+    dismissed.current = true;
+    editor.commands.setMeta('image-description', 'hide');
+  }, [editor]);
+  const state = useEditorState({
+    editor,
+    selector: ({ editor: current }) => ({
+      alt: String(current.getAttributes('image').alt ?? ''),
+      width: current.getAttributes('image').width as number | string | null,
+      prompt: imagePromptKey.getState(current.state) ?? 0,
+      canEdit: canEditImages(current),
+      image: current.state.selection instanceof NodeSelection ? current.state.selection.node : null,
+      selected:
+        current.state.selection instanceof NodeSelection && current.state.selection.node.type.name === 'image'
+          ? `${current.state.selection.from}:${current.state.selection.node.attrs.src}`
+          : '',
+    }),
+  });
+  useEffect(() => {
+    if (
+      state.selected &&
+      state.selected !== previousImage.current.key &&
+      state.image !== previousImage.current.node &&
+      !document.activeElement?.classList.contains('pl-frame-title-input')
+    ) {
+      dismissed.current = false;
+      if (!editor.isDestroyed) editor.commands.setMeta('image-description', 'show');
+    }
+    previousImage.current = { key: state.selected, node: state.image };
+  }, [editor, state.selected, state.image]);
+  useEffect(() => {
+    const onOutside = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || menu.current?.contains(target) || editor.isDestroyed) return;
+      // The size list opens in a portal outside the menu; choosing from it isn't clicking away.
+      if (target instanceof Element && target.closest('[data-image-size-options]')) return;
+      if (target === editor.view.dom || (target instanceof Element && editor.view.dom.contains(target) && target.closest('.editor-image'))) {
+        const selectedImage = editor.isActive('image') ? editor.view.nodeDOM(editor.state.selection.from) : null;
+        const reopen = dismissed.current && editor.isEditable && (target === editor.view.dom || selectedImage?.contains(target));
+        dismissed.current = false;
+        if (reopen && selectedImage) editor.commands.setMeta('image-description', 'show');
+        return;
+      }
+      hide();
+    };
+    document.addEventListener('focusin', onOutside, true);
+    document.addEventListener('pointerdown', onOutside, true);
+    return () => {
+      document.removeEventListener('focusin', onOutside, true);
+      document.removeEventListener('pointerdown', onOutside, true);
+    };
+  }, [editor, hide]);
+  useEffect(() => {
+    if (!state.prompt || !canEditImages(editor) || !editor.isActive('image')) return;
+    dismissed.current = false;
+    editor.commands.setMeta('image-description', 'show');
+  }, [editor, state.prompt]);
+  useEffect(() => {
+    let frame: number | undefined;
+    const focusRequested = ({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) => {
+      if (!transaction.getMeta(imagePromptKey)?.focus) return;
+      // Only explicit activation of Describe image requests keyboard focus.
+      frame = requestAnimationFrame(() => {
+        if (!editor.isDestroyed && canEditImages(editor) && !dismissed.current && editor.isActive('image')) input.current?.focus();
+      });
+    };
+    editor.on('transaction', focusRequested);
+    return () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      editor.off('transaction', focusRequested);
+    };
+  }, [editor]);
+
+  const dismiss = () => {
+    const { selection, doc } = editor.state;
+    if (selection instanceof NodeSelection) {
+      const next = TextSelection.near(doc.resolve(selection.to));
+      if (next instanceof TextSelection) editor.view.dispatch(editor.state.tr.setSelection(next));
+      else editor.commands.createParagraphNear();
+    }
+    editor.commands.focus();
+  };
+  const onEscape = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    dismiss();
+  };
+  if (!state.canEdit) return null;
+  const sizeOptions: Array<{ value: string; label: string }> = [
+    ...(typeof state.width === 'number' && ![240, 480, 720].includes(state.width)
+      ? [{ value: String(state.width), label: t('editor.image.customSize', { width: state.width }) }]
+      : []),
+    ...(typeof state.width === 'string' && state.width !== '100%' ? [{ value: state.width, label: state.width }] : []),
+    { value: '', label: t('editor.image.originalSize') },
+    { value: '240', label: t('editor.image.small') },
+    { value: '480', label: t('editor.image.medium') },
+    { value: '720', label: t('editor.image.large') },
+    { value: '100%', label: t('editor.image.fullWidth') },
+  ];
+  return (
+    <BubbleMenu
+      data-editor-bubble-menu=""
+      ref={menu}
+      editor={editor}
+      pluginKey="image-description"
+      updateDelay={0}
+      options={{ placement: 'bottom' }}
+      shouldShow={() =>
+        canEditImages(editor) && editor.isActive('image') && !dismissed.current && !document.activeElement?.classList.contains('pl-frame-title-input')
+      }
+    >
+      <div
+        role="dialog"
+        aria-label={t('editor.image.description')}
+        tabIndex={-1}
+        dir={dir}
+        className="flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 rounded-lg border border-border bg-card p-3 text-sm shadow-lg"
+      >
+        <label className="flex flex-col gap-1">
+          {t('editor.image.description')}
+          <input
+            ref={input}
+            onKeyDown={onEscape}
+            aria-describedby={hintId}
+            className="min-h-11 rounded border border-border bg-background p-2 focus-visible:outline-2 focus-visible:outline-ring"
+            dir="auto"
+            value={state.alt}
+            onChange={(event) => {
+              if (canEditImages(editor)) editor.commands.updateAttributes('image', { alt: event.target.value, descriptionPending: false });
+            }}
+          />
+        </label>
+        <p id={hintId} className="text-muted-foreground text-xs">
+          {t('editor.image.descriptionHint')}
+        </p>
+        <div className="flex items-center justify-between gap-2">
+          <span id={sizeLabelId}>{t('editor.image.size')}</span>
+          <Select
+            items={sizeOptions}
+            value={state.width == null ? '' : String(state.width)}
+            onValueChange={(next) => {
+              if (!canEditImages(editor) || next == null) return;
+              const value = String(next);
+              editor.commands.updateAttributes('image', { width: value.endsWith('%') ? value : value ? Number(value) : null, height: null });
+            }}
+          >
+            <SelectTrigger onKeyDown={onEscape} aria-labelledby={sizeLabelId} className="min-h-11 min-w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent data-image-size-options="" dir={dir}>
+              {sizeOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          onKeyDown={onEscape}
+          variant="outline"
+          className="min-h-11"
+          onClick={() => {
+            hide();
+            const pos = addImageCaption(editor);
+            if (pos !== null)
+              requestAnimationFrame(() => {
+                if (editor.isDestroyed) return;
+                const dom = editor.view.nodeDOM(pos);
+                if (dom instanceof HTMLElement) dom.querySelector<HTMLInputElement>('.pl-frame-title-input')?.focus();
+              });
+          }}
+        >
+          {t('editor.image.addCaption')}
+        </Button>
+      </div>
+    </BubbleMenu>
+  );
+}
