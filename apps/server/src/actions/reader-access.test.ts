@@ -22,7 +22,7 @@ vi.mock('@nibleaf/database', () => ({
 }));
 vi.mock('@/env', () => ({ env: { APP_URL: 'https://docs.example.com' } }));
 
-import { resolveViewerAccess } from './reader-access';
+import { jwtReaderIdentity, resolveViewerAccess } from './reader-access';
 
 const headers = (cookie?: string) => new Headers(cookie ? { cookie } : {});
 
@@ -79,5 +79,17 @@ describe('resolveViewerAccess', () => {
   it('denies missing, expired, or revoked reader sessions without leaking site existence', async () => {
     mocks.sessionFind.mockResolvedValue(null);
     await expect(resolveViewerAccess('project', 'READERS', headers('nibleaf_reader_project=revoked'))).resolves.toBeNull();
+  });
+});
+
+describe('jwtReaderIdentity', () => {
+  it('stores no NUL byte, which PostgreSQL text rejects', () => {
+    expect(jwtReaderIdentity('https://idp.example.com', 'user-1')).not.toContain(String.fromCharCode(0));
+  });
+
+  it('keeps issuer and subject apart even when either contains separator-like text', () => {
+    expect(jwtReaderIdentity('https://idp.example.com', 'a","b')).not.toBe(jwtReaderIdentity('https://idp.example.com","a', 'b'));
+    expect(jwtReaderIdentity('https://a.example', 'b')).not.toBe(jwtReaderIdentity('https://a.exampleb', ''));
+    expect(JSON.parse(jwtReaderIdentity('https://idp.example.com', 'user-1'))).toEqual(['https://idp.example.com', 'user-1']);
   });
 });
