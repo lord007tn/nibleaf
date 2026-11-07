@@ -395,7 +395,8 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
 
   it('keeps an imported page linked to its file after its branch is merged into main', async () => {
     const setup = await fixture();
-    const draft = await db.prisma.branch.create({ data: { projectId: setup.project.id, name: `draft-${randomUUID()}`, isDefault: false } });
+    // A real version, with a fork point: Promote refuses a branch without one.
+    const draft = await branches.createBranch(setup.project.id, { name: `draft-${randomUUID()}` });
     const page = await db.prisma.page.create({
       data: {
         projectId: setup.project.id,

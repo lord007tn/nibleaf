@@ -23,6 +23,7 @@ const db = vi.hoisted(() => ({
     delete: vi.fn(),
   },
   page: { deleteMany: vi.fn(), updateMany: vi.fn(), createMany: vi.fn(), count: vi.fn() },
+  pageGitImportSource: { findMany: vi.fn(), createMany: vi.fn() },
   language: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
@@ -93,6 +94,7 @@ beforeEach(() => {
   db.branch.findFirst.mockImplementation(async ({ where }) => (where.name ? null : { id: where.id, isDefault: where.id === 'main' }));
   db.language.findMany.mockResolvedValue([...codes].map(([id, code]) => ({ id, code })));
   db.page.count.mockResolvedValue(0);
+  db.pageGitImportSource.findMany.mockResolvedValue([]);
   db.$queryRaw.mockImplementation(async (query: Sql) => {
     statements.push(query.text.replace(/\s+/g, ' ').trim());
     if (query.text.includes('FROM "branch"')) return versionRow ? [versionRow] : [];
