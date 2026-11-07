@@ -29,25 +29,25 @@ describe('friendlyErrorMessage', () => {
       'branch:main_changed',
       { reason: 'main_changed', changedOnMainSinceFork: [] },
       'en',
-      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Bring those changes into this version, or undo them on main, then promote again.",
+      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Create a new version from main, move this version's edits there, then promote the new version.",
     ],
     [
       'branch:main_changed',
       { reason: 'main_changed', changedOnMainSinceFork: [] },
       'ar',
-      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أدخِل تلك التغييرات في هذا الإصدار، أو تراجع عنها في main، ثم أعد محاولة الترقية.',
+      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أنشئ إصدارًا جديدًا من main، وانقل إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
     ],
     [
       'branch:baseline_missing',
       { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
       'en',
-      'This version was created before Nibleaf could check main for changes, or copied from a version that was. Create a new version from main and move your changes there.',
+      "Nibleaf can't tell what changed on main since this version was made: it's older than this check, was imported, or was copied from such a version. Create a new version from main and move your changes there.",
     ],
     [
       'branch:baseline_missing',
       { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
       'ar',
-      'أُنشئ هذا الإصدار قبل أن يتمكن Nibleaf من التحقق من تغييرات main، أو نُسخ من إصدار أُنشئ كذلك. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فهو أقدم من هذا التحقق، أو مستورد، أو منسوخ من إصدار كهذا. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
     ],
   ] as const)('gives the promote refusal %s its own complete %s text, not "refresh and try again"', async (code, details, locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
