@@ -61,7 +61,7 @@ import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/sit
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
-import { useAiAssistSession } from '@/components/editor/use-ai-assist-session';
+import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
 import type { Deployment, Language, PageNode } from '@/hooks/api';
@@ -414,11 +414,19 @@ function EditorPage() {
     setStatus('idle');
   }
 
+  const navigate = Route.useNavigate();
+  // A deep link, so the "Open page" action on a finished draft also works after the editor was closed.
+  const openPageForAi = useCallback(
+    (id: string) => void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: id } }),
+    [navigate, projectId],
+  );
   const aiAssistSession = useAiAssistSession({
     projectId,
-    pageId: !switching && page?.id === activeId && synced?.id === activeId ? activeId : null,
+    pageId: aiAssistPageId({ switching, activeId, loadedPageId: page?.id, syncedPageId: synced?.id }),
+    pageTitle: title,
     content,
     onContentChange: setContent,
+    openPage: openPageForAi,
   });
   const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
