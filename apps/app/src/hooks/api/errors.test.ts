@@ -41,13 +41,13 @@ describe('friendlyErrorMessage', () => {
       'branch:baseline_missing',
       { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
       'en',
-      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, or was copied from such a version. Switch to main, create a new version there, and move your changes into it.",
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
     ],
     [
       'branch:baseline_missing',
       { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
       'ar',
-      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا، أو استُبدلت صفحات main منذ ذلك الحين. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
     ],
   ] as const)('gives the promote refusal %s its own complete %s text, not "refresh and try again"', async (code, details, locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);

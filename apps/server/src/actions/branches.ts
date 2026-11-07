@@ -250,7 +250,7 @@ const baselineMissing = (since: Date, mainPagesEditedOrCreatedSince: number) =>
   new AppError({
     code: 'branch:baseline_missing',
     message:
-      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, or was copied from such a version.",
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since.",
     details: { since: since.toISOString(), mainPagesEditedOrCreatedSince },
   });
 
