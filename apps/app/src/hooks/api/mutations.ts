@@ -28,6 +28,7 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
+import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
@@ -402,7 +403,9 @@ const uploadContentType = (file: File): string => file.type.trim() || inferSafeI
 export const useUploadAsset = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (file: File): Promise<Asset> => {
+    mutationFn: async (input: File | { file: File; onProgress?: (percent: number) => void }): Promise<Asset> => {
+      const file = input instanceof File ? input : input.file;
+      const onProgress = input instanceof File ? undefined : input.onProgress;
       const contentType = uploadContentType(file);
       const presign = await mutateData(
         await api.app.projects[':projectId'].assets.presign.$post({
@@ -411,11 +414,7 @@ export const useUploadAsset = (projectId: string) => {
         }),
         'Could not start the upload.',
       );
-      const put = await fetch(presign.uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': contentType } });
-      if (!put.ok) {
-        // Keep the status so callers can tell "too large" from other failures.
-        throw new ApiResponseError('Upload failed.', put.status);
-      }
+      await putAsset(presign.uploadUrl, file, contentType, onProgress);
       return mutateData(
         await api.app.projects[':projectId'].assets.confirm.$post({
           param: { projectId },

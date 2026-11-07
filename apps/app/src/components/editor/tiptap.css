@@ -721,3 +721,49 @@
   min-height: 100%;
   flex-direction: column;
 }
+/* Physical handles resize from either side; the block follows its page's direction.
+   Keyboard users have the same sizing controls in the image description menu. */
+.pl-editor .ProseMirror .editor-image {
+  position: relative;
+  max-width: 100%;
+  margin-block: 1rem;
+}
+
+.pl-editor .ProseMirror .editor-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+.pl-editor .ProseMirror .editor-image-handle {
+  display: none;
+  position: absolute;
+  top: calc(50% - 22px);
+  width: 44px;
+  height: 44px;
+  touch-action: none;
+  cursor: ew-resize;
+}
+
+.pl-editor .ProseMirror .editor-image-handle::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 2px solid var(--color-background);
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.pl-editor .ProseMirror .editor-image-handle-left {
+  left: -22px;
+}
+.pl-editor .ProseMirror .editor-image-handle-right {
+  right: -22px;
+}
+.pl-editor
+  .ProseMirror
+  .editor-image.ProseMirror-selectednode
+  .editor-image-handle {
+  display: block;
+}
