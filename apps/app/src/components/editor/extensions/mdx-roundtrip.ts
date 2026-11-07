@@ -109,7 +109,8 @@ const NAMED_REFERENCES: Record<string, string> = { amp: '&', lt: '<', gt: '>', q
 const decodeAttributeValue = (value: string): string =>
   value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|([a-z][a-z\d]{1,31}));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
     if (name) {
-      const known = NAMED_REFERENCES[name.toLowerCase()];
+      // Names are case-sensitive: `&Lt;` is "≪", not "<".
+      const known = NAMED_REFERENCES[name];
       if (known) return known;
       // Any other named reference (`&mdash;`, `&nbsp;`) is decoded by the DOM the
       // editor runs in. Only complete references ending in `;` get here, so a URL
@@ -117,10 +118,15 @@ const decodeAttributeValue = (value: string): string =>
       if (typeof document === 'undefined') return reference;
       const area = document.createElement('textarea');
       area.innerHTML = reference;
-      return area.value;
+      // Every named reference decodes to one or two UTF-16 units. A longer result
+      // is a shorter legacy name plus leftover letters (`&notit;` reads as "¬it;"),
+      // which JSX and HTML attributes leave as written.
+      return area.value.length <= 2 ? area.value : reference;
     }
     const code = decimal ? Number(decimal) : Number.parseInt(hex ?? '', 16);
-    return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
+    // As HTML reads them: U+0000, a surrogate or anything past U+10FFFF is U+FFFD,
+    // so a lone surrogate never reaches the saved source.
+    return code === 0 || (code >= 0xd8_00 && code <= 0xdf_ff) || code > 0x10_ff_ff ? '�' : String.fromCodePoint(code);
   });
 
 const escapeHtmlAttribute = (value: string): string =>

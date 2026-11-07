@@ -218,6 +218,41 @@ describe('MDX round trips', () => {
     expect(getMarkdown(createEditor(saved))).toBe(saved);
   });
 
+  it('decodes references case-sensitively, keeps partial names, and reads invalid code points as U+FFFD', () => {
+    const source = 'Intro.\n\n<Card title="&Lt; &notit; &#xD800; &#0; &AMP;" href="/x">\n\nBody\n\n</Card>\n';
+    const editor = createEditor(source);
+    let card: { attrs: Record<string, unknown> } | undefined;
+    let position = -1;
+    editor.state.doc.descendants((node, at) => {
+      if (node.type.name === 'mdxCard') {
+        card = node;
+        position = at;
+      }
+    });
+    // `&Lt;` is "≪", not "<"; `&notit;` isn't a reference (not "¬it;").
+    expect(card?.attrs.title).toBe('≪ &notit; � � &');
+    editor.commands.command(({ tr }) => {
+      tr.setNodeAttribute(position, 'title', `${String(card?.attrs.title)}!`);
+      return true;
+    });
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('title="≪ &amp;notit; � � &amp;!"');
+    // No lone surrogate reaches the saved source, so it reloads the same.
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it.each(['> [!NOTE]\n> ![alt](/img.png)\n> **second**', '> [!NOTE]\n> first\n>\n> **second**'])(
+    'keeps a GitHub alert paragraph that starts with bold after another block, across two saves: %j',
+    (source) => {
+      const saved = getMarkdown(createEditor(source));
+      if (source.includes('![alt]')) expect(saved).toContain('![alt](/img.png)');
+      expect(saved).toContain('**second**');
+      expect(saved).not.toContain('****');
+      expect(createEditor(saved).state.doc.firstChild?.type.name).toBe('callout');
+      expect(getMarkdown(createEditor(saved))).toBe(saved);
+    },
+  );
+
   it('keeps components after an unmatched backtick, across a heading', () => {
     // A backtick that isn't closed on its line must not hide the blocks after it.
     const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';
