@@ -22,6 +22,12 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
 const newSecret = (): string => randomBytes(32).toString('base64url');
+/** The stored identity of a JWT reader: its issuer and subject, kept apart so a
+ *  subject that contains the issuer text can't collide with another reader.
+ *  JSON keeps the pair unambiguous and is valid PostgreSQL text, which can't
+ *  contain a NUL byte. */
+export const jwtReaderIdentity = (issuer: string, subject: string): string => JSON.stringify([issuer, subject]);
+
 const cookieName = (projectId: string): string => `nibleaf_reader_${projectId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
 const requestFingerprint = (ctx: Context<HonoEnv>) => ({
   ipHash: ctx.req.header('x-forwarded-for') ? sha256(ctx.req.header('x-forwarded-for') as string) : null,
@@ -420,7 +426,7 @@ export const jwtReaderHandoff = async (ctx: Context<HonoEnv>, projectId: string,
   await assertAudiences(projectId, audienceIds);
   const subject = String(claimAt(payload, configuration.subjectClaim) ?? payload.sub ?? '');
   if (!subject) throw badRequest('The JWT subject claim is missing.');
-  const externalSubject = `${configuration.issuer}\0${subject}`;
+  const externalSubject = jwtReaderIdentity(configuration.issuer, subject);
   const rawEmail = claimAt(payload, configuration.emailClaim);
   const rawName = claimAt(payload, configuration.nameClaim);
   const email = typeof rawEmail === 'string' && rawEmail.includes('@') ? rawEmail.trim().toLowerCase().slice(0, 320) : null;
