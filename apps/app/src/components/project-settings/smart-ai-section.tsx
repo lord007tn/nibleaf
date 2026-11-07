@@ -1,5 +1,6 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
@@ -87,6 +88,7 @@ function SmartAiSkeleton() {
 function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; project: Project; refetch: () => Promise<unknown> }) {
   const t = useT();
   const select = useSelectWorkspaceAi(project.id);
+  const confirm = useConfirm();
   const reindex = useCreateProjectSearchReindex(project.id);
   const [refreshing, setRefreshing] = useState(false);
   const refresh = async () => {
@@ -120,7 +122,16 @@ function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; projec
         <Button
           disabled={select.isPending || data.selectedProvider === 'disabled'}
           loading={selecting === 'disabled'}
-          onClick={() => select.mutate({ providerId: 'disabled', answersEnabled: false }, { onSuccess: () => toast.success(t('common.saved')) })}
+          onClick={async () => {
+            const approved = await confirm({
+              title: t('settings.smartAi.disable'),
+              description: t('settings.smartAi.disableConfirm.description'),
+              confirmLabel: t('settings.smartAi.disable'),
+              destructive: true,
+            });
+            if (!approved) return;
+            select.mutate({ providerId: 'disabled', answersEnabled: false }, { onSuccess: () => toast.success(t('common.saved')) });
+          }}
           type="button"
           variant="outline"
         >

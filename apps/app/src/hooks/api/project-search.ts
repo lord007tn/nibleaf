@@ -5,7 +5,8 @@ import {
   type UpdateProjectSearchConfigurationBody,
   updateProjectSearchConfigurationBody,
 } from '@nibleaf/validators';
-import { keepPreviousData, queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';

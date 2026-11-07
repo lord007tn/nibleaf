@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hooks = vi.hoisted(() => {
   const mutation = () => ({ isPending: false, variables: undefined as unknown, mutate: vi.fn() });
-  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn() };
+  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn(), confirm: vi.fn() };
 });
 
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => hooks.confirm }));
 const toasts = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }));
 vi.mock('sonner', () => ({ toast: toasts }));
 
@@ -42,6 +43,7 @@ const ADMIN = 'admin';
 const roots: Array<ReturnType<typeof createRoot>> = [];
 
 beforeEach(() => {
+  hooks.confirm.mockReset().mockResolvedValue(false);
   toasts.error.mockClear();
   toasts.success.mockClear();
   for (const mutation of [hooks.create, hooks.rotate, hooks.revoke]) {
@@ -327,4 +329,50 @@ describe('API-key actions', () => {
     const confirm = button(document.querySelector('[role="alertdialog"]') as ParentNode, 'settings.apiKeys.revoke');
     expect(confirm?.getAttribute('aria-busy')).toBe('true');
   });
+});
+
+describe('API-key rotation confirmation', () => {
+  it('does not rotate before confirmation or after cancellation', async () => {
+    hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true })]));
+    let decide: (value: boolean) => void = () => undefined;
+    hooks.confirm.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          decide = resolve;
+        }),
+    );
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.apiKeys.rotate')?.click());
+    expect(hooks.rotate.mutate).not.toHaveBeenCalled();
+    expect(hooks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'settings.apiKeys.rotateConfirm.description', destructive: true }),
+    );
+    await act(async () => decide(false));
+    expect(hooks.rotate.mutate).not.toHaveBeenCalled();
+  });
+
+  it('rotates the chosen key only after approval', async () => {
+    hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true })]));
+    hooks.confirm.mockResolvedValue(true);
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.apiKeys.rotate')?.click());
+    expect(hooks.rotate.mutate).toHaveBeenCalledOnce();
+    expect(hooks.rotate.mutate).toHaveBeenCalledWith(expect.objectContaining({ id: 'key-1' }), expect.any(Object));
+  });
+});
+
+it.each([
+  { expiresAt: new Date(0).toISOString(), message: 'settings.apiKeys.rotateConfirm.expiredDescription' },
+  { expiresAt: null, message: 'settings.apiKeys.rotateConfirm.legacyDescription' },
+  { expiresAt: new Date(Date.now() + 86_400_000).toISOString(), message: 'settings.apiKeys.rotateConfirm.description' },
+])('explains the replacement lifetime for expiry $expiresAt', async ({ expiresAt, message }) => {
+  hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true, expiresAt })]));
+  hooks.confirm.mockResolvedValue(true);
+  const host = await renderTab();
+  await act(async () => button(host, 'settings.apiKeys.rotate')?.click());
+  expect(hooks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: message }));
+  expect(hooks.rotate.mutate).toHaveBeenCalledWith(
+    expect.objectContaining({ body: expect.objectContaining({ expiresInDays: 90 }) }),
+    expect.any(Object),
+  );
 });
