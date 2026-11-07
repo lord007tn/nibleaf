@@ -29,8 +29,8 @@ export const listBranches = async (projectId: string): Promise<Omit<Branch, 'for
   await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: publicBranch });
 
 /** The project's required default branch. Missing data is an invariant error. */
-export const getDefaultBranch = async (projectId: string) => {
-  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2, omit: publicBranch });
+export const getDefaultBranch = async (projectId: string, db: Prisma.TransactionClient = prisma) => {
+  const defaults = await db.branch.findMany({ where: { projectId, isDefault: true }, take: 2, omit: publicBranch });
   if (defaults.length !== 1 || !defaults[0]) {
     throw new Error(`Project ${projectId} must have exactly one default branch.`);
   }
@@ -39,8 +39,8 @@ export const getDefaultBranch = async (projectId: string) => {
 
 /** Throw unless the branch exists in the project; returns it (without the
  *  fork baseline). */
-export const assertBranchInProject = async (projectId: string, id: string) => {
-  const branch = await prisma.branch.findFirst({ where: { id, projectId }, omit: publicBranch });
+export const assertBranchInProject = async (projectId: string, id: string, db: Prisma.TransactionClient = prisma) => {
+  const branch = await db.branch.findFirst({ where: { id, projectId }, omit: publicBranch });
   if (!branch) {
     throw notFound('branch', { id });
   }

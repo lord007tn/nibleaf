@@ -24,13 +24,13 @@ const app = new Hono<HonoEnv>()
   })
   .patch('/:id/role', ...membersRoutes.updateRole, validator('json', updateMemberRoleBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    const { role } = getContextMembershipOrThrow();
-    return ctx.json({ data: await updateMemberRole(organizationId, ctx.req.param('id'), role, ctx.req.valid('json')) }, 200);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await updateMemberRole(organizationId, ctx.req.param('id'), user.id, ctx.req.valid('json')) }, 200);
   })
   .delete('/:id', ...membersRoutes.remove, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    const { role } = getContextMembershipOrThrow();
-    return ctx.json({ data: await removeMember(organizationId, ctx.req.param('id'), role) }, 200);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await removeMember(organizationId, ctx.req.param('id'), user.id) }, 200);
   })
   .delete('/invitations/:id', ...membersRoutes.cancelInvite, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

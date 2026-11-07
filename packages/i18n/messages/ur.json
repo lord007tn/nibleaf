@@ -3614,5 +3614,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

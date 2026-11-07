@@ -1,12 +1,12 @@
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
-import { Prisma, prisma } from '@nibleaf/database';
+import { type Deployment, Prisma, prisma } from '@nibleaf/database';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { type RedirectValidationIssue, summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
-import { badRequest, notFound } from '@/errors';
+import { AppError, badRequest, notFound } from '@/errors';
 import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
 
@@ -437,6 +437,24 @@ export interface PublishDeploymentBody extends CreateDeploymentBody {
   skipGrammarChecks?: boolean;
 }
 
+/** A terminal enqueue failure is visible immediately and cannot be activated by
+ * a delayed queue acknowledgement. The worker claims PENDING atomically. */
+const enqueuePublish = async (deployment: Deployment, data: PublishDeploymentJobData) => {
+  try {
+    await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data }, { jobId: `publish-${deployment.id}` });
+  } catch (cause) {
+    const message = 'Publishing could not be queued. Please try publishing again.';
+    const settled = await prisma.deployment.updateMany({
+      where: { id: deployment.id, projectId: deployment.projectId, status: 'PENDING' },
+      data: { status: 'FAILED', error: message, completedAt: new Date() },
+    });
+    // A worker may already have claimed an accepted job whose ACK was lost.
+    if (settled.count === 0) return getDeployment(deployment.projectId, deployment.id);
+    throw new AppError({ code: 'http:internal', message, details: { deploymentId: deployment.id }, cause });
+  }
+  return deployment;
+};
+
 /** Create a PENDING deployment and enqueue the publish job for the worker to build. */
 export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: PublishDeploymentBody, locale?: string) => {
   const project = await assertProjectInOrg(organizationId, projectId);
@@ -469,13 +487,13 @@ export const createDeployment = async (organizationId: string, projectId: string
     ...(body.firstPublishAttribution ? { firstPublishAttribution: body.firstPublishAttribution } : {}),
     locale,
   };
-  await createJob(QueueNames.PUBLISH, { name: 'publish-deployment', data: jobData });
+  const queued = await enqueuePublish(deployment, jobData);
   logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: false, version: deployment.version } });
-  return deployment;
+  return queued;
 };
 
 /** Re-publish a previous READY deployment's snapshot as a new deployment. */
-export const rollbackDeployment = async (organizationId: string, projectId: string, deploymentId: string, userId: string) => {
+export const rollbackDeployment = async (organizationId: string, projectId: string, deploymentId: string, userId: string, locale?: string) => {
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
@@ -487,18 +505,18 @@ export const rollbackDeployment = async (organizationId: string, projectId: stri
   if (target.status !== 'READY' || !target.snapshot) {
     throw badRequest('Only a published deployment with a snapshot can be rolled back to.', { id: deploymentId });
   }
-  return createWithNextVersion(projectId, (version) =>
+  const deployment = await createWithNextVersion(projectId, (version) =>
     prisma.deployment.create({
       data: {
         projectId,
         version,
-        status: 'READY',
+        status: 'PENDING',
         snapshot: target.snapshot as Prisma.InputJsonValue,
         pagesCount: target.pagesCount,
         commitMessage: `Rollback to v${target.version}`,
         createdById: userId,
-        completedAt: new Date(),
       },
     }),
   );
+  return enqueuePublish(deployment, { deploymentId: deployment.id, projectId, auto: false, locale });
 };

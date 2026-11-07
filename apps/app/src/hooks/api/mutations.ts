@@ -311,7 +311,7 @@ const invalidatePublishState = (qc: QueryClient, projectId: string) => {
  *  READY can tell it was in flight. */
 const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deployment) => {
   qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-    old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+    !old?.some((item) => item.id === deployment.id) ? [deployment, ...(old ?? [])] : old,
   );
   invalidatePublishState(qc, projectId);
 };
@@ -351,7 +351,7 @@ export const useRollback = (projectId: string) => {
         await api.app.projects[':projectId'].deployments[':id'].rollback.$post({ param: { projectId, id: deploymentId } }),
         'Could not roll back.',
       ),
-    onSuccess: () => invalidatePublishState(qc, projectId),
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 

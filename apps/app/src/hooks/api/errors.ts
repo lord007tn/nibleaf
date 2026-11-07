@@ -6,6 +6,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // Stable server codes and detail reasons share this map. Keep each entry
 // translated in EN/AR and covered through the existing action-specific caller.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
+  ['slug_taken', 'editor.reorderSlugTaken'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],
   ['promote_raced', 'error.promoteRaced'],
@@ -31,6 +32,7 @@ export function friendlyErrorMessage(
 ): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
+    // Shared code/reason messages take precedence over the caller's statusKeys.
     const messageKey = (error.reason ? API_ERROR_MESSAGE_KEYS.get(error.reason) : undefined) ?? API_ERROR_MESSAGE_KEYS.get(error.code ?? '');
     if (messageKey) return t(messageKey);
     const specific = statusKeys?.[error.status];
