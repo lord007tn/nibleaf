@@ -35,6 +35,8 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
   let deployments: typeof import('../deployments');
   let branches: typeof import('../branches');
   let gitImport: typeof import('../git-import');
+  let persistence: typeof import('../importers/persistence');
+  let starterContent: typeof import('@nibleaf/auth/starter-content');
   const organizationIds: string[] = [];
 
   beforeAll(async () => {
@@ -46,6 +48,8 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     deployments = await import('../deployments');
     branches = await import('../branches');
     gitImport = await import('../git-import');
+    persistence = await import('../importers/persistence');
+    starterContent = await import('@nibleaf/auth/starter-content');
     // Loading the whole server action graph cold can take longer than the
     // default hook timeout on a busy machine.
   }, 120_000);
@@ -229,6 +233,71 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     // Deleting the page deletes its source.
     await db.prisma.page.delete({ where: { id: page.id } });
     expect(await db.prisma.pageGitImportSource.count({ where: { pageId: page.id } })).toBe(0);
+  }, 60_000);
+
+  it('copies one import identity per path when the source branch also holds a stale row for it', async () => {
+    const setup = await fixture();
+    const current = await setup.createPage({ title: 'Intro', slug: 'intro' });
+    const moved = await setup.createPage({ title: 'Intro copy', slug: 'intro-copy' });
+    const scope = { projectId: setup.project.id, languageId: setup.language.id, path: 'docs/intro.md' };
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: current.id, branchId: setup.branch.id } });
+    // A page merged in from another branch before any re-import repaired its row.
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: moved.id, branchId: `merged-${randomUUID()}` } });
+
+    const version = await branches.createBranch(setup.project.id, { name: `version-${randomUUID()}` });
+
+    const copied = await db.prisma.pageGitImportSource.findMany({ where: { branchId: version.id }, include: { page: { select: { slug: true } } } });
+    expect(copied.map((row) => [row.page.slug, row.path])).toEqual([['intro', 'docs/intro.md']]);
+  }, 60_000);
+
+  it('keeps a starter page an autosave commits while the import cleanup waits for it', async () => {
+    const setup = await fixture();
+    const page = await db.prisma.page.create({
+      data: {
+        projectId: setup.project.id,
+        branchId: setup.branch.id,
+        languageId: setup.language.id,
+        title: starterContent.STARTER_GETTING_STARTED_TITLE,
+        icon: starterContent.STARTER_GETTING_STARTED_ICON,
+        slug: 'getting-started',
+        path: 'getting-started',
+        content: starterContent.STARTER_GETTING_STARTED_CONTENT,
+      },
+    });
+    let release: () => void = () => undefined;
+    let held: (pid: number) => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const holderPid = new Promise<number>((resolve) => {
+      held = resolve;
+    });
+    // A content-only autosave holds just this page row (protocol rule 4).
+    const save = db.prisma.$transaction(
+      async (tx) => {
+        await tx.page.update({ where: { id: page.id }, data: { content: `${starterContent.STARTER_GETTING_STARTED_CONTENT}\n\nOur product.` } });
+        const [backend] = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`;
+        held(backend?.pid ?? 0);
+        await gate;
+      },
+      { timeout: 15_000 },
+    );
+    const pid = await holderPid;
+    const cleanup = persistence.removeImportPlaceholders({ projectId: setup.project.id, branchId: setup.branch.id, languageId: setup.language.id });
+    let waiting = 0;
+    for (let attempt = 0; attempt < 200 && waiting === 0; attempt++) {
+      const [row] = await db.prisma.$queryRaw<Array<{ count: number }>>`
+        SELECT count(*)::int AS count FROM pg_stat_activity
+        WHERE datname = current_database() AND ${pid} = ANY(pg_blocking_pids(pid))`;
+      waiting = row?.count ?? 0;
+      if (waiting === 0) await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(waiting).toBe(1);
+    release();
+    await save;
+
+    await expect(cleanup).resolves.toBe(0);
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toContain('Our product.');
   }, 60_000);
 
   it('keeps a renamed imported page linked after a preserving import replaces the draft', async () => {

@@ -1,3 +1,7 @@
+/** The starter site's Getting started page title and icon, as sign-up creates it. */
+export const STARTER_GETTING_STARTED_TITLE = 'Getting started';
+export const STARTER_GETTING_STARTED_ICON = 'rocket';
+
 /** The starter site's Getting started page, exactly as sign-up creates it.
  * Importers compare against it to recognise an untouched starter page: any
  * edit, even whitespace-insensitive additions, makes the page the writer's. */

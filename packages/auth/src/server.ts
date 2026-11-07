@@ -25,7 +25,11 @@ import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
 import { googleOAuthEnabled } from './providers';
-import { STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT } from './starter-content';
+import {
+  STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT,
+  STARTER_GETTING_STARTED_ICON,
+  STARTER_GETTING_STARTED_TITLE,
+} from './starter-content';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -500,7 +504,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
   const { project, language, branch } = await createProjectWithInvariants();
   const base = { projectId: project.id, languageId: language.id, branchId: branch.id };
   const topLevel: Array<{ title: string; icon: string; content: string; position: number }> = [
-    { title: 'Getting started', icon: 'rocket', content: GETTING_STARTED_CONTENT, position: 0 },
+    { title: STARTER_GETTING_STARTED_TITLE, icon: STARTER_GETTING_STARTED_ICON, content: GETTING_STARTED_CONTENT, position: 0 },
     { title: 'Installation', icon: 'download', content: INSTALLATION_CONTENT, position: 1 },
     { title: 'Components tour', icon: 'puzzle', content: COMPONENTS_TOUR_CONTENT, position: 2 },
   ];
