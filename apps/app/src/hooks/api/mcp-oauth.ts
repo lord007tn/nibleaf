@@ -1,7 +1,8 @@
 import { useT } from '@nibleaf/i18n/react';
 import type { McpKeyPreset } from '@nibleaf/shared/mcp';
 import type { CreateMcpOAuthGrantBody } from '@nibleaf/validators';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';

@@ -14,11 +14,13 @@ const mocks = vi.hoisted(() => ({
   project: undefined as { hasPublishedVersion?: boolean } | undefined,
   cancel: { isPending: false, variables: undefined as string | undefined, mutate: vi.fn() },
   locale: 'en' as 'en' | 'ar',
+  lastError: null as string | null,
 }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error } }));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
   return {
+    useT: () => (key: string) => key,
     useLocale: () => ({
       locale: mocks.locale,
       t: (key: Parameters<typeof translateFn>[0], variables?: Parameters<typeof translateFn>[1]) =>
@@ -41,6 +43,7 @@ vi.mock('@/hooks/api/exports', () => ({
         timezone: 'UTC',
         nextRunAt: null,
         _count: { jobs: 2 },
+        lastError: mocks.lastError,
       },
     ],
   }),
@@ -69,6 +72,7 @@ describe('export schedule permissions', () => {
     mocks.project = { hasPublishedVersion: true };
     mocks.cancel = { isPending: false, variables: undefined, mutate: vi.fn() };
     mocks.locale = 'en';
+    mocks.lastError = null;
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -87,6 +91,37 @@ describe('export schedule permissions', () => {
 
     expect(mocks.create).toHaveBeenCalledWith(['MARKDOWN'], expect.any(Object));
     expect(mocks.scheduleMutation).not.toHaveBeenCalled();
+  });
+
+  it('shows a plain export failure and keeps the raw error in closed details', async () => {
+    mocks.runs = [
+      {
+        id: 'failed',
+        formats: ['PDF'],
+        status: 'FAILED',
+        trigger: 'MANUAL',
+        attempts: 3,
+        createdAt: '2026-11-07T00:00:00Z',
+        snapshot: { deploymentVersion: 1, pagesCount: 1 },
+        artifacts: [],
+        error: 'ProviderError: fetch failed at renderer.ts:1',
+      },
+    ];
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.history')?.click());
+    expect(container.textContent).toContain('failures.connection');
+    expect(container.querySelector('details')?.open).toBe(false);
+    expect(container.querySelector('pre')?.textContent).toContain('ProviderError');
+    expect([...container.querySelectorAll('p')].some((p) => p.textContent?.includes('ProviderError'))).toBe(false);
+  });
+
+  it('explains a schedule with no published version and retains its details', async () => {
+    mocks.lastError = 'No published revision is available.';
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    await act(async () => findButton('settings.exports.workflow.schedules')?.click());
+    expect(container.textContent).toContain('failures.unpublished');
+    expect(container.querySelector('details')?.open).toBe(false);
+    expect(container.querySelector('pre')?.textContent).toBe(mocks.lastError);
   });
 
   it('asks to publish first instead of offering an export of a site that was never published', async () => {
