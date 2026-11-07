@@ -359,6 +359,7 @@
   "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_notconfigured": "AI assist is not set up for this site. Ask a site administrator to connect a provider in Smart AI.",
   "editor_ai_disabled": "AI assist is turned off for this site. Ask a site administrator to enable Smart AI.",
+  "editor_ai_instancedisabled": "AI drafting is turned off on this Nibleaf server.",
   "editor_ai_ratelimited": "已达到每日 AI 使用上限。请明天再试。",
   "editor_ai_summarylabel": "总结",
   "editor_ai_suggestionlabel": "建议",

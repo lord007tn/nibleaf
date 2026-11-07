@@ -120,12 +120,19 @@ describe('draft request execution', () => {
   });
   it.each([
     ['not_configured', 503],
-    ['disabled', 403],
+    ['site_disabled', 403],
+    ['instance_disabled', 403],
   ] as const)('returns an AI-specific code for %s without consuming quota', async (reason, status) => {
     mocks.resolve.mockResolvedValue({ runtime: null, reason });
     const response = await appFor().request(base, post());
     expect(response.status).toBe(status);
-    expect(await response.json()).toEqual({ error: { code: `ai:${reason}`, message: `ai:${reason}`, details: { reason } } });
+    expect(await response.json()).toEqual({
+      error: {
+        code: reason === 'not_configured' ? 'ai:not_configured' : 'ai:disabled',
+        message: reason === 'not_configured' ? 'ai:not_configured' : 'ai:disabled',
+        details: { reason },
+      },
+    });
     expect(mocks.quota).not.toHaveBeenCalled();
     expect(mocks.draft).not.toHaveBeenCalled();
   });

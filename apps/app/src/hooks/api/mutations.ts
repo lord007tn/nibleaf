@@ -682,7 +682,7 @@ export const useAiDraft = (projectId: string) => {
       errorMessage: (error) => {
         if (error instanceof ApiResponseError) {
           if (error.code === 'ai:not_configured') return t('editor.ai.notConfigured');
-          if (error.code === 'ai:disabled') return t('editor.ai.disabled');
+          if (error.code === 'ai:disabled') return t(error.reason === 'instance_disabled' ? 'editor.ai.instanceDisabled' : 'editor.ai.disabled');
         }
         return friendlyErrorMessage(t, error, 'editor.ai.draftError', { 429: 'editor.ai.rateLimited', 503: 'editor.ai.unavailable' });
       },

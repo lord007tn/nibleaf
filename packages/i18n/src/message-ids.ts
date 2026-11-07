@@ -551,6 +551,7 @@ export const MESSAGE_IDS = {
   'editor.ai.unavailable': 'editor_ai_unavailable',
   'editor.ai.notConfigured': 'editor_ai_notconfigured',
   'editor.ai.disabled': 'editor_ai_disabled',
+  'editor.ai.instanceDisabled': 'editor_ai_instancedisabled',
   'editor.ai.rateLimited': 'editor_ai_ratelimited',
   'editor.ai.summaryLabel': 'editor_ai_summarylabel',
   'editor.ai.suggestionLabel': 'editor_ai_suggestionlabel',

@@ -44,9 +44,9 @@ export interface AiDraftRuntime extends WorkspaceAiRuntime {
 
 /** Resolve once per request so capability and drafting agree on connection policy. */
 export const resolveAiDraft = async (projectId: string) => {
-  if (envExtras.AI_DAILY_LIMIT === 0) return { runtime: null, reason: 'disabled' as const };
+  if (envExtras.AI_DAILY_LIMIT === 0) return { runtime: null, reason: 'instance_disabled' as const };
   const resolved = await resolveWorkspaceAiConfiguration(projectId, { instanceFallback: true });
-  if (!resolved.runtime) return { runtime: null, reason: resolved.reason };
+  if (!resolved.runtime) return { runtime: null, reason: resolved.reason === 'disabled' ? ('site_disabled' as const) : resolved.reason };
   const source = resolved.runtime.revision === 'instance' ? ('instance' as const) : ('workspace' as const);
   return {
     runtime: { ...resolved.runtime, source, answerModel: source === 'instance' ? env.AI_DRAFT_MODEL : resolved.runtime.answerModel },
@@ -58,7 +58,7 @@ export interface AiDraftCapability {
   available: boolean;
   source: AiDraftRuntime['source'] | null;
   provider: AiDraftRuntime['providerId'] | null;
-  reason: 'not_configured' | 'disabled' | 'quota' | 'quota_unavailable' | null;
+  reason: 'not_configured' | 'site_disabled' | 'instance_disabled' | 'quota' | 'quota_unavailable' | null;
 }
 
 export const getAiDraftCapability = async (projectId: string, organizationId: string): Promise<AiDraftCapability> => {

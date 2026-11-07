@@ -23,7 +23,11 @@ const app = new Hono<HonoEnv>()
     const projectId = z.string().parse(ctx.req.param('projectId'));
     await assertProjectInOrg(organizationId, projectId);
     const { runtime, reason } = await resolveAiDraft(projectId);
-    if (!runtime) throw new AppError({ code: reason === 'disabled' ? 'ai:disabled' : 'ai:not_configured', details: { reason } });
+    if (!runtime)
+      throw new AppError({
+        code: reason === 'site_disabled' || reason === 'instance_disabled' ? 'ai:disabled' : 'ai:not_configured',
+        details: { reason },
+      });
     // Workspace and instance connections share the same daily drafting budget.
     await assertAiQuota(organizationId);
     await trackProjectEvent(
