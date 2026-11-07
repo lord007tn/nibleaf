@@ -3,12 +3,14 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 
+const state = vi.hoisted(() => ({ confirm: vi.fn(), query: { isPending: true, data: undefined as unknown } }));
 const mutation = { mutate: vi.fn(), isPending: false };
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('@/env', () => ({ env: { VITE_APP_URL: 'https://app.example.com' } }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useGitWorkflow: () => ({ isPending: true, data: undefined }),
+  useGitWorkflow: () => state.query,
   useAuthorizeGitWorkflow: () => mutation,
   useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
@@ -40,6 +42,41 @@ it('first loads as the shell both the connect and the connected screens share, n
     // Placeholder blocks are hidden from assistive tech; the status above announces the load.
     expect(host.querySelector('[data-slot="skeleton"]')?.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(host.querySelector('input')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it.each([false, true])('confirms webhook secret replacement before sending the request (%s)', async (approved) => {
+  mutation.mutate.mockClear();
+  state.confirm.mockResolvedValue(approved);
+  state.query = {
+    isPending: false,
+    data: {
+      repository: 'team/docs',
+      baseBranch: 'main',
+      headBranch: 'docs',
+      contentPath: 'content',
+      lastSyncStatus: 'READY',
+      pullRequests: [],
+      conflicts: [],
+      operations: [],
+    },
+  };
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<GitWorkflow projectId="site-1" />));
+    const button = (key: string) => [...host.querySelectorAll('button')].find((item) => item.textContent?.includes(key));
+    await act(async () => button('settings.git.workflow.nav.connection')?.click());
+    expect(button('settings.git.workflow.rotateSecret')).toBeDefined();
+    await act(async () => button('settings.git.workflow.rotateSecret')?.click());
+    expect(state.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'settings.git.workflow.rotateConfirm.description', destructive: true }),
+    );
+    expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
   } finally {
     await act(async () => root.unmount());
     host.remove();

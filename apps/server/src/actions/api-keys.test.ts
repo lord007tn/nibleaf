@@ -50,6 +50,27 @@ describe('API-key rotation', () => {
     database.create.mockResolvedValue(successor);
   });
 
+  it.each([new Date('2027-02-03T12:34:56.789Z'), new Date('2026-01-01T00:00:00.000Z')])(
+    'preserves the exact original expiry %s regardless of the form expiry',
+    async (expiresAt) => {
+      database.findFirst.mockResolvedValue({ ...current, expiresAt });
+      database.updateMany.mockResolvedValue({ count: 1 });
+      await rotateApiKey('org-1', 'project-1', current.id, member, { ...body, expiresInDays: 365 });
+      expect(database.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expiresAt }) }));
+      expect(database.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ expiresAt: true }) }));
+    },
+  );
+
+  it('gives a legacy key without an expiry the existing bounded lifetime', async () => {
+    database.findFirst.mockResolvedValue({ ...current, expiresAt: null });
+    database.updateMany.mockResolvedValue({ count: 1 });
+    const before = Date.now();
+    await rotateApiKey('org-1', 'project-1', current.id, member, body);
+    const expiry = database.create.mock.calls[0]?.[0].data.expiresAt.getTime();
+    expect(expiry).toBeGreaterThanOrEqual(before + 90 * 86_400_000);
+    expect(expiry).toBeLessThanOrEqual(Date.now() + 90 * 86_400_000);
+  });
+
   it('allows only one concurrent rotation to claim the current key', async () => {
     database.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
 

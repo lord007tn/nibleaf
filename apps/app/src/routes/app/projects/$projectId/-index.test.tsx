@@ -5,13 +5,15 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
+const navigation = vi.hoisted(() => ({ members: {} as Record<string, unknown>, deployments: {} as Record<string, unknown> }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } } }) }));
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
-  Link: ({ children, className }: { children?: ReactNode; className?: string }) => (
-    <a className={className} href="/link">
+  Link: ({ children, className, search }: { children?: ReactNode; className?: string; search?: { section?: string } }) => (
+    <a className={className} href={search?.section ? `/settings?section=${search.section}` : '/link'}>
       {children}
     </a>
   ),
@@ -19,11 +21,11 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useDeployments: () => pending,
+  useDeployments: () => navigation.deployments,
   useDomains: () => pending,
   usePages: () => pending,
   useProject: () => pending,
-  useProjectMembers: () => pending,
+  useProjectMembers: () => navigation.members,
   usePublishAnyway: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('@/hooks/api/analytics', () => ({ useProjectAnalytics: analytics.hook }));
@@ -54,6 +56,8 @@ describe('site overview first load', () => {
   let root: Root;
 
   beforeEach(() => {
+    navigation.members = pending;
+    navigation.deployments = pending;
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -67,6 +71,22 @@ describe('site overview first load', () => {
 
   beforeEach(() => {
     analytics.hook.mockReturnValue(pending);
+  });
+
+  it.each(['member', 'admin', 'owner'])('keeps overview settings links within the %s role', async (role) => {
+    navigation.members = { isPending: false, data: { members: [{ role, user: { id: 'viewer' } }] } };
+    navigation.deployments = { isPending: false, data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const sections = [...container.querySelectorAll('a[href^="/settings"]')].map((link) =>
+      new URL(link.getAttribute('href') ?? '', 'https://example.test').searchParams.get('section'),
+    );
+    if (role === 'member') {
+      expect(sections).toContain('languages');
+      expect(sections.every((section) => ['members', 'languages'].includes(section ?? ''))).toBe(true);
+      expect(container.textContent).toContain('overview.settings.askAdmin');
+    } else {
+      expect(sections).toEqual(expect.arrayContaining(['members', 'integrations', 'plan', 'general', 'domain']));
+    }
   });
 
   it('prefetches the page views the overview opens with, in the loader', async () => {

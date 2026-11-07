@@ -221,3 +221,43 @@ describe('Paraglide message catalogs', () => {
     expect(viteConfig).toContain("outputStructure: 'message-modules'");
   });
 });
+
+describe('dashboard safety copy', () => {
+  it('uses consistent Arabic role names', () => {
+    const ar = loadCatalog('ar');
+    expect(ar.members_role_admin).toBe('مشرف');
+    expect(ar.settings_members_role_admin).toBe('مشرف');
+    expect(ar.members_role_owner).toBe('المالك');
+    expect(ar.settings_members_role_owner).toBe('المالك');
+    expect(ar.members_role_editor).toBe('محرّر');
+    for (const key of [
+      'settings_apikeys_adminonly',
+      'settings_members_roleshint',
+      'settings_danger_transfer_description',
+      'settings_danger_transfer_confirm',
+      'settings_permissions_title',
+      'settings_permissions_body',
+    ]) {
+      expect(ar[key]).toMatch(/مشرف/);
+      expect(ar[key]).not.toMatch(/مسؤول|مدير/);
+    }
+  });
+
+  it('explains immediate credential invalidation and default URL language changes in both supported catalogs', () => {
+    const en = loadCatalog('en');
+    const ar = loadCatalog('ar');
+    expect(en.settings_apikeys_rotateconfirm_description).toMatch(/immediately/);
+    expect(en.settings_git_workflow_rotateconfirm_description).toMatch(/immediately/);
+    expect(en.settings_languages_defaultconfirm_description).toMatch(/without a language prefix/);
+    for (const key of [
+      'settings_apikeys_rotateconfirm_description',
+      'settings_git_workflow_rotateconfirm_description',
+      'settings_languages_defaultconfirm_description',
+      'settings_smartai_disableconfirm_description',
+      'settings_danger_transfer_noadmins',
+    ]) {
+      expect(ar[key]).toMatch(/[ء-ي]/);
+      expect(ar[key]).not.toBe(en[key]);
+    }
+  });
+});

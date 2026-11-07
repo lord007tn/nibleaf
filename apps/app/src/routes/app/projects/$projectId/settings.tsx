@@ -28,7 +28,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ConfigSection, type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
@@ -257,6 +257,15 @@ function ProjectSettingsPage() {
   }));
   const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
 
+  // Search validation has no session role. Resolve access here, before any
+  // section mounts, and replace locked/default links with the first usable one.
+  const redirectSection = availableSections[0]?.id;
+  useEffect(() => {
+    if (!membersPending && !membersError && !sessionPending && currentMember && !sectionAllowed && redirectSection) {
+      void navigate({ search: { section: redirectSection }, replace: true });
+    }
+  }, [membersPending, membersError, sessionPending, currentMember, sectionAllowed, redirectSection, navigate]);
+
   if (membersError) {
     return (
       <div className="p-6">
@@ -265,7 +274,7 @@ function ProjectSettingsPage() {
     );
   }
 
-  if (membersPending || sessionPending) {
+  if (membersPending || sessionPending || (currentMember && !sectionAllowed)) {
     return (
       <div className="p-6">
         <SettingsFormSkeleton />

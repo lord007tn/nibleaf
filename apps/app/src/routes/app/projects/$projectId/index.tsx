@@ -3,6 +3,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
+import { canAdminister } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -37,6 +38,7 @@ import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/que
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
+import { useSession } from '@/services/auth-client';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 
@@ -74,6 +76,8 @@ function SiteOverviewPage() {
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
+  const { data: session } = useSession();
+  const canManageSettings = canAdminister(members?.members.find((member) => member.user.id === session?.user.id)?.role ?? '');
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
   const latestDeployment = deployments?.[0];
@@ -152,7 +156,7 @@ function SiteOverviewPage() {
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed ? <PublishNudge projectId={projectId} /> : null}
+      {deployments && !hasReadyDeployment && !publishFailed ? <PublishNudge canManageSettings={canManageSettings} projectId={projectId} /> : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
         <div className="rounded-xl border border-border bg-card p-5">
@@ -354,30 +358,42 @@ function SiteOverviewPage() {
               to="/app/projects/$projectId/settings"
             />
           </ManageRow>
-          <ManageRow icon={Plug} title={t('overview.link.integrations')} desc={t('overview.link.integrationsDesc')}>
-            <Link
-              aria-label={t('overview.link.integrations')}
-              className="absolute inset-0 rounded-xl"
-              params={{ projectId }}
-              search={{ section: 'integrations' }}
-              to="/app/projects/$projectId/settings"
-            />
+          <ManageRow
+            icon={Plug}
+            title={t('overview.link.integrations')}
+            desc={t(canManageSettings ? 'overview.link.integrationsDesc' : 'overview.settings.askAdmin')}
+          >
+            {canManageSettings ? (
+              <Link
+                aria-label={t('overview.link.integrations')}
+                className="absolute inset-0 rounded-xl"
+                params={{ projectId }}
+                search={{ section: 'integrations' }}
+                to="/app/projects/$projectId/settings"
+              />
+            ) : null}
           </ManageRow>
-          <ManageRow icon={CreditCard} title={t('overview.link.billing')} desc={t('overview.link.billingDesc')}>
-            <Link
-              aria-label={t('overview.link.billing')}
-              className="absolute inset-0 rounded-xl"
-              params={{ projectId }}
-              search={{ section: 'plan' }}
-              to="/app/projects/$projectId/settings"
-            />
+          <ManageRow
+            icon={CreditCard}
+            title={t('overview.link.billing')}
+            desc={t(canManageSettings ? 'overview.link.billingDesc' : 'overview.settings.askAdmin')}
+          >
+            {canManageSettings ? (
+              <Link
+                aria-label={t('overview.link.billing')}
+                className="absolute inset-0 rounded-xl"
+                params={{ projectId }}
+                search={{ section: 'plan' }}
+                to="/app/projects/$projectId/settings"
+              />
+            ) : null}
           </ManageRow>
           <ManageRow icon={SettingsIcon} title={t('overview.link.settings')} desc={t('overview.link.settingsDesc')}>
             <Link
               aria-label={t('overview.link.settings')}
               className="absolute inset-0 rounded-xl"
               params={{ projectId }}
-              search={{ section: 'general' }}
+              search={{ section: canManageSettings ? 'general' : 'languages' }}
               to="/app/projects/$projectId/settings"
             />
           </ManageRow>
@@ -502,7 +518,7 @@ function PublishFailureCard({
 const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
 
 /** First-publish checklist: shown until the site has a READY deployment. */
-function PublishNudge({ projectId }: { projectId: string }) {
+function PublishNudge({ projectId, canManageSettings }: { projectId: string; canManageSettings: boolean }) {
   const t = useT();
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -557,14 +573,16 @@ function PublishNudge({ projectId }: { projectId: string }) {
             search={{ publish: true }}
           />
         </NudgeStep>
-        <NudgeStep n={3} title={t('overview.nudge.step3')} desc={t('overview.nudge.step3Desc')}>
-          <Link
-            className="absolute inset-0"
-            aria-label={t('overview.nudge.step3')}
-            to="/app/projects/$projectId/settings"
-            params={{ projectId }}
-            search={{ section: 'domain' }}
-          />
+        <NudgeStep n={3} title={t('overview.nudge.step3')} desc={t(canManageSettings ? 'overview.nudge.step3Desc' : 'overview.settings.askAdmin')}>
+          {canManageSettings ? (
+            <Link
+              className="absolute inset-0"
+              aria-label={t('overview.nudge.step3')}
+              to="/app/projects/$projectId/settings"
+              params={{ projectId }}
+              search={{ section: 'domain' }}
+            />
+          ) : null}
         </NudgeStep>
       </ol>
     </div>

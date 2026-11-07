@@ -139,22 +139,24 @@ describe('site settings permissions', () => {
     ]);
   });
 
-  it.each([
-    { section: 'danger', testId: 'danger-settings' },
-    { section: 'smartAi', testId: 'smart-ai-settings' },
-  ])('explains a restricted $section direct link and provides working alternatives to an editor', async ({ section, testId }) => {
+  it.each(['general', 'danger', 'smartAi'])('redirects an editor from %s to the first permitted section with replace', async (section) => {
     mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
-
-    expect(container.querySelector(`[data-testid="${testId}"]`)).toBeNull();
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.permissions.title');
-    expect(container.querySelector('nav')?.textContent).not.toContain(`settings.${section}`);
-    expect(container.querySelector('a[href="/app/projects/project-1/editor"]')).not.toBeNull();
-    const usage = container.querySelector<HTMLButtonElement>('[role="status"] button');
-    await act(async () => usage?.click());
-    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'usage' }, replace: true });
+    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'languages' }, replace: true });
+    expect(container.textContent).not.toContain('settings.permissions.title');
+    expect(
+      container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="smart-ai-settings"]'),
+    ).toBeNull();
   });
 
+  it('does not redirect while membership is unknown or its request failed', async () => {
+    mocks.members.mockReturnValue({ isPending: true });
+    await act(async () => root.render(<SettingsPage />));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    mocks.members.mockReturnValue({ isPending: false, isError: true, refetch: mocks.refetch });
+    await act(async () => root.render(<SettingsPage />));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
   it('lets an editor manage content languages', async () => {
     mocks.section = 'languages';
     await act(async () => root.render(<SettingsPage />));

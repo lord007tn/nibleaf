@@ -6,8 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const hooks = vi.hoisted(() => {
   const mutation = () => ({ isPending: false, variables: undefined as unknown, mutate: vi.fn() });
-  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn() };
+  return { useApiKeys: vi.fn(), create: mutation(), rotate: mutation(), revoke: mutation(), testConnection: vi.fn(), confirm: vi.fn() };
 });
+
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => hooks.confirm }));
 
 vi.mock('@nibleaf/i18n/react', () => ({
   useLocale: () => ({ locale: 'en', t: (key: string, params?: Record<string, string>) => (params?.tool ? `${key}:${params.tool}` : key) }),
@@ -39,6 +41,7 @@ const ADMIN = 'admin';
 const roots: Array<ReturnType<typeof createRoot>> = [];
 
 beforeEach(() => {
+  hooks.confirm.mockReset().mockResolvedValue(false);
   for (const mutation of [hooks.create, hooks.rotate, hooks.revoke]) {
     mutation.isPending = false;
     mutation.variables = undefined;
@@ -290,5 +293,35 @@ describe('API-key actions', () => {
     await act(async () => roots[0]?.render(<ApiKeysTab projectId="project-1" role={MEMBER} />));
     const confirm = button(document.querySelector('[role="alertdialog"]') as ParentNode, 'settings.apiKeys.revoke');
     expect(confirm?.getAttribute('aria-busy')).toBe('true');
+  });
+});
+
+describe('API-key rotation confirmation', () => {
+  it('does not rotate before confirmation or after cancellation', async () => {
+    hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true })]));
+    let decide: (value: boolean) => void = () => undefined;
+    hooks.confirm.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          decide = resolve;
+        }),
+    );
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.apiKeys.rotate')?.click());
+    expect(hooks.rotate.mutate).not.toHaveBeenCalled();
+    expect(hooks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'settings.apiKeys.rotateConfirm.description', destructive: true }),
+    );
+    await act(async () => decide(false));
+    expect(hooks.rotate.mutate).not.toHaveBeenCalled();
+  });
+
+  it('rotates the chosen key only after approval', async () => {
+    hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true })]));
+    hooks.confirm.mockResolvedValue(true);
+    const container = await renderTab();
+    await act(async () => button(container, 'settings.apiKeys.rotate')?.click());
+    expect(hooks.rotate.mutate).toHaveBeenCalledOnce();
+    expect(hooks.rotate.mutate).toHaveBeenCalledWith(expect.objectContaining({ id: 'key-1' }), expect.any(Object));
   });
 });

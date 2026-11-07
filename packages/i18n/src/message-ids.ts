@@ -3527,6 +3527,18 @@ export const MESSAGE_IDS = {
   'settings.smartAi.conflict': 'settings_smartai_conflict',
   'settings.integrations.provider.openai': 'settings_integrations_provider_openai',
   'settings.integrations.openai.description': 'settings_integrations_openai_description',
+  'account.signOutError': 'account_signouterror',
+  'settings.apiKeys.rotateConfirm.title': 'settings_apikeys_rotateconfirm_title',
+  'settings.apiKeys.rotateConfirm.description': 'settings_apikeys_rotateconfirm_description',
+  'settings.apiKeys.rotateConfirm.legacyDescription': 'settings_apikeys_rotateconfirm_legacydescription',
+  'settings.git.workflow.rotateConfirm.description': 'settings_git_workflow_rotateconfirm_description',
+  'settings.smartAi.disableConfirm.description': 'settings_smartai_disableconfirm_description',
+  'settings.languages.defaultConfirm.title': 'settings_languages_defaultconfirm_title',
+  'settings.languages.defaultConfirm.description': 'settings_languages_defaultconfirm_description',
+  'settings.danger.transfer.noAdmins': 'settings_danger_transfer_noadmins',
+  'preview.enablePreviews': 'preview_enablepreviews',
+  'preview.disabledAskAdmin': 'preview_disabledaskadmin',
+  'overview.settings.askAdmin': 'overview_settings_askadmin',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

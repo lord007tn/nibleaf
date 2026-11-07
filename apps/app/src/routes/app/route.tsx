@@ -8,11 +8,16 @@ import { getSessionFn } from '@/functions/session';
 import { projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
+import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
-  beforeLoad: async () => {
+  beforeLoad: async ({ context: { queryClient } }) => {
     const routeSession = await getSessionFn();
+    if (typeof window !== 'undefined') {
+      const { syncDashboardSession } = await import('@/services/dashboard-session');
+      syncDashboardSession(queryClient, routeSession?.user.id ?? null);
+    }
     if (!routeSession) {
       throw redirect({ to: '/sign-in' });
     }
@@ -40,8 +45,9 @@ function AppGuard() {
   const { routeSession } = Route.useRouteContext();
   const { data: session, isPending } = useSession();
   const resolvedSession = session ?? (isPending ? routeSession : null);
+  const sessionReady = useDashboardSessionBoundary(resolvedSession?.user.id ?? null);
 
-  if (isPending && !resolvedSession) {
+  if (!sessionReady || (isPending && !resolvedSession)) {
     return <PageLoader />;
   }
   if (!resolvedSession) return <Navigate to="/sign-in" />;
@@ -53,7 +59,7 @@ function AppGuard() {
   return (
     <div className={impersonatedBy ? 'pb-14' : undefined}>
       <SkipToContent />
-      <ProjectProvider>
+      <ProjectProvider key={resolvedSession.user.id}>
         {/* One palette for every signed-in screen (dashboard, site pages, editor). */}
         <CommandPaletteProvider>
           <Outlet />
