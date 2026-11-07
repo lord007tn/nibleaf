@@ -27,9 +27,11 @@ const profiles = {
 // Arabic marketing heads read their copy through the reader's translator, which
 // kept them in the router's eager chunk; the boundary checks below now fail on
 // that. The margin is ~4 KiB over the measured size. See BUNDLE_BUDGET.md.
+// 365_000 → 356_000 (#291): dashboard loaders load with their routes, and the
+// settings and auth routes' search checks no longer pull in icons or MCP code.
 const gzipBudgets = {
-  'public-docs': 365_000,
-  'public-docs-index': 365_000,
+  'public-docs': 356_000,
+  'public-docs-index': 356_000,
 };
 
 // A size budget catches overall growth; these signatures make accidental
@@ -37,16 +39,26 @@ const gzipBudgets = {
 const forbiddenPublicAssetPatterns = [/\/assets\/(?:app|auth-providers|localized-product-providers|queries|mutations|auth-client)-/];
 const forbiddenPublicSourceTokens = ['settings.workspace.dangerDescription', 'editor.pageSettings.translationKey'];
 
-// Marketing pages, the blog and their copy must never reach a published docs
-// page. Route files are the usual leak: anything a route file exports, and its
-// non-split options (head, loader, validateSearch), stay in the router's eager
-// chunk, which every page loads. Checked against the module report that
-// `BUNDLE_ANALYZE=true` builds write (CI always does); every profile includes
-// the `__root__` route, so root preloads are covered too.
+// Marketing pages, the blog and their copy, and dashboard data code must never
+// reach a published docs page. Route files are the usual leak: anything a route
+// file exports, and its non-split options (head, validateSearch, beforeLoad, and
+// loaders outside the dashboard), stay in the router's eager chunk, which every
+// page loads. Checked against the module report that `BUNDLE_ANALYZE=true`
+// builds write (CI always does); every profile includes the `__root__` route,
+// so root preloads are covered too.
 const forbiddenPublicModules = [
   /\/apps\/app\/src\/components\/(?:cloud-marketing\.tsx|marketing\/)/,
   /\/apps\/app\/src\/lib\/blog-manifest\.ts$/,
   /\/packages\/i18n\/src\/paraglide\/messages\/(?:marketing|blog)_/,
+  // Dashboard loaders are split (vite.config.ts), so their query factories and
+  // prefetch helpers stay out. Analytics and AI search validators are allowed:
+  // validateSearch can't be split.
+  /\/apps\/app\/src\/hooks\/api\/(?:index|query-options|mutations|route-prefetch|deployment-cache|analytics\/)/,
+  /\/apps\/app\/src\/components\/(?:app|project|project-settings|settings|editor|oauth)\//,
+  /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
+  /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
+  /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
+  /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
 ];
 
 // The same boundary without the module report: marketing and blog copy from the
@@ -217,7 +229,7 @@ if (process.argv.includes('--check')) {
         for (const moduleId of moduleReport.get(asset.url.replace(/^\//, ''))) {
           if (!forbiddenPublicModules.some((pattern) => pattern.test(moduleId))) continue;
           console.error(
-            `\nBUNDLE BOUNDARY FAILED: ${profile} includes marketing module ${moduleId.replace(/^.*?\/(apps|packages)\//, '$1/')} in ${asset.url}.`,
+            `\nBUNDLE BOUNDARY FAILED: ${profile} includes forbidden module ${moduleId.replace(/^.*?\/(apps|packages)\//, '$1/')} in ${asset.url}.`,
           );
           invalid = true;
         }
@@ -227,7 +239,7 @@ if (process.argv.includes('--check')) {
     console.error('\nBUNDLE BOUNDARY FAILED: no module report for this build. Build with BUNDLE_ANALYZE=true before this check.');
     invalid = true;
   } else {
-    console.warn('\nSkipped the marketing module check: build with BUNDLE_ANALYZE=true to run it.');
+    console.warn('\nSkipped the module boundary check: build with BUNDLE_ANALYZE=true to run it.');
   }
 }
 

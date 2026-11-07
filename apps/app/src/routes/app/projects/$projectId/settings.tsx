@@ -88,26 +88,32 @@ import { useSession } from '@/services/auth-client';
 // lives in the editor's Configuration tab — Mintlify keeps the two separate.
 type SettingsGroupId = 'site' | 'deployment' | 'workspace' | 'advanced';
 
-type SectionId =
-  | 'appearance'
-  | 'general'
-  | 'languages'
-  | 'domain'
-  | 'authentication'
-  | 'search'
-  | 'addons'
-  | 'git'
-  | 'openapi'
-  | 'contentImport'
-  | 'members'
-  | 'apiKeys'
-  | 'plan'
-  | 'usage'
-  | 'integrations'
-  | 'smartAi'
-  | 'notifications'
-  | 'exports'
-  | 'danger';
+// Section ids alone, in nav order. `validateSearch` is part of the router's
+// eager chunk, which published docs pages load, so it checks ids here instead
+// of reading SECTIONS and pulling in every section icon.
+const SECTION_IDS = [
+  'general',
+  'appearance',
+  'languages',
+  'domain',
+  'authentication',
+  'search',
+  'addons',
+  'git',
+  'openapi',
+  'contentImport',
+  'members',
+  'apiKeys',
+  'plan',
+  'usage',
+  'integrations',
+  'smartAi',
+  'notifications',
+  'exports',
+  'danger',
+] as const;
+
+type SectionId = (typeof SECTION_IDS)[number];
 
 const GROUPS = [
   { id: 'site', labelKey: 'settings.group.site' },
@@ -140,7 +146,7 @@ const SECTIONS = [
 
 const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
 
-const isSectionId = (value: unknown): value is SectionId => SECTIONS.some((section) => section.id === value);
+const isSectionId = (value: unknown): value is SectionId => (SECTION_IDS as readonly unknown[]).includes(value);
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
 const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
