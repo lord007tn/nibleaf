@@ -22,7 +22,11 @@ export const useVerifyDomain = (projectId: string) => {
   const t = useT();
   return useMutation({
     mutationFn: async (id: string) =>
-      mutateData<Domain>(await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }), 'Could not verify.'),
+      // `demoted`: the check confirmed a problem and the domain is no longer the main address.
+      mutateData<Domain & { demoted?: boolean }>(
+        await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }),
+        'Could not verify.',
+      ),
     // Failed checks persist their actionable status before returning an error,
     // so refresh the row on both success and failure.
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),

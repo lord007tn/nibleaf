@@ -27,6 +27,7 @@ const DOMAIN_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
   'domain:ownership_missing': 'settings.domain.error.ownershipMissing',
   'domain:not_pointed': 'settings.domain.error.notPointed',
   'domain:not_ready': 'settings.domain.error.notReady',
+  'domain:check_inconclusive': 'settings.domain.error.checkInconclusive',
 };
 
 /** A domain request's failure in plain words: what went wrong and what to do next. */
@@ -38,3 +39,6 @@ export function domainErrorMessage(t: Translate, error: unknown, fallbackKey: Me
   }
   return friendlyErrorMessage(t, error, fallbackKey);
 }
+
+/** A failed check that also stopped the domain being the main address (readers now go to the default one). */
+export const demotedByError = (error: unknown): boolean => error instanceof ApiResponseError && error.details?.demoted === true;

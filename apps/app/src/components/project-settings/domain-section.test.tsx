@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   domains: undefined as unknown,
   domainsPending: false,
-  toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), info: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, variables?: Record<string, string>) => (variables ? `${key} ${JSON.stringify(variables)}` : key),
@@ -131,14 +131,27 @@ describe('each setup step has its own badge and explanation', () => {
     if (status.dnsStatus === 'VERIFIED') expect(text).not.toContain('settings.domain.status.provisioning');
   });
 
-  it('shows a live domain as connected, with nothing left to check', async () => {
+  it('shows a live domain as connected, linked, and still checkable', async () => {
     mocks.domains = [domainRow('a', { verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' })];
     await render();
     const [row] = rows();
     if (!row) throw new Error('Expected a domain row');
     expect(row.textContent).toContain('settings.domain.status.verified');
-    expect(button(row, 'settings.domain.retry')).toBeUndefined();
+    // After a DNS change the owner can confirm it still works (and learn it was demoted if not).
+    expect(button(row, 'settings.domain.retry')?.disabled).toBe(false);
     expect(button(row, 'settings.domain.makePrimary')).toBeDefined();
+    expect(row.querySelector('a[href="https://a.example.com"]')).not.toBeNull();
+  });
+
+  it.each([
+    { verified: true, dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' },
+    { verified: true, dnsStatus: 'ERROR', sslStatus: 'PENDING' },
+    { verified: false, dnsStatus: 'PENDING', sslStatus: 'PENDING' },
+  ] as const)('does not link a domain that does not serve the docs yet: %o', async (status) => {
+    mocks.domains = [domainRow('a', status)];
+    await render();
+    expect(rows()[0]?.querySelector('a')).toBeNull();
+    expect(rows()[0]?.textContent).toContain('a.example.com');
   });
 
   it('keeps the raw server error behind a technical-details disclosure', async () => {
@@ -169,6 +182,36 @@ describe('Check again', () => {
   });
 });
 
+describe('a check that demotes the main address says so', () => {
+  const clickCheck = async () => {
+    await render();
+    const [row] = rows();
+    if (!row) throw new Error('Expected a domain row');
+    await act(async () => button(row, 'settings.domain.retry')?.click());
+    return mocks.verify.mutate.mock.calls[0] as [string, { onSuccess: (domain: unknown) => void; onError: (error: unknown) => void }];
+  };
+
+  it('when the check finds HTTPS broken', async () => {
+    const [, options] = await clickCheck();
+    options.onSuccess({ dnsStatus: 'VERIFIED', sslStatus: 'ERROR', demoted: true });
+    expect(mocks.toast.warning).toHaveBeenCalledWith(expect.stringContaining('settings.domain.toast.demoted'));
+    expect(mocks.toast.warning).toHaveBeenCalledWith(expect.stringContaining('a.example.com'));
+  });
+
+  it('when the check fails because a record is gone', async () => {
+    const [, options] = await clickCheck();
+    options.onError(new ApiResponseError('missing', 422, 'domain:ownership_missing', undefined, undefined, undefined, undefined, { demoted: true }));
+    expect(mocks.toast.warning).toHaveBeenCalledWith(expect.stringContaining('settings.domain.toast.demoted'));
+  });
+
+  it('but not when nothing changed', async () => {
+    const [, options] = await clickCheck();
+    options.onError(new ApiResponseError('no answer', 503, 'domain:check_inconclusive', undefined, undefined, undefined, undefined, {}));
+    options.onSuccess({ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE', demoted: false });
+    expect(mocks.toast.warning).not.toHaveBeenCalled();
+  });
+});
+
 describe('adding a domain', () => {
   it('connects the bare hostname when a full web address is pasted', async () => {
     await render();
@@ -179,7 +222,8 @@ describe('adding a domain', () => {
 
   it('explains what to enter instead of sending something that is not a domain', async () => {
     await render();
-    await typeDomain('my docs site');
+    // Two words are never joined into a different domain.
+    await typeDomain('docs example.com');
     await submit();
     expect(mocks.add.mutate).not.toHaveBeenCalled();
     expect(container.querySelector('#custom-domain-error')?.textContent).toBe('settings.domain.error.invalid');

@@ -39,6 +39,7 @@ export type ErrorCode =
   | 'domain:ownership_missing'
   | 'domain:not_pointed'
   | 'domain:not_ready'
+  | 'domain:check_inconclusive'
   | 'search:unavailable'
   | 'ai:provider_response'
   | 'import:invalid_document'
@@ -117,6 +118,7 @@ const ERROR_STATUS = {
   'domain:ownership_missing': 422,
   'domain:not_pointed': 422,
   'domain:not_ready': 409,
+  'domain:check_inconclusive': 503,
   'search:unavailable': 503,
   'ai:provider_response': 502,
   'import:invalid_document': 422,

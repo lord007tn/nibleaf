@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { ApiResponseError } from './client-helpers';
-import { domainErrorMessage, domainStage, pickLiveDomain } from './domain-state';
+import { demotedByError, domainErrorMessage, domainStage, pickLiveDomain } from './domain-state';
 import { useDeleteDomain, useSetPrimaryDomain, useVerifyDomain } from './domains';
 
 const mocks = vi.hoisted(() => ({ remove: vi.fn(), primary: vi.fn(), verify: vi.fn(), toastError: vi.fn() }));
@@ -64,6 +64,9 @@ describe('domain status helpers', () => {
       'settings.domain.toast.addError',
     );
     expect(domainErrorMessage(t, new TypeError('fetch failed'), 'settings.domain.toast.addError')).toBe('error.network');
+    expect(domainErrorMessage(t, new ApiResponseError('x', 503, 'domain:check_inconclusive'), 'settings.domain.toast.verifyError')).toBe(
+      'settings.domain.error.checkInconclusive',
+    );
   });
 });
 
@@ -116,6 +119,26 @@ describe('domain actions report their own failures', () => {
     mocks.primary.mockResolvedValue(failure(409, 'domain:not_ready'));
     await run(useSetPrimaryDomain);
     expect(mocks.toastError).toHaveBeenCalledWith('settings.domain.error.notReady');
+  });
+
+  it('checking: keeps the error details, so the card can say the main address was dropped', async () => {
+    mocks.verify.mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'domain:not_pointed', message: 'x', details: { stage: 'routing', demoted: true } } }), {
+        status: 422,
+      }),
+    );
+    const queryClient = createQueryClient();
+    let action: ReturnType<typeof useVerifyDomain> | undefined;
+    const Probe = () => {
+      action = useVerifyDomain('site-1');
+      return null;
+    };
+    await act(async () => root.render(createElement(QueryClientProvider, { client: queryClient }, createElement(Probe))));
+    let caught: unknown;
+    await act(async () => {
+      caught = await action?.mutateAsync('domain-1').catch((error: unknown) => error);
+    });
+    expect(demotedByError(caught)).toBe(true);
   });
 
   it('checking: says which record is missing', async () => {

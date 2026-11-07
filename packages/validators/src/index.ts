@@ -695,14 +695,20 @@ export const DOMAIN_NAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+
 
 /**
  * Reduce what someone pastes into a "custom domain" field to the bare hostname:
- * `  HTTPS://Docs.Example.com:443/help?x#y ` → `docs.example.com`. Strips spaces,
- * the scheme, credentials, port, path, query, fragment and trailing dots, and
+ * `  HTTPS://Docs.Example.com:443/help?x#y ` → `docs.example.com`. Trims the ends,
+ * closes up spaces around dots, and strips the scheme, credentials, port, path, query, fragment and trailing dots, and
  * punycodes internationalized names. The result may still be invalid (check it
  * with `DOMAIN_NAME_PATTERN`); the dashboard and the API share this, so what the
  * form shows is exactly what the server stores.
  */
 export const normalizeDomainInput = (raw: string): string => {
-  let value = raw.replace(/\s+/g, '').toLowerCase();
+  // Spaces around a dot are a typo (`docs . example.com`); any other space inside
+  // separates two words, so it stays and the pattern rejects it rather than
+  // silently connecting a different domain (`docs example.com` ≠ `docsexample.com`).
+  let value = raw
+    .trim()
+    .replace(/\s*\.\s*/g, '.')
+    .toLowerCase();
   value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
   value = value.split(/[/?#\\]/, 1)[0] ?? '';
   value = value.slice(value.lastIndexOf('@') + 1);

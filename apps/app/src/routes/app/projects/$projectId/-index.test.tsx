@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
-const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains', unknown>);
+const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session', unknown>);
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -18,6 +18,7 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 vi.mock('@/env', () => ({ env: {} }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => queries.session }));
 vi.mock('@/hooks/api', async () => ({
   ...(await vi.importActual<object>('@/hooks/api/domain-state')),
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
@@ -69,7 +70,7 @@ describe('site overview first load', () => {
 
   beforeEach(() => {
     analytics.hook.mockReturnValue(pending);
-    Object.assign(queries, { project: pending, pages: pending, members: pending, deployments: pending, domains: pending });
+    Object.assign(queries, { project: pending, pages: pending, members: pending, deployments: pending, domains: pending, session: pending });
   });
 
   it('prefetches the page views the overview opens with, in the loader', async () => {
@@ -140,6 +141,7 @@ describe('site overview when something fails or is still connecting', () => {
       members: loaded({ members: [] }),
       deployments: loaded([readyDeployment]),
       domains: loaded([]),
+      session: { data: { user: { id: 'user-1' } }, isPending: false },
     });
   });
 
@@ -204,5 +206,36 @@ describe('site overview when something fails or is still connecting', () => {
     const details = container.querySelector('details');
     expect(details?.querySelector('summary')?.textContent).toBe('overview.publishFailed.technicalDetails');
     expect(details?.textContent).toContain('Published revision exceeds export limits.');
+  });
+
+  describe('the "still connecting" note fits who is looking', () => {
+    const connecting = () => loaded([domain({ sslStatus: 'PROVISIONING' })]);
+    const team = (role: string) => loaded({ members: [{ user: { id: 'user-1' }, role }] });
+
+    it('offers Admins the way to finish the setup', async () => {
+      Object.assign(queries, { domains: connecting(), members: team('admin') });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.finishSetup');
+      expect(container.textContent).not.toContain('overview.live.askAdmin');
+    });
+
+    it('asks Editors to involve an Admin instead of linking a section they cannot open', async () => {
+      Object.assign(queries, { domains: connecting(), members: team('member') });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.askAdmin');
+      expect(container.textContent).not.toContain('overview.live.finishSetup');
+    });
+
+    it.each([
+      ['the session is loading', { session: { data: undefined, isPending: true } }],
+      ['the team is loading', { members: pending }],
+      ['the team failed to load', { members: failed() }],
+    ])('stays neutral while %s', async (_label, state) => {
+      Object.assign(queries, { domains: connecting(), members: team('admin'), ...state });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.domainConnecting');
+      expect(container.textContent).not.toContain('overview.live.finishSetup');
+      expect(container.textContent).not.toContain('overview.live.askAdmin');
+    });
   });
 });

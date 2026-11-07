@@ -7,6 +7,7 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { getLocale, type MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { isDomainLive } from '@nibleaf/shared/domains';
 import { DOMAIN_NAME_PATTERN, normalizeDomainInput } from '@nibleaf/validators';
 import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
@@ -14,7 +15,16 @@ import { toast } from 'sonner';
 import { getDomain } from 'tldts';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { DomainStage, Project } from '@/hooks/api';
-import { domainErrorMessage, domainStage, useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
+import {
+  demotedByError,
+  domainErrorMessage,
+  domainStage,
+  useAddDomain,
+  useDeleteDomain,
+  useDomains,
+  useSetPrimaryDomain,
+  useVerifyDomain,
+} from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
@@ -105,11 +115,17 @@ export function DomainSection({ project }: { project: Project }) {
       remove.mutate(id, { onSuccess: () => toast.success(t('settings.domain.toast.removed')) });
     }
   };
-  const checkDomain = (id: string) =>
+  // The reason a check failed is toasted by the hook; losing the main address is said here.
+  const demotedToast = (name: string) => toast.warning(t('settings.domain.toast.demoted', { domain: isolate(name) }));
+  const checkDomain = (id: string, name: string) =>
     verify.mutate(id, {
       onSuccess: (result) => {
+        if (result.demoted) return demotedToast(name);
         const { key, kind } = CHECK_RESULT[domainStage(result)];
         toast[kind](t(key));
+      },
+      onError: (error) => {
+        if (demotedByError(error)) demotedToast(name);
       },
     });
   const [domain, setDomain] = useState('');
@@ -222,15 +238,22 @@ export function DomainSection({ project }: { project: Project }) {
               <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-start">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <a
-                      className="inline-flex items-center gap-1.5 break-all font-medium font-mono text-sm hover:text-primary"
-                      dir="ltr"
-                      href={`https://${d.domain}`}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {d.domain} <ExternalLink className="size-3" />
-                    </a>
+                    {/* Linking an address that doesn't serve the docs yet would only open a browser error. */}
+                    {isDomainLive(d) ? (
+                      <a
+                        className="inline-flex items-center gap-1.5 break-all font-medium font-mono text-sm hover:text-primary"
+                        dir="ltr"
+                        href={`https://${d.domain}`}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {d.domain} <ExternalLink className="size-3" />
+                      </a>
+                    ) : (
+                      <span className="break-all font-medium font-mono text-sm" dir="ltr">
+                        {d.domain}
+                      </span>
+                    )}
                     <StatusBadge label={checking ? t('settings.domain.status.checking') : t(badge)} tone={checking ? 'pending' : tone} />
                     {d.isPrimary ? (
                       <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
@@ -252,19 +275,18 @@ export function DomainSection({ project }: { project: Project }) {
                       <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
                     </CollapsibleTrigger>
                   ) : null}
-                  {stage !== 'live' ? (
-                    <Button
-                      className="cursor-pointer"
-                      loading={checking}
-                      loadingText={t('settings.domain.status.checking')}
-                      onClick={() => checkDomain(d.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <RefreshCw className="size-3.5" />
-                      {t('settings.domain.retry')}
-                    </Button>
-                  ) : null}
+                  {/* Also on a live domain: after changing DNS, the owner can confirm it still works. */}
+                  <Button
+                    className="cursor-pointer"
+                    loading={checking}
+                    loadingText={t('settings.domain.status.checking')}
+                    onClick={() => checkDomain(d.id, d.domain)}
+                    size="sm"
+                    variant={stage === 'live' ? 'ghost' : 'outline'}
+                  >
+                    <RefreshCw className="size-3.5" />
+                    {t('settings.domain.retry')}
+                  </Button>
                   {stage === 'live' && !d.isPrimary ? (
                     <Button
                       className="cursor-pointer"

@@ -318,6 +318,12 @@ describe('addDomainBody', () => {
   it('rejects non-domains', () => {
     expect(addDomainBody.safeParse({ domain: 'https://' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'docs example' }).success).toBe(false);
+  });
+
+  it('never joins two words into a different domain', () => {
+    expect(normalizeDomainInput('docs example.com')).toBe('docs example.com');
+    expect(addDomainBody.safeParse({ domain: 'docs example.com' }).success).toBe(false);
+    expect(addDomainBody.safeParse({ domain: 'docs.	example.com' }).success).toBe(true);
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);
