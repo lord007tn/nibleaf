@@ -43,10 +43,11 @@ describe('Button loading', () => {
     expect(button?.disabled).toBe(true);
     expect(button?.getAttribute('aria-busy')).toBe('true');
     expect(button?.hasAttribute('data-loading')).toBe(true);
-    // The label stays (invisible) so the width doesn't change; without loadingText
-    // it also stays the accessible name.
+    // The label stays in the layout so the width doesn't change; without loadingText
+    // it is hidden with opacity (not visibility) so it stays the accessible name.
     const label = [...(button?.querySelectorAll('span') ?? [])].filter((span) => span.textContent === 'Publish now').at(-1);
-    expect(label?.className).toContain('invisible');
+    expect(label?.className).toContain('opacity-0');
+    expect(label?.className).not.toContain('invisible');
     expect(label?.getAttribute('aria-hidden')).toBeNull();
     expect(button?.querySelector('svg')).not.toBeNull();
     await act(async () => button?.click());
