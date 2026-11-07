@@ -77,6 +77,12 @@ describe('exported theme repository Markdown', () => {
     expect(html).not.toContain('mdxframe');
   });
 
+  it('keeps authored text that looks like its private code placeholder', () => {
+    const html = render('```txt\nexample\n```\n\nLiteral 0 and 9 text.');
+    expect(html).toContain('Literal 0 and 9 text.');
+    expect(html.match(/example/g)).toHaveLength(1);
+  });
+
   it('still strips script', () => {
     expect(render('<ResponseField name="x" onclick="alert(1)">\n\nText\n\n</ResponseField>\n\n<script>alert(1)</script>')).not.toMatch(
       /onclick|<script/,

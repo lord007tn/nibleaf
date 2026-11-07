@@ -121,36 +121,21 @@ const lineIsFence = (line: string): { marker: string; length: number } | null =>
   return match?.[1] ? { marker: match[1][0] ?? '`', length: match[1].length } : null;
 };
 
-/** Where the paragraph holding `from` ends: at the next blank line, or the end. */
-const paragraphEnd = (source: string, from: number): number => {
-  const blank = /\n[ \t]*\n/g;
-  blank.lastIndex = from;
-  return blank.exec(source)?.index ?? source.length;
-};
-
-/** True for positions in fenced or inline code, where JSX-looking text is literal.
- *  An inline code span may continue onto the following lines of its paragraph,
- *  as in CommonMark. */
+/** True for positions in fenced or inline code, where JSX-looking text is literal. */
 function codeMask(source: string): Uint8Array {
   const mask = new Uint8Array(source.length);
   let offset = 0;
   let fence: { marker: string; length: number } | null = null;
-  // The end of a code span that began on an earlier line.
-  let spanEnd = 0;
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
-    if (spanEnd >= offset + line.length) {
-      offset += lineWithBreak.length;
-      continue;
-    }
-    const candidate = spanEnd > offset ? null : lineIsFence(line);
+    const candidate = lineIsFence(line);
     if (fence || candidate) {
       mask.fill(1, offset, offset + lineWithBreak.length);
       if (!fence && candidate) fence = candidate;
       else if (fence && candidate?.marker === fence.marker && candidate.length >= fence.length) fence = null;
     } else {
-      let cursor = Math.max(0, spanEnd - offset);
+      let cursor = 0;
       while (cursor < line.length) {
         if (line[cursor] !== '`') {
           cursor++;
@@ -158,19 +143,10 @@ function codeMask(source: string): Uint8Array {
         }
         let count = 1;
         while (line[cursor + count] === '`') count++;
-        const run = '`'.repeat(count);
-        const closer = line.indexOf(run, cursor + count);
-        if (closer >= 0) {
-          mask.fill(1, offset + cursor, offset + closer + count);
-          cursor = closer + count;
-          continue;
-        }
-        const from = offset + cursor + count;
-        const later = source.slice(from, paragraphEnd(source, from)).indexOf(run);
-        if (later < 0) break;
-        spanEnd = from + later + count;
-        mask.fill(1, offset + cursor, spanEnd);
-        break;
+        const closer = line.indexOf('`'.repeat(count), cursor + count);
+        if (closer < 0) break;
+        mask.fill(1, offset + cursor, offset + closer + count);
+        cursor = closer + count;
       }
     }
     offset += lineWithBreak.length;

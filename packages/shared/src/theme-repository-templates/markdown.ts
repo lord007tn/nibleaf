@@ -66,7 +66,10 @@ const selfClosingAtom = new RegExp('<(File|RelatedCard|Icon)\\b(' + attributePar
  * examples alone, and return a function that puts the code back. */
 const protectCode = (source: string): { text: string; restore: (value: string) => string } => {
   const kept: string[] = [];
-  const hide = (code: string) => '' + (kept.push(code) - 1) + '';
+  // A private prefix the page doesn't contain, so authored text never matches it.
+  let tag = '' + Math.random().toString(36).slice(2) + ':';
+  while (source.includes(tag)) tag = '' + Math.random().toString(36).slice(2) + ':';
+  const hide = (code: string) => tag + (kept.push(code) - 1) + '';
   const output: string[] = [];
   let fence: string | undefined;
   let block: string[] = [];
@@ -86,7 +89,8 @@ const protectCode = (source: string): { text: string; restore: (value: string) =
     else output.push(line.replace(/(\x60+)[^\x60]*?\1/g, (span) => hide(span)));
   }
   if (fence) output.push(hide(block.join('\n')));
-  return { text: output.join('\n'), restore: (value) => value.replace(/(\d+)/g, (_match, index: string) => kept[Number(index)] ?? '') };
+  const placeholder = new RegExp(tag + '(\\d+)', 'g');
+  return { text: output.join('\n'), restore: (value) => value.replace(placeholder, (match, index: string) => kept[Number(index)] ?? match) };
 };
 
 export const normalizeMarkdown = (source: string): string => {

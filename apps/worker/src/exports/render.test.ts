@@ -594,6 +594,19 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     }
   });
 
+  it('renders a code block inside a callout as quoted code, and the prose after it as prose', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: '<Note>\nRun this:\n\n```html\n<div>hi</div>\nline2\n```\n\nafter\n</Note>\n\nnext para',
+    };
+    const html = renderPageMarkdown(snapshot, page, assets);
+    expect(html).toMatch(
+      /<blockquote[^>]*>[\s\S]*<pre><code class="language-html">&lt;div&gt;hi&lt;\/div&gt;\nline2\n<\/code><\/pre>[\s\S]*after[\s\S]*<\/blockquote>/,
+    );
+    expect(html).toContain('<p>next para</p>');
+    expect(html).not.toContain('```');
+  });
+
   it('renders atoms written as an empty pair without leaking their tags', () => {
     const page = {
       ...required(snapshot.pages[0]),

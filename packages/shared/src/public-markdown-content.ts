@@ -112,10 +112,28 @@ const flagAttribute = (attributes: string, name: string): boolean => {
  * stays literal, so a component written as an example isn't rewritten. */
 export const portablePublicMdxMarkdown = (source: string): string => {
   const code = protectMarkdownCode(source);
-  return code.restore(projectComponents(code.content, asIs));
+  return code.restore(projectComponents(code.content, asIs, code.reshape));
 };
 
-const projectComponents = (source: string, project: Projector): string => {
+/** Re-shapes hidden code: see `protectMarkdownCode().reshape`. */
+type ReshapeCode = (value: string, change: (literal: string) => string) => string;
+
+/** Prefix every line of a container body, code it wraps included: the first
+ *  line of a hidden code block sits on a body line, the rest are inside it.
+ *  Blank lines get `blank`. */
+const prefixLines = (body: string, prefix: string, blank: string, reshape: ReshapeCode): string => {
+  const prefixRest = (value: string) =>
+    value
+      .split('\n')
+      .map((line, index) => (index === 0 ? line : line ? `${prefix}${line}` : blank))
+      .join('\n');
+  return reshape(body, prefixRest)
+    .split('\n')
+    .map((line) => (line ? `${prefix}${line}` : blank))
+    .join('\n');
+};
+
+const projectComponents = (source: string, project: Projector, reshape: ReshapeCode): string => {
   const { text, link } = project;
   let output = source.replace(atomPattern('File'), (_match, attributes: string) => {
     const name = text(mdxAttribute(attributes, 'name'));
@@ -128,22 +146,15 @@ const projectComponents = (source: string, project: Projector): string => {
   output = output.replace(atomPattern('Icon'), '');
 
   for (const tag of ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger']) {
-    output = mdxContainer(output, tag, (_attributes, body) =>
-      body
-        .split('\n')
-        .map((line) => (line ? `> ${line}` : '>'))
-        .join('\n'),
-    );
+    output = mdxContainer(output, tag, (_attributes, body) => prefixLines(body, '> ', '>', reshape));
   }
   output = mdxContainer(output, 'Folder', (attributes, body) => {
     const name = text(mdxAttribute(attributes, 'name'));
-    const nested = body
-      .split('\n')
-      .map((line) => (line ? `  ${line}` : line))
-      .join('\n');
-    return `${name ? `- **${name}/**` : '-'}\n${nested}`;
+    return `${name ? `- **${name}/**` : '-'}\n${prefixLines(body, '  ', '', reshape)}`;
   });
-  output = mdxContainer(output, 'RelatedCard', (attributes, body) => `${relatedCardItem(attributes, project)}${body ? `\n  ${body}` : ''}`);
+  output = mdxContainer(output, 'RelatedCard', (attributes, body) =>
+    [relatedCardItem(attributes, project), body ? prefixLines(body, '  ', '', reshape) : ''].filter(Boolean).join('\n'),
+  );
 
   const titledContainers: ReadonlyArray<readonly [string, number]> = [
     ['RelatedContent', 2],
@@ -328,7 +339,8 @@ const sanitizeProse = (source: string): string => {
 export const normalizePublicMarkdownContent = (markdown: string): string => {
   const code = protectMarkdownCode(markdown);
   const projected = literalStore(markdown);
-  const projectedMarkdown = code.restore(projectComponents(code.content, projector(projected.keep, false)));
+  const keep = (value: string) => projected.keep(code.restore(value));
+  const projectedMarkdown = code.restore(projectComponents(code.content, projector(keep, false), code.reshape));
   const output: string[] = [];
   const prose: string[] = [];
   let fence: MarkdownFence | undefined;

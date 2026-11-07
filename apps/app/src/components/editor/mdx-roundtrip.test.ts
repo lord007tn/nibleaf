@@ -161,13 +161,29 @@ describe('MDX round trips', () => {
     expect(getMarkdown(createEditor(saved))).toBe(saved);
   });
 
-  it('keeps a component tag inside a code span that runs across two lines as literal code', () => {
-    const source = 'Use `a multi-line\n<Icon icon="star" /> span` here, and <Badge>real</Badge>.\n';
+  it.each([
+    '> [!WARNING]\n> Do **not** run [this](/x) with `rm -rf`.',
+    '> [!NOTE] Do **not** run [this](/x).',
+    '> [!TIP]\n> First *line*.\n>\n> Second **line**.',
+  ])('keeps the formatting in a callout written as a GitHub alert through load and save: %j', (source) => {
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).toContain('**');
+    expect(saved).not.toContain('[!WARNING]\n> Do not');
+    const callout = createEditor(saved).state.doc.firstChild;
+    expect(callout?.type.name).toBe('callout');
+    // Bold, links and code survive a second load, and the marker isn't left in the text.
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+    expect(callout?.textContent).not.toMatch(/\[!/);
+    if (source.includes('[this](/x)')) expect(saved).toContain('[this](/x)');
+    if (source.includes('`rm -rf`')) expect(saved).toContain('`rm -rf`');
+  });
+
+  it('keeps components after an unmatched backtick, across a heading', () => {
+    // A backtick that isn't closed on its line must not hide the blocks after it.
+    const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';
     const output = getMarkdown(createEditor(source));
-    expect(output).not.toContain('data-mdx');
-    // A line break inside a code span reads as a space (CommonMark), and is saved as one.
-    expect(output).toContain('`a multi-line <Icon icon="star" /> span`');
-    expect(output).toContain('<Badge>real</Badge>');
+    expect(output).toContain('<CustomWidget value="keep" />');
+    expect(output).not.toContain('data-mdx-source');
   });
 
   it('keeps a self-closing RelatedCard self-closing, and pairs it once it gains a body', () => {

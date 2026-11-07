@@ -102,5 +102,13 @@ export const protectMarkdownCode = (source: string, { fences = true, maxFenceInd
   return {
     content,
     restore: (value: string) => value.replace(placeholder, (match, index: string) => literals[Number(index)] ?? match),
+    /** Hand each hidden literal in `value` to `change` and keep the result
+     *  hidden, so a container can quote or indent the code it wraps without
+     *  exposing it to later passes. */
+    reshape: (value: string, change: (literal: string) => string) =>
+      value.replace(placeholder, (match, index: string) => {
+        const literal = literals[Number(index)];
+        return literal === undefined ? match : hide(change(literal));
+      }),
   };
 };

@@ -151,6 +151,35 @@ import Example from './example'
     expect(output.match(/\]\(/g)).toHaveLength(1);
   });
 
+  it('quotes every line of a code block inside a callout', () => {
+    const quoted = '> ```html\n> <div>hi</div>\n> line2\n> ```';
+    expect(portablePublicMdxMarkdown('<Note>\nRun this:\n\n```html\n<div>hi</div>\nline2\n```\n\nafter\n</Note>\n\nnext para')).toContain(quoted);
+    const output = normalizePublicMarkdownContent('<Note>\nRun this:\n\n```html\n<div>hi</div>\nline2\n```\n\nafter\n</Note>\n\nnext para');
+    expect(output).toContain(quoted);
+    expect(output).toContain('> after');
+    expect(output.endsWith('next para')).toBe(true);
+    expect(output.match(/```/g)).toHaveLength(2);
+    // Nested callouts quote their code once per level.
+    expect(portablePublicMdxMarkdown('<Note>\n<Warning>\n\n```js\nconst a = 1;\n```\n\n</Warning>\n</Note>')).toContain(
+      '> > ```js\n> > const a = 1;\n> > ```',
+    );
+  });
+
+  it('indents every line of code inside a Folder or a RelatedCard', () => {
+    // A code block keeps its own trailing line end.
+    expect(portablePublicMdxMarkdown('<Folder name="src">\n\n```txt\na\nb\n```\n\n</Folder>').trimEnd()).toBe(
+      '- **src/**\n  ```txt\n  a\n  b\n  ```',
+    );
+    expect(portablePublicMdxMarkdown('<RelatedCard title="R">\n\nOne\nTwo\n\n</RelatedCard>')).toBe('- R\n  One\n  Two');
+  });
+
+  it('puts code in projected attribute text back instead of leaking a placeholder', () => {
+    const output = normalizePublicMarkdownContent('<Card title="Use `x`" href="/a">\n\nBody\n\n</Card> and <Tooltip tip="Run `npm i`">T</Tooltip>.');
+    expect(output).toContain('Use `x`');
+    expect(output).toContain('T (Run `npm i`)');
+    expect(output).not.toMatch(/\uE000|\uE001|\uE002|\uE003/);
+  });
+
   it('keeps projected attribute text out of the active-markup scan', () => {
     expect(normalizePublicMarkdownContent('<Tooltip tip="The &lt;style&gt; element">CSS</Tooltip> and more text.\n\nNext paragraph.')).toBe(
       'CSS (The &lt;style&gt; element) and more text.\n\nNext paragraph.',

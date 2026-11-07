@@ -257,10 +257,18 @@ export const Callout = Node.create({
               if (!variant) {
                 continue;
               }
-              // Strip the `[!NOTE]` marker from the leading paragraph.
+              // Strip the `[!NOTE]` marker from the leading paragraph's first text,
+              // keeping the rest of the paragraph as it is: setting its text
+              // would flatten bold, links and code that follow the marker.
               if (firstParagraph) {
-                firstParagraph.textContent = text.replace(/^\s*\[!\w+\]\s*\n?/, '');
-                if (!firstParagraph.textContent.trim()) {
+                const walker = element.ownerDocument.createTreeWalker(firstParagraph, 4 /* NodeFilter.SHOW_TEXT */);
+                const firstText = walker.nextNode() as Text | null;
+                if (firstText) firstText.data = firstText.data.replace(/^\s*\[!\w+\]\s*\n?/, '');
+                // A line break right after the marker would otherwise open the callout.
+                const lead = firstParagraph.firstChild;
+                if (lead?.nodeType === 1 && (lead as Element).tagName === 'BR') lead.remove();
+                else if (lead?.nodeType === 3 && !lead.textContent && lead.nextSibling?.nodeName === 'BR') lead.nextSibling.remove();
+                if (!firstParagraph.textContent?.trim() && !firstParagraph.querySelector('img, code, a')) {
                   firstParagraph.remove();
                 }
               }
