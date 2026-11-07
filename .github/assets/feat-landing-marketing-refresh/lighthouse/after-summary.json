@@ -1,0 +1,58 @@
+[
+  {
+    "path": "/",
+    "formFactor": "mobile",
+    "performance": 84,
+    "accessibility": 100,
+    "bestPractices": 93,
+    "seo": 100,
+    "lcpMs": 4514,
+    "fcpMs": 1510,
+    "cls": 0,
+    "tbtMs": 20,
+    "siMs": 1510,
+    "transferKiB": 541
+  },
+  {
+    "path": "/",
+    "formFactor": "desktop",
+    "performance": 96,
+    "accessibility": 100,
+    "bestPractices": 93,
+    "seo": 100,
+    "lcpMs": 1376,
+    "fcpMs": 570,
+    "cls": 0.003,
+    "tbtMs": 69,
+    "siMs": 570,
+    "transferKiB": 761
+  },
+  {
+    "path": "/ar",
+    "formFactor": "mobile",
+    "performance": 80,
+    "accessibility": 100,
+    "bestPractices": 93,
+    "seo": 100,
+    "lcpMs": 5271,
+    "fcpMs": 1664,
+    "cls": 0.009,
+    "tbtMs": 62,
+    "siMs": 1664,
+    "transferKiB": 751
+  },
+  {
+    "path": "/ar",
+    "formFactor": "desktop",
+    "performance": 96,
+    "accessibility": 100,
+    "bestPractices": 93,
+    "seo": 100,
+    "lcpMs": 1380,
+    "fcpMs": 609,
+    "cls": 0.044,
+    "tbtMs": 0,
+    "siMs": 609,
+    "transferKiB": 775
+  }
+]
