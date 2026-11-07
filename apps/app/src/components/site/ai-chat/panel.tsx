@@ -183,7 +183,12 @@ export default function Panel(
       lastRequest.current = request.id;
       trackOpen(request.source);
       setPage(request.page);
-      if (request.question) sendRequest(request.question, request.page ?? null);
+      if (!request.question) return;
+      // A shared `?ask=` link only fills the field: the reader reads the
+      // question and sends it themselves, so a crafted link (or a crawler)
+      // can neither speak for them nor spend the site's AI budget.
+      if (request.source === 'deep_link') prefillRequest(request.question);
+      else sendRequest(request.question, request.page ?? null);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [options.request, answering]);
@@ -246,6 +251,10 @@ export default function Panel(
     setTyped(question);
     field.current?.focus();
   };
+  const prefillRequest = useEffectEvent((question: string) => {
+    setTyped(question);
+    field.current?.focus();
+  });
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
     : [...(options.lang === options.defaultLanguage ? (options.config?.search?.aiStarterQuestions ?? []) : []), t('aiStart'), t('aiFind')].slice(
@@ -293,7 +302,7 @@ export default function Panel(
         {page && (
           <div className="flex items-center gap-2 border-b px-4 py-2">
             <span className="min-w-0 flex-1 truncate">
-              {t('aiAbout')} {page.title}
+              {t('aiAbout')} <bdi>{page.title}</bdi>
             </span>
             <Button size="sm" variant="ghost" onClick={() => setPage(undefined)}>
               {t('aiRemove')}

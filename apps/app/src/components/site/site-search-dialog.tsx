@@ -122,6 +122,21 @@ function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 /** Keyboard key chip. Keys read left-to-right even inside an RTL dialog. */
+/** A sentence around the reader's query, with the query bidi-isolated: an
+ *  English query in the Arabic interface (or the reverse) keeps its own
+ *  punctuation and the sentence's quotes stay in place. */
+const QUERY_SLOT = '';
+export function withIsolatedQuery(message: (query: string) => string, query: string): ReactNode {
+  const [before = '', after = ''] = message(QUERY_SLOT).split(QUERY_SLOT);
+  return (
+    <>
+      {before}
+      <bdi>{query}</bdi>
+      {after}
+    </>
+  );
+}
+
 function Key({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <kbd
@@ -454,9 +469,7 @@ export default function SiteSearchDialog({
           <Sparkles className="size-4" />
         </RowIcon>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium" dir="auto">
-            {t('searchAskAiAbout', { query: trimmed })}
-          </div>
+          <div className="truncate font-medium">{withIsolatedQuery((query) => t('searchAskAiAbout', { query }), trimmed)}</div>
           <div className="truncate text-muted-foreground text-xs">{t('searchAskAiHint')}</div>
         </div>
         <EnterHint />
@@ -601,9 +614,7 @@ export default function SiteSearchDialog({
             ) : null}
             {noResults ? (
               <div className="px-6 pt-8 pb-4 text-center">
-                <p className="font-medium text-sm" dir="auto">
-                  {t('searchNoResultsFor', { query: trimmed })}
-                </p>
+                <p className="font-medium text-sm">{withIsolatedQuery((query) => t('searchNoResultsFor', { query }), trimmed)}</p>
                 <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
               </div>
             ) : null}

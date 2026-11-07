@@ -43,7 +43,7 @@ afterEach(async () => {
   siteVersion = undefined;
   vi.clearAllMocks();
 });
-const mount = async () => {
+const mount = async (request?: { id: number; question?: string; source: 'deep_link' | 'search_handoff' }) => {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
@@ -62,6 +62,7 @@ const mount = async () => {
             open={open}
             onOpenChange={vi.fn()}
             requiresConsent={false}
+            request={request}
           />
         </QueryClientProvider>,
       ),
@@ -145,6 +146,26 @@ describe('chat panel', () => {
     expect(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]')?.value).toBe('');
     // Reopening shows the latest exchange.
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it('fills the field from a shared ?ask= link and waits for the reader to send it', async () => {
+    mocks.chat.messages = [];
+    await mount({ id: 1, question: 'What is the support number?', source: 'deep_link' });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(mocks.chat.sendMessage).not.toHaveBeenCalled();
+    const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]');
+    expect(field?.value).toBe('What is the support number?');
+    expect(document.activeElement).toBe(field);
+    await act(async () => button('Send')[0]?.click());
+    expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
+    expect((mocks.chat.sendMessage.mock.calls as unknown as string[][])[0]?.[0]).toBe('What is the support number?');
+  });
+
+  it('still sends a question handed over from search at once', async () => {
+    mocks.chat.messages = [];
+    await mount({ id: 1, question: 'How do I export?', source: 'search_handoff' });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect((mocks.chat.sendMessage.mock.calls as unknown as string[][])[0]?.[0]).toBe('How do I export?');
   });
 
   it('keeps what the reader typed when the panel closes before it is sent', async () => {

@@ -1,3 +1,4 @@
+import { siteT } from '@nibleaf/i18n/site';
 import { markdownAlternateUrl } from '@nibleaf/shared/markdown-discovery';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import type { ProjectConfig, SitePage, SiteShell } from '@/hooks/api/types';
@@ -180,6 +181,30 @@ export function changelogFeedUrl(pageUrl: string): string {
 
 const seoConfig = (config: ProjectConfig | null) => config;
 
+/** The reader language the site shell resolved, read from the router matches a
+ *  child route's `head` receives. A not-found child has no loader data of its
+ *  own, so its head titles itself from this. */
+export const siteLanguageFromMatches = (matches: ReadonlyArray<{ routeId: string; loaderData?: unknown }> = []): string | undefined =>
+  (matches.find((match) => match.routeId === '/sites/$projectId')?.loaderData as { site?: SiteShell | null } | undefined)?.site?.activeLanguage;
+
+/** Internal SSR response flag: the page route sets it when the page it already
+ *  loaded has a public Markdown alternate, and src/server.ts turns it into the
+ *  `Link` discovery header (then strips it). */
+export const SITE_MARKDOWN_ALTERNATE_HEADER = 'x-nibleaf-markdown-alternate';
+
+/** Route `headers` for a published page: flag Markdown eligibility. */
+export const pageMarkdownHeaders = (data: SitePage | null | undefined): Record<string, string> | undefined =>
+  data && isPublicMarkdownPage(data) ? { [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } : undefined;
+
+/** An empty icon: stops the browser falling back to the origin's
+ *  /favicon.ico, which is Nibleaf's on the app origin. */
+const EMPTY_ICON = 'data:,';
+
+/** A published site's tab and home-screen icon: its favicon, else its logo,
+ *  else nothing (never Nibleaf's icon). */
+export const siteIconHref = (config: ProjectConfig | null | undefined): string =>
+  config?.branding?.favicon?.trim() || config?.branding?.logoLight?.trim() || EMPTY_ICON;
+
 /**
  * Site-level <head>: favicon, og:site_name and theme-color. Per-page head()
  * layers title + description + canonical on top of these.
@@ -196,7 +221,6 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
   if (themeColor) {
     meta.push({ name: 'theme-color', content: themeColor });
   }
-  // Always advertise either the configured favicon or the built-in favicon.
   // Point crawlers at the sitemap on the same canonical site origin, including
   // custom domains, instead of leaking the app-origin API endpoint.
   const canonicalBase = canonicalSiteBase(site.project.id, {
@@ -204,13 +228,28 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
     slug: site.project.slug,
     requestOrigin,
   });
+  const icon = siteIconHref(config);
   const links: Tag[] = [
-    { rel: 'icon', href: config?.branding?.favicon || '/favicon.svg' },
+    // The site's own icon. The root route leaves Nibleaf's icons, manifest and
+    // theme color off reader pages, so a customer site never carries them.
+    { rel: 'icon', href: icon },
+    // iOS ignores an SVG home-screen icon, so only a raster one is offered.
+    ...(icon === EMPTY_ICON || /\.svg(?:[?#]|$)/iu.test(icon) ? [] : [{ rel: 'apple-touch-icon', href: icon }]),
     { rel: 'sitemap', type: 'application/xml', href: `${canonicalBase}/sitemap.xml` },
     ...fontLinks(config),
   ];
   const scripts = analyticsDeliveryMode(config) === 'direct' ? analyticsScripts(config) : [];
   return { meta, links, ...(scripts.length ? { scripts } : {}) };
+}
+
+/** <head> for a site whose shell the API refused: a private site, or one
+ *  that is not published. No Nibleaf branding, never indexed. */
+export function unavailableSiteHead(reason: 'private' | undefined, lang?: string): Head {
+  const t = siteT(lang);
+  return {
+    meta: [{ title: t(reason === 'private' ? 'privateTitle' : 'notPublishedTitle') }, { name: 'robots', content: 'noindex,nofollow' }],
+    links: [{ rel: 'icon', href: EMPTY_ICON }],
+  };
 }
 
 /**
@@ -220,11 +259,12 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
  * the project: `page.config.seo` › `languageConfig.seo` › `project.config.seo`.
  * This mirrors Mintlify, where page frontmatter overrides the site defaults.
  */
-export function pageHead(data: SitePage | null | undefined, projectId: string, _lang?: string, origin?: string): Head {
+export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
   if (!data) {
-    // A nonexistent page is a soft-404: give it a distinct title and, crucially,
-    // a robots noindex so search engines never index the not-found shell.
-    return { meta: [{ title: 'Page not found' }, { name: 'robots', content: 'noindex,nofollow' }] };
+    // A nonexistent page is a soft-404: give it a distinct title in the reader's
+    // language and, crucially, a robots noindex so search engines never index
+    // the not-found shell.
+    return { meta: [{ title: siteT(lang)('notFoundTitle') }, { name: 'robots', content: 'noindex,nofollow' }] };
   }
   const config = seoConfig(data.project.config);
   const urlOptions: SiteUrlOptions = { primaryDomain: data.project.primaryDomain, slug: data.project.slug, requestOrigin: origin };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
-import { canonicalSiteBase, changelogFeedUrl, pageHead, siteHead } from './site-seo';
+import { canonicalSiteBase, changelogFeedUrl, pageHead, siteHead, siteIconHref, siteLanguageFromMatches, unavailableSiteHead } from './site-seo';
 
 // Keep the canonical tests hermetic: a developer's local .env may configure a
 // VITE_SITE_BASE_DOMAIN, which would flip the default canonical to a subdomain.
@@ -390,6 +390,24 @@ describe('siteHead analytics scripts', () => {
     capabilities: { answer: false },
   });
 
+  it('carries the site’s own icon and never Nibleaf’s', () => {
+    const icons = (head: ReturnType<typeof siteHead>) => head.links?.filter((link) => link.rel === 'icon' || link.rel === 'apple-touch-icon');
+    expect(icons(siteHead(shell({ branding: { favicon: '/acme.png' } })))).toEqual([
+      { rel: 'icon', href: '/acme.png' },
+      { rel: 'apple-touch-icon', href: '/acme.png' },
+    ]);
+    // A logo stands in; an SVG is not offered as a home-screen icon.
+    expect(icons(siteHead(shell({ branding: { logoLight: '/acme.svg' } })))).toEqual([{ rel: 'icon', href: '/acme.svg' }]);
+    // No branding: an empty icon, so the browser never shows the origin's Nibleaf favicon.
+    expect(siteIconHref(null)).toBe('data:,');
+    expect(JSON.stringify(siteHead(shell(null)))).not.toMatch(/favicon\.svg|site\.webmanifest|apple-touch-icon\.png/);
+  });
+
+  it('titles a private or unpublished site in the requested language, never indexed', () => {
+    expect(unavailableSiteHead('private', 'ar').meta).toEqual([{ title: 'هذا التوثيق خاص' }, { name: 'robots', content: 'noindex,nofollow' }]);
+    expect(unavailableSiteHead(undefined).meta?.[0]).toEqual({ title: 'Not published yet' });
+  });
+
   it('advertises the project name as og:site_name, localized by the active language', () => {
     const plain = siteHead(shell(null));
     expect(plain.meta?.find((m) => m.property === 'og:site_name')?.content).toBe('Acme Docs');
@@ -437,10 +455,16 @@ describe('siteHead analytics scripts', () => {
 describe('pageHead not-found (soft-404)', () => {
   it('emits robots noindex + a distinct title for a missing page so crawlers de-index dead URLs', () => {
     const head = pageHead(null, 'p1');
-    expect(title(head)).toBe('Page not found');
+    expect(title(head)).toBe('We couldn’t find that page');
     expect(meta(head, 'robots')).toBe('noindex,nofollow');
     // No canonical for a page that does not exist.
     expect(canonical(head)).toBeUndefined();
+  });
+
+  it('titles a missing page in the reader language', () => {
+    expect(title(pageHead(null, 'p1', 'ar'))).toBe('لم نعثر على هذه الصفحة');
+    const matches = [{ routeId: '__root__' }, { routeId: '/sites/$projectId', loaderData: { site: { activeLanguage: 'ar' } } }];
+    expect(siteLanguageFromMatches(matches)).toBe('ar');
   });
 
   it('does NOT mark a real, indexable page as noindex', () => {

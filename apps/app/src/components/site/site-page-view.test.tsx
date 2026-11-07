@@ -97,6 +97,27 @@ describe('published page presentation', () => {
     expect(html).toContain('href="/sites/project-1/v2/sibling?lang=ar#setup"');
     expect(html).toContain('href="/sites/project-1/v2/next?lang=ar"');
   });
+  it('reads Arabic article details grammatically, with a UTC date and a breadcrumb landmark', () => {
+    const words = Array.from({ length: 5 * 220 }, () => 'كلمة').join(' ');
+    const fixture = data({
+      activeLanguage: 'ar',
+      breadcrumbs: [
+        { title: 'Parent', path: 'parent' },
+        { title: 'Start', path: 'start' },
+      ],
+      // 22:30 UTC is the next day in Riyadh; server and browser must agree on 3 September.
+      page: { ...data().page, content: `${words}\n\n![One](/one.png)\n\n![Two](/two.png)`, updatedAt: '2026-09-03T22:30:00.000Z' },
+    });
+    const html = renderToStaticMarkup(<SitePageView data={fixture} lang="ar" projectId="project-1" />);
+    expect(html).toContain('5 دقائق للقراءة');
+    expect(html).toContain('لقطتا شاشة');
+    expect(html).toContain('<time dateTime="2026-09-03T22:30:00.000Z">');
+    expect(html).toContain(
+      new Intl.DateTimeFormat('ar-u-nu-latn', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date('2026-09-03T22:30:00.000Z')),
+    );
+    expect(html).toMatch(/<nav class="mb-3" aria-label="مسار التنقّل"><ol[^>]*><li[^>]*><a href="\/sites\/project-1\/parent\?lang=ar"/);
+  });
+
   it('excludes literal image examples from article screenshot counts but counts prose images', () => {
     const examples = ['````mdx', '<img src="/literal.png" />', '```', '![Example](/literal.png)', '````', '`<img src="/inline.png" />`'].join('\n');
     const render = (content: string) =>

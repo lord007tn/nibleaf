@@ -36,7 +36,7 @@ const SECURITY_HEADERS = {
  * renderer and AI chat panel import, read from those translators' own imports so the
  * list can't drift (packages/i18n/src/site-search.ts, site-content.ts and site-chat.ts). */
 const LAZY_SITE_MESSAGES = new RegExp(
-  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts', 'site-chat.ts']
+  `/paraglide/messages/site_(?:${['site-search.ts', 'site-content.ts', 'site-chat.ts', 'site-access.ts']
     .flatMap((file) =>
       [...readFileSync(new URL(`../../packages/i18n/src/${file}`, import.meta.url), 'utf8').matchAll(/paraglide\/messages\/site_(\w+)\.js/g)].map(
         (match) => match[1],

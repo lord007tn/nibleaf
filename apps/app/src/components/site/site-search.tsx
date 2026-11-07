@@ -1,6 +1,7 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { Search } from 'lucide-react';
 import { type ComponentProps, type KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { isShortcutKey } from '@/lib/site-keyboard';
 import { resolveReaderDirection } from '@/lib/text-direction';
 
 const loadSiteSearchDialog = () => import('./site-search-dialog');
@@ -132,13 +133,13 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
       return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || node.isContentEditable;
     };
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (hotkey === 'slash' && event.key === '/' && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
+      if (hotkey === 'slash' && isShortcutKey(event, '/', 'Slash') && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
         event.preventDefault();
         preloadSiteSearch();
         onOpenChange(true);
         return;
       }
-      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+      if (isShortcutKey(event, 'k', 'KeyK') && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         preloadSiteSearch();
         onOpenChange(!open);

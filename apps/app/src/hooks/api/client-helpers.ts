@@ -2,7 +2,7 @@ interface ApiErrorBody {
   error?: {
     code?: string;
     message?: string;
-    details?: { path?: string; sourceFile?: string; limit?: number; errors?: Array<string | { path?: string; message?: string }> };
+    details?: { path?: string; reason?: unknown; sourceFile?: string; limit?: number; errors?: Array<string | { path?: string; message?: string }> };
   };
 }
 
@@ -28,6 +28,7 @@ const readApiError = async (res: Response, fallback: string) => {
       path: body.error?.details?.path,
       sourceFile: body.error?.details?.sourceFile,
       limit: body.error?.details?.limit,
+      reason: typeof body.error?.details?.reason === 'string' ? body.error.details.reason : undefined,
     };
   } catch {
     return { code: undefined, message: fallback };
@@ -44,6 +45,8 @@ export class ApiResponseError extends Error {
     readonly path?: string,
     readonly sourceFile?: string,
     readonly limit?: number,
+    /** The API's machine-readable cause, e.g. a site 404's `private`. */
+    readonly reason?: string,
   ) {
     super(message);
     this.name = 'ApiResponseError';
@@ -61,6 +64,7 @@ export async function getData<TData = never, TResponse extends Response = Respon
       error.path,
       error.sourceFile,
       error.limit,
+      error.reason,
     );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;

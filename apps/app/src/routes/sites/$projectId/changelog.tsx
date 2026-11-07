@@ -1,13 +1,14 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { createFileRoute, notFound, useSearch } from '@tanstack/react-router';
+import { createFileRoute, notFound } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { SiteNotFound } from '@/components/site/site-not-found';
+import { useSiteReader } from '@/components/site/site-reader-context';
 import { getSiteFn, listSiteChangelogFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { changelogFeedUrl, pageHead, sitePageUrl } from '@/lib/site-seo';
+import { changelogFeedUrl, pageHead, siteLanguageFromMatches, sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -37,21 +38,18 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
     }
     return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
   },
-  head: ({ loaderData, params }) => {
+  head: ({ loaderData, params, matches }) => {
     const site = loaderData?.site;
     // A missing site renders the not-found page: no canonical or feed for it.
-    if (!site) return pageHead(null, params.projectId);
+    if (!site) return pageHead(null, params.projectId, siteLanguageFromMatches(matches));
     const config = (site?.project.config ?? null) as { seo?: { metaTitle?: string; metaDescription?: string } } | null;
     // Same cascade as pageHead: language SEO › project SEO › the language's
     // localized site name/description › project name/description.
     const langCfg = site?.languageConfig ?? null;
-    const name = langCfg?.seo?.metaTitle || config?.seo?.metaTitle || langCfg?.name || site?.project.name || 'Documentation';
+    const t = siteT(site.activeLanguage);
+    const name = langCfg?.seo?.metaTitle || config?.seo?.metaTitle || langCfg?.name || site?.project.name || t('documentation');
     const description =
-      langCfg?.seo?.metaDescription ||
-      config?.seo?.metaDescription ||
-      langCfg?.description ||
-      site?.project.description ||
-      `Every update shipped to ${name}.`;
+      langCfg?.seo?.metaDescription || config?.seo?.metaDescription || langCfg?.description || site?.project.description || t('changelogSubtitle');
     // Canonicalize to the site's one base (primary domain › subdomain › self).
     const project = site?.project;
     const url = sitePageUrl(params.projectId, 'changelog', loaderData?.lang, {
@@ -60,10 +58,10 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
       requestOrigin: loaderData?.siteOrigin,
     });
     return {
-      meta: [{ title: `Changelog — ${name}` }, { name: 'description', content: description }],
+      meta: [{ title: `${t('changelog')} — ${name}` }, { name: 'description', content: description }],
       links: [
         { rel: 'canonical', href: url },
-        { rel: 'alternate', type: 'application/rss+xml', title: `${name} changelog`, href: changelogFeedUrl(url) },
+        { rel: 'alternate', type: 'application/rss+xml', title: `${t('changelog')} — ${name}`, href: changelogFeedUrl(url) },
       ],
     };
   },
@@ -76,17 +74,20 @@ const parse = (value: string | null): Date | null => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 };
+// Release dates are calendar days in UTC: the server render and every
+// reader's browser format the same day, whatever their timezone, so hydration
+// matches and an entry never jumps to the neighbouring month group.
 const formatDate = (value: string | null, lang?: string): string => {
   const date = parse(value);
-  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
 };
 const monthKey = (value: string | null): string => {
   const date = parse(value);
-  return date ? `${date.getFullYear()}-${date.getMonth()}` : 'unknown';
+  return date ? `${date.getUTCFullYear()}-${date.getUTCMonth()}` : 'unknown';
 };
 const monthLabel = (value: string | null, lang?: string): string => {
   const date = parse(value);
-  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'long' }) : '';
+  return date ? date.toLocaleDateString(localeTag(lang || 'en'), { year: 'numeric', month: 'long', timeZone: 'UTC' }) : '';
 };
 
 /** Group entries (already newest-first) into consecutive month sections. */
@@ -105,10 +106,11 @@ function groupByMonth(entries: ChangelogEntry[], lang?: string): Array<{ key: st
 }
 
 function SiteChangelog() {
-  // The active language comes from the parent site route's ?lang= search param.
-  const { lang } = useSearch({ strict: false }) as { lang?: string };
+  const { entries, site } = Route.useLoaderData();
+  // The language the reader chrome resolved: the default language has no
+  // `?lang=`, so the URL alone would leave an Arabic-default site in English.
+  const lang = useSiteReader()?.lang ?? site.activeLanguage;
   const t = siteT(lang);
-  const { entries } = Route.useLoaderData();
   const groups = groupByMonth(entries, lang);
 
   return (
@@ -148,11 +150,9 @@ function SiteChangelog() {
                           <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 font-medium text-[10.5px] text-primary uppercase tracking-wide">
                             {t('changelogRelease')}
                           </span>
-                          {entry.date ? <span>{formatDate(entry.date, lang)}</span> : null}
+                          {entry.date ? <time dateTime={entry.date}>{formatDate(entry.date, lang)}</time> : null}
                           <span aria-hidden>·</span>
-                          <span>
-                            {entry.pages} {entry.pages === 1 ? t('changelogPage') : t('changelogPages')}
-                          </span>
+                          <span>{t('changelogPageCount', { count: entry.pages })}</span>
                         </div>
                       </div>
                     </article>

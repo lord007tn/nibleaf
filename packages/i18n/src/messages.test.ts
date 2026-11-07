@@ -6,9 +6,19 @@ import { INTERFACE_LOCALES } from './locales';
 import { MESSAGE_IDS } from './message-ids';
 
 type Catalog = Record<string, string>;
+type VariantMessage = Array<{ match: Record<string, string> }>;
 const messagesDirectory = resolve(import.meta.dirname, '../messages');
-const loadCatalog = (locale: string): Catalog => JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Catalog;
-const placeholders = (value: string) => [...value.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]).sort();
+/** A variant message (plural forms) reads as its variants' text, one per line. */
+const messageText = (value: string | VariantMessage): string =>
+  typeof value === 'string' ? value : value.flatMap((message) => Object.values(message.match)).join('\n');
+const loadCatalog = (locale: string): Catalog =>
+  Object.fromEntries(
+    Object.entries(JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Record<string, string | VariantMessage>).map(
+      ([key, value]) => [key, messageText(value)],
+    ),
+  );
+// Variable names only: a plural form may spell its number out ("صفحتان").
+const placeholders = (value: string) => [...new Set([...value.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]))].sort();
 
 describe('Paraglide message catalogs', () => {
   const english = loadCatalog('en');

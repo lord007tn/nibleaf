@@ -38,6 +38,21 @@ beforeEach(() => {
 });
 
 describe('published reader route input', () => {
+  it('loads the site shell for a malformed percent path instead of throwing', async () => {
+    mocks.getSite.mockResolvedValueOnce(Response.json({ data: { project: { id: 'qa-site' } } }));
+
+    await expect(load('qa-site', '/sites/qa-site/%E0%A4/guide')).resolves.toMatchObject({ site: { project: { id: 'qa-site' } } });
+    expect(mocks.getSite).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' }, query: { lang: 'ar', version: '%E0%A4' } });
+  });
+
+  it('marks a private site so the reader can offer a way in', async () => {
+    mocks.getSite.mockResolvedValueOnce(
+      Response.json({ error: { code: 'database:not_found', message: 'site not found', details: { reason: 'private' } } }, { status: 404 }),
+    );
+
+    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'private' });
+  });
+
   it('retains the real server function validator before reaching the API', async () => {
     await expect(getSiteFn({ data: { projectId: 'qa-site', version: '' } })).rejects.toBeInstanceOf(ZodError);
     expect(mocks.getSite).not.toHaveBeenCalled();
