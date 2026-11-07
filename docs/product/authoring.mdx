@@ -57,14 +57,16 @@ Review the branch as a reader:
 6. Merge the reviewed branch into the default draft, publish once, and verify
    the public deployment.
 
-**Promote into main** makes the branch's pages main's pages, then removes the
-branch. If someone changed pages on main after the branch was created, you see
-a list of those pages first, and nothing changes until you confirm:
+**Promote into main** brings the branch's changes into main, then removes the
+branch. If someone changed pages on main after the branch was created, Promote
+stops, says why, and changes nothing. A step to review those pages and confirm
+is coming soon. When a branch is promoted:
 
-- **Edited on main:** the branch's copy replaces it. Copy any edit you want to
-  keep into the branch before you confirm.
-- **Added on main:** the page stays.
-- **Deleted on main:** the page stays deleted, unless the branch changed it.
+- **Pages you changed in the branch** replace main's, even if main changed them too.
+- **Pages you didn't touch** keep main's latest edits.
+- **Pages added on main** stay. If one has the same address as a page from the
+  branch, the branch's page gets a numbered address, such as `refunds-2`.
+- **Pages deleted on main** stay deleted, unless you changed them in the branch.
 
 Branches created before this check can't show pages deleted on main. Look over
 main yourself before you promote an older branch.
