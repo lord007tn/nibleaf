@@ -5,10 +5,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
-const navigation = vi.hoisted(() => ({ members: {} as Record<string, unknown>, deployments: {} as Record<string, unknown> }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } } }) }));
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session', unknown>);
+/** The settings-access tests' name for the same mocked members and publishes. */
+const navigation = queries;
+/** Signed in as the `viewer` the settings-access tests give a role to. */
+const viewer = { data: { user: { id: 'viewer' } }, isPending: false };
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -84,7 +86,7 @@ describe('site overview first load', () => {
 
   beforeEach(() => {
     analytics.hook.mockReturnValue(pending);
-    Object.assign(queries, { project: pending, pages: pending, members: pending, deployments: pending, domains: pending, session: pending });
+    Object.assign(queries, { project: pending, pages: pending, members: pending, deployments: pending, domains: pending, session: viewer });
   });
 
   it.each(['member', 'admin', 'owner'])('keeps overview settings links within the %s role', async (role) => {
@@ -276,10 +278,13 @@ describe('site overview when something fails or is still connecting', () => {
     expect(container.textContent).not.toContain('overview.noPages');
     expect(tile('overview.stats.pages')).toBe('—');
     expect(tile('overview.stats.members')).toBe('—');
-    const retry = [...container.querySelectorAll('[role="alert"] button')];
-    expect(retry).toHaveLength(1);
-    await act(async () => (retry[0] as HTMLButtonElement).click());
+    // One Retry per failed request: the recent pages, then the settings links that need the team.
+    const retry = [...container.querySelectorAll<HTMLButtonElement>('[role="alert"] button')];
+    expect(retry).toHaveLength(2);
+    await act(async () => retry[0]?.click());
     expect(pages.refetch).toHaveBeenCalled();
+    await act(async () => retry[1]?.click());
+    expect((queries.members as { refetch: () => void }).refetch).toHaveBeenCalled();
   });
 
   it('does not claim the site is unpublished when publishes fail to load', async () => {
