@@ -11,7 +11,7 @@ vi.mock('sonner', () => ({ toast: { success: state.toastSuccess, message: state.
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 
 import { AiAssist } from './ai-assist';
-import { useAiAssistSession } from './use-ai-assist-session';
+import { aiAssistPageId, useAiAssistSession } from './use-ai-assist-session';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 let root: ReturnType<typeof createRoot>;
@@ -29,18 +29,22 @@ const mount = async () => {
   root = createRoot(container);
   queryClient = createQueryClient();
   let shown = true;
+  let editorShown = true;
   let pageId: string | null = 'a';
   const changes = vi.fn();
+  const openPage = vi.fn();
   function Editor() {
     const [content, setContent] = useState('# Page');
     const session = useAiAssistSession({
       projectId: 'project',
       pageId,
+      pageTitle: `Page ${pageId?.toUpperCase() ?? ''}`,
       content,
       onContentChange: (next) => {
         changes(pageId, next);
         setContent(next);
       },
+      openPage,
     });
     return (
       <>
@@ -50,18 +54,18 @@ const mount = async () => {
     );
   }
   const render = () =>
-    act(async () =>
-      root.render(
-        <QueryClientProvider client={queryClient}>
-          <Editor />
-        </QueryClientProvider>,
-      ),
-    );
+    act(async () => root.render(<QueryClientProvider client={queryClient}>{editorShown ? <Editor /> : <p>Settings</p>}</QueryClientProvider>));
   await render();
   return {
     changes,
+    openPage,
     show: async (value: boolean) => {
       shown = value;
+      await render();
+    },
+    /** Leave the editor route entirely (e.g. open project settings), or come back. */
+    editor: async (value: boolean) => {
+      editorShown = value;
       await render();
     },
     page: async (id: string | null, content: string) => {
@@ -168,13 +172,17 @@ describe('AI assist session', () => {
   it('says why the actions wait on another page while a draft for page A runs', async () => {
     const finish = deferDraft();
     const editor = await mount();
+    // The live region exists before its text changes, so screen readers announce it.
+    const region = document.querySelector('[role="status"]');
+    expect(region?.className).toContain('sr-only');
     await click('editor.ai.rephrase');
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    expect(region?.textContent).toBe('');
     await editor.page('b', '# Other page');
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('editor.ai.busyOtherPage');
+    expect(document.querySelector('[role="status"]')).toBe(region);
+    expect(region?.textContent).toBe('editor.ai.busyOtherPage');
     expect(button('editor.ai.rephrase')?.disabled).toBe(true);
     await finish('Draft for A');
-    expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+    expect(region?.textContent).toBe('');
     expect(button('editor.ai.rephrase')?.disabled).toBe(false);
   });
 
@@ -243,5 +251,95 @@ describe('AI assist session', () => {
     expect(editor.changes).not.toHaveBeenCalled();
     await editor.show(true);
     expect(button('editor.ai.insert')).toBeUndefined();
+  });
+  it.each(['continue', 'rephrase'])('keeps a %s draft that lands after the writer left the editor, without claiming it was added', async (mode) => {
+    const finish = deferDraft();
+    const editor = await mount();
+    await click(`editor.ai.${mode}`);
+    await editor.editor(false);
+    await finish('Late draft');
+    expect(editor.changes).not.toHaveBeenCalled();
+    expect(state.toastSuccess).not.toHaveBeenCalled();
+    expect(state.toastMessage).toHaveBeenCalledExactlyOnceWith(
+      'editor.ai.readyOnPage',
+      expect.objectContaining({ action: expect.objectContaining({ label: 'editor.ai.openPage' }) }),
+    );
+    // The toast's action opens the page the draft belongs to.
+    const options = state.toastMessage.mock.calls[0]?.[1] as { action: { onClick: () => void } };
+    options.action.onClick();
+    expect(editor.openPage).toHaveBeenCalledExactlyOnceWith('a');
+    await editor.editor(true);
+    expect(document.body.textContent).toContain('Late draft');
+    await click('editor.ai.insert');
+    expect(editor.changes).toHaveBeenCalledExactlyOnceWith('a', '# Page\n\nLate draft');
+  });
+
+  it('points to the AI panel when a suggestion for this page lands while the panel is hidden', async () => {
+    const finish = deferDraft();
+    const editor = await mount();
+    await click('editor.ai.summarize');
+    await editor.show(false);
+    await finish('Short summary');
+    expect(state.toastMessage).toHaveBeenCalledExactlyOnceWith('editor.ai.readyInPanel');
+    await editor.show(true);
+    expect(document.body.textContent).toContain('Short summary');
+  });
+
+  it('does not announce a suggestion that appears in the visible card', async () => {
+    const finish = deferDraft();
+    await mount();
+    await click('editor.ai.rephrase');
+    await finish('Shown right here');
+    expect(state.toastMessage).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Shown right here');
+  });
+
+  it('offers the other page when a draft for page A lands on page B', async () => {
+    const finish = deferDraft();
+    const editor = await mount();
+    await click('editor.ai.rephrase');
+    await editor.page('b', '# B');
+    await finish('For A');
+    expect(state.toastMessage).toHaveBeenCalledExactlyOnceWith('editor.ai.readyOnPage', expect.anything());
+  });
+
+  it('keeps an older suggestion from being applied while a newer request is running', async () => {
+    const finishFirst = deferDraft();
+    await mount();
+    await click('editor.ai.rephrase');
+    await finishFirst('Older suggestion');
+    const finishSecond = deferDraft();
+    await click('editor.ai.continue');
+    expect(button('editor.ai.replace')?.disabled).toBe(true);
+    expect(button('editor.ai.insert')?.disabled).toBe(true);
+    await finishSecond('Newer section');
+    expect(button('editor.ai.replace')?.disabled).toBe(false);
+  });
+
+  it('sends one request for a double click', async () => {
+    const finish = deferDraft();
+    await mount();
+    await act(async () => {
+      button('editor.ai.rephrase')?.click();
+      button('editor.ai.rephrase')?.click();
+    });
+    expect(state.draft).toHaveBeenCalledTimes(1);
+    await finish('Once');
+  });
+});
+
+describe('aiAssistPageId', () => {
+  const ready = { switching: false, activeId: 'a', loadedPageId: 'a', syncedPageId: 'a' };
+  it('is the open page once it has loaded and its draft is hydrated', () => {
+    expect(aiAssistPageId(ready)).toBe('a');
+  });
+  it.each([
+    ['a page switch is in progress', { switching: true }],
+    ['no page is open', { activeId: null }],
+    ['the page is still loading', { loadedPageId: undefined }],
+    ['the loaded page is the previous one', { loadedPageId: 'b' }],
+    ['the draft still belongs to the previous page', { syncedPageId: 'b' }],
+  ])('is none while %s', (_reason, change) => {
+    expect(aiAssistPageId({ ...ready, ...change })).toBeNull();
   });
 });
