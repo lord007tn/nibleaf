@@ -271,6 +271,10 @@ const legacyImportedPage = (
   return null;
 };
 
+/** Cleanup waits on the project lock, which a Git sync may hold for a while. */
+const CLEANUP_TRANSACTION = { timeout: 30_000, maxWait: 10_000 } as const;
+const isTransactionTimeout = (error: unknown) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2028';
+
 const isUniqueViolation = (error: unknown) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
 
 /**
@@ -499,27 +503,36 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
       // saved it or added a page, comment or grant under it (all of which a
       // delete would take with it); then it stays, simply unlinked. A deletion
       // is a structural write: project lock first, then the page row, as the
-      // page-write protocol requires.
-      await prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
-        await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" = ${created.id} FOR UPDATE`;
-        const untouched = await tx.page.findFirst({
-          where: {
-            id: created.id,
-            projectId,
-            updatedAt: created.updatedAt,
-            title: created.title,
-            content: created.content,
-            description: created.description,
-            icon: created.icon,
-            children: { none: {} },
-            comments: { none: {} },
-            audienceGrants: { none: {} },
-          },
-          select: { id: true },
-        });
-        if (untouched) await tx.page.deleteMany({ where: { id: created.id, projectId } });
-      });
+      // page-write protocol requires. If those locks stay busy past the
+      // timeout (a long Git sync holds the project lock), the page is simply
+      // left unlinked rather than failing the import.
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+          await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" = ${created.id} FOR UPDATE`;
+          const untouched = await tx.page.findFirst({
+            where: {
+              id: created.id,
+              projectId,
+              updatedAt: created.updatedAt,
+              title: created.title,
+              content: created.content,
+              description: created.description,
+              icon: created.icon,
+              children: { none: {} },
+              comments: { none: {} },
+              audienceGrants: { none: {} },
+              // Another import may have adopted this page meanwhile; its
+              // identity row would go with the page.
+              gitImportSource: { is: null },
+            },
+            select: { id: true },
+          });
+          if (untouched) await tx.page.deleteMany({ where: { id: created.id, projectId } });
+        }, CLEANUP_TRANSACTION);
+      } catch (error) {
+        if (!isTransactionTimeout(error)) throw error;
+      }
       summary.skipped++;
       continue;
     }

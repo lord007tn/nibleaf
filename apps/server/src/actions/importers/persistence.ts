@@ -52,9 +52,10 @@ type StarterCandidate = {
 /** Whether a root starter page is exactly as Nibleaf created it: every field
  * sign-up sets (title, icon, text) still matches, and every field it leaves
  * empty (description, settings, translation key, hidden) still is. Only the
- * sign-up Getting started page qualifies (no sign-up flow, past or present,
- * created any other root starter page). Whitespace differences in the text
- * are ignored; any other edit — a rename included — makes the page the writer's. */
+ * sign-up Getting started page qualifies: no sign-up flow created a blank
+ * Welcome or coming-soon page; the other sample pages are left in place on
+ * purpose. Whitespace differences in the text are ignored; any other edit — a
+ * rename included — makes the page the writer's. */
 export const isPristineStarterPage = (page: StarterCandidate): boolean => {
   const untouchedSettings = page.description === null && !page.hidden && page.config === null && page.translationKey === null;
   if (!untouchedSettings) return false;
@@ -65,6 +66,9 @@ export const isPristineStarterPage = (page: StarterCandidate): boolean => {
     normalizeWhitespace(page.content) === PRISTINE_GETTING_STARTED
   );
 };
+
+/** Cleanup waits on the project lock, which a Git sync may hold for a while. */
+const CLEANUP_TRANSACTION = { timeout: 30_000, maxWait: 10_000 } as const;
 
 /**
  * Remove only untouched starter pages before a real import, so the promise
@@ -84,24 +88,31 @@ export const removeImportPlaceholders = async (target: ImportTarget): Promise<nu
   const candidates = (await prisma.page.findMany({ where, select: starterFields })).filter(isPristineStarterPage).map((page) => page.id);
   if (candidates.length === 0) return 0;
   const ids = [...candidates].sort();
-  return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${target.projectId} FOR NO KEY UPDATE`;
-    await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
-    // Comments and audience grants cascade with their page: a page that
-    // gathered either is no longer just the starter.
-    const pristine = (
-      await tx.page.findMany({ where: { ...where, id: { in: ids }, comments: { none: {} }, audienceGrants: { none: {} } }, select: starterFields })
-    )
-      .filter(isPristineStarterPage)
-      .map((page) => page.id);
-    if (pristine.length === 0) return 0;
-    const parents = new Set(
-      (await tx.page.findMany({ where: { parentId: { in: pristine } }, select: { parentId: true } })).map((child) => child.parentId),
-    );
-    const deletable = pristine.filter((id) => !parents.has(id));
-    if (deletable.length === 0) return 0;
-    return (await tx.page.deleteMany({ where: { id: { in: deletable } } })).count;
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${target.projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
+      // Comments and audience grants cascade with their page: a page that
+      // gathered either is no longer just the starter.
+      const pristine = (
+        await tx.page.findMany({ where: { ...where, id: { in: ids }, comments: { none: {} }, audienceGrants: { none: {} } }, select: starterFields })
+      )
+        .filter(isPristineStarterPage)
+        .map((page) => page.id);
+      if (pristine.length === 0) return 0;
+      const parents = new Set(
+        (await tx.page.findMany({ where: { parentId: { in: pristine } }, select: { parentId: true } })).map((child) => child.parentId),
+      );
+      const deletable = pristine.filter((id) => !parents.has(id));
+      if (deletable.length === 0) return 0;
+      return (await tx.page.deleteMany({ where: { id: { in: deletable } } })).count;
+    }, CLEANUP_TRANSACTION);
+  } catch (error) {
+    // The locks stayed busy past the timeout (a long Git sync holds the
+    // project lock): keep the starter page rather than fail the import.
+    if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2028') return 0;
+    throw error;
+  }
 };
 
 /**

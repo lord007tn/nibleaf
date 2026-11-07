@@ -2,7 +2,16 @@ import { slugifyUnicode } from '@nibleaf/shared/utils';
 import { updatePageBody } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Row = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string; title: string; content: string; config: unknown };
+type Row = {
+  id: string;
+  parentId: string | null;
+  kind: 'PAGE' | 'GROUP';
+  slug: string;
+  title: string;
+  content: string;
+  config: unknown;
+  updatedAt?: Date;
+};
 type Source = { pageId: string; projectId: string; branchId: string; languageId: string; path: string };
 
 const mocks = vi.hoisted(() => ({
@@ -53,6 +62,7 @@ vi.mock('./pages', () => ({
       title: body.title,
       content: body.content,
       config: body.config ?? null,
+      updatedAt: new Date(Date.UTC(2026, 10, 7, 0, 0, mocks.ids)),
     };
     mocks.rows.push(row);
     return { ...row };
@@ -92,7 +102,7 @@ beforeEach(() => {
   mocks.prisma.page.update.mockImplementation(async ({ where, data }: { where: { id: string }; data: Partial<Row> }) => {
     const row = mocks.rows.find((candidate) => candidate.id === where.id);
     if (!row) throw new Error('Record to update not found.');
-    Object.assign(row, data);
+    Object.assign(row, data, { updatedAt: new Date((row.updatedAt?.getTime() ?? 0) + 1) });
     return row;
   });
   // Every fake page lives in the import's branch/language, so the lookup
@@ -118,11 +128,14 @@ beforeEach(() => {
     findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> & { id: string } }) => {
       const row = mocks.rows.find((candidate) => candidate.id === where.id) as Record<string, unknown> | undefined;
       if (!row) return null;
-      const fieldsMatch = Object.entries(where).every(
-        ([key, value]) => ['projectId', 'children', 'comments', 'audienceGrants'].includes(key) || value === undefined || row[key] === value,
-      );
+      const fieldsMatch = Object.entries(where).every(([key, value]) => {
+        if (['projectId', 'children', 'comments', 'audienceGrants', 'gitImportSource'].includes(key) || value === undefined) return true;
+        const stored = row[key];
+        return value instanceof Date ? stored instanceof Date && stored.getTime() === value.getTime() : stored === value;
+      });
       const childless = !mocks.rows.some((candidate) => candidate.parentId === where.id);
-      return fieldsMatch && childless ? { id: where.id } : null;
+      const unclaimed = !mocks.sources.some((source) => source.pageId === where.id);
+      return fieldsMatch && childless && unclaimed ? { id: where.id } : null;
     }),
   });
   Object.assign(mocks.prisma, {
@@ -335,26 +348,40 @@ describe('importFromGitProvider', () => {
     expect(lock.join('?')).toContain('FOR NO KEY UPDATE');
   });
 
-  it.each([
-    [
-      'a save',
-      () => {
-        const page = mocks.rows.find((row) => row.kind === 'PAGE');
-        if (page) page.content = 'Saved by a writer';
-      },
-    ],
-    [
-      'a new child page',
-      () => {
-        const page = mocks.rows.find((row) => row.kind === 'PAGE');
-        mocks.rows.push({ id: 'child', parentId: page?.id ?? null, kind: 'PAGE', slug: 'child', title: 'Child', content: 'Child', config: null });
-      },
-    ],
-  ])('keeps its duplicate page, unlinked, when %s lands before the cleanup lock', async (_what, commitBeforeLock) => {
+  const loseIdentityRace = () => {
     mocks.files.set('docs/intro.md', 'A');
     mocks.prisma.pageGitImportSource.create.mockImplementationOnce(async () => {
       throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
     });
+  };
+  const duplicatePage = () => mocks.rows.find((row) => row.slug === 'intro');
+  const touch = (row: Row | undefined, fields: Partial<Row>) => {
+    if (row) Object.assign(row, fields, { updatedAt: new Date((row.updatedAt?.getTime() ?? 0) + 1) });
+  };
+
+  it.each([
+    ['a save', () => touch(duplicatePage(), { content: 'Saved by a writer' }), () => expect(duplicatePage()?.content).toBe('Saved by a writer')],
+    [
+      'a settings-only save',
+      () => touch(duplicatePage(), { config: { sidebarTitle: 'Start' } }),
+      () => expect(duplicatePage()?.config).toEqual({ sidebarTitle: 'Start' }),
+    ],
+    [
+      'a new child page',
+      () =>
+        mocks.rows.push({
+          id: 'child',
+          parentId: duplicatePage()?.id ?? null,
+          kind: 'PAGE',
+          slug: 'child',
+          title: 'Child',
+          content: 'Child',
+          config: null,
+        }),
+      () => expect(mocks.rows.some((row) => row.id === 'child')).toBe(true),
+    ],
+  ])('keeps its duplicate page, unlinked, when %s lands before the cleanup lock', async (_what, commitBeforeLock, verify) => {
+    loseIdentityRace();
     // The writer's transaction commits while the cleanup waits for the page row.
     const queryRaw = (mocks.prisma as unknown as { $queryRaw: ReturnType<typeof vi.fn> }).$queryRaw;
     queryRaw
@@ -365,11 +392,36 @@ describe('importFromGitProvider', () => {
       });
 
     await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
-    const duplicate = mocks.rows.find((row) => row.slug === 'intro');
-    expect(duplicate).toBeDefined();
-    expect(mocks.rows.some((row) => row.id === 'child') || duplicate?.content === 'Saved by a writer').toBe(true);
+    expect(duplicatePage()).toBeDefined();
+    verify();
     expect(mocks.sources).toEqual([]);
     expect(String(queryRaw.mock.calls[1]?.[0])).toContain('FOR UPDATE');
+  });
+
+  it('keeps the page and its identity when another import adopted it before the claim failed', async () => {
+    mocks.files.set('docs/intro.md', 'A');
+    // Import B adopts the page this import just created, so this import's claim fails.
+    mocks.prisma.pageGitImportSource.create.mockImplementationOnce(async ({ data }: { data: Source }) => {
+      mocks.sources.push({ ...data });
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    });
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
+    const page = duplicatePage();
+    expect(page).toBeDefined();
+    expect(mocks.sources).toEqual([expect.objectContaining({ pageId: page?.id, path: 'docs/intro.md' })]);
+  });
+
+  it('leaves its duplicate page unlinked when the cleanup cannot get the locks in time', async () => {
+    loseIdentityRace();
+    const transaction = (mocks.prisma as unknown as { $transaction: ReturnType<typeof vi.fn> }).$transaction;
+    transaction.mockImplementationOnce(async () => {
+      throw Object.assign(new Error('Transaction already closed'), { code: 'P2028' });
+    });
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
+    expect(duplicatePage()).toBeDefined();
+    expect(transaction).toHaveBeenCalledWith(expect.any(Function), { timeout: 30_000, maxWait: 10_000 });
   });
 
   it('drops a stale row whose path another page already holds here, and never adopts its page', async () => {

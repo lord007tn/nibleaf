@@ -175,6 +175,17 @@ describe('removeImportPlaceholders', () => {
     expect(mocks.rows.map((row) => row.id)).toEqual(['starter', 'child']);
   });
 
+  it('keeps the starter page when the cleanup cannot get the locks in time', async () => {
+    mocks.rows.push(starter());
+    mocks.prisma.$transaction.mockImplementationOnce(async () => {
+      throw Object.assign(new Error('Transaction already closed'), { code: 'P2028' });
+    });
+
+    await expect(removeImportPlaceholders(target)).resolves.toBe(0);
+    expect(mocks.rows).toHaveLength(1);
+    expect(mocks.prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), { timeout: 30_000, maxWait: 10_000 });
+  });
+
   it('recognises only the exact signature', () => {
     expect(isPristineStarterPage(starter())).toBe(true);
     expect(isPristineStarterPage(starter({ content: STARTER_GETTING_STARTED_CONTENT.replace('your product', 'Acme') }))).toBe(false);
