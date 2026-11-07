@@ -35,6 +35,21 @@ export const resolvePublishedSearchContext = (snapshot: SiteSnapshot, requested:
   return { configuration: request.configuration, language, version, limit: request.limit };
 };
 
+const baseLanguage = (code: string): string => code.toLowerCase().split(/[-_]/)[0] ?? '';
+
+/** The published language a reader prefers (`ar` matches an `ar-SA` site
+ * language), or undefined when the site does not serve it. Ranking only; it
+ * never narrows which languages are searched. */
+export const resolvePreferredSearchLanguage = (snapshot: SiteSnapshot, preferred?: string): string | undefined => {
+  const wanted = preferred?.trim();
+  if (!wanted) return undefined;
+  const languages = publicLanguages(snapshot.project.languages);
+  return (
+    languages.find((language) => language.code.toLowerCase() === wanted.toLowerCase())?.code ??
+    languages.find((language) => baseLanguage(language.code) === baseLanguage(wanted))?.code
+  );
+};
+
 /**
  * Keyword search is global across the published multilingual corpus unless an
  * API caller explicitly asks for one language. The explicit form remains for

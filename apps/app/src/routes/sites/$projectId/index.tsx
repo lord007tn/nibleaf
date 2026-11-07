@@ -8,7 +8,7 @@ import { sitePageQueryOptions } from '@/hooks/api/site-query-options';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
-import { pageHead } from '@/lib/site-seo';
+import { pageHead, pageMarkdownHeaders, readerFallbackHead, siteLanguageFromMatches } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/')({
   component: SiteHome,
@@ -43,7 +43,11 @@ export const Route = createFileRoute('/sites/$projectId/')({
       throw notFound();
     }
   },
-  head: ({ loaderData, params }) => pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang, loaderData?.siteOrigin),
+  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.page, loaderData?.lang),
+  head: ({ loaderData, params, match, matches }) =>
+    match.status === 'error'
+      ? readerFallbackHead(matches, siteLanguageFromMatches(matches))
+      : pageHead(loaderData?.page ?? null, params.projectId, loaderData ? loaderData.lang : siteLanguageFromMatches(matches), loaderData?.siteOrigin),
 });
 
 function SiteHome() {

@@ -183,7 +183,11 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
   const imageCount = (protectMarkdownCode(page.content).content.match(/!\[[^\]]*\]\([^)]*\)|<img\b[^>]*>/gi) ?? []).filter(
     (image) => !isDarkModeTwin(image),
   ).length;
-  const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium' }).format(new Date(page.updatedAt));
+  // A UTC calendar day, so the server render and a reader in any timezone show
+  // the same date and hydration matches.
+  const updatedLabel = new Intl.DateTimeFormat(localeTag(language || 'en'), { dateStyle: 'medium', timeZone: 'UTC' }).format(
+    new Date(page.updatedAt),
+  );
   const article = (
     <article
       className={cn('w-full min-w-0', mode === 'wide' ? '' : mode === 'center' ? 'mx-auto max-w-[42rem]' : 'mx-auto max-w-[46rem]')}
@@ -191,23 +195,25 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
     >
       {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
       {ancestors.length > 0 ? (
-        <div className="mb-3 flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
-          {ancestors.map((crumb, index) => (
-            <span key={crumb.path} className="flex items-center gap-1.5">
-              {index > 0 ? (
-                <span className="text-muted-foreground/60" aria-hidden>
-                  /
-                </span>
-              ) : null}
-              <a
-                href={siteHref(projectId, crumb.path, { lang: navigationLanguage, version: versionPrefix })}
-                className="transition-opacity hover:opacity-80"
-              >
-                {crumb.title}
-              </a>
-            </span>
-          ))}
-        </div>
+        <nav className="mb-3" aria-label={tArticle('breadcrumb')}>
+          <ol className="flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
+            {ancestors.map((crumb, index) => (
+              <li key={crumb.path} className="flex items-center gap-1.5">
+                {index > 0 ? (
+                  <span className="text-muted-foreground/60" aria-hidden>
+                    /
+                  </span>
+                ) : null}
+                <a
+                  href={siteHref(projectId, crumb.path, { lang: navigationLanguage, version: versionPrefix })}
+                  className="transition-opacity hover:opacity-80"
+                >
+                  {crumb.title}
+                </a>
+              </li>
+            ))}
+          </ol>
+        </nav>
       ) : null}
       <h1 tabIndex={-1} className="outline-none font-semibold text-3xl tracking-tight md:text-4xl">
         {page.title}
@@ -215,15 +221,15 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
       {page.description ? <p className="mt-3 text-lg text-muted-foreground">{page.description}</p> : null}
       <ul className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-muted-foreground text-xs" aria-label={tArticle('articleDetails')}>
         <li className="inline-flex items-center gap-1.5">
-          <Clock3 className="size-3.5" aria-hidden /> {readingMinutes} {tArticle('minRead')}
+          <Clock3 className="size-3.5" aria-hidden /> {tArticle('minReadCount', { count: readingMinutes })}
         </li>
         {imageCount > 0 ? (
           <li className="inline-flex items-center gap-1.5">
-            <Image className="size-3.5" aria-hidden /> {imageCount} {tArticle(imageCount === 1 ? 'screenshot' : 'screenshots')}
+            <Image className="size-3.5" aria-hidden /> {tArticle('screenshotCount', { count: imageCount })}
           </li>
         ) : null}
         <li className="inline-flex items-center gap-1.5">
-          <CalendarClock className="size-3.5" aria-hidden /> {tArticle('updated')} {updatedLabel}
+          <CalendarClock className="size-3.5" aria-hidden /> {tArticle('updated')} <time dateTime={page.updatedAt}>{updatedLabel}</time>
         </li>
       </ul>
       {page.config?.tags?.length ? (
