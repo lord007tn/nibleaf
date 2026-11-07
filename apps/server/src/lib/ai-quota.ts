@@ -45,12 +45,14 @@ export const assertAiQuota = async (organizationId: string): Promise<void> => {
   let used: number;
   try {
     const redis = getRedis();
-    used = await redis.incr(key);
-    if (used === 1) {
-      await redis.expire(key, DAY_SECONDS);
-    }
-  } catch {
-    throw new AppError({ code: 'http:internal', message: 'AI drafting is temporarily unavailable. Try again later.' });
+    const results = await redis.multi().incr(key).expire(key, DAY_SECONDS, 'NX').exec();
+    if (results?.length !== 2) throw new Error('Quota transaction did not complete');
+    for (const [error] of results) if (error) throw error;
+    const count = results[0]?.[1];
+    if (typeof count !== 'number') throw new Error('Quota transaction returned an invalid count');
+    used = count;
+  } catch (cause) {
+    throw new AppError({ code: 'usage:unavailable', message: 'AI drafting is temporarily unavailable. Try again in a few minutes.', cause });
   }
 
   if (used > limit) {

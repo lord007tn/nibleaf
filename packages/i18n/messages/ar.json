@@ -3530,5 +3530,6 @@
   "dashboard_ai_medianFirstTokenMs": "وقت الانتظار المعتاد لظهور الكلمات الأولى",
   "dashboard_ai_medianLatencyMs": "الوقت المعتاد للإجابة",
   "dashboard_ai_noTiming": "لا تتوفر بيانات عن الوقت بعد",
-  "dashboard_ai_milliseconds": "{value} مللي ثانية"
+  "dashboard_ai_milliseconds": "{value} مللي ثانية",
+  "editor_ai_unavailable": "صياغة المحتوى بالذكاء الاصطناعي غير متاحة مؤقتًا. حاول مجددًا بعد بضع دقائق."
 }
