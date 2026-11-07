@@ -5,6 +5,9 @@
  * document back through `onChange` (that is how a new page inherited the
  * previous page's body in production).
  */
+
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Editor } from '@tiptap/core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -86,6 +89,54 @@ describe('seedMarkdown', () => {
 });
 
 describe('TiptapEditor', () => {
+  it.each(['ltr', 'rtl'] as const)('hides the count pill while a table bubble is open at 390px in %s, then restores it', async (dir) => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync(resolve('src/components/editor/tiptap.css'), 'utf8');
+    document.head.append(style);
+    const previousWidth = window.innerWidth;
+    vi.stubGlobal('innerWidth', 390);
+    const rect = new DOMRect(0, 0, 100, 20);
+    Range.prototype.getBoundingClientRect = () => rect;
+    Range.prototype.getClientRects = () => Object.assign([rect], { item: () => rect });
+    try {
+      const { container, prose } = await mount(<TiptapEditor dir={dir} value={'Before\n\n| Name |\n| --- |\n| Ada |'} onChange={vi.fn()} />);
+      await act(async () => {
+        await vi.waitFor(() => expect(prose()?.querySelector('table'), prose()?.innerHTML).not.toBeNull());
+      });
+      const count = container.querySelector('.pl-editor-word-count');
+      const element = prose() as HTMLElement & { editor: Editor };
+      const editor = element.editor;
+      expect(count).not.toBeNull();
+      if (!count) throw new Error('Expected the editor word count');
+      await act(async () => {
+        editor.commands.setTextSelection(1);
+      });
+      await act(async () => {
+        await vi.waitFor(() => expect(container.querySelector('[data-editor-bubble-menu]')).toBeNull());
+      });
+      expect(getComputedStyle(count).visibility).toBe('visible');
+      await act(async () => {
+        editor.commands.setTextSelection(12);
+      });
+      expect(editor.isActive('table')).toBe(true);
+      await act(async () => {
+        await vi.waitFor(() => expect(container.querySelector('[data-editor-bubble-menu]')).not.toBeNull());
+      });
+      expect(container.querySelector('[aria-label="editor.table.alignCenter"]')).not.toBeNull();
+      expect(container.querySelector('.pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count')).toBe(count);
+      expect(getComputedStyle(count).visibility).toBe('hidden');
+      await act(async () => {
+        editor.commands.setTextSelection(1);
+      });
+      await act(async () => {
+        await vi.waitFor(() => expect(container.querySelector('[data-editor-bubble-menu]')).toBeNull());
+      });
+      expect(getComputedStyle(count).visibility).toBe('visible');
+    } finally {
+      style.remove();
+      vi.stubGlobal('innerWidth', previousWidth);
+    }
+  });
   it('renders rich text as a document workspace with an accessible shadcn toolbar', async () => {
     const onChange = vi.fn();
     const { container, prose } = await mount(

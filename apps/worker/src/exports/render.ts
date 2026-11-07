@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
-import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
+import { isSafeLinkDestination, normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
   extractHeadings,
@@ -140,7 +140,7 @@ const rewriteUrl = (
 ): string => {
   const url = rawUrl.trim().replaceAll('&amp;', '&');
   if (!url || url.startsWith('#')) return url;
-  if (/^(?:javascript|data:text\/html|vbscript):/i.test(url)) return '#';
+  if (/^(?:javascript|data:text\/html|vbscript):/i.test(url) || (kind === 'link' && !isSafeLinkDestination(url))) return '#';
   const asset = assets.find((candidate) => url === candidate.url || url === `/${candidate.key}` || url.includes(candidate.key));
   if (asset) return path.posix.relative(path.posix.dirname(currentOutput), assetName(asset)) || './';
   if (kind === 'image' || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return url;
@@ -673,6 +673,9 @@ export const renderPdfHtml = (
           return `${before}${data}${after}`;
         })
         .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
+          // Same rule as the HTML export: unsafe destinations become `#`. marked has
+          // already escaped the value, so `&amp;` is read as `&` for the check only.
+          if (!isSafeLinkDestination(href.replaceAll('&amp;', '&'))) return `${before}#${after}`;
           const target = resolvePageTarget(snapshot, page, href);
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });
