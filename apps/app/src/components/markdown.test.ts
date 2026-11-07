@@ -24,6 +24,18 @@ const render = (content: string, language?: string): Promise<string> =>
     );
   });
 
+describe('Markdown renderer — default element renderers', () => {
+  it('keeps react-markdown internals out of the HTML and keeps authored image classes and empty alt text', async () => {
+    const html = await render(
+      '# Title\n\n## Section\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n![](/plain.png)\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n',
+    );
+    expect(html.match(/<[a-z0-9]+ [^>]*node=[^>]*>/g) ?? []).toEqual([]);
+    expect(html).not.toContain('[object Object]');
+    expect(html).toMatch(/<img[^>]*src="\/plain\.png"[^>]*alt=""|<img[^>]*alt=""[^>]*src="\/plain\.png"/);
+    expect(html).toMatch(/<img[^>]*class="[^"]*rounded-xl[^"]*block dark:hidden[^"]*"/);
+  });
+});
+
 describe('Markdown renderer — Mintlify component parity', () => {
   it('renders KaTeX for inline and block math', async () => {
     const html = await render('Inline $a^2+b^2=c^2$ and a block:\n\n$$\n\\int_0^1 x\\,dx\n$$');

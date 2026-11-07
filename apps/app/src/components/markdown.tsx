@@ -67,18 +67,22 @@ export function resolveDocHref(href: string | undefined, site: SiteLinkContext |
 // Heading scroll margins track the site chrome's sticky header height via
 // --content-scroll-mt (set on the chrome wrapper); the 6rem fallback keeps
 // editor preview and changelog offsets sane.
+// react-markdown passes its hast `node` to custom components; it must not reach
+// the DOM (it would render as `node="[object Object]"`).
 const htmlComponents: Components = {
-  h1: (props) => <h1 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h2: (props) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h3: (props) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h4: (props) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  table: (props) => (
+  h1: ({ node: _node, ...props }) => <h1 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h2: ({ node: _node, ...props }) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h3: ({ node: _node, ...props }) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h4: ({ node: _node, ...props }) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  table: ({ node: _node, ...props }) => (
     <div className="typeset-scroll">
       <table {...props} />
     </div>
   ),
   pre: Pre,
-  img: (props) => <img className="rounded-xl border border-border" alt={props.alt ?? ''} {...props} />,
+  // Authored classes (light/dark image pairs) add to the default frame, and an
+  // image without alt text is marked decorative instead of losing the attribute.
+  img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
 
 /** Anchor renderer, built per site-context. Heading self-links (added by
@@ -87,7 +91,7 @@ const htmlComponents: Components = {
  *  hyperlinks. Everything else gets normal link styling and internal doc links
  *  are rewritten to the site base. */
 function anchorRenderer(site: SiteLinkContext | undefined) {
-  return function Anchor({ className, href, ...props }: ComponentProps<'a'>) {
+  return function Anchor({ className, href, node: _node, ...props }: ComponentProps<'a'> & { node?: unknown }) {
     const isHeadingAnchor = className?.split(/\s+/).includes('heading-anchor');
     if (isHeadingAnchor) {
       return <a className={cn('font-[inherit] text-inherit no-underline hover:no-underline', className)} href={href} {...props} />;
