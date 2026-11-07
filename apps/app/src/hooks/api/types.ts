@@ -154,8 +154,48 @@ export interface Branch {
   projectId: string;
   name: string;
   isDefault: boolean;
+  /** When the version was copied from main; null on older versions. */
+  forkedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** A page on main that changed since a version was created. */
+interface BranchChangedOnMainPage {
+  pageId: string;
+  title: string;
+  path: string;
+  languageCode: string;
+  /** `conflict`: two pages would share an address (`renamed`), or the moves
+   *  on both sides would put pages inside each other (`blocked`). For a
+   *  conflict, `pageId`/`title` are the page concerned, which may be one of
+   *  the version's pages. */
+  change: 'modified' | 'added' | 'deleted' | 'conflict';
+  /** What promote does with it: keep main's page as it is (`kept`), keep
+   *  both sides' edits to different fields (`merged`), let the version win a
+   *  field both changed (`replaced`), remove it (its comments and reader
+   *  grants go with it), bring the version's copy
+   *  back, give it a numbered address (`newPath`), move it because its parent
+   *  goes away (`newParentPath`, null for the top level), or refuse
+   *  (`blocked`: promote answers 409 branch:promote_blocked even when
+   *  confirmed). */
+  onPromote: 'kept' | 'merged' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
+  newPath?: string;
+  newParentPath?: string | null;
+  /** `replaced` only: which of main's own edits the version overwrites (field
+   *  names, plus `content`, `settings`, `parent`). */
+  replacedFields?: string[];
+  updatedAt: string;
+}
+
+/** GET …/branches/:id/merge-preview, and the `details` of a 409
+ *  `branch:main_changed` from promote. `baselineComplete` is false for versions
+ *  created before fork tracking: deletions on main can't be listed for them. */
+export interface BranchMergePreview {
+  changedOnMainSinceFork: BranchChangedOnMainPage[];
+  baselineComplete: boolean;
+  /** Send back as `confirmPreview` to promote exactly this list. */
+  fingerprint: string;
 }
 
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';

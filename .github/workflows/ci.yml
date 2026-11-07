@@ -93,6 +93,11 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Compile interface messages
+        # Server code imports the generated @nibleaf/i18n/messages modules, and the
+        # PostgreSQL suites below run before typecheck would generate them.
+        run: pnpm --filter @nibleaf/i18n run setup
+
       - name: Exercise Prisma migrations and runtime database access
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf

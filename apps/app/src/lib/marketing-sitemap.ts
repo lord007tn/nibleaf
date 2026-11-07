@@ -11,12 +11,12 @@ export interface MarketingSitemapEntry {
  * appended from the article frontmatter registry. */
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/', lastmod: '2026-11-07' },
-  { path: '/ar', lastmod: '2026-08-22' },
+  { path: '/ar', lastmod: '2026-11-07' },
   { path: '/documentation-platforms', lastmod: '2026-11-07' },
   { path: '/ar/documentation-platforms', lastmod: '2026-11-07' },
   { path: '/guides', lastmod: '2026-11-02' },
   { path: '/ar/guides', lastmod: '2026-11-02' },
-  { path: '/cloud', lastmod: '2026-07-13' },
+  { path: '/cloud', lastmod: '2026-11-07' },
   { path: '/pricing', lastmod: '2026-11-07' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
   { path: '/about', lastmod: '2026-11-07' },

@@ -14,6 +14,7 @@ import {
   inviteReaderBody,
   jwtAccessConfigBody,
   languageConfigSchema,
+  mergeBranchBody,
   normalizeDomainInput,
   pageConfigSchema,
   paginationQuery,
@@ -39,6 +40,17 @@ describe('page translation keys', () => {
     expect(createPageBody.safeParse({ title: 'Intro', translationKey: '   ' }).success).toBe(false);
     expect(createPageBody.parse({ title: 'Intro', translationKey: '  intro  ' }).translationKey).toBe('intro');
     expect(updatePageBody.safeParse({ translationKey: '   ' }).success).toBe(false);
+  });
+});
+
+describe('mergeBranchBody', () => {
+  it('accepts an empty body and the confirmation flag, and rejects a non-boolean flag', () => {
+    expect(mergeBranchBody.safeParse({}).success).toBe(true);
+    expect(mergeBranchBody.parse({})).toEqual({});
+    const fingerprint = 'a'.repeat(64);
+    expect(mergeBranchBody.parse({ confirmPreview: fingerprint })).toEqual({ confirmPreview: fingerprint });
+    expect(mergeBranchBody.safeParse({ confirmPreview: 'yes' }).success).toBe(false);
+    expect(mergeBranchBody.safeParse({ confirmPreview: true }).success).toBe(false);
   });
 });
 

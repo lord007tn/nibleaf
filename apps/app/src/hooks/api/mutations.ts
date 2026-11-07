@@ -743,11 +743,22 @@ export const useCreateBranch = (projectId: string) => {
   });
 };
 
+/** Promote a version. Pass `{ id, confirmPreview: preview.fingerprint }` after showing
+ *  the pages changed on main; without it, a changed main fails with
+ *  `branch:main_changed` (details: BranchMergePreview). */
 export const useMergeBranch = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(await api.app.projects[':projectId'].branches[':id'].merge.$post({ param: { projectId, id } }), 'Could not merge the branch.'),
+    mutationFn: async (input: string | { id: string; confirmPreview?: string }) => {
+      const { id, confirmPreview } = typeof input === 'string' ? { id: input, confirmPreview: undefined } : input;
+      return mutateData(
+        await api.app.projects[':projectId'].branches[':id'].merge.$post({
+          param: { projectId, id },
+          json: confirmPreview ? { confirmPreview } : {},
+        }),
+        'Could not merge the branch.',
+      );
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.branches.all(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
