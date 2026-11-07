@@ -80,12 +80,16 @@ export async function notifyDeployment(opts: {
   recovery?: boolean;
 }): Promise<void> {
   if (opts.outcome === 'ready') {
-    const latest = await prisma.deployment.findFirst({
-      where: { projectId: opts.projectId, status: 'READY' },
+    // Never announce a version that a newer READY deployment has already
+    // replaced (a slow publish finishing after a later one, or a recovered
+    // delivery). Anything else announces: the per-outcome notification id keeps
+    // concurrent retries to one bell entry per (deployment, outcome).
+    const newer = await prisma.deployment.findFirst({
+      where: { projectId: opts.projectId, status: 'READY', version: { gt: opts.version } },
       orderBy: { version: 'desc' },
       select: { id: true },
     });
-    if (latest?.id !== opts.deploymentId) return;
+    if (newer && newer.id !== opts.deploymentId) return;
     if (opts.recovery) {
       const announced = await prisma.platformEvent.findUnique({ where: { id: `publish-announced:${opts.deploymentId}` }, select: { id: true } });
       if (announced) return;
