@@ -48,7 +48,7 @@ async function createDeploymentNotifications(
       : {
           type: 'deploy_failed',
           title: `${opts.projectName} publish failed`,
-          body: `Version v${opts.version} did not publish.${opts.error ? ` ${opts.error.slice(0, 300)}` : ''}`,
+          body: `Version v${opts.version} did not publish. Try publishing again.`,
         };
   await prisma.notification.createMany({
     data: members.map((member) => ({
@@ -56,6 +56,7 @@ async function createDeploymentNotifications(
       userId: member.userId,
       projectId: opts.projectId,
       ...payload,
+      params: { projectName: opts.projectName, version: opts.version, ...(opts.error ? { details: opts.error.slice(0, 2000) } : {}) },
       href: `/app/projects/${opts.projectId}`,
     })),
     skipDuplicates: true,

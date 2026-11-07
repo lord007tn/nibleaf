@@ -8,7 +8,7 @@ import { PublishModal, reviewRows } from './publish-modal';
 const { mutate, showError, preflight, refreshPreflight } = vi.hoisted(() => ({
   mutate: vi.fn(),
   showError: vi.fn(),
-  preflight: { isFetching: false },
+  preflight: { isFetching: false, issues: [] as Array<{ code: 'cycle'; message: string; sequence: string[]; rowIndexes: number[] }> },
   refreshPreflight: vi.fn(),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
@@ -32,7 +32,7 @@ vi.mock('@/hooks/api', () => ({
   usePublish: () => ({ isPending: false, mutate }),
   usePendingChanges: () => ({
     // One edited page: publishing is only offered when there is something to publish.
-    data: { changes: [pendingChange], redirectIssues: [], hasBaseline: true },
+    data: { changes: [pendingChange], redirectIssues: preflight.issues, hasBaseline: true },
     isPending: false,
     isFetching: preflight.isFetching,
     isError: false,
@@ -49,6 +49,7 @@ describe('publish draft barrier', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     preflight.isFetching = false;
+    preflight.issues = [];
     refreshPreflight.mockResolvedValue({ data: { redirectIssues: [] }, isError: false });
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
@@ -80,6 +81,18 @@ describe('publish draft barrier', () => {
     await act(async () => finishSaving());
     expect(mutate).toHaveBeenCalledOnce();
     expect(refreshPreflight).toHaveBeenCalledOnce();
+  });
+
+  it('explains blocked redirects and links directly to their settings', async () => {
+    preflight.issues = [{ code: 'cycle', message: 'RAW developer cycle trace', sequence: ['/old', '/new', '/old'], rowIndexes: [0, 1] }];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(document.body.textContent).toContain('publish.redirectIssue.cycle');
+    expect(document.body.textContent).not.toContain('RAW developer');
+    const link = document.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-a/settings?section=redirects"]');
+    expect(link?.textContent).toBe('publish.editRedirects');
+    const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
+    expect(publish?.disabled).toBe(true);
+    expect(mutate).not.toHaveBeenCalled();
   });
 
   it('keeps publish available for retry without creating a deployment when saving fails', async () => {

@@ -138,6 +138,7 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
           type: 'export_ready',
           title: 'Your export is ready',
           body: `${row.formats.length} format(s) are ready to download.`,
+          params: { formatCount: row.formats.length },
           href: `/app/projects/${row.projectId}/settings?section=exports`,
         },
       });
@@ -166,7 +167,8 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
             projectId: row.projectId,
             type: 'export_failed',
             title: 'Export failed',
-            body: message,
+            body: 'The export could not finish. Try creating it again.',
+            params: { details: message },
             href: `/app/projects/${row.projectId}/settings?section=exports`,
           },
         });

@@ -1,4 +1,4 @@
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import type { MarkNotificationsReadBody } from '@nibleaf/validators';
 
 /**
@@ -20,14 +20,15 @@ export function notificationEnabled(metadata: string | null | undefined, id: str
 
 // ─── In-app notification inbox (the bell in the dashboard header) ────────────
 // Rows are personal (per user); producers fan one event out to every member of
-// the project's organization. Titles/bodies are stored as plain English text —
-// the popover chrome is localized client-side, the payload is not.
+// the project's organization. New producers supply structured parameters for
+// client-side localization; titles/bodies remain for older clients and rows.
 
 /** What a producer wants every recipient to see. */
 export interface NotificationInput {
   type: string;
   title: string;
   body?: string;
+  params?: Prisma.InputJsonObject;
   /** Dashboard-relative link opened when the notification is clicked. */
   href?: string;
 }
@@ -63,6 +64,7 @@ export async function createNotificationsForOrgMembers(
       type: input.type,
       title: input.title,
       body: input.body ?? null,
+      ...(input.params ? { params: input.params } : {}),
       href: input.href ?? null,
     })),
   });

@@ -22,6 +22,7 @@ import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from 
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase } from '@/lib/site-seo';
+import { RedirectIssue } from './redirect-issue';
 
 interface PublishModalProps {
   project: Project;
@@ -390,11 +391,16 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                 <p className="mt-1 text-muted-foreground text-xs">{t('publish.redirectsBlockedHint')}</p>
                 <ul className="mt-3 space-y-1.5 text-xs">
                   {redirectIssues.map((issue) => (
-                    <li className="font-mono" key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}-${issue.message}`}>
-                      {issue.message}
-                    </li>
+                    <RedirectIssue issue={issue} key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}`} />
                   ))}
                 </ul>
+                <a
+                  className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
+                  href={`/app/projects/${encodeURIComponent(project.id)}/settings?section=redirects`}
+                  onClick={() => onOpenChange(false)}
+                >
+                  {t('publish.editRedirects')}
+                </a>
               </div>
             ) : null}
 
