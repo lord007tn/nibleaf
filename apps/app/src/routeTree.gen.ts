@@ -46,12 +46,14 @@ import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
 import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
+import { Route as UseCasesSlugRouteImport } from './routes/use-cases/$slug'
 import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
 import { Route as AppdashboardAnalyticsRouteImport } from './routes/app/(dashboard)/analytics'
 import { Route as AppdashboardMembersRouteImport } from './routes/app/(dashboard)/members'
 import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
 import { Route as AppdashboardSitesRouteImport } from './routes/app/(dashboard)/sites'
 import { Route as AppProjectsProjectIdRouteRouteImport } from './routes/app/projects/$projectId/route'
+import { Route as ArUseCasesSlugRouteImport } from './routes/ar/use-cases/$slug'
 import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$projectId/index'
 import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
 import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
@@ -256,6 +258,11 @@ const ToolsRtlDocumentationReadinessRoute =
     path: '/tools/rtl-documentation-readiness',
     getParentRoute: () => rootRouteImport,
   } as any)
+const UseCasesSlugRoute = UseCasesSlugRouteImport.update({
+  id: '/use-cases/$slug',
+  path: '/use-cases/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppdashboardIndexRoute = AppdashboardIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -287,6 +294,11 @@ const AppProjectsProjectIdRouteRoute =
     path: '/projects/$projectId',
     getParentRoute: () => AppRouteRoute,
   } as any)
+const ArUseCasesSlugRoute = ArUseCasesSlugRouteImport.update({
+  id: '/use-cases/$slug',
+  path: '/use-cases/$slug',
+  getParentRoute: () => ArRouteRoute,
+} as any)
 const SitesProjectIdIndexRoute = SitesProjectIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -408,6 +420,7 @@ export interface FileRoutesByFullPath {
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/use-cases/$slug': typeof UseCasesSlugRoute
   '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
@@ -415,6 +428,7 @@ export interface FileRoutesByFullPath {
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
   '/app/sites': typeof AppdashboardSitesRoute
+  '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/': typeof AppdashboardIndexRoute
@@ -464,12 +478,14 @@ export interface FileRoutesByTo {
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/use-cases/$slug': typeof UseCasesSlugRoute
   '/ar': typeof ArIndexRoute
   '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/settings': typeof AppdashboardSettingsRoute
   '/app/sites': typeof AppdashboardSitesRoute
+  '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/sites/$projectId': typeof SitesProjectIdIndexRoute
@@ -522,6 +538,7 @@ export interface FileRoutesById {
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/use-cases/$slug': typeof UseCasesSlugRoute
   '/ar/': typeof ArIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
@@ -529,6 +546,7 @@ export interface FileRoutesById {
   '/app/(dashboard)/members': typeof AppdashboardMembersRoute
   '/app/(dashboard)/settings': typeof AppdashboardSettingsRoute
   '/app/(dashboard)/sites': typeof AppdashboardSitesRoute
+  '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/app/(dashboard)/': typeof AppdashboardIndexRoute
@@ -582,6 +600,7 @@ export interface FileRouteTypes {
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
+    | '/use-cases/$slug'
     | '/ar/'
     | '/blog/'
     | '/app/projects/$projectId'
@@ -589,6 +608,7 @@ export interface FileRouteTypes {
     | '/app/members'
     | '/app/settings'
     | '/app/sites'
+    | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/app/'
@@ -638,12 +658,14 @@ export interface FileRouteTypes {
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
+    | '/use-cases/$slug'
     | '/ar'
     | '/blog'
     | '/app/analytics'
     | '/app/members'
     | '/app/settings'
     | '/app/sites'
+    | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/sites/$projectId'
@@ -695,6 +717,7 @@ export interface FileRouteTypes {
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
+    | '/use-cases/$slug'
     | '/ar/'
     | '/blog/'
     | '/app/projects/$projectId'
@@ -702,6 +725,7 @@ export interface FileRouteTypes {
     | '/app/(dashboard)/members'
     | '/app/(dashboard)/settings'
     | '/app/(dashboard)/sites'
+    | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/app/(dashboard)/'
@@ -748,6 +772,7 @@ export interface RootRouteChildren {
   OauthConsentRoute: typeof OauthConsentRoute
   OauthProjectRoute: typeof OauthProjectRoute
   ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
+  UseCasesSlugRoute: typeof UseCasesSlugRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -1012,6 +1037,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsRtlDocumentationReadinessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/use-cases/$slug': {
+      id: '/use-cases/$slug'
+      path: '/use-cases/$slug'
+      fullPath: '/use-cases/$slug'
+      preLoaderRoute: typeof UseCasesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app/(dashboard)/': {
       id: '/app/(dashboard)/'
       path: '/'
@@ -1053,6 +1085,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/projects/$projectId'
       preLoaderRoute: typeof AppProjectsProjectIdRouteRouteImport
       parentRoute: typeof AppRouteRoute
+    }
+    '/ar/use-cases/$slug': {
+      id: '/ar/use-cases/$slug'
+      path: '/use-cases/$slug'
+      fullPath: '/ar/use-cases/$slug'
+      preLoaderRoute: typeof ArUseCasesSlugRouteImport
+      parentRoute: typeof ArRouteRoute
     }
     '/sites/$projectId/': {
       id: '/sites/$projectId/'
@@ -1273,12 +1312,14 @@ interface ArRouteRouteChildren {
   ArDocumentationPlatformsRoute: typeof ArDocumentationPlatformsRoute
   ArGuidesRoute: typeof ArGuidesRoute
   ArIndexRoute: typeof ArIndexRoute
+  ArUseCasesSlugRoute: typeof ArUseCasesSlugRoute
 }
 
 const ArRouteRouteChildren: ArRouteRouteChildren = {
   ArDocumentationPlatformsRoute: ArDocumentationPlatformsRoute,
   ArGuidesRoute: ArGuidesRoute,
   ArIndexRoute: ArIndexRoute,
+  ArUseCasesSlugRoute: ArUseCasesSlugRoute,
 }
 
 const ArRouteRouteWithChildren =
@@ -1327,6 +1368,7 @@ const rootRouteChildren: RootRouteChildren = {
   OauthConsentRoute: OauthConsentRoute,
   OauthProjectRoute: OauthProjectRoute,
   ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,
+  UseCasesSlugRoute: UseCasesSlugRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
