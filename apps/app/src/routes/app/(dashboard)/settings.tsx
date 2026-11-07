@@ -16,9 +16,12 @@ const SECTIONS = [
   { value: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
 ] as const satisfies ReadonlyArray<{ value: TabValue; labelKey: MessageKey; icon: LucideIcon }>;
 
-type TabValue = 'account' | 'appearance';
+// Tab ids alone: `validateSearch` is in the router's eager chunk, which published
+// docs pages load, so it must not read SECTIONS and pull in its icons.
+const TAB_VALUES = ['account', 'appearance'] as const;
+type TabValue = (typeof TAB_VALUES)[number];
 
-const isTabValue = (value: unknown): value is TabValue => SECTIONS.some((s) => s.value === value);
+const isTabValue = (value: unknown): value is TabValue => (TAB_VALUES as readonly unknown[]).includes(value);
 
 export const Route = createFileRoute('/app/(dashboard)/settings')({
   component: WorkspaceSettingsPage,
