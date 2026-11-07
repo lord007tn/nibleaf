@@ -33,6 +33,7 @@ import {
 } from '../site/marketing-icons';
 import { MarketingLink } from '../site/marketing-link';
 import { Eyebrow, iconTile, outlineButton, primaryButton } from '../site/primitives';
+import { UseCasesTeaser } from '../use-cases/use-cases-teaser';
 
 const icons = {
   ai: Sparkles,
@@ -229,6 +230,8 @@ export function LandingView({
           </section>
         ))}
       </div>
+
+      <UseCasesTeaser lang={lang} />
 
       <section className={section}>
         <Heading copy={copy.more} />
