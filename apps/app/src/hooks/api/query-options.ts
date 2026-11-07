@@ -10,6 +10,7 @@ import type { ReaderAccessData } from './reader-access';
 import type {
   ApiKeyList,
   Branch,
+  BranchMergePreview,
   Comment,
   ConnectedApp,
   Deployment,
@@ -81,6 +82,20 @@ export const branchesQueryOptions = (projectId: string | undefined) =>
     queryFn: projectId
       ? async () => getData<Branch[]>(await api.app.projects[':projectId'].branches.$get({ param: { projectId } }), 'branches')
       : skipToken,
+  });
+
+/** Pages changed on main since the version was created, shown before promoting. */
+export const branchMergePreviewQueryOptions = (projectId: string | undefined, branchId: string | undefined) =>
+  queryOptions({
+    queryKey: queryKeys.branches.mergePreview(projectId ?? '', branchId ?? ''),
+    queryFn:
+      projectId && branchId
+        ? async () =>
+            getData<BranchMergePreview>(
+              await api.app.projects[':projectId'].branches[':id']['merge-preview'].$get({ param: { projectId, id: branchId } }),
+              'merge preview',
+            )
+        : skipToken,
   });
 
 export const deploymentsQueryOptions = (projectId: string | undefined) =>

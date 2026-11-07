@@ -114,6 +114,14 @@ import searchEnWideLight640_avif from './assets/search-en-wide-light-640.avif?ur
 import searchEnWideLight640_webp from './assets/search-en-wide-light-640.webp?url';
 import searchEnWideLight1280_avif from './assets/search-en-wide-light-1280.avif?url';
 import searchEnWideLight1280_webp from './assets/search-en-wide-light-1280.webp?url';
+import themesArWide640_avif from './assets/themes-ar-wide-640.avif?url';
+import themesArWide640_webp from './assets/themes-ar-wide-640.webp?url';
+import themesArWide1280_avif from './assets/themes-ar-wide-1280.avif?url';
+import themesArWide1280_webp from './assets/themes-ar-wide-1280.webp?url';
+import themesEnWide640_avif from './assets/themes-en-wide-640.avif?url';
+import themesEnWide640_webp from './assets/themes-en-wide-640.webp?url';
+import themesEnWide1280_avif from './assets/themes-en-wide-1280.avif?url';
+import themesEnWide1280_webp from './assets/themes-en-wide-1280.webp?url';
 
 /**
  * Real product captures used on marketing pages, generated from `./assets`.
@@ -227,6 +235,12 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
         [780, arabicArPhoneDark780_avif, arabicArPhoneDark780_webp],
       ]),
     },
+    themes: {
+      wide: variant(1280, 805, [
+        [640, themesEnWide640_avif, themesEnWide640_webp],
+        [1280, themesEnWide1280_avif, themesEnWide1280_webp],
+      ]),
+    },
     chat: {
       wide: variant(1280, 800, [
         [640, chatEnWide640_avif, chatEnWide640_webp],
@@ -304,6 +318,12 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       wideDark: variant(780, 1180, [
         [390, arabicArPhoneDark390_avif, arabicArPhoneDark390_webp],
         [780, arabicArPhoneDark780_avif, arabicArPhoneDark780_webp],
+      ]),
+    },
+    themes: {
+      wide: variant(1280, 788, [
+        [640, themesArWide640_avif, themesArWide640_webp],
+        [1280, themesArWide1280_avif, themesArWide1280_webp],
       ]),
     },
     chat: {

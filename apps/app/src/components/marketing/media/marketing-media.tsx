@@ -192,9 +192,12 @@ export function MarketingMedia({
             <span className="size-2 rounded-full bg-muted-foreground/30" />
           </div>
         )}
-        {entry ? (
+        {entry && priority ? (
+          // One eager first-screen image; the system colour scheme picks the dark capture.
+          <Capture wide={entry.wide} phone={entry.phone} darkWide={entry.wideDark} alt={media.alt} priority className="block" />
+        ) : entry ? (
           <>
-            <Capture wide={entry.wide} phone={entry.phone} alt={media.alt} priority={priority} className={dark ? 'block dark:hidden' : 'block'} />
+            <Capture wide={entry.wide} phone={entry.phone} alt={media.alt} priority={false} className={dark ? 'block dark:hidden' : 'block'} />
             {dark && (
               <Capture
                 wide={entry.wideDark ?? entry.wide}

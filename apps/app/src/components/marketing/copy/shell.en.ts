@@ -1,16 +1,15 @@
 import type { ShellCopy } from './types';
 
-// Every link target below exists today. Use-case pages are not linked until
-// their routes ship.
+// Every link target below exists today.
 export const shellEn: ShellCopy = {
   skipToContent: 'Skip to content',
   homeLabel: 'Nibleaf home',
   primaryNavLabel: 'Main navigation',
   nav: [
     { label: 'Features', href: '/#features' },
+    { label: 'Use cases', href: '/#use-cases' },
     { label: 'Pricing', href: '/pricing' },
     { label: 'Docs', href: 'https://docs.nibleaf.com', external: true },
-    { label: 'Blog', href: '/blog' },
     { label: 'Self-hosting', href: '/self-hosting' },
   ],
   login: { label: 'Log in', href: '/sign-in' },
@@ -38,6 +37,14 @@ export const shellEn: ShellCopy = {
           { label: 'Pricing', href: '/pricing' },
           { label: 'Self-hosting', href: '/self-hosting' },
           { label: 'Releases', href: 'https://github.com/lord007tn/nibleaf/releases', external: true },
+        ],
+      },
+      {
+        title: 'Use cases',
+        links: [
+          { label: 'Support teams', href: '/use-cases/support-teams' },
+          { label: 'Product teams', href: '/use-cases/product-docs' },
+          { label: 'Developers', href: '/use-cases/api-docs' },
         ],
       },
       {

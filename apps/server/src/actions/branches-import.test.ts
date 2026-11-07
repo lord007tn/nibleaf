@@ -4,9 +4,13 @@ const db = vi.hoisted(() => ({
   branch: { findMany: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), updateMany: vi.fn() },
   page: { findMany: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
   project: { findUniqueOrThrow: vi.fn(), update: vi.fn() },
+  $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: db, Prisma: { DbNull: 'DbNull' } }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: db,
+  Prisma: { DbNull: 'DbNull', sql: (strings: TemplateStringsArray) => ({ text: strings.join('?') }) },
+}));
 
 import { captureImportDraft, promoteImportReplacementBranch } from './branches';
 
@@ -32,6 +36,9 @@ it('promotes an unchanged snapshot in a serializable transaction', async () => {
   const snapshot = await captureImportDraft('project');
   await promoteImportReplacementBranch('project', 'import', undefined, snapshot);
   expect(db.page.deleteMany).toHaveBeenCalledOnce();
+  // Replacing main's pages is structural: the project lock comes first.
+  expect(db.$queryRaw.mock.calls[0]?.[0].text).toBe('SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE');
+  expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.page.deleteMany.mock.invocationCallOrder[0] ?? 0);
   expect(db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 30_000 });
 });
 

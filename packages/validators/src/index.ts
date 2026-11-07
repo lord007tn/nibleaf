@@ -663,6 +663,19 @@ export const createBranchBody = z.object({
 });
 export type CreateBranchBody = z.infer<typeof createBranchBody>;
 
+/** Promote a version into main. When pages on main changed since the version
+ *  was created, promote refuses (409 `branch:main_changed`, with the preview)
+ *  unless `confirmPreview` is the `fingerprint` of the preview the writer
+ *  reviewed, and that preview is still current. The body is optional: none or
+ *  `{}` is a plain promote. */
+export const mergeBranchBody = z.object({
+  confirmPreview: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+});
+export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
+
 export const updatePageBody = z.object({
   parentId: z.string().nullable().optional(),
   title: z.string().min(1).max(200).optional(),

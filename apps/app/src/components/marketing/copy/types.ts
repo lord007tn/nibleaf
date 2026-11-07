@@ -30,7 +30,7 @@ interface NavLink extends Cta {
 }
 
 /** Keys into the media manifest (`media/manifest.ts`). Copy supplies the alt text. */
-export type MarketingMediaKey = 'hero-chat' | 'chat' | 'search' | 'insights' | 'mcp' | 'editor' | 'dashboard' | 'arabic' | 'themes';
+export type MarketingMediaKey = 'hero-chat' | 'chat' | 'search' | 'insights' | 'mcp' | 'editor' | 'arabic' | 'themes';
 
 export interface MediaRef {
   key: MarketingMediaKey;
@@ -151,4 +151,55 @@ export interface LandingCopy {
   faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
   blog: { eyebrow: string; title: string; allLink: Cta; readingTime: (minutes: number) => string };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
+}
+
+/** Use-case pages (PR2): `/use-cases/<slug>` and `/ar/use-cases/<slug>`. */
+export type UseCaseSlug = 'support-teams' | 'product-docs' | 'api-docs';
+
+export interface UseCaseCopy {
+  slug: UseCaseSlug;
+  meta: { title: string; description: string };
+  /** Short label for nav menus and cards, e.g. "Support teams". */
+  navLabel: string;
+  /** One-sentence card summary used on the landing page and in menus. */
+  cardSummary: string;
+  hero: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    primaryCta: Cta;
+    secondaryCta: Cta;
+    media: MediaRef;
+    /** Rollout caption under the calls to action, from heroAvailabilityNote(). */
+    availabilityNote?: string;
+  };
+  /** The reader's situation today, in their words. */
+  problems: { title: string; items: { title: string; body: string }[] };
+  /**
+   * How Nibleaf helps, each backed by a real capability. A section without a
+   * real capture of that capability has no media rather than a borrowed image.
+   */
+  solutions: (Omit<FeatureSection, 'media'> & { media?: MediaRef })[];
+  /** A plain workflow for this team, 3–5 steps. */
+  workflow: {
+    title: string;
+    steps: { title: string; body: string }[];
+    /** Availability caption for steps that rely on capabilities still rolling out. */
+    note?: string;
+  };
+  faq: {
+    title: string;
+    items: { q: string; a: string }[];
+    /** Availability caption for answers that rely on capabilities still rolling out. */
+    note?: string;
+  };
+  related: { title: string; links: (Cta & { description: string })[] };
+  finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
+}
+
+/** Landing-page teaser for the use-case pages (rendered once the pages exist). */
+export interface UseCasesTeaserCopy {
+  eyebrow: string;
+  title: string;
+  body: string;
 }
