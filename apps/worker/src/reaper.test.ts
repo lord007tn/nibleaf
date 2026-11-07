@@ -6,7 +6,7 @@ vi.mock('@nibleaf/database', () => ({ prisma: { $queryRaw: mocks.read, deploymen
 vi.mock('@nibleaf/bullmq', () => ({ createJob: mocks.enqueue, getJob: mocks.getJob, QueueNames: { PUBLISH: 'publish' } }));
 vi.mock('./lib/notify', () => ({ notifyDeployment: mocks.notify }));
 
-import { reapStaleDeployments } from './reaper';
+import { finalizeAbandonedRetries, reapStaleDeployments } from './reaper';
 
 describe('publish recovery boundary', () => {
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe('publish recovery boundary', () => {
     });
   });
 
-  it('does not finalize or notify a legacy FAILED row outside the recovery window', async () => {
+  it('silently closes a FAILED row outside the notice window', async () => {
     const legacy = {
       id: 'legacy',
       projectId: 'project',
@@ -61,7 +61,12 @@ describe('publish recovery boundary', () => {
     mocks.find.mockImplementation(async ({ where }) =>
       (!where.createdAt.gt || legacy.createdAt > where.createdAt.gt) && legacy.createdAt < where.createdAt.lt ? [legacy] : [],
     );
-    await reapStaleDeployments();
+    mocks.update.mockImplementation(async ({ where }) => ({ count: where.status === 'FAILED' && legacy.createdAt <= where.createdAt?.lte ? 1 : 0 }));
+    expect(await reapStaleDeployments()).toBe(1);
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { status: 'FAILED', completedAt: null, createdAt: { lte: expect.any(Date) } },
+      data: { completedAt: expect.any(Date) },
+    });
     expect(mocks.update.mock.calls.some(([query]) => query.where.id === legacy.id)).toBe(false);
     expect(mocks.notify).not.toHaveBeenCalled();
   });
@@ -71,6 +76,16 @@ describe('publish recovery boundary', () => {
     // The FAILED/null compare-and-set loses to the worker's BUILDING claim.
     mocks.update.mockResolvedValue({ count: 0 });
     await reapStaleDeployments();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it('includes the exact 24-hour boundary in silent expiry', async () => {
+    const now = new Date('2026-11-07T08:00:00Z');
+    await finalizeAbandonedRetries(undefined, 15, now);
+    expect(mocks.update).toHaveBeenCalledWith({
+      where: { status: 'FAILED', completedAt: null, createdAt: { lte: new Date('2026-11-06T08:00:00Z') } },
+      data: { completedAt: now },
+    });
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
@@ -102,5 +117,8 @@ describe('publish recovery boundary', () => {
     expect(migration).toContain('SET "completedAt" = "createdAt"');
     expect(migration).toContain('"status" = \'FAILED\' AND "completedAt" IS NULL');
     expect(rollback.replace(/--[^\n]*/g, '').trim()).toBe('');
+    expect(rollback).toContain('before restarting the new worker');
+    expect(rollback).toContain('UPDATE "deployment" SET "completedAt" = "createdAt"');
+    expect(migration).toContain('in-flight retries');
   });
 });

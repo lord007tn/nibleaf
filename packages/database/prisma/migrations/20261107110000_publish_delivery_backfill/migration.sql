@@ -4,6 +4,8 @@
 -- Deploy-window edge: a READY deployment still delivering when this migration
 -- runs can lose its funnel receipt if the backfill claims its id first. Drain
 -- active publish deliveries before applying the migration to avoid that race.
+-- Drain in-flight retries too: this backfill closes FAILED/null rows, so they
+-- cannot be claimed again by a retry after the migration runs.
 INSERT INTO "platform_event" ("id", "type", "projectId", "metadata", "createdAt")
 SELECT 'publish-ready:' || d."id", 'publish_delivery_backfilled', d."projectId",
        jsonb_build_object('backfillMigration', '20261107110000_publish_delivery_backfill', 'version', d."version"),

@@ -55,15 +55,24 @@ export async function finalizeAbandonedRetries(
   db: Pick<Prisma.TransactionClient, 'deployment'> = prisma,
   staleMinutes = STALE_MINUTES,
   now = new Date(),
+  projectIds?: string[],
 ) {
-  const createdAt = { gt: new Date(now.getTime() - 24 * 60 * 60_000), lt: new Date(now.getTime() - staleMinutes * 60_000) };
+  const scope = projectIds ? { projectId: { in: projectIds } } : {};
+  const windowStart = new Date(now.getTime() - 24 * 60 * 60_000);
+  // Close expired retries without re-announcing historical failures. Otherwise
+  // an old row could remain "retrying" and accept a delayed job indefinitely.
+  const expired = await db.deployment.updateMany({
+    where: { ...scope, status: 'FAILED', completedAt: null, createdAt: { lte: windowStart } },
+    data: { completedAt: now },
+  });
+  const createdAt = { gt: windowStart, lt: new Date(now.getTime() - staleMinutes * 60_000) };
   const abandoned = await db.deployment.findMany({
-    where: { status: 'FAILED', completedAt: null, createdAt },
+    where: { ...scope, status: 'FAILED', completedAt: null, createdAt },
     select: { id: true, projectId: true, version: true, error: true, project: { select: { name: true } } },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     take: 50,
   });
-  let finalized = 0;
+  let finalized = expired.count;
   for (const deployment of abandoned) {
     // Compete with the worker's retry claim and other reapers. A completed
     // failure cannot be claimed by a delayed job that resurfaces later.
@@ -90,13 +99,14 @@ export async function finalizeAbandonedRetries(
 }
 
 /** Only recover recent, undelivered snapshots that are still the live version. */
-export function findRecoverableDeployments(db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma, now = new Date()) {
+export function findRecoverableDeployments(db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma, now = new Date(), projectIds?: string[]) {
   const deliveryCutoff = new Date(now.getTime() - 60_000);
   const recoverySince = new Date(now.getTime() - 24 * 60 * 60_000);
   return db.$queryRaw<Array<{ id: string; projectId: string }>>`
     SELECT d.id, d."projectId" FROM deployment d
     WHERE d.status = 'READY' AND d.snapshot IS NOT NULL
       AND d."completedAt" > ${recoverySince} AND d."completedAt" < ${deliveryCutoff}
+      AND (${projectIds ?? null}::text[] IS NULL OR d."projectId" = ANY(${projectIds ?? null}::text[]))
       AND NOT EXISTS (SELECT 1 FROM deployment newer WHERE newer."projectId" = d."projectId" AND newer.status = 'READY' AND newer.version > d.version)
       AND NOT EXISTS (SELECT 1 FROM platform_event e WHERE e.id = 'publish-ready:' || d.id)
     ORDER BY d."completedAt", d.id LIMIT 50`;

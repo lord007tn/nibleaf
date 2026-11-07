@@ -1,3 +1,7 @@
 -- Intentionally a no-op: backfilled completion times cannot be distinguished
 -- from genuine terminal failures after deployment. Clearing them or removing
 -- historical delivery fences could replay old notifications and indexing.
+-- After running the previous image, drain active publish deliveries and retries.
+-- Re-run this fence before restarting the new worker; migrations do not rerun:
+-- UPDATE "deployment" SET "completedAt" = "createdAt"
+-- WHERE "status" = 'FAILED' AND "completedAt" IS NULL;

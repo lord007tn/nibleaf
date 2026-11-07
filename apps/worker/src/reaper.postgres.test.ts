@@ -41,7 +41,7 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
             const newer = { ...superseded, id: `${run}-newer`, version: 2, completedAt: new Date(now.getTime() - 30_000) };
             await tx.deployment.createMany({ data: [...rows, newer] });
             await tx.platformEvent.create({ data: { id: `publish-ready:${receipted.id}`, type: 'publish_ready', projectId: receipted.projectId } });
-            const ownCandidates = async () => (await findRecoverableDeployments(tx, now)).filter((row) => row.id.startsWith(run));
+            const ownCandidates = () => findRecoverableDeployments(tx, now, projects);
             expect(await ownCandidates()).toEqual([{ id: recent.id, projectId: recent.projectId }]);
             await tx.platformEvent.create({ data: { id: `publish-ready:${recent.id}`, type: 'publish_ready', projectId: recent.projectId } });
             expect(await ownCandidates()).toEqual([]);
@@ -87,22 +87,22 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
                 { id: freshId, projectId: run, version: 3, status: 'FAILED', createdAt: new Date(now.getTime() - 5 * 60_000) },
               ],
             });
-            // Both readers may see the same null completion before either update.
-            // The real conditional update must allow only one of them to announce.
-            await Promise.all([finalizeAbandonedRetries(tx, 15, now), finalizeAbandonedRetries(tx, 15, now)]);
-            await finalizeAbandonedRetries(tx, 15, now);
-            expect(await tx.deployment.findUnique({ where: { id: legacyId }, select: { completedAt: true } })).toEqual({ completedAt: null });
+            expect(await finalizeAbandonedRetries(tx, 15, now, [run])).toBe(2);
+            expect(await finalizeAbandonedRetries(tx, 15, now, [run])).toBe(0);
+            expect(await tx.deployment.findUnique({ where: { id: legacyId }, select: { completedAt: true } })).toEqual({ completedAt: now });
             expect(await tx.deployment.findUnique({ where: { id: freshId }, select: { completedAt: true } })).toEqual({ completedAt: null });
             expect(await tx.deployment.findUnique({ where: { id: retryId }, select: { completedAt: true } })).toEqual({ completedAt: now });
             const ownNotices = mocks.notify.mock.calls.filter(([notice]) => notice.projectId === run);
             expect(ownNotices).toEqual([[expect.objectContaining({ deploymentId: retryId, version: 2, outcome: 'failed' })]]);
+            const backfillId = `${run}-backfill`;
+            await tx.deployment.create({ data: { id: backfillId, projectId: run, version: 4, status: 'FAILED' } });
             const migration = readFileSync(
               new URL('../../../packages/database/prisma/migrations/20261107110000_publish_delivery_backfill/migration.sql', import.meta.url),
               'utf8',
             );
             for (const statement of migration.split(';').filter((part) => part.trim())) await tx.$executeRawUnsafe(statement);
-            const legacy = await tx.deployment.findUniqueOrThrow({ where: { id: legacyId } });
-            expect(legacy.completedAt).toEqual(legacy.createdAt);
+            const backfilled = await tx.deployment.findUniqueOrThrow({ where: { id: backfillId } });
+            expect(backfilled.completedAt).toEqual(backfilled.createdAt);
             expect(await tx.deployment.findUnique({ where: { id: retryId }, select: { completedAt: true } })).toEqual({ completedAt: now });
             throw rollback;
           },
@@ -110,6 +110,74 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
         ),
       ).rejects.toBe(rollback);
     } finally {
+      await prisma.$disconnect();
+    }
+  },
+  40_000,
+);
+
+it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
+  'races two independent PostgreSQL connections and sends exactly one abandoned-retry notice',
+  async () => {
+    const run = randomUUID();
+    const now = new Date();
+    const retryId = `${run}-retry`;
+    const backendIds = new Set<number>();
+    let reads = 0;
+    let releaseReads: () => void = () => undefined;
+    const bothRead = new Promise<void>((resolve) => {
+      releaseReads = resolve;
+    });
+    // Release a surviving reader if its peer fails, so cleanup never hangs.
+    const timeout = setTimeout(() => releaseReads(), 10_000);
+    mocks.notify.mockClear();
+    try {
+      await prisma.organization.create({
+        data: { id: run, name: 'Synthetic finalizer race QA', projects: { create: { id: run, name: 'Synthetic', slug: run } } },
+      });
+      await prisma.deployment.create({
+        data: { id: retryId, projectId: run, version: 1, status: 'FAILED', createdAt: new Date(now.getTime() - 20 * 60_000) },
+      });
+      const race = () =>
+        prisma.$transaction(
+          async (tx) => {
+            const [backend] = await tx.$queryRaw<Array<{ pid: number }>>`SELECT pg_backend_pid() AS pid`;
+            if (!backend) throw new Error('Missing PostgreSQL backend id');
+            backendIds.add(backend.pid);
+            const db = {
+              deployment: new Proxy(tx.deployment, {
+                get(target, key) {
+                  if (key !== 'findMany') return Reflect.get(target, key);
+                  return async (args: Parameters<typeof target.findMany>[0]) => {
+                    const rows = await target.findMany(args);
+                    expect(rows.map((row) => row.id)).toEqual([retryId]);
+                    reads += 1;
+                    if (reads === 2) releaseReads();
+                    await bothRead;
+                    return rows;
+                  };
+                },
+              }),
+            };
+            return finalizeAbandonedRetries(db, 15, now, [run]);
+          },
+          { timeout: 30_000 },
+        );
+      const results = await Promise.allSettled([race(), race()]);
+      for (const result of results) if (result.status === 'rejected') throw result.reason;
+      expect(backendIds.size).toBe(2);
+      expect(reads).toBe(2);
+      expect(results.map((result) => (result.status === 'fulfilled' ? result.value : -1)).sort()).toEqual([0, 1]);
+      expect(mocks.notify.mock.calls.filter(([notice]) => notice.projectId === run)).toEqual([
+        [expect.objectContaining({ deploymentId: retryId, outcome: 'failed' })],
+      ]);
+      expect(await finalizeAbandonedRetries(prisma, 15, now, [run])).toBe(0);
+      expect(mocks.notify).toHaveBeenCalledOnce();
+      expect(await prisma.deployment.findUnique({ where: { id: retryId }, select: { completedAt: true } })).toEqual({ completedAt: now });
+    } finally {
+      clearTimeout(timeout);
+      releaseReads();
+      await prisma.organization.deleteMany({ where: { id: run } });
       await prisma.$disconnect();
     }
   },

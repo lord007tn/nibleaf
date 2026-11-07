@@ -3536,5 +3536,6 @@
   "dashboard_ai_milliseconds": "{value} ms",
   "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
   "deploy_rollback_restoring": "Restoring version {version}…",
-  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version."
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

@@ -206,7 +206,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             <div className="min-w-0 leading-snug">
               <DialogTitle className="font-semibold text-base tracking-tight">
                 {superseded
-                  ? t('deploy.rollback')
+                  ? t('deploy.rollback.supersededTitle')
                   : done
                     ? t('deploy.deployed')
                     : failed
@@ -273,13 +273,15 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
                 {livePage?.title}
               </a>
             ) : null}
-            <details className="w-full text-sm text-muted-foreground">
-              <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
-              <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
-                <RotateCcw className="size-3.5" />
-                {t('deploy.rollback')}
-              </Button>
-            </details>
+            {!superseded ? (
+              <details className="w-full text-sm text-muted-foreground">
+                <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
+                <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
+                  <RotateCcw className="size-3.5" />
+                  {t('deploy.rollback')}
+                </Button>
+              </details>
+            ) : null}
             <span className="flex-1" />
             <Button variant="outline" onClick={viewSite}>
               {t('deploy.viewSite')} <ExternalLink className="size-3.5" />

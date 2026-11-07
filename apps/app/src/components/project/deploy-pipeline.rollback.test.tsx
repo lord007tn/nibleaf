@@ -55,6 +55,12 @@ describe('rollback progress', () => {
   ] as const)('explains the superseded outcome in %s', (locale, message) => {
     expect(translateFn('deploy.rollback.superseded', undefined, locale)).toBe(message);
   });
+  it.each([
+    ['en', 'A newer version is live'],
+    ['ar', 'نسخة أحدث متاحة الآن'],
+  ] as const)('gives the superseded dialog a status title in %s', (locale, title) => {
+    expect(translateFn('deploy.rollback.supersededTitle', undefined, locale)).toBe(title);
+  });
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
   const close = vi.fn();
@@ -106,6 +112,9 @@ describe('rollback progress', () => {
     expect(mocks.info).toHaveBeenCalledOnce();
     expect(container.textContent).toContain('deploy.rollback.superseded');
     expect(container.textContent).not.toContain('deploy.deployed');
+    expect(container.querySelector('h1')?.textContent).toBe('deploy.rollback.supersededTitle');
+    expect(container.querySelector('details')).toBeNull();
+    expect([...container.querySelectorAll('button')].some((button) => button.textContent === 'deploy.rollback')).toBe(false);
   });
   it('keeps polling after close and reports an eventual restoration failure', async () => {
     await queueRollback();
