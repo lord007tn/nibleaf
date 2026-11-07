@@ -1,4 +1,4 @@
-import { stringAttr, titledNode } from './factories';
+import { titledNode } from './factories';
 
 // ─── Frame ──────────────────────────────────────────────────────────────────
-export const Frame = titledNode({ name: 'mdxFrame', tag: 'Frame', className: 'pl-frame', attrs: stringAttr('caption') });
+export const Frame = titledNode({ name: 'mdxFrame', tag: 'Frame', className: 'pl-frame' });

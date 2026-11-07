@@ -9,7 +9,7 @@ import { File, FileTree, Folder } from './file-tree';
 import { Frame } from './frame';
 import { Icon } from './icon';
 import { Badge, Banner, Column, Columns, MdxButton } from './layout';
-import { authoredName, type ButtonMdxProps, type DocumentationComponents, type MdxProps, str } from './props';
+import { authoredName, type ButtonMdxProps, type DocumentationComponents, type MdxProps, numeric, str } from './props';
 import { RelatedCard, RelatedContent } from './related';
 import { Step, Steps } from './steps';
 import { Tab, Tabs } from './tabs';
@@ -41,7 +41,7 @@ export function readerMdxComponents(site: SiteLinkContext | undefined): RichMdxC
         {children}
       </Card>
     ),
-    cardgroup: ({ cols, children }) => <CardGroup cols={str(cols)}>{children}</CardGroup>,
+    cardgroup: ({ cols, children }) => <CardGroup cols={numeric(cols)}>{children}</CardGroup>,
     tabs: ({ children }: MdxProps) => <Tabs language={site?.lang}>{children}</Tabs>,
     tab: ({ title, children }) => <Tab title={str(title)}>{children}</Tab>,
     accordion: ({ title, defaultopen, children }: MdxProps) => (
@@ -54,7 +54,7 @@ export function readerMdxComponents(site: SiteLinkContext | undefined): RichMdxC
     step: ({ title, children }) => <Step title={str(title)}>{children}</Step>,
     mdxframe: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
     tooltip: ({ tip, children }) => <Tooltip tip={str(tip)}>{children}</Tooltip>,
-    icon: (props) => <Icon icon={str(props.icon)} name={authoredName(props)} color={str(props.color)} size={str(props.size)} />,
+    icon: (props) => <Icon icon={str(props.icon)} name={authoredName(props)} color={str(props.color)} size={numeric(props.size)} />,
     update: ({ label, description, children }) => (
       <Update label={str(label)} description={str(description)}>
         {children}

@@ -1,3 +1,4 @@
+import { DOCUMENTATION_COMPONENTS, type DocumentationComponentAttribute } from '@nibleaf/shared/documentation-components';
 import type { Attributes } from '@tiptap/core';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
@@ -58,16 +59,16 @@ export const atomTag = (node: PMNode, tag: string): string => {
 };
 
 /** A string attribute that parses from `attr`/`data-attr` and renders to `data-attr`. */
-export const stringAttr = (name: string): Attributes => ({
+const stringAttr = (name: string, fallback = ''): Attributes => ({
   [name]: {
-    default: '',
-    parseHTML: (element) => element.getAttribute(name) ?? element.getAttribute(`data-${name}`) ?? '',
+    default: fallback,
+    parseHTML: (element) => element.getAttribute(name) ?? element.getAttribute(`data-${name}`) ?? fallback,
     renderHTML: (attributes) => (attributes[name] ? { [`data-${name}`]: attributes[name] as string } : {}),
   },
 });
 
 /** A boolean attribute: "false" is false; presence, "" or "true" is true. */
-export const boolAttr = (name: string): Attributes => ({
+const boolAttr = (name: string): Attributes => ({
   [name]: {
     default: false,
     parseHTML: (element) => {
@@ -89,7 +90,7 @@ export const boolAttr = (name: string): Attributes => ({
 /** A presence flag kept the way it was authored (`required`, `deprecated`):
  *  bare or "true" reads as true and is written back bare; any other value is
  *  kept as text. Absent is the empty string, like a string attribute. */
-export const flagAttr = (name: string): Attributes => ({
+const flagAttr = (name: string): Attributes => ({
   [name]: {
     default: '',
     parseHTML: (element) => {
@@ -101,17 +102,30 @@ export const flagAttr = (name: string): Attributes => ({
   },
 });
 
-/** Merge several string attributes by name. */
-export const stringAttrs = (...names: string[]): Attributes => Object.assign({}, ...names.map(stringAttr));
+/** The node attribute for one registry attribute: a presence flag, a
+ *  true/false switch, or text (strings, URLs, icons, colours, enums and
+ *  numbers), defaulting to the registry's default. */
+const registryAttribute = (attribute: DocumentationComponentAttribute): Attributes => {
+  if (attribute.type === 'boolean') return attribute.presence ? flagAttr(attribute.name) : boolAttr(attribute.name);
+  return stringAttr(attribute.name, attribute.default === undefined ? '' : String(attribute.default));
+};
+
+/** Every node attribute of a component, derived from the registry so the
+ *  editor parses, stores and defaults each prop the way the registry says. */
+export const registryAttributes = (tag: string): Attributes => {
+  const component = DOCUMENTATION_COMPONENTS.find((candidate) => candidate.tag === tag);
+  if (!component) throw new Error(`<${tag}> is not in the documentation component registry`);
+  return Object.assign({}, ...component.attributes.map(registryAttribute));
+};
 
 /** A simple wrapper node (no title) holding `content`, e.g. Steps / Tabs / CardGroup. */
-export const containerNode = (config: { name: string; tag: string; content: string; className: string; attrs?: Attributes }) =>
+export const containerNode = (config: { name: string; tag: string; content: string; className: string }) =>
   Node.create({
     name: config.name,
     group: 'block',
     content: config.content,
     defining: true,
-    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
+    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addStorage: () => markdownStorage(config.tag),
@@ -119,13 +133,13 @@ export const containerNode = (config: { name: string; tag: string; content: stri
 
 /** A title-bearing block (Step / Card / Tab / Accordion / Frame): an editable
  *  title input (via the React node view) above an editable body. */
-export const titledNode = (config: { name: string; tag: string; className: string; attrs?: Attributes }) =>
+export const titledNode = (config: { name: string; tag: string; className: string }) =>
   Node.create({
     name: config.name,
     group: 'block',
     content: 'block+',
     defining: true,
-    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
+    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
@@ -133,14 +147,14 @@ export const titledNode = (config: { name: string; tag: string; className: strin
   });
 
 /** A self-closing, attribute-only MDX block such as `<File name="…" />`. */
-export const atomNode = (config: { name: string; tag: string; className: string; attrs: Attributes }) =>
+export const atomNode = (config: { name: string; tag: string; className: string }) =>
   Node.create({
     name: config.name,
     group: 'block',
     atom: true,
     selectable: true,
     defining: true,
-    addAttributes: () => ({ ...config.attrs, ...sourceMetadataAttributes() }),
+    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className })],
     addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
@@ -154,13 +168,13 @@ export const atomNode = (config: { name: string; tag: string; className: string;
     }),
   });
 
-export const inlineWrapperNode = (config: { name: string; tag: string; className: string; attrs?: Attributes }) =>
+export const inlineWrapperNode = (config: { name: string; tag: string; className: string }) =>
   Node.create({
     name: config.name,
     group: 'inline',
     inline: true,
     content: 'inline*',
-    addAttributes: () => ({ ...(config.attrs ?? {}), ...sourceMetadataAttributes() }),
+    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
     parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `span[data-mdx="${config.tag}"]` }],
     renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addStorage: () => ({

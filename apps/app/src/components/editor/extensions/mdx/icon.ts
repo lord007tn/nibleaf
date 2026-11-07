@@ -2,7 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { sourceMetadataAttributes } from '../mdx-roundtrip';
-import { atomTag, type SerializeState, stringAttrs } from './factories';
+import { atomTag, registryAttributes, type SerializeState } from './factories';
 
 // ─── Inline: Icon ─────────────────────────────────────────────────────────────
 // `<Icon icon|name color size />` — a self-closing inline atom. It carries no
@@ -14,7 +14,7 @@ export const Icon = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  addAttributes: () => ({ ...stringAttrs('icon', 'name', 'color', 'size'), ...sourceMetadataAttributes() }),
+  addAttributes: () => ({ ...registryAttributes('Icon'), ...sourceMetadataAttributes() }),
   parseHTML: () => [{ tag: 'icon' }, { tag: 'span[data-mdx="Icon"]' }],
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes(HTMLAttributes, { 'data-mdx': 'Icon', class: 'pl-icon' })],
   addStorage: () => ({

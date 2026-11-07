@@ -9,6 +9,7 @@ import { markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-reposi
 import { Editor, type Node as TiptapNode } from '@tiptap/core';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import rehypeSanitize from 'rehype-sanitize';
 import { afterEach, describe, expect, it } from 'vitest';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { mdxNodes } from './editor/extensions/mdx';
@@ -34,11 +35,23 @@ const KNOWN_GAPS = {
     // separate, output-changing fix.
     Update: 'portablePublicMdxMarkdown has no Update projection yet',
   } as Readonly<Record<string, string>>,
-  /** Sample props that render nothing by design. */
+  /** Props that intentionally change nothing in the sample render, with the reason.
+   *  The wiring test fails both for an unlisted inert prop and for a listed one
+   *  that does render, so this list cannot go stale. */
   hiddenAttributes: {
-    // ParamField shows the first of path, query, header, body and name.
-    ParamField: ['query', 'header', 'body', 'name'],
-  } as Readonly<Record<string, readonly string[]>>,
+    ParamField: {
+      query: 'ParamField shows the first of path, query, header, body and name; the sample sets path',
+      header: 'ParamField shows the first of path, query, header, body and name; the sample sets path',
+      body: 'ParamField shows the first of path, query, header, body and name; the sample sets path',
+      name: 'ParamField shows the first of path, query, header, body and name; the sample sets path',
+    },
+    Icon: { name: '`name` is the fallback for `icon`, which the sample sets' },
+  } as Readonly<Record<string, Readonly<Record<string, string>>>>,
+  /** URL- or icon-typed props the sanitizer does not protocol-check, with the reason. */
+  unprotocolledAttributes: {
+    'Icon.name':
+      'travels as `dataDisplayName`, which is shared with display-only File/Folder/field names that may contain colons; the Icon renderer only resolves it as an icon name',
+  } as Readonly<Record<string, string>>,
 };
 
 type MdxComponent = DocumentationComponentDefinition & { tag: string; reader: NonNullable<DocumentationComponentDefinition['reader']> };
@@ -49,20 +62,24 @@ const sorted = (values: Iterable<string>) => [...values].sort();
 // A non-default language, so internal links visibly gain the site's language.
 const SITE: SiteLinkContext = { projectId: 'p1', lang: 'ar', defaultLanguage: 'en' };
 
+/** A real, non-default sample value, so a prop that is not wired through to
+ *  the renderer leaves the HTML unchanged and fails the wiring test. */
 const sampleValue = (component: MdxComponent, attribute: DocumentationComponentAttribute): string | true => {
   switch (attribute.type) {
     case 'boolean':
       return true;
     case 'number':
-      return '2';
+      // CardGroup `cols`: not the default (2) and not the first choice (1), so 3.
+      return attribute.values?.find((value) => value !== String(attribute.default ?? '') && value !== attribute.values?.[0]) ?? '24';
     case 'enum':
-      return attribute.values?.[0] ?? 'value';
+      // The first choice is the default (`info` for Banner, `note` for Callout, `default` for Button).
+      return attribute.values?.at(-1) ?? 'value';
     case 'url':
       return `/sample-${component.tag.toLowerCase()}`;
     case 'icon':
-      return 'star';
+      return attribute.name === 'icon' ? 'rocket' : 'book-open';
     case 'color':
-      return 'red';
+      return '#0ea5e9';
     default:
       return `Sample-${component.tag}-${attribute.name}`;
   }
@@ -75,9 +92,10 @@ interface Sample {
   bodies: string[];
 }
 
-/** A valid authored usage with every portable attribute; containers hold a sample of their first allowed child. */
-const sampleUsage = (component: MdxComponent): Sample => {
+/** A valid authored usage with every portable attribute (but `omit`); containers hold a sample of their first allowed child. */
+const sampleUsage = (component: MdxComponent, omit?: string): Sample => {
   const attributes = portableAttributes(component)
+    .filter((attribute) => attribute.name !== omit)
     .map((attribute) => {
       const value = sampleValue(component, attribute);
       return value === true ? ` ${attribute.name}` : ` ${attribute.name}="${value}"`;
@@ -158,6 +176,26 @@ describe('documentation component contract', () => {
       expect(attributeNames(node as TiptapNode)).toEqual(expect.arrayContaining(component.attributes.map((attribute) => attribute.name)));
     });
 
+    it.skipIf(Boolean(component.reader.callout))('defaults and parses each editor attribute the way the registry says', () => {
+      type Spec = { default: unknown; parseHTML?: (element: HTMLElement) => unknown };
+      const specs = ((editorNodeFor(component) as TiptapNode).config.addAttributes?.call(editorNodeFor(component) as never) ?? {}) as Record<
+        string,
+        Spec
+      >;
+      const supported = SUPPORTED_MDX_COMPONENTS[component.tag.toLowerCase()];
+      for (const attribute of component.attributes) {
+        const spec = specs[attribute.name] as Spec;
+        // The round-trip compares edits against the registry default, so the node must start from it.
+        expect(spec.default, `${attribute.name} default`).toEqual(supported?.defaults?.[attribute.name] ?? '');
+        if (attribute.type !== 'boolean') continue;
+        const bare = document.createElement('div');
+        bare.setAttribute(attribute.name, '');
+        expect(spec.parseHTML?.(bare), `${attribute.name} present`).toBe(true);
+        // A switch is off when absent; a presence flag is simply absent (and written back bare when present).
+        expect(spec.parseHTML?.(document.createElement('div')), `${attribute.name} absent`).toBe(attribute.presence ? '' : false);
+      }
+    });
+
     // Callout variants are saved by the callout extension as GitHub admonitions
     // (`> [!WARNING]`); their only prop is the variant itself.
     it.skipIf(Boolean(component.reader.callout))('saves every registry attribute from the editor', () => {
@@ -189,11 +227,35 @@ describe('documentation component contract', () => {
 
     it('declares no attribute that can carry script, styles or an unchecked URL', () => {
       for (const attribute of component.attributes) expect(attribute.name).not.toMatch(UNSAFE_ATTRIBUTE);
-      for (const attribute of portableAttributes(component).filter((candidate) => candidate.type === 'url')) {
-        // rehype-sanitize checks protocols per property name (href and src by default).
-        expect(sanitizeSchema.protocols?.[attribute.name], `${attribute.name} is not protocol-checked`).toBeDefined();
-        const html = renderRich(sampleUsage(component).markdown.replace(`${attribute.name}="`, `${attribute.name}="javascript:alert(1)//`));
-        expect(html).not.toContain('javascript:');
+      // URLs, and icons (which a future renderer may resolve as image URLs), must
+      // have their scheme checked. rehype-sanitize does that per property name.
+      for (const attribute of portableAttributes(component).filter((candidate) => candidate.type === 'url' || candidate.type === 'icon')) {
+        const property = attribute.name === 'name' ? 'dataDisplayName' : attribute.name;
+        if (`${component.tag}.${attribute.name}` in KNOWN_GAPS.unprotocolledAttributes) {
+          expect(sanitizeSchema.protocols?.[property], `${attribute.name} is listed as unchecked`).toBeUndefined();
+          continue;
+        }
+        expect(sanitizeSchema.protocols?.[property], `${attribute.name} is not protocol-checked`).toBeDefined();
+        const tree = {
+          type: 'root',
+          children: [{ type: 'element', tagName: component.reader.tag, properties: { [property]: 'javascript:alert(1)' }, children: [] }],
+        };
+        const sanitized = rehypeSanitize(sanitizeSchema)(tree as never) as unknown as typeof tree;
+        expect(sanitized.children[0]?.properties[property], `${attribute.name} kept a javascript: URL`).toBeUndefined();
+        if (attribute.type === 'url') {
+          const html = renderRich(sampleUsage(component).markdown.replace(`${attribute.name}="`, `${attribute.name}="javascript:alert(1)//`));
+          expect(html).not.toContain('javascript:');
+        }
+      }
+    });
+
+    it('wires every portable prop through to the rendered HTML', () => {
+      const hidden = KNOWN_GAPS.hiddenAttributes[component.tag] ?? {};
+      const withEvery = renderRich(inContainer(component, sampleUsage(component)).markdown, SITE);
+      for (const attribute of portableAttributes(component)) {
+        const without = renderRich(inContainer(component, sampleUsage(component, attribute.name)).markdown, SITE);
+        const reason = hidden[attribute.name];
+        expect(without !== withEvery, reason ? `${attribute.name} is listed as inert: ${reason}` : `${attribute.name} changes nothing`).toBe(!reason);
       }
     });
 
@@ -203,10 +265,11 @@ describe('documentation component contract', () => {
       expect(html).not.toMatch(new RegExp(`<\\/?${component.reader.tag}\\b`, 'i'));
       expect(html).not.toMatch(new RegExp(`&lt;\\/?${component.tag}\\b`, 'i'));
       for (const body of sample.bodies) expect(html, 'body').toContain(body);
-      const hidden = KNOWN_GAPS.hiddenAttributes[component.tag] ?? [];
+      const hidden = KNOWN_GAPS.hiddenAttributes[component.tag] ?? {};
+      if (component.tag === 'CardGroup') expect(html).toContain('sm:grid-cols-3');
       for (const attribute of portableAttributes(component)) {
         const value = sampleValue(component, attribute);
-        if (attribute.type === 'string' && !hidden.includes(attribute.name)) expect(html, attribute.name).toContain(String(value));
+        if (attribute.type === 'string' && !(attribute.name in hidden)) expect(html, attribute.name).toContain(String(value));
         if (attribute.type === 'url') {
           const rewritten = siteHref(SITE.projectId, String(value), { lang: siteLanguageParam(SITE.lang, SITE.defaultLanguage) });
           expect(rewritten).not.toBe(value);

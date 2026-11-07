@@ -20,6 +20,9 @@ translation_key: 'reference/mintlify-parity'
 - **متوفر**: يمكنك إدراجه وتحريره في المحرّر المرئي، ويبقى سليمًا عند الانتقال
   إلى وضع المصدر ومزامنة Git والتصدير، ويُعرض في سمات Harbor وManuscript وSignal
   في الوضعين الفاتح والداكن، ومن اليسار إلى اليمين ومن اليمين إلى اليسار (RTL).
+  أما ميزات الموقع والصفحة التي ليست كتلًا (مرجع OpenAPI وإعدادات الصفحة وموجز
+  سجل التغييرات)، فتعني **متوفر** أنه يمكنك إعدادها من لوحة التحكم وأنها تعمل
+  كاملةً.
 - **جزئي**: يعمل، لكن خيارات Mintlify أو طرق التحرير المذكورة غير متوفرة.
 - **غير متوفر**: لا يدعمه Nibleaf بعد.
 - **خارج النطاق**: غير مخطط له، للسبب المذكور.
@@ -44,7 +47,7 @@ translation_key: 'reference/mintlify-parity'
 | --- | --- | --- | --- |
 | `Card` مع `title` و`icon` و`href` | متوفر | تتبع الروابط الداخلية المسار الأساسي للموقع | |
 | `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` | غير متوفر | | 3 |
-| `CardGroup` مع `cols` | متوفر | من عمود واحد إلى أربعة أعمدة | |
+| `CardGroup` مع `cols` | جزئي | عمودان أو ثلاثة أو أربعة، تُختار عند الإدراج ولا يمكن تغييرها بعده | 3 |
 | `Columns` مع `cols`، و`Column` | جزئي | يُحسب عدد الأعمدة من العناصر الفرعية؛ ويُتجاهل `cols` | 3 |
 | `Tile` | غير متوفر | | 5 |
 | `Panel` (اللوحة الجانبية) | غير متوفر | | 5 |
@@ -55,11 +58,13 @@ translation_key: 'reference/mintlify-parity'
 | --- | --- | --- | --- |
 | `Tabs` و`Tab` مع `title` | متوفر | تتبع مفاتيح الأسهم اتجاه القراءة | |
 | `icon` و`id` في `Tab`؛ و`defaultTabIndex` و`sync` و`borderBottom` في `Tabs` | غير متوفر | | 3 |
-| `Accordion` مع `title` و`defaultOpen`، و`AccordionGroup` | متوفر | | |
+| `Accordion` مع `title`، و`AccordionGroup` | متوفر | | |
+| `defaultOpen` في `Accordion` | جزئي | يُعرض ويُحفظ، لكن المحرّر لا يوفّر عنصر تحكم له بعد | 3 |
 | `description` و`icon` و`id` في `Accordion` | غير متوفر | | 3 |
 | `Steps` و`Step` مع `title` | متوفر | تُرقَّم تلقائيًا | |
 | `icon` و`stepNumber` و`titleSize` في `Step`؛ و`titleSize` في `Steps` | غير متوفر | | 3 |
-| `Expandable` مع `title` و`defaultOpen` | متوفر | | |
+| `Expandable` مع `title` | متوفر | | |
+| `defaultOpen` في `Expandable` | جزئي | يُعرض ويُحفظ، لكن المحرّر لا يوفّر عنصر تحكم له بعد | 3 |
 | `View` | غير متوفر | | 5 |
 | `Tree` و`Tree.Folder` و`Tree.File` | جزئي | تغطي `FileTree` و`Folder` و`File` الشجرة نفسها؛ أسماء وسوم Mintlify و`highlight` و`openable` غير متوفرة | 5 |
 | `Visibility` للبشر أو لوكلاء الذكاء الاصطناعي | غير متوفر | | 5 |
@@ -99,7 +104,7 @@ translation_key: 'reference/mintlify-parity'
 | `Badge` مع `color` | جزئي | يُحفظ `color` لكنه لا يُنسَّق على الموقع، ولا يوفّر المحرّر المرئي حقلًا له | 3 |
 | `size` و`shape` و`icon` و`stroke` و`disabled` في `Badge` | غير متوفر | | 3 |
 | `Icon` مع `icon` و`color` و`size` | جزئي | أسماء أيقونات Lucide فقط؛ ولا تُدعم Font Awesome وTabler وروابط الصور و`iconType` | 3 |
-| `Banner` على مستوى الموقع | متوفر | من إعدادات الموقع، إضافةً إلى كتلة `Banner` داخل الصفحة | |
+| `Banner` على مستوى الموقع | متوفر | من إعدادات الموقع؛ ويمكن أيضًا إدراج كتلة `Banner` داخل الصفحة، لكن `type` فيها بلا حقل في المحرّر بعد | |
 | `Color` و`Color.Row` و`Color.Item` | غير متوفر | | 5 |
 | `Prompt` | غير متوفر | | 5 |
 | `GitHub.Repo` مع عدد النجوم والتفرعات المباشر | خارج النطاق | لا تجلب أدوات العرض بيانات المكوّنات عبر الشبكة أبدًا | |
@@ -108,7 +113,7 @@ translation_key: 'reference/mintlify-parity'
 
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
-| صور مع نص بديل، والتكبير بالنقر، وأزواج الصور الفاتحة والداكنة | متوفر | | |
+| صور مع نص بديل، والتكبير بالنقر، وأزواج الصور الفاتحة والداكنة | جزئي | يعمل النص البديل والتكبير بالنقر؛ أما أزواج الصور الفاتحة والداكنة فتُكتب في وضع المصدر، ويحذف المحرّر المرئي أصنافها عند الحفظ | 6 |
 | `noZoom` على صورة | غير متوفر | | 5 |
 | `Frame` مع `caption` | متوفر | | |
 | `hint` في `Frame` | غير متوفر | | 3 |
@@ -144,7 +149,7 @@ translation_key: 'reference/mintlify-parity'
 | `sidebarTitle` و`tag` و`hidden` و`noindex` و`og:*` والرابط الأساسي (canonical) | جزئي | تُضبط في إعدادات الصفحة، لكن مزامنة Git لا تنقلها بعد | 7 |
 | `mode`: الافتراضي والعريض والموسَّط (default وwide وcenter) | جزئي | في إعدادات الصفحة فقط، وليس في مزامنة Git | 7 |
 | `mode`: custom وframe وassistant | خارج النطاق | | |
-| `keywords` | جزئي | تُحفظ وسوم الصفحة، لكن البحث لا يستخدمها بعد | 7 |
+| `keywords` | جزئي | تُحفظ وسوم الصفحة، لكن البحث لا يرفع ترتيبها بعد | 7 |
 | `deprecated` و`hideFooterPagination` و`timestamp` و`lastUpdatedDate` و`url` الخارجي | غير متوفر | | 7 |
 
 ## سجلات التغييرات

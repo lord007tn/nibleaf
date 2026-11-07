@@ -42,4 +42,7 @@ export type DocumentationComponents = Omit<Record<DocumentationReaderTag | 'merm
 
 const optionalStringSchema = z.string().optional().catch(undefined);
 export const str = (value: unknown) => optionalStringSchema.parse(value);
+/** A numeric prop. `cols` and `size` are also HTML attribute names, so the HTML
+ *  parser hands them over as numbers rather than strings. */
+export const numeric = (value: unknown): string | number | undefined => (typeof value === 'number' ? value : str(value));
 export const authoredName = (props: MdxProps): string | undefined => str(props['data-display-name']) ?? str(props.dataDisplayName) ?? str(props.name);

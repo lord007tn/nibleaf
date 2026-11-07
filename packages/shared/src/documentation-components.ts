@@ -38,6 +38,11 @@ export interface DocumentationComponentAttribute {
    *  edits against it, so it must match what the editor node defaults to;
    *  leaving it out means the empty string. */
   default?: string | boolean | number;
+  /** A `boolean` that is a presence flag (`required`, `deprecated`): written
+   *  bare, absent by default (empty string), and any non-boolean value is kept
+   *  as authored. Without it a boolean is a true/false switch (`defaultOpen`)
+   *  that defaults to `false`. The editor picks its attribute parser from this. */
+  presence?: boolean;
   /** Preserved by the editor round-trip only: never sanitized for the reader
    *  and never listed in the public catalog. */
   editorOnly?: boolean;
@@ -72,7 +77,7 @@ export interface DocumentationComponentDefinition {
   catalog: boolean;
 }
 
-type AttributeDetails = Pick<DocumentationComponentAttribute, 'values' | 'default'>;
+type AttributeDetails = Pick<DocumentationComponentAttribute, 'values' | 'default' | 'presence'>;
 
 interface ComponentDetails<Tag extends DocumentationComponentTag> {
   id: string;
@@ -184,8 +189,20 @@ export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition
     interactive: true,
   }),
   native({ id: 'mermaid', syntax: 'fence', category: 'media', attributes: [], visualEditor: true, interactive: true }),
-  mdx('ParamField', { id: 'param-field', category: 'api', visualEditor: true, interactive: false }),
-  mdx('ResponseField', { id: 'response-field', category: 'api', visualEditor: true, interactive: false }),
+  mdx('ParamField', {
+    id: 'param-field',
+    category: 'api',
+    visualEditor: true,
+    interactive: false,
+    attributes: { required: { presence: true }, deprecated: { presence: true } },
+  }),
+  mdx('ResponseField', {
+    id: 'response-field',
+    category: 'api',
+    visualEditor: true,
+    interactive: false,
+    attributes: { required: { presence: true }, deprecated: { presence: true } },
+  }),
   mdx('Expandable', { id: 'expandable', category: 'api', visualEditor: true, interactive: true, attributes: { defaultOpen: { default: false } } }),
   mdx('Columns', { id: 'columns', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Column'] }),
   mdx('Column', { id: 'column', category: 'structure', visualEditor: true, interactive: false }),
@@ -195,7 +212,7 @@ export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition
     visualEditor: true,
     interactive: false,
     attributes: { type: { values: ['info', 'warning'] } },
-    editorOnlyAttributes: { dismissible: { type: 'boolean' } },
+    editorOnlyAttributes: { dismissible: { type: 'boolean', presence: true } },
   }),
   mdx('Badge', { id: 'badge', category: 'inline', visualEditor: true, interactive: false }),
   mdx('Button', {

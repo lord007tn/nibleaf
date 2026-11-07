@@ -34,6 +34,9 @@ export type SupportedDefinition = {
   defaults?: Record<string, string | boolean>;
   inline?: boolean;
   calloutVariant?: string;
+  /** Boolean attributes (switches and presence flags): an empty authored
+   *  value (`defaultOpen=""`) means present, as it does in HTML. */
+  booleans?: string[];
 };
 
 const supportedDefinition = (component: DocumentationComponentDefinition, tag: string): SupportedDefinition => {
@@ -44,10 +47,12 @@ const supportedDefinition = (component: DocumentationComponentDefinition, tag: s
         : [[attribute.name, typeof attribute.default === 'number' ? String(attribute.default) : attribute.default]],
     ),
   );
+  const booleans = component.attributes.filter((attribute) => attribute.type === 'boolean').map((attribute) => attribute.name);
   return {
     canonical: tag,
     attrs: component.attributes.map((attribute) => attribute.name),
     ...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+    ...(booleans.length > 0 ? { booleans } : {}),
     ...(component.kind === 'inline' ? { inline: true } : {}),
     ...(component.reader?.callout ? { calloutVariant: component.reader.callout } : {}),
   };
@@ -299,7 +304,10 @@ const attributeValue = (attrs: AttributeToken[], name: string): string | boolean
 function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeToken[]): Record<string, string | boolean> {
   const result: Record<string, string | boolean> = {};
   for (const name of definition.attrs) {
-    result[name] = attributeValue(attrs, name) ?? definition.defaults?.[name] ?? '';
+    const authored = attributeValue(attrs, name);
+    // `defaultOpen=""` is present (the reader opens it): treat it as true so
+    // the editor node agrees and the authored spelling is kept on save.
+    result[name] = authored === '' && definition.booleans?.includes(name) ? true : (authored ?? definition.defaults?.[name] ?? '');
   }
   return result;
 }

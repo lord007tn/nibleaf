@@ -20,6 +20,9 @@ that closes a gap, and rows move to **Has** as those changes ship.
 - **Has**: you can insert and edit it in the visual editor, it survives switching
   to source mode, Git sync, and exports, and it renders in the Harbor, Manuscript,
   and Signal themes in light and dark mode, left to right and right to left.
+  For site and page features that aren't blocks (the OpenAPI reference, page
+  settings, the changelog feed), **Has** means you can set them up in the
+  dashboard and they work end to end.
 - **Partial**: it works, but the listed Mintlify options or editing paths are missing.
 - **Missing**: Nibleaf doesn't support it yet.
 - **Out of scope**: not planned, for the reason given.
@@ -44,7 +47,7 @@ a protected block, so saving never drops it.
 | --- | --- | --- | --- |
 | `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path | |
 | `Card` with `horizontal`, `img`, `cta`, `arrow`, `color` | Missing | | 3 |
-| `CardGroup` with `cols` | Has | One to four columns | |
+| `CardGroup` with `cols` | Partial | Two, three or four columns, chosen when inserted; can't be changed afterwards | 3 |
 | `Columns` with `cols`, and `Column` | Partial | The column count comes from the children; `cols` is ignored | 3 |
 | `Tile` | Missing | | 5 |
 | `Panel` (right side panel) | Missing | | 5 |
@@ -55,11 +58,13 @@ a protected block, so saving never drops it.
 | --- | --- | --- | --- |
 | `Tabs` and `Tab` with `title` | Has | Arrow keys follow the reading direction | |
 | `Tab` `icon` and `id`; `Tabs` `defaultTabIndex`, `sync`, `borderBottom` | Missing | | 3 |
-| `Accordion` with `title`, `defaultOpen`, and `AccordionGroup` | Has | | |
+| `Accordion` with `title`, and `AccordionGroup` | Has | | |
+| `Accordion` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
 | `Accordion` `description`, `icon`, `id` | Missing | | 3 |
 | `Steps` and `Step` with `title` | Has | Numbered automatically | |
 | `Step` `icon`, `stepNumber`, `titleSize`; `Steps` `titleSize` | Missing | | 3 |
-| `Expandable` with `title`, `defaultOpen` | Has | | |
+| `Expandable` with `title` | Has | | |
+| `Expandable` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
 | `View` | Missing | | 5 |
 | `Tree`, `Tree.Folder`, `Tree.File` | Partial | `FileTree`, `Folder`, and `File` cover the same tree; the Mintlify tag names, `highlight`, and `openable` are missing | 5 |
 | `Visibility` for humans or AI agents | Missing | | 5 |
@@ -99,7 +104,7 @@ a protected block, so saving never drops it.
 | `Badge` with `color` | Partial | `color` is kept but not styled on the site, and the visual editor has no field for it | 3 |
 | `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Missing | | 3 |
 | `Icon` with `icon`, `color`, `size` | Partial | Lucide icon names only; Font Awesome, Tabler, image URLs, and `iconType` aren't resolved | 3 |
-| Site `Banner` | Has | Site settings, plus a page-level `Banner` block | |
+| Site `Banner` | Has | Site settings; a page-level `Banner` block can also be inserted, but its `type` has no editor field yet | |
 | `Color`, `Color.Row`, `Color.Item` | Missing | | 5 |
 | `Prompt` | Missing | | 5 |
 | `GitHub.Repo` with live stars and forks | Out of scope | Renderers never fetch component data over the network | |
@@ -108,7 +113,7 @@ a protected block, so saving never drops it.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| Images with alt text, click to zoom, light and dark pairs | Has | | |
+| Images with alt text, click to zoom, light and dark pairs | Partial | Alt text and click to zoom work; light and dark pairs are written in source mode, and the visual editor drops their classes on save | 6 |
 | `noZoom` on an image | Missing | | 5 |
 | `Frame` with `caption` | Has | | |
 | `Frame` `hint` | Missing | | 3 |

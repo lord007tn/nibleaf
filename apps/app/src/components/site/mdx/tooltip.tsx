@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { containsLink } from './utils';
+import { linkKey } from './utils';
 
 // ─── Tooltip ────────────────────────────────────────────────────────────────
 
@@ -8,23 +8,25 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
   const id = useId();
   const pointerOpen = useRef(false);
   const wrapper = useRef<HTMLSpanElement>(null);
-  const linked = containsLink(children);
+  const links = linkKey(children);
+  const linked = links !== '';
   // A tooltip around links has no button of its own, so every link carries the
-  // description, added to any it already has. Cleanup removes only the
+  // description, added to any it already has. It re-runs when the links change
+  // (so a link added later is described too), and cleanup removes only the
   // tooltip's own id, so descriptions changed meanwhile by anything else stay.
   useEffect(() => {
-    if (!tip || !linked) return;
+    if (!tip || links === '') return;
     const tokens = (link: HTMLElement) => (link.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
-    const links = [...(wrapper.current?.querySelectorAll<HTMLElement>('a[href], [href]') ?? [])];
-    for (const link of links) link.setAttribute('aria-describedby', [...new Set([...tokens(link), id])].join(' '));
+    const described = [...(wrapper.current?.querySelectorAll<HTMLElement>('a[href], [href]') ?? [])];
+    for (const link of described) link.setAttribute('aria-describedby', [...new Set([...tokens(link), id])].join(' '));
     return () => {
-      for (const link of links) {
+      for (const link of described) {
         const remaining = tokens(link).filter((token) => token !== id);
         if (remaining.length > 0) link.setAttribute('aria-describedby', remaining.join(' '));
         else link.removeAttribute('aria-describedby');
       }
     };
-  }, [tip, linked, id]);
+  }, [tip, links, id]);
   if (!tip) return <>{children}</>;
   return (
     // Hover, focus and Escape are handled on the wrapper so the pointer can move

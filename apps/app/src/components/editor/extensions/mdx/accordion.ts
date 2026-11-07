@@ -1,4 +1,4 @@
-import { boolAttr, containerNode, stringAttr, titledNode } from './factories';
+import { containerNode, titledNode } from './factories';
 
 // ─── Accordions ─────────────────────────────────────────────────────────────
 export const AccordionGroup = containerNode({
@@ -11,5 +11,4 @@ export const Accordion = titledNode({
   name: 'mdxAccordion',
   tag: 'Accordion',
   className: 'pl-accordion',
-  attrs: { ...stringAttr('title'), ...boolAttr('defaultOpen') },
 });

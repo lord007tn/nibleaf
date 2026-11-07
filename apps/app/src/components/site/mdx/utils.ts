@@ -32,10 +32,14 @@ export function handleTabKeyDown(
   tabRefs[next]?.focus();
 }
 
-/** True when the content holds a link, which must not be nested in a button. */
-export const containsLink = (node: ReactNode): boolean =>
-  Children.toArray(node).some(
-    (child) =>
-      isValidElement<{ href?: unknown; children?: ReactNode }>(child) &&
-      (child.type === 'a' || child.props.href !== undefined || containsLink(child.props.children)),
-  );
+/** A key naming every link in the content (one `<href>` token per link), or
+ *  `''` when there is none. Links must not be nested in a button, and the key
+ *  changes whenever links are added, removed or retargeted. */
+export const linkKey = (node: ReactNode): string =>
+  Children.toArray(node)
+    .map((child) => {
+      if (!isValidElement<{ href?: unknown; children?: ReactNode }>(child)) return '';
+      const own = child.type === 'a' || child.props.href !== undefined ? `<${String(child.props.href ?? '')}>` : '';
+      return own + linkKey(child.props.children);
+    })
+    .join('');

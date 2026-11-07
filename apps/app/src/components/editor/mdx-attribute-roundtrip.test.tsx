@@ -88,3 +88,45 @@ describe('presence-only API field flags', () => {
     expect(rendered).toContain(t('deprecated'));
   });
 });
+
+describe('empty boolean attributes', () => {
+  it('keeps defaultOpen="" open through an edit elsewhere and an edit of the same block', () => {
+    const editor = createEditor('Intro.\n\n<Accordion title="FAQ" defaultOpen="">\n\nBody\n\n</Accordion>');
+    expect(firstNode(editor, 'mdxAccordion')?.attrs.defaultOpen).toBe(true);
+    editor.commands.insertContentAt(1, 'Edited. ');
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('<Accordion title="FAQ" defaultOpen="">');
+    expect(render(saved)).toContain('aria-expanded="true"');
+    let position = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'mdxAccordion') position = pos;
+    });
+    editor.commands.command(({ tr }) => {
+      tr.setNodeMarkup(position, undefined, { ...tr.doc.nodeAt(position)?.attrs, title: 'Questions' });
+      return true;
+    });
+    expect(getMarkdown(editor)).toContain('<Accordion title="Questions" defaultOpen="">');
+  });
+
+  it('keeps required="" on an API field so the reader still marks it required', () => {
+    const editor = createEditor('Intro.\n\n<ParamField name="id" type="string" required="">\n\nThe id.\n\n</ParamField>');
+    editor.commands.insertContentAt(1, 'Edited. ');
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('<ParamField name="id" type="string" required="">');
+    expect(render(saved)).toContain(siteContentT('en')('required'));
+  });
+});
+
+describe('Banner dismissible', () => {
+  it.each(['dismissible', 'dismissible="true"', 'dismissible="false"'])('round-trips an authored %s unchanged', (authored) => {
+    const editor = createEditor(`Intro.\n\n<Banner type="warning" ${authored}>\n\nHeads up.\n\n</Banner>`);
+    editor.commands.insertContentAt(1, 'Edited. ');
+    expect(getMarkdown(editor)).toContain(`<Banner type="warning" ${authored}>`);
+  });
+
+  it('keeps a pasted bare dismissible flag', () => {
+    expect(getMarkdown(createEditor('<banner type="warning" dismissible><p>Heads up.</p></banner>'))).toContain(
+      '<Banner type="warning" dismissible>',
+    );
+  });
+});

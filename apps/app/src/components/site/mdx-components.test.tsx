@@ -64,6 +64,25 @@ describe('interactive MDX components', () => {
     expect(link?.getAttribute('aria-describedby')).toBe('own-one later-added');
   });
 
+  it('describes links added to a tooltip after it mounted', async () => {
+    const render = (links: string[]) =>
+      root.render(
+        <Tooltip tip="Shared hint">
+          {links.map((href) => (
+            <a key={href} href={href}>
+              {href}
+            </a>
+          ))}
+        </Tooltip>,
+      );
+    await act(async () => render(['/one']));
+    const tipId = container.querySelector('[role="tooltip"]')?.id ?? '';
+    await act(async () => render(['/one', '/two']));
+    const [one, two] = [...container.querySelectorAll('a')];
+    expect(one?.getAttribute('aria-describedby')).toBe(tipId);
+    expect(two?.getAttribute('aria-describedby')).toBe(tipId);
+  });
+
   it('supports roving keyboard focus for LTR tabs', async () => {
     await act(async () =>
       root.render(

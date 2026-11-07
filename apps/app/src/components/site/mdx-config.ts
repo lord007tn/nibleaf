@@ -34,6 +34,19 @@ const COMPONENT_ATTRIBUTES: Record<string, string[]> = Object.fromEntries(
   }),
 );
 
+/** Component props that hold a URL or may one day hold an image URL (icons):
+ *  the sanitizer checks their scheme, so `javascript:` or `data:` never reaches
+ *  a renderer. `href` is already checked by the default schema. An Icon's
+ *  `name` alias travels as `dataDisplayName`, shared with display-only names,
+ *  so it is not protocol-checked; the Icon renderer resolves it as an icon name. */
+const COMPONENT_PROTOCOLS: Record<string, string[]> = Object.fromEntries(
+  CONTRACT.flatMap(([, component]) =>
+    Object.entries(component.attributes).flatMap(([name, type]) =>
+      (type === 'url' || type === 'icon') && name !== 'name' && !defaultSchema.protocols?.[name] ? [[name, ['http', 'https']]] : [],
+    ),
+  ),
+);
+
 /** Block-level component tags whose inner content should be parsed as Markdown. */
 export const MDX_BLOCK_TAGS: readonly string[] = CONTRACT.flatMap(([tag, component]) => (component.markdownBody ? [tag] : []));
 const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
@@ -158,6 +171,7 @@ export function normalizeMdxBlocks(src: string): string {
 export const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), ...COMPONENT_TAGS],
+  protocols: { ...defaultSchema.protocols, ...COMPONENT_PROTOCOLS },
   attributes: {
     ...defaultSchema.attributes,
     '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className', 'id'],

@@ -1,4 +1,4 @@
-import { boolAttr, containerNode, flagAttr, stringAttr, stringAttrs, titledNode } from './factories';
+import { containerNode, titledNode } from './factories';
 
 // ─── API reference: ParamField / ResponseField ────────────────────────────────
 // Modeled as block components so they round-trip losslessly (their attributes are
@@ -9,19 +9,12 @@ export const ParamField = containerNode({
   tag: 'ParamField',
   content: 'block+',
   className: 'pl-paramfield',
-  attrs: {
-    ...stringAttrs('path', 'query', 'header', 'body', 'name', 'type'),
-    ...flagAttr('required'),
-    ...stringAttr('default'),
-    ...flagAttr('deprecated'),
-  },
 });
 export const ResponseField = containerNode({
   name: 'mdxResponseField',
   tag: 'ResponseField',
   content: 'block+',
   className: 'pl-responsefield',
-  attrs: { ...stringAttrs('name', 'type'), ...flagAttr('required'), ...stringAttr('default'), ...flagAttr('deprecated') },
 });
 
 // ─── Expandable (collapsible disclosure) ──────────────────────────────────────
@@ -29,5 +22,4 @@ export const Expandable = titledNode({
   name: 'mdxExpandable',
   tag: 'Expandable',
   className: 'pl-expandable',
-  attrs: { ...stringAttr('title'), ...boolAttr('defaultOpen') },
 });
