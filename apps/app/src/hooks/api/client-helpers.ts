@@ -27,7 +27,6 @@ const readApiError = async (res: Response, fallback: string) => {
         code: body.error?.code,
         details: body.error?.details,
         message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
-        details: body.error?.details,
       };
     }
     return {
@@ -37,7 +36,6 @@ const readApiError = async (res: Response, fallback: string) => {
       path: body.error?.details?.path,
       sourceFile: body.error?.details?.sourceFile,
       limit: body.error?.details?.limit,
-      details: body.error?.details,
     };
   } catch {
     return { code: undefined, message: fallback };
