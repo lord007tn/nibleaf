@@ -68,8 +68,10 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
   };
   /** An autosave of `pageId` (content only: its own row lock, no project
    *  lock) that holds its transaction open until `during` is queued behind it,
-   *  then commits. Returns what `during` settled to. */
-  const whileSaving = async (pageId: string, content: string, during: () => Promise<unknown>) => {
+   *  runs `meanwhile` (committed on its own connection) while `during` is still
+   *  blocked, then commits. With `content: null` it only holds the row lock.
+   *  Returns what `during` settled to. */
+  const whileSaving = async (pageId: string, content: string | null, during: () => Promise<unknown>, meanwhile?: () => Promise<unknown>) => {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -81,7 +83,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     const save = db.prisma.$transaction(
       async (tx) => {
         await tx.$queryRaw(db.Prisma.sql`SELECT 1 FROM "page" WHERE "id" = ${pageId} FOR NO KEY UPDATE`);
-        await tx.page.update({ where: { id: pageId }, data: { content } });
+        if (content !== null) await tx.page.update({ where: { id: pageId }, data: { content } });
         const [backend] = await tx.$queryRaw<{ pid: number }[]>(db.Prisma.sql`SELECT pg_backend_pid() AS pid`);
         saved(backend?.pid ?? -1);
         await gate;
@@ -95,6 +97,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     );
     try {
       await untilWaiting(holder);
+      await meanwhile?.();
     } finally {
       release();
     }
@@ -205,6 +208,42 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
   });
 
+  it.each([
+    ['a root page', null, 'late'],
+    ['a child page', 'guide', 'guide/late'],
+  ] as const)(
+    'refuses, keeping it, when %s is created on main while the promote is blocked',
+    { timeout: DB_TEST_TIMEOUT_MS },
+    async (_label, parent, path) => {
+      const { projectId, main, base, guide, legacy } = await fixture();
+      const version = await branches.createBranch(projectId, { name: 'v2' });
+      // createPage takes no project lock; a child only needs KEY SHARE on its parent.
+      const create = () =>
+        db.prisma.page.create({
+          data: { ...base, parentId: parent ? guide.id : null, title: 'Late', slug: 'late', path, position: 9 },
+          select: { id: true },
+        });
+      let created: { id: string } | undefined;
+      const outcome = await whileSaving(
+        legacy.id,
+        null,
+        () => branches.mergeBranch(projectId, version.id),
+        async () => {
+          created = await create();
+        },
+      );
+      expect(outcome).toMatchObject({
+        status: 409,
+        code: 'branch:main_changed',
+        details: { changedOnMainSinceFork: [expect.objectContaining({ pageId: created?.id, path, change: 'added' })] },
+      });
+      expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toEqual(
+        ['guide', 'guide/billing', ...(parent ? ['guide/late'] : []), 'legacy', ...(parent ? [] : ['late'])].sort(),
+      );
+      expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
+    },
+  );
+
   it('promotes a project with more than 500 pages, nested, without a false failure', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, base } = await fixture();
     const rows: Array<{ id: string; parentId: string | null; kind: 'GROUP' | 'PAGE'; title: string; slug: string; path: string; position: number }> =
@@ -284,11 +323,17 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     });
 
     it('has no baseline when the source has none', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
-      const { projectId } = await fixture();
+      const { projectId, billing } = await fixture();
       const a = await branches.createBranch(projectId, { name: 'a' });
       await db.prisma.branch.update({ where: { id: a.id }, data: { forkedAt: null, forkBaseline: db.Prisma.DbNull } });
+      // Main changes after a was made but before b: b's hint counts from a's time.
+      await db.prisma.page.update({ where: { id: billing.id }, data: { content: 'Edited before b' } });
       const b = await branches.createBranch(projectId, { name: 'b', fromBranchId: a.id });
-      await expect(promoteError(projectId, b.id)).resolves.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
+      await expect(promoteError(projectId, b.id)).resolves.toMatchObject({
+        status: 409,
+        code: 'branch:baseline_missing',
+        details: { since: a.createdAt.toISOString(), mainPagesEditedOrCreatedSince: 1 },
+      });
     });
   });
 });
