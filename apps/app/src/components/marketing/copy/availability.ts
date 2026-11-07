@@ -10,9 +10,9 @@ import type { MarketingLang } from './types';
  * value to `live` only after the owner confirms the feature is enabled on
  * nibleaf.com; every page that mentions the capability picks the change up.
  */
-export type CloudAvailability = 'live' | 'rolling-out';
+type CloudAvailability = 'live' | 'rolling-out';
 
-export const CLOUD_AVAILABILITY = {
+const CLOUD_AVAILABILITY = {
   askAi: 'rolling-out',
   /** The redesigned reader search (#281): section-level results, recent searches, the Ask AI hand-off. */
   readerSearch: 'rolling-out',

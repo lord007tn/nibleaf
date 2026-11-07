@@ -302,4 +302,4 @@ export function ArabicDocumentationPlatformsPage() {
 }
 
 // Route modules import the Arabic landing from here today; it lives in arabic-landing.tsx.
-export { ArabicLandingPage, ArabicShell } from './arabic-landing';
+export { ArabicLandingPage } from './arabic-landing';

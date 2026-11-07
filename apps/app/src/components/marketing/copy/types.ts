@@ -23,7 +23,7 @@ export interface Cta {
   href: string;
 }
 
-export interface NavLink extends Cta {
+interface NavLink extends Cta {
   external?: boolean;
 }
 
@@ -87,7 +87,7 @@ export interface ShellCopy {
   };
 }
 
-export interface FeatureSection {
+interface FeatureSection {
   /** Stable anchor id, e.g. `ask-ai`. */
   id: string;
   eyebrow: string;
@@ -132,33 +132,4 @@ export interface LandingCopy {
   faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };
   blog: { eyebrow: string; title: string; allLink: Cta; readingTime: (minutes: number) => string };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
-}
-
-/** Use-case pages (PR2): `/use-cases/<slug>` and `/ar/use-cases/<slug>`. */
-export type UseCaseSlug = 'support-teams' | 'product-docs' | 'api-docs';
-
-export interface UseCaseCopy {
-  slug: UseCaseSlug;
-  meta: { title: string; description: string };
-  /** Short label for nav menus and cards, e.g. "Support teams". */
-  navLabel: string;
-  /** One-sentence card summary used on the landing page and in menus. */
-  cardSummary: string;
-  hero: { eyebrow: string; title: string; subtitle: string; primaryCta: Cta; secondaryCta: Cta; media: MediaRef };
-  /** The reader's situation today, in their words. */
-  problems: { title: string; items: { title: string; body: string }[] };
-  /** How Nibleaf helps, each backed by a real capability and real media where useful. */
-  solutions: FeatureSection[];
-  /** A plain workflow for this team, 3–5 steps. */
-  workflow: { title: string; steps: { title: string; body: string }[] };
-  faq: { title: string; items: { q: string; a: string }[] };
-  related: { title: string; links: (Cta & { description: string })[] };
-  finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
-}
-
-/** Landing-page teaser for the use-case pages (rendered once the pages exist). */
-export interface UseCasesTeaserCopy {
-  eyebrow: string;
-  title: string;
-  body: string;
 }

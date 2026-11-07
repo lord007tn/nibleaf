@@ -153,7 +153,7 @@ const variant = (width: number, height: number, files: [number, string, string][
   fallback: files[files.length - 1]?.[2] ?? '',
 });
 
-export const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, MediaEntry>>> = {
+const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, MediaEntry>>> = {
   en: {
     'hero-chat': {
       wide: variant(1280, 800, [
