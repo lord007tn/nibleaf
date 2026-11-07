@@ -1,5 +1,6 @@
-import { type EnsureQueryDataOptions, MutationCache, QueryCache, QueryClient, type QueryKey } from '@tanstack/react-query';
+import { CancelledError, type EnsureQueryDataOptions, MutationCache, QueryCache, QueryClient, type QueryKey } from '@tanstack/react-query';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { getSessionGeneration } from './session-generation';
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -11,7 +12,7 @@ declare module '@tanstack/react-query' {
      * example with `friendlyErrorMessage`); it runs once for every failed call.
      */
     queryMeta: { errorMessage?: string };
-    mutationMeta: { errorMessage?: string | ((error: unknown) => string) };
+    mutationMeta: { errorMessage?: string | ((error: unknown) => string); sessionGeneration?: number };
   }
 }
 
@@ -25,8 +26,11 @@ export const shouldRetry = (failureCount: number, error: unknown): boolean => !i
 
 // The router (and so this module) is in every page's bundle, including public
 // marketing and reader pages: load the toast library only when a toast is due.
-const toastError = (message: string | undefined) => {
-  if (message) void import('sonner').then(({ toast }) => toast.error(message));
+const toastError = (message: string | undefined, isCurrent: () => boolean = () => true) => {
+  if (message)
+    void import('sonner').then(({ toast }) => {
+      if (isCurrent()) toast.error(message);
+    });
 };
 
 /**
@@ -35,14 +39,18 @@ const toastError = (message: string | undefined) => {
  * the router context. See apps/app/DATA_LOADING.md for the conventions.
  */
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  const queryClient: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (_error, query) => toastError(query.meta?.errorMessage),
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
+        if (error instanceof CancelledError) return;
+        const generation = mutation.meta?.sessionGeneration;
+        const isCurrent = () => generation === undefined || generation === getSessionGeneration(queryClient);
+        if (!isCurrent()) return;
         const message = mutation.meta?.errorMessage;
-        toastError(typeof message === 'function' ? message(error) : message);
+        toastError(typeof message === 'function' ? message(error) : message, isCurrent);
       },
     }),
     defaultOptions: {
@@ -64,6 +72,7 @@ export function createQueryClient(): QueryClient {
       },
     },
   });
+  return queryClient;
 }
 
 /**

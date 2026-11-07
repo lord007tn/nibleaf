@@ -136,9 +136,17 @@ export function LanguagesSection({ project }: { project: Project }) {
                 </div>
                 {!language.isDefault ? (
                   <Button
-                    className="h-8 cursor-pointer rounded-md px-2.5 text-[12.5px]"
+                    className="min-h-11 cursor-pointer whitespace-normal rounded-md px-2.5 text-[12.5px]"
                     loading={update.isPending && update.variables?.id === language.id}
-                    onClick={() => void save(language.id, { isDefault: true })}
+                    onClick={async () => {
+                      const approved = await confirm({
+                        title: t('settings.languages.defaultConfirm.title'),
+                        description: t('settings.languages.defaultConfirm.description'),
+                        confirmLabel: t('settings.languages.makeDefault'),
+                      });
+                      if (!approved) return;
+                      await save(language.id, { isDefault: true });
+                    }}
                     type="button"
                     variant="ghost"
                   >
