@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { z } from 'zod';
 import { PageIcon } from '@/components/site/page-icon';
+import { plainCssColor } from './utils';
 
 // ─── Inline icon ──────────────────────────────────────────────────────────────
 
@@ -15,7 +16,7 @@ export function Icon({ icon, name, color, size }: { icon?: string; name?: string
     .max(128)
     .safeParse(String(size ?? '').replace(/[^0-9.]/g, ''));
   const px = parsedSize.success ? parsedSize.data : undefined;
-  const style: CSSProperties = { color };
+  const style: CSSProperties = { color: plainCssColor(color) };
   if (px) {
     style.width = px;
     style.height = px;

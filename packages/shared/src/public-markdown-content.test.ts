@@ -55,6 +55,17 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('A <Tooltip tip="">term</Tooltip> and a <Tooltip>word</Tooltip>.')).toBe('A term and a word.');
   });
 
+  it('keeps braces in projected attribute text through the whole pipeline, while authored expressions stay out', () => {
+    expect(normalizePublicMarkdownContent('<Tooltip tip="Send {id} and {token}">API</Tooltip> with {secretValue}.')).toBe(
+      'API (Send \\{id\\} and \\{token\\}) with .',
+    );
+    expect(normalizePublicMarkdownContent('<ParamField name="items[{index}]" type="string">\n\nOne item.\n\n</ParamField>')).toBe(
+      '#### items\\[\\{index\\}\\] · string\n\nOne item.',
+    );
+    // MDX escapes stay literal; an escaped backslash before an expression does not hide it.
+    expect(normalizePublicMarkdownContent('Literal \\{braces\\} and \\\\{hidden}.')).toBe('Literal \\{braces\\} and \\\\.');
+  });
+
   it('keeps underlined text, and subscript and superscript as plain inline HTML so their meaning survives', () => {
     expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe(
       'A underlined word, H<sub>2</sub>O and x<sup>2</sup>.',
@@ -69,11 +80,15 @@ import Example from './example'
   it('lets no other markup through subscript or superscript', () => {
     // An unmatched tag keeps only its text.
     expect(normalizePublicMarkdownContent('x<sup>2 and H<sub>2')).toBe('x2 and H2');
-    // Anything inside a pair is still escaped, and nested tags are flattened.
+    // Anything inside a pair is still escaped.
     expect(normalizePublicMarkdownContent('x<sup><b onmouseover="a()">2</b></sup>')).toBe(
       'x<sup>&lt;b onmouseover=&quot;a()&quot;&gt;2&lt;/b&gt;</sup>',
     );
-    expect(normalizePublicMarkdownContent('a<sub>1<sup>2</sup></sub>')).toBe('a<sub>12</sub>');
+    // Correctly nested pairs keep their notation; crossed ones keep only what nests.
+    expect(normalizePublicMarkdownContent('x<sub>i<sup>2</sup></sub> and a<sub>1<sup>2</sup></sub>')).toBe(
+      'x<sub>i<sup>2</sup></sub> and a<sub>1<sup>2</sup></sub>',
+    );
+    expect(normalizePublicMarkdownContent('a<sub>b<sup>c</sub>d</sup> and e<sub>f</sup>g</sub>')).toBe('ab<sup>cd</sup> and e<sub>fg</sub>');
     // Escaped text that spells a tag is not turned back into one.
     expect(normalizePublicMarkdownContent('&lt;sup&gt;2&lt;/sup&gt;')).toBe('&amp;lt;sup&amp;gt;2&amp;lt;/sup&amp;gt;');
   });

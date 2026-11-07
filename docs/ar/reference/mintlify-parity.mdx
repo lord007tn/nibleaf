@@ -4,7 +4,7 @@ description: 'قارن كل مكوّن وميزة تأليف في Mintlify بم�
 audience: 'قادة التوثيق الذين يقيّمون الانتقال من Mintlify، والمساهمون في Nibleaf'
 content_type: 'reference'
 last_reviewed: '2026-11-07'
-verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, and apps/worker/src/exports/render.ts'
+verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'reference/mintlify-parity'
@@ -34,6 +34,14 @@ translation_key: 'reference/mintlify-parity'
 لا تعطّل المكوّنات غير المعروفة أي صفحة أبدًا. يحتفظ المحرّر بكل وسم لا يستطيع
 تحريره ككتلة محمية، فلا يُحذف عند الحفظ.
 
+تأتي مستودعات السمات المُصدَّرة بقارئ خاص بها أبسط. ففيها:
+- تُعرض كتل مجموعة الشيفرة واحدة تلو الأخرى دون تبويبات؛
+- لا تظهر أيقونات `Card`؛
+- لا يعرف `Icon` إلا بضعة أسماء أيقونات، ويعرض الحرف الأول من أي اسم آخر؛
+- تبقى مخططات Mermaid والرياضيات بصيغتها المصدرية.
+
+أما موقعك على Nibleaf فيعرضها كلها.
+
 ## التنبيهات
 
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
@@ -45,7 +53,7 @@ translation_key: 'reference/mintlify-parity'
 
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
-| `Card` مع `title` و`icon` و`href` | متوفر | تتبع الروابط الداخلية المسار الأساسي للموقع | |
+| `Card` مع `title` و`icon` و`href` | متوفر | تتبع الروابط الداخلية المسار الأساسي للموقع؛ ولا تعرض مستودعات السمات المُصدَّرة الأيقونة | |
 | `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` | غير متوفر | | 3 |
 | `CardGroup` مع `cols` | جزئي | عمودان أو ثلاثة أو أربعة، تُختار عند الإدراج ولا يمكن تغييرها بعده | 3 |
 | `Columns` مع `cols`، و`Column` | جزئي | يُحسب عدد الأعمدة من العناصر الفرعية؛ ويُتجاهل `cols` | 3 |
@@ -79,7 +87,7 @@ translation_key: 'reference/mintlify-parity'
 | `icon`، وتمييز الأسطر (`{1,3-5}` و`highlight=`)، و`focus` | غير متوفر | | 4 |
 | أرقام الأسطر (`lines`)، و`wrap` و`expandable` و`nocopy` | غير متوفر | | 4 |
 | أسطر الفروق (`// [!code ++]` و`# [!code --:3]`) | غير متوفر | | 4 |
-| تبويبات `CodeGroup` | متوفر | | |
+| تبويبات `CodeGroup` | متوفر | تعرض مستودعات السمات المُصدَّرة الكتل دون تبويبات | |
 | `dropdown` في `CodeGroup` | غير متوفر | | 4 |
 | تلميحات الأنواع في Twoslash | خارج النطاق | يتطلب مترجم TypeScript داخل القارئ | |
 | مكوّن React باسم `CodeBlock` | خارج النطاق | لا يشغّل Nibleaf شيفرة JavaScript يكتبها المؤلفون | |

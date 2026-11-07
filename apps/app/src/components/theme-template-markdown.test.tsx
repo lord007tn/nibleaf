@@ -48,6 +48,20 @@ describe('exported theme repository Markdown', () => {
     expect(html).not.toContain(`name="${name}"`);
   });
 
+  it.each([
+    ['path', 'id'],
+    ['query', 'page_size'],
+    ['header', 'Authorization'],
+    ['body', 'email'],
+  ])('names a ParamField by its %s prop like the reader', (location, name) => {
+    expect(render(`<ParamField ${location}="${name}" type="string" required>\n\nText.\n\n</ParamField>`)).toContain(`<code dir="ltr">${name}</code>`);
+  });
+
+  it('lets only a plain color reach an Icon style, and reads a {24} size', () => {
+    expect(render('<Icon icon="star" color="#0ea5e9" size={24} />')).toMatch(/style="color:#0ea5e9;font-size:24px"/);
+    expect(render('<Icon icon="star" color="red;position:fixed;inset:0" />')).not.toMatch(/position|inset/);
+  });
+
   it('still strips script', () => {
     expect(render('<ResponseField name="x" onclick="alert(1)">\n\nText\n\n</ResponseField>\n\n<script>alert(1)</script>')).not.toMatch(
       /onclick|<script/,
@@ -60,8 +74,12 @@ describe('exported theme repository Markdown', () => {
     ['1', 1],
     ['9', 2],
     ['', 2],
-  ])('lays a CardGroup with cols="%s" out in %i columns', (cols, count) => {
-    const html = render(`<CardGroup cols="${cols}">\n<Card title="One">First</Card>\n</CardGroup>`);
+    ['{3}', 3],
+    ['{4}', 4],
+    ['{n}', 2],
+  ])('lays a CardGroup with cols=%s out in %i columns', (cols, count) => {
+    const value = cols.startsWith('{') ? cols : `"${cols}"`;
+    const html = render(`<CardGroup cols=${value}>\n<Card title="One">First</Card>\n</CardGroup>`);
     expect(html).toContain(`data-cols="${count}"`);
     expect(html).toContain(`--mdx-cols:${count}`);
   });

@@ -4,7 +4,7 @@ description: 'Compare every Mintlify component and authoring feature with what N
 audience: 'documentation leads evaluating a move from Mintlify, and Nibleaf contributors'
 content_type: 'reference'
 last_reviewed: '2026-11-07'
-verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, and apps/worker/src/exports/render.ts'
+verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'reference/mintlify-parity'
@@ -34,6 +34,14 @@ content and page metadata.
 Unknown components never break a page. The editor keeps any tag it can't edit as
 a protected block, so saving never drops it.
 
+Exported theme repositories ship their own, simpler reader. In them:
+- code groups show their blocks one after another, without tabs;
+- Card icons aren't shown;
+- `Icon` knows only a few icon names and shows the first letter of any other;
+- Mermaid diagrams and math stay as source.
+
+Your Nibleaf site renders all of them.
+
 ## Callouts
 
 | Mintlify | Nibleaf | Notes | Planned in |
@@ -45,7 +53,7 @@ a protected block, so saving never drops it.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path | |
+| `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path; exported theme repositories don't show the icon | |
 | `Card` with `horizontal`, `img`, `cta`, `arrow`, `color` | Missing | | 3 |
 | `CardGroup` with `cols` | Partial | Two, three or four columns, chosen when inserted; can't be changed afterwards | 3 |
 | `Columns` with `cols`, and `Column` | Partial | The column count comes from the children; `cols` is ignored | 3 |
@@ -79,7 +87,7 @@ a protected block, so saving never drops it.
 | `icon`, line highlighting (`{1,3-5}`, `highlight=`), `focus` | Missing | | 4 |
 | Line numbers (`lines`), `wrap`, `expandable`, `nocopy` | Missing | | 4 |
 | Diff lines (`// [!code ++]`, `# [!code --:3]`) | Missing | | 4 |
-| `CodeGroup` tabs | Has | | |
+| `CodeGroup` tabs | Has | Exported theme repositories show the blocks without tabs | |
 | `CodeGroup` `dropdown` | Missing | | 4 |
 | Twoslash type hovers | Out of scope | Needs the TypeScript compiler in the reader | |
 | `CodeBlock` React component | Out of scope | Nibleaf doesn't run author JavaScript | |

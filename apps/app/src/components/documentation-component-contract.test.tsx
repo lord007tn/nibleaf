@@ -249,6 +249,15 @@ describe('documentation component contract', () => {
       }
     });
 
+    it('lets only a plain color value reach an inline style', () => {
+      for (const attribute of portableAttributes(component).filter((candidate) => candidate.type === 'color')) {
+        const sample = inContainer(component, sampleUsage(component)).markdown;
+        const hostile = sample.replace(`${attribute.name}="#0ea5e9"`, `${attribute.name}="red;position:fixed;inset:0"`);
+        expect(hostile, `${attribute.name} sample`).not.toBe(sample);
+        expect(renderRich(hostile, SITE), attribute.name).not.toMatch(/style="[^"]*(?:position|inset)/);
+      }
+    });
+
     it('wires every portable prop through to the rendered HTML', () => {
       const hidden = KNOWN_GAPS.hiddenAttributes[component.tag] ?? {};
       const withEvery = renderRich(inContainer(component, sampleUsage(component)).markdown, SITE);

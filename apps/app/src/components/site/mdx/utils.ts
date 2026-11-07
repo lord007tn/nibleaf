@@ -9,6 +9,15 @@ export const truthyAttr = (value: unknown): boolean => {
   return text === '' || text === 'true' || text === '{true}';
 };
 
+/** Only a plain color value reaches an inline style: a hex code, a color name,
+ *  or a color function with plain arguments. Anything else is dropped. */
+export const plainCssColor = (value: unknown): string | undefined => {
+  const color = typeof value === 'string' ? value.trim() : '';
+  return /^(?:#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})|[a-z]+|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\([\w\s.,%/+-]*\))$/i.test(color)
+    ? color
+    : undefined;
+};
+
 /** Arrow/Home/End navigation between tabs, mirrored on right-to-left pages. */
 export function handleTabKeyDown(
   event: ReactKeyboardEvent<HTMLButtonElement>,

@@ -10,7 +10,7 @@ const mdxAttribute = (source: string, name: string): string | undefined => {
 
 const markdownText = (value?: string): string =>
   (value ?? '')
-    .replace(/[\\`*_[\]<>]/g, '\\$&')
+    .replace(/[\\`*_[\]<>{}]/g, '\\$&')
     .replace(/[\r\n]+/g, ' ')
     .trim();
 
@@ -137,7 +137,17 @@ const stripActiveMarkup = (source: string): string => {
 const stripMdxExpressions = (source: string): string => {
   let output = '';
   let expressionDepth = 0;
-  for (const character of source) {
+  const characters = [...source];
+  for (let index = 0; index < characters.length; index += 1) {
+    const character = characters[index] as string;
+    const next = characters[index + 1];
+    // `\{`, `\}` and `\\` are literal text in MDX. Projected attribute text
+    // (a tooltip's tip, a field name) is escaped this way, so it keeps its braces.
+    if (character === '\\' && expressionDepth === 0 && (next === '{' || next === '}' || next === '\\')) {
+      output += character + next;
+      index += 1;
+      continue;
+    }
     if (character === '{') {
       expressionDepth += 1;
       continue;
@@ -154,21 +164,29 @@ const stripMdxExpressions = (source: string): string => {
 // Formatting the editor saves as inline HTML (Underline, Subscript, Superscript).
 // Public Markdown escapes HTML. Underline is presentation only, so it keeps
 // just its text. Subscript and superscript carry meaning (10<sup>-3</sup>,
-// x<sub>i</sub>), so a matched pair on one line stays as attribute-free inline
-// HTML, which Markdown allows. Pairs are restored only after escaping, so
-// nothing else can pass through; an unmatched tag keeps just its text.
+// x<sub>i<sup>2</sup></sub>), so correctly nested pairs on one line stay as
+// attribute-free inline HTML, which Markdown allows. They are restored only
+// after escaping, so nothing else can pass through; an unmatched tag keeps
+// just its text.
 const underlineTag = /<\/?u(?:\s[^>]*)?>/gi;
 const scriptOpenerWithAttributes = /<(sub|sup)\s[^>]*>/gi;
-const escapedScriptPair = /&lt;(sub|sup)&gt;(.*?)&lt;\/\1&gt;/gi;
-const escapedScriptTag = /&lt;\/?(?:sub|sup)&gt;/gi;
+const escapedScriptTag = /&lt;(\/?)(sub|sup)&gt;/gi;
 
-const restoreScriptPairs = (line: string): string =>
-  line
-    .replace(escapedScriptPair, (_match, tag: string, text: string) => {
-      const name = tag.toLowerCase();
-      return `<${name}>${text.replace(escapedScriptTag, '')}</${name}>`;
-    })
-    .replace(escapedScriptTag, '');
+const restoreScriptPairs = (line: string): string => {
+  const matched = new Set<number>();
+  const open: { name: string; index: number }[] = [];
+  [...line.matchAll(escapedScriptTag)].forEach((match, index) => {
+    const name = (match[2] as string).toLowerCase();
+    if (!match[1]) {
+      open.push({ name, index });
+    } else if (open.at(-1)?.name === name) {
+      matched.add((open.pop() as { index: number }).index);
+      matched.add(index);
+    }
+  });
+  let index = 0;
+  return line.replace(escapedScriptTag, (_match, slash: string, tag: string) => (matched.has(index++) ? `<${slash}${tag.toLowerCase()}>` : ''));
+};
 
 const sanitizeAuthoredProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);

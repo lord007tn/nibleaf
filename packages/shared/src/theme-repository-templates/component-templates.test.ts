@@ -36,6 +36,11 @@ describe('theme repository component templates', () => {
   //   accepts one to four and sets the column count the stylesheet reads.
   // - src/components/mdx/shared.ts: `truthy` also reads the JSX `{true}` that
   //   Mintlify pages use, so `defaultOpen={true}` opens and `required={true}` shows.
+  // - shared.ts, cards.tsx and inline.tsx: `numberAttr` reads the JSX literal
+  //   `{3}` for CardGroup `cols` and Icon `size`; `safeColor` lets only a plain
+  //   color value reach an Icon's inline style.
+  // - fields.tsx: a location prop (`path`, `query`, `header`, `body`) names a
+  //   ParamField, like the reader.
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -56,17 +61,17 @@ describe('theme repository component templates', () => {
     expect(sha256Prefixes).toEqual({
       'src/lib/markdown.tsx': '06c83728de3f',
       'src/lib/markdown.test.tsx': '83c141811932',
-      'src/components/mdx/shared.ts': '294a4e03b36a',
+      'src/components/mdx/shared.ts': 'a6002c02bb8e',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',
-      'src/components/mdx/cards.tsx': 'f8064f401309',
+      'src/components/mdx/cards.tsx': '874efcd120f2',
       'src/components/mdx/tabs.tsx': '613800c9ea94',
       'src/components/mdx/disclosure.tsx': '289e2634932f',
       'src/components/mdx/steps.tsx': 'd43dcdc5f286',
-      'src/components/mdx/fields.tsx': '9d83a6bee236',
+      'src/components/mdx/fields.tsx': '6c158a0d1381',
       'src/components/mdx/file-tree.tsx': '2e128d0a6f84',
       'src/components/mdx/api-example.tsx': 'da8189c1d4fd',
       'src/components/mdx/tooltip.tsx': 'ec6a45a817f7',
-      'src/components/mdx/inline.tsx': 'd18ff1825f92',
+      'src/components/mdx/inline.tsx': '5f1169a75bfd',
       'src/components/mdx/index.tsx': '5c494b23b6ae',
     });
   });
