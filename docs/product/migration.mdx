@@ -47,9 +47,9 @@ Split larger sources into smaller parts.
 
 1. Enter the **GitHub repository** as `owner/repository`, and a
    **Branch (optional)**.
-2. To replace everything in your current draft, tick
-   **Replace the current draft with this repository**. Otherwise imported pages
-   are added to what you already have.
+2. Decide whether to turn on **Replace the current draft with this repository**.
+   See [Before you import again](#before-you-import-again): with it on, pages that
+   aren't in the repository are deleted from your draft.
 3. Select **Import**.
 
 Nibleaf can't read a private Mintlify workspace. If your docs aren't in a public
@@ -60,8 +60,10 @@ secrets or private content.
 
 Enter the Git Sync **GitHub repository** and an optional **Branch (optional)**. If
 the repository holds several GitBook spaces, also enter the
-**Space folder (optional)**, for example `docs/guides`. Then select **Import**.
-GitBook sections become sidebar headings and keep their GitBook addresses.
+**Space folder (optional)**, for example `docs/guides`. The
+**Replace the current draft with this repository** switch works the same way as
+for Mintlify. Then select **Import**. GitBook sections become sidebar headings and
+keep their GitBook addresses.
 
 ### Import from Ghost
 
@@ -83,14 +85,31 @@ docs. Recreate your Ghost redirects yourself in
 ## Read the import summary
 
 The summary shows how many pages were imported, updated, and skipped, and how
-many images were copied. Select **Show warnings** and deal with each one. Imports
-add or update pages and never delete them, so running an import again is safe.
+many images were copied. Select **Show warnings** and deal with each one.
 
 If an image couldn't be copied, the page still points to the old address. That
 image will break when you shut down the old site, so download and upload it
 again.
 
 Imported pages are drafts. Readers see them only after you publish.
+
+## Before you import again
+
+An import can change or remove pages in your draft:
+
+- **An ordinary import overwrites matching pages.** When an imported page has the
+  same address and place in the navigation as an existing page, Nibleaf replaces
+  that page's title and text with the source version. Edits you made to it in
+  Nibleaf are lost. Pages that aren't in the source are kept.
+- **An import with Replace the current draft with this repository turned on**
+  (Mintlify and GitBook) replaces your whole draft with the repository. Pages
+  that aren't in the repository are deleted.
+
+Before you import again, [export a copy](/product/exports), or download every
+draft page with **Download the original Markdown ZIP** under
+**Settings → Exports → One-time export**. That way you can bring back any edits
+an import overwrites or deletes. Your published site doesn't change until you
+publish.
 
 ## Check that nothing was lost
 

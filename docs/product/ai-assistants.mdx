@@ -41,11 +41,11 @@ the smallest one that covers the task.
 
 | Preset | Who can choose it | The assistant can | The assistant cannot |
 | --- | --- | --- | --- |
-| **Read only** | Everyone | Read project details, pages and their content, languages, versions, aggregate analytics, search settings and health, and deployments. | See individual search terms, change any page, or publish. |
+| **Read only** | Everyone | Read project details, pages and their content, languages, versions, aggregate analytics, saved Ask AI conversations (redacted questions, answers, and reader feedback), search settings and health, and deployments. | See individual search terms, change any page, or publish. |
 | **Support writer** | Everyone | Everything in Read only, plus read top and failed search terms, create and edit page drafts, move, translate, hide or show pages, and publish after a fresh preview is confirmed. | Delete pages, change settings, members, billing, themes, add-ons, or integrations, or publish without a fresh, confirmed preview. |
 | **Full admin** | Admins and owners | Every read and write the MCP server offers, including usage, entitlements, add-ons, themes, exports, and integration status reads. | Anything the server does not offer at all: deleting content, credentials, payments, or running code. |
 
-Members see **Full admin** with the note "Available to admins only." and cannot
+Editors see **Full admin** with the note "Available to admins only." and cannot
 select it.
 
 Two rules apply on top of every preset:
@@ -141,7 +141,7 @@ For VS Code, save this as `.vscode/mcp.json`:
 Apps you connected by signing in appear under **Settings → AI assistants (MCP)
 → Connected apps**, with their preset, when they were last used, and their
 latest activity; admins also see who connected each one. Select **Disconnect**
-to stop an app at once. Members see and disconnect their own apps; admins and
+to stop an app at once. Editors see and disconnect their own apps; admins and
 owners see and disconnect everyone's. A connection also stops when the person
 who made it leaves the workspace or is suspended. A disconnected app has to be
 connected and signed in again. Connecting the same app to the same project again
@@ -165,7 +165,7 @@ on the instance all work before you configure a client. On success it shows
 use.
 
 The key list shows each key's preset, when it was last used, and its latest
-activity; admins also see who owns each key. Members see and revoke only their
+activity; admins also see who owns each key. Editors see and revoke only their
 own keys. Admins and owners see everyone's keys and can revoke any of them, but
 only a key's owner can rotate it. Rotation revokes the old secret and issues a
 new one that acts as the person who rotated it.
@@ -419,9 +419,20 @@ clicks, so failed searches are unavailable there.
 ClickHouse analytics: crawler requests, pages AI assistants fetched for a person,
 the crawlers, and the most crawled pages.
 
+Every preset, including **Read only**, can read saved [Ask AI](/product/ai-assistant)
+conversations with `list_ai_conversations` and `get_ai_conversation`: the
+questions readers asked, the answers, and their ratings and comments. These are
+the same conversations your team sees under **AI assistant**, and the same
+privacy rules apply. Nibleaf saves text only while
+**Save questions to improve your docs** is on, removes personal details such as
+email addresses and phone numbers before saving, and never saves who the reader
+was. When saving is off, the tools return counts, ratings, and costs without any
+text, and say why.
+
 Other limits:
 
-- Reader comments are not collected, so the assistant cannot read them.
+- The **Was this page helpful?** widget has no comment field, so page feedback
+  is only helpful or not helpful votes.
 - Search, crawler and page feedback data are not split by language, so those
   tools ignore the language filter. They say so in their response.
 
@@ -471,6 +482,11 @@ holds every scope listed for it.
 | `get_top_pages` | Tool | `analytics:read` | Read only | Most-viewed pages for a range. |
 | `get_page_feedback` | Tool | `analytics:read` | Read only | Reader helpful and unhelpful feedback per page. |
 | `get_referrers` | Tool | `analytics:read` | Read only | Where readers come from, classified, including AI assistants, plus AI crawler activity. |
+| `list_ai_conversations` | Tool | `analytics:read` | Read only | Find saved Ask AI conversations, filtered by answer and feedback. Question text appears only while saving questions is on. |
+| `get_ai_conversation` | Tool | `analytics:read` | Read only | Read one saved Ask AI conversation: redacted questions, answers, and reader feedback. |
+| `get_ai_feedback_summary` | Tool | `analytics:read` | Read only | How often Ask AI answers, reader ratings, cost, and how readers use it. |
+| `list_ai_content_gaps` | Tool | `analytics:read` | Read only | Questions Ask AI could not answer or readers rated down; candidates for new articles. |
+| `get_ai_usage` | Tool | `analytics:read` | Read only | Ask AI spend per day and model, with totals. |
 | `get_search_configuration` | Tool | `search:read` | Read only | Search settings for the project. |
 | `get_search_index_diagnostics` | Tool | `search:read` | Read only | Content-free index state and revision. |
 | `get_search_health` | Tool | `search:read` | Read only | Whether search is healthy and up to date. |

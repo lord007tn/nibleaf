@@ -197,13 +197,15 @@ have changed. A publish preview is project-wide.
 
 **Symptom:** readers, link checkers or search engines get `429 Too Many Requests`, even though each person reads only a few pages.
 
-**Cause:** the API limits public requests per visitor address (`RATE_LIMIT_PUBLIC_PER_MIN`, 300 a minute by default). A published page is rendered by the app container, which calls the API on the reader's behalf. The API trusts the reader's address that the app forwards only when `INTERNAL_API_SECRET` is set to the same value on the app, API and worker. Without it, every reader shares the app container's address and one 300-a-minute allowance.
+**Cause:** the API limits public requests per visitor address (`RATE_LIMIT_PUBLIC_PER_MIN`, 300 a minute by default). A published page is rendered by the app container, which calls the API on the reader's behalf. The API trusts the reader's address that the app forwards only when `INTERNAL_API_SECRET` is set to the same value on the app and API services. Without it, every reader shares the app container's address and one 300-a-minute allowance.
 
 **Fix:**
 
 1. Generate a secret, for example with `openssl rand -hex 32`.
-2. Set `INTERNAL_API_SECRET` to that same value for the app, API and worker services, then recreate them.
+2. Set `INTERNAL_API_SECRET` to that same value for the app and API services, then recreate them.
 3. If Nibleaf runs behind a reverse proxy, set `TRUSTED_PROXY_HOPS` to the number of proxies in front of it so the API reads the right client address.
 4. Raise `RATE_LIMIT_PUBLIC_PER_MIN` only if real readers still hit the limit.
+
+The shared Compose `service-env` block shares this value across services.
 
 **Verify:** open a few pages from two different networks. Neither should see `429`.

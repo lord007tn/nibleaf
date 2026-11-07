@@ -35,7 +35,7 @@ const cases: Intent[] = [
     language: 'en',
     question: 'Walk me through publishing the pages I have finished.',
     doc: 'product/publishing',
-    heading: 'Publish one coherent version',
+    heading: 'Publish',
     claims: ['Publish'],
   },
   {
@@ -44,16 +44,16 @@ const cases: Intent[] = [
     question: 'طيب، هل يلاقي الكلمات حتى لو كتبتها بدون تشكيل؟',
     prior: 'هل يدعم بحث نيبليف المحتوى العربي؟',
     doc: 'ar/product/arabic-rtl',
-    heading: 'تحقق من البحث بالعربية',
+    heading: 'تحقّق من البحث بالعربية',
     claims: ['تشكيل'],
     topic: ['بحث', 'عرب'],
   },
   {
     id: 'mixed-vague',
     language: 'mixed',
-    question: 'أبغى أغير طريقة الكتابة، أي editor أختار؟',
-    doc: 'ar/product/authoring',
-    heading: 'اختر وضع التحرير',
+    question: 'أبغى أغير شكل موقع التوثيق، أي theme أختار؟',
+    doc: 'ar/product/themes',
+    heading: 'اختر سمة',
     clarify: true,
   },
   {
@@ -61,7 +61,7 @@ const cases: Intent[] = [
     language: 'en',
     question: 'Will it rain in Berlin tomorrow?',
     doc: 'product/publishing',
-    heading: 'Publish one coherent version',
+    heading: 'Publish',
     noAnswer: true,
   },
   {
@@ -69,7 +69,7 @@ const cases: Intent[] = [
     language: 'en',
     question: 'How do I check that visitors can actually read my new pages?',
     doc: 'product/publishing',
-    heading: 'Verify as an unauthenticated reader',
+    heading: 'Check what readers see',
     claims: ['404'],
   },
   {
@@ -77,7 +77,7 @@ const cases: Intent[] = [
     language: 'en',
     question: 'Publishing failed. Will my old pages disappear, and what should I do?',
     doc: 'product/publishing',
-    heading: 'Recover from failure',
+    heading: 'If publishing is blocked or fails',
     claims: ['publish'],
     forbidden: ['delete the previous'],
   },
@@ -85,8 +85,8 @@ const cases: Intent[] = [
     id: 'custom-domain',
     language: 'en',
     question: 'When can I put my docs on my own domain?',
-    doc: 'getting-started/cloud',
-    heading: 'Prepare to share the site',
+    doc: 'product/custom-domains',
+    heading: 'Before you start',
     claims: ['default', 'domain'],
   },
   {
@@ -95,7 +95,7 @@ const cases: Intent[] = [
     question: 'What should I do with the old link after moving it?',
     prior: 'I am reorganizing a published documentation page.',
     doc: 'product/authoring',
-    heading: 'Organize pages around reader tasks',
+    heading: 'Change page details',
     claims: ['redirect'],
     topic: ['page', 'redirect'],
   },
@@ -104,15 +104,15 @@ const cases: Intent[] = [
     language: 'en',
     question: 'How can my team review a big rewrite before it goes live? Give me the steps.',
     doc: 'product/authoring',
-    heading: 'Review a substantial change',
-    claims: ['branch', 'Preview'],
+    heading: 'Review a change with your team',
+    claims: ['Comment', 'Preview'],
   },
   {
     id: 'ar-en',
     language: 'en',
     question: 'Can people search my Arabic docs without typing accents?',
     doc: 'product/arabic-rtl',
-    heading: 'Verify Arabic search',
+    heading: 'Check Arabic search',
     claims: ['diacritics'],
   },
   {
@@ -120,15 +120,15 @@ const cases: Intent[] = [
     language: 'en',
     question: 'Do my English and Arabic pages have to have the same address?',
     doc: 'product/arabic-rtl',
-    heading: 'Connect translations',
+    heading: 'Link translated pages',
     claims: ['hreflang'],
   },
   {
     id: 'en-vague',
     language: 'en',
-    question: 'I want a different editing experience. Which mode should I pick?',
-    doc: 'product/authoring',
-    heading: 'Choose an editing mode',
+    question: 'I want my docs to look different. Which one should I pick?',
+    doc: 'product/themes',
+    heading: 'Pick a theme',
     clarify: true,
   },
   {
@@ -152,7 +152,7 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'خلصت كتابة الصفحات، كيف أنشرها للناس خطوة بخطوة؟',
     doc: 'ar/product/publishing',
-    heading: 'انشر إصدارًا واحدًا متماسكًا',
+    heading: 'انشر',
     claims: ['نشر'],
   },
   {
@@ -160,7 +160,7 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'كيف أتأكد أن الزائر يقدر يشوف الصفحات الجديدة؟',
     doc: 'ar/product/publishing',
-    heading: 'تحقق بوصفك قارئًا غير مصادق عليه',
+    heading: 'تحقّق مما يراه القرّاء',
     claims: ['404'],
   },
   {
@@ -169,7 +169,7 @@ const cases: Intent[] = [
     question: 'طيب لو فشل، إيش أسوي؟',
     prior: 'أريد نشر النسخة الجديدة من التوثيق.',
     doc: 'ar/product/publishing',
-    heading: 'استعد بعد الفشل',
+    heading: 'إذا تعذّر النشر أو فشل',
     topic: ['نشر', 'توثيق'],
   },
   {
@@ -177,7 +177,7 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'أنا مو مبرمج، هل أقدر أكتب صفحة من غير كتابة أكواد؟',
     doc: 'ar/product/authoring',
-    heading: 'اختر وضع التحرير',
+    heading: 'اكتب صفحة',
     claims: ['Markdown'],
   },
   {
@@ -185,7 +185,7 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'كيف أضيف نسخة عربية للموقع؟',
     doc: 'ar/product/arabic-rtl',
-    heading: 'أضف اللغة العربية',
+    heading: 'أضف لغة',
     claims: ['rtl'],
   },
   {
@@ -193,16 +193,16 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'هل لازم رابط الصفحة العربية يكون مثل الإنجليزية؟',
     doc: 'ar/product/arabic-rtl',
-    heading: 'اربط الترجمات',
+    heading: 'اربط الصفحات المترجمة',
     claims: ['hreflang'],
   },
-  { id: 'ar-export', language: 'ar', question: 'كيف أنزّل نسخة من التوثيق عندي؟', doc: 'ar/product/exports', heading: 'إنشاء تصدير لمرة واحدة' },
+  { id: 'ar-export', language: 'ar', question: 'كيف أنزّل نسخة من التوثيق عندي؟', doc: 'ar/product/exports', heading: 'أنشئ تصديرًا لمرة واحدة' },
   {
     id: 'ar-vague',
     language: 'ar',
-    question: 'أبغى أكتب بطريقة ثانية، أي وضع أنسب لي؟',
-    doc: 'ar/product/authoring',
-    heading: 'اختر وضع التحرير',
+    question: 'أبغى شكل ثاني لموقع التوثيق، أي واحد أنسب لي؟',
+    doc: 'ar/product/themes',
+    heading: 'اختر سمة',
     clarify: true,
   },
   {
@@ -210,14 +210,14 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'كيف أراجع تعديلات الفريق قبل نشرها؟ اشرح الخطوات.',
     doc: 'ar/product/authoring',
-    heading: 'راجع تغييرًا جوهريًا',
+    heading: 'راجع التغيير مع فريقك',
   },
   {
     id: 'ar-food',
     language: 'ar',
     question: 'كيف أطبخ كبسة دجاج لأربعة أشخاص؟',
     doc: 'ar/product/authoring',
-    heading: 'اختر وضع التحرير',
+    heading: 'اكتب صفحة',
     noAnswer: true,
   },
   {
@@ -225,7 +225,7 @@ const cases: Intent[] = [
     language: 'ar',
     question: 'عندي صداع، أي دواء آخذ؟',
     doc: 'ar/product/exports',
-    heading: 'إنشاء تصدير لمرة واحدة',
+    heading: 'أنشئ تصديرًا لمرة واحدة',
     noAnswer: true,
   },
   {
@@ -233,14 +233,14 @@ const cases: Intent[] = [
     language: 'mixed',
     question: 'كيف أسوي Publish للصفحات اللي خلصتها؟',
     doc: 'ar/product/publishing',
-    heading: 'انشر إصدارًا واحدًا متماسكًا',
+    heading: 'انشر',
   },
   {
     id: 'mixed-preview',
     language: 'mixed',
     question: 'كيف أراجع الصفحة في Preview قبل ما أنشرها؟',
     doc: 'ar/product/authoring',
-    heading: 'اختر وضع التحرير',
+    heading: 'راجع التغيير مع فريقك',
     claims: ['Preview'],
   },
   {
@@ -249,7 +249,7 @@ const cases: Intent[] = [
     question: 'وهل لازم الـ slug يكون نفسه؟',
     prior: 'أريد ربط الصفحة العربية بترجمتها الإنجليزية في Nibleaf.',
     doc: 'ar/product/arabic-rtl',
-    heading: 'اربط الترجمات',
+    heading: 'اربط الصفحات المترجمة',
     claims: ['hreflang'],
     topic: ['ترجم', 'عرب', 'slug'],
   },
@@ -258,14 +258,14 @@ const cases: Intent[] = [
     language: 'mixed',
     question: 'هل Arabic search يتعامل مع اختلاف التشكيل؟',
     doc: 'ar/product/arabic-rtl',
-    heading: 'تحقق من البحث بالعربية',
+    heading: 'تحقّق من البحث بالعربية',
   },
   {
     id: 'mixed-rtl',
     language: 'mixed',
     question: 'كيف أخلي النسخة العربية RTL؟',
     doc: 'ar/product/arabic-rtl',
-    heading: 'أضف اللغة العربية',
+    heading: 'أضف لغة',
     claims: ['rtl'],
   },
   {
@@ -274,7 +274,7 @@ const cases: Intent[] = [
     question: 'والـ old URL كيف أخليه يودّي للمكان الجديد؟',
     prior: 'سأنقل صفحة توثيق منشورة إلى مجموعة أخرى.',
     doc: 'ar/product/authoring',
-    heading: 'نظّم الصفحات حول مهام القارئ',
+    heading: 'غيّر تفاصيل الصفحة',
     topic: ['صفحة', 'رابط', 'تحويل'],
   },
   {
@@ -290,7 +290,7 @@ const cases: Intent[] = [
     question: 'وكيف أعمله مرة واحدة؟',
     prior: 'أحتاج export من صفحات التوثيق للاحتفاظ بنسخة.',
     doc: 'ar/product/exports',
-    heading: 'إنشاء تصدير لمرة واحدة',
+    heading: 'أنشئ تصديرًا لمرة واحدة',
     topic: ['تصدير', 'export'],
   },
   {
@@ -306,7 +306,7 @@ const cases: Intent[] = [
     language: 'mixed',
     question: 'مين فاز في Champions League أمس؟',
     doc: 'ar/product/publishing',
-    heading: 'انشر إصدارًا واحدًا متماسكًا',
+    heading: 'انشر',
     noAnswer: true,
   },
   {
@@ -314,7 +314,7 @@ const cases: Intent[] = [
     language: 'mixed',
     question: 'هل أشتري أسهم Apple اليوم؟',
     doc: 'ar/product/exports',
-    heading: 'إنشاء تصدير لمرة واحدة',
+    heading: 'أنشئ تصديرًا لمرة واحدة',
     noAnswer: true,
   },
 ];
@@ -354,14 +354,14 @@ for (const c of cases) {
   const arabic = c.language !== 'en';
   const distractors = arabic
     ? [
-        ['ar/product/exports', 'جدولة لقطات الأرشفة'],
-        ['ar/product/publishing', 'نفّذ مراجعة ما قبل النشر'],
-        ['ar/product/arabic-rtl', 'اختبر النص التقني المختلط'],
+        ['ar/product/exports', 'جدوِل أرشفة منتظمة'],
+        ['ar/product/publishing', 'راجع صفحاتك أولًا'],
+        ['ar/product/arabic-rtl', 'تحقّق من النص العربي والإنجليزي المختلط'],
       ]
     : [
-        ['product/exports', 'Schedule archival snapshots'],
-        ['product/publishing', 'Run the pre-publish review'],
-        ['product/arabic-rtl', 'Test mixed technical text'],
+        ['product/exports', 'Schedule regular archives'],
+        ['product/publishing', 'Check your pages first'],
+        ['product/arabic-rtl', 'Check mixed Arabic and English text'],
       ];
   const sources = await Promise.all([[c.doc, c.heading], ...distractors].map(([doc, heading]) => section(doc as string, heading as string)));
   // Rotate evidence position so S1 is not a shortcut to citation accuracy.

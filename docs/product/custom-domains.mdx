@@ -21,7 +21,8 @@ own address, such as `docs.example.com`. Nibleaf sets up the secure connection
   your domain registrar or hosting company. DNS (Domain Name System) is the
   address book that tells browsers where your domain lives. If someone else
   manages your domain, ask them to add the records for you.
-- Publish your site and check that it works at its free address first.
+- Publish your site and check that it works at its free default Nibleaf address
+  first.
 - Use a subdomain, such as `docs.example.com`, rather than your main website
   address.
 
@@ -60,8 +61,10 @@ also use it.
 - **Needs attention:** open **Configuration** to see which record is missing or
   wrong. Compare each **Type**, **Name**, and **Value** with your provider's
   settings, fix them, and select **Check again**.
-- **The domain is already connected:** the address is used by another site.
-  Remove it there first.
+- **Could not add the domain:** one common cause is that the address is already
+  connected to a Nibleaf site, either this one or another. The server reports this
+  as "That domain is already connected." Remove the domain from the other site
+  first, or check this site's list of domains.
 - **Still waiting after 24 hours:** check for an old record with the same name at
   your provider and remove it, then select **Check again**.
 
