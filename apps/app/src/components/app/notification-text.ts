@@ -1,5 +1,6 @@
 import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
 import type { NotificationItem } from '@/hooks/api/types';
+import type { ProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { localeTag } from '@/lib/format';
 import { failureMessageKey } from '../failure-message';
 
@@ -11,7 +12,7 @@ function importCount(t: Translate, locale: string, count: number, kind: 'importe
   return t(`notifications.importReady.${kind}.${category}`, { count: new Intl.NumberFormat(localeTag(locale)).format(count) });
 }
 
-export function notificationText(t: Translate, item: NotificationItem, locale = 'en') {
+export function notificationText(t: Translate, item: NotificationItem, locale = 'en', role: ProjectAdminStatus = 'pending') {
   const params = item.params && typeof item.params === 'object' && !Array.isArray(item.params) ? (item.params as Record<string, unknown>) : null;
   const failure = item.type === 'deploy_failed' || item.type === 'export_failed';
   if (failure) {
@@ -23,7 +24,7 @@ export function notificationText(t: Translate, item: NotificationItem, locale = 
           : item.type === 'deploy_failed' && !params
             ? item.title
             : t(item.type === 'deploy_failed' ? 'notifications.deployFailed.title' : 'notifications.exportFailed.title'),
-      body: t(failureMessageKey(detail ?? '', item.type === 'deploy_failed' ? 'publish' : 'export')),
+      body: t(failureMessageKey(detail ?? '', item.type === 'deploy_failed' ? 'publish' : 'export', role)),
       details: detail,
     };
   }

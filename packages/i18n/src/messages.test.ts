@@ -27,6 +27,16 @@ describe('Paraglide message catalogs', () => {
     expect(arabic.failures_access).not.toContain('المسؤول');
   });
 
+  it('gives both Cloud and self-hosted users a support contact in operator-dependent failures', () => {
+    const arabic = loadCatalog('ar');
+    for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {
+      expect(english[key]).toContain('Nibleaf support on Cloud');
+      expect(english[key]).toContain('if you self-host');
+      expect(arabic[key]).toContain('دعم Nibleaf للخدمة السحابية');
+      expect(arabic[key]).toContain('مسؤول الخادم للاستضافة الذاتية');
+    }
+  });
+
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
     expect(

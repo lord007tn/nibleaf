@@ -5,11 +5,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api/types';
 import { PublishModal, reviewRows } from './publish-modal';
 
-const { mutate, showError, preflight, refreshPreflight } = vi.hoisted(() => ({
+const { mutate, showError, preflight, refreshPreflight, retryMembers } = vi.hoisted(() => ({
   mutate: vi.fn(),
   showError: vi.fn(),
-  preflight: { isFetching: false, role: 'admin', issues: [] as Array<{ code: 'cycle'; message: string; sequence: string[]; rowIndexes: number[] }> },
+  preflight: {
+    isFetching: false,
+    role: 'admin',
+    membersPending: false,
+    membersError: false,
+    membersMissing: false,
+    membersFetching: false,
+    sessionPending: false,
+    issues: [] as Array<{ code: 'cycle'; message: string; sequence: string[]; rowIndexes: number[] }>,
+  },
   refreshPreflight: vi.fn(),
+  retryMembers: vi.fn(),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: showError } }));
@@ -18,7 +28,7 @@ vi.mock('@tanstack/react-router', () => ({
     <a {...props} href={`${to.replace('$projectId', encodeURIComponent(params.projectId))}?${new URLSearchParams(search)}`} />
   ),
 }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-a' } } }) }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-a' } }, isPending: preflight.sessionPending }) }));
 const pendingChange = {
   id: 'page-a',
   title: 'Getting started',
@@ -36,7 +46,13 @@ vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDomains: () => ({ data: [] }),
   usePublish: () => ({ isPending: false, mutate }),
-  useProjectMembers: () => ({ data: { members: [{ user: { id: 'user-a' }, role: preflight.role }] } }),
+  useProjectMembers: () => ({
+    data: preflight.membersMissing ? undefined : { members: [{ user: { id: 'user-a' }, role: preflight.role }] },
+    isPending: preflight.membersPending,
+    isError: preflight.membersError,
+    isFetching: preflight.membersFetching,
+    refetch: retryMembers,
+  }),
   usePendingChanges: () => ({
     // One edited page: publishing is only offered when there is something to publish.
     data: { changes: [pendingChange], redirectIssues: preflight.issues, hasBaseline: true },
@@ -58,6 +74,11 @@ describe('publish draft barrier', () => {
     preflight.isFetching = false;
     preflight.issues = [];
     preflight.role = 'admin';
+    preflight.membersPending = false;
+    preflight.membersError = false;
+    preflight.membersMissing = false;
+    preflight.membersFetching = false;
+    preflight.sessionPending = false;
     refreshPreflight.mockResolvedValue({ data: { redirectIssues: [] }, isError: false });
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
@@ -113,6 +134,44 @@ describe('publish draft barrier', () => {
     expect(document.body.textContent).toContain('publish.redirectsAskAdmin');
     expect(document.querySelector('a[href*="section=appearance"]')).toBeNull();
     expect(document.body.textContent).not.toContain('publish.editRedirects');
+  });
+
+  it.each(['members', 'session'])('keeps permissions neutral while %s are loading', async (pending) => {
+    preflight.membersPending = pending === 'members';
+    preflight.sessionPending = pending === 'session';
+    preflight.issues = [{ code: 'cycle', message: 'Redirect loop', sequence: ['/old', '/new'], rowIndexes: [0] }];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(document.body.textContent).toContain('publish.redirectRolePending');
+    expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
+    expect(document.body.textContent).not.toContain('publish.editRedirects');
+    expect(document.querySelector('a[href*="section=appearance"]')).toBeNull();
+  });
+
+  it.each([false, true])('offers Retry when members fail (cached member: %s) without assuming the Editor role', async (cached) => {
+    preflight.membersError = true;
+    preflight.membersMissing = !cached;
+    preflight.issues = [{ code: 'cycle', message: 'Redirect loop', sequence: ['/old', '/new'], rowIndexes: [0] }];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(document.body.textContent).toContain('publish.redirectRoleError');
+    expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
+    expect(document.querySelector('a[href*="section=appearance"]')).toBeNull();
+    const retry = [...document.querySelectorAll('button')].find((button) => button.textContent === 'common.retry');
+    expect(retry).toBeDefined();
+    await act(async () => retry?.click());
+    expect(retryMembers).toHaveBeenCalledOnce();
+    preflight.membersFetching = true;
+    preflight.membersPending = !cached;
+    preflight.membersError = cached;
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    if (cached) expect(retry?.getAttribute('aria-busy')).toBe('true');
+    else expect(document.body.textContent).toContain('publish.redirectRolePending');
+    expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
+    preflight.membersFetching = false;
+    preflight.membersPending = false;
+    preflight.membersError = false;
+    preflight.membersMissing = false;
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
   });
 
   it('keeps publish available for retry without creating a deployment when saving fails', async () => {

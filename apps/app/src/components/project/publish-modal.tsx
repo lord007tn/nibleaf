@@ -15,16 +15,15 @@ import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
 import { Link } from '@tanstack/react-router';
 import { ArrowLeft, FileText, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { friendlyErrorMessage, useDomains, usePendingChanges, useProjectMembers, usePublish } from '@/hooks/api';
+import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase } from '@/lib/site-seo';
-import { useSession } from '@/services/auth-client';
 import { RedirectIssue } from './redirect-issue';
 
 interface PublishModalProps {
@@ -146,9 +145,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const t = useT();
   const publish = usePublish(project.id);
   const domains = useDomains(project.id);
-  const { data: memberData } = useProjectMembers(open ? project.id : undefined);
-  const { data: session } = useSession();
-  const canManageRedirects = canAdminister(memberData?.members.find((member) => member.user.id === session?.user.id)?.role ?? '');
+  const redirectRole = useProjectAdminStatus(open ? project.id : undefined);
   // Only compute the diff while the dialog is open (it re-reads on each open).
   const {
     data: pending,
@@ -400,7 +397,21 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                     <RedirectIssue issue={issue} key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}`} />
                   ))}
                 </ul>
-                {canManageRedirects ? (
+                {redirectRole.isError ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-sm" role="status">
+                    <p>{t('publish.redirectRoleError')}</p>
+                    <Button
+                      className="min-h-11"
+                      loading={redirectRole.retrying}
+                      onClick={() => void redirectRole.retry()}
+                      size="sm"
+                      type="button"
+                      variant="outline"
+                    >
+                      {t('common.retry')}
+                    </Button>
+                  </div>
+                ) : redirectRole.status === 'admin' ? (
                   <Link
                     className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
                     to="/app/projects/$projectId/settings"
@@ -410,8 +421,12 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   >
                     {t('publish.editRedirects')}
                   </Link>
-                ) : (
+                ) : redirectRole.status === 'not-admin' ? (
                   <p className="mt-3 text-sm">{t('publish.redirectsAskAdmin')}</p>
+                ) : (
+                  <p className="mt-3 text-muted-foreground text-sm" role="status">
+                    {t('publish.redirectRolePending')}
+                  </p>
                 )}
               </div>
             ) : null}

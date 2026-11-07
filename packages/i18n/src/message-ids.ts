@@ -3589,6 +3589,10 @@ export const MESSAGE_IDS = {
   'notifications.importReady.updated.few': 'notifications_importready_updated_few',
   'notifications.importReady.updated.many': 'notifications_importready_updated_many',
   'notifications.importReady.updated.other': 'notifications_importready_updated_other',
+  'publish.redirectRolePending': 'publish_redirectrolepending',
+  'publish.redirectRoleError': 'publish_redirectroleerror',
+  'failures.redirectsAdmin': 'failures_redirectsadmin',
+  'failures.redirectsEditor': 'failures_redirectseditor',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

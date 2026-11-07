@@ -73,6 +73,20 @@ describe('localized notification payloads', () => {
     expect(generic.body).toContain(locale === 'en' ? 'left feedback' : 'ملاحظاته');
   });
 
+  it.each(['en', 'ar'] as const)('gives role-appropriate redirect advice in %s', (locale) => {
+    const t = (key: Parameters<typeof translateFn>[0], variables?: Parameters<typeof translateFn>[1]) => translateFn(key, variables, locale);
+    const failure = item({ type: 'deploy_failed', params: { projectName: 'Fixture', details: 'Redirect cycle detected' } });
+    const admin = notificationText(t, failure, locale, 'admin');
+    const editor = notificationText(t, failure, locale, 'not-admin');
+    const pending = notificationText(t, failure, locale, 'pending');
+    expect(admin.body).toContain(t('settings.tab.appearance'));
+    expect(admin.body).toContain(t('settings.redirects'));
+    expect(admin.body).not.toContain(locale === 'en' ? 'Ask a site Admin' : 'اطلب من مشرف');
+    expect(editor.body).toContain(locale === 'en' ? 'Ask a site Admin' : 'اطلب من مشرف');
+    expect(pending.body).not.toContain(t('settings.tab.appearance'));
+    expect(pending.body).not.toContain(locale === 'en' ? 'Ask a site Admin' : 'اطلب من مشرف');
+  });
+
   it('preserves old rows, unknown types and malformed parameters', () => {
     const t = (key: Parameters<typeof translateFn>[0]) => key;
     for (const params of [undefined, null, [], 'bad', { projectName: 4 }]) {
