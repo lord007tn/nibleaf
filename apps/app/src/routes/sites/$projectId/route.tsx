@@ -1,11 +1,11 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
-import { resolveLocale } from '@nibleaf/i18n/locales';
+import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
-import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
-import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BookOpen, ExternalLink, Link2, Lock, Moon, Search, Sun } from 'lucide-react';
+import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
 import { ChatSearchBridge, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
@@ -28,11 +28,14 @@ import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { siteHead } from '@/lib/site-seo';
+import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
+import { readerFallbackHead, siteHead, siteIconHref, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
+
+// Only visitors of a private site need this screen's copy.
+const SitePrivateNotice = lazy(() => import('@/components/site/site-private-notice'));
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
@@ -50,15 +53,25 @@ export const Route = createFileRoute('/sites/$projectId')({
     try {
       const rest = siteRoutePath(location.pathname).replace(/\/+$/, '');
       const segment = rest.split('/')[0];
-      const candidate = segment && rest !== 'changelog' ? decodeURIComponent(segment) : undefined;
+      const candidate = segment && rest !== 'changelog' ? safeDecode(segment) : undefined;
       const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
       return { site, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
-      return { site: null, siteOrigin: customDomainOrigin() };
+      // The API names why the shell is hidden. A private site gets its own
+      // sign-in screen; every other cause keeps the not-published screen.
+      return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'private' ? ('private' as const) : undefined };
     }
   },
-  head: ({ loaderData }) => siteHead(loaderData?.site ?? null, loaderData?.siteOrigin),
+  head: ({ loaderData, match, matches }) => {
+    const lang = (match.search as { lang?: string }).lang;
+    // The shell failed to load (not a 404): still give the tab a title.
+    if (!loaderData) return readerFallbackHead(matches, lang);
+    return loaderData.site
+      ? siteHead(loaderData.site, loaderData.siteOrigin)
+      : // A private or unpublished site still gets a readable tab title, never indexed.
+        unavailableSiteHead(loaderData.unavailable, lang);
+  },
 });
 
 function SiteRoute() {
@@ -91,7 +104,9 @@ function LinkedinIcon({ className }: { className?: string }) {
 function SiteChrome() {
   const { projectId } = Route.useParams();
   const { lang, ask } = Route.useSearch();
-  const { site } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData();
+  const site = loaderData.site;
+  const unavailable = 'unavailable' in loaderData ? loaderData.unavailable : undefined;
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const announcement = useSiteLinkNavigation(projectId);
@@ -112,7 +127,7 @@ function SiteChrome() {
   const searchShortcut = useSearchShortcutLabel();
   const committedLocation = useRouterState({ select: (s) => s.resolvedLocation ?? s.location });
   const pathname = committedLocation.pathname;
-  const currentPath = decodeURIComponent(siteRoutePath(pathname)).replace(/\/+$/, '');
+  const currentPath = safeDecode(siteRoutePath(pathname)).replace(/\/+$/, '');
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const pathVersion = site?.versions.find((item) => item.slug === currentPath.split('/')[0]);
@@ -155,7 +170,8 @@ function SiteChrome() {
   const analyticsLanguage = languages.find((language) => language.code === committedLanguage)?.code ?? defaultLanguage;
   const navigationLanguage = siteLanguageParam(activeLanguage?.code, defaultLanguage);
   // Chrome strings follow the active language so an Arabic site reads Arabic.
-  const t = siteT(activeLanguage?.code);
+  // Without a shell (a private or unpublished site) only `?lang=` is known.
+  const t = siteT(activeLanguage?.code ?? lang);
 
   // The published site manages its OWN light/dark theme (a class on the chrome
   // below), independent of the dashboard's theme — so the site's config default
@@ -233,10 +249,11 @@ function SiteChrome() {
     document.documentElement.style.colorScheme = siteTheme;
   }, [projectId, siteTheme, siteThemeHydratedFor]);
 
-  // Apply the configured favicon on the published site.
-  const faviconUrl = config?.branding?.favicon || '/favicon.svg';
+  // Apply the site's own icon on client navigations (siteHead sets it for SSR).
+  // A site with no favicon or logo shows no icon rather than Nibleaf's.
+  const faviconUrl = siteIconHref(config);
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === 'undefined' || !site) {
       return;
     }
     let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
@@ -246,7 +263,7 @@ function SiteChrome() {
       document.head.appendChild(link);
     }
     link.href = faviconUrl;
-  }, [faviconUrl]);
+  }, [faviconUrl, site]);
 
   // (The document <html lang/dir> is set server-side in __root's RootDocument
   // from this route's resolved language, so crawlers + first paint are correct.)
@@ -267,10 +284,33 @@ function SiteChrome() {
   };
 
   if (!site) {
+    // No shell means no site languages: follow `?lang=` for text and direction.
+    const shelllessLocale = resolveLocale(lang) ?? 'en';
+    if (unavailable === 'private') {
+      return (
+        <div
+          className="grid min-h-screen place-items-center bg-background px-6 text-center"
+          lang={shelllessLocale}
+          dir={isRtlLocale(shelllessLocale) ? 'rtl' : 'ltr'}
+        >
+          <div className="flex max-w-sm flex-col items-center">
+            <Lock className="size-8 text-muted-foreground" aria-hidden />
+            <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('privateTitle')}</h1>
+            <Suspense fallback={null}>
+              <SitePrivateNotice lang={shelllessLocale} showSignIn={!isCustomDomainSite(projectId)} />
+            </Suspense>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
+      <div
+        className="grid min-h-screen place-items-center bg-background px-6 text-center"
+        lang={shelllessLocale}
+        dir={isRtlLocale(shelllessLocale) ? 'rtl' : 'ltr'}
+      >
         <div>
-          <BookOpen className="mx-auto size-8 text-muted-foreground" />
+          <BookOpen className="mx-auto size-8 text-muted-foreground" aria-hidden />
           <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('notPublishedTitle')}</h1>
           <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t('notPublishedBody')}</p>
         </div>
@@ -336,7 +376,12 @@ function SiteChrome() {
       navigate({ href: siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix }) });
       return;
     }
-    navigate({ search: (prev) => ({ ...prev, lang: targetLanguage }) });
+    // No known translation path (the changelog, the API reference, a 404, an
+    // untranslated page, or alternates not reported yet): keep the reader on
+    // the same URL, version prefix included, in the other language. A
+    // search-only navigate from this layout route would resolve to the site
+    // root instead.
+    navigate({ href: siteHref(projectId, currentPath, { lang: targetLanguage }) });
   };
   const changeVersion = (slug: string) => {
     const defaultVersion = versions.find((item) => item.isDefault);
@@ -570,7 +615,8 @@ function SiteChrome() {
                       className="-me-2 grid size-11 shrink-0 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:me-0 sm:pointer-fine:size-9"
                       onClick={toggleSiteTheme}
                       type="button"
-                      aria-label={t('toggleTheme')}
+                      aria-label={t('darkMode')}
+                      aria-pressed={siteTheme === 'dark'}
                     >
                       {siteTheme === 'dark' ? <Sun className="size-5 sm:size-4" aria-hidden /> : <Moon className="size-5 sm:size-4" aria-hidden />}
                     </button>

@@ -175,7 +175,8 @@ export default function Panel(
   const trackOpen = useEffectEvent((source: ChatOpenRequest['source']) => track({ name: 'chat_opened', source, conversationId }));
   useEffect(() => {
     const request = options.request;
-    if (!request || request.id === lastRequest.current || (request.question && answering)) return;
+    // A deep link only fills the field, so it may arrive mid-answer; a send waits.
+    if (!request || request.id === lastRequest.current || (request.question && answering && request.source !== 'deep_link')) return;
     // A send issued in the panel's first commit (deep link, search hand-off) is
     // cancelled while the chat client finishes attaching. Wait one task, and
     // only mark the request consumed once it is actually sent.
@@ -183,7 +184,12 @@ export default function Panel(
       lastRequest.current = request.id;
       trackOpen(request.source);
       setPage(request.page);
-      if (request.question) sendRequest(request.question, request.page ?? null);
+      if (!request.question) return;
+      // A shared `?ask=` link only fills the field: the reader reads the
+      // question and sends it themselves, so a crafted link (or a crawler)
+      // can neither speak for them nor spend the site's AI budget.
+      if (request.source === 'deep_link') prefillRequest(request.question);
+      else sendRequest(request.question, request.page ?? null);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [options.request, answering]);
@@ -246,6 +252,13 @@ export default function Panel(
     setTyped(question);
     field.current?.focus();
   };
+  const prefillRequest = useEffectEvent((question: string) => {
+    setTyped(question);
+    // On a phone, focusing would open the keyboard over the question before
+    // the reader has read it; they tap the field (or Send) when ready. Same
+    // rule as the sheet's initial focus below.
+    if (!window.matchMedia('(pointer: coarse), (max-width: 767px)').matches) field.current?.focus();
+  });
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
     : [...(options.lang === options.defaultLanguage ? (options.config?.search?.aiStarterQuestions ?? []) : []), t('aiStart'), t('aiFind')].slice(
@@ -293,7 +306,7 @@ export default function Panel(
         {page && (
           <div className="flex items-center gap-2 border-b px-4 py-2">
             <span className="min-w-0 flex-1 truncate">
-              {t('aiAbout')} {page.title}
+              {t('aiAbout')} <bdi>{page.title}</bdi>
             </span>
             <Button size="sm" variant="ghost" onClick={() => setPage(undefined)}>
               {t('aiRemove')}

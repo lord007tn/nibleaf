@@ -38,7 +38,13 @@ import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-c
 import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
-import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from '@/lib/search-configuration';
+import {
+  resolvePreferredSearchLanguage,
+  resolvePublishedSearchContext,
+  resolvePublishedSearchLanguages,
+  resolvePublishedSearchRequest,
+} from '@/lib/search-configuration';
+import { mergeLanguageSearchHits } from '@/lib/search-language-merge';
 import { matchedSearchSection, type SearchHitSection } from '@/lib/search-sections';
 import { trackProjectEvent, trackProjectEvents } from './analytics';
 import { stableHash } from './importers/content';
@@ -564,6 +570,8 @@ export const searchSite = async (
   limit?: number,
   version?: string,
   analytics: { sessionId?: string; consentState?: ConsentState } = {},
+  /** The reader's language: ranked first, without narrowing the search. */
+  prefer?: string,
 ) => {
   const searchId = randomUUID();
   const analyticsStartedAt = performance.now();
@@ -603,17 +611,17 @@ export const searchSite = async (
     }),
   );
   const pageById = new Map(versionPages.map((page) => [page.id, page]));
-  const hits: LocalizedSearchHit[] = perLanguage
-    .flatMap(({ language, result }) => result.hits.map((hit) => ({ ...hit, language })))
-    .sort((left, right) => right.score - left.score || left.title.localeCompare(right.title) || left.id.localeCompare(right.id))
-    .slice(0, resultLimit)
-    .map((hit) => {
-      // Point the reader at the matching heading when the match is inside a
-      // section, previewing that section rather than the page's first mention.
-      const page = pageById.get(hit.id);
-      const match = page ? matchedSearchSection(page, query, `${deploymentId}:${page.id}`) : undefined;
-      return match ? { ...hit, section: match.section, snippet: match.snippet || hit.snippet } : hit;
-    });
+  const hits: LocalizedSearchHit[] = mergeLanguageSearchHits(
+    perLanguage,
+    resultLimit,
+    resolvePreferredSearchLanguage(snapshot, prefer) ?? request.language,
+  ).map((hit) => {
+    // Point the reader at the matching heading when the match is inside a
+    // section, previewing that section rather than the page's first mention.
+    const page = pageById.get(hit.id);
+    const match = page ? matchedSearchSection(page, query, `${deploymentId}:${page.id}`) : undefined;
+    return match ? { ...hit, section: match.section, snippet: match.snippet || hit.snippet } : hit;
+  });
   const runtime = perLanguage.some(({ result }) => result.runtime === 'legacy-fallback')
     ? 'legacy-fallback'
     : perLanguage.some(({ result }) => result.runtime === 'hybrid')
