@@ -1,116 +1,123 @@
 ---
-title: 'Answer reader questions with the AI assistant'
-description: 'Let readers ask your published documentation questions in a chat, then use their questions and ratings to find and fill gaps in your docs.'
-audience: 'documentation owners and project administrators'
+title: 'Answer reader questions with Ask AI'
+description: 'Let readers ask your published docs questions in a chat, then use their questions and ratings to find and fill gaps in your documentation.'
+audience: 'documentation owners and site admins'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
-verified_against: 'apps/app/src/components/site/ai-chat, apps/app/src/routes/app/projects/$projectId/ai.tsx, apps/server/src/actions/site-chat.ts, and packages/search/src/answer-chat.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/site/ai-chat, apps/app/src/components/ai-conversations, apps/app/src/components/project-settings/search-section.tsx and smart-ai-section.tsx, apps/server/src/actions/site-chat.ts and workspace-ai.ts, apps/server/src/modules/app/ai-conversations/routes.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/ai-assistant'
 ---
 
-The AI assistant lets readers ask questions about your published documentation
-in plain language and get short answers with links to the pages they came from.
-It answers only from your published docs. When the docs do not cover a question,
-it says so and suggests the closest articles instead of guessing.
+**Ask AI** lets readers ask questions about your published docs in plain
+language. They get short answers with links to the exact sections the answer
+came from. Ask AI answers only from your published docs. When the docs don't
+cover a question, it says so and suggests the closest articles instead of
+guessing.
 
 ## Turn it on
 
-1. Open **Site settings → Smart AI** and connect a provider, or use the one your
-   Nibleaf instance provides.
-2. Open the site's search settings and turn on **AI answers**.
-3. Publish the site, or rebuild its search index, so the assistant can read the
-   current version of your docs.
+You need to be the site's Owner or an Admin.
 
-The assistant appears on the published site once the index is ready. To turn it
-off, switch **AI answers** off again. Ordinary search keeps working either way.
+1. Publish your site at least once.
+2. Open **Settings → Smart AI**, connect a provider or use the one your Nibleaf
+   host provides, and select **Enable with this provider**. See
+   [Connect your own AI provider](/product/smart-ai).
+3. Wait until the **Published search index** card says the index is ready.
+
+Ask AI then appears on your published site. Nibleaf updates what it knows after
+every publish.
+
+To turn it off, select **Turn off workspace AI** in **Settings → Smart AI**.
+Where your server offers it, you can also set **Grounded AI answers** to
+**Disabled** in **Settings → Search**. Ordinary search keeps working either way.
 
 ## What readers see
 
-Readers can open the assistant in several ways:
+Readers can open Ask AI in four ways:
 
 - the **Ask AI** button in the corner of every page;
-- the search box, by choosing **Ask AI** for what they typed;
-- **Ask AI about this page** on an article, which focuses answers on that article;
-- a link that includes `?ask=` followed by a question, which opens the assistant
-  and asks it straight away.
+- in search, by choosing **Ask AI about "…"** for what they typed;
+- the **Ask AI about this page** card at the end of an article, which focuses on
+  that article;
+- a link to your site that ends in `?ask=` followed by a question, which opens
+  Ask AI and asks the question straight away.
 
-On wide screens the assistant opens as a side panel. On phones it fills the
-screen. It follows the reader's language, including right-to-left layout for
-Arabic, and the site's light or dark appearance.
+On wide screens Ask AI opens as a side panel; on phones it fills the screen. It
+follows the reader's language, including right-to-left layout for Arabic, and
+your site's light or dark appearance.
 
-Answers start with the direct answer, then give numbered steps with the exact
-button and setting names from your docs. The assistant replies in the reader's
-language, even when they mix two languages in one question. If a question is too
-vague, it asks one short question back, with the options your docs cover.
+Answers start with the direct answer, then give numbered steps that use the
+button and setting names from your docs. Ask AI replies in the reader's
+language, even when they mix two languages. If a question is vague, it asks one
+short question back.
 
-Each answer shows numbered markers such as **1** and **2** that point to source
-cards. Each card opens the exact section of the page the information came from.
-Under an answer, the assistant suggests up to three related questions that your
-docs can answer. Readers can also ask their own follow-up questions, stop an
-answer while it is being written, copy an answer, start a new chat, and rate
-each answer.
+Numbered markers such as **1** and **2** point to source cards. Each card opens
+the section the information came from. Under an answer, Ask AI suggests up to
+three related questions. Readers can also ask follow-ups, stop an answer, copy
+it, start a **New chat**, and rate each answer.
 
-If the assistant cannot confirm an answer from your docs, it says "I couldn't
-verify this from the docs" and lists the articles most likely to help, plus a
-**Contact support** link if you set one. While an
-answer is being written, readers may briefly see wording that disappears when
-the assistant checks its sources. Only checked text stays on screen.
+If Ask AI can't confirm an answer from your docs, it shows
+**I couldn't verify this from the docs**, lists the articles most likely to help,
+and adds a **Contact support** link if you set one. While an answer is being
+written, readers may briefly see text that disappears when Ask AI checks its
+sources. Only checked text stays on screen.
 
-## Suggest first questions
+## Suggest first questions and a support link
 
-In the site's search settings you can add up to four **Suggested questions**. New
-readers see them before they type anything, in the site's default language. Good
-suggestions are real questions your readers ask, such as "How do I reset my
-password?". Readers in other languages see general starter questions instead.
+These settings are in **Settings → Search**:
 
-## Point readers to support
-
-When the docs don't have an answer, readers can reach a person. In the site's
-search settings, set **Support link** to your help page (`https://…`) or a support
-email address (`mailto:…`). The assistant shows **Contact support** under answers
-it couldn't confirm. Leave the field empty to hide the link.
+- **Suggested questions:** up to four questions, one per line, each 3 to 120
+  characters. New readers see them before they type, in your site's default
+  language. Use real questions your readers ask, such as "How do I reset my
+  password?". Readers in other languages see general starter questions instead.
+- **Support link:** your help page (`https://…`) or a support email address
+  (`mailto:…`). Ask AI shows **Contact support** under answers it couldn't
+  confirm. Leave it empty to hide the link.
 
 ## Review conversations and fill gaps
 
-Open **AI assistant** in the project sidebar. It has three views:
+Open **AI assistant** in the site sidebar. Anyone on the site's team can view it.
+It has three views:
 
-- **Overview** shows how many questions readers asked, how many the assistant
-  answered, how satisfied readers were, and the estimated AI cost over time.
-- **Conversations** lists each chat. Filter by date, language, rating, or
-  unanswered questions, then open a chat to read it, see which pages were cited,
-  and read any reader comments.
-- **Content gaps** lists questions the assistant could not answer and answers
-  readers rated down. Choose **Write an article about this** to start a new page
-  for that question.
+- **Overview:** how many questions readers asked, how many were answered, reader
+  satisfaction, and the estimated AI cost over time.
+- **Conversations:** every chat. Filter by date, language, rating, or
+  **Unanswered only**, then open a chat to read it, see which pages were cited,
+  and read reader feedback.
+- **Content gaps:** questions Ask AI could not answer and answers readers marked
+  **Not helpful**. Select **Write an article about this** to copy the question
+  and open the editor, then create a new page for it.
 
-Project administrators can delete a conversation. Deleted conversations cannot be
-restored.
+Admins and Owners can select **Delete conversation**. Deleted conversations
+can't be restored.
 
 ## Privacy and saved questions
 
-**Save questions to improve your docs** controls whether Nibleaf keeps the text
-of questions, answers, and reader comments. It is on by default. When it is on,
-readers see a short note in the assistant asking them not to share personal
-details.
+**Save questions to improve your docs**, in **Settings → Search**, controls
+whether Nibleaf keeps the text of questions, answers, and reader comments. It is
+on by default. While it is on, readers see a short note asking them not to
+include personal details.
 
 Even when it is on:
 
 - Nibleaf removes email addresses, phone and ID numbers, passwords, keys, and
   similar details before saving text.
-- If your site shows a consent banner, text is saved only for readers who accept.
-- Saved conversations are deleted automatically after the retention period set
-  by your Nibleaf administrator (90 days by default).
+- If your site shows a consent banner, text is saved only for readers who
+  accept.
+- Saved conversations are deleted automatically after the retention period your
+  Nibleaf host sets (90 days by default).
 - Nibleaf never saves who the reader is.
 
-When the setting is off, Nibleaf still records counts, ratings, and costs so the
-overview stays useful, but no question or answer text.
+When it is off, Nibleaf still records counts, ratings, and costs so the overview
+stays useful, but no question or answer text. If the **Conversations** view says
+questions are not being saved, check this setting.
 
 ## Limits
 
-The assistant stops answering for the day when the site reaches its daily
-question or AI-spend limit, and asks readers to start a new chat when a
-conversation gets very long. Readers who ask many questions in a short time are
-asked to wait a moment. Your Nibleaf administrator sets these limits; see
+Ask AI stops answering for the day when the site reaches its daily question or
+AI-spend limit. It asks readers to start a new chat when a conversation gets
+very long, and asks readers who send many questions quickly to wait a moment.
+Your Nibleaf host sets these limits; self-hosters can read
 [Operate hybrid search and grounded answers](/self-hosting/search-ai).

@@ -1,73 +1,85 @@
 ---
-title: 'Publish and verify a documentation version'
-description: 'Turn the reviewed default-branch draft into an immutable snapshot, verify the public response, and recover from a failed publish.'
-audience: 'workspace owners and editors responsible for releases'
+title: 'Publish your changes'
+description: 'Publish your drafts as a new version of your site, check what readers see, fix a failed publish, and restore the previous version if needed.'
+audience: 'site owners and editors responsible for releases'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
-verified_against: 'apps/worker/src/processors/publish.ts, apps/server/src/actions/sites.ts, and packages/shared/src/addons.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/layouts/project.tsx, apps/app/src/components/project/publish-modal.tsx and deploy-pipeline.tsx, apps/app/src/routes/app/projects/$projectId/index.tsx, apps/server/src/actions/deployments.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/publishing'
 ---
 
-Publishing freezes the current default-branch draft into a deployment snapshot.
-Readers continue to receive the latest ready snapshot until the worker finishes
-the new one successfully.
+Publishing turns your drafts into a new version of your site. Readers keep
+seeing the current version until the new one is ready, so they never see a
+half-built site. Owners, Admins, and Editors can publish.
 
-## Run the pre-publish review
+## Check your pages first
 
-Check the pages that changed:
+Before you publish, read the pages you changed with **Preview** and check that:
 
-- The opening paragraph answers the page's primary question.
-- Prerequisites appear before actions that depend on them.
-- Commands and setting names match the current repository or release.
-- Links and redirects reach the final destination.
-- Images have useful alternative text and contain no secrets.
-- Headings form a logical outline.
-- Title, description, slug, indexing, and language relationships are correct.
-- Failure recovery is documented for destructive or operational tasks.
+- the first paragraph answers the reader's main question;
+- steps are in order, and anything the reader needs comes before the step that
+  uses it;
+- links open the right page;
+- images have a short text description and show no private information;
+- titles and descriptions are correct in every language.
 
-For a large change, merge a reviewed documentation branch into the default
-draft before selecting **Publish**.
+## Publish
 
-When the CI-check add-on is enabled, the worker runs the configured local gates
-before creating a ready deployment. Enabled broken-link checks always block on
-an unresolved internal target. The preview grammar linter can be bypassed only
-when every finding is grammar-only and an editor explicitly chooses to publish
-anyway. Disabling the CI-check umbrella skips both checks; record any emergency
-bypass and restore the gate afterward. See [project add-ons](/product/add-ons).
+1. In the editor, select **Publish**. The number on the button is how many
+   changes are waiting.
+2. The **Publish changes** dialog lists what changed since the last published
+   version. Select **Review changes** to see the exact edits on each page.
+3. Optionally, add a **Note for your team (optional)**, for example "Updated the
+   refund policy".
+4. Select **Publish now**.
 
-## Publish one coherent version
+The dialog shows **Publishing…** and then **Your changes are live**. Select
+**View site** to open it. If nothing changed in your pages, you can still publish
+to apply settings changes, such as redirects.
 
-Select **Publish** once the default draft is ready. Nibleaf creates a deployment,
-queues the publish job, serializes the project and page tree, prepares search
-data, and marks the deployment ready. Do not edit and republish repeatedly to
-guess past a failing job; inspect its recorded failure first.
+Publishing includes everyone's unpublished changes on the site and every
+[documentation version](/product/authoring#manage-documentation-versions), not
+only your own edits. Check the list before you publish.
 
-## Verify as an unauthenticated reader
+## Check what readers see
 
-Open the canonical host while signed out and check:
+Open your site in a private browser window, where you are signed out, and check:
 
-1. The homepage and a deep page return HTTP 200.
-2. An unknown path returns HTTP 404.
-3. Search finds a phrase from late in a changed page.
-4. The page canonical uses the public host and current path.
-5. `/robots.txt`, `/sitemap.xml`, `/llms.txt`, and `/llms-full.txt` return the
-   expected site and pages.
-6. A moved URL reaches its final page in one permanent hop.
-7. The mobile sidebar, language switcher, tables, and code blocks remain usable.
+1. The home page and a page you changed open normally.
+2. Search finds a phrase from a page you changed.
+3. A moved page's old address takes readers to the new page.
+4. On a phone-sized window, the menu, language switcher, tables, and code blocks
+   are easy to use.
 
-A ready status proves that the snapshot job completed. It does not prove DNS,
-TLS, storage delivery, email, or an external custom domain.
+"Your changes are live" means Nibleaf built the new version. It does not check
+your custom domain or your readers' network. If the site does not open on your
+own domain, see [Connect a custom domain](/product/custom-domains).
 
-## Recover from failure
+## If publishing is blocked or fails
 
-If the job fails, leave the previous ready version live. Read the deployment
-failure and worker log, correct the draft or infrastructure cause, and publish a
-new version. If an incorrect version is already public, restore the intended
-content to the default draft and publish forward.
+- **Redirects must be fixed before publishing.** A redirect points to a page that
+  doesn't exist or creates a loop. Fix it in the [redirect settings](/redirects)
+  and try again.
+- **Publishing did not finish.** Open **What went wrong** to read the reason,
+  fix it, and select **Retry**. Your draft is safe, and readers still see the
+  previous version.
+- **Publish failed** on the site overview, with a list of broken links or grammar
+  issues. These come from the publishing checks in
+  [add-ons](/product/add-ons). Fix broken links before you publish again. If only
+  grammar suggestions remain, you can select **Publish anyway**.
 
-Pinning an older application image does not roll back page drafts or a database
-migration. Self-hosters should use the separate [upgrade and restore process](/self-hosting/backups-upgrades).
-For the merged August capability set, also follow the
-[ordered migration and rollback guide](/self-hosting/combined-release-migration).
+Don't publish again and again to get past an error. Read the reason first.
+
+## Undo a publish
+
+Right after a publish, the dialog offers **Restore previous version**. It
+publishes the previous version again, so readers see it within moments.
+
+Restoring does not change your drafts. They still contain the changes you wanted
+to undo, so fix them before your next publish, or the same problem goes live
+again.
+
+A published version is not a backup. If you host Nibleaf yourself, also follow
+the [backup and restore guide](/self-hosting/backups-upgrades).

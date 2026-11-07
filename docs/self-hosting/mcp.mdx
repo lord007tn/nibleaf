@@ -3,7 +3,7 @@ title: 'Connect MCP clients securely'
 description: 'Enable the project-bound Nibleaf MCP endpoint, connect clients by OAuth sign-in or personal keys, and operate write safety, audit, rate limits, and rollback.'
 audience: 'self-hosted Nibleaf operators and project administrators'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
+last_reviewed: '2026-11-07'
 verified_against: 'apps/server/src/mcp, packages/auth/src/mcp-oauth.ts, packages/shared/src/mcp.ts, migrations 20261106090000_mcp_write_audit_idempotency, 20261106120000_mcp_oauth, 20261106130000_mcp_audit_actor_index and 20261106130100_mcp_audit_oauth_grant_index, better-auth, @better-auth/mcp and @better-auth/cimd 1.7.18, and the official Model Context Protocol server SDK 2.0.0'
 lang: 'en'
 dir: 'ltr'
@@ -25,6 +25,18 @@ settings and membership changes, provider credentials, payment actions,
 database primitives, arbitrary files, and code execution are not available. For
 the support workflow and the complete tool catalog, see
 [Work on your docs with an AI assistant](/product/ai-assistants).
+
+## Check your release first
+
+This page describes the current source with support-writer tools and OAuth.
+The pinned v0.2.0 release originally shipped the read-only MCP surface.
+Use a compatible reviewed image and apply its migrations before enabling new
+capabilities. The pinned production Compose file passes `MCP_ENABLED`,
+`MCP_ALLOWED_HOSTS`, and `MCP_RATE_LIMIT_PER_MIN`, but does not pass
+`MCP_WRITE_RATE_LIMIT_PER_MIN` or `MCP_PUBLISH_RATE_LIMIT_PER_HOUR`. Add explicit
+API environment mappings in an override to customize those source-era limits;
+`.env` alone does not pass them through. See the
+[environment reference](/reference/environment-variables).
 
 ## Enable the endpoint
 
@@ -192,8 +204,8 @@ search model as the dashboard's **Search** section:
 Raw search terms exist only when all of these hold:
 
 1. the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
-2. the site is public, and the project enables **Settings → Analytics → Store
-   public search terms**;
+2. the site is public, and an Admin or Owner turned on search terms in
+   **Analytics → Search → Turn on search terms**;
 3. the reader's search carries `consentState=granted`, or `not_required` on a
    site without a consent banner. The bundled reader site sends it.
 
@@ -205,9 +217,12 @@ counts or clicks, so `get_failed_searches` reports itself unavailable there.
 In ClickHouse mode `get_referrers` also returns AI crawler activity from the
 same report as the dashboard's **AI visibility** section: AI crawler requests,
 assistant fetches made for a person, the crawlers, and the most crawled pages.
-All analytics tools count people only; crawlers are reported separately.
+Reader-engagement metrics count people; crawlers are reported separately. AI
+spend tools count every billed turn, including automated traffic.
 
-Reader comments are not stored. Search, crawler and page feedback data are not
+Page-helpfulness feedback does not store free-text reader comments. AI chat
+feedback is different: redacted comments can be saved under the chat capture
+policy. Search, crawler and page feedback data are not
 split by language, so those tools ignore the language filter, and the response
 says so.
 
@@ -273,9 +288,10 @@ user (`actorUserId`), request ID, operation,
 capability, target type and ID (`targetType`, `targetId`, such as a page or
 deployment), outcome, stable error code, duration, client request ID
 (`clientRequestId`), and timestamp. It never stores tool inputs, results, page
-content, bearer tokens, provider payloads, IP addresses, or raw client keys. If
-audit persistence fails, the operation fails closed with a sanitized storage
-error.
+content, bearer tokens, provider payloads, IP addresses, or raw client keys. A write creates a `started` audit row before it runs and settles that row
+afterwards. Failure to create it prevents the write. Failure to settle it can
+return a storage error after the draft changed; re-read the target before
+retrying, and reuse the same `clientRequestId` when available.
 
 Three limits apply per key or OAuth connection, per API process:
 
@@ -322,9 +338,9 @@ it leaves and run the migration step again.
 PostgreSQL's standard index and foreign-key DDL can briefly block API-key
 create, rotate, or revoke writes. Check the table size and active locks first,
 pause those dashboard operations during the migration, and keep MCP disabled
-until it completes. The migration deliberately uses the repository's normal
-Prisma migration path instead of a multi-step concurrent-index procedure that
-could leave a partially applied or invalid index requiring manual recovery.
+until it completes. The original control-plane migration uses ordinary DDL. The two later audit
+index migrations use concurrent index creation and may need failed-migration
+recovery before Prisma can continue; do not clear Prisma history manually.
 
 Before application rollback, disable MCP and stop MCP clients. Do not execute
 the MCP `rollback.sql` after a successful Prisma migration. Deploy an
@@ -380,7 +396,7 @@ MCP_ENABLED=true
 | `<APP_URL>/.well-known/oauth-authorization-server/api/auth` | RFC 8414 authorization server metadata for the issuer `<APP_URL>/api/auth` (also served at the root path). |
 | `<APP_URL>/api/auth/.well-known/openid-configuration` | OpenID metadata (also served at `/.well-known/openid-configuration` and its `/api/auth` form). |
 | `<APP_URL>/api/auth/oauth2/register` | Dynamic client registration (RFC 7591) for public clients. |
-| `<APP_URL>/api/auth/oauth2/authorize`, `/oauth2/token`, `/oauth2/revoke` | Authorization code with PKCE (S256), token, and revocation endpoints. |
+| `<APP_URL>/api/auth/oauth2/authorize`, `<APP_URL>/api/auth/oauth2/token`, `<APP_URL>/api/auth/oauth2/revoke` | Authorization code with PKCE (S256), token, and revocation endpoints. |
 
 Every `401` from `/api/mcp` carries an RFC 6750 challenge with the RFC 9728
 `resource_metadata` pointer, which is how a client finds the sign-in flow. Check
@@ -515,3 +531,18 @@ every OAuth client out.
 Correlate failures with the safe request ID. Never paste an Authorization header,
 raw MCP arguments/results, document content, or provider response into logs or a
 support ticket.
+
+## AI conversation tools and transport bounds
+
+The current source registers `list_ai_conversations`, `get_ai_conversation`,
+`get_ai_feedback_summary`, `list_ai_content_gaps`, and `get_ai_usage` under
+`analytics:read`, for both keys and OAuth. This permission can include saved
+redacted transcript text, not just aggregates. Grant it only to trusted clients.
+Text exists only under the [chat capture policy](/self-hosting/search-ai);
+`captureOffReason` explains `setting` or `instance`. Engagement counts people;
+`get_ai_usage` includes all billed model calls, so its totals can differ.
+
+The HTTP body cap is 327680 bytes (320 KiB), allowing JSON escaping for a
+128 KiB page or theme template plus its envelope. A request containing more
+than 16 JSON-RPC messages is rejected before per-call auditing. These transport
+limits are separate from write/publish quotas.

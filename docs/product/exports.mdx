@@ -1,76 +1,77 @@
 ---
-title: 'Export and archive a published documentation version'
-description: 'Create portable Markdown, PDF, or static HTML artifacts from one immutable published version, then automate retention with archive schedules.'
-audience: 'documentation owners and self-hosted operators'
+title: 'Export and archive your docs'
+description: 'Download your published docs as Markdown, PDF, or a static website, schedule regular archive copies, and test that a copy really works.'
+audience: 'documentation owners and site admins'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/server/src/actions/exports.ts, apps/worker/src/exports, and apps/app/src/components/project-settings/exports-section.tsx'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/exports-section.tsx, apps/server/src/actions/exports.ts, apps/worker/src/exports, packages/shared/src/rbac.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/exports'
 ---
 
-Nibleaf exports the latest successful published version, not the current draft.
-Each run first copies that `READY` deployment into an immutable export snapshot,
-so Markdown, PDF, and static HTML selected together describe the same content.
+An export is a copy of your site you can download and keep. Nibleaf exports your
+latest **published** version, not your current drafts, so every format you pick
+in one run contains the same content.
+
+Open **Settings → Exports**. Owners, Admins, and Editors can create one-time
+exports. Only Owners and Admins can manage schedules.
 
 ## Create a one-time export
 
-Publish and verify the site before exporting. Then open **Site settings →
-Exports → Create export**, select at least one format, and start the run:
+1. Publish your site first. Without a published version, Nibleaf shows
+   "Publish the site first, then you can export it."
+2. Open **One-time export** and select one or more formats:
+   - **Markdown ZIP:** your pages as Markdown files. Use it to move your docs or
+     keep an editable copy.
+   - **PDF:** a printable document, including right-to-left text. Use it for
+     reviews, approvals, or printing.
+   - **Static HTML ZIP:** a complete offline website with navigation, search, and
+     your theme. Use it to host the docs somewhere else.
+3. Select **Create export**.
 
-- **Markdown ZIP** for portable source and migration checkpoints. Verify page
-  files, frontmatter, navigation, and referenced assets.
-- **PDF** for review, approval, or print distribution. Verify fonts, code,
-  diagrams, page breaks, and RTL text.
-- **Static HTML ZIP** for offline or independent static hosting. Verify internal
-  links, local search, navigation, CSS, and copied assets without Nibleaf.
+The run appears in **Run history** with its status: pending, running, and then
+succeeded or failed. Download links appear when a run succeeds. They stop
+working after a short time, so download the file promptly. A failed export never
+changes your published site; check the error, fix the cause, and create a new
+export.
 
-The run moves through `PENDING`, `RUNNING`, and a terminal state. Download links
-appear only for `SUCCEEDED` artifacts and expire after a short, instance-defined
-window. A failed run does not change the published site; read the failure in run
-history, correct the cause, and create a new export.
+To download every draft page instead, including unpublished ones, select
+**Download the original Markdown ZIP** under **One-time export**.
 
-## Schedule archival snapshots
+## Schedule regular archives
 
-Open **Schedules**, create a named schedule, and choose:
+1. Open **Schedules** and select **New schedule**.
+2. Enter a **Schedule name**, choose the formats, and choose **Daily**,
+   **Weekly**, or **Monthly**.
+3. Set the **IANA timezone**, such as `Africa/Tunis` or `Asia/Riyadh`, and the
+   **Local run time**. Using a named time zone keeps the run at the same local
+   time when clocks change.
+4. Set **Runs to retain** and **Retention days**. Older copies are deleted after
+   either limit.
+5. Select **Create schedule**.
 
-- the formats to generate;
-- a daily, weekly, or monthly cadence;
-- an IANA timezone and local run time;
-- how many completed runs to keep;
-- the maximum retention age.
+Select **Run now** to test a schedule straight away, then check the result in
+**Run history**. Use **Disable** to pause a schedule.
 
-Use an IANA name such as `Africa/Lagos`, not a fixed UTC offset. Nibleaf computes
-the next run in that timezone so daylight-saving changes retain the intended
-wall-clock time. Use **Run now** to test the exact schedule before depending on
-it, then confirm the artifact in **Run history**.
+## Test that your copy works
 
-An export schedule is an additional recovery copy, not a database backup. It
-does not preserve workspace membership, drafts, comments, analytics, credentials,
-or operational state. Self-hosters still need synchronized [Postgres and object
-storage backups](/self-hosting/backups-upgrades).
+An export you've never opened is not a recovery plan. Download a fresh copy of
+each format you rely on and check it outside Nibleaf:
 
-## Operate export workers
+- **Markdown:** open a few files and check titles, links, and images.
+- **Static HTML:** unzip it, open it in a browser while offline, and follow a few
+  links.
+- **PDF:** check long pages, Arabic pages, diagrams, and code.
 
-The published container includes Chromium for PDF rendering. Source-based or
-custom worker images must install a Chromium-compatible browser and set
-`EXPORT_CHROMIUM_PATH`. If `WORKER_QUEUES` restricts queues, include `export`.
+Write down which published version you exported, where you stored the file, and
+who is responsible for restoring it.
 
-The instance controls concurrency, daily runs, page and snapshot size, copied
-asset bytes, manual retention, and download URL lifetime. Review the [environment
-variable reference](/reference/environment-variables) before enabling large or
-scheduled archives. Storage lifecycle rules may delete expired objects as a
-second line of defense, but must not expire them earlier than Nibleaf's configured
-retention policy.
+## What an export doesn't include
 
-## Test recovery before relying on an export
-
-Download a fresh artifact from each required format and test it outside the
-Nibleaf dashboard. For Markdown, inspect and import a sample. For static HTML,
-serve the extracted directory locally and follow deep links while offline. For
-PDF, review representative long, multilingual, diagram, and code-heavy pages.
-
-Record the deployment version, export run, storage location, and restore owner.
-An artifact that has never been opened is an untested assumption, not a recovery
-plan.
+Exports don't include your team, drafts that aren't published, comments,
+analytics, passwords, or keys. They are an extra copy, not a full backup. If you
+host Nibleaf yourself, also follow the
+[backup and restore guide](/self-hosting/backups-upgrades). Operators can find
+the export limits and worker settings in the
+[environment variable reference](/reference/environment-variables).

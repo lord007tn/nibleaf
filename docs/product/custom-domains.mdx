@@ -1,0 +1,72 @@
+---
+title: 'Connect a custom domain'
+description: 'Serve your documentation from your own address, such as docs.example.com, by adding two DNS records and waiting for the secure connection.'
+audience: 'site owners and admins'
+content_type: 'how-to'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/domain-section.tsx, apps/server/src/actions/domains.ts, apps/app/src/routes/app/projects/$projectId/index.tsx, and packages/i18n/messages'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/custom-domains'
+---
+
+Every site starts with a free Nibleaf address. You can also serve it from your
+own address, such as `docs.example.com`. Nibleaf sets up the secure connection
+(HTTPS) for you and renews it automatically.
+
+## Before you start
+
+- You need to be the site's Owner or an Admin.
+- You need access to the DNS settings where your domain is registered, such as
+  your domain registrar or hosting company. DNS (Domain Name System) is the
+  address book that tells browsers where your domain lives. If someone else
+  manages your domain, ask them to add the records for you.
+- Publish your site and check that it works at its free address first.
+- Use a subdomain, such as `docs.example.com`, rather than your main website
+  address.
+
+## Add your domain
+
+1. Open **Settings → Custom domain**.
+2. Enter your domain, for example `docs.example.com`, and select **Add domain**.
+3. Nibleaf shows **Add these DNS records at your provider**, a list of records
+   with a **Type**, **Name**, and **Value**:
+   - the **CNAME** record points your address to your Nibleaf site;
+   - the **TXT** record proves you own the domain.
+4. In another tab, open your domain provider's DNS settings and add each record.
+   Use **Copy DNS record** to avoid typing mistakes. Most providers want the short
+   **Name** shown. Use the full name only if your provider asks for it.
+5. Save the records at your provider, then come back and select **Check again**.
+
+## Wait for the connection
+
+DNS changes usually take a few minutes, but they can take up to 24 hours. While
+you wait, the domain shows **Waiting for DNS — this can take up to 24 hours**.
+
+When the records are found and the secure connection is ready, the domain shows
+**Connected — secure (HTTPS) ✓**. Open the address in a private browser window to
+confirm your site appears.
+
+## Make it your main address
+
+If you connect more than one domain, select **Make primary** on the one readers
+should use. You can do this only after the domain shows it is connected and
+secure. The primary domain appears on your site overview under
+**Your site's address**. Invitations to [private readers](/private-reader-access)
+also use it.
+
+## If something goes wrong
+
+- **Needs attention:** open **Configuration** to see which record is missing or
+  wrong. Compare each **Type**, **Name**, and **Value** with your provider's
+  settings, fix them, and select **Check again**.
+- **The domain is already connected:** the address is used by another site.
+  Remove it there first.
+- **Still waiting after 24 hours:** check for an old record with the same name at
+  your provider and remove it, then select **Check again**.
+
+To stop using a domain, select **Remove**. Your site stops working at that
+address straight away, but it keeps working at its free Nibleaf address.
+
+On a self-hosted Nibleaf instance, custom domains need setup by your operator
+first; see [Take a self-hosted installation to production](/self-hosting/production).

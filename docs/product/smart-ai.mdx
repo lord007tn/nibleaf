@@ -1,0 +1,97 @@
+---
+title: 'Connect your own AI provider'
+description: 'Use your own OpenAI or OpenRouter key to power Ask AI answers on your published docs, choose a model, and keep the search index ready.'
+audience: 'site owners and admins'
+content_type: 'how-to'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/smart-ai-section.tsx, apps/app/src/hooks/api/workspace-ai.ts, apps/server/src/actions/workspace-ai.ts, apps/server/src/lib/ai-search/runtime.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/smart-ai'
+---
+
+**Smart AI** connects your site to an AI provider so readers can use
+[Ask AI](/product/ai-assistant) on your published docs. You can bring your own
+provider key, so usage is billed to your own provider account, or use the
+provider your Nibleaf host already set up.
+
+An API key is a secret password that lets Nibleaf use your provider account.
+Treat it like a password.
+
+## Before you start
+
+- You need to be the site's Owner or an Admin.
+- Publish your site at least once. The assistant answers only from published
+  pages.
+- To bring your own key, create an API key in your [OpenAI](https://platform.openai.com/)
+  or [OpenRouter](https://openrouter.ai/) account. Make sure the account has
+  credit and access to the model you want.
+
+## Connect your own provider key
+
+1. Open **Settings → Smart AI**.
+2. On the **OpenAI** or **OpenRouter** card, paste your key into **API key**.
+3. Select **Verify key and load models**. Nibleaf checks the key with your
+   provider without generating an answer.
+4. Choose an **Answer model**, then select **Save changes**.
+5. Select **Enable with this provider**.
+
+The card now shows **Selected for this workspace**, and the status at the top
+shows **AI answers enabled**. Saving a key on its own does not turn AI on. You
+always choose **Enable with this provider** yourself.
+
+The settings apply to this site only.
+
+## Use the provider from your Nibleaf host
+
+If your Nibleaf host set up a provider, the page shows an
+**Instance-managed provider** card. Select **Enable with this provider** on that
+card to use it instead of your own key. When you select your own provider,
+Nibleaf uses only your key.
+
+## Keep the search index ready
+
+The **Published search index** card shows whether Ask AI can read your latest
+published version:
+
+- "The published index is ready" means answers can use your published pages.
+- "The index is not ready yet" means Nibleaf is still reading your pages, or the
+  last attempt failed. Select **Build or refresh index**.
+- "Publish your documentation first" means the site has no published version yet.
+
+Nibleaf rebuilds the index after each publish. Use **Refresh** to update the
+status, and **Open published documentation** to try Ask AI yourself.
+
+## Replace or remove a key
+
+- **Replace a key:** paste the new key, tick
+  **I want to replace this workspace's stored key.**, select
+  **Verify key and load models**, then **Save changes**. To keep the stored key, leave
+  **API key** empty.
+- **Turn off AI:** select **Turn off workspace AI**. Ask AI disappears from your
+  site, ordinary search keeps working, and your stored key is kept so you can
+  turn it back on later.
+
+## Security and costs
+
+Keys are encrypted on the server and never shown again in the browser. Your
+provider bills you for the answers your readers request. Nibleaf's daily answer
+and request limits still apply, so a busy day cannot run up unlimited costs. Ask
+AI only reads published pages that the reader is allowed to see.
+
+Signing in with an OpenAI or ChatGPT account is not available yet. Use an OpenAI
+API key instead.
+
+Smart AI powers Ask AI for readers. The editor's **AI assist** uses the AI
+service set up by your Nibleaf host, not your key.
+
+## Troubleshoot
+
+| What you see | What to do |
+| --- | --- |
+| The provider refused these credentials. | Check that you copied the whole key, that it is active, and that your provider account has credit. |
+| No compatible answer models were listed for this connection. | Check which models your provider account can use. |
+| These settings changed in another session. | Someone else changed Smart AI. Refresh the page, then try again. |
+| Indexing is already running. | Wait, then select **Refresh**. |
+| Your administrator needs to configure credential encryption. | Keys can't be saved on this server yet. Ask your Nibleaf host. |
+| Semantic search infrastructure is not configured. | AI answers are not set up on this server. Self-hosters: see [Operate hybrid search and grounded answers](/self-hosting/search-ai). |

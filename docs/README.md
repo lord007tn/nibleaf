@@ -38,13 +38,23 @@ From the repository root, run:
 
 ```bash
 pnpm docs:check
-pnpm --filter @nibleaf/app build
 ```
 
 The documentation check rejects invalid navigation, orphaned pages, missing
-maintenance metadata, broken local links, and skipped heading levels. Before
+maintenance metadata, broken local links, skipped heading levels, language-tree
+or translation-key mismatches, and different fenced code in a translation pair.
+It does not verify product claims or prove the hosted site has changed. An app
+build is a separate check when rendering code changes; plain text edits need the
+documentation check and a content review. Before
 publishing, also follow the review and visual checks in
 [`contributing/documentation.mdx`](contributing/documentation.mdx).
+
+Record whether a claim describes the pinned self-host release or the current
+source. `release/self-host.json` pins v0.2.0 and the hash of
+`docker-compose.prod.yml`; that file has no ClickHouse service. The source
+quickstart and Coolify files have a different service inventory. A variable in
+`.env.production.example` reaches a container only if its Compose environment
+passes it. Verify the schema default and that wiring separately.
 
 ## Sources and maintenance
 

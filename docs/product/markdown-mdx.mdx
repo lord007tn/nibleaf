@@ -1,26 +1,33 @@
 ---
 title: 'Markdown and MDX component reference'
-description: 'Use the Markdown, GitHub-style extensions, math, diagrams, and documentation components that Nibleaf renders and round-trips safely.'
-audience: 'documentation authors working in source mode'
+description: 'Look up the Markdown formatting, callouts, components, math, and diagrams Nibleaf supports, with the attributes each component accepts.'
+audience: 'documentation authors who edit pages as Markdown'
 content_type: 'reference'
-last_reviewed: '2026-08-23'
-verified_against: 'packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/site/mdx-components.tsx, apps/app/src/components/markdown.tsx, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-components.tsx, apps/app/src/components/editor/extensions/callout.ts, and apps/app/src/components/editor/unsupported-mdx.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/markdown-mdx'
 ---
 
-Nibleaf stores page bodies as Markdown strings and renders GitHub-flavored
-Markdown plus a documented component set. Preview source changes before
-publishing; syntactically valid MDX can still produce an unintended layout.
+Every Nibleaf page is stored as Markdown, a plain-text format where symbols add
+formatting, such as `**bold**`. MDX adds components, written like HTML tags, for
+richer layouts such as tabs and cards. The visual editor writes this for you. Use
+this reference when you choose **Edit as Markdown (advanced)** in the editor.
 
-## Standard Markdown
+Always check your changes in **Preview**. Text that is valid Markdown can still
+look different from what you expected.
 
-Use ATX headings (`## Heading`), paragraphs, emphasis, links, images, blockquotes,
-ordered and unordered lists, fenced code, thematic breaks, and inline code.
-GitHub-flavored tables, task lists, autolinks, and strikethrough are enabled.
+## Basic formatting
 
-Add a language to every fenced code block that contains code:
+Nibleaf supports standard Markdown and the GitHub extensions: headings, bold,
+italics, links, images, quotes, lists, task lists, tables, strikethrough, inline
+code, and code blocks.
+
+- Set the page title in the editor's title field, not with a `#` heading. Start
+  sections at `##` and don't skip levels.
+- Add a language to each code block so it is highlighted correctly. You can also
+  add a title:
 
 ````md
 ```bash title="Start Nibleaf"
@@ -28,40 +35,41 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 ````
 
-Keep the page title in page settings rather than adding another H1 to the body.
-Start body sections at H2 and do not skip levels for visual styling.
-
 ## Callouts
 
-GitHub-style admonitions round-trip through the visual editor:
+Callouts highlight a note, tip, or warning. The GitHub style works in both the
+visual editor and Markdown:
 
 ```md
 > [!WARNING]
 > Back up Postgres and object storage before an upgrade.
 ```
 
-Supported variants normalize to `note`, `info`, `tip`, `check`, `warning`, and
-`danger`. `important` maps to information and `caution` maps to danger.
+The supported types are `NOTE`, `TIP`, `CHECK`, `WARNING`, `CAUTION` (shown as
+danger), and `IMPORTANT` (shown as info). You can also write `<Note>`, `<Tip>`,
+`<Check>`, `<Warning>`, `<Danger>`, or `<Callout type="warning">`.
 
 ## Block components
 
-The reader recognizes these component families:
-
-| Components | Purpose | Important attributes |
+| Component | Use it for | Attributes |
 | --- | --- | --- |
-| `Card`, `CardGroup` | Related destinations | `title`, `href`, `icon`, group `cols` |
-| `Steps`, `Step` | Ordered procedures | step `title` |
-| `Tabs`, `Tab` | Mutually exclusive variants | tab `title` |
-| `Accordion`, `AccordionGroup` | Optional detail | `title`, `defaultOpen` |
-| `Frame` | Media with context | `caption` |
-| `ParamField`, `ResponseField` | API field descriptions | `name`, `type`, `required`, `default`, `deprecated` |
-| `CodeGroup` | Alternative code samples | fenced-code languages become labels |
-| `Expandable`, `Update`, `Columns`, `Column`, `Banner` | Supplementary structured content | component-specific title or label fields |
-| `FileTree`, `Folder`, `File` | Authored project-shape illustrations | folder/file `name`, folder `defaultOpen`, file `icon` |
-| `ApiExample`, `RequestExample`, `ResponseExample` | Paired request and response reading | `title`, response `status` |
-| `RelatedContent`, `RelatedCard` | End-of-page next reading | group/card `title`, card `description`, `href`, `icon` |
+| `Card`, `CardGroup` | Links to related pages, shown as cards | card `title`, `href`, `icon`; group `cols` |
+| `Steps`, `Step` | Numbered procedures | step `title` |
+| `Tabs`, `Tab` | Alternatives, such as one tab per operating system | tab `title` |
+| `Accordion`, `AccordionGroup` | Optional detail that readers can expand | `title`, `defaultOpen` |
+| `Expandable` | Nested detail, often inside API fields | `title`, `defaultOpen` |
+| `Columns`, `Column` | Side-by-side content | none |
+| `Frame` | An image or video with a caption | `caption` |
+| `Banner` | A highlighted message | `type` |
+| `Update` | A changelog entry | `label`, `description` |
+| `CodeGroup` | Several code blocks shown as tabs | each code block's language becomes its tab label |
+| `ParamField`, `ResponseField` | API parameters and response fields | `name`, `type`, `required`, `default`, `deprecated`; `ParamField` also accepts `path`, `query`, `header`, `body` |
+| `ApiExample`, `RequestExample`, `ResponseExample` | A request and its response | `title`; response `status` |
+| `FileTree`, `Folder`, `File` | A drawing of a folder structure | `name`; folder `defaultOpen`; file `icon` |
+| `RelatedContent`, `RelatedCard` | "Read next" links at the end of a page | `title`; card `description`, `href`, `icon` |
 
-Put block tags on their own lines and leave a blank line around Markdown children:
+Put each component tag on its own line, and leave a blank line around Markdown
+inside it:
 
 ```mdx
 <Steps>
@@ -73,46 +81,39 @@ Put block tags on their own lines and leave a blank line around Markdown childre
 </Steps>
 ```
 
-File trees are illustrations, not repository browsers. Nibleaf displays only
-the names written in the page body. It does not traverse the exported
-repository, read manifests or snapshots, fetch a path, or make a network
-request. API examples and related cards have the same authored-data-only
-boundary. Links still pass through the published-site link sanitizer and
-rewriter.
+A file tree only shows the names you type. It doesn't read real files. API
+examples and related cards also show only what you write.
 
-Tabs and code groups use a roving tab stop. Use Left/Right arrows (reversed for
-RTL), Home, and End to move between labels. Accordions, expandables, and folders
-connect each trigger to its panel with persistent accessibility IDs. File trees
-use nested lists rather than an incomplete ARIA tree model.
+Tabs, code groups, accordions, and file trees work with a keyboard. In tabs, the
+arrow keys move between labels, and they follow the reading direction in Arabic.
 
 ## Inline components
 
-Use `<Tooltip tip="Plain-language definition">term</Tooltip>` for a short
-definition and `<Icon icon="star" />` for a curated interface icon. Do not use a
-tooltip for required instructions, and do not rely on an icon alone to convey
-meaning.
+| Component | Use it for | Attributes |
+| --- | --- | --- |
+| `Tooltip` | A short definition shown on hover or focus | `tip` |
+| `Icon` | A small icon from the built-in set | `icon` or `name`, `color`, `size` |
+| `Badge` | A small label, such as "Beta" | `color` |
+| `Button` | A link styled as a button | `href`, `variant` (`outline` for an outlined button) |
+
+Example: `<Tooltip tip="A plain-language definition">term</Tooltip>`.
+
+Don't put required instructions in a tooltip, and don't rely on an icon alone to
+carry meaning.
 
 ## Math and diagrams
 
-Inline and block math use dollar delimiters through KaTeX. Mermaid diagrams use
-a `mermaid` fenced block and render client-side. Always add surrounding prose
-that states the diagram's conclusion; the diagram must not be the only place a
-reader can obtain required information.
+- **Math:** write inline math between single dollar signs and block math between
+  double dollar signs.
+- **Diagrams:** write a Mermaid diagram in a code block marked `mermaid`.
 
-## Unsupported or custom syntax
+Always explain a diagram's main point in the text too. Some readers can't see
+diagrams, and search can't read them.
 
-Raw scripts, event handlers, and unknown attributes are removed by the sanitizer.
-Custom JSX components and expressions may be preserved as source or read-only
-blocks, but Nibleaf cannot promise a custom runtime for them. Keep the page in
-Markdown mode, verify the published result, and prefer the supported component
-set for portable documentation.
+## Unsupported or custom code
 
-## Portability and migration
-
-The catalog in `@nibleaf/shared/documentation-components` is the versioned,
-code-only authoring contract used by the editor, app renderer, static archives,
-and Git-native theme repositories. Schema version 1 is additive: existing pages
-need no migration. `Banner` supports `type`; `dismissible` is intentionally not
-part of the portable contract. Standalone theme repositories sanitize raw MDX
-with an explicit allowlist and keep customer-owned theme/component source
-separate from Nibleaf-owned manifests and snapshots.
+Nibleaf removes scripts, event handlers, and unknown attributes when it shows a
+page. If a page uses a component that isn't in this reference, the visual editor
+keeps it exactly as written and lets you edit the content around it. Nibleaf
+can't promise to display custom components, so check the published page and
+prefer the components listed here.

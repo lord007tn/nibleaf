@@ -3,7 +3,7 @@ title: 'August 2026 source capability notes'
 description: 'Review the six merged source capabilities, their product boundaries, migration requirements, and availability before planning an upgrade.'
 audience: 'documentation teams, evaluators, and self-hosted operators tracking Nibleaf main'
 content_type: 'explanation'
-last_reviewed: '2026-10-31'
+last_reviewed: '2026-11-07'
 verified_against: 'merged PRs #103 through #108 on main at 9fb787ef438ecee0b65da9c785ab42dd3f2bdc1c'
 lang: 'en'
 dir: 'ltr'
@@ -13,8 +13,8 @@ translation_key: 'releases/august-2026-capabilities'
 Six capability pull requests are integrated in Nibleaf source on `main`. They
 form one coherent control plane for search, usage, add-ons, themes,
 integrations, and agent access. This is source availability, not deployment
-evidence: the committed self-host manifest still points to v0.1.2, and no Cloud
-or self-host deployment is performed by these documentation changes.
+evidence: at that source baseline, the self-host manifest pointed to v0.1.2.
+The current committed manifest pins v0.2.0. These notes are not deployment proof.
 
 **Update for v0.2.0:** this page records the August source baseline; see the
 [v0.2.0 release notes](/releases/v0-2-0) for release availability and upgrade
@@ -99,3 +99,12 @@ before selecting a source revision or future image.
 Do not replace the v0.1.2 installer, compose digest, or container reference with
 these commits. A future published artifact needs its own build, security and
 migration checks, exact digest, release notes, and signed-out runtime validation.
+
+## Reading these historical notes
+
+The feature list records this release/source baseline. Later merges added
+workspace-owned OpenAI/OpenRouter connections, streaming Ask AI chat, support
+MCP writes and OAuth, redesigned reader search, and expanded analytics. Their
+current operator guides describe the source implementation; they are not a
+promise that the v0.2.0 image contains those later changes. The pinned production
+Compose file still has no ClickHouse service.

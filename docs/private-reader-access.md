@@ -1,36 +1,77 @@
 ---
-title: 'Protect documentation with private reader access'
-description: 'Choose workspace or reader access, configure audiences and portal JWT handoff, and recover quickly from a compromised reader integration.'
-audience: 'site administrators and customer-portal developers'
+title: 'Make your docs private'
+description: 'Limit who can read your published docs, invite readers into audiences, sign readers in from your own portal, and revoke access quickly.'
+audience: 'site admins and customer-portal developers'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/server/src/actions/reader-access.ts and apps/server/src/lib/reader-jwt.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'private-reader-access'
 ---
 
-Nibleaf has three explicit published-site access modes:
+By default, anyone can read your published docs. You can instead limit them to
+your team or to readers you choose, such as customers. Open
+**Settings → Authentication**. You need to be the site's Owner or an Admin.
 
-- `PUBLIC` is the default and preserves existing public sites.
-- `WORKSPACE` requires a Nibleaf workspace member. Existing sites with `config.visibility = private` are migrated to this mode automatically.
-- `READERS` uses dedicated reader identities. Readers cannot open the dashboard, edit content, or consume an author seat.
+## Choose who can read
 
-Administrators configure the mode under **Site settings → Authentication**. The same screen manages audiences, page grants, invitations, JWT handoff, audit events, and emergency revocation.
+Under **Access mode**, choose one option and select **Save access mode**:
 
-## Invitations and sessions
+- **Public:** anyone can read the site. This is the default.
+- **Workspace members:** only people on the site's team can read it. They sign in
+  with their Nibleaf account.
+- **Private readers:** only readers you invite or sign in from your own portal
+  can read it. Readers can't open the dashboard or edit anything, and they don't
+  count as team members.
 
-An administrator assigns at least one audience and sends an invitation. The email contains a random, single-use activation token that expires after seven days. Only a SHA-256 hash is stored. Activation creates a host-only, `HttpOnly`, `SameSite=Lax` reader cookie; HTTPS deployments also set `Secure`. Session tokens are hashed and can be revoked independently or all at once.
+Unpublished draft previews are always limited to the site's team, whatever mode
+you choose.
 
-Use the primary custom domain before inviting readers. Nibleaf creates the activation link on that domain so its host-only cookie belongs to the customer docs origin. Re-inviting invalidates unused invitations. Revoking a reader invalidates invitations and every active session immediately.
+## Invite private readers
 
-Audience grants can cover the entire site or selected pages. Page-scoped readers receive only granted pages plus navigation ancestors, and server-side search uses the same filtered set. Assets are authorized at the owning-site boundary because the current asset model does not associate an upload with one page.
+Choose **Private readers** first. Until you save that mode, the reader controls
+show **Reader controls are inactive**.
 
-## Customer portal JWT handoff
+1. **Create an audience.** Under **Audiences and content rules**, name a group of
+   readers, such as "Customers", and select **Create audience**. Leave every page
+   unselected to give the audience the **Entire site**, or select only the pages
+   it may read.
+2. **Invite readers.** Under **Dedicated readers**, enter an email address and an
+   optional **Name (optional)**, pick at least one audience, and select
+   **Invite reader**. Nibleaf emails the invitation and also shows a link you can
+   copy and share.
+3. The reader opens the link to activate access. Invitations work once and
+   expire after 7 days. Inviting someone again cancels their unused invitations.
 
-Configure an exact issuer URL (`iss`), audience (`aud`), either an HTTPS JWKS URL or an inline **public** JWKS, and a mapping from group claim values to Nibleaf audience IDs. Never paste private keys or symmetric secrets.
+Connect your [custom domain](/product/custom-domains) before you invite readers.
+Invitation links use your primary domain, so readers stay signed in on your
+docs address.
 
-Send a signed assertion to:
+Readers limited to some pages see only those pages, plus the groups that contain
+them, in navigation and search.
+
+To remove a reader, select **Revoke**. Their invitations and sessions stop
+working straight away.
+
+## Sign readers in from your own portal
+
+If your customers already sign in to your product, your developers can send them
+to the docs without a separate invitation. This uses a JWT, a short signed
+message from your system that says who the reader is and which groups they
+belong to.
+
+Select **Configure JWT handoff** and fill in:
+
+- the exact issuer (`iss`) and audience (`aud`) your system puts in the token;
+- your public signing keys, as an HTTPS JWKS address or a pasted public JWKS.
+  Never paste a private key or shared secret;
+- how values in your groups claim map to Nibleaf audiences.
+
+Select **Save JWT configuration**, paste a signed sample token into **Test JWT**
+to check it without signing anyone in, then select **Enable JWT handoff**.
+
+Your portal then posts the token to Nibleaf:
 
 ```http
 POST /api/public/reader-access/jwt/{projectId}
@@ -39,29 +80,38 @@ Content-Type: application/json
 {"token":"eyJ...","redirect":"/guides/getting-started"}
 ```
 
-The response sets the reader cookie. Redirects must be same-origin paths. Assertions must use `RS256`, `PS256`, `ES256`, or `EdDSA` and contain:
+Nibleaf signs the reader in and sends them to the `redirect` path on the same
+site. The token must:
 
-- exact `iss` and matching `aud`
-- stable `sub`
-- `iat` and `exp` within the configured age and clock tolerance
-- unique, single-use `jti`
-- the configured groups claim, mapped to one or more audiences
+- be signed with `RS256`, `PS256`, `ES256`, or `EdDSA`;
+- contain the exact `iss`, a matching `aud`, and a stable `sub` for the reader;
+- contain `iat` and `exp` within the allowed age;
+- contain a unique `jti`, which can be used only once;
+- contain the groups claim you mapped. It can be nested, such as `profile.groups`.
 
-Optional `email` and `name` claims populate the reader profile. Nested paths such as `profile.groups` are supported. A used `jti` is stored as an issuer-bound hash until expiry and cannot be replayed. Tokens and signing material are never written to audit logs.
+Optional `email` and `name` claims fill in the reader's profile. Nibleaf never
+stores tokens or keys in its activity log.
 
-### Key rotation
+To change signing keys safely, publish the old and new public keys together with
+different `kid` values, start signing with the new key, wait longer than a token
+lives, then remove the old key.
 
-Publish old and new public keys together with distinct `kid` values, begin signing with the new key, wait longer than the maximum assertion lifetime plus JWKS cache time, then remove the old key. Use **Test JWT** before switching traffic; testing verifies an assertion without creating a session or consuming its `jti`.
+## Respond to a security problem
 
-### Recovery and emergency revocation
+If a portal key or reader may be compromised:
 
-If a portal key or mapping may be compromised:
+1. Select **Emergency revoke all access**. This signs out every reader, cancels
+   all invitations, and turns off JWT handoff.
+2. Replace your portal's signing key and publish the new public keys.
+3. Select **Review security activity** under **Audit and emergency revocation**,
+   and correct any wrong settings.
+4. Test a new token, turn JWT handoff back on, and invite readers again where
+   needed.
 
-1. Select **Emergency revoke all access** to revoke sessions and invitations and disable JWT handoff.
-2. Rotate the portal signing key and publish the new public JWKS.
-3. Review the Authentication audit log and correct issuer/audience/mapping settings.
-4. Test a fresh assertion, re-enable handoff, and re-invite non-SSO readers as needed.
+## What stays private
 
-## Delivery and caching guarantees
-
-The access decision is made server-side for site/page payloads, navigation, search, changelog, sitemap, robots, `llms.txt`, `llms-full.txt`, analytics writes, and stored assets. Unauthenticated private requests return not-found responses. Credential-dependent responses use `Cache-Control: private, no-store` and `Vary: Cookie, Authorization`; SSR forwards only reader credentials to internal API fetches. Draft previews remain workspace-member-only.
+When a site is private, Nibleaf checks access on the server for every page,
+search, the sitemap, `llms.txt`, analytics, and uploaded files. Signed-out
+visitors get a "not found" response, and private pages are never stored in shared
+caches. Uploaded files are protected per site, not per page, so a reader with
+access to any page can open files linked from the site.

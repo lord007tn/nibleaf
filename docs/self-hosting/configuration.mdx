@@ -3,7 +3,7 @@ title: 'Configure a production deployment'
 description: 'Set public origins, independent secrets, object storage, email, domain routing, proxy trust, and operator access for self-hosted Nibleaf.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: '.env.production.example and docker-compose.prod.yml'
 lang: 'en'
 dir: 'ltr'
@@ -13,6 +13,12 @@ translation_key: 'self-hosting/configuration'
 Copy `.env.production.example` from the release you are deploying. It is the
 authoritative setting template. Pin an image, set browser-reachable public
 origins, generate independent secrets, and keep internal services private.
+
+The pinned v0.2.0 production Compose file does not include ClickHouse or pass
+its variables. The analytics table below describes current-source settings;
+provision the service and explicit API/worker environment mappings before using
+it. A variable in `.env` is not automatically passed to a container. See
+[release wiring](/reference/environment-variables#check-release-wiring-before-applying-settings).
 
 ## Set the public origins
 
@@ -106,7 +112,7 @@ before sending invitations.
 | --- | --- | --- |
 | `ANALYTICS_MODE` | `disabled` in production template | Advance through `dual_write`, `shadow_read`, then `clickhouse` after reconciliation. |
 | `ANALYTICS_HASH_SALT` | unset | Required for enabled ClickHouse ingestion: missing salt drops events. Generate only for new installations with `openssl rand -hex 32`; preserve existing values. |
-| `CLICKHOUSE_URL` | `http://localhost:8123` in code | Compose uses `http://clickhouse:8123`; protect remote transport with TLS. |
+| `CLICKHOUSE_URL` | `http://localhost:8123` in code | Source quickstart and Coolify use `http://clickhouse:8123`; protect remote transport with TLS. |
 | `CLICKHOUSE_DATABASE` | `nibleaf_analytics` | Same value for API, worker and migration CLI. |
 | `CLICKHOUSE_READER_USERNAME` / `CLICKHOUSE_READER_PASSWORD` | `default` / unset in code | Production: separate SELECT-only reader; Compose bootstrap defaults differ. |
 | `CLICKHOUSE_WRITER_USERNAME` / `CLICKHOUSE_WRITER_PASSWORD` | `default` / unset in code | INSERT plus SELECT on tombstones; add reader/erasure roles for worker duties and schema privileges for boot migrations, or use a dedicated CLI identity. |

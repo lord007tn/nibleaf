@@ -3,7 +3,7 @@ title: 'Work on your docs with an AI assistant'
 description: 'Connect ChatGPT, Claude, Cursor, or VS Code to one Nibleaf project by signing in or with a personal key, investigate reader questions, and publish after a fresh preview.'
 audience: 'support staff and documentation editors'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
+last_reviewed: '2026-11-07'
 verified_against: 'apps/server/src/mcp, packages/shared/src/mcp.ts, apps/app/src/components/settings/api-keys-tab.tsx, connected-apps.tsx and assistant-setup.ts, apps/app/src/components/oauth/mcp-oauth-steps.tsx, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
@@ -12,8 +12,8 @@ translation_key: 'product/ai-assistants'
 
 An AI assistant connected to Nibleaf can answer "what are readers failing to
 find?", read the pages involved, draft a fix, and prepare it for publishing,
-all inside one project. It uses the Model Context Protocol (MCP); you connect
-it by signing in to Nibleaf from the assistant, or with a personal key that you
+all inside one site. It uses the Model Context Protocol (MCP), an open standard
+that lets AI apps use tools from other services. You connect it by signing in to Nibleaf from the assistant, or with a personal key that you
 create yourself. The assistant can never do more than you can do in
 the dashboard, and nothing it writes reaches readers until the publish is
 confirmed against a fresh preview. Nibleaf checks the preview, not the person:
@@ -26,8 +26,10 @@ automations a **Read only** key.
   operator enables it; see [Connect MCP clients securely](/self-hosting/mcp). If
   it is off, the settings page says that AI connections are disabled on this
   instance, and every client receives `mcp:disabled`.
-- You need to be a member of the project's workspace. Any member can connect an
-  assistant or create a key for themselves.
+- You need to be on the site's team, with any role. Everyone on the team can
+  connect an assistant or create a key for themselves in
+  **Settings → AI assistants (MCP)**. See [Invite your team](/product/team) for
+  roles.
 - Install the assistant you plan to use: ChatGPT, Claude (claude.ai or Claude
   Desktop), Claude Code, Cursor, or VS Code with an MCP-capable chat extension.
 
@@ -39,8 +41,8 @@ the smallest one that covers the task.
 
 | Preset | Who can choose it | The assistant can | The assistant cannot |
 | --- | --- | --- | --- |
-| **Read only** | Any member | Read project details, pages and their content, languages, versions, aggregate analytics, search settings and health, and deployments. | See individual search terms, change any page, or publish. |
-| **Support writer** | Any member | Everything in Read only, plus read top and failed search terms, create and edit page drafts, move, translate, hide or show pages, and publish after a fresh preview is confirmed. | Delete pages, change settings, members, billing, themes, add-ons, or integrations, or publish without a fresh, confirmed preview. |
+| **Read only** | Everyone | Read project details, pages and their content, languages, versions, aggregate analytics, search settings and health, and deployments. | See individual search terms, change any page, or publish. |
+| **Support writer** | Everyone | Everything in Read only, plus read top and failed search terms, create and edit page drafts, move, translate, hide or show pages, and publish after a fresh preview is confirmed. | Delete pages, change settings, members, billing, themes, add-ons, or integrations, or publish without a fresh, confirmed preview. |
 | **Full admin** | Admins and owners | Every read and write the MCP server offers, including usage, entitlements, add-ons, themes, exports, and integration status reads. | Anything the server does not offer at all: deleting content, credentials, payments, or running code. |
 
 Members see **Full admin** with the note "Available to admins only." and cannot
@@ -85,9 +87,9 @@ again and choose that project.
 
 ### Sign in from ChatGPT
 
-In ChatGPT's connector settings (developer mode), create a custom connector,
-paste the URL, choose OAuth as its authentication, and sign in when ChatGPT
-opens Nibleaf.
+In ChatGPT, open **Settings → Apps & Connectors**, turn on developer mode, and
+add a custom connector. Paste the URL, choose OAuth as its authentication, and
+sign in when ChatGPT opens Nibleaf.
 
 ### Sign in from Claude
 
@@ -405,8 +407,8 @@ section of the analytics dashboard:
 Individual search terms exist only when all of these are true:
 
 - the instance runs ClickHouse analytics (`ANALYTICS_MODE=clickhouse`);
-- the site is public, and an admin turned on **Settings → Analytics → Store
-  public search terms** for the project;
+- the site is public, and an admin turned on search terms for it: in
+  **Analytics → Search**, select **Turn on search terms**;
 - the reader allowed analytics, or the site does not ask for consent.
 
 When terms are missing, the tools still return totals and rates, with a hint
