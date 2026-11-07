@@ -2304,6 +2304,7 @@ export const MESSAGE_IDS = {
   'site.analyticsConsentAccept': 'site_analyticsconsentaccept',
   'site.analyticsConsentDecline': 'site_analyticsconsentdecline',
   'site.changeLanguage': 'site_changelanguage',
+  'site.toggleTheme': 'site_toggletheme',
   'site.darkMode': 'site_darkmode',
   'site.breadcrumb': 'site_breadcrumb',
   'site.toggleSubpages': 'site_togglesubpages',
