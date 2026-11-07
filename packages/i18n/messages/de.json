@@ -1831,6 +1831,8 @@
   "error_signedout": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
   "error_notfound": "Das gibt es nicht mehr – vielleicht wurde es gelöscht. Laden Sie die Seite neu und versuchen Sie es erneut.",
   "error_conflict": "Jemand anderes hat das gleichzeitig geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Das ist zu groß. Versuchen Sie es mit einer kleineren Datei.",
   "error_ratelimited": "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.",
   "notfound_badge": "404",
@@ -1932,18 +1934,46 @@
   "site_previous": "Zurück",
   "site_next": "Als nächstes",
   "site_onthispage": "Auf dieser Seite",
-  "site_minread": "Min. gelesen",
-  "site_screenshot": "Screenshot",
-  "site_screenshots": "Screenshots",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} Min. Lesezeit"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Screenshot",
+        "form=*": "{count} Screenshots"
+      }
+    }
+  ],
   "site_updated": "Aktualisiert",
   "site_notpublishedtitle": "Noch nicht veröffentlicht",
   "site_notpublishedbody": "Diese Dokumentationsseite wurde nicht veröffentlicht. Veröffentlichen Sie es im Editor, um es live zu sehen.",
+  "site_privatetitle": "Diese Dokumentation ist privat",
+  "site_privatebody": "Öffnen Sie zum Lesen den Einladungslink, den Sie per E-Mail erhalten haben.",
+  "site_privatemembers": "Mitglieder dieses Arbeitsbereichs können sich anmelden, um sie anzusehen.",
+  "site_privatesignin": "Anmelden",
   "site_pageunavailable": "Diese Seite ist nicht verfügbar.",
   "site_changelogsubtitle": "Jedes an diese Dokumente gelieferte Update.",
   "site_changelogempty": "Noch keine Veröffentlichungen.",
   "site_changelogrelease": "Veröffentlichung",
-  "site_changelogpage": "Seite",
-  "site_changelogpages": "Seiten",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite",
+        "form=*": "{count} Seiten"
+      }
+    }
+  ],
   "site_feedbackquestion": "War diese Seite hilfreich?",
   "site_feedbackyes": "Ja",
   "site_feedbackno": "Nein",
@@ -1954,7 +1984,8 @@
   "site_analyticsconsentaccept": "Akzeptiere",
   "site_analyticsconsentdecline": "Ablehnen",
   "site_changelanguage": "Sprache ändern",
-  "site_toggletheme": "Thema umschalten",
+  "site_darkmode": "Dunkelmodus",
+  "site_breadcrumb": "Brotkrümelnavigation",
   "site_togglesubpages": "Unterseiten ein- oder ausblenden",
   "site_articledetails": "Artikeldetails",
   "site_copycode": "Code kopieren",

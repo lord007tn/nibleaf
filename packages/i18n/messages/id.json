@@ -1831,6 +1831,8 @@
   "error_signedout": "Sesi Anda telah berakhir. Masuk lagi untuk melanjutkan.",
   "error_notfound": "Item ini sudah tidak ada — mungkin seseorang telah menghapusnya. Muat ulang halaman dan coba lagi.",
   "error_conflict": "Orang lain mengubah ini pada saat yang sama. Muat ulang halaman dan coba lagi.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Ukurannya terlalu besar. Coba file yang lebih kecil.",
   "error_ratelimited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
   "notfound_badge": "404",
@@ -1932,18 +1934,44 @@
   "site_previous": "Sebelumnya",
   "site_next": "Selanjutnya",
   "site_onthispage": "Di halaman ini",
-  "site_minread": "min baca",
-  "site_screenshot": "tangkapan layar",
-  "site_screenshots": "tangkapan layar",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} menit baca"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} tangkapan layar"
+      }
+    }
+  ],
   "site_updated": "Diperbarui",
   "site_notpublishedtitle": "Belum dipublikasikan",
   "site_notpublishedbody": "Situs dokumentasi ini belum dipublikasikan. Publikasikan dari editor untuk melihatnya langsung.",
+  "site_privatetitle": "Dokumentasi ini privat",
+  "site_privatebody": "Untuk membacanya, buka tautan undangan yang Anda terima melalui email.",
+  "site_privatemembers": "Anggota ruang kerja ini dapat masuk untuk melihatnya.",
+  "site_privatesignin": "Masuk",
   "site_pageunavailable": "Halaman ini tidak tersedia.",
   "site_changelogsubtitle": "Setiap pembaruan dikirimkan ke dokumen ini.",
   "site_changelogempty": "Belum ada rilis.",
   "site_changelogrelease": "Rilis",
-  "site_changelogpage": "halaman",
-  "site_changelogpages": "halaman",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} halaman"
+      }
+    }
+  ],
   "site_feedbackquestion": "Apakah halaman ini bermanfaat?",
   "site_feedbackyes": "Ya",
   "site_feedbackno": "Tidak",
@@ -1954,7 +1982,8 @@
   "site_analyticsconsentaccept": "Terima",
   "site_analyticsconsentdecline": "Tolak",
   "site_changelanguage": "Ganti bahasa",
-  "site_toggletheme": "Beralih tema",
+  "site_darkmode": "Mode gelap",
+  "site_breadcrumb": "Jejak navigasi",
   "site_togglesubpages": "Tampilkan atau sembunyikan subhalaman",
   "site_articledetails": "Detail artikel",
   "site_copycode": "Salin kode",

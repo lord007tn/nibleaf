@@ -387,7 +387,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       where: { id: projectId },
       include: {
         languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
-        branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+        branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
         openApiDocument: true,
         addons: { select: { key: true, enabled: true, config: true } },
         organization: {

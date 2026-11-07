@@ -57,6 +57,20 @@ Review the branch as a reader:
 6. Merge the reviewed branch into the default draft, publish once, and verify
    the public deployment.
 
+**Promote into main** replaces main's pages with the version's pages. If any
+page on main was edited, added, deleted or moved under a different parent since
+the version's pages were copied from it, Promote stops, says why, and changes
+nothing. Reordering pages doesn't count. To promote your edits anyway, switch to
+main, create a new version there, copy this version's edits into it, then promote
+the new version. A new version created while another version is open is a copy
+of that version, so it's refused for the same reason.
+
+A version can't be promoted either if it was created before this update, was
+imported, was copied from such a version, or main's pages were replaced since it
+was made (by promoting another version, or by an import that replaces main's
+pages). Recreate it from main: switch to main, create a new version there, and
+move your changes into it.
+
 ## Recover from a bad draft
 
 If the public version is still correct, stop before publishing. Compare the
