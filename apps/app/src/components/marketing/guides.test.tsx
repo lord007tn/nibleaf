@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ArabicShell } from '@/components/marketing/arabic-seo';
+import { ArabicShell } from '@/components/marketing/arabic-landing';
 import { GuidesHub } from '@/components/marketing/guides';
 
 describe('GuidesHub locale shell', () => {
@@ -14,7 +14,7 @@ describe('GuidesHub locale shell', () => {
 
     expect(html).toContain('dir="rtl"');
     expect(html).toContain('lang="ar"');
-    expect(html).toContain('aria-label="التنقل العربي"');
+    expect(html).toContain('aria-label="التنقل الرئيسي"');
     expect(html).toContain('href="/ar/documentation-platforms"');
     expect(html).toContain('href="/guides"');
     expect(html).not.toContain('aria-label="Primary navigation"');
