@@ -58,6 +58,9 @@ export interface RenderedArtifact {
 const encoder = new TextEncoder();
 const escapeHtml = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const HTML_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+/** Undo the escaping marked applied to an attribute value, so it can be escaped exactly once again. */
+const unescapeHtml = (value: string): string => value.replace(/&(amp|lt|gt|quot|#39);/g, (entity, name: string) => HTML_ENTITIES[name] ?? entity);
 const safeSegment = (value: string): string =>
   value
     .replace(/[\\/]+/g, '-')
@@ -709,7 +712,8 @@ export const renderPdfHtml = (
           }
           return `${before}${data}${after}`;
         })
-        .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
+        .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, escapedHref: string, after) => {
+          const href = unescapeHtml(escapedHref);
           const target = resolvePageTarget(snapshot, page, href);
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });

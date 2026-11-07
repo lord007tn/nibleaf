@@ -7,7 +7,8 @@ import { announce } from '@/components/site/reader-content-controls';
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
  *  filename header bar is drawn; otherwise the language shows as a floating badge. */
-export function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) {
+// `node` is react-markdown's hast node; it must not reach the DOM.
+export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & { locale?: string; node?: unknown }) {
   const ref = useRef<HTMLPreElement>(null);
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);

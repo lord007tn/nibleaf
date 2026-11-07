@@ -27,7 +27,7 @@ translation_key: 'reference/mintlify-parity'
 - **غير متوفر**: لا يدعمه Nibleaf بعد.
 - **خارج النطاق**: غير مخطط له، للسبب المذكور.
 
-يشير عمود **مخطط في** إلى مسار عمل التكافؤ: 3 خيارات المكوّنات، و4 كتل الشيفرة،
+يشير عمود **مخطط له في** إلى مسار عمل التكافؤ: 3 خيارات المكوّنات، و4 كتل الشيفرة،
 و5 المكوّنات الجديدة والوسائط، و6 تجربة التحرير، و7 المحتوى القابل لإعادة
 الاستخدام والبيانات الوصفية للصفحة.
 
@@ -44,17 +44,17 @@ translation_key: 'reference/mintlify-parity'
 
 ## التنبيهات
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `Note` و`Tip` و`Info` و`Warning` و`Check` و`Danger` | متوفر | قائمة الشرطة المائلة، ومبدّل النوع، ووسوم MDX وتنبيهات GitHub (`> [!TIP]`) معًا | |
 | `Callout` مع `icon` أو `iconType` أو `color` مخصّص | جزئي | يُقرأ `type` فقط؛ الأيقونات والألوان المخصّصة غير متوفرة | 3 |
 
 ## البطاقات والأعمدة والمربعات
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `Card` مع `title` و`icon` و`href` | متوفر | تتبع الروابط الداخلية المسار الأساسي للموقع؛ وتأتي الأيقونات من مجموعة الأسماء نفسها التي يستخدمها `Icon` (نحو 60 اسمًا)؛ ولا تعرض مستودعات السمات المُصدَّرة الأيقونة | |
-| `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` | غير متوفر | | 3 |
+| `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` و`iconType` | غير متوفر | | 3 |
 | `CardGroup` مع `cols` | جزئي | عمودان أو ثلاثة أو أربعة، تُختار عند الإدراج ولا يمكن تغييرها بعده | 3 |
 | `Columns` مع `cols`، و`Column` | جزئي | يُحسب عدد الأعمدة من العناصر الفرعية؛ ويُتجاهل `cols` | 3 |
 | `Tile` | غير متوفر | | 5 |
@@ -62,14 +62,14 @@ translation_key: 'reference/mintlify-parity'
 
 ## البنية والإظهار والإخفاء
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
-| `Tabs` و`Tab` مع `title` | متوفر | تتبع مفاتيح الأسهم اتجاه القراءة | |
+| `Tabs` و`Tab` مع `title` | متوفر | تتبع مفاتيح الأسهم اتجاه القراءة؛ والعناوين نص عادي، فيظهر تنسيق Markdown فيها كما كُتب | |
 | `icon` و`id` في `Tab`؛ و`defaultTabIndex` و`sync` و`borderBottom` في `Tabs` | غير متوفر | | 3 |
-| `Accordion` مع `title`، و`AccordionGroup` | متوفر | | |
+| `Accordion` مع `title`، و`AccordionGroup` | متوفر | العناوين نص عادي، فيظهر تنسيق Markdown فيها كما كُتب | |
 | `defaultOpen` في `Accordion` | جزئي | يُعرض ويُحفظ، لكن المحرّر لا يوفّر عنصر تحكم له بعد | 3 |
 | `description` و`icon` و`id` في `Accordion` | غير متوفر | | 3 |
-| `Steps` و`Step` مع `title` | متوفر | تُرقَّم تلقائيًا | |
+| `Steps` و`Step` مع `title` | متوفر | تُرقَّم تلقائيًا؛ والعناوين نص عادي، فيظهر تنسيق Markdown فيها كما كُتب | |
 | `icon` و`stepNumber` و`titleSize` في `Step`؛ و`titleSize` في `Steps` | غير متوفر | | 3 |
 | `Expandable` مع `title` | متوفر | | |
 | `defaultOpen` في `Expandable` | جزئي | يُعرض ويُحفظ، لكن المحرّر لا يوفّر عنصر تحكم له بعد | 3 |
@@ -80,7 +80,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## الشيفرة
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | كتل شيفرة مسوّرة مع تلوين الصياغة وزر النسخ | متوفر | | |
 | العنوان (`title="app.js"` أو عنوان مجرّد) | جزئي | يُعرض ويُحفظ، لكن المحرّر المرئي لا يوفّر حقلًا لإضافته أو تغييره | 4 |
@@ -94,7 +94,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## توثيق API
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `ParamField` (`path` و`query` و`header` و`body` و`type` و`required` و`default` و`deprecated`) | جزئي | يُعرض ويُحفظ؛ لكن المحرّر يحرّر الوصف فقط؛ و`placeholder` و`pre` و`post` غير متوفرة | 3 |
 | `ResponseField` (`name` و`type` و`required` و`default` و`deprecated`) | جزئي | مثل `ParamField`؛ و`pre` و`post` غير متوفرين | 3 |
@@ -105,7 +105,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## العناصر المضمّنة والإبراز
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `Tooltip` مع `tip` | جزئي | يمكن الوصول إليه بلوحة المفاتيح وقارئات الشاشة، ويحتفظ Markdown العام بنص التلميح بين قوسين؛ لكن المحرّر المرئي لا يوفّر حقلًا لتغيير `tip` بعد الإدراج | 3 |
 | `headline` و`cta` و`href` في `Tooltip` | غير متوفر | | 3 |
@@ -120,7 +120,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## الصور والوسائط والمخططات
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | صور مع نص بديل، والتكبير بالنقر، وأزواج الصور الفاتحة والداكنة | جزئي | يعمل النص البديل والتكبير بالنقر؛ أما أزواج الصور الفاتحة والداكنة فتُكتب في وضع المصدر، ويحذف المحرّر المرئي أصنافها عند الحفظ | 6 |
 | `noZoom` على صورة | غير متوفر | | 5 |
@@ -133,7 +133,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## النصوص والقوائم والجداول
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | العناوين والإبراز والروابط والاقتباسات والفواصل والنص المرتفع والمنخفض | متوفر | | |
 | معرّفات العناوين المخصّصة (`## Setup {#setup}`) | غير متوفر | | 5 |
@@ -143,7 +143,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## المحتوى القابل لإعادة الاستخدام
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | المقتطفات (`import Snippet from '/snippets/x.mdx'`) | غير متوفر | | 7 |
 | المتغيّرات (`export const` و`{name}`) | غير متوفر | | 7 |
@@ -152,10 +152,11 @@ translation_key: 'reference/mintlify-parity'
 
 ## البيانات الوصفية في مقدمة الملف
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `title` و`description` و`icon` | متوفر | في إعدادات الصفحة ومزامنة Git | |
-| `sidebarTitle` و`tag` و`hidden` و`noindex` و`og:*` والرابط الأساسي (canonical) | جزئي | تُضبط في إعدادات الصفحة، لكن مزامنة Git لا تنقلها بعد | 7 |
+| `sidebarTitle` و`tag` و`hidden` و`noindex` و`og:image` والرابط الأساسي (canonical) | جزئي | تُضبط في إعدادات الصفحة مع عنوان ووصف للبيانات الوصفية، لكن مزامنة Git لا تنقلها بعد | 7 |
+| وسوم `og:*` الأخرى | غير متوفر | | 7 |
 | `mode`: الافتراضي والعريض والموسَّط (default وwide وcenter) | جزئي | في إعدادات الصفحة فقط، وليس في مزامنة Git | 7 |
 | `mode`: custom وframe وassistant | خارج النطاق | | |
 | `keywords` | جزئي | تُحفظ وسوم الصفحة، لكن البحث لا يرفع ترتيبها بعد | 7 |
@@ -163,7 +164,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## سجلات التغييرات
 
-| Mintlify | Nibleaf | ملاحظات | مخطط في |
+| Mintlify | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | `Update` مع `label` و`description` | جزئي | يُعرض ويُحفظ، لكن المحرّر المرئي لا يوفّر حقلين لـ`label` و`description` | 3 |
 | `tags` في `Update` وتصفية الوسوم | غير متوفر | | 3 |
@@ -171,7 +172,7 @@ translation_key: 'reference/mintlify-parity'
 
 ## تجربة التحرير المرئي
 
-| الإمكانية | Nibleaf | ملاحظات | مخطط في |
+| الإمكانية | Nibleaf | ملاحظات | مخطط له في |
 | --- | --- | --- | --- |
 | قائمة الشرطة المائلة مع البحث والأوصاف، بالعربية والإنجليزية | متوفر | | |
 | مقابض السحب لنقل الكتل | متوفر | | |

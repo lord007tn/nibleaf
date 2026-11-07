@@ -54,7 +54,7 @@ Your Nibleaf site renders all of them.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path; icons come from the same set of about 60 names as `Icon`; exported theme repositories don't show the icon | |
-| `Card` with `horizontal`, `img`, `cta`, `arrow`, `color` | Missing | | 3 |
+| `Card` with `horizontal`, `img`, `cta`, `arrow`, `color`, `iconType` | Missing | | 3 |
 | `CardGroup` with `cols` | Partial | Two, three or four columns, chosen when inserted; can't be changed afterwards | 3 |
 | `Columns` with `cols`, and `Column` | Partial | The column count comes from the children; `cols` is ignored | 3 |
 | `Tile` | Missing | | 5 |
@@ -64,12 +64,12 @@ Your Nibleaf site renders all of them.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| `Tabs` and `Tab` with `title` | Has | Arrow keys follow the reading direction | |
+| `Tabs` and `Tab` with `title` | Has | Arrow keys follow the reading direction; titles are plain text, so Markdown in a title shows as typed | |
 | `Tab` `icon` and `id`; `Tabs` `defaultTabIndex`, `sync`, `borderBottom` | Missing | | 3 |
-| `Accordion` with `title`, and `AccordionGroup` | Has | | |
+| `Accordion` with `title`, and `AccordionGroup` | Has | Titles are plain text, so Markdown in a title shows as typed | |
 | `Accordion` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
 | `Accordion` `description`, `icon`, `id` | Missing | | 3 |
-| `Steps` and `Step` with `title` | Has | Numbered automatically | |
+| `Steps` and `Step` with `title` | Has | Numbered automatically; titles are plain text, so Markdown in a title shows as typed | |
 | `Step` `icon`, `stepNumber`, `titleSize`; `Steps` `titleSize` | Missing | | 3 |
 | `Expandable` with `title` | Has | | |
 | `Expandable` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
@@ -155,7 +155,8 @@ Your Nibleaf site renders all of them.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `title`, `description`, `icon` | Has | Page settings and Git sync | |
-| `sidebarTitle`, `tag`, `hidden`, `noindex`, `og:*`, canonical URL | Partial | Set in page settings, but Git sync doesn't carry them yet | 7 |
+| `sidebarTitle`, `tag`, `hidden`, `noindex`, `og:image`, canonical URL | Partial | Set in page settings, with a meta title and description, but Git sync doesn't carry them yet | 7 |
+| Other `og:*` tags | Missing | | 7 |
 | `mode`: default, wide, center | Partial | Page settings only, not in Git sync | 7 |
 | `mode`: custom, frame, assistant | Out of scope | | |
 | `keywords` | Partial | Page tags are kept, but search doesn't boost them yet | 7 |

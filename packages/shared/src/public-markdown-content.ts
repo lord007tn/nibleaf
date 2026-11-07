@@ -13,20 +13,45 @@ const mdxAttribute = (source: string, name: string): string | undefined => {
   return value?.replace(/&(amp|quot|#34|apos|#39|lt|gt);/g, (entity, key: string) => ATTRIBUTE_ENTITIES[key] ?? entity);
 };
 
-/** A tag's attributes, read up to the first `>` outside quotes, so a value
- *  such as `tip="a > b"` stays whole. */
-const ATTRIBUTES = `((?:[^>"']|"[^"]*"|'[^']*')*)`;
+/** One piece of a tag's attribute text: a character that isn't `>` or a quote,
+ *  or a whole quoted value, so `tip="a > b"` doesn't end the tag early. */
+const ATTRIBUTE_PART = `(?:[^>"']|"[^"]*"|'[^']*')`;
+const ATTRIBUTES = `(${ATTRIBUTE_PART}*)`;
+/** The end of an opening tag: a `>` not after `/`, so `<Tag … />` isn't read as an opener. */
+const OPENER_END = String.raw`(?<!\/)>`;
 /** An atom, self-closing (`<File … />`) or written as an empty pair (`<File …></File>`). */
 const atomPattern = (tag: string) => new RegExp(String.raw`<${tag}\b${ATTRIBUTES}(?:\/>|>\s*<\/${tag}>)`, 'gi');
 
+/** Attribute text projected into Markdown. `<` and `>` are left to the HTML
+ *  escaping that every output applies, so they aren't escaped twice. */
 const markdownText = (value?: string): string =>
   (value ?? '')
-    .replace(/[\\`*_[\]<>{}]/g, '\\$&')
+    .replace(/[\\`*_[\]{}]/g, '\\$&')
     .replace(/[\r\n]+/g, ' ')
     .trim();
 
+/** Decode what a Markdown renderer would decode in a link destination
+ *  (character references, backslash escapes, ignored whitespace) before
+ *  reading its scheme. */
+const destinationForScheme = (href: string): string =>
+  href
+    .replace(/&#x([\da-f]{1,6});?/gi, (_match, hex: string) => String.fromCodePoint(Math.min(Number.parseInt(hex, 16), 0x10_ff_ff)))
+    .replace(/&#(\d{1,7});?/g, (_match, decimal: string) => String.fromCodePoint(Math.min(Number(decimal), 0x10_ff_ff)))
+    .replace(/&(colon|tab|newline);/gi, (_match, name: string) => ({ colon: ':', tab: '\t', newline: '\n' })[name.toLowerCase()] ?? '')
+    .replace(/\\([!-/:-@[-`{-~])/g, '$1')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are ignored inside URL schemes
+    .replace(/[\u0000- \u007f]/g, '');
+
+/** A projected link destination: relative, `#`, http(s), mailto or tel only. */
+const safeHref = (value?: string): string | undefined => {
+  const href = value?.trim();
+  if (!href) return undefined;
+  const scheme = /^([a-z][a-z\d+.-]*):/i.exec(destinationForScheme(href))?.[1]?.toLowerCase();
+  return !scheme || ['http', 'https', 'mailto', 'tel'].includes(scheme) ? href : undefined;
+};
+
 const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {
-  const pattern = new RegExp(String.raw`<${tag}\b${ATTRIBUTES}>([\s\S]*?)<\/${tag}>`, 'gi');
+  const pattern = new RegExp(String.raw`<${tag}\b${ATTRIBUTES}${OPENER_END}([\s\S]*?)<\/${tag}>`, 'gi');
   let current = source;
   for (let pass = 0; pass < 8; pass += 1) {
     const next = current.replace(pattern, (_match, attributes: string, body: string) => render(attributes, body.trim()));
@@ -36,26 +61,39 @@ const mdxContainer = (source: string, tag: string, render: (attributes: string, 
   return current;
 };
 
+/** A RelatedCard as a list item: its linked title and its description. */
+const relatedCardItem = (attributes: string): string => {
+  const title = markdownText(mdxAttribute(attributes, 'title'));
+  const description = markdownText(mdxAttribute(attributes, 'description'));
+  const href = safeHref(mdxAttribute(attributes, 'href'));
+  return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
+};
+
+/** An attribute that is present bare (`required`), or set to "true" or `{true}`. */
+const flagAttribute = (attributes: string, name: string): boolean => {
+  for (const match of attributes.matchAll(/([\w:-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|\{([^}]*)\}|([^\s"'=<>`]+)))?/g)) {
+    if (match[1]?.toLowerCase() !== name.toLowerCase()) continue;
+    const value = match[2] ?? match[3] ?? match[4] ?? match[5];
+    return value === undefined || ['', 'true'].includes(value.trim());
+  }
+  return false;
+};
+
 /** Convert supported authored MDX to inert Markdown for every public machine
- * representation. Only text and allowlisted attributes are projected. */
+ * representation. Only text and allowlisted attributes are projected. Code
+ * stays literal, so a component written as an example isn't rewritten. */
 export const portablePublicMdxMarkdown = (source: string): string => {
+  const code = protectMarkdownCode(source);
+  return code.restore(projectComponents(code.content));
+};
+
+const projectComponents = (source: string): string => {
   let output = source.replace(atomPattern('File'), (_match, attributes: string) => {
     const name = markdownText(mdxAttribute(attributes, 'name'));
     return name ? `- \`${name}\`` : '';
   });
-  const relatedCard = (attributes: string, body = '') => {
-    const title = markdownText(mdxAttribute(attributes, 'title'));
-    const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = mdxAttribute(attributes, 'href')?.trim();
-    const item = title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
-    return [item, body.trim()].filter(Boolean).join('\n\n');
-  };
   // Self-closing cards first, so a pair after one can't be read as its body.
-  output = output.replace(new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}\/>`, 'gi'), (_match, attributes: string) => relatedCard(attributes));
-  output = output.replace(
-    new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}>([\s\S]*?)<\/RelatedCard>`, 'gi'),
-    (_match, attributes: string, body: string) => relatedCard(attributes, body),
-  );
+  output = output.replace(new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}\/>`, 'gi'), (_match, attributes: string) => relatedCardItem(attributes));
   output = output.replace(atomPattern('Icon'), '');
 
   for (const tag of ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger']) {
@@ -74,12 +112,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
       .join('\n');
     return `${name ? `- **${name}/**` : '-'}\n${nested}`;
   });
-  output = mdxContainer(output, 'RelatedCard', (attributes, body) => {
-    const title = markdownText(mdxAttribute(attributes, 'title'));
-    const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = mdxAttribute(attributes, 'href')?.trim();
-    return `${title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : ''}${body ? `\n  ${body}` : ''}`;
-  });
+  output = mdxContainer(output, 'RelatedCard', (attributes, body) => `${relatedCardItem(attributes)}${body ? `\n  ${body}` : ''}`);
 
   const titledContainers: ReadonlyArray<readonly [string, number]> = [
     ['RelatedContent', 2],
@@ -96,16 +129,26 @@ export const portablePublicMdxMarkdown = (source: string): string => {
     output = mdxContainer(output, tag, (attributes, body) => {
       const title = markdownText(mdxAttribute(attributes, 'title'));
       const status = tag === 'ResponseExample' ? markdownText(mdxAttribute(attributes, 'status')) : '';
-      const href = tag === 'Card' ? mdxAttribute(attributes, 'href')?.trim() : undefined;
+      const href = tag === 'Card' ? safeHref(mdxAttribute(attributes, 'href')) : undefined;
       const label = title ? (href ? `[${title}](${href})` : title) : '';
       return `${label || status ? `${'#'.repeat(level)} ${label}${status ? ` · ${status}` : ''}\n\n` : ''}${body}`;
     });
   }
   for (const tag of ['ParamField', 'ResponseField']) {
     output = mdxContainer(output, tag, (attributes, body) => {
-      const name = markdownText(mdxAttribute(attributes, 'name'));
-      const type = markdownText(mdxAttribute(attributes, 'type'));
-      return `${name || type ? `#### ${name}${type ? ` · ${type}` : ''}\n\n` : ''}${body}`;
+      // Like the reader, a location prop names a ParamField before `name` does.
+      const authoredName = ['path', 'query', 'header', 'body', 'name']
+        .map((key) => mdxAttribute(attributes, key))
+        .find((value) => value !== undefined);
+      const name = markdownText(authoredName);
+      const defaultValue = markdownText(mdxAttribute(attributes, 'default'));
+      const details = [
+        markdownText(mdxAttribute(attributes, 'type')),
+        flagAttribute(attributes, 'required') ? 'required' : '',
+        defaultValue ? `default: ${defaultValue}` : '',
+        flagAttribute(attributes, 'deprecated') ? 'deprecated' : '',
+      ].filter(Boolean);
+      return `${name || details.length > 0 ? `#### ${[name, ...details].filter(Boolean).join(' · ')}\n\n` : ''}${body}`;
     });
   }
   output = mdxContainer(output, 'Frame', (attributes, body) => {
@@ -113,7 +156,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
     return `${body}${caption ? `\n\n_${caption}_` : ''}`;
   });
   output = mdxContainer(output, 'Button', (attributes, body) => {
-    const href = mdxAttribute(attributes, 'href')?.trim();
+    const href = safeHref(mdxAttribute(attributes, 'href'));
     return href ? `[${body}](${href})` : body;
   });
   // Keep the tip as readable text: `API (Application programming interface)`.
@@ -182,18 +225,20 @@ const stripMdxExpressions = (source: string): string => {
 // Formatting the editor saves as inline HTML (Underline, Subscript, Superscript).
 // Public Markdown escapes HTML. Underline is presentation only, so it keeps
 // just its text. Subscript and superscript carry meaning (10<sup>-3</sup>,
-// x<sub>i<sup>2</sup></sub>), so correctly nested pairs on one line stay as
-// attribute-free inline HTML, which Markdown allows. They are restored only
+// x<sub>i<sup>2</sup></sub>), so correctly nested pairs within a paragraph stay
+// as attribute-free inline HTML, which Markdown allows. They are restored only
 // after escaping, so nothing else can pass through; an unmatched tag keeps
 // just its text.
-const underlineTag = /<\/?u(?:\s[^>]*)?>/gi;
-const scriptOpenerWithAttributes = /<(sub|sup)\s[^>]*>/gi;
+const underlineTag = new RegExp(`<\\/?u(?:\\s${ATTRIBUTE_PART}*)?>`, 'gi');
+const scriptOpenerWithAttributes = new RegExp(`<(sub|sup)\\s${ATTRIBUTE_PART}*>`, 'gi');
 const escapedScriptTag = /&lt;(\/?)(sub|sup)&gt;/gi;
+// Lines with text, joined: inline HTML can't span a blank line.
+const PARAGRAPH = /[^\n]*\S[^\n]*(?:\n[^\n]*\S[^\n]*)*/g;
 
-const restoreScriptPairs = (line: string): string => {
+const restoreScriptPairs = (paragraph: string): string => {
   const matched = new Set<number>();
   const open: { name: string; index: number }[] = [];
-  [...line.matchAll(escapedScriptTag)].forEach((match, index) => {
+  [...paragraph.matchAll(escapedScriptTag)].forEach((match, index) => {
     const name = (match[2] as string).toLowerCase();
     if (!match[1]) {
       open.push({ name, index });
@@ -203,7 +248,7 @@ const restoreScriptPairs = (line: string): string => {
     }
   });
   let index = 0;
-  return line.replace(escapedScriptTag, (_match, slash: string, tag: string) => (matched.has(index++) ? `<${slash}${tag.toLowerCase()}>` : ''));
+  return paragraph.replace(escapedScriptTag, (_match, slash: string, tag: string) => (matched.has(index++) ? `<${slash}${tag.toLowerCase()}>` : ''));
 };
 
 const sanitizeAuthoredProse = (source: string): string => {
@@ -213,8 +258,9 @@ const sanitizeAuthoredProse = (source: string): string => {
     .replace(scriptOpenerWithAttributes, '<$1>');
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
-    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : restoreScriptPairs(escapeHtml(line))))
-    .join('\n');
+    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
+    .join('\n')
+    .replace(PARAGRAPH, (paragraph) => restoreScriptPairs(paragraph));
   return protectedCode.restore(sanitized);
 };
 

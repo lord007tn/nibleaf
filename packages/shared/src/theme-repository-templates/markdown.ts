@@ -50,9 +50,13 @@ export const sanitizeSchema = {
 
 const blockTags =
   'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
-const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b(?:[^>]*[^/>])?>\\s*$', 'i');
+// Attribute text read up to the first ">" outside quotes, so title="a > b" stays whole.
+const attributePart = '(?:[^>"\']|"[^"]*"|\'[^\']*\')';
+const openingAttributes = '(?:' + attributePart + '*(?:[^/>"\']|"[^"]*"|\'[^\']*\'))?';
+const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b' + openingAttributes + '>\\s*$', 'i');
 const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
-const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b[^>]*>\\s*$', 'i');
+const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b' + attributePart + '*>\\s*$', 'i');
+const selfClosingAtom = new RegExp('<(File|RelatedCard|Icon)\\b(' + attributePart + '*?)\\/>', 'gi');
 
 /** Give component tags the blank lines CommonMark needs so their Markdown
  * children still render, and map tags that collide with HTML names. */
@@ -75,7 +79,7 @@ export const normalizeMarkdown = (source: string): string => {
   return output
     .join('\n')
     .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
-    .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+    .replace(selfClosingAtom, '<$1$2></$1>');
 };
 
 type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };

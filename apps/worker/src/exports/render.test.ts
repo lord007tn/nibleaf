@@ -540,6 +540,24 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     }
   });
 
+  it('escapes PDF link destinations once, so query parameters keep their names', () => {
+    const page = { ...required(snapshot.pages[0]), content: 'See [the search](https://example.com/search?q=docs&lang=en&sort=new).' };
+    const pdf = renderPdfHtml({ ...snapshot, pages: [page] }, assets);
+    expect(pdf).toContain('href="https://example.com/search?q=docs&amp;lang=en&amp;sort=new"');
+    expect(pdf).not.toContain('&amp;amp;');
+  });
+
+  it('leaves component examples inside code untouched in HTML and PDF exports', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: 'Write `<Icon icon="star"></Icon>` inline.\n\n```mdx\n<FileTree>\n<File name="example.ts"></File>\n</FileTree>\n```',
+    };
+    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
+      expect(html).toContain('&lt;Icon icon=&quot;star&quot;&gt;&lt;/Icon&gt;');
+      expect(html).toContain('&lt;File name=&quot;example.ts&quot;&gt;&lt;/File&gt;');
+    }
+  });
+
   it('renders atoms written as an empty pair without leaking their tags', () => {
     const page = {
       ...required(snapshot.pages[0]),

@@ -118,6 +118,15 @@ describe('normalizeMdxBlocks', () => {
     expect(output).toContain('<File name="types.ts" ></File>');
     expect(output).toContain('<RelatedCard title="One" ></RelatedCard>');
   });
+  it('reads attribute values containing ">" whole', () => {
+    expect(normalizeMdxBlocks('<RelatedContent>\n<RelatedCard title="a > b" href="/a" />\nInside\n</RelatedContent>')).toBe(
+      '<RelatedContent>\n\n<RelatedCard title="a > b" href="/a" ></RelatedCard>\nInside\n\n</RelatedContent>',
+    );
+    expect(normalizeMdxBlocks('<Accordion title="a > b">\nBody\n</Accordion>')).toBe('<Accordion title="a > b">\n\nBody\n\n</Accordion>');
+    expect(normalizeMdxBlocks("<Callout type='a > b'>One line.</Callout>")).toBe("<Callout type='a > b'>\n\nOne line.\n\n</Callout>");
+    // A quoted "/>" doesn't close the tag either.
+    expect(normalizeMdxBlocks('<FileTree>\n<File name="a/>b" />\n</FileTree>')).toContain('<File name="a/>b" ></File>');
+  });
 });
 
 // Literal values from before the reader config was derived from the component

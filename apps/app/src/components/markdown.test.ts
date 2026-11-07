@@ -33,8 +33,9 @@ beforeAll(async () => {
 describe('Markdown renderer — default element renderers', () => {
   it('keeps react-markdown internals out of the HTML and keeps authored image classes and empty alt text', async () => {
     const html = await render(
-      '# Title\n\n## Section\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n![](/plain.png)\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n',
+      '# Title\n\n## Section\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n![](/plain.png)\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n\n```js\nconst answer = 42;\n```\n',
     );
+    expect(html).toContain('answer');
     expect(html.match(/<[a-z0-9]+ [^>]*node=[^>]*>/g) ?? []).toEqual([]);
     expect(html).not.toContain('[object Object]');
     expect(html).toMatch(/<img[^>]*src="\/plain\.png"[^>]*alt=""|<img[^>]*alt=""[^>]*src="\/plain\.png"/);

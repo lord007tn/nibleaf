@@ -62,6 +62,13 @@ describe('exported theme repository Markdown', () => {
     expect(render('<Icon icon="star" color="red;position:fixed;inset:0" />')).not.toMatch(/position|inset/);
   });
 
+  it('reads attribute values containing ">" whole', () => {
+    const tree = render('<FileTree>\n<Folder name="src">\n<File name="a > b.ts" />\n<File name="c.ts" />\n</Folder>\n</FileTree>');
+    expect(tree).toContain('a &gt; b.ts');
+    expect(tree).toContain('c.ts');
+    expect(render('<Accordion title="x > 1" defaultOpen>\n**Bold** body.\n</Accordion>')).toContain('<strong>Bold</strong>');
+  });
+
   it('still strips script', () => {
     expect(render('<ResponseField name="x" onclick="alert(1)">\n\nText\n\n</ResponseField>\n\n<script>alert(1)</script>')).not.toMatch(
       /onclick|<script/,

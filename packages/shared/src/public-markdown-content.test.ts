@@ -74,9 +74,10 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('<Tooltip tip="&amp;lt;b&amp;gt;">tag</Tooltip>')).toBe('tag (&lt;b&gt;)');
   });
 
-  it('reads an attribute value containing ">" whole', () => {
-    expect(portablePublicMdxMarkdown('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a \\> b)');
-    expect(portablePublicMdxMarkdown('<Frame caption="When x > 1">\n\n![Chart](/c.png)\n\n</Frame>')).toBe('![Chart](/c.png)\n\n_When x \\> 1_');
+  it('reads an attribute value containing ">" whole, and escapes it only once', () => {
+    expect(portablePublicMdxMarkdown('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a > b)');
+    expect(normalizePublicMarkdownContent('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a &gt; b)');
+    expect(portablePublicMdxMarkdown('<Frame caption="When x > 1">\n\n![Chart](/c.png)\n\n</Frame>')).toBe('![Chart](/c.png)\n\n_When x > 1_');
   });
 
   it('projects atoms written as an empty pair like self-closing ones', () => {
@@ -84,8 +85,52 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('Before <Icon icon="star"></Icon><Icon icon="rocket" /> after.')).toBe('Before  after.');
     expect(
       portablePublicMdxMarkdown('<RelatedCard title="A" href="/a" />\n<RelatedCard title="B" description="Second">\n\nBody of B.\n\n</RelatedCard>'),
-    ).toBe('- [A](/a)\n- B — Second\n\nBody of B.');
+    ).toBe('- [A](/a)\n- B — Second\n  Body of B.');
   });
+
+  it('leaves components written as examples in code untouched', () => {
+    const source = 'Write `<Icon icon="star"></Icon>` inline.\n\n```mdx\n<FileTree>\n<File name="example.ts"></File>\n</FileTree>\n```';
+    expect(portablePublicMdxMarkdown(source)).toBe(source);
+  });
+
+  it('names a field by its location prop and keeps its flags', () => {
+    expect(
+      normalizePublicMarkdownContent(
+        '<ParamField query="limit" type="integer" required default="10" deprecated>\n\nItems per page.\n\n</ParamField>',
+      ),
+    ).toBe('#### limit · integer · required · default: 10 · deprecated\n\nItems per page.');
+    // A flag's name inside another attribute's value isn't the flag.
+    expect(portablePublicMdxMarkdown('<ParamField path="id" description="is required here" required={false}>\n\nText.\n\n</ParamField>')).toBe(
+      '#### id\n\nText.',
+    );
+  });
+
+  it.each([
+    'javascript:alert(1)',
+    'JavaScript:alert(1)',
+    ' java\tscript:alert(1)',
+    '&#106;avascript:alert(1)',
+    '&#x6A;avascript:alert(1)',
+    'javascript&colon;alert(1)',
+    'javascript\\:alert(1)',
+    'vbscript:x',
+    'data:text/html,x',
+  ])('projects no link for the unsafe destination %j', (href) => {
+    const output = portablePublicMdxMarkdown(
+      `<Button href="${href}">Go</Button> <Card title="Card" href="${href}">\n\nBody\n\n</Card> <RelatedCard title="Related" href="${href}" />`,
+    );
+    expect(output).not.toMatch(/\]\(/);
+    expect(output).toContain('Go');
+    expect(output).toContain('Card');
+    expect(output).toContain('Related');
+  });
+
+  it.each(['/guide', 'guide/setup', '#install', 'https://example.com/a?b=1', 'mailto:team@example.com', 'tel:+15550100'])(
+    'keeps the safe destination %j',
+    (href) => {
+      expect(portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`)).toBe(`[Go](${href})`);
+    },
+  );
 
   it('keeps underlined text, and subscript and superscript as plain inline HTML so their meaning survives', () => {
     expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe(
@@ -96,6 +141,15 @@ import Example from './example'
     expect(normalizePublicMarkdownContent('<u class="x">styled</u>, x<sup onclick="alert(1)" class="y">2</sup> and `<u>code</u>`')).toBe(
       'styled, x<sup>2</sup> and `<u>code</u>`',
     );
+  });
+
+  it('pairs subscript and superscript across the lines of one paragraph, not across paragraphs', () => {
+    expect(normalizePublicMarkdownContent('x<sub>i\nj</sub> done.')).toBe('x<sub>i\nj</sub> done.');
+    expect(normalizePublicMarkdownContent('x<sub>i\n\nj</sub>')).toBe('xi\n\nj');
+  });
+
+  it('reads formatting tags whose attribute values contain ">" whole', () => {
+    expect(normalizePublicMarkdownContent('x<sup title="a > b">2</sup> and <u title=\'c > d\'>under</u>.')).toBe('x<sup>2</sup> and under.');
   });
 
   it('lets no other markup through subscript or superscript', () => {

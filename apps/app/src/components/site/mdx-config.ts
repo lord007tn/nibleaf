@@ -50,6 +50,11 @@ const COMPONENT_PROTOCOLS: Record<string, string[]> = Object.fromEntries(
 /** Block-level component tags whose inner content should be parsed as Markdown. */
 export const MDX_BLOCK_TAGS: readonly string[] = CONTRACT.flatMap(([tag, component]) => (component.markdownBody ? [tag] : []));
 const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
+// One piece of a tag's attribute text: a character that isn't `>` or a quote,
+// or a whole quoted value, so `title="a > b"` doesn't end the tag early.
+const ATTRIBUTE_PART = `(?:[^>"']|"[^"]*"|'[^']*')`;
+// Attribute text that doesn't end in `/`, so `<Tag … />` isn't read as an opener.
+const OPENING_ATTRIBUTES = `(?:${ATTRIBUTE_PART}*(?:[^/>"']|"[^"]*"|'[^']*'))?`;
 
 /**
  * Rewrites authored component tags into what the HTML parser must see:
@@ -65,7 +70,7 @@ const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
  */
 export const readerTagRewriter = (contract: ReadonlyArray<readonly [string, DocumentationComponentContract]>): ((text: string) => string) => {
   const selfClosing = contract.flatMap(([tag, component]) => (component.selfClosing ? [tag] : []));
-  const selfClosingTag = selfClosing.length > 0 ? new RegExp(`<(${selfClosing.join('|')})\\b([^>]*)\\/>`, 'gi') : null;
+  const selfClosingTag = selfClosing.length > 0 ? new RegExp(`<(${selfClosing.join('|')})\\b(${ATTRIBUTE_PART}*?)\\/>`, 'gi') : null;
   const renames = contract.flatMap(([tag, component]) =>
     component.readerTag ? [{ pattern: new RegExp(`<(\\/?)${tag}\\b`, 'gi'), replacement: `<$1${component.readerTag}` }] : [],
   );
@@ -77,11 +82,11 @@ export const readerTagRewriter = (contract: ReadonlyArray<readonly [string, Docu
 const rewriteReaderTags = readerTagRewriter(CONTRACT);
 // Matches an opening block tag on its own line — with or without attributes —
 // but not a self-closing tag (`<Frame />`).
-const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
+const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b${OPENING_ATTRIBUTES}>\\s*$`, 'i');
 const CLOSE_TAG = new RegExp(`^\\s*</(?:${BLOCK_TAGS})>\\s*$`, 'i');
-const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b[^>]*>\\s*$`, 'i');
+const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b${ATTRIBUTE_PART}*>\\s*$`, 'i');
 // A block component opened and closed on one line: `<Callout type="tip">Text</Callout>`.
-const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b((?:[^>]*[^/>])?)>(.*\\S.*)</\\2>\\s*$`, 'i');
+const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b(${OPENING_ATTRIBUTES})>(.*\\S.*)</\\2>\\s*$`, 'i');
 // Inline code spans (`<Frame>` written as an example) are code too.
 const INLINE_CODE = /(`+)[\s\S]*?\1/g;
 
