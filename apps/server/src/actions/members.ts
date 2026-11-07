@@ -2,7 +2,7 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { MemberRole } from '@nibleaf/shared/constants';
-import { canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
+import { canAdminister, canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import type { UpdateMemberRoleBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
@@ -115,31 +115,37 @@ export const inviteMember = async (
   return invitation;
 };
 
-export const updateMemberRole = async (organizationId: string, memberId: string, actorRole: string, body: UpdateMemberRoleBody) => {
-  const member = await prisma.member.findFirst({ where: { id: memberId, organizationId } });
-  if (!member) {
-    throw notFound('member', { id: memberId });
-  }
-  // You can't act on a member ranked above you (e.g. an admin changing an owner)…
-  if (!canManageMember(actorRole, member.role)) {
-    throw forbidden('You cannot change the role of a member with a higher role than your own.');
-  }
-  // …nor promote anyone above your own rank (blocks admin→owner escalation).
-  if (!canAssignRole(actorRole, body.role)) {
-    throw forbidden('You cannot grant a role higher than your own.', { role: body.role });
-  }
-  // Never leave a workspace without an owner. `body.role` can no longer be
-  // `owner` (the schema excludes it), so any role change on an owner row is a
-  // demotion — blocked while they are the last owner, which under the
-  // single-owner invariant is always; transfer-ownership is the only way the
-  // owner role moves. The count keeps legacy multi-owner data demotable.
-  if (member.role === MemberRole.OWNER) {
-    const owners = await prisma.member.count({ where: { organizationId, role: MemberRole.OWNER } });
-    if (owners <= 1) {
-      throw conflict('You cannot demote the last owner of the workspace. Transfer ownership instead.');
+export const updateMemberRole = async (organizationId: string, memberId: string, actorUserId: string, body: UpdateMemberRoleBody) => {
+  return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
+    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    if (!actor) throw forbidden('You are not a member of this workspace.');
+    if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
+    const member = await tx.member.findFirst({ where: { id: memberId, organizationId } });
+    if (!member) {
+      throw notFound('member', { id: memberId });
     }
-  }
-  return prisma.member.update({ where: { id: memberId }, data: { role: body.role } });
+    // You can't act on a member ranked above you (e.g. an admin changing an owner)…
+    if (!canManageMember(actor.role, member.role)) {
+      throw forbidden('You cannot change the role of a member with a higher role than your own.');
+    }
+    // …nor promote anyone above your own rank (blocks admin→owner escalation).
+    if (!canAssignRole(actor.role, body.role)) {
+      throw forbidden('You cannot grant a role higher than your own.', { role: body.role });
+    }
+    // Never leave a workspace without an owner. `body.role` can no longer be
+    // `owner` (the schema excludes it), so any role change on an owner row is a
+    // demotion — blocked while they are the last owner, which under the
+    // single-owner invariant is always; transfer-ownership is the only way the
+    // owner role moves. The count keeps legacy multi-owner data demotable.
+    if (member.role === MemberRole.OWNER) {
+      const owners = await tx.member.count({ where: { organizationId, role: MemberRole.OWNER } });
+      if (owners <= 1) {
+        throw conflict('You cannot demote the last owner of the workspace. Transfer ownership instead.');
+      }
+    }
+    return tx.member.update({ where: { id: memberId }, data: { role: body.role } });
+  });
 };
 
 /**
@@ -154,58 +160,61 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
  * `owner` (not just the actor) before promoting the target, so even if legacy
  * data contains multiple owners, the ending state is always exactly one owner.
  */
-export const transferOwnership = async (organizationId: string, actorUserId: string, targetMemberId: string) => {
-  const members = await prisma.member.findMany({ where: { organizationId }, select: { id: true, userId: true, role: true } });
-  const actor = members.find((member) => member.userId === actorUserId);
-  const plan = planOwnershipTransfer(members, actor?.id ?? '', targetMemberId);
-  if (!plan.ok) {
-    switch (plan.reason) {
-      case 'actor_not_found':
-        throw forbidden('You are not a member of this workspace.');
-      case 'actor_not_owner':
-        throw forbidden('Only the current owner can transfer ownership.');
-      case 'target_is_actor':
-        throw conflict('Choose another member to transfer ownership to.');
-      case 'target_not_found':
-        throw notFound('member', { id: targetMemberId });
-      case 'target_already_owner':
-        throw conflict('That member is already an owner.');
-      case 'target_not_admin':
-        throw conflict('Ownership can only be transferred to an admin. Make them an admin first.');
-      default:
-        throw conflict('Ownership transfer could not be completed.');
+export const transferOwnership = async (organizationId: string, actorUserId: string, targetMemberId: string) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
+    const members = await tx.member.findMany({ where: { organizationId }, select: { id: true, userId: true, role: true } });
+    const actor = members.find((member) => member.userId === actorUserId);
+    const plan = planOwnershipTransfer(members, actor?.id ?? '', targetMemberId);
+    if (!plan.ok) {
+      switch (plan.reason) {
+        case 'actor_not_found':
+          throw forbidden('You are not a member of this workspace.');
+        case 'actor_not_owner':
+          throw forbidden('Only the current owner can transfer ownership.');
+        case 'target_is_actor':
+          throw conflict('Choose another member to transfer ownership to.');
+        case 'target_not_found':
+          throw notFound('member', { id: targetMemberId });
+        case 'target_already_owner':
+          throw conflict('That member is already an owner.');
+        case 'target_not_admin':
+          throw conflict('Ownership can only be transferred to an admin. Make them an admin first.');
+        default:
+          throw conflict('Ownership transfer could not be completed.');
+      }
     }
-  }
 
-  // One transaction: demote all current owners → admin, then promote the target.
-  const [, promoted] = await prisma.$transaction([
-    prisma.member.updateMany({ where: { id: { in: plan.demote }, organizationId }, data: { role: MemberRole.ADMIN } }),
-    prisma.member.update({
+    await tx.member.updateMany({ where: { organizationId, role: MemberRole.OWNER }, data: { role: MemberRole.ADMIN } });
+    return tx.member.update({
       where: { id: plan.promote },
       data: { role: MemberRole.OWNER },
       include: { user: { select: { id: true, name: true, email: true, image: true } } },
-    }),
-  ]);
-  return promoted;
-};
+    });
+  });
 
-export const removeMember = async (organizationId: string, memberId: string, actorRole: string) => {
-  const member = await prisma.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true } });
-  if (!member) {
-    throw notFound('member', { id: memberId });
-  }
-  if (!canManageMember(actorRole, member.role)) {
-    throw forbidden('You cannot remove a member with a higher role than your own.');
-  }
-  if (member.role === MemberRole.OWNER) {
-    const owners = await prisma.member.count({ where: { organizationId, role: MemberRole.OWNER } });
-    if (owners <= 1) {
-      throw conflict('You cannot remove the last owner of the workspace.');
+export const removeMember = async (organizationId: string, memberId: string, actorUserId: string) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
+    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    if (!actor) throw forbidden('You are not a member of this workspace.');
+    if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
+    const member = await tx.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true } });
+    if (!member) {
+      throw notFound('member', { id: memberId });
     }
-  }
-  await prisma.member.delete({ where: { id: memberId } });
-  return { id: memberId };
-};
+    if (!canManageMember(actor.role, member.role)) {
+      throw forbidden('You cannot remove a member with a higher role than your own.');
+    }
+    if (member.role === MemberRole.OWNER) {
+      const owners = await tx.member.count({ where: { organizationId, role: MemberRole.OWNER } });
+      if (owners <= 1) {
+        throw conflict('You cannot remove the last owner of the workspace.');
+      }
+    }
+    await tx.member.delete({ where: { id: memberId } });
+    return { id: memberId };
+  });
 
 export const cancelInvitation = async (organizationId: string, invitationId: string) => {
   const invitation = await prisma.invitation.findFirst({ where: { id: invitationId, organizationId }, select: { id: true } });

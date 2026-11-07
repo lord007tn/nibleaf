@@ -1,0 +1,12 @@
+-- Intentionally a no-op: backfilled completion times cannot be distinguished
+-- from genuine terminal failures after deployment. Clearing them or removing
+-- historical delivery fences could replay old notifications and indexing.
+-- Rolling forward again after running the previous image: drain active publish
+-- deliveries and retries, then re-run both statements of migration.sql
+-- before restarting the new worker (migrations do not rerun; both are idempotent):
+-- the INSERT ... ON CONFLICT ("id") DO NOTHING receipt fence, so READY deployments
+-- the previous image created (API rollbacks included) send no late "published"
+-- notice and aren't re-indexed, and
+-- UPDATE "deployment" SET "completedAt" = "createdAt"
+-- WHERE "status" = 'FAILED' AND "completedAt" IS NULL;
+-- so FAILED rows it left open aren't announced again.
