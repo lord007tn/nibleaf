@@ -23,13 +23,13 @@ describe('Arabic marketing pages', () => {
     expect(html).toContain('Docusaurus');
     expect(html).toContain('Material for MkDocs');
     expect(html).toContain('Apidog');
-    expect(html).toContain('22 أغسطس 2026');
+    expect(html).toContain('7 نوفمبر 2026');
     expect(html).toContain('https://www.mintlify.com/pricing');
-    expect(html).toContain('https://gitbook.com/docs/publishing-documentation/customization/extra-configuration');
-    expect(html).toContain('https://gitbook.com/docs/publishing-documentation/site-structure/variants');
+    expect(html).toContain('https://gitbook.com/docs/manage-your-site/customization/extra-configuration');
+    expect(html).toContain('https://gitbook.com/docs/manage-your-site/site-structure/variants');
     expect(html).toContain('https://www.gitbook.com/pricing');
     expect(html).toContain('https://docusaurus.io/docs/i18n/introduction');
     expect(html).toContain('https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/');
-    expect(html).toContain('https://apidog.com/ar/blog/documentation-tools-ar/');
+    expect(html).toContain('https://apidog.com/ar/blog/documentation-tools/');
   });
 });
