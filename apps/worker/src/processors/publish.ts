@@ -308,7 +308,21 @@ async function completePublish(
   ready: Pick<Deployment, 'createdById' | 'version' | 'completedAt' | 'pagesCount'>,
   project: Pick<Project, 'id' | 'name' | 'organizationId' | 'accessMode' | 'config'>,
   occurredAt: string,
+  recovery = false,
 ) {
+  if (recovery) {
+    // Fence already queued recovery jobs too, including jobs from the previous
+    // implementation that could have named a historical deployment.
+    if (!ready.completedAt || ready.completedAt.getTime() <= Date.now() - 24 * 60 * 60_000) return { pages: ready.pagesCount };
+    const receipt = await prisma.platformEvent.findUnique({ where: { id: `publish-ready:${job.deploymentId}` }, select: { id: true } });
+    if (receipt) return { pages: ready.pagesCount };
+    const latest = await prisma.deployment.findFirst({
+      where: { projectId: job.projectId, status: 'READY' },
+      orderBy: { version: 'desc' },
+      select: { id: true },
+    });
+    if (latest?.id !== job.deploymentId) return { pages: ready.pagesCount };
+  }
   await trackPublishLifecycle(
     project,
     job.deploymentId,
@@ -324,7 +338,7 @@ async function completePublish(
     QueueNames.SEARCH,
     { name: 'index-deployment', data: { projectId: job.projectId, deploymentId: job.deploymentId } },
     { jobId: `search-${job.deploymentId}` },
-  ).catch((error) => log.warn({ projectId: job.projectId, deploymentId: job.deploymentId, error }, 'could not enqueue hybrid search indexing'));
+  );
   await recordPublishReady(job, ready);
   await notifyDeployment({
     deploymentId: job.deploymentId,
@@ -334,6 +348,7 @@ async function completePublish(
     outcome: 'ready',
     siteUrl: siteUrlFor(job.projectId),
     locale: job.locale,
+    recovery,
   });
   return { pages: ready.pagesCount };
 }
@@ -353,16 +368,26 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       select: { id: true, name: true, organizationId: true, accessMode: true, config: true },
     });
     if (!project) throw new Error('Published project no longer exists');
-    return completePublish(job.data, deployment, project, lifecycleOccurredAt);
+    return completePublish(job.data, deployment, project, lifecycleOccurredAt, String(job.id ?? '').startsWith('publish-recovery-'));
   }
-  await prisma.deployment.update({ where: { id: deploymentId, projectId }, data: { status: 'BUILDING' } });
+  const claimed = await prisma.deployment.updateMany({
+    where: {
+      id: deploymentId,
+      projectId,
+      OR: [{ status: { in: ['PENDING', 'BUILDING'] } }, { status: 'FAILED', completedAt: null }],
+    },
+    data: { status: 'BUILDING' },
+  });
+  // A queue ACK can fail after accepting the job. If the API settled PENDING as
+  // a completed failure first, this late job must leave the live site alone.
+  if (claimed.count === 0) return { pages: 0 };
   let snapshotReady = false;
   try {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       include: {
         languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
-        branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+        branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
         openApiDocument: true,
         addons: { select: { key: true, enabled: true, config: true } },
         organization: {
@@ -399,6 +424,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (project.takedownAt) {
       throw new Error('This site has been taken down by the platform moderators and cannot be published.');
     }
+    if (deployment.snapshot) {
+      // Rollbacks already carry a reviewed immutable snapshot. Activate it via
+      // the same retryable indexing and notification pipeline as a new publish.
+      const ready = await prisma.deployment.update({
+        where: { id: deploymentId, projectId },
+        data: { status: 'READY', error: null, errorDetails: Prisma.DbNull, completedAt: new Date() },
+      });
+      snapshotReady = true;
+      return await completePublish(job.data, ready, project, lifecycleOccurredAt);
+    }
     // Publish every branch as an addressable docs version. This keeps v1 live
     // while v2 is being authored, and visitors can switch versions on the site.
     const branchIds = project.branches.map((branch) => branch.id);
@@ -431,7 +466,14 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
 
     const ready = await prisma.deployment.update({
       where: { id: deploymentId, projectId },
-      data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, errorDetails: Prisma.DbNull, completedAt: new Date() },
+      data: {
+        status: 'READY',
+        snapshot: snapshot as unknown as object,
+        pagesCount: pageCount,
+        error: null,
+        errorDetails: Prisma.DbNull,
+        completedAt: new Date(),
+      },
     });
     snapshotReady = true;
     log.info({ deploymentId, pageCount }, 'deployment ready');
@@ -440,10 +482,13 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     // A delivery failure after READY must not revoke the published snapshot.
     // Let the job retry the durable receipt using the READY fast path above.
     if (snapshotReady) throw error;
+    const retrying = (job.attemptsMade ?? 0) + 1 < (job.opts?.attempts ?? 1);
     const failed = await prisma.deployment.update({
       where: { id: deploymentId, projectId },
       data: {
         status: 'FAILED',
+        // A null completion time means BullMQ still has an automatic retry.
+        completedAt: retrying ? null : new Date(),
         error: error instanceof Error ? error.message : String(error),
         // ALWAYS overwrite errorDetails: a retry that fails with a transient
         // infra error (after attempt 1 recorded check issues) must clear the
@@ -474,15 +519,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       projectId,
       metadata: { auto: auto === true, version: failed.version, checksFailed: error instanceof PublishChecksError },
     });
-    await notifyDeployment({
-      deploymentId,
-      projectId,
-      projectName: proj?.name ?? 'Your site',
-      version: failed.version,
-      outcome: 'failed',
-      error: failed.error ?? undefined,
-      locale,
-    });
+    if (!retrying)
+      await notifyDeployment({
+        deploymentId,
+        projectId,
+        projectName: proj?.name ?? 'Your site',
+        version: failed.version,
+        outcome: 'failed',
+        error: failed.error ?? undefined,
+        locale,
+      });
     throw error;
   }
 }

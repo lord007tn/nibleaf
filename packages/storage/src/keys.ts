@@ -29,6 +29,9 @@ export const keys = () =>
             .filter(Boolean),
         ),
       STORAGE_AUTO_CORS: z.stringbool().default(true),
+      // HeadBucket requires bucket-level permissions that object-only keys may
+      // intentionally lack. Storage diagnostics do not gate liveness by default.
+      STORAGE_REQUIRED_FOR_HEALTH: z.stringbool().default(false),
     },
     runtimeEnv: process.env,
     emptyStringAsUndefined: true,

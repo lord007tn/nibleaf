@@ -1,41 +1,55 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
+import { FailureDetails, failureMessageKey } from '@/components/failure-message';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useMarkNotificationsRead, useNotifications, useUnreadNotificationCount } from '@/hooks/api';
 import type { NotificationItem } from '@/hooks/api/types';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useFormatters } from '@/lib/format';
+import { notificationDetails, notificationText } from './notification-text';
 
 const NOTIFICATION_SKELETON_ROWS = ['a', 'b', 'c'];
 
 /** One inbox row: unread dot, title/body, relative time. Clicking marks it read
  *  and follows its dashboard link (when it has one). */
 function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (item: NotificationItem) => void }) {
+  const { t, locale } = useLocale();
+  const needsRole = item.type === 'deploy_failed' && failureMessageKey(notificationDetails(item) ?? '', 'publish').startsWith('failures.redirects');
+  const role = useProjectAdminStatus(needsRole ? (item.projectId ?? undefined) : undefined);
+  const text = notificationText(t, item, locale, role.status);
   const { relativeTime } = useFormatters();
   const unread = item.readAt === null;
   return (
-    <button
-      className="flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-3 py-2.5 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
-      onClick={() => onOpen(item)}
-      type="button"
-    >
-      <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${unread ? 'bg-primary' : 'bg-transparent'}`} />
-      <span className="min-w-0 flex-1 leading-snug">
-        <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`} dir="auto">
-          {item.title}
-        </span>
-        {item.body ? (
-          <span className="mt-0.5 line-clamp-2 block text-muted-foreground text-xs" dir="auto">
-            {item.body}
+    <div className="min-w-0">
+      <button
+        className="flex w-full cursor-pointer items-start gap-2.5 rounded-lg px-3 py-2.5 text-start outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+        onClick={() => onOpen(item)}
+        type="button"
+      >
+        <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${unread ? 'bg-primary' : 'bg-transparent'}`} />
+        <span className="min-w-0 flex-1 leading-snug">
+          <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`} dir="auto">
+            {text.title}
           </span>
-        ) : null}
-        <span className="mt-1 block text-[11px] text-muted-foreground/80">{relativeTime(item.createdAt)}</span>
-      </span>
-    </button>
+          {text.body ? (
+            <span className="mt-0.5 block break-words text-muted-foreground text-xs [overflow-wrap:anywhere]" dir="auto">
+              {text.body}
+            </span>
+          ) : null}
+          <span className="mt-1 block text-[11px] text-muted-foreground/80">{relativeTime(item.createdAt)}</span>
+        </span>
+      </button>
+      {text.details ? (
+        <div className="px-3 pb-2">
+          <FailureDetails detail={text.details} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 

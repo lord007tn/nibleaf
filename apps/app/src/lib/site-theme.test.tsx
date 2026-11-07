@@ -10,7 +10,7 @@ import {
   DocumentationStudioPreviewLayout,
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
-import { projectThemeCss, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
+import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
 
 describe('published theme projection', () => {
   it('projects a preset and semantic overrides onto the stable CSS interface', () => {
@@ -65,7 +65,12 @@ describe('published theme projection', () => {
 
   it('accepts bounded Unicode family names and keeps Arabic fallbacks', () => {
     const css = projectThemeCss({ typography: { headingFont: 'نسق عربي' } });
-    expect(css).toContain("font-family:'نسق عربي','Noto Sans Arabic'");
+    expect(css).toContain("font-family:'نسق عربي','Noto Sans Arabic Variable','Noto Sans Arabic'");
+  });
+
+  it('falls back to the bundled Arabic webfont family under a custom body font', () => {
+    // @fontsource-variable/noto-sans-arabic registers "Noto Sans Arabic Variable".
+    expect(String(projectThemeStyle({ typography: { bodyFont: 'Inter' } }).fontFamily)).toMatch(/^'Inter','Noto Sans Arabic Variable',/);
   });
 
   it('keeps pre-v1 projects on their existing design-system palette', () => {

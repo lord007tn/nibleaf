@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ search: vi.fn() }));
 vi.mock('@/functions/site-search', () => ({ searchSiteFn: mocks.search }));
 
+import { queryKeys } from './query-keys';
 import { useSiteSearch } from './site-search';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -128,5 +129,38 @@ describe('useSiteSearch with a real QueryClient', () => {
     await until(() => latest?.isFetching === true);
     expect(latest?.error).toBeInstanceOf(Error);
     expect(latest?.isFetching).toBe(true);
+  });
+});
+
+function PreferProbe({ prefer }: { prefer: string }) {
+  report(useSiteSearch('docs', 'export', { prefer }));
+  return null;
+}
+
+describe('the reader language preference', () => {
+  it('sends prefer to the API and caches each reader language separately', async () => {
+    mocks.search.mockResolvedValue([]);
+    const show = (prefer: string) =>
+      act(async () => {
+        root?.render(
+          <QueryClientProvider client={client}>
+            <PreferProbe prefer={prefer} />
+          </QueryClientProvider>,
+        );
+      });
+    await show('en');
+    await until(() => mocks.search.mock.calls.length === 1);
+    await show('ar');
+    await until(() => mocks.search.mock.calls.length === 2);
+    expect(mocks.search.mock.calls.map(([input]) => (input as { data: { prefer?: string; language?: string } }).data)).toEqual([
+      expect.objectContaining({ prefer: 'en', query: 'export' }),
+      expect.objectContaining({ prefer: 'ar', query: 'export' }),
+    ]);
+    // Neither request narrows the search to one language.
+    expect(mocks.search.mock.calls.every(([input]) => !('language' in (input as { data: object }).data))).toBe(true);
+    expect(client.getQueryData(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar'))).toEqual([]);
+    expect(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar')).not.toEqual(
+      queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'en'),
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { FailureMessage } from '@/components/failure-message';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
@@ -159,6 +161,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   const disconnect = useDisconnectGitWorkflow(projectId);
   const operation = useQueueGitOperation(projectId);
   const rotate = useRotateGitWorkflowWebhookSecret(projectId);
+  const confirm = useConfirm();
   const connectRepository = () =>
     connect.mutate(
       { repository, baseBranch, headBranch, contentPath, token: token || undefined },
@@ -424,7 +427,9 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           <Alert className="mt-4" variant="destructive">
             <AlertTriangle />
             <AlertTitle>{t('settings.git.workflow.lastSyncFailed')}</AlertTitle>
-            <AlertDescription>{connection.lastSyncError}</AlertDescription>
+            <AlertDescription>
+              <FailureMessage context="git" error={connection.lastSyncError} />
+            </AlertDescription>
           </Alert>
         ) : null}
       </section>
@@ -582,12 +587,19 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <Button
               className="mt-3"
               loading={rotate.isPending}
-              onClick={() =>
+              onClick={async () => {
+                const approved = await confirm({
+                  title: t('settings.git.workflow.rotateConfirm.title'),
+                  description: t('settings.git.workflow.rotateConfirm.description'),
+                  confirmLabel: t('settings.git.workflow.rotateSecret'),
+                  destructive: true,
+                });
+                if (!approved) return;
                 rotate.mutate(undefined, {
                   onSuccess: (result) => setWebhookSecret(result.webhookSecret),
                   onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
-                })
-              }
+                });
+              }}
               size="sm"
               variant="outline"
             >
@@ -668,7 +680,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                     ))}
                   </ul>
                 ) : null}
-                {item.error ? <p className="mt-2 text-destructive text-xs">{item.error}</p> : null}
+                {item.error ? <FailureMessage context="git" error={item.error} /> : null}
               </div>
             ))}
           </div>

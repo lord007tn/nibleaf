@@ -6,14 +6,46 @@ import { INTERFACE_LOCALES } from './locales';
 import { MESSAGE_IDS } from './message-ids';
 
 type Catalog = Record<string, string>;
+type VariantMessage = Array<{ match: Record<string, string> }>;
 const messagesDirectory = resolve(import.meta.dirname, '../messages');
-const loadCatalog = (locale: string): Catalog => JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Catalog;
-const placeholders = (value: string) => [...value.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]).sort();
+/** A variant message (plural forms) reads as its variants' text, one per line. */
+const messageText = (value: string | VariantMessage): string =>
+  typeof value === 'string' ? value : value.flatMap((message) => Object.values(message.match)).join('\n');
+const loadCatalog = (locale: string): Catalog =>
+  Object.fromEntries(
+    Object.entries(JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Record<string, string | VariantMessage>).map(
+      ([key, value]) => [key, messageText(value)],
+    ),
+  );
+// Variable names only: a plural form may spell its number out ("صفحتان").
+const placeholders = (value: string) => [...new Set([...value.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]))].sort();
 
 describe('Paraglide message catalogs', () => {
   const english = loadCatalog('en');
   const orderedKeys = Object.keys(english).filter((key) => key !== '$schema');
   const expectedKeys = [...orderedKeys].sort();
+
+  it('distinguishes server administrators from site Admins in failure instructions', () => {
+    const arabic = loadCatalog('ar');
+    for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {
+      expect(english[key]).toContain('your server administrator');
+      expect(arabic[key]).toContain('مسؤول الخادم');
+      expect(arabic[key]).not.toContain('المسؤول');
+    }
+    expect(english.failures_access).toContain('a site Admin');
+    expect(arabic.failures_access).toContain('مشرف الموقع');
+    expect(arabic.failures_access).not.toContain('المسؤول');
+  });
+
+  it('gives both Cloud and self-hosted users a support contact in operator-dependent failures', () => {
+    const arabic = loadCatalog('ar');
+    for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {
+      expect(english[key]).toContain('Nibleaf support on Cloud');
+      expect(english[key]).toContain('if you self-host');
+      expect(arabic[key]).toContain('دعم Nibleaf للخدمة السحابية');
+      expect(arabic[key]).toContain('مسؤول الخادم للاستضافة الذاتية');
+    }
+  });
 
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
@@ -210,6 +242,19 @@ describe('Paraglide message catalogs', () => {
     expect(informal.map(([key]) => key)).toEqual([]);
   });
 
+  it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s gives every variant message a catch-all form', (locale) => {
+    const raw = JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Record<string, string | VariantMessage>;
+    const missing = Object.entries(raw)
+      .filter((entry): entry is [string, VariantMessage] => Array.isArray(entry[1]))
+      .filter(
+        ([, variants]) =>
+          !variants.every((variant) => Object.keys(variant.match).some((key) => key.split(',').every((part) => part.trim().endsWith('=*')))),
+      )
+      .map(([key]) => key);
+    // Without `form=*` a count with no matching category would render nothing.
+    expect(missing).toEqual([]);
+  });
+
   it('maps every stable dotted UI key to a generated message id', () => {
     expect(new Set(Object.values(MESSAGE_IDS)).size).toBe(Object.keys(MESSAGE_IDS).length);
     for (const id of Object.values(MESSAGE_IDS)) expect(english).toHaveProperty(id);
@@ -220,4 +265,68 @@ describe('Paraglide message catalogs', () => {
     expect(packageJson.scripts.setup).toContain('--output-structure message-modules');
     expect(viteConfig).toContain("outputStructure: 'message-modules'");
   });
+});
+
+describe('dashboard safety copy', () => {
+  it('uses consistent Arabic role names', () => {
+    const ar = loadCatalog('ar');
+    expect(ar.members_role_admin).toBe('مشرف');
+    expect(ar.settings_members_role_admin).toBe('مشرف');
+    expect(ar.members_role_owner).toBe('المالك');
+    expect(ar.settings_members_role_owner).toBe('المالك');
+    expect(ar.members_role_editor).toBe('محرّر');
+    for (const key of [
+      'settings_apikeys_adminonly',
+      'settings_members_roleshint',
+      'settings_danger_transfer_description',
+      'settings_danger_transfer_confirm',
+      'settings_permissions_title',
+      'settings_permissions_body',
+    ]) {
+      expect(ar[key]).toMatch(/مشرف/);
+      expect(ar[key]).not.toMatch(/مسؤول|مدير/);
+    }
+  });
+
+  it('explains immediate credential invalidation and default URL language changes in both supported catalogs', () => {
+    const en = loadCatalog('en');
+    const ar = loadCatalog('ar');
+    expect(en.settings_apikeys_rotateconfirm_description).toMatch(/immediately/);
+    expect(en.settings_git_workflow_rotateconfirm_description).toMatch(/immediately/);
+    expect(en.settings_languages_defaultconfirm_description).toMatch(/without a language prefix/);
+    for (const key of [
+      'settings_apikeys_rotateconfirm_description',
+      'settings_git_workflow_rotateconfirm_description',
+      'settings_languages_defaultconfirm_description',
+      'settings_smartai_disableconfirm_description',
+      'settings_danger_transfer_noadmins',
+    ]) {
+      expect(ar[key]).toMatch(/[ء-ي]/);
+      expect(ar[key]).not.toBe(en[key]);
+    }
+  });
+});
+
+it('keeps the settings arrow and replacement warnings clear in English, Arabic and fallback catalogs', () => {
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+    expect(loadCatalog(code).preview_disabledaskadmin).toContain('Settings → Add-ons');
+  }
+  expect(loadCatalog('en').settings_git_workflow_rotateconfirm_title).toBe('Replace the webhook secret?');
+  expect(loadCatalog('ar').settings_git_workflow_rotateconfirm_title).toBe('هل تريد استبدال سر الإشعارات الواردة؟');
+  expect(loadCatalog('en').settings_apikeys_rotateconfirm_expireddescription).toContain('The new key will expire in 90 days.');
+  expect(loadCatalog('ar').settings_apikeys_rotateconfirm_expireddescription).toContain('90 يومًا');
+});
+
+it('uses the glossary Admin role in English settings permission guidance', () => {
+  expect(loadCatalog('en').settings_permissions_body).toContain('Admin');
+  expect(loadCatalog('en').settings_permissions_body).not.toContain('administrator');
+});
+
+it('localizes the compact checklist permission failure in Arabic and uses English for fallback locales', () => {
+  const english = loadCatalog('en').overview_nudge_permissionserror;
+  expect(english).toBe("Couldn't check your permissions.");
+  expect(loadCatalog('ar').overview_nudge_permissionserror).toBe('تعذّر التحقق من صلاحياتك.');
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+    expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
+  }
 });

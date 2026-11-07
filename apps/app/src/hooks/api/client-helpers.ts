@@ -2,7 +2,13 @@ interface ApiErrorBody {
   error?: {
     code?: string;
     message?: string;
-    details?: { path?: string; sourceFile?: string; limit?: number; reason?: string; errors?: Array<string | { path?: string; message?: string }> };
+    details?: {
+      path?: string;
+      sourceFile?: string;
+      limit?: number;
+      errors?: Array<string | { path?: string; message?: string }>;
+      [key: string]: unknown;
+    };
   };
 }
 
@@ -19,16 +25,17 @@ const readApiError = async (res: Response, fallback: string) => {
     if (detailMessage) {
       return {
         code: body.error?.code,
+        details: body.error?.details,
         message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
       };
     }
     return {
       code: body.error?.code,
+      details: body.error?.details,
       message,
       path: body.error?.details?.path,
       sourceFile: body.error?.details?.sourceFile,
       limit: body.error?.details?.limit,
-      reason: body.error?.details?.reason,
     };
   } catch {
     return { code: undefined, message: fallback };
@@ -45,10 +52,17 @@ export class ApiResponseError extends Error {
     readonly path?: string,
     readonly sourceFile?: string,
     readonly limit?: number,
-    readonly reason?: string,
+    /** The error's structured details, as the server sent them (e.g. `{ reason, stage, demoted }`). */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiResponseError';
+  }
+
+  /** `details.reason` from the server, when it names a specific case. */
+  get reason(): string | undefined {
+    const reason = this.details?.reason;
+    return typeof reason === 'string' ? reason : undefined;
   }
 }
 
@@ -63,7 +77,7 @@ export async function getData<TData = never, TResponse extends Response = Respon
       error.path,
       error.sourceFile,
       error.limit,
-      error.reason,
+      error.details,
     );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
@@ -81,7 +95,7 @@ export async function mutateData<TData = never, TResponse extends Response = Res
       error.path,
       error.sourceFile,
       error.limit,
-      error.reason,
+      error.details,
     );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
