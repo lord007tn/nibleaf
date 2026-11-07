@@ -34,14 +34,6 @@ const KNOWN_GAPS = {
     // separate, output-changing fix.
     Update: 'portablePublicMdxMarkdown has no Update projection yet',
   } as Readonly<Record<string, string>>,
-  /** Sanitizer attributes the exported theme template spells differently from the reader. */
-  themeTemplateAttributes: {
-    // The template moves `name` to `dataDisplayName` (rehypeAuthoredComponentProps)
-    // but still allow-lists `name` for these two, so their names are stripped in
-    // exported repositories. Fixing it changes the pinned template output.
-    paramfield: { allows: 'name', insteadOf: 'dataDisplayName' },
-    responsefield: { allows: 'name', insteadOf: 'dataDisplayName' },
-  } as Readonly<Record<string, { allows: string; insteadOf: string }>>,
   /** Sample props that render nothing by design. */
   hiddenAttributes: {
     // ParamField shows the first of path, query, header, body and name.
@@ -277,13 +269,12 @@ describe('exported theme repository templates', () => {
     const reader = Object.fromEntries(
       READER_TAGS.flatMap((tag) => {
         const allowed = sanitizeSchema.attributes?.[tag] as string[] | undefined;
-        if (!allowed) return [];
-        const gap = KNOWN_GAPS.themeTemplateAttributes[tag];
-        return [[tag, sorted(allowed.map((name) => (gap && name === gap.insteadOf ? gap.allows : name)))]];
+        return allowed ? [[tag, sorted(allowed)]] : [];
       }),
     );
+    // Includes `dataDisplayName` (not `name`) wherever the reader moves a
+    // display name; theme-template-markdown.test.tsx renders that end to end.
     expect(template).toEqual(reader);
-    for (const [tag, gap] of Object.entries(KNOWN_GAPS.themeTemplateAttributes)) expect(template[tag], tag).not.toContain(gap.insteadOf);
   });
 
   it('treats the same tags as Markdown-bodied blocks', () => {

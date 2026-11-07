@@ -98,7 +98,11 @@ export const portablePublicMdxMarkdown = (source: string): string => {
     const href = mdxAttribute(attributes, 'href')?.trim();
     return href ? `[${body}](${href})` : body;
   });
-  output = mdxContainer(output, 'Tooltip', (_attributes, body) => body);
+  // Keep the tip as readable text: `API (Application programming interface)`.
+  output = mdxContainer(output, 'Tooltip', (attributes, body) => {
+    const tip = markdownText(mdxAttribute(attributes, 'tip'));
+    return tip ? `${body} (${tip})` : body;
+  });
   output = mdxContainer(output, 'Badge', (_attributes, body) => `**${body}**`);
   for (const tag of ['FileTree', 'Tabs', 'AccordionGroup', 'Steps', 'CardGroup', 'CodeGroup', 'Columns', 'Column', 'Banner']) {
     output = mdxContainer(output, tag, (_attributes, body) => body);

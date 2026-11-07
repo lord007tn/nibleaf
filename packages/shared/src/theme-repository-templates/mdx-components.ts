@@ -210,11 +210,11 @@ export const Update = ({ children, label }: MdxProps) => (
 );
 `;
 
-export const mdxFieldsTemplate = (): string => `import { type MdxProps, stringAttr, truthy } from './shared';
+export const mdxFieldsTemplate = (): string => `import { authoredName, type MdxProps, stringAttr, truthy } from './shared';
 
-const Field = ({ children, name, required, type }: MdxProps) => (
+const Field = ({ children, required, type, ...props }: MdxProps) => (
   <section className="mdx-field">
-    <code dir="ltr">{stringAttr(name)}</code>
+    <code dir="ltr">{authoredName(props)}</code>
     <span className="mdx-field-type">
       {stringAttr(type)}
       {truthy(required) ? ' · required' : ''}

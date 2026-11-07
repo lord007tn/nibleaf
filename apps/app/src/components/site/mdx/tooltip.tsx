@@ -10,20 +10,17 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
   const wrapper = useRef<HTMLSpanElement>(null);
   const linked = containsLink(children);
   // A tooltip around links has no button of its own, so every link carries the
-  // description (added to any it already has, which cleanup restores).
+  // description, added to any it already has. Cleanup removes only the
+  // tooltip's own id, so descriptions changed meanwhile by anything else stay.
   useEffect(() => {
     if (!tip || !linked) return;
+    const tokens = (link: HTMLElement) => (link.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
     const links = [...(wrapper.current?.querySelectorAll<HTMLElement>('a[href], [href]') ?? [])];
-    const previous = links.map((link) => {
-      const existing = link.getAttribute('aria-describedby');
-      const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
-      ids.add(id);
-      link.setAttribute('aria-describedby', [...ids].join(' '));
-      return { link, existing };
-    });
+    for (const link of links) link.setAttribute('aria-describedby', [...new Set([...tokens(link), id])].join(' '));
     return () => {
-      for (const { link, existing } of previous) {
-        if (existing) link.setAttribute('aria-describedby', existing);
+      for (const link of links) {
+        const remaining = tokens(link).filter((token) => token !== id);
+        if (remaining.length > 0) link.setAttribute('aria-describedby', remaining.join(' '));
         else link.removeAttribute('aria-describedby');
       }
     };

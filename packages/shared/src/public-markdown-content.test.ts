@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePublicMarkdownContent } from './public-markdown-content';
+import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 
 describe('public Markdown content normalization', () => {
   it.each(['$&', '$$', "$'", '$`'])('preserves replacement metacharacters in literal public code: %s', (token) => {
@@ -44,5 +44,14 @@ import Example from './example'
     expect(normalized).toContain('`{"mode":"safe"}`');
     expect(normalized).toContain('``literal `tick`, <tag>, and {value}``');
     expect(normalized).not.toContain('globalThis.stolen');
+  });
+
+  it('keeps tooltip text in parentheses after the inline content', () => {
+    expect(portablePublicMdxMarkdown('An <Tooltip tip="Application programming interface">API</Tooltip> call.')).toBe(
+      'An API (Application programming interface) call.',
+    );
+    // Projected like the other attributes: Markdown syntax is escaped, line breaks collapse.
+    expect(portablePublicMdxMarkdown('<Tooltip tip="Uses *stars* and\n[links]">term</Tooltip>')).toBe('term (Uses \\*stars\\* and \\[links\\])');
+    expect(portablePublicMdxMarkdown('A <Tooltip tip="">term</Tooltip> and a <Tooltip>word</Tooltip>.')).toBe('A term and a word.');
   });
 });

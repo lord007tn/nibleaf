@@ -46,6 +46,24 @@ describe('interactive MDX components', () => {
     expect(two?.hasAttribute('aria-describedby')).toBe(false);
   });
 
+  it('keeps a link description that changed after the tooltip mounted', async () => {
+    await act(async () =>
+      root.render(
+        <Tooltip tip="Shared hint">
+          <a href="/one" aria-describedby="own-one">
+            One
+          </a>
+        </Tooltip>,
+      ),
+    );
+    const tipId = container.querySelector('[role="tooltip"]')?.id ?? '';
+    const link = container.querySelector('a');
+    // Something else (another widget, a form error) updates the link's description meanwhile.
+    link?.setAttribute('aria-describedby', `own-one ${tipId} later-added`);
+    await act(async () => root.render(<Tooltip tip="">{null}</Tooltip>));
+    expect(link?.getAttribute('aria-describedby')).toBe('own-one later-added');
+  });
+
   it('supports roving keyboard focus for LTR tabs', async () => {
     await act(async () =>
       root.render(
