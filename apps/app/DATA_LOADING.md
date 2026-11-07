@@ -77,10 +77,13 @@ error), and is skipped during server rendering: the dashboard doesn't dehydrate 
 fetched on the server would render markup the browser's empty cache can't match on hydration. Don't `await` it in a
 loader — that would hold the navigation on the full-screen pending loader instead of the page skeleton.
 
-Loaders aren't code-split: what a loader imports ships in every page's first load, the public reader's included. Import
-loader factories from a module with no i18n or components (`query-options.ts`, `analytics/query-options.ts`,
-`analytics/insights.ts`), never from a barrel that also exports hooks calling `useT()`, which pulls in the whole
-dashboard message catalog. `pnpm --filter @nibleaf/app build && pnpm --filter @nibleaf/app bundle:check` catches it.
+Dashboard and sign-in loaders load with their route (`splitBehavior` in `vite.config.ts`), so they stay out of
+published docs pages. Every other route option (`validateSearch`, `beforeLoad`, `head`, anything the route file
+exports) and loaders outside the dashboard ship in every page's first load, the public reader's included. So keep
+`validateSearch` to small, icon-free checks, and import loader factories from a module with no i18n or components
+(`query-options.ts`, `analytics/query-options.ts`, `analytics/insights.ts`), never from a barrel that also exports
+hooks calling `useT()`, which pulls in the whole dashboard message catalog. `BUNDLE_ANALYZE=true pnpm --filter
+@nibleaf/app build && pnpm --filter @nibleaf/app bundle:check` catches both (see `BUNDLE_BUDGET.md`).
 
 ### Published reader pages (server-rendered)
 

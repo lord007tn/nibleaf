@@ -8,7 +8,10 @@ export const Route = createFileRoute('/(auth)')({
   beforeLoad: async ({ location }) => {
     // An MCP OAuth request lands here when Better Auth wants a (fresh) sign-in;
     // Better Auth continues the flow after it, so never redirect to /app.
-    if (isOAuthAuthorizationSearch(location.searchStr)) return;
+    // Imported lazily: beforeLoad is in the router's eager chunk, which published
+    // docs pages load, and the auth pages load this module anyway.
+    const oauth = await import('@/lib/mcp-oauth');
+    if (oauth.isOAuthAuthorizationSearch(location.searchStr)) return;
     if (await getSessionFn()) {
       const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
       throw redirect({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
