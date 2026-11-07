@@ -57,6 +57,12 @@ Review the branch as a reader:
 6. Merge the reviewed branch into the default draft, publish once, and verify
    the public deployment.
 
+**Promote into main** replaces main's pages with the branch's pages. If main
+changed since the branch's pages were copied from it, Promote stops, says why,
+and changes nothing: bring those changes into the branch, or undo them on main,
+then promote again. A branch created before this check, or copied from one,
+can't be promoted. Create a new branch from main and move your changes there.
+
 ## Recover from a bad draft
 
 If the public version is still correct, stop before publishing. Compare the
