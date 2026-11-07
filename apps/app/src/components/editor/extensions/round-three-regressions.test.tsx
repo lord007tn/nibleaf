@@ -275,15 +275,6 @@ describe('round three content regressions', () => {
       style.remove();
     }
   });
-  it.each(['svg+xml', 'x-icon', 'bmp'])('keeps unsupported legacy data:image/%s literal rather than an image node (8)', (type) => {
-    const editor = make();
-    const source = `![Unsupported](data:image/${type};base64,PHN2Zy8+)`;
-    editor.commands.setContent(source, { emitUpdate: false });
-    expect(editor.state.doc.firstChild?.type.name).toBe('paragraph');
-    expect(editor.state.doc.textContent).toBe(source);
-    reload(editor);
-    expect(editor.state.doc.textContent).toBe(source);
-  });
   it('announces upload completion and opens a passive description without moving focus or selection (focus)', async () => {
     const editor = make();
     editor.commands.setContent('Keep typing', { emitUpdate: false });

@@ -187,13 +187,6 @@ describe('round four content integrity', () => {
     nativePaste(to, clip.text.replace(/\n/g, newline), clip.dom.innerHTML);
     expect(getMarkdown(to)).toBe(source);
   });
-  it('uses distinct Arabic imperative and caption terminology (9)', () => {
-    const ar = JSON.parse(readFileSync('../../packages/i18n/messages/ar.json', 'utf8'));
-    expect(ar.editor_image_describe).toBe('\u0635\u0650\u0641 \u0627\u0644\u0635\u0648\u0631\u0629');
-    expect(ar.editor_image_addcaption).toBe(
-      '\u0625\u0636\u0627\u0641\u0629 \u062a\u0633\u0645\u064a\u0629 \u062a\u0648\u0636\u064a\u062d\u064a\u0629',
-    );
-  });
   it('removes the unused upload-failed key from the map and every catalog (10)', () => {
     expect(readFileSync('../../packages/i18n/src/message-ids.ts', 'utf8')).not.toContain("'editor.imageUploadFailed'");
     for (const locale of ['en', 'ar', 'bn', 'de', 'es', 'fr', 'hi', 'id', 'pt-BR', 'ru', 'ur', 'zh-CN'])

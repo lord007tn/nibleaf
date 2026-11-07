@@ -127,13 +127,13 @@ describe('review content regressions', () => {
     editor.view.pasteHTML(root.innerHTML);
     expect(getMarkdown(editor)).toContain('Cell');
   });
-  it('keeps pasted underline as u markup and records the current reader gap (9)', () => {
+  it('keeps pasted underline as u markup, which the rich reader renders (9)', () => {
     const editor = make();
     editor.view.pasteHTML('<p><span style="text-decoration:underline">Keep underline</span></p>');
     const saved = getMarkdown(editor);
     expect(saved).toBe('<u>Keep underline</u>');
     expect(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))).toContain('Keep underline');
-    expect(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))).not.toContain('<u>');
+    expect(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))).toContain('<u>');
     // The basic renderer intentionally does not parse raw HTML; routing uses RichMarkdown.
     expect(renderToStaticMarkup(createElement(MarkdownRenderer, { content: saved }))).toContain('Keep underline');
   });
