@@ -3,13 +3,8 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { ArrowDownToLine, Check, Replace, Sparkles, Wand2 } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { useAiDraft } from '@/hooks/api';
-
-type AiMode = 'continue' | 'rephrase' | 'outline' | 'summarize';
-/** What was clicked: a mode, or Generate with the person's own instruction. */
-type AiAction = AiMode | 'instruction';
+import { useEffect, useState } from 'react';
+import type { AiAction, AiAssistSession } from './use-ai-assist-session';
 
 /** Shown on the clicked button while the assistant works. */
 const WORKING: Record<AiAction, MessageKey> = {
@@ -21,62 +16,16 @@ const WORKING: Record<AiAction, MessageKey> = {
 };
 
 interface AiAssistProps {
-  projectId: string;
-  /** Current editor content (Markdown source). */
-  content: string;
-  /** Persisted setter — updating this triggers the editor's autosave. */
-  onContentChange: (next: string) => void;
+  session: AiAssistSession;
 }
 
-/** Append-style modes write straight back into the doc; transform modes show a preview first. */
-const APPEND_MODES = new Set<AiMode>(['continue', 'outline']);
-
-/**
- * AI assist card. Calls `useAiDraft(projectId)` with the live editor content.
- * For continue/outline the result is appended to the doc (so autosave persists it);
- * for rephrase/summarize the result lands in a preview box with Replace / Insert actions.
- * The clicked button shows that the assistant is working; a failure is toasted
- * once, in plain words, by `useAiDraft` (meta.errorMessage).
- */
-export function AiAssist({ projectId, content, onContentChange }: AiAssistProps) {
+/** The route owns requests and previews; this card can unmount with the rail. */
+export function AiAssist({ session }: AiAssistProps) {
   const t = useT();
-  const ai = useAiDraft(projectId);
   const [instruction, setInstruction] = useState('');
-  const [running, setRunning] = useState<AiAction | null>(null);
-  // Preview for transform modes (rephrase/summarize) — kept until the user acts on it.
-  const [preview, setPreview] = useState<{ mode: AiMode; text: string } | null>(null);
-
-  const appendToDoc = (text: string) => {
-    const trimmed = content.replace(/\s+$/, '');
-    const next = trimmed ? `${trimmed}\n\n${text.trim()}` : text.trim();
-    onContentChange(next);
-  };
-
-  const run = (action: AiAction, instruction?: string) => {
-    const mode: AiMode = action === 'instruction' ? 'continue' : action;
-    setRunning(action);
-    setPreview(null);
-    ai.mutate(
-      { mode, content, ...(instruction ? { instruction } : {}) },
-      {
-        onSuccess: (result) => {
-          if (!result.text?.trim()) {
-            toast.message(t('editor.ai.empty'));
-            return;
-          }
-          if (APPEND_MODES.has(mode)) {
-            appendToDoc(result.text);
-            toast.success(mode === 'outline' ? t('editor.ai.outlineAdded') : t('editor.ai.sectionDrafted'));
-          } else {
-            setPreview({ mode, text: result.text });
-          }
-        },
-        onSettled: () => setRunning(null),
-      },
-    );
-  };
-
-  const pending = ai.isPending;
+  const { pending, running, preview, run, busyElsewhere, trackCard } = session;
+  // While the card is on screen, a draft that lands here is seen without a toast.
+  useEffect(trackCard, [trackCard]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -89,6 +38,15 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
 
       <div className="space-y-3 p-4">
         <p className="text-muted-foreground text-sm leading-relaxed">{t('editor.ai.intro')}</p>
+        {busyElsewhere ? (
+          <p aria-hidden="true" className="text-muted-foreground text-sm">
+            {t('editor.ai.busyOtherPage')}
+          </p>
+        ) : null}
+        {/* A live region must exist before its text changes to be announced, so it is always rendered. */}
+        <p className="sr-only" role="status">
+          {busyElsewhere ? t('editor.ai.busyOtherPage') : ''}
+        </p>
 
         <div className="space-y-2">
           <Button
@@ -147,24 +105,13 @@ export function AiAssist({ projectId, content, onContentChange }: AiAssistProps)
               {preview.text}
             </p>
             <div className="grid grid-cols-1 gap-2">
-              <Button
-                className="w-full justify-start whitespace-normal text-start"
-                onClick={() => {
-                  onContentChange(preview.text.trim());
-                  setPreview(null);
-                  toast.success(t('editor.ai.replaced'));
-                }}
-                size="sm"
-              >
+              <Button className="w-full justify-start whitespace-normal text-start" disabled={pending} onClick={session.replace} size="sm">
                 <Replace className="size-3.5" /> {t('editor.ai.replace')}
               </Button>
               <Button
                 className="w-full justify-start whitespace-normal text-start"
-                onClick={() => {
-                  appendToDoc(preview.text);
-                  setPreview(null);
-                  toast.success(t('editor.ai.inserted'));
-                }}
+                disabled={pending}
+                onClick={session.insert}
                 size="sm"
                 variant="outline"
               >
