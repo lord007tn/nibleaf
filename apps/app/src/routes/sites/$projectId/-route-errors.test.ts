@@ -38,6 +38,14 @@ beforeEach(() => {
 });
 
 describe('published reader route input', () => {
+  it('titles reader pages when the site shell fails to load', () => {
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+      meta?: unknown[];
+    };
+    expect(head({ match: { search: { lang: 'ar' } }, matches: [] }).meta).toEqual([{ title: 'الوثائق' }]);
+    expect(head({ match: { search: {} }, matches: [] }).meta).toEqual([{ title: 'Documentation' }]);
+  });
+
   it('loads the site shell for a malformed percent path instead of throwing', async () => {
     mocks.getSite.mockResolvedValueOnce(Response.json({ data: { project: { id: 'qa-site' } } }));
 

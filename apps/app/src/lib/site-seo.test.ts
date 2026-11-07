@@ -5,6 +5,7 @@ import {
   changelogFeedUrl,
   pageHead,
   pageMarkdownHeaders,
+  readerFallbackHead,
   siteHead,
   siteIconHref,
   siteLanguageFromMatches,
@@ -478,6 +479,14 @@ describe('pageHead not-found (soft-404)', () => {
     expect(meta(head, 'robots')).toBe('noindex,nofollow');
     // No canonical for a page that does not exist.
     expect(canonical(head)).toBeUndefined();
+  });
+
+  it('titles a page that failed to load with the site name, else a localized "Documentation"', () => {
+    const matches = [
+      { routeId: '/sites/$projectId', loaderData: { site: { project: { name: 'Acme Docs' }, languageConfig: { name: 'وثائق أكمي' } } } },
+    ];
+    expect(readerFallbackHead(matches, 'ar').meta).toEqual([{ title: 'وثائق أكمي' }]);
+    expect(readerFallbackHead([], 'ar').meta).toEqual([{ title: 'الوثائق' }]);
   });
 
   it('titles a missing page in the reader language', () => {

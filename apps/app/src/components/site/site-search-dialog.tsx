@@ -122,11 +122,10 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-/** Keyboard key chip. Keys read left-to-right even inside an RTL dialog. */
 /** A sentence around the reader's query, with the query bidi-isolated: an
  *  English query in the Arabic interface (or the reverse) keeps its own
  *  punctuation and the sentence's quotes stay in place. */
-const QUERY_SLOT = '';
+const QUERY_SLOT = '\uE000';
 export function withIsolatedQuery(message: (query: string) => string, query: string): ReactNode {
   const [before = '', after = ''] = message(QUERY_SLOT).split(QUERY_SLOT);
   return (
@@ -138,6 +137,7 @@ export function withIsolatedQuery(message: (query: string) => string, query: str
   );
 }
 
+/** Keyboard key chip. Keys read left-to-right even inside an RTL dialog. */
 function Key({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <kbd

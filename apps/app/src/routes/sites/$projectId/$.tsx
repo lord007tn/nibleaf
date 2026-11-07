@@ -13,7 +13,7 @@ import { resolveLanguagePathRedirect } from '@/lib/site-language-path';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite } from '@/lib/site-paths';
 import { redirectIfConfigured } from '@/lib/site-redirects';
-import { pageHead, pageMarkdownHeaders, siteLanguageFromMatches } from '@/lib/site-seo';
+import { pageHead, pageMarkdownHeaders, readerFallbackHead, siteLanguageFromMatches } from '@/lib/site-seo';
 
 const OpenApiReferenceView = lazy(() =>
   import('@/components/site/openapi-reference-view').then((module) => ({ default: module.OpenApiReferenceView })),
@@ -108,7 +108,9 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   // Lets the server entry add the Markdown `Link` header from this already
   // loaded page instead of rendering the page a second time to find out.
   headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.kind === 'page' ? loaderData.page : null, loaderData?.lang),
-  head: ({ loaderData, params, matches }) => {
+  head: ({ loaderData, params, match, matches }) => {
+    // A page that failed to load (not a 404) still gets the site's name as its title.
+    if (match.status === 'error') return readerFallbackHead(matches, siteLanguageFromMatches(matches));
     if (loaderData?.kind === 'openapi') {
       const siteName = loaderData.site.languageConfig?.name || loaderData.site.project.name;
       const title = `${loaderData.openapi.title} — ${siteName}`;

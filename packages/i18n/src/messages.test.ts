@@ -220,6 +220,19 @@ describe('Paraglide message catalogs', () => {
     expect(informal.map(([key]) => key)).toEqual([]);
   });
 
+  it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s gives every variant message a catch-all form', (locale) => {
+    const raw = JSON.parse(readFileSync(resolve(messagesDirectory, `${locale}.json`), 'utf8')) as Record<string, string | VariantMessage>;
+    const missing = Object.entries(raw)
+      .filter((entry): entry is [string, VariantMessage] => Array.isArray(entry[1]))
+      .filter(
+        ([, variants]) =>
+          !variants.every((variant) => Object.keys(variant.match).some((key) => key.split(',').every((part) => part.trim().endsWith('=*')))),
+      )
+      .map(([key]) => key);
+    // Without `form=*` a count with no matching category would render nothing.
+    expect(missing).toEqual([]);
+  });
+
   it('maps every stable dotted UI key to a generated message id', () => {
     expect(new Set(Object.values(MESSAGE_IDS)).size).toBe(Object.keys(MESSAGE_IDS).length);
     for (const id of Object.values(MESSAGE_IDS)) expect(english).toHaveProperty(id);

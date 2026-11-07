@@ -8,7 +8,7 @@ import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ChangelogEntry, SiteShell } from '@/hooks/api/types';
 import { localeTag } from '@/lib/format';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { changelogFeedUrl, pageHead, siteLanguageFromMatches, sitePageUrl } from '@/lib/site-seo';
+import { changelogFeedUrl, pageHead, readerFallbackHead, siteLanguageFromMatches, sitePageUrl } from '@/lib/site-seo';
 
 export const Route = createFileRoute('/sites/$projectId/changelog')({
   component: SiteChangelog,
@@ -38,7 +38,8 @@ export const Route = createFileRoute('/sites/$projectId/changelog')({
     }
     return { site, entries, lang: deps.lang, siteOrigin: customDomainOrigin() };
   },
-  head: ({ loaderData, params, matches }) => {
+  head: ({ loaderData, params, match, matches }) => {
+    if (match.status === 'error') return readerFallbackHead(matches, siteLanguageFromMatches(matches));
     const site = loaderData?.site;
     // A missing site renders the not-found page: no canonical or feed for it.
     if (!site) return pageHead(null, params.projectId, siteLanguageFromMatches(matches));

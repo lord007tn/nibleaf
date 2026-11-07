@@ -187,6 +187,15 @@ const seoConfig = (config: ProjectConfig | null) => config;
 export const siteLanguageFromMatches = (matches: ReadonlyArray<{ routeId: string; loaderData?: unknown }> = []): string | undefined =>
   (matches.find((match) => match.routeId === '/sites/$projectId')?.loaderData as { site?: SiteShell | null } | undefined)?.site?.activeLanguage;
 
+/** <head> for a reader page whose data failed to load (an API error, not a
+ *  404): the site's name when the shell loaded, else a localized
+ *  "Documentation". Root leaves reader pages without Nibleaf's title, so the
+ *  tab would otherwise show a bare URL. */
+export const readerFallbackHead = (matches: ReadonlyArray<{ routeId: string; loaderData?: unknown }>, lang?: string): Head => {
+  const site = (matches.find((match) => match.routeId === '/sites/$projectId')?.loaderData as { site?: SiteShell | null } | undefined)?.site;
+  return { meta: [{ title: site?.languageConfig?.name || site?.project.name || siteT(lang)('documentation') }] };
+};
+
 /** Internal SSR response flag: the page route sets it when the page it already
  *  loaded has a public Markdown alternate, and src/server.ts turns it into the
  *  `Link` discovery header (then strips it). */
