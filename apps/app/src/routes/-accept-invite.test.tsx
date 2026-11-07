@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { AnchorHTMLAttributes, ComponentType, ReactNode } from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -50,7 +51,13 @@ vi.mock('@tanstack/react-router', () => ({
 import { Route } from './accept-invite.$invitationId';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-const Page = Route.options.component as ComponentType;
+const PageComponent = Route.options.component as ComponentType;
+const queryClient = new QueryClient();
+const Page = () => (
+  <QueryClientProvider client={queryClient}>
+    <PageComponent />
+  </QueryClientProvider>
+);
 const info = { email: 'recipient@example.com', organizationName: 'Example workspace', expired: false };
 
 describe('invitation recovery', () => {

@@ -5,13 +5,25 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
+const navigation = vi.hoisted(() => ({ members: {} as Record<string, unknown>, deployments: {} as Record<string, unknown> }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } } }) }));
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
-  Link: ({ children, className }: { children?: ReactNode; className?: string }) => (
-    <a className={className} href="/link">
+  Link: ({
+    children,
+    className,
+    search,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    search?: { section?: string };
+    'aria-label'?: string;
+  }) => (
+    <a aria-label={ariaLabel} className={className} href={search?.section ? `/settings?section=${search.section}` : '/link'}>
       {children}
     </a>
   ),
@@ -19,11 +31,11 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useDeployments: () => pending,
+  useDeployments: () => navigation.deployments,
   useDomains: () => pending,
   usePages: () => pending,
   useProject: () => pending,
-  useProjectMembers: () => pending,
+  useProjectMembers: () => navigation.members,
   usePublishAnyway: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('@/hooks/api/analytics', () => ({ useProjectAnalytics: analytics.hook }));
@@ -54,6 +66,8 @@ describe('site overview first load', () => {
   let root: Root;
 
   beforeEach(() => {
+    navigation.members = pending;
+    navigation.deployments = pending;
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -67,6 +81,105 @@ describe('site overview first load', () => {
 
   beforeEach(() => {
     analytics.hook.mockReturnValue(pending);
+  });
+
+  it.each(['member', 'admin', 'owner'])('keeps overview settings links within the %s role', async (role) => {
+    navigation.members = { isPending: false, data: { members: [{ role, user: { id: 'viewer' } }] } };
+    navigation.deployments = { isPending: false, data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const sections = [...container.querySelectorAll('a[href^="/settings"]')].map((link) =>
+      new URL(link.getAttribute('href') ?? '', 'https://example.test').searchParams.get('section'),
+    );
+    if (role === 'member') {
+      expect(sections).toContain('languages');
+      expect(sections.every((section) => ['members', 'languages'].includes(section ?? ''))).toBe(true);
+      expect(container.textContent).toContain('overview.settings.askAdmin');
+    } else {
+      expect(sections).toEqual(expect.arrayContaining(['members', 'integrations', 'plan', 'general', 'domain']));
+    }
+  });
+
+  it('shows neutral placeholders until the role resolves without an Editor explanation', async () => {
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.settings.askAdmin');
+    expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] } };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('a[href="/settings?section=general"]')).not.toBeNull();
+  });
+  it('offers Retry when permissions fail instead of an Editor explanation or settings link', async () => {
+    const retry = vi.fn();
+    navigation.members = { isError: true, refetch: retry };
+    navigation.deployments = { data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.settings.askAdmin');
+    expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(alert?.closest('ol')).toBeNull();
+    await act(async () => alert?.querySelector('button')?.click());
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('keeps checklist steps 1 and 2 usable while permissions load, gating only the optional domain step', async () => {
+    navigation.deployments = { data: [], isPending: false };
+    navigation.members = pending;
+    await act(async () => root.render(<SiteOverviewPage />));
+    const checklist = container.querySelector('ol');
+    expect(checklist).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step1"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step2"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step3"]')).toBeNull();
+    expect(checklist?.textContent).toContain('overview.nudge.step3Desc');
+    expect(checklist?.textContent).not.toContain('overview.settings.askAdmin');
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol a[href="/settings?section=domain"]')).not.toBeNull();
+  });
+
+  it('keeps checklist steps 1 and 2 usable after a permission failure and offers Retry inside step 3', async () => {
+    const retry = vi.fn();
+    navigation.deployments = { data: [], isPending: false };
+    navigation.members = { isPending: false, isError: true, refetch: retry };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const checklist = container.querySelector('ol');
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step1"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step2"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step3"]')).toBeNull();
+    const step3 = checklist?.querySelectorAll('li')[2];
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(step3?.querySelector('[role="alert"], [role="status"]')).toBeNull();
+    expect(step3?.textContent).toContain('overview.nudge.step3Desc');
+    expect(step3?.textContent).toContain('overview.nudge.permissionsError');
+    expect(step3?.textContent).not.toContain('error.title');
+    expect(step3?.textContent).not.toContain('error.unexpected');
+    const retryButton = step3?.querySelector('button');
+    expect(retryButton?.classList.contains('text-xs')).toBe(true);
+    expect(retryButton?.classList.contains('px-0')).toBe(true);
+    await act(async () => retryButton?.click());
+    expect(retry).toHaveBeenCalledOnce();
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol [role="alert"]')).toBeNull();
+    expect(container.querySelector('ol')?.textContent).not.toContain('overview.nudge.permissionsError');
+    expect(container.querySelector('ol a[href="/settings?section=domain"]')).not.toBeNull();
+  });
+
+  it.each(['member', 'admin', 'owner'])('retains cached %s settings rows and publish nudge after a background member failure', async (role) => {
+    const data = { members: [{ role, user: { id: 'viewer' } }] };
+    navigation.members = { data, isPending: false };
+    navigation.deployments = { data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const settingsHref = `/settings?section=${role === 'member' ? 'languages' : 'general'}`;
+    expect(container.querySelector(`a[href="${settingsHref}"]`)).not.toBeNull();
+    expect(container.textContent).toContain('overview.nudge.title');
+    navigation.members = { data, isPending: false, isError: true };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector(`a[href="${settingsHref}"]`)).not.toBeNull();
+    expect(container.textContent).toContain('overview.nudge.title');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    if (role !== 'member') expect(container.querySelector('a[href="/settings?section=integrations"]')).not.toBeNull();
   });
 
   it('prefetches the page views the overview opens with, in the loader', async () => {

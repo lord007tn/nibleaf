@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 
+const state = vi.hoisted(() => ({ confirm: vi.fn() }));
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
 const mutation = { mutate: vi.fn(), isPending: false };
 const query = vi.hoisted(() => ({ use: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
@@ -89,6 +91,45 @@ it('localizes both connection and operation failures and keeps details collapsed
     expect([...host.querySelectorAll('p')].some((p) => p.textContent?.includes('provider trace'))).toBe(false);
   } finally {
     await act(() => root.unmount());
+    host.remove();
+  }
+});
+
+it.each([false, true])('confirms webhook secret replacement before sending the request (%s)', async (approved) => {
+  mutation.mutate.mockClear();
+  state.confirm.mockResolvedValue(approved);
+  query.use.mockReturnValue({
+    isPending: false,
+    data: {
+      repository: 'team/docs',
+      baseBranch: 'main',
+      headBranch: 'docs',
+      contentPath: 'content',
+      lastSyncStatus: 'READY',
+      pullRequests: [],
+      conflicts: [],
+      operations: [],
+    },
+  });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<GitWorkflow projectId="site-1" />));
+    const button = (key: string) => [...host.querySelectorAll('button')].find((item) => item.textContent?.includes(key));
+    await act(async () => button('settings.git.workflow.nav.connection')?.click());
+    expect(button('settings.git.workflow.rotateSecret')).toBeDefined();
+    await act(async () => button('settings.git.workflow.rotateSecret')?.click());
+    expect(state.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'settings.git.workflow.rotateConfirm.title',
+        description: 'settings.git.workflow.rotateConfirm.description',
+        destructive: true,
+      }),
+    );
+    expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
+  } finally {
+    await act(async () => root.unmount());
     host.remove();
   }
 });

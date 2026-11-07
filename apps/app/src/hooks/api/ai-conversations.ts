@@ -8,20 +8,11 @@ import {
   aiConversationListResultSchema,
   aiConversationSummarySchema,
 } from '@nibleaf/validators';
-import {
-  infiniteQueryOptions,
-  keepPreviousData,
-  type QueryClient,
-  queryOptions,
-  skipToken,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { infiniteQueryOptions, keepPreviousData, type QueryClient, queryOptions, skipToken, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import type { AiDashboardSearch } from '@/components/ai-conversations/search';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { apiOrigin } from '@/services/api-origin';
 import { getData } from './client-helpers';
 
