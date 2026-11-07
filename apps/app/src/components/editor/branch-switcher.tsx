@@ -19,12 +19,15 @@ import {
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Check, GitMerge, Layers, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { Branch } from '@/hooks/api';
-import { friendlyErrorMessage, useCreateBranch, useMergeBranch } from '@/hooks/api';
+import type { Branch, BranchMergePreview } from '@/hooks/api';
+import { branchMergePreviewQueryOptions, friendlyErrorMessage, useCreateBranch, useMergeBranch } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { asPromotePreview, promoteNeedsReview } from './promote-review';
+import { PromoteReviewDialog } from './promote-review-dialog';
 
 /** Promote refusals the writer resolves from main: the toast keeps the server's
  *  explanation and offers the one step it starts with. */
@@ -66,18 +69,90 @@ export function BranchSwitcher({
   const merge = useMergeBranch(projectId);
   const active = branches.find((b) => b.id === activeBranchId) ?? branches.find((b) => b.isDefault) ?? branches[0];
 
-  const mergeActive = async () => {
-    if (!active || active.isDefault) {
+  const queryClient = useQueryClient();
+  const main = branches.find((b) => b.isDefault);
+  /** The pages main changed since the version was copied, while the writer reviews them. */
+  const [review, setReview] = useState<{ version: Branch; preview: BranchMergePreview } | null>(null);
+
+  /** A refusal the writer resolves from main: the server's explanation, plus the one
+   *  step it starts with. Long enough to read; the action only switches versions. */
+  const refuseFromMain = (message: string) => {
+    if (!main) {
+      toast.error(message);
       return;
     }
-    const main = branches.find((b) => b.isDefault);
+    toast.error(message, { duration: 20_000, action: { label: t('editor.branch.switchToMain'), onClick: () => onSwitch(main.id) } });
+  };
+
+  const promote = (version: Branch, confirmPreview?: string) => {
+    merge.mutate(confirmPreview ? { id: version.id, confirmPreview } : version.id, {
+      onSuccess: () => {
+        setReview(null);
+        toast.success(t('editor.branch.merged', { name: version.name }));
+        if (main) {
+          onSwitch(main.id);
+        }
+      },
+      onError: (e) => {
+        const message = friendlyErrorMessage(t, e, 'editor.branch.mergeError');
+        if (e instanceof ApiResponseError) {
+          // Main changed again, or the moves clash: review the fresh list.
+          const fresh = e.code === 'branch:main_changed' || e.code === 'branch:promote_blocked' ? asPromotePreview(e.details) : null;
+          if (fresh) {
+            setReview({ version, preview: fresh });
+            return;
+          }
+          // A save raced the promote and nothing changed: say so, then look again.
+          if (e.reason === 'promote_raced') {
+            setReview(null);
+            toast.error(message);
+            void reviewAndPromote(version);
+            return;
+          }
+          if (RESOLVED_FROM_MAIN.has(e.code ?? '')) {
+            setReview(null);
+            refuseFromMain(message);
+            return;
+          }
+        }
+        toast.error(message);
+      },
+    });
+  };
+
+  /** Load what main changed since the version was copied, then confirm the promote:
+   *  a plain confirm when promoting keeps every page main changed (or there are
+   *  none), the review dialog otherwise. */
+  const reviewAndPromote = async (version: Branch) => {
+    let preview: BranchMergePreview;
+    try {
+      preview = await queryClient.fetchQuery({ ...branchMergePreviewQueryOptions(projectId, version.id), staleTime: 0 });
+    } catch (e) {
+      toast.error(friendlyErrorMessage(t, e, 'editor.branch.mergeError'));
+      return;
+    }
+    if (!preview.baselineComplete) {
+      refuseFromMain(t('error.branchBaselineMissing'));
+      return;
+    }
+    if (promoteNeedsReview(preview)) {
+      setReview({ version, preview });
+      return;
+    }
     const ok = await confirm({
       title: t('editor.branch.merge'),
-      description: t('editor.branch.mergeConfirm', { name: active.name }),
+      description: t('editor.branch.mergeConfirm', { name: version.name }),
       confirmLabel: t('editor.branch.merge'),
       destructive: true,
     });
-    if (!ok) {
+    if (ok) {
+      // Every page main changed stays as it is, so this list needs no review.
+      promote(version, preview.changedOnMainSinceFork.length > 0 ? preview.fingerprint : undefined);
+    }
+  };
+
+  const mergeActive = async () => {
+    if (!active || active.isDefault) {
       return;
     }
     try {
@@ -86,23 +161,7 @@ export function BranchSwitcher({
       toast.error(t('editor.saveError'));
       return;
     }
-    merge.mutate(active.id, {
-      onSuccess: () => {
-        toast.success(t('editor.branch.merged', { name: active.name }));
-        if (main) {
-          onSwitch(main.id);
-        }
-      },
-      onError: (e) => {
-        const message = friendlyErrorMessage(t, e, 'editor.branch.mergeError');
-        if (main && e instanceof ApiResponseError && RESOLVED_FROM_MAIN.has(e.code ?? '')) {
-          // Long enough to read the steps; the action only switches, it never creates a version.
-          toast.error(message, { duration: 20_000, action: { label: t('editor.branch.switchToMain'), onClick: () => onSwitch(main.id) } });
-          return;
-        }
-        toast.error(message);
-      },
-    });
+    await reviewAndPromote(active);
   };
 
   const submit = async () => {
@@ -175,6 +234,16 @@ export function BranchSwitcher({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+
+      <PromoteReviewDialog
+        preview={review?.preview ?? null}
+        versionName={review?.version.name ?? ''}
+        pending={merge.isPending}
+        onConfirm={(fingerprint) => {
+          if (review) promote(review.version, fingerprint);
+        }}
+        onClose={() => setReview(null)}
+      />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
