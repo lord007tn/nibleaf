@@ -44,12 +44,16 @@ const buttonVariants = cva(
 type ButtonLoadingProps = {
   /**
    * Shows a spinner, sets `aria-busy` and disables the button while an action
-   * runs. The label stays in the layout (invisible) so the button keeps its
-   * width; pass `false` rather than leaving it undefined on buttons that can
-   * load, so the markup doesn't change when loading starts.
+   * runs. The label stays in the layout, visually hidden, so the button keeps
+   * its width; without `loadingText` it also stays the accessible name. Pass
+   * `false` rather than leaving it undefined on buttons that can load, so the
+   * markup doesn't change when loading starts.
    */
   loading?: boolean
-  /** Optional text shown next to the spinner while loading (e.g. "Saving…"). */
+  /**
+   * Optional text shown next to the spinner while loading (e.g. "Saving…").
+   * It replaces the label as the accessible name and wraps in narrow buttons.
+   */
   loadingText?: string
 }
 
@@ -79,12 +83,15 @@ function Button({
     >
       {canLoad ? (
         // Both states share one grid cell, so the button is as wide as the
-        // wider of the two and never jumps when loading starts or ends.
-        <span className="inline-grid items-center justify-items-center gap-[inherit]">
+        // wider of the two and never jumps when loading starts or ends. Both
+        // may shrink, so a long loadingText wraps instead of overflowing.
+        // Without loadingText the label is hidden with opacity, not
+        // visibility, so it stays the button's accessible name.
+        <span className="inline-grid min-w-0 max-w-full items-center justify-items-center gap-[inherit]">
           <span
             className={cn(
-              "col-start-1 row-start-1 inline-flex items-center justify-center gap-[inherit]",
-              loading && "invisible"
+              "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-[inherit]",
+              loading && (loadingText ? "invisible" : "opacity-0")
             )}
             aria-hidden={loading && loadingText ? true : undefined}
           >
@@ -92,13 +99,13 @@ function Button({
           </span>
           <span
             className={cn(
-              "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5",
+              "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-1.5",
               !loading && "invisible"
             )}
             aria-hidden={!loading || !loadingText ? true : undefined}
           >
             <Loader2Icon aria-hidden className="animate-spin motion-reduce:animate-none" />
-            {loadingText ? <span>{loadingText}</span> : null}
+            {loadingText ? <span className="min-w-0 overflow-x-clip text-ellipsis">{loadingText}</span> : null}
           </span>
         </span>
       ) : (
