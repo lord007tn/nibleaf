@@ -1,20 +1,21 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArabicDocumentationPlatformsPage } from '@/components/marketing/arabic-seo';
+import type { ArabicPlatformsCopy } from '@/lib/arabic-marketing-copy';
 import { breadcrumbLd, canonicalHref, pageMeta } from '@/lib/marketing-seo';
 
 const path = '/ar/documentation-platforms';
 
-export const arabicDocumentationPlatformsHead = () => {
+export const arabicDocumentationPlatformsHead = (copy: ArabicPlatformsCopy) => {
   const t = siteT('ar');
   return {
     meta: pageMeta({
-      title: t('arabicPlatformsTitle'),
-      description: t('arabicPlatformsDescription'),
+      title: copy.title,
+      description: copy.description,
       path,
       locale: 'ar_AR' as const,
       imagePath: '/brand/raster/social/nibleaf-og-card-ar.png',
-      imageAlt: t('arabicPlatformsImageAlt'),
+      imageAlt: copy.imageAlt,
     }),
     links: [
       { rel: 'canonical', href: canonicalHref(path) },
@@ -25,14 +26,14 @@ export const arabicDocumentationPlatformsHead = () => {
     scripts: [
       breadcrumbLd([
         { name: t('home'), path: '/ar' },
-        { name: t('arabicPlatformsBreadcrumb'), path },
+        { name: copy.breadcrumb, path },
       ]),
       {
         type: 'application/ld+json',
         children: JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'ItemList',
-          name: t('arabicPlatformsTitle'),
+          name: copy.title,
           inLanguage: 'ar',
           numberOfItems: 6,
           itemListOrder: 'https://schema.org/ItemListOrderAscending',
@@ -48,6 +49,8 @@ export const arabicDocumentationPlatformsHead = () => {
 };
 
 export const Route = createFileRoute('/ar/documentation-platforms')({
-  head: arabicDocumentationPlatformsHead,
+  // The Arabic copy loads with this page, not with every page's route tree.
+  loader: () => import('@/lib/arabic-marketing-copy').then((copy) => copy.arabicPlatformsCopy()),
+  head: ({ loaderData }) => (loaderData ? arabicDocumentationPlatformsHead(loaderData) : {}),
   component: ArabicDocumentationPlatformsPage,
 });

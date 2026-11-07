@@ -188,6 +188,9 @@ jobs:
           # The integrated app's route graph exceeds V8's default ~4 GiB heap
           # while Rollup renders production chunks on GitHub-hosted runners.
           NODE_OPTIONS: --max-old-space-size=6144
+          # Writes apps/app/.bundle-analysis (outside the deployed output) so the
+          # public JavaScript budget step can check module boundaries.
+          BUNDLE_ANALYZE: "true"
         run: pnpm build:app
 
       - name: Smoke production app runtime

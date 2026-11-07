@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { arabicPlatformsCopy } from '@/lib/arabic-marketing-copy';
 import { arabicDocumentationPlatformsHead } from './ar/documentation-platforms';
 import { documentationPlatformsHead } from './documentation-platforms';
 
 describe('documentation platform route language pair', () => {
   it.each([
     ['en', documentationPlatformsHead, '/documentation-platforms'],
-    ['ar', arabicDocumentationPlatformsHead, '/ar/documentation-platforms'],
+    ['ar', () => arabicDocumentationPlatformsHead(arabicPlatformsCopy()), '/ar/documentation-platforms'],
   ] as const)('emits a self canonical and reciprocal alternates for %s', (_locale, headFactory, selfPath) => {
     const links = headFactory().links;
     expect(links).toContainEqual({ rel: 'canonical', href: expect.stringMatching(`${selfPath}$`) });
@@ -16,7 +17,7 @@ describe('documentation platform route language pair', () => {
 
   it.each([
     ['en', documentationPlatformsHead],
-    ['ar', arabicDocumentationPlatformsHead],
+    ['ar', () => arabicDocumentationPlatformsHead(arabicPlatformsCopy())],
   ] as const)('emits the six-platform ItemList for %s', (locale, headFactory) => {
     const script = headFactory().scripts.find((candidate) => JSON.parse(candidate.children)['@type'] === 'ItemList');
     expect(script).toBeDefined();
