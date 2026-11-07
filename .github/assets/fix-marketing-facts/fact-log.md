@@ -208,3 +208,10 @@ Task-owned files:
 - `apps/app/src/lib/marketing-llms.ts` — new
 - `apps/app/src/lib/marketing-llms.test.ts` — new
 - `apps/app/src/server.ts` — import cleanup and removal of extracted text functions only
+
+## Follow-up after independent review — 2026-11-07
+
+| Change | Old text → new text | Verdict | Evidence |
+| --- | --- | --- | --- |
+| Availability wording for Ask AI, workspace AI keys, the support MCP and docs-owner insights (comparisons, pricing, FAQ, Arabic platform page, `marketing.release.mcpBody`, llms.txt) | "available when you self-host today, and on Nibleaf Cloud as it rolls out" → "in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out" (Arabic: «في الشيفرة المفتوحة المصدر الآن، وتصل مع الإصدار القادم للاستضافة الذاتية وإلى Nibleaf Cloud تدريجيًا») | false for installed releases | The installer pulls the latest published release (`scripts/install.sh`), and the latest public release (v0.1.2, 2026-08-22) predates #277–#285 |
+| `/pricing` loaded every interface locale | `useT()` → the single `marketing.release.searchCapability` message, English pinned | performance | Page transfer 932 KiB → 459 KiB (Lighthouse, local brotli) |
