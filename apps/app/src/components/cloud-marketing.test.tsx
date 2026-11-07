@@ -75,12 +75,16 @@ describe('GitHubStarLink', () => {
   it.each([0, 0.5, Number.NaN, -1])('does not turn an unavailable count into proof (%s)', (stars) => {
     const link = markup(renderToStaticMarkup(<GitHubStarLink stars={stars} />)).querySelector('a');
     expect(link?.getAttribute('href')).toBe('https://github.com/lord007tn/nibleaf');
-    expect(link?.getAttribute('aria-label')).toBe('Star on GitHub');
+    expect(link?.hasAttribute('aria-label')).toBe(false);
+    expect(link?.textContent).toBe('Star on GitHub');
     expect(link?.querySelector('[data-github-stars]')).toBeNull();
   });
   it('includes the visible label and the exact count in the accessible name', () => {
     const link = markup(renderToStaticMarkup(<GitHubStarLink stars={1234} compact label="GitHub" />)).querySelector('a');
-    expect(link?.getAttribute('aria-label')).toBe('GitHub — 1,234 stars');
+    expect(link?.hasAttribute('aria-label')).toBe(false);
+    // Visible text first, in order, then the exact count for screen readers.
+    expect(link?.textContent).toBe('GitHub1.2k (1,234 stars)');
+    expect(link?.querySelector('.sr-only')?.textContent).toBe(' (1,234 stars)');
     expect(link?.querySelector('[data-github-stars="1234"]')?.textContent).toBe('1.2k');
   });
 });

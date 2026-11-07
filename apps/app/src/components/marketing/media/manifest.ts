@@ -9,6 +9,8 @@ import arabicArPhoneLight780_avif from './assets/arabic-ar-phone-light-780.avif?
 import arabicArPhoneLight780_webp from './assets/arabic-ar-phone-light-780.webp?url';
 import chatArPhone390_avif from './assets/chat-ar-phone-390.avif?url';
 import chatArPhone390_webp from './assets/chat-ar-phone-390.webp?url';
+import chatArPhone560_avif from './assets/chat-ar-phone-560.avif?url';
+import chatArPhone560_webp from './assets/chat-ar-phone-560.webp?url';
 import chatArPhone780_avif from './assets/chat-ar-phone-780.avif?url';
 import chatArPhone780_webp from './assets/chat-ar-phone-780.webp?url';
 import chatArWide640_avif from './assets/chat-ar-wide-640.avif?url';
@@ -47,6 +49,8 @@ import heroArWideLight1280_avif from './assets/hero-ar-wide-light-1280.avif?url'
 import heroArWideLight1280_webp from './assets/hero-ar-wide-light-1280.webp?url';
 import heroEnPhone390_avif from './assets/hero-en-phone-390.avif?url';
 import heroEnPhone390_webp from './assets/hero-en-phone-390.webp?url';
+import heroEnPhone560_avif from './assets/hero-en-phone-560.avif?url';
+import heroEnPhone560_webp from './assets/hero-en-phone-560.webp?url';
 import heroEnPhone780_avif from './assets/hero-en-phone-780.avif?url';
 import heroEnPhone780_webp from './assets/hero-en-phone-780.webp?url';
 import heroEnWideDark640_avif from './assets/hero-en-wide-dark-640.avif?url';
@@ -163,6 +167,7 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       ]),
       phone: variant(780, 1688, [
         [390, heroEnPhone390_avif, heroEnPhone390_webp],
+        [560, heroEnPhone560_avif, heroEnPhone560_webp],
         [780, heroEnPhone780_avif, heroEnPhone780_webp],
       ]),
     },
@@ -241,6 +246,7 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       ]),
       phone: variant(780, 1688, [
         [390, chatArPhone390_avif, chatArPhone390_webp],
+        [560, chatArPhone560_avif, chatArPhone560_webp],
         [780, chatArPhone780_avif, chatArPhone780_webp],
       ]),
     },

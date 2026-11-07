@@ -135,7 +135,7 @@ export function LandingView({
   return (
     <>
       <section className="border-border border-b bg-linear-to-b from-primary/5 via-background to-background">
-        <div className={`${container} grid items-center gap-10 py-12 sm:py-20 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:py-24`}>
+        <div className={`${container} grid items-center gap-10 py-12 sm:py-20 lg:grid-cols-[1fr_1.05fr] lg:items-start lg:gap-12 lg:py-24`}>
           <div className="min-w-0">
             <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
             <h1 className="mt-5 text-balance font-semibold text-[2.5rem] leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem] rtl:text-[2.1rem] rtl:leading-[1.5] rtl:tracking-normal rtl:sm:text-5xl">
