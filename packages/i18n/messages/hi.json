@@ -337,6 +337,8 @@
   "editor_pages": "पन्ने",
   "editor_backtodashboard": "डैशबोर्ड पर वापस जाएँ",
   "editor_config_heading": "साइट सेटिंग",
+  "editor_config_adminonly": "केवल एडमिन ही साइट की सेटिंग बदल सकते हैं। अगर कुछ बदलना हो, तो इस साइट के किसी एडमिन से कहें।",
+  "editor_config_backtowriting": "लिखने पर वापस जाएँ",
   "editor_viewonsite": "साइट पर देखें",
   "editor_ai_title": "एआई सहायता",
   "editor_ai_intro": "लिखना जारी रखें, स्पष्टता के लिए दोबारा लिखें, या संकेत से उत्पन्न करें - इस दस्तावेज़ पर आधारित।",
