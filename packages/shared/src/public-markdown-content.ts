@@ -15,7 +15,7 @@ const mdxAttribute = (source: string, name: string): string | undefined => {
 
 /** A tag's attributes, read up to the first `>` outside quotes, so a value
  *  such as `tip="a > b"` stays whole. */
-const ATTRIBUTES = String.raw`((?:[^>"']|"[^"]*"|'[^']*')*)`;
+const ATTRIBUTES = `((?:[^>"']|"[^"]*"|'[^']*')*)`;
 /** An atom, self-closing (`<File … />`) or written as an empty pair (`<File …></File>`). */
 const atomPattern = (tag: string) => new RegExp(String.raw`<${tag}\b${ATTRIBUTES}(?:\/>|>\s*<\/${tag}>)`, 'gi');
 
