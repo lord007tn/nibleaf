@@ -359,6 +359,7 @@
   "editor_ai_sectiondrafted": "部分起草。",
   "editor_ai_drafterror": "无法起草内容。",
   "editor_ai_ratelimited": "已达到每日 AI 使用上限。请明天再试。",
+  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_summarylabel": "总结",
   "editor_ai_suggestionlabel": "建议",
   "editor_ai_replace": "更换",
