@@ -3,7 +3,7 @@ import { ArabicLandingPage } from '@/components/marketing/arabic-seo';
 import type { ArabicLandingCopy } from '@/lib/arabic-marketing-copy';
 import { canonicalHref, marketingLd, pageMeta } from '@/lib/marketing-seo';
 
-export const arabicLandingHead = (copy: ArabicLandingCopy) => ({
+const arabicLandingHead = (copy: ArabicLandingCopy) => ({
   meta: pageMeta({
     title: copy.title,
     description: copy.description,
