@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
-const mocks = vi.hoisted(() => ({ get: vi.fn(), exec: vi.fn(), incr: vi.fn(), expire: vi.fn(), complete: vi.fn(), track: vi.fn() }));
+const mocks = vi.hoisted(() => ({ get: vi.fn(), exec: vi.fn(), set: vi.fn(), incr: vi.fn(), complete: vi.fn(), track: vi.fn() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { user: { findUnique: async () => ({ suspendedAt: null }) } } }));
 vi.mock('@/actions/projects', () => ({
   assertProjectAccess: async () => ({ organizationId: 'site-org', role: 'member' }),
@@ -17,7 +17,8 @@ vi.mock('ioredis', () => ({
   Redis: class {
     get = mocks.get;
     multi() {
-      return { incr: mocks.incr, expire: mocks.expire, exec: mocks.exec };
+      // The real counter transaction: SET ... EX ... NX, then INCR, then EXEC.
+      return { set: mocks.set, incr: mocks.incr, exec: mocks.exec };
     }
     on = vi.fn();
   },
@@ -46,8 +47,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.get.mockRejectedValue(new Error('Redis unavailable'));
   mocks.exec.mockRejectedValue(new Error('Redis unavailable'));
+  mocks.set.mockReturnThis();
   mocks.incr.mockReturnThis();
-  mocks.expire.mockReturnThis();
 });
 describe('drafting while Redis is unavailable', () => {
   it('returns a secret-free capability state without consuming quota', async () => {
@@ -66,6 +67,8 @@ describe('drafting while Redis is unavailable', () => {
     });
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ error: { code: 'usage:unavailable' } });
+    // The 503 comes from the unreachable quota store, not from some other failure.
+    expect(mocks.set).toHaveBeenCalledWith(expect.stringContaining(':site-org:'), 0, 'EX', 86_400, 'NX');
     expect(mocks.exec).toHaveBeenCalledOnce();
     expect(mocks.complete).not.toHaveBeenCalled();
     expect(mocks.track).not.toHaveBeenCalled();
