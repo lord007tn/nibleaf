@@ -62,6 +62,36 @@ describe('table column alignment', () => {
     editor.commands.setContent(saved, { emitUpdate: false });
     expect(semantic()).toEqual(before);
   });
+  it('keeps a literal backslash right before a pipe, in text and in code, through save and reload', () => {
+    const editor = makeEditor('| A | B |\n| --- | --- |\n| x | y |');
+    const cells: number[] = [];
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'tableCell') cells.push(pos + 2);
+    });
+    const [first, second] = cells as [number, number];
+    // Insert from the end so the first position stays valid.
+    editor
+      .chain()
+      .setTextSelection(second)
+      .insertContent({ type: 'text', text: 'c\\|d', marks: [{ type: 'code' }] })
+      .run();
+    editor.chain().setTextSelection(first).insertContent({ type: 'text', text: 'a\\|b' }).run();
+    const text = () => {
+      const values: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'tableCell') values.push(node.textContent);
+      });
+      return values;
+    };
+    expect(text()).toEqual(['a\\|bx', 'c\\|dy']);
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('a\\\\\\|b');
+    expect(saved).toContain('`c\\\\|d`');
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(text()).toEqual(['a\\|bx', 'c\\|dy']);
+    expect(getMarkdown(editor)).toBe(saved);
+  });
+
   it('encodes blank lines in HTML fallback code cells and writes physical align attributes (C, 8)', () => {
     const editor = makeEditor('<table><tr><td align="right"><pre><code>first&#10;&#10;last</code></pre></td></tr></table>');
     const saved = getMarkdown(editor);

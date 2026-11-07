@@ -9,6 +9,17 @@ import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 
 export type ColumnAlignment = 'left' | 'center' | 'right' | null;
+
+/**
+ * Escape every pipe in a cell's serialized Markdown so it can't end the cell.
+ * Backslashes need no escaping of their own here:
+ * - the serializer already writes each literal backslash in text as `\\`;
+ * - GFM removes exactly one backslash before a pipe in a table row, inside
+ *   code spans too.
+ * So text `a\` followed by `|` saves as `a\\\|`, and code `a\|b` as `a\\|b`;
+ * both reload unchanged.
+ */
+const escapeCellPipes = (markdown: string): string => markdown.replace(/\|/g, (pipe) => `\\${pipe}`);
 const alignAttribute = {
   default: null,
   parseHTML: (element: HTMLElement) => {
@@ -158,7 +169,7 @@ export const AlignedTable = Table.extend({
               if (cell.firstChild) {
                 const start = tableState.out.length;
                 state.renderInline(cell.firstChild);
-                tableState.out = tableState.out.slice(0, start) + tableState.out.slice(start).replace(/\|/g, '\\|');
+                tableState.out = tableState.out.slice(0, start) + escapeCellPipes(tableState.out.slice(start));
               }
             });
             state.write(' |');
