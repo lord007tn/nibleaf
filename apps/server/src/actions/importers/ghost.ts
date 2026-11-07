@@ -89,7 +89,9 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
     const ghostSourceUrl = ghostImportSourceUrl(input);
     const assets = new GhostAssetMigrator(projectId);
     const state = { pages: 0, capWarned: false, ghostUrlWarned: false, untagged: 0, ambiguous: 0 };
-    await Promise.all([...targets.values()].map((target) => removeImportPlaceholders(target)));
+    // One at a time: every cleanup takes the same project lock, so running them
+    // together would only hold extra connections queued behind it.
+    for (const target of targets.values()) await removeImportPlaceholders(target);
     await importByLanguage(importedContent.posts, 'Blog', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
     await importByLanguage(importedContent.pages, 'Pages', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
     if (state.untagged > 0) {

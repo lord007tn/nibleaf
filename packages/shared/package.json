@@ -20,10 +20,13 @@
     "./public-markdown-content": "./src/public-markdown-content.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
+    "./domains": "./src/domains.ts",
     "./site": "./src/site.ts",
+    "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
     "./theme-repository": "./src/theme-repository.ts",
+    "./theme-repository-templates": "./src/theme-repository-templates/index.ts",
     "./export-schedule": "./src/export-schedule.ts",
     "./utils": "./src/utils.ts"
   },

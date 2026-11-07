@@ -366,7 +366,7 @@
   background: color-mix(in oklch, #16a34a 10%, var(--color-card));
 }
 /* info = primary tint, check = neutral/stone tint — mirrors the live site's
-   callout palette (site/mdx-components.tsx: border-primary/30 bg-primary/10 and
+   callout palette (site/mdx/callout.tsx: border-primary/30 bg-primary/10 and
    border-stone-500/30 bg-stone-500/10). */
 .pl-editor .ProseMirror .pl-callout[data-variant="info"] {
   border-color: color-mix(

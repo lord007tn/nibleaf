@@ -7,7 +7,7 @@ describe('published-site reader localization', () => {
     const t = siteContentT('ar-SA');
 
     expect(t('changeLanguage')).toBe('تغيير اللغة');
-    expect(t('toggleTheme')).toBe('تبديل السمة');
+    expect(t('darkMode')).toBe('الوضع الداكن');
     expect(t('articleDetails')).toBe('تفاصيل المقالة');
     expect(t('viewMarkdown')).toBe('عرض Markdown');
     expect(t('copyMarkdown')).toBe('نسخ Markdown');

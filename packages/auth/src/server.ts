@@ -25,6 +25,11 @@ import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
 import { googleOAuthEnabled } from './providers';
+import {
+  STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT,
+  STARTER_GETTING_STARTED_ICON,
+  STARTER_GETTING_STARTED_TITLE,
+} from './starter-content';
 
 const env = keys();
 const log = createLogger({ module: 'auth' });
@@ -88,62 +93,6 @@ async function userNotificationEnabled(userId: string, id: string): Promise<bool
 // each page demonstrates a slice of the editor/MDX toolkit and is written to be
 // replaced. Keep internal links pointing at pages that exist in this template —
 // the publish-time broken-link check runs against the starter too.
-
-const GETTING_STARTED_CONTENT = `Welcome to your new documentation site. Everything you read here is a regular
-page — edit it, replace it, or delete it. This starter shows what your docs can
-do, so your first edits feel natural.
-
-## Edit this page
-
-1. Click anywhere in the text and start typing — the editor is a Notion-style
-   editor over plain Markdown.
-2. Type \`/\` on an empty line to insert callouts, code blocks, tabs, and more.
-3. Changes save automatically as drafts. Nothing goes live until you publish.
-
-## Publish your site
-
-Hit **Publish** in the top bar to ship a snapshot of your docs as a live,
-searchable site. This starter was published for you at sign-up, so your site is
-already live — each publish after this replaces it, and you can roll back to
-any earlier version.
-
-<Note>
-
-Write about **your** product here. A good first edit: rename this page, then
-describe what your product does in one paragraph.
-
-</Note>
-
-## Explore the starter
-
-<CardGroup cols="2">
-
-<Card title="Installation" href="/installation" icon="download">
-
-Show users how to install your product with tabs and step-by-step guides.
-
-</Card>
-
-<Card title="Components tour" href="/components-tour" icon="puzzle">
-
-Steps, tabs, callouts, cards, and accordions — everything in your toolkit.
-
-</Card>
-
-<Card title="API reference" href="/api-reference/create-a-widget" icon="code">
-
-Document endpoints with parameter and response fields.
-
-</Card>
-
-<Card title="FAQ" href="/faq" icon="help-circle">
-
-Answer common questions with accordions.
-
-</Card>
-
-</CardGroup>
-`;
 
 const INSTALLATION_CONTENT = `Replace this page with real installation instructions for your product. It
 demonstrates the two building blocks most install guides need: tabs for
@@ -534,7 +483,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
           const language = await tx.language.create({
             data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
           });
-          const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+          const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, omit: { forkBaseline: true } });
           return { project, language, branch };
         });
       } catch (error) {
@@ -555,7 +504,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
   const { project, language, branch } = await createProjectWithInvariants();
   const base = { projectId: project.id, languageId: language.id, branchId: branch.id };
   const topLevel: Array<{ title: string; icon: string; content: string; position: number }> = [
-    { title: 'Getting started', icon: 'rocket', content: GETTING_STARTED_CONTENT, position: 0 },
+    { title: STARTER_GETTING_STARTED_TITLE, icon: STARTER_GETTING_STARTED_ICON, content: GETTING_STARTED_CONTENT, position: 0 },
     { title: 'Installation', icon: 'download', content: INSTALLATION_CONTENT, position: 1 },
     { title: 'Components tour', icon: 'puzzle', content: COMPONENTS_TOUR_CONTENT, position: 2 },
   ];

@@ -1,8 +1,10 @@
-import { prisma } from '@nibleaf/database';
+import { STARTER_GETTING_STARTED_CONTENT, STARTER_GETTING_STARTED_ICON, STARTER_GETTING_STARTED_TITLE } from '@nibleaf/auth/starter-content';
+import { Prisma, prisma } from '@nibleaf/database';
 import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
 import { createPage } from '../pages';
+import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './cleanup-locks';
 
 /**
  * Idempotent page-upsert machinery shared by every importer (Git, Mintlify,
@@ -22,31 +24,94 @@ export const defaultImportTarget = async (projectId: string): Promise<ImportTarg
   return { projectId, branchId: branch.id, languageId: language.id };
 };
 
-/** Remove only untouched product/Ghost placeholder pages before a real import.
- * The content signatures keep a customized page with the same title safe. */
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+const PRISTINE_GETTING_STARTED = normalizeWhitespace(STARTER_GETTING_STARTED_CONTENT);
+
+const starterFields = {
+  id: true,
+  slug: true,
+  title: true,
+  icon: true,
+  description: true,
+  hidden: true,
+  config: true,
+  translationKey: true,
+  content: true,
+} as const;
+
+type StarterCandidate = {
+  slug: string;
+  title: string;
+  icon: string | null;
+  description: string | null;
+  hidden: boolean;
+  config: unknown;
+  translationKey: string | null;
+  content: string;
+};
+
+/** Whether a root starter page is exactly as Nibleaf created it: every field
+ * sign-up sets (title, icon, text) still matches, and every field it leaves
+ * empty (description, settings, translation key, hidden) still is. Only the
+ * sign-up Getting started page qualifies: no sign-up flow created a blank
+ * Welcome or coming-soon page; the other sample pages are left in place on
+ * purpose. Whitespace differences in the text are ignored; any other edit — a
+ * rename included — makes the page the writer's. */
+export const isPristineStarterPage = (page: StarterCandidate): boolean => {
+  const untouchedSettings = page.description === null && !page.hidden && page.config === null && page.translationKey === null;
+  if (!untouchedSettings) return false;
+  return (
+    page.slug === 'getting-started' &&
+    page.title === STARTER_GETTING_STARTED_TITLE &&
+    page.icon === STARTER_GETTING_STARTED_ICON &&
+    normalizeWhitespace(page.content) === PRISTINE_GETTING_STARTED
+  );
+};
+
+/**
+ * Remove only untouched starter pages before a real import, so the promise
+ * that nothing a writer edited is deleted holds.
+ *
+ * An unlocked read only finds candidates. The deletion then runs in one
+ * transaction under the page-write lock protocol: project row first
+ * (`FOR NO KEY UPDATE`, which also holds off new child pages), then the
+ * candidate rows `FOR UPDATE` in ascending id order, which waits for any
+ * autosave in flight. Each candidate is re-read and re-checked there —
+ * signature, and no child pages, comments or audience grants (all would go
+ * with it) — and only rows that still qualify go.
+ */
 export const removeImportPlaceholders = async (target: ImportTarget): Promise<number> => {
-  const rows = await prisma.page.findMany({
-    where: {
-      projectId: target.projectId,
-      branchId: target.branchId,
-      languageId: target.languageId,
-      parentId: null,
-      kind: 'PAGE',
-      slug: { in: ['welcome', 'getting-started', 'coming-soon'] },
-    },
-    select: { id: true, slug: true, content: true },
-  });
-  const ids = rows
-    .filter((page) => {
-      const content = page.content.toLowerCase();
-      if (page.slug === 'getting-started') return content.includes('welcome to your new documentation site');
-      if (page.slug === 'coming-soon') return content.includes('brand new site') || content.includes('up and running here shortly');
-      return page.slug === 'welcome' && (!content.trim() || content.includes('welcome to your new documentation'));
-    })
-    .map((page) => page.id);
-  if (ids.length === 0) return 0;
-  const result = await prisma.page.deleteMany({ where: { id: { in: ids } } });
-  return result.count;
+  const scope = { projectId: target.projectId, branchId: target.branchId, languageId: target.languageId, parentId: null, kind: 'PAGE' as const };
+  const where = { ...scope, slug: 'getting-started' };
+  const candidates = (await prisma.page.findMany({ where, select: starterFields })).filter(isPristineStarterPage).map((page) => page.id);
+  if (candidates.length === 0) return 0;
+  const ids = [...candidates].sort();
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await limitCleanupLockWait(tx);
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${target.projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
+      // Comments and audience grants cascade with their page: a page that
+      // gathered either is no longer just the starter.
+      const pristine = (
+        await tx.page.findMany({ where: { ...where, id: { in: ids }, comments: { none: {} }, audienceGrants: { none: {} } }, select: starterFields })
+      )
+        .filter(isPristineStarterPage)
+        .map((page) => page.id);
+      if (pristine.length === 0) return 0;
+      const parents = new Set(
+        (await tx.page.findMany({ where: { parentId: { in: pristine } }, select: { parentId: true } })).map((child) => child.parentId),
+      );
+      const deletable = pristine.filter((id) => !parents.has(id));
+      if (deletable.length === 0) return 0;
+      return (await tx.page.deleteMany({ where: { id: { in: deletable } } })).count;
+    }, CLEANUP_TRANSACTION);
+  } catch (error) {
+    // A lock stayed busy for 10 s (a long Git sync holds the project lock):
+    // keep the starter page rather than fail the import.
+    if (isCleanupLockTimeout(error)) return 0;
+    throw error;
+  }
 };
 
 /**

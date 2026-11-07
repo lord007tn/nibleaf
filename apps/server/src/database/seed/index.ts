@@ -34,7 +34,7 @@ async function seed() {
     orderBy: { createdAt: 'asc' },
     include: {
       languages: { orderBy: { position: 'asc' }, include: { projectTranslations: { take: 1 } } },
-      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
     },
   });
   if (!project) {

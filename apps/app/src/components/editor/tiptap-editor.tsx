@@ -57,7 +57,7 @@ import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
-import { mdxNodes } from './extensions/mdx-nodes';
+import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
@@ -188,7 +188,8 @@ const CodeBlock = CodeBlockLowlight.extend({
 });
 
 interface BuildExtensionsOptions {
-  /** Upload a picked/pasted image, returning its hosted URL (or null). */
+  /** Upload a picked/pasted image, returning its hosted URL (or null). Without
+   *  one, the image slash command asks for an image URL instead. */
   onUpload?: ImageUploader;
   getUpload?: () => ImageUploader | undefined;
   canEdit?: () => boolean;
@@ -359,7 +360,8 @@ export function buildEditorExtensions({
     ...opaqueMdxNodes,
     SlashCommand.configure({
       locale,
-      onUpload: (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)?.(...args) ?? Promise.resolve(null),
+      // Whether an uploader exists is fixed when the editor is created; the latest one is read at call time.
+      onUpload: onUpload ? (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)(...args) : undefined,
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
@@ -740,8 +742,12 @@ export function TiptapEditor({
       extensions: buildEditorExtensions({
         getUpload: () => onUploadRef.current,
         canEdit: () => !commentModeRef.current,
-        onUpload: (file: File, onProgress?: (percent: number) => void, signal?: AbortSignal, onFinishing?: () => void) =>
-          onUploadRef.current?.(file, onProgress, signal, onFinishing) ?? Promise.resolve(null),
+        // Whether an uploader exists is fixed when the editor is created; the
+        // latest uploader is still read at call time.
+        onUpload: onUpload
+          ? (file: File, onProgress?: (percent: number) => void, signal?: AbortSignal, onFinishing?: () => void) =>
+              onUploadRef.current?.(file, onProgress, signal, onFinishing) ?? Promise.resolve(null)
+          : undefined,
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
         dir,

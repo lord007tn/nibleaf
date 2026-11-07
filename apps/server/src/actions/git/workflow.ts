@@ -1,11 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
 import { type Prisma, prisma } from '@nibleaf/database';
-import { slugify } from '@nibleaf/shared';
 import {
   buildThemeRepository,
   type ThemeRepositoryOwnership,
-  themeContentLocation,
   themeContentMap,
   themeRepositoryOwnershipForPath,
   themeRepositoryTemplateId,
@@ -16,9 +14,9 @@ import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
-import { deriveTitle, humanize, parseFrontmatter, serializeGitPage } from '../importers/content';
-import { ensureGroupPage, upsertLeafPage } from '../importers/persistence';
+import { serializeGitPage } from '../importers/content';
 import { getDefaultLanguage } from '../languages';
+import { applyGitContentChanges, GitApplyConflictError, type GitContentChange, type ObservedPage } from './apply';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { GitHubProvider } from './github';
 import { conflictSnapshotMatches, reconcileOwnedFile, repositoryOurs } from './reconcile';
@@ -27,6 +25,8 @@ import type { GitProviderClient, RemoteFile, RemotePullRequest } from './types';
 const MAX_ERROR = 500;
 const MAX_AUDIT_METADATA = 30;
 const GIT_OPERATION_CLAIM_TIMEOUT = QUEUE_CONFIGS[QueueNames.GIT].operationClaimTimeout ?? 12 * 60 * 1000;
+/** One sync applies up to a few hundred files in a single transaction. */
+const GIT_APPLY_TRANSACTION = { timeout: 60_000, maxWait: 10_000 } as const;
 
 export interface ConnectGitInput {
   repository: string;
@@ -121,19 +121,12 @@ const providerFor = (connection: { provider: string; credentialEncrypted: string
   return new GitHubProvider(decryptGitSecret(connection.credentialEncrypted));
 };
 
-type AuthoringPage = {
-  id: string;
-  title: string;
-  path: string;
-  content: string;
-  description: string | null;
-  icon: string | null;
-};
+type AuthoringPage = ObservedPage & { path: string };
 
 const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const [branch, language] = await Promise.all([
     connection.importBranchId
-      ? prisma.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId } })
+      ? prisma.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId }, omit: { forkBaseline: true } })
       : getDefaultBranch(connection.projectId),
     connection.importLanguageId
       ? prisma.language.findFirst({ where: { id: connection.importLanguageId, projectId: connection.projectId } })
@@ -147,10 +140,12 @@ type LocalRepositoryFile = { page: AuthoringPage | null; content: string; owners
 
 const localFiles = async (connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const { branch, language } = await authoringContext(connection);
-  const pages = await prisma.page.findMany({
-    where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id, kind: 'PAGE' },
+  // Every page of the authoring scope, groups included: apply checks a
+  // deletion's whole subtree against these revisions.
+  const pages: AuthoringPage[] = await prisma.page.findMany({
+    where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id },
     orderBy: { path: 'asc' },
-    select: { id: true, title: true, path: true, content: true, description: true, icon: true },
+    select: { id: true, parentId: true, kind: true, title: true, path: true, content: true, description: true, icon: true, updatedAt: true },
   });
   const snapshot = await getCurrentSnapshot(connection.projectId);
   const pageById = new Map(pages.map((page) => [page.id, page]));
@@ -159,12 +154,12 @@ const localFiles = async (connection: { projectId: string; contentPath: string; 
   const files = new Map<string, LocalRepositoryFile>();
   for (const [path, pageId] of pageIdByPath) {
     const page = pageById.get(pageId);
-    if (page) files.set(path, { page, content: serializeGitPage(page), ownership: 'SHARED' });
+    if (page?.kind === 'PAGE') files.set(path, { page, content: serializeGitPage(page), ownership: 'SHARED' });
   }
   for (const file of buildThemeRepository(snapshot, { contentPath: connection.contentPath })) {
     files.set(file.path, { page: null, content: file.content, ownership: file.ownership });
   }
-  return { files, snapshot, pageIdByPath };
+  return { files, snapshot, pageIdByPath, observed: pageById as ReadonlyMap<string, ObservedPage> };
 };
 
 const initializeFileStates = async (
@@ -402,69 +397,6 @@ const hasConflict = (entry: MergeEntry): boolean => reconcileOwnedFile(entry.own
 
 const chosenContent = (entry: MergeEntry): string | null => reconcileOwnedFile(entry.ownership, entry.base, entry.ours, entry.theirs).content;
 
-const applyContentToNibleaf = async (
-  connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
-  path: string,
-  content: string | null,
-  pageId: string | null,
-  snapshot: Awaited<ReturnType<typeof getCurrentSnapshot>>,
-): Promise<string | null> => {
-  if (content === null) {
-    if (pageId) await prisma.page.deleteMany({ where: { id: pageId, projectId: connection.projectId, kind: 'PAGE' } });
-    return null;
-  }
-  const parsed = parseFrontmatter(content);
-  if (pageId) {
-    const existing = await prisma.page.findFirst({ where: { id: pageId, projectId: connection.projectId } });
-    if (existing) {
-      await prisma.page.update({
-        where: { id: pageId },
-        data: {
-          content: parsed.body,
-          ...(parsed.meta.title ? { title: parsed.meta.title.slice(0, 200) } : {}),
-          description: parsed.meta.description?.slice(0, 500) ?? null,
-          icon: parsed.meta.icon?.slice(0, 64) ?? null,
-        },
-      });
-      return pageId;
-    }
-  }
-  const { branch, language } = await authoringContext(connection);
-  // Repository layout v2: the default language/version lives at the content
-  // root, other languages under `<lang>/`, other versions under `versions/<slug>/`.
-  const location = themeContentLocation(path, snapshot, connection.contentPath);
-  if (!location || location.versionId !== branch.id || location.languageCode !== language.code) {
-    throw new Error(`Git content path ${path} is outside the configured ${branch.name}/${language.code} content directory.`);
-  }
-  const segments = location.relative.split('/').filter(Boolean);
-  const fileName = segments.pop() ?? 'index';
-  const isIndex = /^(index|readme)$/i.test(fileName);
-  const leafName = isIndex ? (segments.pop() ?? 'index') : fileName;
-  let parentId: string | null = null;
-  for (const segment of segments) {
-    parentId = await ensureGroupPage(
-      { projectId: connection.projectId, branchId: branch.id, languageId: language.id },
-      { parentId, title: humanize(segment), slug: slugify(segment) || 'group' },
-    );
-  }
-  await upsertLeafPage(
-    { projectId: connection.projectId, branchId: branch.id, languageId: language.id },
-    {
-      parentId,
-      slug: slugify(leafName) || 'page',
-      title: deriveTitle(parsed.meta, parsed.body, leafName),
-      content: parsed.body,
-      ...(parsed.meta.description ? { description: parsed.meta.description.slice(0, 500) } : {}),
-      ...(parsed.meta.icon ? { icon: parsed.meta.icon.slice(0, 64) } : {}),
-    },
-  );
-  const created = await prisma.page.findFirst({
-    where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id, parentId, slug: slugify(leafName) || 'page' },
-    select: { id: true },
-  });
-  return created?.id ?? null;
-};
-
 const changedFileSummary = (entries: MergeEntry[], target: Map<string, string | null>, compare: 'ours' | 'theirs') =>
   entries
     .filter((entry) => !valueEqual(target.get(entry.path) ?? null, entry[compare]))
@@ -550,6 +482,78 @@ const upsertPullRequest = async (
       headSha: remote.headSha || sha,
       lastSyncedAt: new Date(),
     },
+  });
+};
+
+/** How many times one operation re-runs itself because pages changed under it. */
+const MAX_EDIT_REQUEUES = 3;
+const EDIT_REQUEUE_BASE_DELAY_MS = 5000;
+
+/**
+ * The apply rolled back because pages changed after the merge read them.
+ * Re-read those pages and record conflicts for the writer where they now
+ * really conflict with Git; otherwise run the operation again, with
+ * backoff and a small cap so a constantly edited page cannot loop it against
+ * the provider. A PUSH that already updated the remote branch forgets its
+ * commit, so the next run commits only what is still new.
+ */
+const surfaceConcurrentEdits = async (
+  operation: { id: string; kind: string; requestedById: string | null },
+  connection: { id: string; projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
+  entries: MergeEntry[],
+  paths: string[],
+  remoteBranchUpdated: boolean,
+): Promise<void> => {
+  const fresh = await localFiles(connection);
+  const entryByPath = new Map(entries.map((entry) => [entry.path, entry]));
+  const conflicted = paths.flatMap((path) => {
+    const entry = entryByPath.get(path);
+    if (!entry) return [];
+    const current = { ...entry, ours: fresh.files.get(path)?.content ?? null };
+    return hasConflict(current) ? [current] : [];
+  });
+  const forgetCommit = remoteBranchUpdated ? { remoteSha: null } : {};
+  if (conflicted.length === 0) {
+    const requeues = await prisma.gitAuditEvent.count({
+      where: { connectionId: connection.id, action: 'operation.requeued_after_edit', metadata: { path: ['operationId'], equals: operation.id } },
+    });
+    if (requeues >= MAX_EDIT_REQUEUES) {
+      throw new Error(
+        `Git sync stopped after ${MAX_EDIT_REQUEUES} tries because pages kept changing while it ran. Nothing was changed in Nibleaf; run the sync again.`,
+      );
+    }
+    await prisma.$transaction([
+      prisma.gitSyncOperation.update({ where: { id: operation.id }, data: { status: 'QUEUED', completedAt: null, ...forgetCommit } }),
+      prisma.gitConnection.update({ where: { id: connection.id }, data: { lastSyncStatus: 'QUEUED', lastSyncError: null } }),
+    ]);
+    await createJob(
+      QueueNames.GIT,
+      { name: 'process-git-operation', data: { operationId: operation.id } },
+      { jobId: `${operation.id}-edited-${requeues + 1}`, delay: EDIT_REQUEUE_BASE_DELAY_MS * 2 ** requeues },
+    );
+    await audit(connection, operation.requestedById, 'operation.requeued_after_edit', {
+      operationId: operation.id,
+      files: paths.length,
+      attempt: requeues + 1,
+    });
+    return;
+  }
+  const snapshot = (entry: MergeEntry) => ({ baseContent: entry.base, oursContent: entry.ours, theirsContent: entry.theirs });
+  await prisma.$transaction([
+    ...conflicted.map((entry) =>
+      prisma.gitConflict.upsert({
+        where: { operationId_path: { operationId: operation.id, path: entry.path } },
+        create: { operationId: operation.id, path: entry.path, ...snapshot(entry) },
+        update: { ...snapshot(entry), status: 'OPEN', resolution: null, resolvedContent: null, resolvedById: null, resolvedAt: null },
+      }),
+    ),
+    prisma.gitSyncOperation.update({ where: { id: operation.id }, data: { status: 'CONFLICT', completedAt: null, ...forgetCommit } }),
+    prisma.gitConnection.update({ where: { id: connection.id }, data: { lastSyncStatus: 'CONFLICT', lastSyncError: null } }),
+  ]);
+  await audit(connection, operation.requestedById, 'operation.conflict_detected', {
+    operationId: operation.id,
+    files: conflicted.length,
+    reason: 'edited_during_sync',
   });
 };
 
@@ -661,7 +665,6 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     ]);
     const ours = local.files;
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
-    const existingStatePaths = new Set(states.map((state) => state.path));
     const repositoryIssues = remoteThemeRepositoryIssues(remoteFiles, local.snapshot, connection.contentPath);
     const fatalRepositoryIssues = repositoryIssues.filter((issue) => issue.code !== 'PLATFORM_FILE_MODIFIED');
     if (fatalRepositoryIssues.length > 0) {
@@ -743,47 +746,97 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
 
     // Apply the merged target only after conflict-free reconciliation. For PULL,
     // this imports upstream-only changes; for PUSH, it also adopts safe upstream
-    // edits that arrived while Nibleaf changed different files.
-    const pageIds = new Map<string, string | null>();
-    for (const entry of entries) {
+    // edits that arrived while Nibleaf changed different files. Page writes and
+    // the file ledger commit in ONE transaction: a failing file leaves every
+    // page and the baseline exactly as they were, and a page saved after the
+    // merge read makes the whole apply roll back instead of being overwritten.
+    const contentChanges = entries.flatMap((entry): GitContentChange[] => {
       const desired = target.get(entry.path) ?? null;
-      if (entry.ownership === 'SHARED' && !valueEqual(desired, entry.ours)) {
-        pageIds.set(entry.path, await applyContentToNibleaf(connection, entry.path, desired, entry.pageId, local.snapshot));
-      } else {
-        pageIds.set(entry.path, entry.pageId);
+      if (entry.ownership !== 'SHARED' || valueEqual(desired, entry.ours)) return [];
+      if (desired === null) {
+        return entry.pageId ? [{ type: 'delete', path: entry.path, pageId: entry.pageId }] : [];
       }
-    }
+      return [{ type: 'write', path: entry.path, pageId: entry.pageId, content: desired }];
+    });
+    const { branch: authoringBranch, language: authoringLanguage } =
+      contentChanges.length > 0 ? await authoringContext(connection) : { branch: null, language: null };
 
     const baseline = operation.kind === 'PUSH' ? target : new Map(entries.map((entry) => [entry.path, entry.theirs]));
-    await prisma.$transaction(async (tx) => {
+    const stateByPath = new Map(states.map((state) => [state.path, state]));
+    const applyAndRecordBaseline = async (tx: Prisma.TransactionClient) => {
+      const applied =
+        authoringBranch && authoringLanguage
+          ? await applyGitContentChanges(
+              tx,
+              {
+                projectId: connection.projectId,
+                contentPath: connection.contentPath,
+                branch: authoringBranch,
+                language: authoringLanguage,
+                snapshot: local.snapshot,
+                observed: local.observed,
+              },
+              contentChanges,
+            )
+          : new Map<string, string | null>();
+      // Only ledger rows whose recorded base or page link actually changes are
+      // written, so a large, mostly unchanged repository keeps the transaction
+      // (and the project lock it may hold) short.
+      const removed: string[] = [];
+      const created: Prisma.GitFileStateCreateManyInput[] = [];
+      // A ledger row never keeps a link to a page that no longer exists
+      // (removed with its parent, or deleted in the dashboard since).
+      const linked = [...new Set(entries.flatMap((entry) => (applied.has(entry.path) ? [] : entry.pageId ? [entry.pageId] : [])))];
+      const existing = new Set(
+        linked.length > 0 ? (await tx.page.findMany({ where: { id: { in: linked } }, select: { id: true } })).map((page) => page.id) : [],
+      );
       for (const entry of entries) {
         const content = baseline.get(entry.path) ?? null;
-        if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !existingStatePaths.has(entry.path) && entry.theirs === null) {
+        const pageId = applied.has(entry.path) ? (applied.get(entry.path) ?? null) : entry.pageId && existing.has(entry.pageId) ? entry.pageId : null;
+        const state = stateByPath.get(entry.path);
+        if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !state && entry.theirs === null) {
           // A pull before the initial scaffold push must not turn a missing
           // customer file into a durable deletion. Leaving the ledger absent
           // lets the next push seed the generated starter exactly once.
           continue;
         }
         if (entry.ownership === 'SHARED' && content === null && (target.get(entry.path) ?? null) === null) {
-          await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: entry.path } });
+          if (state) removed.push(entry.path);
           continue;
         }
-        await tx.gitFileState.upsert({
-          where: { connectionId_path: { connectionId: connection.id, path: entry.path } },
-          create: {
+        const next = { ownership: entry.ownership, pageId, baseContent: content, baseExists: content !== null };
+        if (!state) {
+          created.push({
             connectionId: connection.id,
             path: entry.path,
-            ownership: entry.ownership,
-            pageId: pageIds.get(entry.path) ?? null,
             branchId: connection.importBranchId,
             languageId: connection.importLanguageId,
-            baseContent: content,
-            baseExists: content !== null,
-          },
-          update: { ownership: entry.ownership, pageId: pageIds.get(entry.path) ?? null, baseContent: content, baseExists: content !== null },
-        });
+            ...next,
+          });
+          continue;
+        }
+        const unchanged =
+          state.ownership === next.ownership &&
+          state.pageId === next.pageId &&
+          state.baseExists === next.baseExists &&
+          (state.baseExists ? state.baseContent : null) === next.baseContent;
+        if (!unchanged) {
+          await tx.gitFileState.update({ where: { connectionId_path: { connectionId: connection.id, path: entry.path } }, data: next });
+        }
       }
-    });
+      if (removed.length > 0) await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: { in: removed } } });
+      if (created.length > 0) await tx.gitFileState.createMany({ data: created });
+    };
+    try {
+      await prisma.$transaction(applyAndRecordBaseline, GIT_APPLY_TRANSACTION);
+    } catch (error) {
+      if (error instanceof GitApplyConflictError) {
+        await surfaceConcurrentEdits(operation, connection, entries, error.paths, operation.kind === 'PUSH' && changes.length > 0);
+        return;
+      }
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new Error(`Git sync failed and nothing was changed in Nibleaf. ${detail}`, { cause: error });
+    }
 
     let pull = operation.kind === 'PUSH' ? await upsertPullRequest(operation, connection, provider, finalSha, changes) : null;
     if (operation.kind === 'PULL' && request.pullRequestNumber) {

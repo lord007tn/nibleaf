@@ -133,6 +133,122 @@ afterEach(() => {
 });
 
 describe('MDX round trips', () => {
+  it('reads character references in attributes once, so editing never escapes them again', () => {
+    const source = 'Intro.\n\n<Card title="R&amp;D &quot;labs&quot;" href="/x?a=1&amp;b=2">\n\nBody\n\n</Card>\n';
+    const editor = createEditor(source);
+    let card: { attrs: Record<string, unknown> } | undefined;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'mdxCard') card = node;
+    });
+    expect(card?.attrs.title).toBe('R&D "labs"');
+    expect(card?.attrs.href).toBe('/x?a=1&b=2');
+    // Untouched, the authored tag is saved byte for byte.
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    expect(getMarkdown(editor)).toContain('<Card title="R&amp;D &quot;labs&quot;" href="/x?a=1&amp;b=2">');
+    // Edited, the title is escaped exactly once, and reloads the same.
+    let position = -1;
+    editor.state.doc.descendants((node, at) => {
+      if (node.type.name === 'mdxCard') position = at;
+    });
+    editor.commands.command(({ tr }) => {
+      tr.setNodeAttribute(position, 'title', 'R&D!');
+      return true;
+    });
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('title="R&amp;D!"');
+    expect(saved).not.toContain('&amp;amp;');
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it.each([
+    '> [!WARNING]\n> Do **not** run [this](/x) with `rm -rf`.',
+    '> [!NOTE] Do **not** run [this](/x).',
+    '> [!TIP]\n> First *line*.\n>\n> Second **line**.',
+  ])('keeps the formatting in a callout written as a GitHub alert through load and save: %j', (source) => {
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).toContain('**');
+    expect(saved).not.toContain('[!WARNING]\n> Do not');
+    const callout = createEditor(saved).state.doc.firstChild;
+    expect(callout?.type.name).toBe('callout');
+    // Bold, links and code survive a second load, and the marker isn't left in the text.
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+    expect(callout?.textContent).not.toMatch(/\[!/);
+    if (source.includes('[this](/x)')) expect(saved).toContain('[this](/x)');
+    if (source.includes('`rm -rf`')) expect(saved).toContain('`rm -rf`');
+  });
+
+  it('saves a GitHub alert that starts with an image unchanged', () => {
+    const source = '> [!NOTE]\n> ![Diagram](/a.png)';
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).toBe(source);
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it.each(['TRUE', ' true ', 'False', '{open}'])('keeps an authored defaultOpen="%s" as written when another block is edited', (value) => {
+    const source = `Intro.\n\n<Accordion title="FAQ" defaultOpen="${value}">\n\nBody\n\n</Accordion>\n`;
+    const editor = createEditor(source);
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    expect(getMarkdown(editor)).toContain(`<Accordion title="FAQ" defaultOpen="${value}">`);
+  });
+
+  it('decodes every named character reference in an attribute once, and leaves bare ampersands alone', () => {
+    const source = 'Intro.\n\n<Card title="A &mdash; B&nbsp;C &copy; &unknownref;" href="/x?a=1&copy=2">\n\nBody\n\n</Card>\n';
+    const editor = createEditor(source);
+    let card: { attrs: Record<string, unknown> } | undefined;
+    let position = -1;
+    editor.state.doc.descendants((node, at) => {
+      if (node.type.name === 'mdxCard') {
+        card = node;
+        position = at;
+      }
+    });
+    expect(card?.attrs.title).toBe('A — B C © &unknownref;');
+    // A reference without its `;` (a URL query) isn't a reference.
+    expect(card?.attrs.href).toBe('/x?a=1&copy=2');
+    editor.commands.command(({ tr }) => {
+      tr.setNodeAttribute(position, 'title', 'A — B > C!');
+      return true;
+    });
+    const saved = getMarkdown(editor);
+    // Written back escaped once, `>` included, and reloads the same.
+    expect(saved).toContain('title="A — B &gt; C!"');
+    expect(saved).not.toContain('&amp;mdash;');
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it('keeps components after an unmatched backtick, across a heading', () => {
+    // A backtick that isn't closed on its line must not hide the blocks after it.
+    const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';
+    const output = getMarkdown(createEditor(source));
+    expect(output).toContain('<CustomWidget value="keep" />');
+    expect(output).not.toContain('data-mdx-source');
+  });
+
+  it('keeps a self-closing RelatedCard self-closing, and pairs it once it gains a body', () => {
+    const source =
+      'Intro.\n\n<RelatedContent title="More">\n\n<RelatedCard title="Auth" description="Sign requests" href="/auth" />\n\n</RelatedContent>\n';
+    const editor = createEditor(source);
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('<RelatedCard title="Auth" description="Sign requests" href="/auth" />');
+    expect(saved).not.toContain('</RelatedCard>');
+    // Saving again changes nothing.
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+    // A body typed into the card turns it into a pair, so the text is kept.
+    const card = createEditor(source);
+    let cardBody = -1;
+    card.state.doc.descendants((node, position) => {
+      if (node.type.name === 'mdxRelatedCard') cardBody = position + 2;
+    });
+    card.commands.setTextSelection(cardBody);
+    card.commands.insertContent('Body text');
+    const paired = getMarkdown(card);
+    expect(paired).toMatch(/<RelatedCard title="Auth" description="Sign requests" href="\/auth">\s+Body text\s+<\/RelatedCard>/);
+  });
+
   it.each([
     '```python\nimport requests\nexport_token = "demo"\n```',
     '~~~sh\nexport API_URL=http://localhost:4311\n~~~',

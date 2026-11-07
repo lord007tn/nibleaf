@@ -1,5 +1,7 @@
 export type CalloutType = 'note' | 'info' | 'tip' | 'check' | 'warning' | 'danger';
 
+export const CALLOUT_TYPES = ['note', 'info', 'tip', 'check', 'warning', 'danger'] as const satisfies readonly CalloutType[];
+
 /** Normalize an admonition/callout keyword to one of our supported types.
  *  Shared by the reader and static exports so both accept the same markers. */
 export const normalizeType = (raw?: string): CalloutType => {

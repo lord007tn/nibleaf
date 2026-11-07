@@ -2,10 +2,11 @@ import { resolve4, resolve6, resolveCname, resolveTxt } from 'node:dns/promises'
 import { request as httpsRequest } from 'node:https';
 import { connect } from 'node:tls';
 import { prisma } from '@nibleaf/database';
+import { isDomainLive } from '@nibleaf/shared/domains';
 import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
-import { badRequest, conflict, notFound } from '@/errors';
+import { AppError, notFound } from '@/errors';
 import {
   type CloudflareCustomHostname,
   cloudflareSaasEnabled,
@@ -20,6 +21,26 @@ import {
 } from '@/lib/cloudflare-saas';
 import { type DomainDnsSnapshot, hasOwnershipRecord, isPublicAddress, normalizeDnsName, pointsAtTarget } from '@/lib/domain-checks';
 import { assertProjectInOrg } from './projects';
+import { invalidatePublishedSiteConfig } from './sites';
+
+/** A domain failure the dashboard can explain in plain words: the `code` picks the
+ * localized message, and `message` stays as technical detail for support. */
+const domainError = (
+  code:
+    | 'domain:already_added'
+    | 'domain:already_connected'
+    | 'domain:provider_failed'
+    | 'domain:ownership_missing'
+    | 'domain:not_pointed'
+    | 'domain:not_ready'
+    | 'domain:check_inconclusive',
+  message: string,
+  details: Record<string, unknown>,
+) => new AppError({ code, message, details });
+
+const providerMessage = (error: unknown) => (error instanceof Error ? error.message : 'Unknown provider error.');
+
+const isUniqueViolation = (error: unknown) => (error as { code?: unknown } | null)?.code === 'P2002';
 
 /** The host a custom domain should CNAME to. Prefer an explicit target, else the
  *  instance's own base domain — never a SaaS host the self-hoster doesn't own. */
@@ -46,12 +67,37 @@ export const listDomains = async (projectId: string) => {
   return domains.map((domain) => ({ ...domain, records: dnsRecords(domain) }));
 };
 
-export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody) => {
+/**
+ * Why `domain` can't be added: it is on this site already, or on another one.
+ * Each site is its own workspace (organization), so "same workspace" means a site
+ * the person adding the domain is a member of: one they can already open, so its
+ * name tells them nothing new. For any other site, neither its name nor its
+ * workspace is revealed.
+ */
+const alreadyConnected = async (domain: string, projectId: string, userId: string) => {
+  const holder = await prisma.domain.findUnique({
+    where: { domain },
+    select: { projectId: true, project: { select: { name: true, organizationId: true } } },
+  });
+  if (holder?.projectId === projectId) return domainError('domain:already_added', 'That domain is already connected to this site.', { domain });
+  const member = holder
+    ? await prisma.member.findFirst({ where: { organizationId: holder.project.organizationId, userId }, select: { id: true } })
+    : null;
+  return holder && member
+    ? domainError('domain:already_connected', 'That domain is already connected to another of your sites.', {
+        domain,
+        scope: 'same_workspace',
+        siteName: holder.project.name,
+      })
+    : domainError('domain:already_connected', 'That domain is already connected to another workspace.', { domain, scope: 'other_workspace' });
+};
+
+export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody, userId: string) => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = body.domain.toLowerCase();
   const existing = await prisma.domain.findUnique({ where: { domain }, select: { id: true } });
   if (existing) {
-    throw conflict('That domain is already connected.', { domain });
+    throw await alreadyConnected(domain, projectId, userId);
   }
   if (cloudflareSaasEnabled()) {
     let provisioned: CloudflareCustomHostname | null = null;
@@ -64,12 +110,12 @@ export const addDomain = async (organizationId: string, projectId: string, body:
     } catch (error) {
       if (routeId) await deleteCustomHostnameRoute(routeId).catch(() => undefined);
       if (provisioned) await deleteCustomHostname(provisioned.id).catch(() => undefined);
-      throw badRequest(`Cloudflare could not provision ${domain}: ${error instanceof Error ? error.message : 'Unknown provider error.'}`, {
+      throw domainError('domain:provider_failed', `Cloudflare could not provision ${domain}: ${providerMessage(error)}`, {
         domain,
         stage: 'provisioning',
       });
     }
-    if (!provisioned) throw badRequest('Cloudflare returned no custom hostname.', { domain, stage: 'provisioning' });
+    if (!provisioned) throw domainError('domain:provider_failed', 'Cloudflare returned no custom hostname.', { domain, stage: 'provisioning' });
     const state = customHostnameState(provisioned);
     try {
       const created = await prisma.domain.create({
@@ -89,70 +135,116 @@ export const addDomain = async (organizationId: string, projectId: string, body:
     } catch (error) {
       if (routeId) await deleteCustomHostnameRoute(routeId).catch(() => undefined);
       await deleteCustomHostname(provisioned.id).catch(() => undefined);
+      if (isUniqueViolation(error)) throw await alreadyConnected(domain, projectId, userId);
       throw error;
     }
   }
 
-  const created = await prisma.domain.create({ data: { projectId, domain, verificationToken: newToken(24), provider: 'INGRESS' } });
-  return { ...created, records: dnsRecords(created) };
+  try {
+    const created = await prisma.domain.create({ data: { projectId, domain, verificationToken: newToken(24), provider: 'INGRESS' } });
+    return { ...created, records: dnsRecords(created) };
+  } catch (error) {
+    // Two sites adding the same address at once: the unique index decides.
+    if (isUniqueViolation(error)) throw await alreadyConnected(domain, projectId, userId);
+    throw error;
+  }
 };
 
-const resolveAddresses = async (host: string): Promise<string[]> => {
-  const [v4, v6] = await Promise.all([resolve4(host).catch(() => [] as string[]), resolve6(host).catch(() => [] as string[])]);
-  return [...new Set([...v4, ...v6])];
+/** The resolver answered that the name or record does not exist. Anything else
+ *  (`ETIMEOUT`, `ESERVFAIL`, `ECONNREFUSED`, …) means DNS could not be asked. */
+const CONFIRMED_MISS = new Set(['ENODATA', 'ENOTFOUND']);
+
+interface Lookup<T> {
+  value: T;
+  /** The lookup failed for a reason that says nothing about the records. */
+  inconclusive: boolean;
+}
+
+const lookup = async <T>(query: () => Promise<T>, empty: T): Promise<Lookup<T>> => {
+  try {
+    return { value: await query(), inconclusive: false };
+  } catch (error) {
+    return { value: empty, inconclusive: !CONFIRMED_MISS.has((error as NodeJS.ErrnoException).code ?? '') };
+  }
 };
 
-const inspectDns = async (domain: string): Promise<DomainDnsSnapshot> => {
+const resolveAddresses = async (host: string): Promise<Lookup<string[]>> => {
+  const [v4, v6] = await Promise.all([lookup(() => resolve4(host), [] as string[]), lookup(() => resolve6(host), [] as string[])]);
+  // One family missing is normal; only an address list with an unanswered family is in doubt.
+  return { value: [...new Set([...v4.value, ...v6.value])], inconclusive: v4.inconclusive || v6.inconclusive };
+};
+
+interface DnsInspection {
+  snapshot: DomainDnsSnapshot;
+  ownershipInconclusive: boolean;
+  routingInconclusive: boolean;
+}
+
+const inspectDns = async (domain: string): Promise<DnsInspection> => {
   const target = cnameTarget();
   const [txt, cnames, addresses, targetAddresses] = await Promise.all([
-    resolveTxt(`_nibleaf.${domain}`).catch(() => [] as string[][]),
-    resolveCname(domain).catch(() => [] as string[]),
+    lookup(() => resolveTxt(`_nibleaf.${domain}`), [] as string[][]),
+    lookup(() => resolveCname(domain), [] as string[]),
     resolveAddresses(domain),
     resolveAddresses(target),
   ]);
-  return { txt, cnames, addresses, targetAddresses };
+  return {
+    snapshot: { txt: txt.value, cnames: cnames.value, addresses: addresses.value, targetAddresses: targetAddresses.value },
+    ownershipInconclusive: txt.inconclusive,
+    routingInconclusive: cnames.inconclusive || addresses.inconclusive || targetAddresses.inconclusive,
+  };
 };
 
-const probeTls = async (domain: string, addresses: string[]): Promise<{ status: 'ACTIVE' | 'PROVISIONING' | 'ERROR'; error: string | null }> => {
+interface TlsProbe {
+  status: 'ACTIVE' | 'PROVISIONING' | 'ERROR';
+  error: string | null;
+  /** No answer (timeout, refused or reset connection): proves neither way. */
+  inconclusive: boolean;
+}
+
+const probeTls = async (domain: string, addresses: string[]): Promise<TlsProbe> => {
   const address = addresses.find(isPublicAddress);
   if (!address) {
-    return { status: 'ERROR', error: 'DNS resolves to an unsafe or unreachable address.' };
+    return { status: 'ERROR', error: 'DNS resolves to an unsafe or unreachable address.', inconclusive: false };
   }
   return new Promise((resolve) => {
     const socket = connect({ host: address, port: 443, servername: domain, rejectUnauthorized: true, timeout: 12_000 });
     let settled = false;
-    const finish = (result: { status: 'ACTIVE' | 'PROVISIONING' | 'ERROR'; error: string | null }) => {
+    const finish = (result: TlsProbe) => {
       if (settled) return;
       settled = true;
       socket.destroy();
       resolve(result);
     };
     socket.once('secureConnect', () =>
-      finish({ status: socket.authorized ? 'ACTIVE' : 'ERROR', error: socket.authorized ? null : 'TLS certificate is not valid for this domain.' }),
+      finish({
+        status: socket.authorized ? 'ACTIVE' : 'ERROR',
+        error: socket.authorized ? null : 'TLS certificate is not valid for this domain.',
+        inconclusive: false,
+      }),
     );
-    socket.once('timeout', () => finish({ status: 'PROVISIONING', error: 'TLS provisioning timed out. Retry in a minute.' }));
+    socket.once('timeout', () => finish({ status: 'PROVISIONING', error: 'TLS provisioning timed out. Retry in a minute.', inconclusive: true }));
     socket.once('error', (error) => {
       const code = (error as NodeJS.ErrnoException).code ?? '';
       const certificateError = /CERT|TLS|VERIFY|SELF_SIGNED/.test(code);
-      finish({
-        status: certificateError ? 'ERROR' : 'PROVISIONING',
-        error: certificateError
-          ? 'The server presented an invalid certificate for this domain.'
-          : 'TLS is still provisioning. Retry after DNS has propagated.',
-      });
+      finish(
+        certificateError
+          ? { status: 'ERROR', error: 'The server presented an invalid certificate for this domain.', inconclusive: false }
+          : { status: 'PROVISIONING', error: 'TLS is still provisioning. Retry after DNS has propagated.', inconclusive: true },
+      );
     });
   });
 };
 
 /** Confirm a proxied hostname still reaches this Nibleaf instance. Cloudflare
  * hides the original CNAME, so address comparison alone cannot prove routing. */
-const probeRoute = async (domain: string, addresses: string[], projectId: string): Promise<boolean> => {
+const probeRoute = async (domain: string, addresses: string[], projectId: string): Promise<'yes' | 'no' | 'unknown'> => {
   const address = addresses.find(isPublicAddress);
-  if (!address) return false;
+  if (!address) return 'no';
   return new Promise((resolve) => {
     let body = '';
     let settled = false;
-    const finish = (result: boolean) => {
+    const finish = (result: 'yes' | 'no' | 'unknown') => {
       if (settled) return;
       settled = true;
       request.destroy();
@@ -170,24 +262,24 @@ const probeRoute = async (domain: string, addresses: string[], projectId: string
         headers: { accept: 'application/json' },
       },
       (response) => {
-        if (response.statusCode !== 200) return finish(false);
+        if (response.statusCode !== 200) return finish('no');
         response.setEncoding('utf8');
         response.on('data', (chunk: string) => {
           body += chunk;
-          if (body.length > 16_384) finish(false);
+          if (body.length > 16_384) finish('no');
         });
         response.once('end', () => {
           try {
             const parsed = JSON.parse(body) as { data?: { projectId?: string | null } };
-            finish(parsed.data?.projectId === projectId);
+            finish(parsed.data?.projectId === projectId ? 'yes' : 'no');
           } catch {
-            finish(false);
+            finish('no');
           }
         });
       },
     );
-    request.once('timeout', () => finish(false));
-    request.once('error', () => finish(false));
+    request.once('timeout', () => finish('unknown'));
+    request.once('error', () => finish('unknown'));
     request.end();
   });
 };
@@ -199,9 +291,31 @@ const probeRoute = async (domain: string, addresses: string[], projectId: string
  * can explain exactly what is ready and what the owner needs to fix. Marking the
  * domain verified before the TLS probe is intentional: Caddy's on-demand `ask`
  * endpoint must see the verified row before the first certificate handshake.
+ *
+ * Only a domain whose routing and TLS both work may stay primary: the primary is
+ * the canonical host every other address 301s to, so a check that confirms a
+ * problem demotes it (readers fall back to the site's default address) until it
+ * is fixed and made primary again; the result, or the error's details, then
+ * carry `demoted: true`. A check that could not reach DNS or the site (resolver
+ * timeout or failure, TLS timeout, refused connection) proves nothing: it changes
+ * no status and never demotes, and answers `domain:check_inconclusive`.
+ *
+ * The TXT record proves ownership once. Many owners delete verification records
+ * after setup, so for a domain verified before, a missing TXT record is not a
+ * failure: routing and HTTPS decide, and the result says
+ * `ownershipRecordMissing: true` so the dashboard can suggest adding it back.
  */
 export const verifyDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
+  try {
+    return await checkDomain(projectId, id);
+  } finally {
+    // The primary may have been demoted; stop redirecting to it on this replica now.
+    invalidatePublishedSiteConfig(projectId);
+  }
+};
+
+const checkDomain = async (projectId: string, id: string) => {
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {
     throw notFound('domain', { id });
@@ -209,7 +323,10 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
 
   if (domain.provider === 'CLOUDFLARE_SAAS') {
     if (!domain.providerHostnameId) {
-      throw badRequest('This domain is missing its Cloudflare hostname identifier. Remove it and add it again.', { id, stage: 'provisioning' });
+      throw domainError('domain:provider_failed', 'This domain is missing its Cloudflare hostname identifier. Remove it and add it again.', {
+        id,
+        stage: 'provisioning',
+      });
     }
     let current: CloudflareCustomHostname;
     try {
@@ -218,12 +335,13 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
         current = await retryCustomHostname(domain.providerHostnameId);
       }
     } catch (error) {
-      const message = `Cloudflare status could not be refreshed: ${error instanceof Error ? error.message : 'Unknown provider error.'}`;
+      // Not reaching the provider says nothing about the domain itself, so its status (and primary) stay.
+      const message = `Cloudflare status could not be refreshed: ${providerMessage(error)}`;
       await prisma.domain.update({ where: { id }, data: { lastCheckedAt: new Date(), lastError: message } });
-      throw badRequest(message, { domain: domain.domain, stage: 'provider' });
+      throw domainError('domain:provider_failed', message, { domain: domain.domain, stage: 'provider' });
     }
     const state = customHostnameState(current);
-    return prisma.domain.update({
+    const updated = await prisma.domain.update({
       where: { id },
       data: {
         ...state,
@@ -236,10 +354,11 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
         lastCheckedAt: new Date(),
       },
     });
+    return { ...updated, demoted: domain.isPrimary && !state.verified };
   }
 
   if (env.NODE_ENV !== 'production') {
-    return prisma.domain.update({
+    const updated = await prisma.domain.update({
       where: { id },
       data: {
         verified: true,
@@ -250,14 +369,28 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
         lastError: null,
       },
     });
+    return { ...updated, demoted: false };
   }
 
   const checkedAt = new Date();
-  const snapshot = await inspectDns(domain.domain);
-  if (!hasOwnershipRecord(snapshot.txt, domain.verificationToken)) {
+  const wasLive = isDomainLive(domain);
+  const wasPrimary = domain.isPrimary;
+  // Only the check time is recorded: the stored status is still the best answer we have.
+  const inconclusive = async (stage: string, message: string): Promise<never> => {
+    await prisma.domain.update({ where: { id }, data: { lastCheckedAt: checkedAt } });
+    throw domainError('domain:check_inconclusive', message, { domain: domain.domain, stage });
+  };
+
+  const { snapshot, ownershipInconclusive, routingInconclusive } = await inspectDns(domain.domain);
+  const ownershipRecordMissing = !hasOwnershipRecord(snapshot.txt, domain.verificationToken);
+  if (ownershipRecordMissing && !domain.verified) {
+    if (ownershipInconclusive) return inconclusive('ownership', `DNS did not answer for _nibleaf.${domain.domain}. Retry in a few minutes.`);
     const message = `Ownership TXT record is missing. Add the exact _nibleaf.${domain.domain} record shown below, then retry.`;
-    await prisma.domain.update({ where: { id }, data: { dnsStatus: 'ERROR', sslStatus: 'PENDING', lastCheckedAt: checkedAt, lastError: message } });
-    throw badRequest(message, { domain: domain.domain, stage: 'ownership' });
+    await prisma.domain.update({
+      where: { id },
+      data: { dnsStatus: 'ERROR', sslStatus: 'PENDING', isPrimary: false, lastCheckedAt: checkedAt, lastError: message },
+    });
+    throw domainError('domain:ownership_missing', message, { domain: domain.domain, stage: 'ownership', demoted: wasPrimary });
   }
 
   await prisma.domain.update({
@@ -267,26 +400,41 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
 
   const directTarget = pointsAtTarget(snapshot, cnameTarget());
   const earlyTls = directTarget ? null : await probeTls(domain.domain, snapshot.addresses);
-  const proxiedTarget = earlyTls?.status === 'ACTIVE' && (await probeRoute(domain.domain, snapshot.addresses, projectId));
-  if (!(directTarget || proxiedTarget)) {
+  const proxied = earlyTls?.status === 'ACTIVE' ? await probeRoute(domain.domain, snapshot.addresses, projectId) : 'no';
+  if (!(directTarget || proxied === 'yes')) {
+    if (routingInconclusive || earlyTls?.inconclusive || proxied === 'unknown') {
+      return inconclusive('routing', `Could not confirm where ${domain.domain} points: DNS or the site did not answer. Retry in a few minutes.`);
+    }
     const message = `Ownership is verified, but ${domain.domain} does not point to ${cnameTarget()}. Update the CNAME record and retry.`;
     await prisma.domain.update({
       where: { id },
-      data: { dnsStatus: 'ERROR', sslStatus: earlyTls?.status ?? 'PENDING', lastError: message },
+      data: { dnsStatus: 'ERROR', sslStatus: earlyTls?.status ?? 'PENDING', isPrimary: false, lastError: message },
     });
-    throw badRequest(message, { domain: domain.domain, stage: 'routing' });
+    throw domainError('domain:not_pointed', message, { domain: domain.domain, stage: 'routing', demoted: wasPrimary });
   }
 
-  await prisma.domain.update({ where: { id }, data: { dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING', lastError: null } });
+  // A live domain keeps showing as live while its certificate is re-checked.
+  if (!wasLive) await prisma.domain.update({ where: { id }, data: { dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING', lastError: null } });
   const tls = earlyTls ?? (await probeTls(domain.domain, snapshot.addresses));
-  return prisma.domain.update({
+  // Without every address answered, a failed handshake may be the missing address, not the certificate.
+  const tlsInconclusive = tls.inconclusive || (tls.status !== 'ACTIVE' && routingInconclusive);
+  if (tlsInconclusive && wasLive) {
+    return inconclusive('tls', `The HTTPS check for ${domain.domain} got no answer. Retry in a few minutes.`);
+  }
+  // Still being set up (not live before) is not a failure; only a confirmed certificate problem demotes.
+  const demote = tls.status === 'ERROR' && !tlsInconclusive;
+  const updated = await prisma.domain.update({
     where: { id },
     data: {
-      sslStatus: tls.status,
+      dnsStatus: 'VERIFIED',
+      sslStatus: tlsInconclusive ? 'PROVISIONING' : tls.status,
+      ...(demote ? { isPrimary: false } : {}),
       lastCheckedAt: new Date(),
       lastError: tls.error,
     },
   });
+  // Only a confirmed absence: a TXT lookup that got no answer says nothing about the record.
+  return { ...updated, demoted: demote && wasPrimary, ownershipRecordMissing: ownershipRecordMissing && !ownershipInconclusive };
 };
 
 export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string) => {
@@ -296,12 +444,13 @@ export const setPrimaryDomain = async (organizationId: string, projectId: string
     throw notFound('domain', { id });
   }
   if (!(domain.verified && domain.dnsStatus === 'VERIFIED' && domain.sslStatus === 'ACTIVE')) {
-    throw badRequest('DNS and TLS must both be active before making this domain primary.', { id, domain: domain.domain });
+    throw domainError('domain:not_ready', 'DNS and TLS must both be active before making this domain primary.', { id, domain: domain.domain });
   }
   await prisma.$transaction([
     prisma.domain.updateMany({ where: { projectId }, data: { isPrimary: false } }),
     prisma.domain.update({ where: { id }, data: { isPrimary: true } }),
   ]);
+  invalidatePublishedSiteConfig(projectId);
   return prisma.domain.findUnique({ where: { id } });
 };
 
@@ -318,12 +467,14 @@ export const deleteDomain = async (organizationId: string, projectId: string, id
       if (routeId) await deleteCustomHostnameRoute(routeId);
       await deleteCustomHostname(domain.providerHostnameId);
     } catch (error) {
-      throw badRequest(`Cloudflare could not remove this hostname: ${error instanceof Error ? error.message : 'Unknown provider error.'}`, {
+      throw domainError('domain:provider_failed', `Cloudflare could not remove this hostname: ${providerMessage(error)}`, {
         id,
         stage: 'provider',
       });
     }
   }
   await prisma.domain.delete({ where: { id } });
+  // A removed primary must stop being the redirect target at once.
+  invalidatePublishedSiteConfig(projectId);
   return { id };
 };

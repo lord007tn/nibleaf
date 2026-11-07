@@ -1,5 +1,7 @@
 export * from './analytics';
 export * from './deployment-cache';
+export * from './domain-state';
+export * from './domains';
 export * from './errors';
 export * from './exports';
 export * from './git-workflow';
