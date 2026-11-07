@@ -1554,7 +1554,7 @@
   "settings_import_summary_source": "来源",
   "settings_import_summary_branch": "分公司",
   "settings_import_summary_defaultbranch": "默认分支",
-  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address. Nothing is deleted. With “Replace the current draft with this repository” on, your draft is made to match the source, and pages that aren’t in it are deleted. If you have drafts you want to keep, export your project first.",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address, and nothing you’ve edited is deleted. Where “Replace the current draft with this repository” is offered and turned on, your draft is made to match the source, and pages that aren’t in it are deleted. Download your drafts first (an export contains only the published version): Settings → Exports → One-time export → Download the original Markdown ZIP.",
   "settings_import_run": "进口",
   "settings_import_running": "正在导入...",
   "settings_import_success": "导入完成",

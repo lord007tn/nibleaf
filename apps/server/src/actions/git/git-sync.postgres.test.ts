@@ -9,6 +9,12 @@ vi.mock('@nibleaf/bullmq', () => ({
   QueueNames: { GIT: 'git' },
   QUEUE_CONFIGS: { git: { operationClaimTimeout: 12 * 60 * 1000 } },
 }));
+// One-way import source: public GitHub files served from memory.
+const publicRepo = vi.hoisted(() => ({ files: new Map<string, string>() }));
+vi.mock('../importers/github', () => ({
+  listGitHubFiles: async () => [...publicRepo.files.keys()].map((path) => ({ path, type: 'blob' as const })),
+  getGitHubTextFile: async (_owner: string, _repo: string, _branch: string, path: string) => publicRepo.files.get(path) ?? null,
+}));
 vi.mock('./crypto', () => ({ decryptGitSecret: () => 'token', encryptGitSecret: (value: string) => value, gitCredentialFingerprint: () => 'fp' }));
 vi.mock('./github', () => ({
   GitHubProvider: class {
@@ -27,6 +33,8 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
   let pages: typeof import('../pages');
   let content: typeof import('../importers/content');
   let deployments: typeof import('../deployments');
+  let branches: typeof import('../branches');
+  let gitImport: typeof import('../git-import');
   const organizationIds: string[] = [];
 
   beforeAll(async () => {
@@ -36,6 +44,8 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     pages = await import('../pages');
     content = await import('../importers/content');
     deployments = await import('../deployments');
+    branches = await import('../branches');
+    gitImport = await import('../git-import');
     // Loading the whole server action graph cold can take longer than the
     // default hook timeout on a busy machine.
   }, 120_000);
@@ -219,6 +229,44 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     // Deleting the page deletes its source.
     await db.prisma.page.delete({ where: { id: page.id } });
     expect(await db.prisma.pageGitImportSource.count({ where: { pageId: page.id } })).toBe(0);
+  }, 60_000);
+
+  it('keeps an imported page linked to its file after its branch is merged into main', async () => {
+    const setup = await fixture();
+    const draft = await db.prisma.branch.create({ data: { projectId: setup.project.id, name: `draft-${randomUUID()}`, isDefault: false } });
+    const page = await db.prisma.page.create({
+      data: {
+        projectId: setup.project.id,
+        branchId: draft.id,
+        languageId: setup.language.id,
+        title: 'Intro',
+        slug: 'intro',
+        path: 'intro',
+        content: 'old',
+      },
+    });
+    await db.prisma.pageGitImportSource.create({
+      data: { pageId: page.id, projectId: setup.project.id, branchId: draft.id, languageId: setup.language.id, path: 'docs/intro.md' },
+    });
+    await db.prisma.organization.update({
+      where: { id: setup.project.organizationId },
+      data: { metadata: JSON.stringify({ git: { provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' } }) },
+    });
+
+    await branches.mergeBranch(setup.project.id, draft.id);
+    publicRepo.files = new Map([['docs/intro.md', '# Intro\n\nnew text']]);
+    await expect(gitImport.importFromGitProvider(setup.project.organizationId, setup.project.id)).resolves.toMatchObject({
+      imported: 0,
+      updated: 1,
+      skipped: 0,
+    });
+
+    expect(await db.prisma.page.count({ where: { projectId: setup.project.id, kind: 'PAGE' } })).toBe(1);
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toContain('new text');
+    expect(await db.prisma.pageGitImportSource.findUniqueOrThrow({ where: { pageId: page.id } })).toMatchObject({
+      branchId: setup.branch.id,
+      path: 'docs/intro.md',
+    });
   }, 60_000);
 
   it('applies a 1,000-file sync well inside the transaction limit', async () => {

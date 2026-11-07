@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     organization: { findUnique: vi.fn(), update: vi.fn() },
     page: { findMany: vi.fn(), update: vi.fn() },
-    pageGitImportSource: { create: vi.fn(), findMany: vi.fn() },
+    pageGitImportSource: { create: vi.fn(), delete: vi.fn(), findMany: vi.fn(), update: vi.fn() },
   },
   files: new Map<string, string>(),
   failingPath: null as string | null,
@@ -95,10 +95,27 @@ beforeEach(() => {
     Object.assign(row, data);
     return row;
   });
+  // Every fake page lives in the import's branch/language, so the lookup
+  // through the page relation returns every row, whatever its stored scope.
   mocks.prisma.pageGitImportSource.findMany.mockImplementation(async () => mocks.sources.map((row) => ({ ...row })));
+  mocks.prisma.pageGitImportSource.update.mockImplementation(async ({ where, data }: { where: { pageId: string }; data: Partial<Source> }) => {
+    const row = mocks.sources.find((candidate) => candidate.pageId === where.pageId);
+    if (!row) throw new Error('Record to update not found.');
+    Object.assign(row, data);
+    return row;
+  });
+  mocks.prisma.pageGitImportSource.delete.mockImplementation(async ({ where }: { where: { pageId: string } }) => {
+    mocks.sources = mocks.sources.filter((row) => row.pageId !== where.pageId);
+  });
+  Object.assign(mocks.prisma.page, {
+    delete: vi.fn(async ({ where }: { where: { id: string } }) => deletePage(where.id)),
+  });
   // Same constraints as the table: pageId is the key, (scope, path) is unique.
   mocks.prisma.pageGitImportSource.create.mockImplementation(async ({ data }: { data: Source }) => {
-    if (mocks.sources.some((row) => row.pageId === data.pageId || row.path === data.path)) throw new Error('Unique constraint failed');
+    const taken = mocks.sources.some(
+      (row) => row.pageId === data.pageId || (row.path === data.path && row.branchId === data.branchId && row.languageId === data.languageId),
+    );
+    if (taken) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
     mocks.sources.push({ ...data });
     return data;
   });
@@ -252,6 +269,49 @@ describe('importFromGitProvider', () => {
 
     await expect(runImport()).resolves.toMatchObject({ imported: 1, updated: 0 });
     expect(mocks.rows.find((row) => row.id === 'page-owned')?.content).toBe('other');
+  });
+
+  it('keeps a page imported on a branch after that branch is merged into main', async () => {
+    mocks.rows.push({ id: 'page-moved', parentId: null, kind: 'PAGE', slug: 'intro', title: 'Intro', content: 'old', config: null });
+    // The row still names the branch the page was imported on.
+    mocks.sources.push({ pageId: 'page-moved', projectId: 'project-1', branchId: 'branch-merged', languageId: 'language-1', path: 'docs/intro.md' });
+    mocks.files.set('docs/intro.md', 'new');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 1, skipped: 0 });
+    expect(mocks.rows).toEqual([expect.objectContaining({ id: 'page-moved', content: 'new' })]);
+    expect(mocks.sources).toEqual([expect.objectContaining({ pageId: 'page-moved', branchId: 'branch-1', path: 'docs/intro.md' })]);
+    expect(mocks.prisma.pageGitImportSource.create).not.toHaveBeenCalled();
+  });
+
+  it('adopts the old shared `page` of Arabic files only for the file whose text it holds', async () => {
+    // The old importer slugged every Arabic name `page`: the last file won.
+    mocks.rows.push({ id: 'page-legacy', parentId: null, kind: 'PAGE', slug: 'page', title: 'النشر', content: 'انشر موقعك', config: null });
+    mocks.files.set('docs/البدء.md', 'ابدأ هنا');
+    mocks.files.set('docs/النشر.md', 'انشر موقعك');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 1, updated: 1 });
+    expect(pageOf('docs/النشر.md')?.id).toBe('page-legacy');
+    expect(pageOf('docs/البدء.md')).toMatchObject({ slug: 'البدء', content: 'ابدأ هنا' });
+    expect(mocks.rows.filter((row) => row.kind === 'PAGE')).toHaveLength(2);
+  });
+
+  it('never adopts the old shared `page` when its text matches no file', async () => {
+    mocks.rows.push({ id: 'page-legacy', parentId: null, kind: 'PAGE', slug: 'page', title: 'x', content: 'edited by a writer', config: null });
+    mocks.files.set('docs/البدء.md', 'ابدأ هنا');
+    mocks.files.set('docs/النشر.md', 'انشر موقعك');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 2, updated: 0 });
+    expect(mocks.rows.find((row) => row.id === 'page-legacy')?.content).toBe('edited by a writer');
+  });
+
+  it('drops its duplicate page when a concurrent import claimed the file first', async () => {
+    mocks.files.set('docs/intro.md', 'A');
+    mocks.prisma.pageGitImportSource.create.mockImplementationOnce(async () => {
+      throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
+    });
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
+    expect(mocks.rows).toEqual([]);
   });
 
   it('writes nothing when a file cannot be downloaded part-way through', async () => {

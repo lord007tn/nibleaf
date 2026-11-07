@@ -75,6 +75,12 @@ const lockPages = async (tx: Prisma.TransactionClient, ids: string[]) => {
 };
 
 const revisionFields = { updatedAt: true, title: true, content: true, description: true, icon: true } as const;
+
+const configSidebarTitle = (config: unknown): string | null => {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
+  const value = (config as Record<string, unknown>).sidebarTitle;
+  return typeof value === 'string' && value.trim() ? value : null;
+};
 type Revision = Pick<ObservedPage, 'updatedAt' | 'title' | 'content' | 'description' | 'icon'>;
 const revisionWhere = (page: Revision) => ({
   updatedAt: page.updatedAt,
@@ -135,6 +141,21 @@ class PageCreator {
     slugs.add(slug);
     this.bySlug.set(key, slugs);
     this.maxPosition.set(key, Math.max(this.maxPosition.get(key) ?? -1, position));
+  }
+
+  /** A page this apply turned into a folder: new files under it join it
+   * instead of creating a look-alike `-2` folder. */
+  adoptGroup(row: TreeRow) {
+    this.groups.push({ ...row, kind: 'GROUP' });
+  }
+
+  /** Pages this apply deleted free their slugs and stop being folders. */
+  forget(rows: TreeRow[]) {
+    const gone = new Set(rows.map((row) => row.id));
+    for (const row of rows) this.bySlug.get(this.key(row.parentId))?.delete(row.slug);
+    for (let index = this.groups.length - 1; index >= 0; index -= 1) {
+      if (gone.has((this.groups[index] as TreeRow).id)) this.groups.splice(index, 1);
+    }
   }
 
   private uniqueSlug(parentId: string | null, desired: string, fallback: string) {
@@ -238,12 +259,16 @@ export const applyGitContentChanges = async (
   // that started earlier has committed and the reads below see it.
   await lockPages(tx, touched);
   const current = new Map(
-    (await tx.page.findMany({ where: { id: { in: [...new Set(touched)] }, projectId }, select: { id: true, kind: true, ...revisionFields } })).map(
-      (row) => [row.id, row],
-    ),
+    (
+      await tx.page.findMany({
+        where: { id: { in: [...new Set(touched)] }, projectId },
+        select: { id: true, kind: true, config: true, ...revisionFields },
+      })
+    ).map((row) => [row.id, row]),
   );
   const deleting = new Set(deletions);
   const creator = new PageCreator(tx, context, tree);
+  const treeById = new Map(tree.map((row) => [row.id, row]));
   const conflicts: string[] = [];
   /** A descendant that must outlive the deletion of `id`'s page. */
   const mustStay = (id: string) => {
@@ -255,7 +280,10 @@ export const applyGitContentChanges = async (
     return (now.kind === 'PAGE' && !deleting.has(id)) || !(before && sameRevision(before, now));
   };
 
-  for (const change of changes) {
+  // Deletions and folder conversions first, so files created below see the
+  // tree as it will be (a converted page is their folder, a deleted slug is free).
+  const ordered = [...changes.filter((change) => change.type === 'delete'), ...changes.filter((change) => change.type === 'write')];
+  for (const change of ordered) {
     if (change.type === 'delete') {
       pageIds.set(change.path, null);
       const seen = observed.get(change.pageId);
@@ -268,14 +296,31 @@ export const applyGitContentChanges = async (
       if (subtree.some(mustStay)) {
         // Keep the sub-pages where they are: the page's own content goes, and it
         // stays as their folder. No sub-page moves, so no repository path changes.
-        const kept = await tx.page.updateMany({ where, data: { kind: 'GROUP', content: '', description: null, icon: null } });
-        if (kept.count === 0) conflicts.push(change.path);
+        // Page-only settings go (SEO, layout, table of contents); a custom
+        // sidebar label still names the folder. Visibility is kept, so the
+        // sub-pages' visibility does not change.
+        const sidebarTitle = configSidebarTitle(current.get(change.pageId)?.config);
+        const kept = await tx.page.updateMany({
+          where,
+          data: { kind: 'GROUP', content: '', description: null, icon: null, config: sidebarTitle ? { sidebarTitle } : Prisma.DbNull },
+        });
+        if (kept.count === 0) {
+          conflicts.push(change.path);
+          continue;
+        }
+        // A folder is no imported file's page any more.
+        await tx.pageGitImportSource.deleteMany({ where: { pageId: change.pageId } });
+        const row = treeById.get(change.pageId);
+        if (row) creator.adoptGroup(row);
         continue;
       }
       const deleted = await tx.page.deleteMany({ where });
       // Rows are locked, so a miss means the page changed after the merge read it.
       if (deleted.count === 0) conflicts.push(change.path);
-      else for (const id of [change.pageId, ...subtree]) current.delete(id);
+      else {
+        for (const id of [change.pageId, ...subtree]) current.delete(id);
+        creator.forget([change.pageId, ...subtree].flatMap((id) => treeById.get(id) ?? []));
+      }
       continue;
     }
     const seen = change.pageId ? observed.get(change.pageId) : undefined;

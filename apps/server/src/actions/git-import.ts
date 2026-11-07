@@ -246,22 +246,32 @@ type ScopePage = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; 
  * page only when it sits where this file's earlier import put it: its Unicode
  * slug, the older ASCII-only slug (`café.md` → `caf`), or that slug's `-2` when
  * a folder group took the plain slug first. A page that already belongs to
- * another path is never taken. Names without any letters or digits once all
- * collapsed onto `page`, so they never adopt.
+ * another path is never taken.
+ *
+ * The older importer gave every name without ASCII letters (all Arabic names)
+ * the slug `page`, so those files also try `page` / `page-2`. Several files
+ * collapsed onto that one page, so it is adopted only by the file whose text
+ * it holds exactly (`exactOnly`).
  */
-const legacyImportedPage = (siblings: readonly ScopePage[], name: string, isAvailable: (page: ScopePage) => boolean): ScopePage | null => {
-  const unicode = slugifyUnicode(name);
-  if (!unicode) return null;
-  const candidates = [...new Set([unicode, slugify(name)].filter(Boolean))];
-  for (const slug of candidates) {
+const legacyImportedPage = (
+  siblings: readonly ScopePage[],
+  name: string,
+  isAvailable: (page: ScopePage) => boolean,
+): { page: ScopePage; exactOnly: boolean } | null => {
+  const ascii = slugify(name);
+  const candidates = [...new Set([slugifyUnicode(name), ascii].filter(Boolean))].map((slug) => ({ slug, exactOnly: false }));
+  if (!ascii) candidates.push({ slug: 'page', exactOnly: true });
+  for (const { slug, exactOnly } of candidates) {
     const options = siblings.some((page) => page.kind === 'GROUP' && page.slug === slug) ? [slug, `${slug}-2`] : [slug];
     for (const option of options) {
       const page = siblings.find((candidate) => candidate.kind === 'PAGE' && candidate.slug === option && isAvailable(candidate));
-      if (page) return page;
+      if (page) return { page, exactOnly };
     }
   }
   return null;
 };
+
+const isUniqueViolation = (error: unknown) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
 
 /**
  * One-way import: pull Markdown/MDX files from a PUBLIC Git source (the configured
@@ -368,12 +378,39 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
   }
 
   const scope = { projectId, branchId: target.branchId, languageId: target.languageId };
-  const [scopePages, sources] = await Promise.all([
+  // Identity follows the page: rows are found through the page's CURRENT
+  // branch and language, so a page moved by a branch merge or an import
+  // promotion keeps its source. Rows whose stored scope went stale are moved
+  // onto the page's scope before anything is written, which keeps the unique
+  // (branch, language, path) key true to where the page lives.
+  const [scopePages, linked] = await Promise.all([
     prisma.page.findMany({ where: scope, select: { id: true, parentId: true, kind: true, slug: true } }) as Promise<ScopePage[]>,
-    prisma.pageGitImportSource.findMany({ where: scope, select: { pageId: true, path: true } }),
+    prisma.pageGitImportSource.findMany({
+      where: { projectId, page: { branchId: target.branchId, languageId: target.languageId } },
+      orderBy: { createdAt: 'asc' },
+      select: { pageId: true, path: true, branchId: true, languageId: true },
+    }),
   ]);
+  const sources: typeof linked = [];
+  for (const source of linked) {
+    if (source.branchId === target.branchId && source.languageId === target.languageId) {
+      sources.push(source);
+      continue;
+    }
+    try {
+      await prisma.pageGitImportSource.update({
+        where: { pageId: source.pageId },
+        data: { branchId: target.branchId, languageId: target.languageId },
+      });
+      sources.push(source);
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Another page here already holds this path: that one keeps it.
+      await prisma.pageGitImportSource.delete({ where: { pageId: source.pageId } });
+    }
+  }
   const pageIdBySource = new Map(sources.map((source) => [source.path, source.pageId]));
-  const owned = new Set(sources.map((source) => source.pageId));
+  const owned = new Set(linked.map((source) => source.pageId));
 
   type Plan = {
     file: (typeof loaded)[number];
@@ -405,13 +442,13 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
 
   // Files without a source row: place them and look for the page an older
   // import left for them.
-  const contenders = new Map<string, Plan[]>();
+  const contenders = new Map<string, Array<{ plan: Plan; exactOnly: boolean }>>();
   for (const plan of plans) {
     if (plan.pageId) continue;
     plan.parentId = await ensureGroups(importFileLocation(plan.file.rel).dir);
     const siblings = scopePages.filter((page) => page.parentId === plan.parentId);
     const legacy = legacyImportedPage(siblings, plan.name, (page) => !owned.has(page.id));
-    if (legacy) contenders.set(legacy.id, [...(contenders.get(legacy.id) ?? []), plan]);
+    if (legacy) contenders.set(legacy.page.id, [...(contenders.get(legacy.page.id) ?? []), { plan, exactOnly: legacy.exactOnly }]);
   }
   if (contenders.size > 0) {
     const stored = await prisma.page.findMany({ where: { id: { in: [...contenders.keys()] } }, select: { id: true, content: true } });
@@ -420,16 +457,26 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
       // Look-alike files (`Intro.md`, `intro.md`) once overwrote one shared
       // page. Keep it with the file whose text it holds, else with the last
       // file in path order — the older importer's last writer — so the text at
-      // that URL does not switch files. The others get new pages.
-      const keeper = rivals.find((plan) => plan.body === page.content) ?? rivals.at(-1);
-      if (keeper) Object.assign(keeper, { pageId: page.id, adopted: true });
+      // that URL does not switch files. A `page` fallback needs the exact text.
+      const keeper = rivals.find(({ plan }) => plan.body === page.content) ?? rivals.filter(({ exactOnly }) => !exactOnly).at(-1);
+      if (keeper) Object.assign(keeper.plan, { pageId: page.id, adopted: true });
     }
   }
 
   for (const plan of plans) {
     if (plan.pageId) {
+      if (plan.adopted) {
+        // Claim the page before writing to it: if a concurrent import claimed
+        // this path or page first, leave the page to that import.
+        try {
+          await prisma.pageGitImportSource.create({ data: { ...scope, pageId: plan.pageId, path: plan.file.source } });
+        } catch (error) {
+          if (!isUniqueViolation(error)) throw error;
+          summary.skipped++;
+          continue;
+        }
+      }
       await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
-      if (plan.adopted) await prisma.pageGitImportSource.create({ data: { ...scope, pageId: plan.pageId, path: plan.file.source } });
       summary.updated++;
       continue;
     }
@@ -442,7 +489,16 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
       branchId: target.branchId,
       languageId: target.languageId,
     });
-    await prisma.pageGitImportSource.create({ data: { ...scope, pageId: created.id, path: plan.file.source } });
+    try {
+      await prisma.pageGitImportSource.create({ data: { ...scope, pageId: created.id, path: plan.file.source } });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // A concurrent import created this file's page first: drop the duplicate
+      // instead of leaving a page no import will ever update.
+      await prisma.page.delete({ where: { id: created.id } });
+      summary.skipped++;
+      continue;
+    }
     summary.imported++;
   }
 

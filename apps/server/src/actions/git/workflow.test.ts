@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
     gitPullRequest: { upsert: vi.fn() },
     gitSyncOperation: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     gitWebhookDelivery: { updateMany: vi.fn() },
+    pageGitImportSource: { deleteMany: vi.fn() },
     language: { findFirst: vi.fn() },
     page: {
       aggregate: vi.fn(),
@@ -52,7 +53,7 @@ vi.mock('@nibleaf/bullmq', () => ({
   QueueNames: { GIT: 'git' },
   QUEUE_CONFIGS: { git: { operationClaimTimeout: 12 * 60 * 1000 } },
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma, Prisma: { join: (values: unknown[]) => values } }));
+vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma, Prisma: { join: (values: unknown[]) => values, DbNull: null } }));
 // The repository generator derives docs.json navigation with the real buildNavTree.
 vi.mock('@nibleaf/shared/site', async (importOriginal) => ({ ...(await importOriginal<object>()), buildSnapshot: vi.fn() }));
 vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
@@ -771,6 +772,25 @@ describe('Git apply safety', () => {
 
     expect(pageStore.rows.find((page) => page.id === about.id)?.content).toBe('Saved by the writer');
     expect(statuses()).toContain('CONFLICT');
+  });
+
+  it('puts a new file under a page that becomes its folder in the same pull', async () => {
+    const { child } = seedTree();
+    Object.assign(pageStore.rows[0] as PageRow, { config: { sidebarTitle: 'Guide', seo: { noindex: true } } });
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      remote('guide/setup.mdx', serializeGitPage(child)),
+      remote('guide/new.mdx', '---\ntitle: "New"\n---\n\nNew page'),
+    ]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    const created = pageStore.rows.find((page) => page.title === 'New');
+    expect(created).toMatchObject({ parentId: 'page-guide', path: 'guide/new' });
+    expect(pageStore.rows.filter((page) => page.kind === 'GROUP').map((page) => page.id)).toEqual(['page-guide']);
+    // The folder keeps its sidebar label only, and is no imported file's page.
+    expect((pageStore.rows[0] as PageRow & { config?: unknown }).config).toEqual({ sidebarTitle: 'Guide' });
+    expect(mocks.prisma.pageGitImportSource.deleteMany).toHaveBeenCalledWith({ where: { pageId: 'page-guide' } });
+    expect(statuses()).toContain('SUCCEEDED');
   });
 
   it('keeps a sub-page Git still has when Git deletes its parent page, and the next push leaves it alone', async () => {
