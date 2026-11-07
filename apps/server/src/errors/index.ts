@@ -33,6 +33,7 @@ export type ErrorCode =
   | 'database:not_found'
   | 'database:conflict'
   | 'branch:main_changed'
+  | 'branch:baseline_missing'
   | 'branch:promote_blocked'
   | 'storage:error'
   | 'search:unavailable'
@@ -107,6 +108,7 @@ const ERROR_STATUS = {
   'database:not_found': 404,
   'database:conflict': 409,
   'branch:main_changed': 409,
+  'branch:baseline_missing': 409,
   'branch:promote_blocked': 409,
   'storage:error': 502,
   'search:unavailable': 503,

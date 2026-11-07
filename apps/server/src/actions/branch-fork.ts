@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { type PageKind, Prisma } from '@nibleaf/database';
 import { joinPath } from '@nibleaf/shared/utils';
 
@@ -7,25 +8,26 @@ import { joinPath } from '@nibleaf/shared/utils';
  * When a version is copied from main we record `forkedAt` and a baseline of
  * main's pages at that moment (see {@link ForkBaseline}): for each main page,
  * the id of the version's copy, a hash of what the page says (see
- * {@link pageContentHash}), its parent and its position. "Promote into main"
- * compares both sides against it, three-way.
+ * {@link pageContentHash}), each field's value (see {@link FIELD_SQL}), its
+ * parent and its position. "Promote into main" compares both sides against it,
+ * three-way, field by field.
  *
  * Identity: promote updates main's pages IN PLACE from the version's copies and
  * then deletes the copies. Main page ids never change, so other open versions'
  * baselines stay valid across successive promotions, and comments and reader
- * grants on main pages survive. Comments on a consumed copy move to its main
- * page.
+ * grants on main pages survive. Comments and grants on a consumed copy move to
+ * its main page.
  *
- * A page "changed" on a side when its content hash or its parent differs from
- * the baseline. Position alone is not a change (dragging in the page tree
- * rewrites every sibling's position), but it is merged: a position the version
- * changed wins, otherwise main's stays.
- *
- * Promote rules (with a baseline), per main page at the fork:
- *  - On both sides: the parts the version changed (content, parent, position)
- *    replace main's; the parts it left alone keep main's current state. When
- *    both sides changed the content, the version wins: that is what the 409
- *    confirmation is for.
+ * Three-way merge, per main page at the fork:
+ *  - Each field (title, slug, icon, description, visibility, translation key,
+ *    kind, content, settings), the parent and the position take the version's
+ *    value only where the version changed it; everything else keeps main's
+ *    current value. When both sides changed the same field, the version wins
+ *    (`onPromote: 'replaced'`); when they changed different fields, both edits
+ *    are kept (`'merged'`).
+ *  - Baselines recorded before per-field values existed (#334) have no
+ *    `fields`: a page both sides changed is then replaced whole by the
+ *    version's copy, listed as `'replaced'` and covered by the confirmation.
  *  - Deleted in the version: removed from main (listed when main also edited it).
  *  - Deleted on main: stays deleted, unless the version edited its copy. An
  *    unedited copy still comes back when a page the version keeps lives under
@@ -36,24 +38,25 @@ import { joinPath } from '@nibleaf/shared/utils';
  *  - Pages created in the version move onto main.
  *  - Same address: when two pages would end up at the same path in the same
  *    language, one keeps it and the others get a numbered slug ("refunds-2"),
- *    listed as `conflict`. A page whose address comes from main keeps it (main
- *    page first, then lowest id); a content-only edit does not move ownership.
- *    Clashes are settled top-down, so a renamed folder's pages follow it
- *    instead of being renamed again. Duplicates that were already on main and
- *    that the version did not touch are left as they are.
+ *    listed as `conflict`. A page staying where it is keeps the address (then
+ *    a main page, then the lowest id); a page whose address changes in this
+ *    promote (it moves in, the version moved or renamed it, or it is re-homed
+ *    because its parent goes away) is the one renamed. Clashes are settled
+ *    top-down, so a renamed folder's pages follow it. Duplicates that were
+ *    already on main and that the promote does not touch are left alone.
  *  - Cycles: if combining both sides' moves would put pages inside each other,
  *    promote is refused (409 `branch:promote_blocked`) and the pages are listed
  *    as `conflict` / `blocked`; confirming does not override it.
  *
- * A version forked from another version inherits that version's baseline, with
- * each copy id remapped onto its own copies, so it promotes with the same rules
- * and the first version's edits count as its own.
+ * A version forked from another version inherits that version's baseline:
+ * each copy id is remapped onto the new copies (the old one is kept in `aka`,
+ * in case a promote put that copy onto main), and the source's own pages are
+ * added as entries with `origin: 'version'`, keyed by the source page id. When
+ * the source is promoted first, those pages land on main under the same ids,
+ * so a later promote folds into them instead of duplicating them.
  *
- * Versions without a baseline (created before fork tracking, or forked from
- * such a version) use their fork time instead: main pages created after it are
- * "added" and kept, pages updated after it are "modified" and replaced, and
- * deletions on main cannot be detected (`baselineComplete: false`). All of the
- * version's pages move onto main.
+ * A version without a baseline (created before fork tracking, or forked from
+ * such a version) is not promoted at all: 409 `branch:baseline_missing`.
  */
 
 /** What a page says, as one hash: everything a reader or the page settings
@@ -63,48 +66,75 @@ import { joinPath } from '@nibleaf/shared/utils';
 export const pageContentHash = () =>
   Prisma.sql`md5(json_build_array("kind", "title", "slug", "icon", "description", "content", "config", "translationKey", "hidden")::text)`;
 
+/** Per-field values, as SQL: the plain columns, and hashes of content and
+ *  settings so the baseline stays small. Used verbatim in the fork read and
+ *  the promote read. */
+export const FIELD_SQL = () =>
+  Prisma.sql`"slug", "title", "icon", "description", "hidden", "translationKey", "kind"::text AS "kind", md5(coalesce("content", '')) AS "contentHash", md5(coalesce("config"::text, '')) AS "configHash"`;
+
+export type PageFields = {
+  slug: string;
+  title: string;
+  icon: string | null;
+  description: string | null;
+  hidden: boolean;
+  translationKey: string | null;
+  kind: PageKind;
+  contentHash: string;
+  configHash: string;
+};
+
+const FIELD_KEYS = ['slug', 'title', 'icon', 'description', 'hidden', 'translationKey', 'kind', 'contentHash', 'configHash'] as const;
+type FieldKey = (typeof FIELD_KEYS)[number];
+const pickFields = (p: PageFields): PageFields => Object.fromEntries(FIELD_KEYS.map((k) => [k, p[k]])) as PageFields;
+
 type ForkBaselineEntry = {
-  /** The version's copy of this main page. */
+  /** The version's copy of this page. */
   copyId: string;
-  /** Content hash of the main page at the fork. */
+  /** Content hash of the page at the fork. */
   hash: string;
   /** Content hash of the copy right after it was made (equal unless copying
    *  normalized a value). */
   copyHash: string;
-  /** Main parent id at the fork. */
+  /** Parent at the fork, as a baseline key. */
   parentId: string | null;
   position: number;
-  /** Main page's `updatedAt` at the fork (ISO). */
+  /** The page's `updatedAt` at the fork (ISO). */
   updatedAt: string;
   title: string;
   path: string;
   languageId: string;
   kind: PageKind;
+  /** Additive (absent in baselines #334 recorded): each field at the fork. */
+  fields?: PageFields;
+  /** Additive: the copy's settings hash, when copying changed it (a JSON null
+   *  setting is stored as no settings). */
+  copyConfigHash?: string;
+  /** Additive: the key is a page a source version created (chained forks). */
+  origin?: 'version';
+  /** Additive: other ids the page may have on main (a source version's copy
+   *  that a promote of that version put onto main). */
+  aka?: string[];
 };
 
-/** Main's pages at the fork, keyed by main page id. */
+/** Main's pages at the fork, keyed by main page id (or, for `origin:
+ *  'version'` entries, by the source version's page id). */
 type ForkBaseline = { version: 2; pages: Record<string, ForkBaselineEntry> };
 
 export type ForkPoint = { forkedAt: Date; baseline: ForkBaseline | null };
 
-const entryOf = (baseline: ForkBaseline, mainPageId: string) => (Object.hasOwn(baseline.pages, mainPageId) ? baseline.pages[mainPageId] : undefined);
-
 /** One page row as promote reads it (both branches, one locked query). */
-export type PromotePageRow = {
+export type PromotePageRow = PageFields & {
   id: string;
   parentId: string | null;
-  kind: PageKind;
-  title: string;
-  slug: string;
   path: string;
   languageId: string;
   position: number;
-  createdAt: Date;
   updatedAt: Date;
   hash: string;
 };
 
-type OnPromote = 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
+type OnPromote = 'kept' | 'merged' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
 
 type ChangedOnMainPage = {
   /** Main page id (for a deleted page, the id it had). For `conflict`, the
@@ -125,46 +155,64 @@ type ChangedOnMainPage = {
   updatedAt: string;
 };
 
-export type MergePreview = { changedOnMainSinceFork: ChangedOnMainPage[]; baselineComplete: boolean };
+export type MergePreview = {
+  changedOnMainSinceFork: ChangedOnMainPage[];
+  baselineComplete: boolean;
+  /** Send back as `confirmPreview` to promote exactly this list. */
+  fingerprint: string;
+};
+
+type FieldData = Partial<Pick<PageFields, 'slug' | 'title' | 'icon' | 'description' | 'hidden' | 'translationKey' | 'kind'>>;
 
 /** Writes, all keyed to rows promote has locked and read. */
 export type PromotePlan = {
-  /** Main pages updated in place. `fromCopyId`: copy the content fields from
-   *  that version copy. */
-  mainUpdates: Array<{ id: string; fromCopyId?: string; data: { parentId?: string | null; position?: number; slug?: string } }>;
+  /** Main pages updated in place: plain fields in `data`; content and
+   *  settings copied from the named version copy. */
+  mainUpdates: Array<{
+    id: string;
+    contentFrom?: string;
+    configFrom?: string;
+    data: FieldData & { parentId?: string | null; position?: number };
+  }>;
   /** Version pages that become main pages (keeping their ids). */
   moves: Array<{ id: string; data: { parentId: string | null; slug?: string } }>;
-  /** Version copies folded into a main page: comments move, then the copy goes. */
+  /** Version copies folded into a main page: comments and grants move, then
+   *  the copy goes. */
   consumed: Array<{ copyId: string; mainId: string }>;
   /** Untouched copies of pages deleted on main. */
   dropVersionIds: string[];
-  /** Main pages the version deleted (or, without a baseline, replaced). */
+  /** Main pages the version deleted. */
   deleteMainIds: string[];
+  /** Final addresses that come from the version: a main page created after
+   *  the read at one of these would collide. */
+  incoming: Array<{ languageId: string; path: string }>;
   /** Combining both sides would create a parent cycle: promote must refuse. */
   blocked: boolean;
 };
 
+type ForkSourceRow = PageFields & {
+  id: string;
+  parentId: string | null;
+  path: string;
+  languageId: string;
+  position: number;
+  updatedAt: Date;
+  hash: string;
+};
+
+/** The baseline of a fresh fork of main. `copy` gives each copy's id and its
+ *  hashes as read right after it was made. */
 export const buildForkBaseline = (
-  mainPages: Array<{
-    id: string;
-    parentId: string | null;
-    kind: PageKind;
-    title: string;
-    path: string;
-    languageId: string;
-    position: number;
-    updatedAt: Date;
-  }>,
-  copyIdOf: (mainPageId: string) => string,
-  hashOf: (pageId: string) => string,
+  mainPages: ForkSourceRow[],
+  copyOf: (mainPageId: string) => { id: string; hash: string; configHash: string },
 ): Prisma.InputJsonObject => {
   const pages: Record<string, ForkBaselineEntry> = {};
   for (const p of mainPages) {
-    const copyId = copyIdOf(p.id);
+    const copy = copyOf(p.id);
     pages[p.id] = {
-      copyId,
-      hash: hashOf(p.id),
-      copyHash: hashOf(copyId),
+      copyId: copy.id,
+      hash: p.hash,
+      copyHash: copy.hash,
       parentId: p.parentId,
       position: p.position,
       updatedAt: p.updatedAt.toISOString(),
@@ -172,9 +220,70 @@ export const buildForkBaseline = (
       path: p.path,
       languageId: p.languageId,
       kind: p.kind,
+      fields: pickFields(p),
+      ...(copy.configHash !== p.configHash ? { copyConfigHash: copy.configHash } : {}),
     };
   }
   return { version: 2, pages } satisfies ForkBaseline;
+};
+
+/** The baseline for a version forked from another version (`source`): the
+ *  same entries, with each copy id remapped onto the new copies and the old
+ *  copy id kept in `aka`; hashes stay as at the original fork, so the source's
+ *  edits count as this version's. An entry whose copy the source deleted keeps
+ *  a copy id that no longer exists, so it reads as "deleted in the version".
+ *  The source's own pages (created or restored in it) become `origin:
+ *  'version'` entries, keyed by their source page id. */
+export const inheritForkBaseline = (
+  source: ForkBaseline,
+  sourcePages: ForkSourceRow[],
+  copyOf: (sourcePageId: string) => { id: string; hash: string; configHash: string } | undefined,
+): Prisma.InputJsonObject => {
+  const pages: Record<string, ForkBaselineEntry> = {};
+  const sourceCopyToKey = new Map<string, string>();
+  for (const [key, e] of Object.entries(source.pages)) {
+    sourceCopyToKey.set(e.copyId, key);
+    const copy = copyOf(e.copyId);
+    pages[key] = { ...e, copyId: copy?.id ?? e.copyId, aka: [...(e.aka ?? []), e.copyId] };
+  }
+  for (const p of sourcePages) {
+    if (sourceCopyToKey.has(p.id)) continue;
+    const copy = copyOf(p.id);
+    if (!copy) continue;
+    pages[p.id] = {
+      copyId: copy.id,
+      hash: p.hash,
+      copyHash: copy.hash,
+      parentId: p.parentId ? (sourceCopyToKey.get(p.parentId) ?? p.parentId) : null,
+      position: p.position,
+      updatedAt: p.updatedAt.toISOString(),
+      title: p.title,
+      path: p.path,
+      languageId: p.languageId,
+      kind: p.kind,
+      fields: pickFields(p),
+      ...(copy.configHash !== p.configHash ? { copyConfigHash: copy.configHash } : {}),
+      origin: 'version',
+    };
+  }
+  return { version: 2, pages } satisfies ForkBaseline;
+};
+
+const isFields = (value: unknown): value is PageFields => {
+  if (!value || typeof value !== 'object') return false;
+  const f = value as Record<string, unknown>;
+  const nullableString = (v: unknown) => v === null || typeof v === 'string';
+  return (
+    typeof f.slug === 'string' &&
+    typeof f.title === 'string' &&
+    nullableString(f.icon) &&
+    nullableString(f.description) &&
+    typeof f.hidden === 'boolean' &&
+    nullableString(f.translationKey) &&
+    (f.kind === 'PAGE' || f.kind === 'GROUP') &&
+    typeof f.contentHash === 'string' &&
+    typeof f.configHash === 'string'
+  );
 };
 
 const isEntry = (value: unknown): value is ForkBaselineEntry => {
@@ -191,7 +300,11 @@ const isEntry = (value: unknown): value is ForkBaselineEntry => {
     typeof e.title === 'string' &&
     typeof e.path === 'string' &&
     typeof e.languageId === 'string' &&
-    (e.kind === 'PAGE' || e.kind === 'GROUP')
+    (e.kind === 'PAGE' || e.kind === 'GROUP') &&
+    (e.fields === undefined || isFields(e.fields)) &&
+    (e.copyConfigHash === undefined || typeof e.copyConfigHash === 'string') &&
+    (e.origin === undefined || e.origin === 'version') &&
+    (e.aka === undefined || (Array.isArray(e.aka) && e.aka.every((id) => typeof id === 'string')))
   );
 };
 
@@ -202,17 +315,6 @@ const parseForkBaseline = (value: Prisma.JsonValue | null): ForkBaseline | null 
   const { version, pages } = value as Record<string, unknown>;
   if (version !== 2 || !pages || typeof pages !== 'object' || Array.isArray(pages)) return null;
   return Object.values(pages).every(isEntry) ? (value as ForkBaseline) : null;
-};
-
-/** The baseline for a version forked from `source` (another version): the same
- *  main pages and fork-time hashes, with each copy id remapped onto the new
- *  version's copies. An entry whose copy the source deleted keeps a copy id
- *  that no longer exists, so it reads as "deleted in the version" (and is
- *  removed from main on promote) rather than as "added on main". */
-export const inheritForkBaseline = (source: ForkBaseline, copyIdOf: (sourcePageId: string) => string | undefined): Prisma.InputJsonObject => {
-  const pages: Record<string, ForkBaselineEntry> = {};
-  for (const [mainId, e] of Object.entries(source.pages)) pages[mainId] = { ...e, copyId: copyIdOf(e.copyId) ?? e.copyId };
-  return { version: 2, pages } satisfies ForkBaseline;
 };
 
 export const forkPointOf = (branch: { createdAt: Date; forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkPoint => {
@@ -226,122 +328,181 @@ const byPath = (a: ChangedOnMainPage, b: ChangedOnMainPage) =>
   a.change.localeCompare(b.change, 'en') ||
   a.pageId.localeCompare(b.pageId, 'en');
 
+/** What the writer reviewed, as one value: sha256 over the sorted
+ *  `pageId|change|onPromote|updatedAt|newPath|newParentPath` lines. */
+export const previewFingerprint = (changed: ChangedOnMainPage[]) =>
+  createHash('sha256')
+    .update(
+      changed
+        .map((c) =>
+          [c.pageId, c.change, c.onPromote, c.updatedAt, c.newPath ?? '', c.newParentPath === undefined ? '' : (c.newParentPath ?? '/')].join('|'),
+        )
+        .sort()
+        .join('\n'),
+    )
+    .digest('hex');
+
 const KEY = '\u0000';
+const SIMPLE_FIELDS = ['slug', 'title', 'icon', 'description', 'hidden', 'translationKey', 'kind'] as const;
 
 /** Compare main and the version with the fork point: what changed on main (the
  *  preview, sorted by path) and what promote will write (the plan). */
 export const analyzePromote = (
   mainPages: PromotePageRow[],
   versionPages: PromotePageRow[],
-  fork: ForkPoint,
+  baseline: ForkBaseline,
   languageCodes: Map<string, string>,
 ): { preview: MergePreview; plan: PromotePlan } => {
-  const { baseline, forkedAt } = fork;
   const changed: ChangedOnMainPage[] = [];
+  const byPageId = new Map<string, ChangedOnMainPage[]>();
   const code = (languageId: string) => languageCodes.get(languageId) ?? '';
+  const push = (entry: ChangedOnMainPage) => {
+    changed.push(entry);
+    const list = byPageId.get(entry.pageId);
+    if (list) list.push(entry);
+    else byPageId.set(entry.pageId, [entry]);
+  };
   const list = (
     p: { title: string; path: string; languageId: string },
     pageId: string,
     change: ChangedOnMainPage['change'],
     onPromote: OnPromote,
     updatedAt: string,
-  ) => changed.push({ pageId, title: p.title, path: p.path, languageCode: code(p.languageId), change, onPromote, updatedAt });
+  ) => push({ pageId, title: p.title, path: p.path, languageCode: code(p.languageId), change, onPromote, updatedAt });
 
   const mainById = new Map(mainPages.map((p) => [p.id, p]));
   const versionById = new Map(versionPages.map((p) => [p.id, p]));
-  const plan: PromotePlan = { mainUpdates: [], moves: [], consumed: [], dropVersionIds: [], deleteMainIds: [], blocked: false };
+  const plan: PromotePlan = { mainUpdates: [], moves: [], consumed: [], dropVersionIds: [], deleteMainIds: [], incoming: [], blocked: false };
   const deleteMain = new Set<string>();
   /** Version page id → the main id it is folded into. */
   const foldedInto = new Map<string, string>();
   const moved = new Set<string>();
-  /** Main id → partial update; version id → move data. */
-  const mainData = new Map<string, { fromCopyId?: string; data: { parentId?: string | null; position?: number; slug?: string } }>();
+  type MainUpdate = PromotePlan['mainUpdates'][number];
+  const mainData = new Map<string, MainUpdate>();
+  /** Main pages whose slug the version set. */
+  const versionSlug = new Set<string>();
   /** Version pages whose version parent decides their final parent. */
   const usesVersionParent = new Set<string>();
 
-  if (baseline) {
-    const copyToMain = new Map(Object.entries(baseline.pages).map(([mainId, e]) => [e.copyId, mainId]));
-    const logicalParent = (copy: PromotePageRow) => (copy.parentId ? (copyToMain.get(copy.parentId) ?? copy.parentId) : null);
-    const restoreCandidates = new Map<string, string>(); // copy id → main id (deleted on main, copy untouched)
+  const entries = Object.entries(baseline.pages);
+  // Where each baseline page lives on main now, if anywhere (its key, or an
+  // older copy id a promote put there).
+  const keyToMain = new Map<string, string>();
+  const mainToKey = new Map<string, string>();
+  for (const [key, e] of entries) {
+    const onMain = mainById.has(key) ? key : e.aka?.find((id) => mainById.has(id));
+    if (onMain && !mainToKey.has(onMain)) {
+      keyToMain.set(key, onMain);
+      mainToKey.set(onMain, key);
+    }
+  }
+  const copyToKey = new Map(entries.map(([key, e]) => [e.copyId, key]));
+  const keyOfMainParent = (id: string | null) => (id ? (mainToKey.get(id) ?? id) : null);
+  const logicalParent = (copy: PromotePageRow) => (copy.parentId ? (copyToKey.get(copy.parentId) ?? copy.parentId) : null);
+  const restoreCandidates = new Map<string, string>(); // copy id → baseline key (deleted on main, copy untouched)
 
-    for (const [mainId, e] of Object.entries(baseline.pages)) {
-      const m = mainById.get(mainId);
-      const copy = versionById.get(e.copyId);
-      const versionContent = copy ? copy.hash !== e.copyHash : false;
-      const versionParent = copy ? logicalParent(copy) !== e.parentId : false;
-      const versionEdited = versionContent || versionParent;
-      if (m) {
-        const mainEdited = m.hash !== e.hash || m.parentId !== e.parentId;
-        if (!copy) {
-          deleteMain.add(mainId);
-          if (mainEdited) list(m, mainId, 'modified', 'removed', m.updatedAt.toISOString());
-          continue;
+  for (const [key, e] of entries) {
+    const mainId = keyToMain.get(key);
+    const m = mainId ? mainById.get(mainId) : undefined;
+    const copy = versionById.get(e.copyId);
+    const versionContent = copy ? copy.hash !== e.copyHash : false;
+    const versionParent = copy ? logicalParent(copy) !== e.parentId : false;
+    const versionEdited = versionContent || versionParent;
+    if (m && mainId) {
+      const mainContent = m.hash !== e.hash;
+      const mainParent = keyOfMainParent(m.parentId) !== e.parentId;
+      const mainEdited = mainContent || mainParent;
+      if (!copy) {
+        deleteMain.add(mainId);
+        if (mainEdited) list(m, mainId, 'modified', 'removed', m.updatedAt.toISOString());
+        continue;
+      }
+      foldedInto.set(copy.id, mainId);
+      plan.consumed.push({ copyId: copy.id, mainId });
+      const update: MainUpdate = { id: mainId, data: {} };
+      let overlap = versionParent && mainParent;
+      if (versionContent) {
+        const base = e.fields;
+        if (base) {
+          // Three-way, field by field: the version wins only where it changed.
+          const baseCopy = (k: FieldKey) => (k === 'configHash' ? (e.copyConfigHash ?? base.configHash) : base[k]);
+          const versionChanged = (k: FieldKey) => copy[k] !== baseCopy(k);
+          for (const k of SIMPLE_FIELDS) {
+            if (!versionChanged(k) || copy[k] === m[k]) continue;
+            if (m[k] !== base[k]) overlap = true;
+            (update.data as Record<string, unknown>)[k] = copy[k];
+            if (k === 'slug') versionSlug.add(mainId);
+          }
+          if (versionChanged('contentHash') && copy.contentHash !== m.contentHash) {
+            if (m.contentHash !== base.contentHash) overlap = true;
+            update.contentFrom = copy.id;
+          }
+          if (versionChanged('configHash') && copy.configHash !== m.configHash) {
+            if (m.configHash !== base.configHash) overlap = true;
+            update.configFrom = copy.id;
+          }
+        } else {
+          // No per-field baseline (#334): take the copy whole. When main also
+          // changed the page this replaces main's edits, so it is listed.
+          for (const k of SIMPLE_FIELDS) {
+            if (copy[k] !== m[k]) (update.data as Record<string, unknown>)[k] = copy[k];
+          }
+          if (copy.slug !== m.slug) versionSlug.add(mainId);
+          if (copy.contentHash !== m.contentHash) update.contentFrom = copy.id;
+          if (copy.configHash !== m.configHash) update.configFrom = copy.id;
+          if (mainContent) overlap = true;
         }
-        if (mainEdited) list(m, mainId, 'modified', versionEdited ? 'replaced' : 'kept', m.updatedAt.toISOString());
-        foldedInto.set(copy.id, mainId);
-        plan.consumed.push({ copyId: copy.id, mainId });
-        const update: { fromCopyId?: string; data: { parentId?: string | null; position?: number } } = { data: {} };
-        if (versionContent) update.fromCopyId = copy.id;
-        if (versionParent) usesVersionParent.add(copy.id);
-        if (copy.position !== e.position) update.data.position = copy.position;
-        mainData.set(mainId, update);
-      } else if (copy && versionEdited) {
+      }
+      if (versionParent) usesVersionParent.add(copy.id);
+      if (copy.position !== e.position) update.data.position = copy.position;
+      mainData.set(mainId, update);
+      if (mainEdited) list(m, mainId, 'modified', overlap ? 'replaced' : versionEdited ? 'merged' : 'kept', m.updatedAt.toISOString());
+    } else if (e.origin === 'version') {
+      // A page a source version created, not (or no longer) on main: it is
+      // this version's own.
+      if (copy) {
         moved.add(copy.id);
         usesVersionParent.add(copy.id);
-      } else if (copy) {
-        restoreCandidates.set(copy.id, mainId);
-      } else {
-        list(e, mainId, 'deleted', 'removed', e.updatedAt);
       }
+    } else if (copy && versionEdited) {
+      moved.add(copy.id);
+      usesVersionParent.add(copy.id);
+    } else if (copy) {
+      restoreCandidates.set(copy.id, key);
+    } else {
+      list(e, key, 'deleted', 'removed', e.updatedAt);
     }
-    for (const p of versionPages) {
-      if (!copyToMain.has(p.id)) {
-        moved.add(p.id);
-        usesVersionParent.add(p.id);
-      }
-    }
-    // A page the version keeps must keep its parent: bring back untouched
-    // copies it lives under.
-    const queue = [...usesVersionParent];
-    while (queue.length > 0) {
-      const id = queue.pop() as string;
-      const parent = versionById.get(id)?.parentId;
-      if (parent && restoreCandidates.has(parent)) {
-        restoreCandidates.delete(parent);
-        moved.add(parent);
-        usesVersionParent.add(parent);
-        queue.push(parent);
-      }
-    }
-    for (const [mainId, e] of Object.entries(baseline.pages)) {
-      if (mainById.has(mainId) || !versionById.has(e.copyId)) continue;
-      list(e, mainId, 'deleted', moved.has(e.copyId) ? 'restored' : 'removed', e.updatedAt);
-    }
-    plan.dropVersionIds = [...restoreCandidates.keys()];
-    for (const p of mainPages) {
-      if (!entryOf(baseline, p.id)) list(p, p.id, 'added', 'kept', p.updatedAt.toISOString());
-    }
-  } else {
-    // No baseline: main pages that existed at the fork are replaced by the
-    // version's pages; pages created on main after it are kept.
-    const fork = forkedAt.getTime();
-    for (const p of mainPages) {
-      if (p.createdAt.getTime() > fork) {
-        list(p, p.id, 'added', 'kept', p.updatedAt.toISOString());
-      } else {
-        deleteMain.add(p.id);
-        if (p.updatedAt.getTime() > fork) list(p, p.id, 'modified', 'replaced', p.updatedAt.toISOString());
-      }
-    }
-    for (const p of versionPages) {
+  }
+  for (const p of versionPages) {
+    if (!copyToKey.has(p.id)) {
       moved.add(p.id);
       usesVersionParent.add(p.id);
     }
   }
+  // A page the version keeps must keep its parent: bring back untouched
+  // copies it lives under.
+  const queue = [...usesVersionParent];
+  while (queue.length > 0) {
+    const id = queue.pop() as string;
+    const parent = versionById.get(id)?.parentId;
+    if (parent && restoreCandidates.has(parent)) {
+      restoreCandidates.delete(parent);
+      moved.add(parent);
+      usesVersionParent.add(parent);
+      queue.push(parent);
+    }
+  }
+  for (const [key, e] of entries) {
+    if (keyToMain.has(key) || e.origin === 'version' || !versionById.has(e.copyId)) continue;
+    list(e, key, 'deleted', moved.has(e.copyId) ? 'restored' : 'removed', e.updatedAt);
+  }
+  plan.dropVersionIds = [...restoreCandidates.keys()];
+  for (const p of mainPages) {
+    if (!mainToKey.has(p.id)) list(p, p.id, 'added', 'kept', p.updatedAt.toISOString());
+  }
 
   // Final parents. A version parent maps to the main page it is folded into.
   const resolveVersionParent = (parentId: string | null) => (parentId ? (foldedInto.get(parentId) ?? parentId) : null);
-  const versionLocation = new Map(versionPages.map((p) => [`${p.languageId}${KEY}${p.path}`, p.id]));
   const finalParent = new Map<string, string | null>();
   for (const id of moved) finalParent.set(id, resolveVersionParent(versionById.get(id)?.parentId ?? null));
   for (const p of mainPages) {
@@ -358,7 +519,6 @@ export const analyzePromote = (
     }
   }
   // A main page whose parent is deleted moves up to the nearest kept ancestor.
-  // Without a baseline, prefer the version's page at the parent's old address.
   const survives = (id: string) => finalParent.has(id);
   const nearestKept = (parentId: string | null): string | null => {
     const seen = new Set<string>();
@@ -366,12 +526,7 @@ export const analyzePromote = (
     while (current && !seen.has(current)) {
       seen.add(current);
       if (survives(current)) return current;
-      const old = mainById.get(current);
-      if (!baseline && old) {
-        const successor = versionLocation.get(`${old.languageId}${KEY}${old.path}`);
-        if (successor && survives(successor)) return successor;
-      }
-      current = old?.parentId ?? null;
+      current = mainById.get(current)?.parentId ?? null;
     }
     return null;
   };
@@ -383,18 +538,15 @@ export const analyzePromote = (
       finalParent.set(id, next);
       if (mainById.has(id) && !moved.has(id)) {
         rehomed.add(id);
-        const update = mainData.get(id) ?? { data: {} };
+        const update = mainData.get(id) ?? { id, data: {} };
         update.data.parentId = next;
         mainData.set(id, update);
       }
     }
   }
 
-  const titleOf = (id: string) => {
-    const source = mainData.get(id)?.fromCopyId;
-    return (source ? versionById.get(source)?.title : undefined) ?? mainById.get(id)?.title ?? versionById.get(id)?.title ?? '';
-  };
   const rowOf = (id: string) => (moved.has(id) ? versionById.get(id) : (mainById.get(id) ?? versionById.get(id)));
+  const titleOf = (id: string) => mainData.get(id)?.data.title ?? rowOf(id)?.title ?? '';
 
   // Cycles: both sides' moves combined must still form a tree.
   const state = new Map<string, 'walking' | 'done'>();
@@ -416,7 +568,7 @@ export const analyzePromote = (
     plan.blocked = true;
     for (const id of [...inCycle].sort()) {
       const r = rowOf(id);
-      changed.push({
+      push({
         pageId: id,
         title: titleOf(id),
         path: r?.path ?? '',
@@ -430,26 +582,18 @@ export const analyzePromote = (
 
   // Addresses on the final tree, settled top-down so a renamed folder's pages
   // follow it.
-  const copySlug = (id: string) => {
-    const source = mainData.get(id)?.fromCopyId;
-    return source ? versionById.get(source)?.slug : undefined;
-  };
-  const slugOf = (id: string) => copySlug(id) ?? rowOf(id)?.slug ?? '';
+  const slugOf = (id: string) => mainData.get(id)?.data.slug ?? rowOf(id)?.slug ?? '';
   const languageOf = (id: string) => rowOf(id)?.languageId ?? '';
-  /** The page's address comes from the version: it moved in, the version
-   *  placed it, or the version renamed it. A content-only edit does not count. */
-  const addressFromVersion = (id: string) => {
-    if (moved.has(id) || versionPlaced.has(id)) return true;
-    const slug = copySlug(id);
-    return slug !== undefined && slug !== mainById.get(id)?.slug;
-  };
+  /** The page's address changes in this promote: it moves in, the version
+   *  placed or renamed it, or it is re-homed. A content-only edit does not
+   *  count. */
+  const addressMoves = (id: string) => moved.has(id) || versionPlaced.has(id) || versionSlug.has(id) || rehomed.has(id);
   const renamedSlug = new Map<string, string>();
   const finalPath = new Map<string, string>();
   const parentPathOf = (id: string): string | null => {
     const parent = finalParent.get(id) ?? null;
     return parent ? (finalPath.get(parent) ?? null) : null;
   };
-  const newParentPath = new Map<string, string | null>();
   if (!plan.blocked) {
     const depth = new Map<string, number>();
     const depthOf = (id: string): number => {
@@ -461,28 +605,35 @@ export const analyzePromote = (
       return d;
     };
     const levels = new Map<number, string[]>();
-    for (const id of finalParent.keys()) levels.set(depthOf(id), [...(levels.get(depthOf(id)) ?? []), id]);
-    for (const level of [...levels.keys()].sort((a, b) => a - b)) {
-      const ids = (levels.get(level) ?? []).sort();
+    for (const id of finalParent.keys()) {
+      const d = depthOf(id);
+      const level = levels.get(d);
+      if (level) level.push(id);
+      else levels.set(d, [id]);
+    }
+    for (const d of [...levels.keys()].sort((a, b) => a - b)) {
+      const ids = (levels.get(d) ?? []).sort();
       const groups = new Map<string, string[]>();
       for (const id of ids) {
         const path = joinPath(parentPathOf(id), slugOf(id));
         finalPath.set(id, path);
         const key = `${languageOf(id)}${KEY}${path}`;
-        groups.set(key, [...(groups.get(key) ?? []), id]);
+        const group = groups.get(key);
+        if (group) group.push(id);
+        else groups.set(key, [id]);
       }
       const taken = new Set(groups.keys());
       for (const [key, group] of [...groups].sort(([a], [b]) => a.localeCompare(b, 'en'))) {
-        if (group.length < 2 || !group.some(addressFromVersion)) continue;
+        if (group.length < 2 || !group.some(addressMoves)) continue;
         const [, ...others] = [...group].sort(
           (a, b) =>
-            Number(addressFromVersion(a)) - Number(addressFromVersion(b)) ||
+            Number(addressMoves(a)) - Number(addressMoves(b)) ||
             Number(!mainById.has(a) || moved.has(a)) - Number(!mainById.has(b) || moved.has(b)) ||
             a.localeCompare(b, 'en'),
         );
         for (const id of others) {
-          // Duplicates already on main that the version did not touch stay.
-          if (!addressFromVersion(id)) continue;
+          // Duplicates already on main that this promote does not touch stay.
+          if (!addressMoves(id)) continue;
           const slug = slugOf(id);
           const parentPath = parentPathOf(id);
           let n = 2;
@@ -492,7 +643,7 @@ export const analyzePromote = (
           taken.add(`${languageOf(id)}${KEY}${newPath}`);
           renamedSlug.set(id, candidate);
           finalPath.set(id, newPath);
-          changed.push({
+          push({
             pageId: id,
             title: titleOf(id),
             path: key.slice(key.indexOf(KEY) + 1),
@@ -506,31 +657,41 @@ export const analyzePromote = (
       }
     }
     // Pages main keeps but whose parent goes away: say where they land.
-    for (const id of rehomed) newParentPath.set(id, parentPathOf(id));
-  }
-  for (const [id, parentPath] of newParentPath) {
-    const entry = changed.find((c) => c.pageId === id && (c.change === 'added' || c.change === 'modified'));
-    if (entry) {
-      if (entry.onPromote === 'kept') entry.onPromote = 'moved';
-      entry.newParentPath = parentPath;
-    } else {
-      const r = mainById.get(id);
-      if (r) list(r, id, 'modified', 'moved', r.updatedAt.toISOString());
-      const added = changed.at(-1);
-      if (added) added.newParentPath = parentPath;
+    for (const id of rehomed) {
+      const parentPath = parentPathOf(id);
+      const entry = byPageId.get(id)?.find((c) => c.change === 'added' || c.change === 'modified');
+      if (entry) {
+        if (entry.onPromote === 'kept') entry.onPromote = 'moved';
+        entry.newParentPath = parentPath;
+      } else {
+        const r = mainById.get(id);
+        if (r) push({ ...rowEntry(r, id, code), change: 'modified', onPromote: 'moved', newParentPath: parentPath });
+      }
+    }
+    for (const [id, path] of finalPath) {
+      if (addressMoves(id) || renamedSlug.has(id)) plan.incoming.push({ languageId: languageOf(id), path });
     }
   }
 
   for (const [id, update] of mainData) {
     const slug = renamedSlug.get(id);
     const data = { ...update.data, ...(slug ? { slug } : {}) };
-    if (update.fromCopyId === undefined && Object.keys(data).length === 0) continue;
-    plan.mainUpdates.push({ id, ...(update.fromCopyId ? { fromCopyId: update.fromCopyId } : {}), data });
+    if (!update.contentFrom && !update.configFrom && Object.keys(data).length === 0) continue;
+    plan.mainUpdates.push({ ...update, data });
   }
   for (const id of [...moved].sort()) {
     const slug = renamedSlug.get(id);
     plan.moves.push({ id, data: { parentId: finalParent.get(id) ?? null, ...(slug ? { slug } : {}) } });
   }
   plan.deleteMainIds = [...deleteMain];
-  return { preview: { changedOnMainSinceFork: changed.sort(byPath), baselineComplete: baseline !== null }, plan };
+  const sorted = changed.sort(byPath);
+  return { preview: { changedOnMainSinceFork: sorted, baselineComplete: true, fingerprint: previewFingerprint(sorted) }, plan };
 };
+
+const rowEntry = (r: PromotePageRow, id: string, code: (languageId: string) => string) => ({
+  pageId: id,
+  title: r.title,
+  path: r.path,
+  languageCode: code(r.languageId),
+  updatedAt: r.updatedAt.toISOString(),
+});

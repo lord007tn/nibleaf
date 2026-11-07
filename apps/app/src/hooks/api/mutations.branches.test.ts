@@ -56,9 +56,9 @@ describe('promoting a version', () => {
 
     mocks.merge.mockResolvedValueOnce(json({ data: { id: 'main' } }));
     await act(async () => {
-      await merge?.mutateAsync({ id: 'v2', confirmChangedOnMain: true });
+      await merge?.mutateAsync({ id: 'v2', confirmPreview: 'c'.repeat(64) });
     });
-    expect(mocks.merge).toHaveBeenLastCalledWith({ param: { projectId: 'project-a', id: 'v2' }, json: { confirmChangedOnMain: true } });
+    expect(mocks.merge).toHaveBeenLastCalledWith({ param: { projectId: 'project-a', id: 'v2' }, json: { confirmPreview: 'c'.repeat(64) } });
     act(() => root.unmount());
   });
 });

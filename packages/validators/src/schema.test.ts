@@ -46,8 +46,10 @@ describe('mergeBranchBody', () => {
   it('accepts an empty body and the confirmation flag, and rejects a non-boolean flag', () => {
     expect(mergeBranchBody.safeParse({}).success).toBe(true);
     expect(mergeBranchBody.parse({})).toEqual({});
-    expect(mergeBranchBody.parse({ confirmChangedOnMain: true })).toEqual({ confirmChangedOnMain: true });
-    expect(mergeBranchBody.safeParse({ confirmChangedOnMain: 'yes' }).success).toBe(false);
+    const fingerprint = 'a'.repeat(64);
+    expect(mergeBranchBody.parse({ confirmPreview: fingerprint })).toEqual({ confirmPreview: fingerprint });
+    expect(mergeBranchBody.safeParse({ confirmPreview: 'yes' }).success).toBe(false);
+    expect(mergeBranchBody.safeParse({ confirmPreview: true }).success).toBe(false);
   });
 });
 

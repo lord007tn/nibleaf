@@ -61,11 +61,13 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   };
-  /** Run `work` in a transaction and hold it open while `during` runs; commit
-   *  once `during` is queued behind it. Returns what `during` settled to. */
+  /** Run `work` in a transaction and hold it open while `during` runs; once
+   *  `during` is queued behind it, run `meanwhile`, then commit (or, with
+   *  `rollback`, roll back). Returns what `during` settled to. */
   const whileHolding = async (
     work: (tx: import('@nibleaf/database').Prisma.TransactionClient) => Promise<unknown>,
     during: () => Promise<unknown>,
+    { meanwhile, rollback = false }: { meanwhile?: () => Promise<unknown>; rollback?: boolean } = {},
   ) => {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
@@ -81,23 +83,35 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
         const [backend] = await tx.$queryRaw<{ pid: number }[]>(db.Prisma.sql`SELECT pg_backend_pid() AS pid`);
         saved(backend?.pid ?? -1);
         await gate;
+        if (rollback) throw new Error('rolled back on purpose');
       },
       { timeout: 30_000 },
+    );
+    const settled = save.then(
+      () => undefined,
+      (error: unknown) => {
+        if (!rollback) throw error;
+      },
     );
     const holder = await holding;
     const outcome = during().then(
       () => null,
       (error: unknown) => error,
     );
-    // The promote must be queued on the save's row lock before the save commits.
+    // `during` must be queued on the held lock before it is released.
     try {
       await untilWaiting(holder);
+      await meanwhile?.();
     } finally {
       release();
     }
-    await save;
+    await settled;
     return outcome;
   };
+  /** The confirmation for the preview as it is now. */
+  const confirmed = async (projectId: string, versionId: string) => ({
+    confirmPreview: (await branches.getMergePreview(projectId, versionId)).fingerprint,
+  });
   /** An autosave of `pageId`: a content-only edit, its own row lock, no project lock. */
   const whileSaving = (pageId: string, content: string, during: () => Promise<unknown>) =>
     whileHolding(async (tx) => {
@@ -133,7 +147,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     await expect(branches.mergeBranch(projectId, version.id)).rejects.toMatchObject({ status: 409, code: 'branch:main_changed' });
     expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
 
-    await branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true });
+    await branches.mergeBranch(projectId, version.id, { confirmPreview: preview.fingerprint });
     const after = await pagesOn(projectId, main.id);
     expect(strip(after)).toEqual([
       { title: 'Guide', path: 'guide', content: '' },
@@ -153,7 +167,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     await branches.mergeBranch(projectId, v2.id);
     const preview = await branches.getMergePreview(projectId, v3.id);
     expect(preview.changedOnMainSinceFork.map((p) => [p.pageId, p.change, p.onPromote])).toEqual([[billing.id, 'modified', 'replaced']]);
-    await branches.mergeBranch(projectId, v3.id, { confirmChangedOnMain: true });
+    await branches.mergeBranch(projectId, v3.id, { confirmPreview: preview.fingerprint });
 
     const after = await pagesOn(projectId, main.id);
     expect(strip(after)).toEqual([
@@ -176,11 +190,14 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     // Main deleted "Legacy"; the version's copy is untouched, so promote would drop it...
     await db.prisma.page.delete({ where: { id: legacy.id } });
     const copy = await copyIn(version.id, 'legacy');
-    // ...unless the writer's autosave on that copy lands first. It must be seen, not deleted.
-    const outcome = await whileSaving(copy.id, 'Rewritten in the version', () =>
-      branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true }),
-    );
-    expect(outcome).toBeNull();
+    const reviewed = await confirmed(projectId, version.id);
+    // ...unless the writer's autosave on that copy lands first. It must be
+    // seen, not deleted; and since it changes what promote does with the page,
+    // the confirmation the writer gave no longer fits.
+    const outcome = await whileSaving(copy.id, 'Rewritten in the version', () => branches.mergeBranch(projectId, version.id, reviewed));
+    expect(outcome).toMatchObject({ status: 409, code: 'branch:main_changed' });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: copy.id } })).content).toBe('Rewritten in the version');
+    await branches.mergeBranch(projectId, version.id, await confirmed(projectId, version.id));
     expect((await pagesOn(projectId, main.id)).find((p) => p.path === 'legacy')?.content).toBe('Rewritten in the version');
   });
 
@@ -197,7 +214,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
 
     const preview = await branches.getMergePreview(projectId, version.id);
     expect(preview.changedOnMainSinceFork.map((p) => [p.path, p.change, p.onPromote])).toEqual([['legacy', 'deleted', 'removed']]);
-    await branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true });
+    await branches.mergeBranch(projectId, version.id, await confirmed(projectId, version.id));
     expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toEqual(['guide', 'guide/billing']);
   });
 
@@ -213,7 +230,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     expect(preview.changedOnMainSinceFork).toContainEqual(
       expect.objectContaining({ path: 'guide/refunds', change: 'conflict', onPromote: 'renamed', newPath: 'guide/refunds-2' }),
     );
-    await branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true });
+    await branches.mergeBranch(projectId, version.id, await confirmed(projectId, version.id));
     const after = await pagesOn(projectId, main.id);
     expect(after.filter((p) => p.path.startsWith('guide/refunds')).map((p) => [p.path, p.title])).toEqual([
       ['guide/refunds', 'Refunds (main)'],
@@ -233,7 +250,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     await db.prisma.page.update({ where: { id: (await copyIn(v2.id, 'guide/billing')).id }, data: { content: 'V2 price' } });
     const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
 
-    await expect(branches.getMergePreview(projectId, v3.id)).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    await expect(branches.getMergePreview(projectId, v3.id)).resolves.toMatchObject({ changedOnMainSinceFork: [], baselineComplete: true });
     await branches.mergeBranch(projectId, v3.id);
     const after = await pagesOn(projectId, main.id);
     expect(after.map((p) => [p.id, p.path, p.content])).toEqual([
@@ -307,44 +324,143 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     // The version deleted "Legacy"; meanwhile someone creates a page under it on main.
     await db.prisma.page.delete({ where: { id: (await copyIn(version.id, 'legacy')).id } });
     let childId = '';
+    const reviewed = await confirmed(projectId, version.id);
     const outcome = await whileHolding(
       async (tx) => {
         childId = (await tx.page.create({ data: { ...base, parentId: legacy.id, title: 'Child', slug: 'child', path: 'legacy/child' } })).id;
       },
-      () => branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true }),
+      () => branches.mergeBranch(projectId, version.id, reviewed),
     );
     expect(outcome).toMatchObject({ status: 409, details: { reason: 'promote_raced' } });
     expect((await pagesOn(projectId, main.id)).map((p) => p.id)).toEqual(expect.arrayContaining([legacy.id, childId]));
     expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
   });
 
-  it('notices later a save on main that commits while the version is being created', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+  it('notices later a save on main that commits between the fork reading main and writing its copies', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, billing } = await fixture();
-    // An autosave on main is in flight (uncommitted) while the version is copied.
-    let commit: () => void = () => undefined;
-    const gate = new Promise<void>((resolve) => {
-      commit = resolve;
-    });
-    let started: () => void = () => undefined;
-    const inFlight = new Promise<void>((resolve) => {
-      started = resolve;
-    });
-    const save = db.prisma.$transaction(
-      async (tx) => {
-        await tx.page.update({ where: { id: billing.id }, data: { content: 'Saved while forking' } });
-        started();
-        await gate;
+    // An uncommitted branch with the same name makes the fork wait at its
+    // branch insert: after it read main, before any copy exists. The old code
+    // hashed main in a second read after the copies, so a save landing here
+    // ended up in the baseline but not in the copies, and was never seen.
+    const name = 'v-race';
+    let version: { id: string } | undefined;
+    await whileHolding(
+      (tx) => tx.branch.create({ data: { projectId, name, isDefault: false }, select: { id: true } }),
+      async () => {
+        version = await branches.createBranch(projectId, { name });
       },
-      { timeout: 30_000 },
+      {
+        meanwhile: () => db.prisma.page.update({ where: { id: billing.id }, data: { content: 'Saved while forking' } }),
+        rollback: true,
+      },
     );
-    await inFlight;
-    const version = await branches.createBranch(projectId, { name: 'v-during-save' });
-    commit();
-    await save;
-    // The copy has the old text and the baseline knows it: the save shows up as a change on main.
+    if (!version) throw new Error('the fork did not finish');
     expect((await copyIn(version.id, 'guide/billing')).content).toBe('Teh price');
     const preview = await branches.getMergePreview(projectId, version.id);
     expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: billing.id, change: 'modified', onPromote: 'kept' })]);
+  });
+
+  it('refuses a confirmation made before main changed again, and keeps that change', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, billing, legacy } = await fixture();
+    // The writer reviews one change on main (Legacy edited)...
+    await db.prisma.page.update({ where: { id: legacy.id }, data: { content: 'Main legacy' } });
+    await db.prisma.page.update({ where: { id: (await copyIn(version.id, 'guide/billing')).id }, data: { content: 'Version price' } });
+    const reviewed = await confirmed(projectId, version.id);
+    // ...then someone edits Billing on main, which the version also edited.
+    await db.prisma.page.update({ where: { id: billing.id }, data: { content: 'Main price' } });
+    const refused = await branches.mergeBranch(projectId, version.id, reviewed).catch((error: unknown) => error);
+    expect(refused).toMatchObject({ status: 409, code: 'branch:main_changed' });
+    const fresh = (refused as { details: { fingerprint: string; changedOnMainSinceFork: Array<{ pageId: string; onPromote: string }> } }).details;
+    expect(fresh.changedOnMainSinceFork).toContainEqual(expect.objectContaining({ pageId: billing.id, onPromote: 'replaced' }));
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: billing.id } })).content).toBe('Main price');
+    // Confirming what is listed now goes through.
+    await branches.mergeBranch(projectId, version.id, { confirmPreview: fresh.fingerprint });
+    expect((await pagesOn(projectId, main.id)).find((p) => p.path === 'guide/billing')?.content).toBe('Version price');
+  });
+
+  it("keeps main's rename when the version only edited the text", { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, billing } = await fixture();
+    await db.prisma.page.update({ where: { id: billing.id }, data: { slug: 'plans', path: 'guide/plans', hidden: true } });
+    await db.prisma.page.update({ where: { id: (await copyIn(version.id, 'guide/billing')).id }, data: { content: 'The price' } });
+    const preview = await branches.getMergePreview(projectId, version.id);
+    expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: billing.id, onPromote: 'merged' })]);
+    await branches.mergeBranch(projectId, version.id, { confirmPreview: preview.fingerprint });
+    const after = await db.prisma.page.findUniqueOrThrow({ where: { id: billing.id } });
+    expect(after).toMatchObject({ branchId: main.id, slug: 'plans', path: 'guide/plans', hidden: true, content: 'The price' });
+  });
+
+  it('promotes a version made from another version after that one, without duplicating its pages', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version: v2, base, legacy } = await fixture();
+    // V2 creates guide/faq and deletes Legacy; V3 is made from V2.
+    const v2Guide = await copyIn(v2.id, 'guide');
+    await db.prisma.page.create({ data: { ...base, branchId: v2.id, parentId: v2Guide.id, title: 'FAQ', slug: 'faq', path: 'guide/faq' } });
+    await db.prisma.page.delete({ where: { id: (await copyIn(v2.id, 'legacy')).id } });
+    const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
+    await db.prisma.page.update({ where: { id: (await copyIn(v3.id, 'guide/faq')).id }, data: { content: 'Answers from V3' } });
+
+    await branches.mergeBranch(projectId, v2.id);
+    await branches.mergeBranch(projectId, v3.id, await confirmed(projectId, v3.id));
+    const after = await pagesOn(projectId, main.id);
+    expect(after.map((p) => [p.path, p.content])).toEqual([
+      ['guide', ''],
+      ['guide/billing', 'Teh price'],
+      ['guide/faq', 'Answers from V3'],
+    ]);
+    expect(after.some((p) => p.id === legacy.id)).toBe(false);
+  });
+
+  it('refuses a version without a baseline, and leaves main, its comments and grants alone', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, billing } = await fixture();
+    const user = await writer();
+    const comment = await db.prisma.comment.create({ data: { projectId, pageId: billing.id, userId: user.id, body: 'Keep me' } });
+    await db.prisma.branch.update({ where: { id: version.id }, data: { forkBaseline: db.Prisma.DbNull } });
+    await expect(branches.mergeBranch(projectId, version.id)).rejects.toMatchObject({
+      status: 409,
+      code: 'branch:baseline_missing',
+      details: { since: expect.any(String), mainPagesEditedOrCreatedSince: expect.any(Number) },
+    });
+    await expect(branches.getMergePreview(projectId, version.id)).resolves.toMatchObject({ changedOnMainSinceFork: [], baselineComplete: false });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.id)).toContain(billing.id);
+    expect(await db.prisma.comment.findUnique({ where: { id: comment.id } })).not.toBeNull();
+  });
+
+  it('refuses when a root page created on main during the promote takes an address the version brings in', {
+    timeout: DB_TEST_TIMEOUT_MS,
+  }, async () => {
+    const { projectId, main, version, base } = await fixture();
+    await db.prisma.page.create({ data: { ...base, branchId: version.id, title: 'Refunds (version)', slug: 'refunds', path: 'refunds' } });
+    const copy = await copyIn(version.id, 'legacy');
+    let lateId = '';
+    // A version autosave holds the promote at its locked read; meanwhile a root
+    // /refunds is created on main (createPage takes no project lock before #301).
+    const outcome = await whileHolding(
+      async (tx) => {
+        await tx.$queryRaw(db.Prisma.sql`SELECT 1 FROM "page" WHERE "id" = ${copy.id} FOR NO KEY UPDATE`);
+      },
+      () => branches.mergeBranch(projectId, version.id),
+      {
+        meanwhile: async () => {
+          lateId = (await db.prisma.page.create({ data: { ...base, title: 'Refunds (main)', slug: 'refunds', path: 'refunds' } })).id;
+        },
+      },
+    );
+    expect(outcome).toMatchObject({ status: 409, details: { reason: 'promote_raced' } });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.id)).toContain(lateId);
+    expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
+  });
+
+  it('moves reader grants from a version copy to the main page', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, version, billing } = await fixture();
+    const copy = await copyIn(version.id, 'guide/billing');
+    const audience = await db.prisma.audience.create({ data: { projectId, name: 'Partners' } });
+    const grant = await db.prisma.audienceGrant.create({
+      data: { projectId, audienceId: audience.id, pageId: copy.id, scopeKey: `PAGE:${copy.id}` },
+    });
+    await branches.mergeBranch(projectId, version.id);
+    expect(await db.prisma.audienceGrant.findUnique({ where: { id: grant.id } })).toMatchObject({
+      pageId: billing.id,
+      scopeKey: `PAGE:${billing.id}`,
+    });
   });
 
   it('refuses a promote whose moves would put two pages inside each other', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
@@ -357,7 +473,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       data: { parentId: versionLegacy.id, path: 'legacy/guide' },
     });
 
-    await expect(branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true })).rejects.toMatchObject({
+    await expect(branches.mergeBranch(projectId, version.id, await confirmed(projectId, version.id))).rejects.toMatchObject({
       status: 409,
       code: 'branch:promote_blocked',
       details: { reason: 'cycle' },
@@ -368,7 +484,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
 
   it('promotes an untouched main without confirmation', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, version } = await fixture();
-    await expect(branches.getMergePreview(projectId, version.id)).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    await expect(branches.getMergePreview(projectId, version.id)).resolves.toMatchObject({ changedOnMainSinceFork: [], baselineComplete: true });
     await branches.mergeBranch(projectId, version.id);
     expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toEqual(['guide', 'guide/billing', 'legacy']);
     expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).toBeNull();

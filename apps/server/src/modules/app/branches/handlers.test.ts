@@ -53,12 +53,13 @@ describe('branch promote routes', () => {
   });
 
   it('passes the confirmation flag through', async () => {
-    expect((await merge(json('{"confirmChangedOnMain":true}'))).status).toBe(200);
-    expect(actions.mergeBranch).toHaveBeenCalledWith('p1', 'v2', { confirmChangedOnMain: true });
+    const confirmPreview = 'f'.repeat(64);
+    expect((await merge(json(JSON.stringify({ confirmPreview })))).status).toBe(200);
+    expect(actions.mergeBranch).toHaveBeenCalledWith('p1', 'v2', { confirmPreview });
   });
 
   it('rejects a non-boolean confirmation flag', async () => {
-    const response = await merge(json('{"confirmChangedOnMain":"yes"}'));
+    const response = await merge(json('{"confirmPreview":"yes"}'));
     expect(response.status).toBe(422);
     expect(actions.mergeBranch).not.toHaveBeenCalled();
   });

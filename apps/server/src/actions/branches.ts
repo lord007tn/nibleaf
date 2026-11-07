@@ -6,11 +6,14 @@ import { AppError, conflict, notFound } from '@/errors';
 import {
   analyzePromote,
   buildForkBaseline,
+  FIELD_SQL,
   forkPointOf,
   inheritForkBaseline,
   type MergePreview,
+  type PageFields,
   type PromotePageRow,
   pageContentHash,
+  previewFingerprint,
 } from './branch-fork';
 import { recomputeProjectPaths } from './pages';
 
@@ -116,11 +119,14 @@ const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
  *  Pages are deep-copied with fresh ids and remapped parent links, so the new
  *  branch is an independent, editable copy across every language.
  *
- *  A fork of main records the fork point (`forkedAt` + a baseline of main's
- *  pages and their copies, see ./branch-fork) so a later promote can tell what
- *  changed on each side. A fork of another version inherits that version's fork
- *  time without a baseline, so promote compares main from the earlier fork
- *  (never later) and reports the comparison as incomplete. */
+ *  Every fork records a baseline (see ./branch-fork) so a later promote can
+ *  merge three-way. A fork of main records main's pages; a fork of another
+ *  version inherits that version's fork time and baseline, remapped onto the
+ *  new copies, plus entries for the pages that version created. The source's
+ *  pages, their hashes and their per-field values are read in ONE statement
+ *  under the project lock, before any copy is written, so a save can't land
+ *  between what is copied and what the baseline says was copied. A source
+ *  without a baseline gives none, and promoting the new version is refused. */
 export const createBranch = async (projectId: string, body: CreateBranchBody) => {
   const name = body.name.trim();
   const clash = await prisma.branch.findFirst({ where: { projectId, name }, select: { id: true } });
@@ -129,76 +135,104 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   }
   const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await getDefaultBranch(projectId);
 
-  return prisma.$transaction(async (tx) => {
-    // Creating the copies is a structural page write: project lock first. It
-    // also keeps the baseline consistent with structural changes on main.
-    await lockProject(tx, projectId);
-    const forkedAt = source.isDefault ? new Date() : (source.forkedAt ?? source.createdAt);
-    // One statement reads the pages AND hashes them, so a save landing between
-    // two reads can't slip into the copies without being in the baseline.
-    const sourcePages = await tx.$queryRaw<SourcePageRow[]>(
-      Prisma.sql`SELECT "id", "parentId", "languageId", "kind"::text AS "kind", "title", "slug", "path", "icon", "description", "content", "config",
-          "translationKey", "position", "hidden", "updatedAt", ${pageContentHash()} AS "hash"
-        FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${source.id} ORDER BY "position" ASC, "id" ASC`,
-    );
-    // old page id → new page id, so parentId links can be remapped onto the copies.
-    const idMap = new Map<string, string>();
-    for (const p of sourcePages) {
-      idMap.set(p.id, newId());
-    }
-    const copyIdOf = (id: string) => idMap.get(id) ?? newId();
-    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, forkedAt }, omit: publicBranch });
-    if (sourcePages.length > 0) {
-      await tx.page.createMany({
-        data: sourcePages.map((p) => ({
-          id: copyIdOf(p.id),
-          projectId,
-          branchId: branch.id,
-          languageId: p.languageId,
-          parentId: p.parentId ? (idMap.get(p.parentId) ?? null) : null,
-          kind: p.kind,
-          title: p.title,
-          slug: p.slug,
-          path: p.path,
-          icon: p.icon,
-          description: p.description,
-          content: p.content,
-          config: p.config === null ? undefined : (p.config as Prisma.InputJsonValue),
-          translationKey: p.translationKey,
-          position: p.position,
-          hidden: p.hidden,
-        })),
+  return prisma.$transaction(
+    async (tx) => {
+      // Creating the copies is a structural page write: project lock first. It
+      // also keeps the baseline consistent with structural changes on main.
+      await lockProject(tx, projectId);
+      // The source may have been promoted (and removed) since it was looked up.
+      const from = await tx.branch.findFirst({
+        where: { id: source.id, projectId },
+        select: { isDefault: true, createdAt: true, forkedAt: true, forkBaseline: true },
       });
-    }
-    let forkBaseline: Prisma.InputJsonObject | undefined;
-    if (source.isDefault) {
-      // Only the copies are hashed now; main's hashes came with the read.
-      const copies = await tx.$queryRaw<{ id: string; hash: string }[]>(
-        Prisma.sql`SELECT "id", ${pageContentHash()} AS "hash" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${branch.id}`,
+      if (!from) throw notFound('branch', { id: source.id });
+      const forkedAt = from.isDefault ? new Date() : (from.forkedAt ?? from.createdAt);
+      const sourcePages = await tx.$queryRaw<SourcePageRow[]>(
+        Prisma.sql`SELECT "id", "parentId", "languageId", "path", "content", "config", "position", "updatedAt", ${FIELD_SQL()}, ${pageContentHash()} AS "hash"
+          FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${source.id} ORDER BY "position" ASC, "id" ASC`,
       );
-      const hashById = new Map([...sourcePages.map((p) => [p.id, p.hash] as const), ...copies.map((c) => [c.id, c.hash] as const)]);
-      forkBaseline = buildForkBaseline(sourcePages, copyIdOf, (pageId) => hashById.get(pageId) ?? '');
-    } else {
-      // A fork of a version inherits its baseline, remapped onto these copies.
-      const from = await tx.branch.findUniqueOrThrow({ where: { id: source.id }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
-      const inherited = forkPointOf(from).baseline;
-      if (inherited) forkBaseline = inheritForkBaseline(inherited, (sourcePageId) => idMap.get(sourcePageId));
-    }
-    if (forkBaseline) await tx.branch.update({ where: { id: branch.id }, data: { forkBaseline }, select: { id: true } });
-    return branch;
-  });
+      // old page id → new page id, so parentId links can be remapped onto the copies.
+      const idMap = new Map<string, string>();
+      for (const p of sourcePages) {
+        idMap.set(p.id, newId());
+      }
+      const copyIdOf = (pageId: string) => idMap.get(pageId) ?? newId();
+      const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, forkedAt }, omit: publicBranch });
+      if (sourcePages.length > 0) {
+        await tx.page.createMany({
+          data: sourcePages.map((p) => ({
+            id: copyIdOf(p.id),
+            projectId,
+            branchId: branch.id,
+            languageId: p.languageId,
+            parentId: p.parentId ? (idMap.get(p.parentId) ?? null) : null,
+            kind: p.kind,
+            title: p.title,
+            slug: p.slug,
+            path: p.path,
+            icon: p.icon,
+            description: p.description,
+            content: p.content,
+            config: p.config === null ? undefined : (p.config as Prisma.InputJsonValue),
+            translationKey: p.translationKey,
+            position: p.position,
+            hidden: p.hidden,
+          })),
+        });
+      }
+      // Only the copies are hashed now; the source's hashes came with its read.
+      const copies = await tx.$queryRaw<{ id: string; hash: string; configHash: string }[]>(
+        Prisma.sql`SELECT "id", ${pageContentHash()} AS "hash", md5(coalesce("config"::text, '')) AS "configHash"
+          FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${branch.id}`,
+      );
+      const copyById = new Map(copies.map((c) => [c.id, c]));
+      const copyOf = (sourcePageId: string) => {
+        const copyId = idMap.get(sourcePageId);
+        return copyId ? copyById.get(copyId) : undefined;
+      };
+      let forkBaseline: Prisma.InputJsonObject | undefined;
+      if (from.isDefault) {
+        forkBaseline = buildForkBaseline(sourcePages, (mainPageId) => copyOf(mainPageId) ?? { id: copyIdOf(mainPageId), hash: '', configHash: '' });
+      } else {
+        const inherited = forkPointOf(from).baseline;
+        if (inherited) forkBaseline = inheritForkBaseline(inherited, sourcePages, copyOf);
+      }
+      if (forkBaseline) await tx.branch.update({ where: { id: branch.id }, data: { forkBaseline }, select: { id: true } });
+      return branch;
+    },
+    { timeout: 30_000 },
+  );
 };
 
-type SourcePageRow = Omit<PromotePageRow, 'createdAt'> & {
-  icon: string | null;
-  description: string | null;
+type SourcePageRow = PageFields & {
+  id: string;
+  parentId: string | null;
+  languageId: string;
+  path: string;
   content: string;
   config: Prisma.JsonValue | null;
-  translationKey: string | null;
-  hidden: boolean;
+  position: number;
+  updatedAt: Date;
+  hash: string;
 };
 
 type PromoteRow = PromotePageRow & { branchId: string };
+
+const IN_CHUNK = 1000;
+const chunks = <T>(items: T[]) => Array.from({ length: Math.ceil(items.length / IN_CHUNK) }, (_, i) => items.slice(i * IN_CHUNK, (i + 1) * IN_CHUNK));
+
+const baselineMissing = async (db: Prisma.TransactionClient, projectId: string, mainId: string, since: Date) =>
+  new AppError({
+    code: 'branch:baseline_missing',
+    message: 'This version was created before Nibleaf could check main for changes, or copied from a version that was.',
+    details: {
+      since: since.toISOString(),
+      // A hint only: it cannot see deletions and never allows the promote.
+      mainPagesEditedOrCreatedSince: await db.page.count({
+        where: { projectId, branchId: mainId, OR: [{ updatedAt: { gt: since } }, { createdAt: { gt: since } }] },
+      }),
+    },
+  });
 
 /** Read the version, main and the fork point for a promote, and analyze them.
  *  With `lock` (inside the promote transaction) it follows the page-write lock
@@ -208,9 +242,14 @@ type PromoteRow = PromotePageRow & { branchId: string };
  *  between it and the writes that follow; a save already in flight is waited
  *  for, then seen. The version row is locked FOR UPDATE: the protocol bans that
  *  only on project rows, and here it blocks any page insert into the version
- *  (its foreign key needs a KEY SHARE lock) until the promote ends. Main-side
- *  page creates are held off by the project lock that `createPage` takes.
- *  Without `lock` it is a plain read (the preview). */
+ *  (its foreign key needs a KEY SHARE lock) until the promote ends.
+ *
+ *  Main-side page creates are held off by the project lock `createPage` takes
+ *  from #301, which must merge first. Until then `mergeBranch` re-reads main's
+ *  addresses after locking and refuses if a new page would collide.
+ *
+ *  Without `lock` it is a plain read (the preview). A version without a
+ *  baseline returns no plan: promote refuses it. */
 const readPromoteState = async (db: Prisma.TransactionClient, projectId: string, branchId: string, mainId: string, lock: boolean) => {
   if (lock) {
     await lockProject(db, projectId);
@@ -221,15 +260,17 @@ const readPromoteState = async (db: Prisma.TransactionClient, projectId: string,
   }
   const branch = await db.branch.findFirst({ where: { id: branchId, projectId }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
   if (!branch) throw notFound('branch', { id: branchId });
+  const { baseline } = forkPointOf(branch);
+  if (!baseline) return { branch, analysis: null };
   const rows = await db.$queryRaw<PromoteRow[]>(
-    Prisma.sql`SELECT "id", "branchId", "parentId", "kind"::text AS "kind", "title", "slug", "path", "languageId", "position", "createdAt", "updatedAt", ${pageContentHash()} AS "hash"
+    Prisma.sql`SELECT "id", "branchId", "parentId", "path", "languageId", "position", "updatedAt", ${FIELD_SQL()}, ${pageContentHash()} AS "hash"
       FROM "page" WHERE "projectId" = ${projectId} AND "branchId" IN (${mainId}, ${branchId})
       ORDER BY "id" ASC ${lock ? Prisma.sql`FOR NO KEY UPDATE` : Prisma.empty}`,
   );
   const languages = await db.language.findMany({ where: { projectId }, select: { id: true, code: true } });
   const mainPages = rows.filter((r) => r.branchId === mainId);
   const versionPages = rows.filter((r) => r.branchId === branchId);
-  return { rows, ...analyzePromote(mainPages, versionPages, forkPointOf(branch), new Map(languages.map((l) => [l.id, l.code]))) };
+  return { branch, analysis: { rows, ...analyzePromote(mainPages, versionPages, baseline, new Map(languages.map((l) => [l.id, l.code]))) } };
 };
 
 const assertPromotable = async (projectId: string, id: string) => {
@@ -240,69 +281,62 @@ const assertPromotable = async (projectId: string, id: string) => {
   return { branch, main: await getDefaultBranch(projectId) };
 };
 
-/** What changed on main since this version was created (a plain read). */
+/** What changed on main since this version was created (a plain read; promote
+ *  repeats it under its locks). Without a baseline the list is empty and
+ *  `baselineComplete` is false: promote will refuse. */
 export const getMergePreview = async (projectId: string, id: string): Promise<MergePreview> => {
   const { branch, main } = await assertPromotable(projectId, id);
-  return (await readPromoteState(prisma, projectId, branch.id, main.id, false)).preview;
+  const { analysis } = await readPromoteState(prisma, projectId, branch.id, main.id, false);
+  return analysis?.preview ?? { changedOnMainSinceFork: [], baselineComplete: false, fingerprint: previewFingerprint([]) };
 };
 
 /** A conditional write found its row changed or gone. Nothing is committed. */
 const promoteRaced = () => conflict('Pages changed while promoting. Nothing was changed; try again.', { reason: 'promote_raced' });
 
-const contentFields = {
-  kind: true,
-  title: true,
-  slug: true,
-  icon: true,
-  description: true,
-  content: true,
-  config: true,
-  translationKey: true,
-  hidden: true,
-} as const;
-
 /** Lock the rows promote will delete FOR UPDATE, in ascending id order. That
- *  blocks anything that would hang off them meanwhile (a comment, a child
- *  page: their foreign keys need KEY SHARE), so nothing is acknowledged and
- *  then cascade-deleted. */
-const lockForDelete = async (tx: Prisma.TransactionClient, projectId: string, ids: string[]) => {
-  for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-    const chunk = [...ids].sort().slice(i, i + DELETE_CHUNK);
+ *  blocks anything that would hang off them meanwhile (a comment, a grant, a
+ *  child page: their foreign keys need KEY SHARE), so nothing is acknowledged
+ *  and then cascade-deleted. */
+const lockForDelete = async (tx: Prisma.TransactionClient, projectId: string, sortedIds: string[]) => {
+  for (const chunk of chunks(sortedIds)) {
     await tx.$queryRaw(
       Prisma.sql`SELECT "id" FROM "page" WHERE "projectId" = ${projectId} AND "id" IN (${Prisma.join(chunk)}) ORDER BY "id" ASC FOR UPDATE`,
     );
   }
 };
 
-const DELETE_CHUNK = 1000;
-
 /** Delete locked rows by id, then check none is left. Cascades between chunks
  *  are expected (a parent's chunk takes its children with it), so per-chunk
  *  counts are not compared. */
 const deleteLocked = async (tx: Prisma.TransactionClient, projectId: string, ids: string[]) => {
-  for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-    await tx.page.deleteMany({ where: { projectId, id: { in: ids.slice(i, i + DELETE_CHUNK) } } });
-  }
-  for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-    if ((await tx.page.count({ where: { id: { in: ids.slice(i, i + DELETE_CHUNK) } } })) > 0) throw promoteRaced();
+  for (const chunk of chunks(ids)) await tx.page.deleteMany({ where: { projectId, id: { in: chunk } } });
+  for (const chunk of chunks(ids)) {
+    if ((await tx.page.count({ where: { id: { in: chunk } } })) > 0) throw promoteRaced();
   }
 };
 
-/** Promote a version into the default branch ('main'). Pages on main that
- *  changed since the fork are checked first: unless the caller confirms with
- *  `confirmChangedOnMain`, promote stops with 409 `branch:main_changed` and
- *  changes nothing. A plan that would put pages inside each other is refused
- *  with 409 `branch:promote_blocked`, confirmed or not. Then main's pages are
- *  updated in place from the version (their ids stay stable), new version
- *  pages move in, and the version is removed; see ./branch-fork for the full
- *  rules. The check and every write share one locked transaction, every update
- *  is conditional on the row it read, and every row it deletes is locked FOR
- *  UPDATE first. */
+/** Promote a version into the default branch ('main').
+ *   - No baseline: 409 `branch:baseline_missing`, nothing changed.
+ *   - A plan that would put pages inside each other: 409
+ *     `branch:promote_blocked`, confirmed or not.
+ *   - Pages changed on main since the fork: 409 `branch:main_changed` with the
+ *     preview, unless `confirmPreview` equals the fingerprint of the preview
+ *     computed here, under the locks. A preview that changed since the writer
+ *     reviewed it answers 409 again, with the fresh one.
+ *  Then main's pages are merged in place from the version, field by field
+ *  (their ids stay stable), new version pages move in, and the version is
+ *  removed; see ./branch-fork for the rules. The check and every write share
+ *  one locked transaction, every update is conditional on the row it read,
+ *  and every row it deletes is locked FOR UPDATE first. Only rows from the
+ *  locked read are ever deleted, so a page created meanwhile is kept (or, if
+ *  it would collide with an incoming page, the promote is refused). */
 export const mergeBranch = async (projectId: string, id: string, body: MergeBranchBody = {}) => {
   const { branch, main } = await assertPromotable(projectId, id);
   await prisma.$transaction(
     async (tx) => {
-      const { rows, preview, plan } = await readPromoteState(tx, projectId, branch.id, main.id, true);
+      const state = await readPromoteState(tx, projectId, branch.id, main.id, true);
+      if (!state.analysis) throw await baselineMissing(tx, projectId, main.id, state.branch.createdAt);
+      const { rows, preview, plan } = state.analysis;
       if (plan.blocked) {
         throw new AppError({
           code: 'branch:promote_blocked',
@@ -310,7 +344,7 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
           details: { ...preview, reason: 'cycle' },
         });
       }
-      if (preview.changedOnMainSinceFork.length > 0 && body.confirmChangedOnMain !== true) {
+      if (preview.changedOnMainSinceFork.length > 0 && body.confirmPreview !== preview.fingerprint) {
         throw new AppError({
           code: 'branch:main_changed',
           message: 'Pages on main changed since this version was created. Review them before promoting.',
@@ -324,56 +358,74 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
       };
 
       const consumedIds = plan.consumed.map((c) => c.copyId);
-      const versionDeletes = [...consumedIds, ...plan.dropVersionIds];
-      const toDelete = [...versionDeletes, ...plan.deleteMainIds];
+      const toDelete = [...consumedIds, ...plan.dropVersionIds, ...plan.deleteMainIds].sort();
       await lockForDelete(tx, projectId, toDelete);
+      const known = new Set(rows.map((r) => r.id));
       // A page that appeared under a row we delete, after our read, would be
       // cascade-deleted with it. Now that those rows are locked none can
       // appear; refuse if one already did.
-      const known = new Set(rows.map((r) => r.id));
-      for (let i = 0; i < toDelete.length; i += DELETE_CHUNK) {
-        const children = await tx.page.findMany({ where: { parentId: { in: toDelete.slice(i, i + DELETE_CHUNK) } }, select: { id: true } });
+      for (const chunk of chunks(toDelete)) {
+        const children = await tx.page.findMany({ where: { parentId: { in: chunk } }, select: { id: true } });
         if (children.some((c) => !known.has(c.id))) throw promoteRaced();
       }
+      // A main page created after the read at an address the version brings
+      // in would end up a duplicate. (#301's project lock in createPage rules
+      // this out; this check covers the gap until it merges.)
+      const incoming = new Set(plan.incoming.map((a) => `${a.languageId}\u0000${a.path}`));
+      if (incoming.size > 0) {
+        const mainNow = await tx.page.findMany({ where: { projectId, branchId: main.id }, select: { id: true, languageId: true, path: true } });
+        if (mainNow.some((p) => !known.has(p.id) && incoming.has(`${p.languageId}\u0000${p.path}`))) throw promoteRaced();
+      }
 
-      const sourceIds = plan.mainUpdates.flatMap((u) => (u.fromCopyId ? [u.fromCopyId] : []));
-      const sourceRows =
-        sourceIds.length > 0
-          ? await tx.page.findMany({ where: { id: { in: sourceIds }, projectId, branchId: branch.id }, select: { id: true, ...contentFields } })
-          : [];
-      const sources = new Map(sourceRows.map((p) => [p.id, p]));
+      const sourceIds = [...new Set(plan.mainUpdates.flatMap((u) => [u.contentFrom, u.configFrom].filter((x): x is string => Boolean(x))))];
+      const sources = new Map<string, { id: string; content: string; config: Prisma.JsonValue }>();
+      for (const chunk of chunks(sourceIds)) {
+        const found = await tx.page.findMany({
+          where: { id: { in: chunk }, projectId, branchId: branch.id },
+          select: { id: true, content: true, config: true },
+        });
+        for (const p of found) sources.set(p.id, p);
+      }
       for (const update of plan.mainUpdates) {
-        const source = update.fromCopyId ? sources.get(update.fromCopyId) : undefined;
-        if (update.fromCopyId && !source) throw promoteRaced();
-        const content = source
-          ? {
-              kind: source.kind,
-              title: source.title,
-              slug: source.slug,
-              icon: source.icon,
-              description: source.description,
-              content: source.content,
-              config: source.config ?? Prisma.DbNull,
-              translationKey: source.translationKey,
-              hidden: source.hidden,
-            }
-          : {};
-        one((await tx.page.updateMany({ where: { ...row(update.id), projectId, branchId: main.id }, data: { ...content, ...update.data } })).count);
+        const content = update.contentFrom ? sources.get(update.contentFrom) : undefined;
+        const config = update.configFrom ? sources.get(update.configFrom) : undefined;
+        if ((update.contentFrom && !content) || (update.configFrom && !config)) throw promoteRaced();
+        const data = {
+          ...update.data,
+          ...(content ? { content: content.content } : {}),
+          ...(config ? { config: config.config ?? Prisma.DbNull } : {}),
+        };
+        one((await tx.page.updateMany({ where: { ...row(update.id), projectId, branchId: main.id }, data })).count);
       }
       for (const move of plan.moves) {
         one(
           (await tx.page.updateMany({ where: { ...row(move.id), projectId, branchId: branch.id }, data: { branchId: main.id, ...move.data } })).count,
         );
       }
-      // Comments on a consumed copy follow it to the main page. Comments on a
-      // dropped copy (a page deleted on main that the version left untouched)
-      // and on main pages the version deleted go with their page.
+      // Comments and reader grants on a consumed copy follow it to the main
+      // page. On a dropped copy (a page deleted on main that the version left
+      // untouched) and on main pages the version deleted they go with the page.
       if (consumedIds.length > 0) {
         const mainOf = new Map(plan.consumed.map((c) => [c.copyId, c.mainId]));
-        const commented = await tx.comment.groupBy({ by: ['pageId'], where: { pageId: { in: consumedIds } } });
-        for (const { pageId } of commented) {
-          const target = pageId ? mainOf.get(pageId) : undefined;
-          if (pageId && target) await tx.comment.updateMany({ where: { pageId }, data: { pageId: target } });
+        for (const chunk of chunks(consumedIds)) {
+          const commented = await tx.comment.groupBy({ by: ['pageId'], where: { pageId: { in: chunk } } });
+          for (const { pageId } of commented) {
+            const target = pageId ? mainOf.get(pageId) : undefined;
+            if (pageId && target) await tx.comment.updateMany({ where: { pageId }, data: { pageId: target } });
+          }
+          const grants = await tx.audienceGrant.findMany({ where: { pageId: { in: chunk } }, select: { id: true, audienceId: true, pageId: true } });
+          for (const grant of grants) {
+            const target = grant.pageId ? mainOf.get(grant.pageId) : undefined;
+            if (!target) continue;
+            const scopeKey = `PAGE:${target}`;
+            const existing = await tx.audienceGrant.findUnique({
+              where: { audienceId_scopeKey: { audienceId: grant.audienceId, scopeKey } },
+              select: { id: true },
+            });
+            // The main page already grants this audience: the copy's grant is a duplicate.
+            if (existing) await tx.audienceGrant.delete({ where: { id: grant.id } });
+            else await tx.audienceGrant.update({ where: { id: grant.id }, data: { pageId: target, scopeKey } });
+          }
         }
       }
       await deleteLocked(tx, projectId, toDelete);
