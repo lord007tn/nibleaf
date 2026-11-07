@@ -151,9 +151,13 @@ const stripMdxExpressions = (source: string): string => {
   return output;
 };
 
+// Formatting the editor saves as inline HTML (Underline, Subscript, Superscript).
+// Public Markdown escapes HTML, so these keep their text instead of showing tags.
+const inlineFormattingTag = /<\/?(?:u|sub|sup)(?:\s[^>]*)?>/gi;
+
 const sanitizeAuthoredProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content));
+  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content)).replace(inlineFormattingTag, '');
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
     .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))

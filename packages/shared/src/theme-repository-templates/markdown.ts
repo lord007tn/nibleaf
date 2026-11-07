@@ -19,7 +19,7 @@ const componentTags = [
 /** Allow-list for authored HTML/MDX. Everything outside it is stripped. */
 export const sanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), ...componentTags],
+  tagNames: [...(defaultSchema.tagNames ?? []), 'u', ...componentTags],
   attributes: {
     ...defaultSchema.attributes,
     card: ['title', 'href', 'icon'],

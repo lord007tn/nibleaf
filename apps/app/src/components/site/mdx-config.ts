@@ -170,7 +170,9 @@ export function normalizeMdxBlocks(src: string): string {
  *  stripped — this is what makes raw component HTML safe to render. */
 export const sanitizeSchema: SanitizeOptions = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), ...COMPONENT_TAGS],
+  // `u`: the editor's Underline (and pasted underlines) save `<u>…</u>`; the
+  // GitHub default allows `sub`/`sup` but not `u`. No attributes of its own.
+  tagNames: [...(defaultSchema.tagNames ?? []), 'u', ...COMPONENT_TAGS],
   protocols: { ...defaultSchema.protocols, ...COMPONENT_PROTOCOLS },
   attributes: {
     ...defaultSchema.attributes,

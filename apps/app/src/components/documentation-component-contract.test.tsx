@@ -9,7 +9,7 @@ import { markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-reposi
 import { Editor, type Node as TiptapNode } from '@tiptap/core';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { afterEach, describe, expect, it } from 'vitest';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { mdxNodes } from './editor/extensions/mdx';
@@ -322,6 +322,16 @@ describe('exported theme repository templates', () => {
 
   it('allows every registry component tag', () => {
     expect(sorted(quoted(between(markdown, 'const componentTags = [', '];')))).toEqual(sorted(READER_TAGS));
+  });
+
+  it('allows the same extra inline HTML tags as the reader (such as `u`)', () => {
+    const template = quoted(between(markdown, 'tagNames: [...(defaultSchema.tagNames ?? []), ', '...componentTags]'));
+    const defaults = new Set(defaultSchema.tagNames ?? []);
+    // `mermaid` is synthesized by the Nibleaf reader only; the template has no Mermaid support.
+    const components = new Set([...READER_TAGS, 'mermaid']);
+    const reader = (sanitizeSchema.tagNames ?? []).filter((tag) => !defaults.has(tag) && !components.has(tag));
+    expect(reader).toEqual(['u']);
+    expect(sorted(template)).toEqual(sorted(reader));
   });
 
   it('allows the same component attributes as the reader', () => {

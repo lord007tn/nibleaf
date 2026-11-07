@@ -200,10 +200,13 @@ const element = (tagName: string, properties: Record<string, unknown> = {}, chil
 });
 
 describe('reader config derived from the component registry', () => {
-  it('allows exactly the component tags it allowed before', () => {
+  it('allows exactly the component tags it allowed before, plus underline', () => {
     const defaults = defaultSchema.tagNames ?? [];
     expect(sanitizeSchema.tagNames?.slice(0, defaults.length)).toEqual(defaults);
-    expect(sorted(sanitizeSchema.tagNames?.slice(defaults.length) ?? [])).toEqual(sorted(COMPONENT_TAG_NAMES));
+    // `u` was added on purpose: the editor's Underline saves `<u>`, which the
+    // GitHub default schema (unlike `sub`/`sup`) does not allow.
+    expect(sorted(sanitizeSchema.tagNames?.slice(defaults.length) ?? [])).toEqual(sorted([...COMPONENT_TAG_NAMES, 'u']));
+    expect(sanitizeSchema.attributes?.u).toBeUndefined();
   });
 
   it('allows exactly the component attributes it allowed before', () => {

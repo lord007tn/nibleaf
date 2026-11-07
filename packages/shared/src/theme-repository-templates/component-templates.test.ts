@@ -29,6 +29,8 @@ describe('theme repository component templates', () => {
   //   `rehypeAuthoredComponentProps` moves `name` to `dataDisplayName` but the
   //   allow-list only had `name` and `Field` only read `name`. The allow-list now
   //   has `dataDisplayName` and `Field` reads it through `authoredName`.
+  // - src/lib/markdown.tsx: `u` joins the allowed tags, like the reader, so the
+  //   editor's underlines render in exported repositories.
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -47,7 +49,7 @@ describe('theme repository component templates', () => {
       'src/components/mdx/index.tsx': sha256Prefix(mdxIndexTemplate()),
     };
     expect(sha256Prefixes).toEqual({
-      'src/lib/markdown.tsx': '6c9c0f55ddf0',
+      'src/lib/markdown.tsx': '06c83728de3f',
       'src/lib/markdown.test.tsx': '83c141811932',
       'src/components/mdx/shared.ts': 'b00369d3fd11',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',

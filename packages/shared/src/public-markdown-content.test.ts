@@ -54,4 +54,10 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('<Tooltip tip="Uses *stars* and\n[links]">term</Tooltip>')).toBe('term (Uses \\*stars\\* and \\[links\\])');
     expect(portablePublicMdxMarkdown('A <Tooltip tip="">term</Tooltip> and a <Tooltip>word</Tooltip>.')).toBe('A term and a word.');
   });
+
+  it('keeps underlined, subscript and superscript text without leaking their tags', () => {
+    expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe('A underlined word, H2O and x2.');
+    // Attributes do not change that, and code examples stay literal.
+    expect(normalizePublicMarkdownContent('<u class="x">styled</u> and `<u>code</u>`')).toBe('styled and `<u>code</u>`');
+  });
 });

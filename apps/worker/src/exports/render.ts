@@ -70,6 +70,8 @@ const safePath = (value: string): string => value.split('/').map(safeSegment).fi
 // The editor saves callouts as GitHub alerts (`> [!TIP]`). Match the reader's
 // remarkCallouts: strip the marker from the first paragraph and tag the quote.
 const CALLOUT_MARKER = /^\[!(\w+)\]\s*/;
+/** Exactly one attribute-free underline, subscript or superscript tag. */
+const INLINE_FORMATTING_TAG = /^<\/?(?:u|sub|sup)>$/i;
 type CalloutBlockquote = Tokens.Blockquote & { callout?: CalloutType };
 
 const marked = new Marked({
@@ -89,9 +91,11 @@ const marked = new Marked({
   },
   renderer: {
     // Published Markdown may contain MDX/HTML. Static exports display unknown
-    // markup as source instead of executing scripts or event handlers.
+    // markup as source instead of executing scripts or event handlers. The
+    // editor's inline formatting (`<u>`, `<sub>`, `<sup>`, attribute-free) is
+    // the one exception, so it renders instead of showing as literal tags.
     html(token) {
-      return escapeHtml(token.text);
+      return !token.block && INLINE_FORMATTING_TAG.test(token.text) ? token.text : escapeHtml(token.text);
     },
     blockquote(token) {
       const callout = (token as CalloutBlockquote).callout;

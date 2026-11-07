@@ -524,4 +524,19 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(selectPublishedAssets(snapshot, manifest, 3).map((asset) => asset.key)).toEqual([required(assets[0]).key]);
     expect(() => selectPublishedAssets(snapshot, manifest, 2)).toThrow('2-byte limit');
   });
+
+  it('renders underline, subscript and superscript in static HTML and PDF without allowing other markup', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: 'A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.\n\n<u class="x" onclick="alert(1)">styled</u>',
+    };
+    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
+      expect(html).toContain('<u>underlined</u>');
+      expect(html).toContain('<sub>2</sub>');
+      expect(html).toContain('<sup>2</sup>');
+      expect(html).not.toContain('&lt;u&gt;');
+      expect(html).not.toContain('<u class=');
+      expect(html).toContain('&lt;u class=&quot;x&quot; onclick=&quot;alert(1)&quot;&gt;');
+    }
+  });
 });

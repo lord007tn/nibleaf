@@ -53,4 +53,11 @@ describe('exported theme repository Markdown', () => {
       /onclick|<script/,
     );
   });
+
+  it('keeps underline, subscript and superscript like the reader', () => {
+    const html = render('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.');
+    expect(html).toContain('<u>underlined</u>');
+    expect(html).toContain('<sub>2</sub>');
+    expect(html).toContain('<sup>2</sup>');
+  });
 });
