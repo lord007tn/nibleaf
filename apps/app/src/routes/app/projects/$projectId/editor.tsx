@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/u
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
+import { canAdminister } from '@nibleaf/shared/rbac';
 import { useDebouncer } from '@tanstack/react-pacer';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
@@ -80,17 +81,19 @@ import {
   usePages,
   usePendingChanges,
   useProject,
+  useProjectMembers,
   useReorderPages,
   useUpdatePage,
   useUploadAsset,
 } from '@/hooks/api';
-import { commentsQueryOptions, getPublicMetaQueryOptions, pageQueryOptions } from '@/hooks/api/query-options';
+import { commentsQueryOptions, getPublicMetaQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { typographyVars } from '@/lib/typography';
+import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
@@ -111,6 +114,7 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   loader: ({ context: { queryClient }, params: { projectId }, deps: { page } }) => {
     prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
     prefetchRouteData(queryClient, getPublicMetaQueryOptions());
+    prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
     if (page) {
       prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
       prefetchRouteData(queryClient, commentsQueryOptions(projectId, page));
@@ -124,6 +128,11 @@ function EditorPage() {
   const { projectId } = Route.useParams();
   const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
+  const { data: memberData, isPending: membersPending } = useProjectMembers(projectId);
+  const { data: session, isPending: sessionPending } = useSession();
+  const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
+  const permissionsPending = membersPending || sessionPending;
+  const canManageSettings = !permissionsPending && canAdminister(currentMember?.role ?? '');
   const { data: publicMeta } = useGetPublicMeta();
   const aiDraft = publicMeta?.ai?.draft === true;
 
@@ -923,23 +932,25 @@ function EditorPage() {
           <SaveStatus state={status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
         ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
-          <Button
-            aria-label={t('editor.mode.configuration')}
-            size="sm"
-            variant={view === 'config' ? 'secondary' : 'ghost'}
-            className="cursor-pointer"
-            onClick={async () => {
-              const nextView = view === 'config' ? 'content' : 'config';
-              if (view === 'config' && !(await guardConfigChanges())) return;
-              setView(nextView);
-              if (nextView === 'config') {
-                setSidebarCollapsed(false);
-                setMobileSidebarOpen(true);
-              }
-            }}
-          >
-            <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
-          </Button>
+          {canManageSettings ? (
+            <Button
+              aria-label={t('editor.mode.configuration')}
+              size="sm"
+              variant={view === 'config' ? 'secondary' : 'ghost'}
+              className="cursor-pointer"
+              onClick={async () => {
+                const nextView = view === 'config' ? 'content' : 'config';
+                if (view === 'config' && !(await guardConfigChanges())) return;
+                setView(nextView);
+                if (nextView === 'config') {
+                  setSidebarCollapsed(false);
+                  setMobileSidebarOpen(true);
+                }
+              }}
+            >
+              <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
+            </Button>
+          ) : null}
           <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
             <Eye className="size-3.5" /> <span>{t('project.preview')}</span>
           </Button>
@@ -1039,14 +1050,16 @@ function EditorPage() {
           <ScrollArea className="min-h-0 flex-1">
             <div className="space-y-1 px-2 py-2">
               {view === 'config' ? (
-                <ConfigSectionList
-                  active={configSection}
-                  onSelect={async (section) => {
-                    if (section === configSection || !(await guardConfigChanges())) return;
-                    setConfigSection(section);
-                    setMobileSidebarOpen(false);
-                  }}
-                />
+                canManageSettings ? (
+                  <ConfigSectionList
+                    active={configSection}
+                    onSelect={async (section) => {
+                      if (!canManageSettings || section === configSection || !(await guardConfigChanges())) return;
+                      setConfigSection(section);
+                      setMobileSidebarOpen(false);
+                    }}
+                  />
+                ) : null
               ) : isPending ? (
                 // The page canvas announces the loading status; this mirrors the tree.
                 <div aria-busy="true" className="space-y-1.5 px-1 py-1.5">
@@ -1233,7 +1246,14 @@ function EditorPage() {
         <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
           {/* Main area: site configuration */}
           {view === 'config' ? (
-            <ConfigCanvas project={project} reportDirty={reportConfigDirty} section={configSection} />
+            <ConfigCanvas
+              canManage={canManageSettings}
+              permissionsPending={permissionsPending}
+              onBackToWriting={() => setView('content')}
+              project={project}
+              reportDirty={reportConfigDirty}
+              section={configSection}
+            />
           ) : switching ? (
             // Locked while switching or creating: the page being left is gone from
             // the screen, so nothing typed now can end up in it.
