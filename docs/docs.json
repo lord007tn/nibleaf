@@ -79,7 +79,8 @@
               "reference/environment-variables",
               "reference/integrations-engine",
               "reference/api",
-              "reference/known-limitations"
+              "reference/known-limitations",
+              "reference/mintlify-parity"
             ]
           },
           {
@@ -171,7 +172,8 @@
               "ar/reference/environment-variables",
               "ar/reference/integrations-engine",
               "ar/reference/api",
-              "ar/reference/known-limitations"
+              "ar/reference/known-limitations",
+              "ar/reference/mintlify-parity"
             ]
           },
           {

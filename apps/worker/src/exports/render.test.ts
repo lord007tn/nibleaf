@@ -524,4 +524,28 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(selectPublishedAssets(snapshot, manifest, 3).map((asset) => asset.key)).toEqual([required(assets[0]).key]);
     expect(() => selectPublishedAssets(snapshot, manifest, 2)).toThrow('2-byte limit');
   });
+
+  it('turns unsafe link destinations into "#" in HTML and PDF exports, wherever they come from', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: [
+        '[body](javascript:alert(1)) and [entity](&#106;avascript:alert(2))',
+        '',
+        '<Card title="Card" href="<javascript:alert(3)>">',
+        '',
+        'Text',
+        '',
+        '</Card>',
+        '',
+        '<Button href="/) [Injected](javascript:alert%281%29">Go</Button>',
+      ].join('\n'),
+    };
+    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
+      // No destination starts with a script scheme, and the Button stays one link.
+      expect(html).not.toMatch(/href="\s*(?:javascript|&#106;)/i);
+      expect(html).not.toMatch(/>Injected</);
+      expect(html).toContain('body');
+      expect(html).toContain('Card');
+    }
+  });
 });

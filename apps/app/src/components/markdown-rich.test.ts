@@ -39,4 +39,14 @@ describe('conditional Markdown renderer', () => {
     expect(html).toContain('class="katex-html" aria-hidden="true"');
     expect(html).not.toContain('language-math');
   });
+
+  it("keeps the editor's underline, subscript and superscript", () => {
+    const html = renderToStaticMarkup(createElement(RichMarkdown, { content: 'A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.' }));
+    expect(html).toContain('<u>underlined</u>');
+    expect(html).toContain('<sub>2</sub>');
+    expect(html).toContain('<sup>2</sup>');
+    // Allowed like any inline element: no handlers or styles.
+    const styled = renderToStaticMarkup(createElement(RichMarkdown, { content: '<u style="color:red" onclick="alert(1)">x</u>' }));
+    expect(styled).toContain('<u>x</u>');
+  });
 });

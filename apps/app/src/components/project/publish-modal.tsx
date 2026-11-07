@@ -421,7 +421,7 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                   >
                     {t('publish.editRedirects')}
                   </Link>
-                ) : redirectRole.status === 'not-admin' ? (
+                ) : redirectRole.status === 'notAdmin' ? (
                   <p className="mt-3 text-sm">{t('publish.redirectsAskAdmin')}</p>
                 ) : (
                   <p className="mt-3 text-muted-foreground text-sm" role="status">

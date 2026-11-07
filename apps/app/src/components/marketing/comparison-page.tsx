@@ -9,7 +9,13 @@ const featureSources: Record<string, { label: string; href: string }[]> = {
   Mintlify: [
     { label: 'Editor', href: 'https://www.mintlify.com/docs/editor/tutorial' },
     { label: 'Languages', href: 'https://www.mintlify.com/docs/guides/internationalization' },
-    { label: 'Self-hosted frontend boundary', href: 'https://www.mintlify.com/blog/custom-frontends-on-mintlify' },
+    { label: 'Headless frontend', href: 'https://www.mintlify.com/docs/guides/custom-frontend' },
+    { label: 'Enterprise static export', href: 'https://www.mintlify.com/docs/api/static-export/overview' },
+    { label: 'Analytics on Pro/Enterprise', href: 'https://www.mintlify.com/docs/analytics' },
+    { label: 'GitLab', href: 'https://www.mintlify.com/docs/deploy/gitlab' },
+    { label: 'Bitbucket Cloud', href: 'https://www.mintlify.com/docs/deploy/bitbucket' },
+    { label: 'Multi-repo on Enterprise', href: 'https://www.mintlify.com/docs/deploy/multi-repo' },
+    { label: 'Self-hosting on Enterprise (pricing)', href: 'https://www.mintlify.com/pricing' },
   ],
   GitBook: [
     { label: 'Plans and capabilities', href: 'https://www.gitbook.com/pricing' },
@@ -124,8 +130,9 @@ function PageHero({ eyebrow, heading, paragraphs, asOf }: { eyebrow: string; hea
           as of {asOf} and links to its source, and everything Nibleaf doesn’t do yet is disclosed plainly.
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-          Nibleaf Cloud remains in active beta. Feature availability depends on the deployed release and configuration. The self-hosted release
-          manifest targets v0.2.0; optional services still need operator configuration. Read the{' '}
+          Nibleaf Cloud remains in active beta. Ask AI, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source
+          code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Optional services still need operator
+          configuration. Read the{' '}
           <a className="underline underline-offset-2" href="/blog/nibleaf-august-2026-source-release">
             release boundaries
           </a>{' '}

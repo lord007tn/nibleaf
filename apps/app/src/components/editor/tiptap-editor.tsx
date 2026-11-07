@@ -7,13 +7,9 @@ import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { DragHandle, type DragHandleProps } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
-import { Table } from '@tiptap/extension-table';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
 import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
@@ -54,10 +50,14 @@ import { type ComponentType, type CSSProperties, type ReactNode, useCallback, us
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
+import { BlockImage, LegacyImage } from './extensions/block-image';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
+import { CleanPaste } from './extensions/clean-paste';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
-import { ImageUpload, uploadEditorImage } from './extensions/image-upload';
-import { mdxNodes } from './extensions/mdx-nodes';
+import { ImageControls } from './extensions/image-controls';
+import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
+import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
@@ -73,29 +73,6 @@ type MarkdownSerializeState = {
   ensureNewLine: () => void;
   closeBlock: (node: PMNode) => void;
 };
-
-/**
- * Images are block nodes here (`inline: false`), but tiptap-markdown's default
- * image serializer is the inline one and never closes the block — whatever
- * follows (a paragraph, a closing `</Card>`) would be glued onto the image line.
- */
-const BlockImage = Image.extend({
-  addStorage() {
-    return {
-      markdown: {
-        serialize(state: MarkdownSerializeState, node: PMNode) {
-          // Escape backslashes too, so a destination or title ending in `\`
-          // cannot swallow the closing delimiter when the page is reloaded.
-          const src = String(node.attrs.src ?? '').replace(/[\\()]/g, '\\$&');
-          const title = node.attrs.title ? ` "${String(node.attrs.title).replace(/[\\"]/g, '\\$&')}"` : '';
-          state.write(`![${state.esc(String(node.attrs.alt ?? ''))}](${src}${title})`);
-          state.closeBlock(node);
-        },
-        parse: {},
-      },
-    };
-  },
-});
 
 const fenceParsers = new WeakSet<object>();
 
@@ -211,8 +188,11 @@ const CodeBlock = CodeBlockLowlight.extend({
 });
 
 interface BuildExtensionsOptions {
-  /** Upload a picked/pasted image, returning its hosted URL (or null). */
-  onUpload?: (file: File) => Promise<string | null>;
+  /** Upload a picked/pasted image, returning its hosted URL (or null). Without
+   *  one, the image slash command asks for an image URL instead. */
+  onUpload?: ImageUploader;
+  getUpload?: () => ImageUploader | undefined;
+  canEdit?: () => boolean;
   /** Comment markers rendered as highlight decorations. */
   getComments?: () => CommentMarker[];
   /** The focused comment id (drawn stronger). */
@@ -330,12 +310,13 @@ const AutomaticBlockDirection = Extension.create<{ dir: 'ltr' | 'rtl' }>({
  * exercise the exact configuration the app ships (any extension whose content
  * does not survive `markdown → doc → markdown` is a silent data-loss bug).
  *
- * NOTE: TextAlign is intentionally absent — alignment has no Markdown syntax
- * and tiptap-markdown drops the attr on serialize, so offering it in the UI
- * would silently lose the author's formatting on save.
+ * NOTE: Prose TextAlign is intentionally absent: Markdown cannot preserve it.
+ * Table column alignment has separate GFM support in AlignedTable.
  */
 export function buildEditorExtensions({
   onUpload,
+  getUpload,
+  canEdit = () => true,
   getComments,
   getActiveId,
   dir = 'ltr',
@@ -349,7 +330,8 @@ export function buildEditorExtensions({
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
     AutomaticBlockDirection.configure({ dir }),
-    ImageUpload,
+    ImageUpload.configure({ canEdit }),
+    CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
@@ -362,20 +344,25 @@ export function buildEditorExtensions({
     Subscript,
     Superscript,
     Typography,
-    BlockImage.configure({ inline: false, allowBase64: true }),
+    BlockImage.configure({ inline: false, allowBase64: false }),
+    LegacyImage.configure({ inline: false, allowBase64: false }),
     TaskList,
     TaskItem.configure({ nested: true }),
     // Column resizing is LTR-only in prosemirror-tables — in RTL the drag
     // handles operate direction-inverted, so it is disabled there.
-    Table.configure({ resizable: dir !== 'rtl' }),
+    AlignedTable.configure({ resizable: dir !== 'rtl' }),
     TableRow,
-    TableHeader,
-    TableCell,
+    AlignedTableHeader,
+    AlignedTableCell,
     CharacterCount,
     Callout,
     ...mdxNodes,
     ...opaqueMdxNodes,
-    SlashCommand.configure({ locale, onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
+    SlashCommand.configure({
+      locale,
+      // Whether an uploader exists is fixed when the editor is created; the latest one is read at call time.
+      onUpload: onUpload ? (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)(...args) : undefined,
+    }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
 }
@@ -445,7 +432,12 @@ function CommentSelectionMenu({
 }) {
   const t = useT();
   return (
-    <BubbleMenu editor={editor} shouldShow={({ editor: current }) => !current.state.selection.empty} options={{ placement: 'top' }}>
+    <BubbleMenu
+      data-editor-bubble-menu=""
+      editor={editor}
+      shouldShow={({ editor: current }) => !current.state.selection.empty}
+      options={{ placement: 'top' }}
+    >
       <button
         type="button"
         onMouseDown={(event) => event.preventDefault()}
@@ -651,7 +643,7 @@ function EditorFooter({ editor, documentMode = false }: { editor: Editor; docume
         documentMode ? 'shrink-0 border-border border-t bg-background/95 px-3 py-1.5' : 'sticky bottom-3 mt-auto',
       )}
     >
-      <span className="rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
+      <span className="pl-editor-word-count rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
         {t('editor.wordCount', { words: counts.words, characters: counts.characters })}
       </span>
     </div>
@@ -664,7 +656,7 @@ interface TiptapEditorProps {
   /** Called with updated Markdown on every editor change. */
   onChange: (markdown: string) => void;
   /** Upload a pasted/dropped/picked image, returning its hosted URL (or null). */
-  onUpload?: (file: File) => Promise<string | null>;
+  onUpload?: ImageUploader;
   dir?: 'ltr' | 'rtl';
   /** BCP 47 language tag used to select the correct script font. */
   lang?: string;
@@ -748,7 +740,14 @@ export function TiptapEditor({
     {
       editable,
       extensions: buildEditorExtensions({
-        onUpload: (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null),
+        getUpload: () => onUploadRef.current,
+        canEdit: () => !commentModeRef.current,
+        // Whether an uploader exists is fixed when the editor is created; the
+        // latest uploader is still read at call time.
+        onUpload: onUpload
+          ? (file: File, onProgress?: (percent: number) => void, signal?: AbortSignal, onFinishing?: () => void) =>
+              onUploadRef.current?.(file, onProgress, signal, onFinishing) ?? Promise.resolve(null)
+          : undefined,
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
         dir,
@@ -861,7 +860,7 @@ export function TiptapEditor({
         editor.view.dispatch(editor.state.tr);
       }
     });
-  }, [comments, activeCommentId, editor]);
+  }, [comments, activeCommentId, commentMode, editor]);
 
   return (
     <div
@@ -873,9 +872,9 @@ export function TiptapEditor({
     >
       {editor && variant === 'wysiwyg' && !commentMode ? <DocumentToolbar editor={editor} /> : null}
       {editor && !commentMode ? <CalloutMenu editor={editor} /> : null}
-      {editor && !commentMode ? <ImageDescription editor={editor} /> : null}
+      {editor && !commentMode ? <ImageControls editor={editor} dir={dir} /> : null}
       {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
-      {editor && !commentMode ? <TableBubbleMenu editor={editor} /> : null}
+      {editor && !commentMode ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
       {editor && !commentMode ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
       {editor && !commentMode && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
@@ -894,32 +893,12 @@ export function TiptapEditor({
   );
 }
 
-function ImageDescription({ editor }: { editor: Editor }) {
-  const t = useT();
-  const state = useEditorState({
-    editor,
-    selector: ({ editor: current }) => ({ active: current.isActive('image'), alt: String(current.getAttributes('image').alt ?? '') }),
-  });
-  return (
-    <BubbleMenu editor={editor} pluginKey="image-description" options={{ placement: 'bottom' }} shouldShow={() => editor.isActive('image')}>
-      <label className="flex flex-col gap-1 rounded-lg border border-border bg-card p-3 text-sm shadow-lg">
-        {t('editor.image.description')}
-        <input
-          className="rounded border border-border bg-background p-2"
-          dir="auto"
-          value={state.alt}
-          onChange={(event) => editor.commands.updateAttributes('image', { alt: event.target.value })}
-        />
-      </label>
-    </BubbleMenu>
-  );
-}
-
 function CalloutMenu({ editor }: { editor: Editor }) {
   const t = useT();
   const variants = ['note', 'tip', 'info', 'check', 'warning', 'danger'] as const;
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
       editor={editor}
       pluginKey="callout-controls"
       options={{ placement: 'bottom' }}

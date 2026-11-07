@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePublicMarkdownContent } from './public-markdown-content';
+import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 
 describe('public Markdown content normalization', () => {
   it.each(['$&', '$$', "$'", '$`'])('preserves replacement metacharacters in literal public code: %s', (token) => {
@@ -44,5 +44,50 @@ import Example from './example'
     expect(normalized).toContain('`{"mode":"safe"}`');
     expect(normalized).toContain('``literal `tick`, <tag>, and {value}``');
     expect(normalized).not.toContain('globalThis.stolen');
+  });
+});
+
+describe('projected link destinations', () => {
+  it.each([
+    'javascript:alert(1)',
+    'JavaScript:alert(1)',
+    ' java\tscript:alert(1)',
+    '&#106;avascript:alert(1)',
+    '&#x6A;avascript:alert(1)',
+    'javascript&colon;alert(1)',
+    'javascript\\:alert(1)',
+    'vbscript:x',
+    'data:text/html,x',
+    '<javascript:alert(1)>',
+  ])('projects no link for the unsafe destination %j', (href) => {
+    const output = portablePublicMdxMarkdown(
+      `<Button href="${href}">Go</Button> <Card title="Card" href="${href}">\n\nBody\n\n</Card> <RelatedCard title="Related" href="${href}" />`,
+    );
+    expect(output).not.toMatch(/\]\(/);
+    expect(output).toContain('Go');
+    expect(output).toContain('Card');
+    expect(output).toContain('Related');
+  });
+
+  it.each(['/guide', 'guide/setup', '#install', 'https://example.com/a?b=1', 'mailto:team@example.com', 'tel:+15550100'])(
+    'keeps the safe destination %j',
+    (href) => {
+      expect(portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`)).toBe(`[Go](${href})`);
+    },
+  );
+
+  it('keeps a destination that tries to close its link and open another inside one link', () => {
+    const output = portablePublicMdxMarkdown('<Button href="/) [Injected](javascript:alert%281%29">Go</Button>');
+    expect(output).toBe('[Go](/%29%20[Injected]%28javascript:alert%281%29)');
+    expect(output.match(/\]\(/g)).toHaveLength(1);
+  });
+
+  it('percent-encodes spaces and parentheses in a projected destination', () => {
+    expect(portablePublicMdxMarkdown('<Button href="/a b(c)">Go</Button>')).toBe('[Go](/a%20b%28c%29)');
+  });
+
+  it('percent-encodes Unicode spaces as UTF-8 bytes', () => {
+    expect(portablePublicMdxMarkdown('<Button href="/a b">Go</Button>')).toBe('[Go](/a%E2%80%83b)');
+    expect(portablePublicMdxMarkdown('<Button href="/a b">Go</Button>')).toBe('[Go](/a%C2%A0b)');
   });
 });

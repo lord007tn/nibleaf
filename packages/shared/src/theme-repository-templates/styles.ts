@@ -364,6 +364,10 @@ ${tokenLines(theme.colors.dark)}
     gap: 1rem;
   }
 
+  .mdx-card-grid {
+    grid-template-columns: repeat(var(--mdx-cols, 2), minmax(0, 1fr));
+  }
+
   .mdx-card,
   .mdx-related-card {
     margin: 0;
