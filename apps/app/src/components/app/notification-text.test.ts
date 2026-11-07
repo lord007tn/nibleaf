@@ -77,7 +77,7 @@ describe('localized notification payloads', () => {
     const t = (key: Parameters<typeof translateFn>[0], variables?: Parameters<typeof translateFn>[1]) => translateFn(key, variables, locale);
     const failure = item({ type: 'deploy_failed', params: { projectName: 'Fixture', details: 'Redirect cycle detected' } });
     const admin = notificationText(t, failure, locale, 'admin');
-    const editor = notificationText(t, failure, locale, 'not-admin');
+    const editor = notificationText(t, failure, locale, 'notAdmin');
     const pending = notificationText(t, failure, locale, 'pending');
     expect(admin.body).toContain(t('settings.tab.appearance'));
     expect(admin.body).toContain(t('settings.redirects'));
