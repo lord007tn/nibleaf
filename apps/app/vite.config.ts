@@ -76,10 +76,7 @@ export default defineConfig(({ mode }) => {
                     // with those chunks instead of every published page's first load.
                     test: (id) => {
                       const path = id.replaceAll('\\', '/');
-                      return (
-                        /\/packages\/i18n\/src\/paraglide\/messages\/(?:site_|marketing_arabic(?:landing|platforms)_)/.test(path) &&
-                        !LAZY_SITE_MESSAGES.test(path)
-                      );
+                      return /\/packages\/i18n\/src\/paraglide\/messages\/site_/.test(path) && !LAZY_SITE_MESSAGES.test(path);
                     },
                   },
                   {
