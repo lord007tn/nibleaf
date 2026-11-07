@@ -166,8 +166,18 @@ sign-in before inviting users.
 Database migrations run through the one-shot `migrate` service. Follow the
 **[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
 and the target release's migration instructions before changing image versions;
-do not re-run the installer to upgrade. Open **`$APP_URL/sign-up`** to create the
+do not re-run the installer to upgrade. The v0.1.2 to v0.2.0 transition requires
+the [staged upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2).
+Open **`$APP_URL/sign-up`** to create the
 first account and starter workspace; production does not seed demo credentials.
+
+For the repository backup script on Coolify, run from
+`/data/coolify/services/<uuid>/`, set `COMPOSE_FILE` to the generated Compose
+filename, and set `PGUSER` to the deployed `SERVICE_USER_POSTGRES` (also set
+`PGDATABASE` if `POSTGRES_DB` is customized). Run `bash /path/to/nibleaf/scripts/backup.sh`
+from that directory. The script checks the running server's storage endpoint;
+external storage requires `BACKUP_STORAGE=external`, which creates a database-only
+backup and leaves bucket backup to your provider tooling.
 
 <details>
 <summary><b>Build from source instead</b> (needs ~5–6 GB free RAM)</summary>
@@ -182,7 +192,13 @@ sed -i "s/^BETTER_AUTH_SECRET=.*/BETTER_AUTH_SECRET=$(openssl rand -hex 32)/" .e
 docker compose up -d --build
 # → dashboard  http://localhost:4310   (open /sign-up to create your account)
 # → API        http://localhost:4311/docs
+# → sign-in codes http://localhost:8025 (bundled Mailpit)
 ```
+
+The source stack uses `smtp://mailpit:1025` inside containers, independently of
+the host-development `SMTP_URL` in `.env`. Set `SOURCE_SMTP_URL` to use an external
+SMTP provider reachable from the containers. Configure a real email provider for
+production; Mailpit captures messages locally and does not deliver them externally.
 
 </details>
 

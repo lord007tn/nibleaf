@@ -14,6 +14,9 @@
 #   COMPOSE_PROJECT_NAME  optional Compose project override (also honors compose name:)
 #   BACKUP_STORAGE  bundled (default) or external (explicitly skip object backup)
 #   STORAGE_VOLUME  optional assertion: must match the selected maxio /data mount
+# For Coolify, run from /data/coolify/services/<uuid>/, set COMPOSE_FILE to its
+# generated Compose filename and PGUSER to the deployed SERVICE_USER_POSTGRES.
+# Set PGDATABASE too when the deployed POSTGRES_DB differs from nibleaf.
 #
 # Schedule it with cron for a 24h RPO, e.g.:
 #   0 3 * * *  cd /opt/nibleaf && ./scripts/backup.sh >> /var/log/nibleaf-backup.log 2>&1
@@ -59,6 +62,16 @@ PG_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q postgres)"
 [[ -n "$PG_CONTAINER" && "$PG_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected postgres container"
 PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$PG_CONTAINER")"
 [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fatal "could not identify the selected Compose project"
+SERVER_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q server)"
+[[ -n "$SERVER_CONTAINER" && "$SERVER_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected server container to identify configured storage"
+SERVER_PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$SERVER_CONTAINER")"
+[[ "$SERVER_PROJECT" = "$PROJECT" ]] || fatal "server belongs to a different Compose project"
+# Inspect the deployed container, not the operator's possibly stale .env. Keep
+# other environment values (which may contain secrets) out of logs/manifests.
+STORAGE_ENDPOINT="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$SERVER_CONTAINER" | sed -n 's/^STORAGE_ENDPOINT=//p')"
+if [[ "$BACKUP_STORAGE" = bundled && ! "$STORAGE_ENDPOINT" =~ ^http://maxio(:9000)?/?$ ]]; then
+  fatal "server uses external or unrecognized storage; set BACKUP_STORAGE=external for a database-only backup and back up the external bucket separately"
+fi
 VOLUME=""
 if [[ "$BACKUP_STORAGE" = bundled ]]; then
   STORAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q maxio)"
@@ -99,4 +112,8 @@ mv "$MANIFEST_FILE.partial" "$MANIFEST_FILE"
 # Prune only after every requested backup step and the manifest succeeded.
 echo "[backup] pruning backups older than $RETENTION_DAYS days"
 find "$BACKUP_DIR" -maxdepth 1 -name 'nibleaf-*' -type f -mtime +"$RETENTION_DAYS" -print -delete
-echo "[backup] complete: $STAMP (project $PROJECT)"
+if [[ "$BACKUP_STORAGE" = external ]]; then
+  echo "[backup] database-only backup complete: $STAMP (project $PROJECT); external objects were NOT backed up"
+else
+  echo "[backup] database and bundled storage backup complete: $STAMP (project $PROJECT)"
+fi

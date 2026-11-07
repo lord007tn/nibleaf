@@ -25,6 +25,7 @@ let server: ServerType | null = null;
 let shuttingDown = false;
 let ready = false;
 let storageReady = false;
+let storageCors: boolean | null = env.STORAGE_AUTO_CORS ? false : null;
 let storageRetry: NodeJS.Timeout | undefined;
 
 app.get(
@@ -43,28 +44,44 @@ app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', ti
 
 app.get('/health', async (ctx) => {
   const analytics = await getAnalyticsHealth();
-  const healthy = ready && storageReady && !shuttingDown;
+  const healthy = ready && (!env.STORAGE_REQUIRED_FOR_HEALTH || storageReady) && !shuttingDown;
   const status = shuttingDown ? 'shutting_down' : healthy ? 'ok' : 'starting';
   return ctx.json(
-    { status, service: env.SERVICE_NAME, revision: process.env.NIBLEAF_REVISION ?? 'development', analytics, storage: { ready: storageReady } },
+    {
+      status,
+      service: env.SERVICE_NAME,
+      revision: process.env.NIBLEAF_REVISION ?? 'development',
+      analytics,
+      storage: { ready: storageReady, cors: storageCors, requiredForHealth: env.STORAGE_REQUIRED_FOR_HEALTH },
+    },
     healthy ? 200 : 503,
   );
 });
 
 async function bootstrapStorage(delayMs = 1000): Promise<void> {
-  try {
-    await ensureBucket();
-    if (env.STORAGE_AUTO_CORS) {
+  if (!storageReady) {
+    try {
+      await ensureBucket();
+      storageReady = true;
+      logger.info('Storage bucket check succeeded');
+    } catch (error) {
+      logger.warn({ error, retryMs: delayMs }, 'Storage bucket check failed; retrying. Object-only credentials may lack HeadBucket permission');
+    }
+  }
+  if (env.STORAGE_AUTO_CORS && !storageCors) {
+    try {
       await configureUploadCors(env.STORAGE_CORS_ALLOWED_ORIGINS);
+      storageCors = true;
+    } catch (error) {
+      logger.warn(
+        { error, retryMs: delayMs },
+        'Storage upload CORS setup failed; configure CORS externally or set STORAGE_AUTO_CORS=false. CORS does not gate API health',
+      );
     }
-    storageReady = true;
-    logger.info('Storage ready');
-  } catch (error) {
-    logger.warn({ error, retryMs: delayMs }, 'Storage bootstrap failed; retrying');
-    if (!shuttingDown) {
-      storageRetry = setTimeout(() => void bootstrapStorage(Math.min(delayMs * 2, 30_000)), delayMs);
-      storageRetry.unref();
-    }
+  }
+  if (!shuttingDown && (!storageReady || (env.STORAGE_AUTO_CORS && !storageCors))) {
+    storageRetry = setTimeout(() => void bootstrapStorage(Math.min(delayMs * 2, 30_000)), delayMs);
+    storageRetry.unref();
   }
 }
 
@@ -76,8 +93,8 @@ async function main() {
     logger.info(`  health → http://localhost:${info.port}/health`);
   });
 
-  // Storage may start later than the API. Keep health unavailable until both
-  // bucket access and optional browser-upload CORS have been reconciled.
+  // Reconcile bucket access and CORS independently; bucket diagnostics gate
+  // health only when the operator explicitly requires that permission check.
   void bootstrapStorage();
 
   // Redis is a required deployment dependency. Scheduling is idempotent and

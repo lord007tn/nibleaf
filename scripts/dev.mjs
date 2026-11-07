@@ -19,10 +19,18 @@ const child = spawn(
     stdio: 'inherit',
   },
 );
+let shuttingDown = false;
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    child.kill(signal);
+  });
+}
 child.once('error', (error) => {
   console.error(error.message);
   process.exitCode = 1;
 });
-child.once('exit', (code) => {
-  process.exitCode = code ?? 1;
+child.once('exit', (code, signal) => {
+  process.exitCode = code ?? (shuttingDown && signal ? 0 : 1);
 });

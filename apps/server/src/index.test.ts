@@ -5,15 +5,28 @@ const mocks = vi.hoisted(() => ({
   ensureBucket: vi.fn(),
   configureUploadCors: vi.fn(),
   schedule: vi.fn(),
+  warn: vi.fn(),
+  autoCors: true,
+  requiredForHealth: false,
   close: vi.fn((callback: (error?: Error) => void) => callback()),
 }));
 vi.mock('@hono/node-server', () => ({ serve: () => ({ close: mocks.close }) }));
 vi.mock('@nibleaf/bullmq', () => ({ scheduleAnalyticsRollup: mocks.schedule, closeQueues: vi.fn() }));
 vi.mock('@nibleaf/clickhouse', () => ({ initializeClickHouseFn: vi.fn(), getAnalyticsHealth: vi.fn(), closeClickHouseClients: vi.fn() }));
 vi.mock('@nibleaf/storage', () => ({ ensureBucket: mocks.ensureBucket, configureUploadCors: mocks.configureUploadCors }));
-vi.mock('@nibleaf/logger', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('@nibleaf/logger', () => ({ logger: { info: vi.fn(), warn: mocks.warn, error: vi.fn() } }));
 vi.mock('./env', () => ({
-  env: { API_PORT: 4311, API_URL: 'http://api.example.test', STORAGE_AUTO_CORS: true, STORAGE_CORS_ALLOWED_ORIGINS: ['https://docs.example.test'] },
+  env: {
+    API_PORT: 4311,
+    API_URL: 'http://api.example.test',
+    get STORAGE_AUTO_CORS() {
+      return mocks.autoCors;
+    },
+    get STORAGE_REQUIRED_FOR_HEALTH() {
+      return mocks.requiredForHealth;
+    },
+    STORAGE_CORS_ALLOWED_ORIGINS: ['https://docs.example.test'],
+  },
 }));
 vi.mock('./lib/ai-search/chat-budget', () => ({ chatBudgetWarning: vi.fn() }));
 
@@ -28,6 +41,8 @@ beforeEach(() => {
   vi.doMock('./routes', () => ({ default: new Hono() }));
   vi.useFakeTimers();
   vi.clearAllMocks();
+  mocks.autoCors = true;
+  mocks.requiredForHealth = false;
   mocks.ensureBucket.mockReset().mockResolvedValue(undefined);
   mocks.configureUploadCors.mockReset().mockResolvedValue(undefined);
   mocks.schedule.mockResolvedValue(undefined);
@@ -51,32 +66,69 @@ async function boot() {
 }
 
 describe('storage bootstrap readiness', () => {
-  it('keeps health unavailable through bucket and CORS failures, then recovers', async () => {
+  it('reports least-privilege bucket and R2 CORS permission failures without blocking default health', async () => {
+    mocks.ensureBucket.mockRejectedValue(new Error('AccessDenied: HeadBucket requires ListBucket'));
+    mocks.configureUploadCors.mockRejectedValue(new Error('AccessDenied: PutBucketCors requires admin'));
+    const app = await boot();
+    const response = await app.request('/health');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: 'ok', storage: { ready: false, cors: false, requiredForHealth: false } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mocks.ensureBucket).toHaveBeenCalledTimes(2);
+    expect(mocks.configureUploadCors).toHaveBeenCalledTimes(2);
+    expect(mocks.warn).toHaveBeenCalledWith(expect.any(Object), expect.stringContaining('CORS does not gate API health'));
+  });
+
+  it('gates health on the bucket only when explicitly required, and recovers despite CORS failure', async () => {
+    mocks.requiredForHealth = true;
     mocks.ensureBucket.mockRejectedValueOnce(new Error('storage offline'));
-    mocks.configureUploadCors.mockRejectedValueOnce(new Error('CORS temporarily unavailable'));
+    mocks.configureUploadCors.mockRejectedValue(new Error('CORS permission denied'));
     const app = await boot();
     expect((await app.request('/health')).status).toBe(503);
-    expect(mocks.configureUploadCors).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(999);
     expect(mocks.ensureBucket).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
-    expect((await app.request('/health')).status).toBe(503);
-    await vi.advanceTimersByTimeAsync(1999);
-    expect(mocks.ensureBucket).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(1);
     const response = await app.request('/health');
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ status: 'ok', storage: { ready: true } });
-    expect(mocks.configureUploadCors).toHaveBeenLastCalledWith(['https://docs.example.test']);
-    await vi.advanceTimersByTimeAsync(60_000);
-    expect(mocks.ensureBucket).toHaveBeenCalledTimes(3);
+    expect(await response.json()).toMatchObject({ storage: { ready: true, cors: false, requiredForHealth: true } });
+    expect(mocks.ensureBucket).toHaveBeenCalledTimes(2);
   });
 
-  it('caps backoff and cancels reconciliation when shutting down', async () => {
+  it.each([false, true])('retries CORS independently without gating health (required=%s)', async (required) => {
+    mocks.requiredForHealth = required;
+    mocks.configureUploadCors.mockRejectedValueOnce(new Error('CORS temporarily unavailable'));
+    const app = await boot();
+    const pending = await app.request('/health');
+    expect(pending.status).toBe(200);
+    expect(await pending.json()).toMatchObject({ storage: { ready: true, cors: false } });
+    await vi.advanceTimersByTimeAsync(1000);
+    const recovered = await app.request('/health');
+    expect(recovered.status).toBe(200);
+    expect(await recovered.json()).toMatchObject({ storage: { ready: true, cors: true } });
+    expect(mocks.configureUploadCors).toHaveBeenLastCalledWith(['https://docs.example.test']);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(mocks.ensureBucket).toHaveBeenCalledTimes(1);
+    expect(mocks.configureUploadCors).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports externally managed CORS as disabled while retrying the optional bucket check', async () => {
+    mocks.autoCors = false;
+    mocks.ensureBucket.mockRejectedValueOnce(new Error('bucket unavailable'));
+    const app = await boot();
+    const response = await app.request('/health');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ storage: { ready: false, cors: null } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await (await app.request('/health')).json()).toMatchObject({ storage: { ready: true, cors: null } });
+    expect(mocks.configureUploadCors).not.toHaveBeenCalled();
+  });
+
+  it('caps bucket backoff and cancels reconciliation when shutting down', async () => {
     mocks.ensureBucket.mockRejectedValue(new Error('storage offline'));
     const app = await boot();
     for (const delay of [1000, 2000, 4000, 8000, 16_000, 30_000, 30_000]) await vi.advanceTimersByTimeAsync(delay);
     expect(mocks.ensureBucket).toHaveBeenCalledTimes(8);
+    expect(mocks.configureUploadCors).toHaveBeenCalledTimes(1);
     const shutdown = listenersOf('SIGTERM').find((listener) => !previousListeners.get('SIGTERM')?.includes(listener));
     shutdown?.('SIGTERM');
     await vi.advanceTimersByTimeAsync(60_000);

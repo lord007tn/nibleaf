@@ -27,6 +27,7 @@ RUN pnpm --filter @nibleaf/database generate
 # Never compile an installation's public origin into the shared image.
 ENV VITE_API_URL=http://nibleaf-runtime-api.invalid
 ENV VITE_APP_URL=https://nibleaf-runtime-app.invalid
+ENV VITE_ADMIN_URL=https://nibleaf-runtime-admin.invalid
 ENV VITE_SITE_BASE_DOMAIN=nibleaf-runtime-site.invalid
 # The app build exceeds a 4 GiB V8 heap as the editor, docs renderer, and SSR
 # bundles are optimized together. Keep this aligned with the 5-6 GiB build
@@ -39,6 +40,8 @@ RUN pnpm exec turbo run build --concurrency=1 \
   --filter=@nibleaf/admin... \
   --filter=@nibleaf/server... \
   --filter=@nibleaf/worker...
+# Wrappers must refuse an unconfigured image even when the entrypoint is skipped.
+RUN touch apps/app/.output/.nibleaf-runtime-required apps/admin/.output/.nibleaf-runtime-required
 
 # Install a clean production graph instead of copying the builder's tooling.
 # Keep the workspace layout: server/worker and their workspace dependencies run

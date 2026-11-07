@@ -75,6 +75,7 @@ x-service-env: &service-env
   STORAGE_PUBLIC_URL: ${STORAGE_PUBLIC_URL:-https://storage.nibleaf.com/nibleaf}
   STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-https://nibleaf.com,https://www.nibleaf.com,https://admin.nibleaf.com}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
+  STORAGE_REQUIRED_FOR_HEALTH: ${STORAGE_REQUIRED_FOR_HEALTH:-false}
   BETTER_AUTH_SECRET: ${SERVICE_HEX_64_NIBLEAF:?set SERVICE_HEX_64_NIBLEAF}
   BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://nibleaf.com}
   GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}

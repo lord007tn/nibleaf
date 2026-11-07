@@ -20,6 +20,8 @@ for (const scenario of [
   'wrong-override',
   'dump-failure',
   'archive-failure',
+  'external-with-bundled-maxio',
+  'unset-endpoint',
   'external',
 ]) {
   test(`backup: ${scenario}`, () => {
@@ -41,7 +43,11 @@ set -eu
 printf '%s\\n' "$*" >> "$CALL_LOG"
 case "$*" in
   *'ps -q postgres') echo pg-selected ;;
-  *'ps -q maxio') [[ "$SCENARIO" = missing-container ]] || echo maxio-selected ;;
+  *'ps -q server') echo server-selected ;;
+  *'ps -q maxio') if [[ "$SCENARIO" != missing-container ]]; then echo maxio-selected; fi ;;
+  inspect*.Config.Env*)
+    if [[ "$SCENARIO" = external || "$SCENARIO" = external-with-bundled-maxio ]]; then echo 'STORAGE_ENDPOINT=https://external-storage.example.test';
+    elif [[ "$SCENARIO" != unset-endpoint ]]; then echo 'STORAGE_ENDPOINT=http://maxio:9000'; fi ;;
   inspect*com.docker.compose.project*)
     if [[ "$SCENARIO" = wrong-project && "$*" = *maxio-selected ]]; then echo another-install; else echo "$COMPOSE_PROJECT_NAME"; fi ;;
   inspect*.Mounts*) if [[ "$SCENARIO" != missing-volume ]]; then echo "\${COMPOSE_PROJECT_NAME}_nibleaf-maxio"; fi ;;
@@ -65,7 +71,10 @@ esac
           COMPOSE_PROJECT_NAME: project,
           BACKUP_DIR: shellPath(backups),
           BACKUP_STORAGE: scenario === 'external' ? 'external' : 'bundled',
+          STORAGE_ENDPOINT: scenario.startsWith('external') ? 'http://maxio:9000' : 'https://stale-environment.example.test',
           STORAGE_VOLUME: scenario === 'wrong-override' ? 'another-install_nibleaf-maxio' : '',
+          PGUSER: scenario === 'coolify' ? 'synthetic-coolify-user' : 'nibleaf',
+          PGDATABASE: scenario === 'coolify' ? 'synthetic-coolify-db' : 'nibleaf',
           RETENTION_DAYS: '14',
           CALL_LOG: shellPath(join(directory, 'calls.log')),
           SCENARIO: scenario,
@@ -75,6 +84,7 @@ esac
       assert.equal(result.status === 0, success, result.stderr || result.stdout);
       const calls = readFileSync(join(directory, 'calls.log'), 'utf8');
       assert.doesNotMatch(calls, /-v nibleaf_nibleaf-maxio:/);
+      if (scenario === 'coolify') assert.match(calls, /pg_dump -U synthetic-coolify-user -d synthetic-coolify-db/);
       const files = readdirSync(backups);
       assert.ok(files.every((file) => !file.endsWith('.partial')));
       if (success) {
@@ -90,8 +100,11 @@ esac
         assert.equal(manifest.project, project);
         assert.equal(manifest.storageVolume, scenario === 'external' ? '' : `${project}_nibleaf-maxio`);
         assert.equal(readFileSync(join(backups, manifest.databaseFile), 'utf8'), 'synthetic database dump');
-        if (scenario === 'external') assert.doesNotMatch(calls, /run --rm/);
-        else assert.equal(readFileSync(join(backups, manifest.storageFile), 'utf8'), 'synthetic storage archive');
+        if (scenario === 'external') {
+          assert.doesNotMatch(calls, /run --rm/);
+          assert.match(result.stdout, /database-only backup complete/);
+          assert.match(result.stdout, /external objects were NOT backed up/);
+        } else assert.equal(readFileSync(join(backups, manifest.storageFile), 'utf8'), 'synthetic storage archive');
         if (process.platform !== 'win32') {
           for (const file of files) assert.equal(statSync(join(backups, file)).mode & 0o077, 0);
         }
@@ -102,6 +115,10 @@ esac
           files.every((file) => !file.endsWith('.json')),
           'failure must not publish a success manifest',
         );
+        if (['external-with-bundled-maxio', 'unset-endpoint'].includes(scenario)) {
+          assert.match(result.stderr, /BACKUP_STORAGE=external for a database-only backup/);
+          assert.doesNotMatch(calls, /pg_dump|run --rm/);
+        }
       }
     } finally {
       rmSync(directory, { recursive: true, force: true });
