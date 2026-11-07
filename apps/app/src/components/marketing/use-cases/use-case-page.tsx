@@ -13,7 +13,7 @@ import { UseCaseView } from './use-case-view';
 export function UseCasePage({ slug, stars = 0 }: { slug: UseCaseSlug; stars?: number }) {
   return (
     <MarketingSiteShell lang="en" copy={shellEn} alternateHref={`/ar/use-cases/${slug}`} stars={stars}>
-      <UseCaseView lang="en" copy={useCasesEn[slug]} stars={stars} />
+      <UseCaseView lang="en" copy={useCasesEn[slug]} stars={stars} starsLabel={shellEn.github.starsLabel} />
     </MarketingSiteShell>
   );
 }

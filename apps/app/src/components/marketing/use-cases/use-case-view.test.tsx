@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { MARKETING_SITEMAP } from '@/lib/marketing-sitemap';
 import { availabilityNote, heroAvailabilityNote } from '../copy/availability';
+import { shellAr } from '../copy/shell.ar';
 import type { UseCaseSlug } from '../copy/types';
 import { USE_CASE_SLUGS } from '../copy/use-case-meta';
 import { useCasesAr, useCasesTeaserAr } from '../copy/use-cases.ar';
@@ -167,4 +168,39 @@ describe('use-case release honesty', () => {
     const root = markup(renderToStaticMarkup(<Page slug="product-docs" stars={0} />));
     expect(root.querySelector('section#themes')?.textContent).toContain(`${themes?.noteLabel}: ${themes?.note}`);
   });
+});
+
+describe('use-case copy qualifies every feature newer than the latest self-hosted release', () => {
+  const gated = {
+    en: /Ask AI|MCP|AI assistant|Qdrant|ClickHouse|Signal|\btheme|insights|⌘K|start-here/i,
+    ar: /اسأل المساعد|MCP|مساعد الذكاء|مساعدي الذكاء|مساعدك الذكي|Qdrant|ClickHouse|Signal|قالب|قوالب|التحليلات|⌘K|ابدأ من هنا/,
+  } as const;
+
+  it.each(pages)('%s sections, workflows and answers carry the availability note', (lang, _Page, copies) => {
+    const note = availabilityNote('askAi', lang);
+    for (const copy of Object.values(copies)) {
+      for (const solution of copy.solutions) {
+        const text = [solution.title, solution.body, ...solution.bullets].join(' ');
+        if (gated[lang].test(text)) expect(solution.note, `${copy.slug}/${solution.id}`).toContain(note);
+      }
+      if (copy.workflow.steps.some((step) => gated[lang].test(`${step.title} ${step.body}`))) {
+        expect(copy.workflow.note, `${copy.slug} workflow`).toContain(note);
+      }
+      for (const item of copy.faq.items) {
+        if (gated[lang].test(item.a)) expect(`${item.a} ${copy.faq.note ?? ''}`, `${copy.slug}: ${item.q}`).toContain(note);
+      }
+    }
+  });
+
+  it.each(pages)('%s pages describe the MCP recording as the landing page does', (lang, _Page, copies) => {
+    for (const copy of Object.values(copies)) {
+      const mcp = copy.solutions.find((solution) => solution.media?.key === 'mcp');
+      if (mcp?.media) expect(mcp.media.caption).toMatch(lang === 'ar' ? /مختلَقة/ : /made up/);
+    }
+  });
+});
+
+it('reads the GitHub star count in Arabic on Arabic pages', () => {
+  const root = markup(renderToStaticMarkup(<ArabicUseCasePage slug="support-teams" stars={42} />));
+  expect(root.textContent).toContain(shellAr.github.starsLabel(42));
 });

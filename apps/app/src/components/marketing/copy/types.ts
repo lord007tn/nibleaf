@@ -30,7 +30,7 @@ interface NavLink extends Cta {
 }
 
 /** Keys into the media manifest (`media/manifest.ts`). Copy supplies the alt text. */
-export type MarketingMediaKey = 'hero-chat' | 'chat' | 'search' | 'insights' | 'mcp' | 'editor' | 'dashboard' | 'arabic' | 'themes';
+export type MarketingMediaKey = 'hero-chat' | 'chat' | 'search' | 'insights' | 'mcp' | 'editor' | 'arabic' | 'themes';
 
 export interface MediaRef {
   key: MarketingMediaKey;
@@ -181,8 +181,18 @@ export interface UseCaseCopy {
    */
   solutions: (Omit<FeatureSection, 'media'> & { media?: MediaRef })[];
   /** A plain workflow for this team, 3–5 steps. */
-  workflow: { title: string; steps: { title: string; body: string }[] };
-  faq: { title: string; items: { q: string; a: string }[] };
+  workflow: {
+    title: string;
+    steps: { title: string; body: string }[];
+    /** Availability caption for steps that rely on capabilities still rolling out. */
+    note?: string;
+  };
+  faq: {
+    title: string;
+    items: { q: string; a: string }[];
+    /** Availability caption for answers that rely on capabilities still rolling out. */
+    note?: string;
+  };
   related: { title: string; links: (Cta & { description: string })[] };
   finalCta: { title: string; body: string; primary: Cta; secondary: Cta };
 }

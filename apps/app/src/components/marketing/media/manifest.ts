@@ -23,22 +23,6 @@ import chatEnWide640_avif from './assets/chat-en-wide-640.avif?url';
 import chatEnWide640_webp from './assets/chat-en-wide-640.webp?url';
 import chatEnWide1280_avif from './assets/chat-en-wide-1280.avif?url';
 import chatEnWide1280_webp from './assets/chat-en-wide-1280.webp?url';
-import dashboardArWideDark640_avif from './assets/dashboard-ar-wide-dark-640.avif?url';
-import dashboardArWideDark640_webp from './assets/dashboard-ar-wide-dark-640.webp?url';
-import dashboardArWideDark1280_avif from './assets/dashboard-ar-wide-dark-1280.avif?url';
-import dashboardArWideDark1280_webp from './assets/dashboard-ar-wide-dark-1280.webp?url';
-import dashboardArWideLight640_avif from './assets/dashboard-ar-wide-light-640.avif?url';
-import dashboardArWideLight640_webp from './assets/dashboard-ar-wide-light-640.webp?url';
-import dashboardArWideLight1280_avif from './assets/dashboard-ar-wide-light-1280.avif?url';
-import dashboardArWideLight1280_webp from './assets/dashboard-ar-wide-light-1280.webp?url';
-import dashboardEnWideDark640_avif from './assets/dashboard-en-wide-dark-640.avif?url';
-import dashboardEnWideDark640_webp from './assets/dashboard-en-wide-dark-640.webp?url';
-import dashboardEnWideDark1280_avif from './assets/dashboard-en-wide-dark-1280.avif?url';
-import dashboardEnWideDark1280_webp from './assets/dashboard-en-wide-dark-1280.webp?url';
-import dashboardEnWideLight640_avif from './assets/dashboard-en-wide-light-640.avif?url';
-import dashboardEnWideLight640_webp from './assets/dashboard-en-wide-light-640.webp?url';
-import dashboardEnWideLight1280_avif from './assets/dashboard-en-wide-light-1280.avif?url';
-import dashboardEnWideLight1280_webp from './assets/dashboard-en-wide-light-1280.webp?url';
 import editorArWideDark640_avif from './assets/editor-ar-wide-dark-640.avif?url';
 import editorArWideDark640_webp from './assets/editor-ar-wide-dark-640.webp?url';
 import editorArWideDark1280_avif from './assets/editor-ar-wide-dark-1280.avif?url';
@@ -256,16 +240,6 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
         [1280, themesEnWide1280_avif, themesEnWide1280_webp],
       ]),
     },
-    dashboard: {
-      wide: variant(1280, 800, [
-        [640, dashboardEnWideLight640_avif, dashboardEnWideLight640_webp],
-        [1280, dashboardEnWideLight1280_avif, dashboardEnWideLight1280_webp],
-      ]),
-      wideDark: variant(1280, 800, [
-        [640, dashboardEnWideDark640_avif, dashboardEnWideDark640_webp],
-        [1280, dashboardEnWideDark1280_avif, dashboardEnWideDark1280_webp],
-      ]),
-    },
     chat: {
       wide: variant(1280, 800, [
         [640, chatEnWide640_avif, chatEnWide640_webp],
@@ -349,16 +323,6 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       wide: variant(1280, 788, [
         [640, themesArWide640_avif, themesArWide640_webp],
         [1280, themesArWide1280_avif, themesArWide1280_webp],
-      ]),
-    },
-    dashboard: {
-      wide: variant(1280, 800, [
-        [640, dashboardArWideLight640_avif, dashboardArWideLight640_webp],
-        [1280, dashboardArWideLight1280_avif, dashboardArWideLight1280_webp],
-      ]),
-      wideDark: variant(1280, 800, [
-        [640, dashboardArWideDark640_avif, dashboardArWideDark640_webp],
-        [1280, dashboardArWideDark1280_avif, dashboardArWideDark1280_webp],
       ]),
     },
     chat: {

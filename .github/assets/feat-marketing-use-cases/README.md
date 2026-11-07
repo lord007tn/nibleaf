@@ -17,9 +17,9 @@ before this PR is the "after" of #332: see `after-home-*-full.jpg` in
 
 Slugs: `support-teams`, `product-docs`, `api-docs`.
 
-The captures inside the pages are #332's product captures plus two new ones,
-the reader themes and the dashboard. All of them show the same fictional demo
-notes app.
+The captures inside the pages are #332's product captures plus one new one,
+the reader themes. All of them show the same fictional demo notes app. A
+section without a capture of its own capability has no image.
 
 The API use case has no API reference capture yet. Its OpenAPI section is
 text only, so it doesn't borrow an unrelated image. No personal data appears in

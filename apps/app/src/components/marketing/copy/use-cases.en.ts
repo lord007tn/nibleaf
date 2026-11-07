@@ -14,7 +14,7 @@ const demoCaption = 'Real product screenshot. Demo content: a fictional notes ap
 const media = {
   heroChat: {
     key: 'hero-chat',
-    alt: 'A docs site for a fictional notes app with the Ask AI panel open. The answer about exporting notes lists three numbered sources, each naming the exact section of “Export your notes” it came from, followed by related questions.',
+    alt: 'A published docs page for a fictional notes app, with Ask AI open on a phone. The answer explains why sync stopped and cites two numbered sections of “Fix sync problems”.',
     caption: demoCaption,
   },
   chat: {
@@ -24,17 +24,21 @@ const media = {
   },
   insights: {
     key: 'insights',
-    alt: 'The “Searches that failed” table in Nibleaf analytics. Each term, including one in Arabic, has a “Write an article for this” button. An AI visibility report sits alongside it.',
+    alt: 'The “Searches that failed” table in Nibleaf analytics. Each term, including one in Arabic, has a “Write an article for this” button.',
+    caption: 'Real product screenshot from a local test site.',
   },
   mcp: {
     key: 'mcp',
-    alt: 'The “AI assistants (MCP)” project settings, with a sign-in connection and the Read only, Support writer and Full admin permission presets.',
-    caption: 'Real product screenshot.',
+    alt: 'A recorded Claude Code session connected to a Nibleaf project with a Support writer key. It finds searches with no results, drafts the missing article, previews and publishes it after the person confirms, then translates it to Arabic.',
+    caption:
+      'Replay of a real Claude Code session against a demo project, rendered from its transcript. The demo’s product facts, such as the Okta sign-on steps, are made up. Arabic text shows as [Arabic] in this terminal view. Press play to watch.',
   },
-  editor: { key: 'editor', alt: 'The Nibleaf editor with the slash menu open, listing blocks such as callouts, steps, tabs and code.' },
+  editor: {
+    key: 'editor',
+    alt: 'The Nibleaf editor with the slash menu open over an article, listing basic blocks such as text, headings and lists.',
+  },
   arabic: { key: 'arabic', alt: 'An Arabic docs site in right-to-left layout on a phone.', caption: demoCaption },
   themes: { key: 'themes', alt: 'The three Nibleaf reader themes, Harbor, Manuscript and Signal, showing the same docs.' },
-  dashboard: { key: 'dashboard', alt: 'The Nibleaf dashboard for a docs project.' },
 } satisfies Record<string, MediaRef>;
 
 const startFree = { label: 'Start free', href: '/sign-up' };
@@ -127,6 +131,8 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Ask AI handles questions that mix Arabic and English',
           'Your AI assistant can draft a translation for you to review',
         ],
+        noteLabel: 'Availability',
+        note: groupAvailabilityNote('Ask AI and AI-assistant translation', ['askAi', 'supportMcp'], 'en'),
         media: media.arabic,
       },
     ],
@@ -139,6 +145,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         { title: 'Draft the fixes', body: 'Write in the editor, or let your AI assistant draft and translate the missing articles.' },
         { title: 'Preview and publish', body: 'Confirm the preview and publish. You can roll back to an earlier publish at any time.' },
       ],
+      note: groupAvailabilityNote('Ask AI, its reports and AI-assistant drafting', ['askAi', 'docsInsights', 'supportMcp'], 'en'),
     },
     faq: {
       title: 'Questions from support teams',
@@ -164,6 +171,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           a: 'Yes. Ask AI replies in the language of the question, Arabic included, and the docs site, search and editor all work right to left.',
         },
       ],
+      note: groupAvailabilityNote('Ask AI and its reports', ['askAi', 'docsInsights'], 'en'),
     },
     related: {
       title: 'Keep reading',
@@ -203,7 +211,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
       eyebrow: 'For product managers and writers',
       title: 'Product docs your whole team can update.',
       subtitle:
-        'Product managers and writers work in a visual editor; engineers can stay in GitHub. Preview every change, publish versioned docs in your own theme, and keep translations in step.',
+        'Product managers and writers work in a visual editor; engineers can stay in GitHub. Preview every change, publish versioned docs with your branding, and keep translations in step.',
       primaryCta: startFree,
       secondaryCta: selfHost,
       media: media.editor,
@@ -227,6 +235,8 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Find any page, setting or action with ⌘K or Ctrl+K',
           'A start-here checklist walks new projects from first page to first publish',
         ],
+        noteLabel: 'Availability',
+        note: groupAvailabilityNote('Page, setting and action search, and the start-here checklist', ['dashboardOnboarding'], 'en'),
         media: media.editor,
       },
       {
@@ -239,7 +249,6 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Each GitHub pull request gets its own preview link',
           'Keep internal docs private and share them only with invited readers',
         ],
-        media: media.dashboard,
       },
       {
         id: 'themes',
@@ -298,6 +307,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           a: 'Yes. Invite readers to private docs, or to single pages, separately from your dashboard team. This is not SAML or SCIM single sign-on.',
         },
       ],
+      note: groupAvailabilityNote('Translation drafts through the support MCP', ['supportMcp'], 'en'),
     },
     related: {
       title: 'Keep reading',
@@ -340,7 +350,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         'Import an OpenAPI file for endpoint pages readers can try, write guides in Markdown synced with GitHub, and give AI tools clean text. Use the free cloud beta or your own servers.',
       primaryCta: startFree,
       secondaryCta: selfHost,
-      media: media.themes,
+      media: media.editor,
     },
     problems: {
       title: 'Sound familiar?',
@@ -357,7 +367,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         title: 'Reference pages from your OpenAPI file.',
         body: 'Import an OpenAPI 3.x file and Nibleaf builds endpoint and schema pages, with a try-it panel readers use in the browser.',
         bullets: [
-          'External references in your spec are bundled on import',
+          'Public external references in your spec are fetched and bundled on import',
           'Write guides alongside the reference with code groups and request and response examples',
           'The Signal theme is laid out for code-heavy docs',
         ],
@@ -380,7 +390,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         id: 'ai-ready',
         eyebrow: 'AI tools',
         title: 'Docs AI tools can actually read.',
-        body: 'Every site serves llms.txt, llms-full.txt and a Markdown version of each page. Private pages stay out of them.',
+        body: 'Every site serves llms.txt and llms-full.txt for AI tools. Private pages stay out of them.',
         bullets: [
           'Connect Claude Code, Cursor or VS Code to your docs project over MCP',
           'Read only, Support writer and Full admin presets keep access scoped',
@@ -399,14 +409,18 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Qdrant for Ask AI and ClickHouse for insights are optional',
           'Ask AI answers from the version and language the reader is viewing',
         ],
-        media: media.dashboard,
+        noteLabel: 'Availability',
+        note: groupAvailabilityNote('Ask AI and insights, with their Qdrant and ClickHouse services,', ['askAi', 'docsInsights'], 'en'),
       },
     ],
     workflow: {
       title: 'How developer teams set it up',
       steps: [
         { title: 'Import your spec', body: 'Upload an OpenAPI file, point to its URL, or pick it from your connected repository.' },
-        { title: 'Connect GitHub', body: 'Link the repository so guides and reference changes go through pull requests.' },
+        {
+          title: 'Connect GitHub',
+          body: 'Link the repository so guide changes go through pull requests. Re-import the spec from it when the API changes.',
+        },
         { title: 'Write the guides', body: 'Use the editor or your code editor, with code groups and request and response examples.' },
         { title: 'Publish and version', body: 'Preview, publish, and keep a separate version of the docs for each API release.' },
       ],
@@ -416,7 +430,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
       items: [
         {
           q: 'Which OpenAPI versions are supported?',
-          a: 'OpenAPI 3.x. Nibleaf validates the file and bundles external references when you import it.',
+          a: 'OpenAPI 3.x. Nibleaf validates the file and bundles public external references when you import it.',
         },
         {
           q: 'Does try-it work with any API?',
@@ -428,13 +442,14 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         },
         {
           q: 'What do AI tools get from my docs?',
-          a: 'Each site serves llms.txt, llms-full.txt and a Markdown version of every page, limited to content readers are allowed to see. Your team can also connect AI assistants to the project over MCP.',
+          a: 'Each site serves llms.txt and llms-full.txt, limited to content readers are allowed to see. Your team can also connect AI assistants to the project over MCP.',
         },
         {
           q: 'What does self-hosting need?',
           a: 'Docker Compose with PostgreSQL, a Redis-compatible cache and S3-compatible storage (bundled by default). Qdrant and ClickHouse are optional. The published image targets linux/amd64.',
         },
       ],
+      note: groupAvailabilityNote('The support MCP, Ask AI and insights', ['supportMcp', 'askAi', 'docsInsights'], 'en'),
     },
     related: {
       title: 'Keep reading',

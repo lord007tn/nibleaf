@@ -50,7 +50,18 @@ function Bullets({ items }: { items: string[] }) {
  * reading and the final call to action. Copy comes from `use-cases.<lang>.ts`;
  * nothing here is language-specific beyond the two labels above.
  */
-export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; copy: UseCaseCopy; stars?: number }) {
+export function UseCaseView({
+  lang,
+  copy,
+  stars = 0,
+  starsLabel,
+}: {
+  lang: MarketingLang;
+  copy: UseCaseCopy;
+  stars?: number;
+  /** Localized accessible count for the GitHub button. */
+  starsLabel?: (count: number) => string;
+}) {
   const text = labels[lang];
   return (
     <>
@@ -130,37 +141,43 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
 
       <section id="workflow" aria-labelledby="workflow-title" className={`scroll-mt-24 ${section} grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16`}>
         <Heading id="workflow-title" copy={copy.workflow} />
-        <ol className="min-w-0 space-y-4">
-          {copy.workflow.steps.map((step, index) => (
-            <li key={step.title} className="flex gap-4 rounded-xl border border-border bg-card p-5 sm:gap-5 sm:p-6">
-              <span
-                aria-hidden="true"
-                className="grid size-10 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/5 font-mono text-primary text-sm"
-              >
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-lg leading-8">{step.title}</h3>
-                <p className="mt-1 text-muted-foreground text-sm leading-7">{step.body}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <div className="min-w-0">
+          <ol className="space-y-4">
+            {copy.workflow.steps.map((step, index) => (
+              <li key={step.title} className="flex gap-4 rounded-xl border border-border bg-card p-5 sm:gap-5 sm:p-6">
+                <span
+                  aria-hidden="true"
+                  className="grid size-10 shrink-0 place-items-center rounded-full border border-primary/30 bg-primary/5 font-mono text-primary text-sm"
+                >
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-lg leading-8">{step.title}</h3>
+                  <p className="mt-1 text-muted-foreground text-sm leading-7">{step.body}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+          {copy.workflow.note && <p className="mt-5 text-muted-foreground text-xs leading-6">{copy.workflow.note}</p>}
+        </div>
       </section>
 
       <section id="faq" aria-labelledby="faq-title" className="scroll-mt-24 border-border border-y bg-muted/20">
         <div className={`${section} grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16`}>
           <Heading id="faq-title" copy={copy.faq} />
-          <div className="min-w-0 divide-y divide-border border-border border-y">
-            {copy.faq.items.map((item) => (
-              <details key={item.q} className="group py-1">
-                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
-                  <span>{item.q}</span>
-                  <Plus aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-45 motion-reduce:transition-none" />
-                </summary>
-                <p className="max-w-[72ch] pb-5 text-muted-foreground text-sm leading-7">{item.a}</p>
-              </details>
-            ))}
+          <div className="min-w-0">
+            <div className="divide-y divide-border border-border border-y">
+              {copy.faq.items.map((item) => (
+                <details key={item.q} className="group py-1">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+                    <span>{item.q}</span>
+                    <Plus aria-hidden="true" className="size-4 shrink-0 transition-transform group-open:rotate-45 motion-reduce:transition-none" />
+                  </summary>
+                  <p className="max-w-[72ch] pb-5 text-muted-foreground text-sm leading-7">{item.a}</p>
+                </details>
+              ))}
+            </div>
+            {copy.faq.note && <p className="mt-5 text-muted-foreground text-xs leading-6">{copy.faq.note}</p>}
           </div>
         </div>
       </section>
@@ -186,13 +203,14 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
           <h2 id="final-cta-title" className={`max-w-3xl ${title}`}>
             {copy.finalCta.title}
           </h2>
-          <p className={`mt-4 ${body}`}>{copy.finalCta.body}</p>
+          {/* Full-strength text: muted grey on the tinted panel falls below 4.5:1 in the light theme. */}
+          <p className="mt-4 max-w-[72ch] text-foreground/80 leading-7">{copy.finalCta.body}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <MarketingLink cta={copy.finalCta.primary} lang={lang} placement="final" className={primaryButton}>
               <ArrowRight aria-hidden="true" className={arrow} />
             </MarketingLink>
             <MarketingLink cta={copy.finalCta.secondary} lang={lang} placement="final" className={outlineButton} />
-            <GitHubStarLink stars={stars} label={text.github} />
+            <GitHubStarLink stars={stars} label={text.github} starsLabel={starsLabel} />
           </div>
         </div>
       </section>
