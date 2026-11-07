@@ -77,9 +77,11 @@ error), and is skipped during server rendering: the dashboard doesn't dehydrate 
 fetched on the server would render markup the browser's empty cache can't match on hydration. Don't `await` it in a
 loader — that would hold the navigation on the full-screen pending loader instead of the page skeleton.
 
-Dashboard and sign-in loaders load with their route (`splitBehavior` in `vite.config.ts`), so they stay out of
-published docs pages. Every other route option (`validateSearch`, `beforeLoad`, `head`, anything the route file
-exports) and loaders outside the dashboard ship in every page's first load, the public reader's included. So keep
+Loaders of four route groups load with their route, so they stay out of published docs pages: `/app` (the dashboard),
+`/(auth)` (sign-in, sign-up and the other auth pages), `/accept-invite/` and `/oauth/` (`DASHBOARD_ROUTE` and
+`splitBehavior` in `vite.config.ts`). Loaders of every other route (the published reader and the marketing pages) and
+every other route option of every route (`validateSearch`, `beforeLoad`, `head`, anything the route file exports) ship
+in every page's first load, the public reader's included. So keep
 `validateSearch` to small, icon-free checks, and import loader factories from a module with no i18n or components
 (`query-options.ts`, `analytics/query-options.ts`, `analytics/insights.ts`), never from a barrel that also exports
 hooks calling `useT()`, which pulls in the whole dashboard message catalog. `BUNDLE_ANALYZE=true pnpm --filter
