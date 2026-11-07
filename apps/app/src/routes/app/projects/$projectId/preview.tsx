@@ -10,6 +10,7 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { Markdown } from '@/components/markdown';
+import { QueryErrorState } from '@/components/query-error-state';
 import { DocumentationProjectPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { PageIcon } from '@/components/site/page-icon';
 import { useBranches, useLanguages, usePage, usePages, useProject } from '@/hooks/api';
@@ -62,10 +63,14 @@ function ProjectPreview() {
   const contentDir = activeLanguage?.direction === 'RTL' ? 'rtl' : 'ltr';
   const activeBranchId = search.branchId ?? defaultScopeId(branches);
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
-  const { data: pages, isPending: pagesPending } = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
+  const pagesQuery = usePages(previewEnabled ? projectId : undefined, activeLanguageId, activeBranchId);
+  const { data: pages, isPending: pagesPending } = pagesQuery;
   const selected = useMemo(() => pages?.find((page) => page.id === search.pageId) ?? firstPage(pages), [pages, search.pageId]);
-  const { data: page, isPending: pagePending } = usePage(previewEnabled ? projectId : undefined, selected?.id);
+  const pageQuery = usePage(previewEnabled ? projectId : undefined, selected?.id);
+  const { data: page, isPending: pagePending } = pageQuery;
   const contentPending = pagesPending || (Boolean(selected) && pagePending);
+  // A failed request must not read as "no draft pages": offer a retry of whichever one failed.
+  const failedQuery = pagesQuery.isError && !pages ? pagesQuery : selected && pageQuery.isError && !page ? pageQuery : undefined;
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const theme = resolveProjectTheme(project?.config);
   const previewMode = project?.config?.styling?.theme === 'dark' ? 'dark' : 'light';
@@ -141,7 +146,9 @@ function ProjectPreview() {
               <Eye className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold text-sm">{t('preview.title')}</span>
-                <span className="block truncate text-muted-foreground text-xs">{selected?.title ?? t('preview.empty')}</span>
+                <span className="block truncate text-muted-foreground text-xs">
+                  {selected?.title ?? (failedQuery ? t('error.title') : t('preview.empty'))}
+                </span>
               </span>
               <ChevronDown className={cn('size-4 shrink-0 text-muted-foreground transition-transform', mobileNavigationOpen && 'rotate-180')} />
             </button>
@@ -279,6 +286,8 @@ function ProjectPreview() {
                   </div>
                   <Markdown content={page.content} site={{ projectId, lang: activeLanguage?.code, version: activeBranchId }} />
                 </>
+              ) : failedQuery ? (
+                <QueryErrorState onRetry={() => void failedQuery.refetch()} retrying={failedQuery.isFetching} />
               ) : (
                 <div className="text-muted-foreground text-sm">{t('preview.empty')}</div>
               )}

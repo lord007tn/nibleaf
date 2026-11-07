@@ -28,9 +28,19 @@ import { z } from 'zod';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
+import { QueryErrorState } from '@/components/query-error-state';
 import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
-import { friendlyErrorMessage, useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
+import {
+  friendlyErrorMessage,
+  isDomainLive,
+  useDeployments,
+  useDomains,
+  usePages,
+  useProject,
+  useProjectMembers,
+  usePublishAnyway,
+} from '@/hooks/api';
 import { useProjectAnalytics } from '@/hooks/api/analytics';
 import { analyticsTimezone, projectAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
@@ -66,10 +76,17 @@ function SiteOverviewPage() {
   const { date } = useFormatters();
   const [range, setRange] = useState<AnalyticsRange>(DEFAULT_ANALYTICS_RANGE);
   const { data: project, isPending: projectPending } = useProject(projectId);
-  const { data: pages, isPending: pagesPending } = usePages(projectId);
-  const { data: members, isPending: membersPending } = useProjectMembers(projectId);
-  const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
+  const pagesQuery = usePages(projectId);
+  const { data: pages, isPending: pagesPending } = pagesQuery;
+  const membersQuery = useProjectMembers(projectId);
+  const { data: members, isPending: membersPending } = membersQuery;
+  const deploymentsQuery = useDeployments(projectId);
+  const { data: deployments, isPending: deploymentsPending } = deploymentsQuery;
   const { data: domains } = useDomains(projectId);
+  // A failed request is unknown, never "no pages" or "0 members": those read as lost content.
+  const pagesFailed = pagesQuery.isError && !pages;
+  const membersFailed = membersQuery.isError && !members;
+  const deploymentsFailed = deploymentsQuery.isError && !deployments;
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
@@ -79,9 +96,12 @@ function SiteOverviewPage() {
   const latestDeployment = deployments?.[0];
   const hasReadyDeployment = (deployments ?? []).some((deployment) => deployment.status === 'READY');
   const publishFailed = latestDeployment?.status === 'FAILED';
-  const primaryDomain = domains?.find((domain) => domain.isPrimary && domain.verified) ?? domains?.find((domain) => domain.verified);
+  // Only a domain whose DNS and HTTPS both work opens the docs; one still connecting
+  // (or broken) would greet the owner with a browser error, so link the default address.
+  const primaryDomain = domains?.find((domain) => domain.isPrimary && isDomainLive(domain)) ?? domains?.find(isDomainLive);
+  const connectingDomain = primaryDomain ? undefined : domains?.[0];
   const baseDomain = siteBaseDomain();
-  // Prefer a verified custom domain; else a configured free-subdomain host; else
+  // Prefer a live custom domain; else a configured free-subdomain host; else
   // the always-working internal /sites/:id path (never a hardcoded fake host).
   const liveDomain = primaryDomain?.domain ?? (project && baseDomain ? `${project.slug}.${baseDomain}` : null);
   const liveHref = siteUrl(liveDomain, projectId);
@@ -164,10 +184,27 @@ function SiteOverviewPage() {
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
               {deploymentsPending ? (
                 <Skeleton className="mt-1 h-4 w-40" />
+              ) : deploymentsFailed ? (
+                <p className="text-muted-foreground text-sm">{t('overview.live.loadError')}</p>
               ) : hasReadyDeployment ? (
-                <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
-                  <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
-                </a>
+                <>
+                  <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
+                    <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
+                  </a>
+                  {connectingDomain ? (
+                    <p className="mt-1 text-muted-foreground text-xs">
+                      {t('overview.live.domainConnecting', { domain: `\u2068${connectingDomain.domain}\u2069` })}{' '}
+                      <Link
+                        className="font-medium text-primary hover:underline"
+                        params={{ projectId }}
+                        search={{ section: 'domain' }}
+                        to="/app/projects/$projectId/settings"
+                      >
+                        {t('overview.live.finishSetup')}
+                      </Link>
+                    </p>
+                  ) : null}
+                </>
               ) : (
                 <>
                   <p className="text-muted-foreground text-sm">{t('overview.live.unavailable')}</p>
@@ -209,6 +246,7 @@ function SiteOverviewPage() {
                 ))}
               </>
             ) : null}
+            {deploymentsFailed ? <QueryErrorState onRetry={() => void deploymentsQuery.refetch()} retrying={deploymentsQuery.isFetching} /> : null}
             {(deployments ?? []).slice(0, 3).map((deployment) => (
               <div className="flex items-center justify-between gap-3 text-sm" key={deployment.id}>
                 {/* The version tag is code (always LTR); commit messages are free
@@ -232,9 +270,24 @@ function SiteOverviewPage() {
 
       {/* KPI cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SectionCard label={t('overview.stats.pages')} value={pageCount} icon={<FileText className="size-4" />} loading={pagesPending} />
-        <SectionCard label={t('overview.stats.members')} value={memberCount} icon={<Users className="size-4" />} loading={membersPending} />
-        <SectionCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} loading={deploymentsPending} />
+        <SectionCard
+          label={t('overview.stats.pages')}
+          value={pagesFailed ? null : pageCount}
+          icon={<FileText className="size-4" />}
+          loading={pagesPending && !pagesFailed}
+        />
+        <SectionCard
+          label={t('overview.stats.members')}
+          value={membersFailed ? null : memberCount}
+          icon={<Users className="size-4" />}
+          loading={membersPending && !membersFailed}
+        />
+        <SectionCard
+          label={t('overview.stats.deploys')}
+          value={deploymentsFailed ? null : deployCount}
+          icon={<Rocket className="size-4" />}
+          loading={deploymentsPending && !deploymentsFailed}
+        />
         <SectionCard
           label={t('overview.stats.pageviews')}
           value={analytics?.totalViews ?? null}
@@ -271,7 +324,11 @@ function SiteOverviewPage() {
               {t('overview.openEditor')} <ArrowRight className="size-3 rtl:-scale-x-100" />
             </Link>
           </div>
-          {pagesPending ? (
+          {pagesFailed ? (
+            <div className="p-4">
+              <QueryErrorState onRetry={() => void pagesQuery.refetch()} retrying={pagesQuery.isFetching} />
+            </div>
+          ) : pagesPending ? (
             <div aria-busy="true">
               <Table aria-hidden>
                 <TableHeader>
@@ -493,7 +550,16 @@ function PublishFailureCard({
           })}
         </ul>
       ) : deployment.error ? (
-        <p className="border-border border-t px-5 py-3 text-muted-foreground text-sm">{deployment.error}</p>
+        // The worker's reason is English and technical: say what to do, keep the reason for support.
+        <div className="border-border border-t px-5 py-3 text-sm">
+          <p className="text-muted-foreground">{t('overview.publishFailed.unknown')}</p>
+          <details className="mt-2 text-muted-foreground text-xs">
+            <summary className="cursor-pointer select-none">{t('overview.publishFailed.technicalDetails')}</summary>
+            <code className="mt-1.5 block whitespace-pre-wrap break-words" dir="ltr">
+              {deployment.error}
+            </code>
+          </details>
+        </div>
       ) : null}
     </div>
   );

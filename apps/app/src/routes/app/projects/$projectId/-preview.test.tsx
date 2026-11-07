@@ -1,0 +1,78 @@
+// @vitest-environment jsdom
+
+import { act, type ComponentType, type ReactNode } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'page', unknown>);
+
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@tanstack/react-router', () => ({
+  createFileRoute: () => (options: Record<string, unknown>) => ({
+    options,
+    fullPath: '/app/projects/$projectId/preview',
+    useParams: () => ({ projectId: 'project-1' }),
+    useSearch: () => ({}),
+  }),
+  Link: ({ children }: { children?: ReactNode }) => <a href="/link">{children}</a>,
+  useNavigate: () => vi.fn(),
+}));
+vi.mock('@/hooks/api', () => ({
+  useBranches: () => ({ data: [] }),
+  useLanguages: () => ({ data: [] }),
+  usePage: () => queries.page,
+  usePages: () => queries.pages,
+  useProject: () => queries.project,
+}));
+vi.mock('@/hooks/api/query-options', () => ({ pageQueryOptions: vi.fn() }));
+vi.mock('@/hooks/api/route-prefetch', () => ({ defaultScopeId: () => undefined, prefetchScopedPages: vi.fn() }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
+vi.mock('@/components/editor/docs-version', () => ({ publishedVersionSlugFor: () => undefined }));
+vi.mock('@/components/markdown', () => ({ Markdown: () => null }));
+vi.mock('@/components/site/page-icon', () => ({ PageIcon: () => null }));
+vi.mock('@/layouts/project', () => ({ PublishControl: () => null }));
+vi.mock('@/lib/site-theme', () => ({ projectThemeStyle: () => ({}), projectThemeVariables: () => ({}), resolveProjectTheme: () => undefined }));
+vi.mock('@/components/site/documentation-theme-provider', () => ({
+  DocumentationThemeProvider: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  DocumentationProjectPreviewLayout: ({ content }: { content: ReactNode }) => <div>{content}</div>,
+}));
+
+import { Route } from './preview';
+
+vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+const ProjectPreview = Route.options.component as unknown as ComponentType;
+
+describe('preview content', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    queries.project = { data: { id: 'project-1', config: {} } };
+    queries.page = { data: undefined, isPending: false, isError: false };
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('offers a retry, not "no draft pages", when the page list fails to load', async () => {
+    const refetch = vi.fn();
+    queries.pages = { data: undefined, isPending: false, isError: true, isFetching: false, refetch };
+    await act(async () => root.render(<ProjectPreview />));
+    expect(container.textContent).not.toContain('preview.empty');
+    const retry = container.querySelector<HTMLButtonElement>('[role="alert"] button');
+    await act(async () => retry?.click());
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('still says there is nothing to preview when the site really has no pages', async () => {
+    queries.pages = { data: [], isPending: false, isError: false };
+    await act(async () => root.render(<ProjectPreview />));
+    expect(container.textContent).toContain('preview.empty');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+});
