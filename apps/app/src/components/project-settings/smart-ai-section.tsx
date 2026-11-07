@@ -3,50 +3,102 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Skeleton, SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import type { WorkspaceAiProvider } from '@nibleaf/validators';
 import { Link } from '@tanstack/react-router';
-import { Bot, Check, KeyRound, LoaderCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Bot, Check, KeyRound, RefreshCw, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useCreateProjectSearchReindex } from '@/hooks/api';
-import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { useSaveWorkspaceAiConnection, useSelectWorkspaceAi, useWorkspaceAi, useWorkspaceAiModels } from '@/hooks/api/workspace-ai';
 import { SectionHeader } from './shared';
 
-function AiError({ error }: { error: unknown }) {
-  const t = useT();
-  if (!error) return null;
-  const key =
-    error instanceof ApiResponseError && error.code === 'integration:credentials_invalid'
-      ? 'settings.smartAi.invalidKey'
-      : error instanceof ApiResponseError && error.status === 409
-        ? 'settings.smartAi.conflict'
-        : 'settings.smartAi.error';
-  return (
-    <p className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive text-sm" role="alert">
-      {t(key)}
-    </p>
-  );
-}
+/*
+ * Failed requests are toasted once, in plain words, by the hooks
+ * (meta.errorMessage); this section only reports what succeeded.
+ */
+
+type WorkspaceAi = NonNullable<ReturnType<typeof useWorkspaceAi>['data']>;
 
 export function SmartAiSection({ project }: { project: Project }) {
   const t = useT();
   const query = useWorkspaceAi(project.id);
+  return (
+    <div className="min-w-0 space-y-6">
+      <SectionHeader icon={<Bot className="size-4" />} title={t('settings.smartAi')} description={t('settings.smartAi.description')} />
+      {query.isPending ? (
+        <SmartAiSkeleton />
+      ) : query.isError || !query.data ? (
+        <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />
+      ) : (
+        <SmartAiSettings data={query.data} project={project} refetch={query.refetch} />
+      )}
+    </div>
+  );
+}
+
+/** Shaped like the loaded section: the status card, both provider cards and the index card. */
+function SmartAiSkeleton() {
+  const t = useT();
+  return (
+    <div aria-busy="true" className="space-y-6">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-5">
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-5 w-32 rounded-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
+        <Skeleton className="h-9 w-44" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {['openai', 'openrouter'].map((id) => (
+          <div aria-hidden className="min-w-0 space-y-4 rounded-xl border bg-card p-5" key={id}>
+            <div className="flex items-center justify-between gap-2">
+              <Skeleton className="h-5 w-28" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-3 w-4/5" />
+            </div>
+            <Skeleton className="h-9 w-48" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="h-9 w-28" />
+              <Skeleton className="h-9 w-40" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <SkeletonCard />
+    </div>
+  );
+}
+
+function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; project: Project; refetch: () => Promise<unknown> }) {
+  const t = useT();
   const select = useSelectWorkspaceAi(project.id);
   const reindex = useCreateProjectSearchReindex(project.id);
-  const data = query.data;
-  if (query.isPending)
-    return (
-      <div className="space-y-4" aria-busy="true">
-        <Skeleton className="h-20" />
-        <Skeleton className="h-64" />
-      </div>
-    );
-  if (query.isError || !data) return <QueryErrorState onRetry={() => void query.refetch()} retrying={query.isFetching} />;
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  // The choice being saved, so only its own button shows that it is working.
+  const selecting = select.isPending ? select.variables?.providerId : undefined;
   const ready = data.index.status === 'READY' && data.index.chunks > 0;
   const providerConfigured =
     data.selectedProvider === 'instance'
@@ -59,8 +111,7 @@ export function SmartAiSection({ project }: { project: Project }) {
   const indexActive = data.index.status === 'RUNNING' || (data.index.status === 'PENDING' && data.index.errorCode !== 'queue_unavailable');
 
   return (
-    <div className="min-w-0 space-y-6">
-      <SectionHeader icon={<Bot className="size-4" />} title={t('settings.smartAi')} description={t('settings.smartAi.description')} />
+    <>
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card p-5">
         <div>
           <Badge variant="outline">{t(enabled ? 'settings.smartAi.enabled' : 'settings.smartAi.disabled')}</Badge>
@@ -68,6 +119,7 @@ export function SmartAiSection({ project }: { project: Project }) {
         </div>
         <Button
           disabled={select.isPending || data.selectedProvider === 'disabled'}
+          loading={selecting === 'disabled'}
           onClick={() => select.mutate({ providerId: 'disabled', answersEnabled: false }, { onSuccess: () => toast.success(t('common.saved')) })}
           type="button"
           variant="outline"
@@ -85,7 +137,6 @@ export function SmartAiSection({ project }: { project: Project }) {
           {t('settings.smartAi.infrastructureMissing')}
         </p>
       )}
-      <AiError error={select.error} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {data.providers.map((provider) => (
           <ProviderCard
@@ -96,6 +147,7 @@ export function SmartAiSection({ project }: { project: Project }) {
             canSave={data.encryptionConfigured}
             canEnable={data.infrastructureConfigured}
             busy={select.isPending}
+            selecting={selecting === provider.id}
             onSelect={() =>
               select.mutate(
                 { providerId: provider.id, answersEnabled: true, expectedRevision: provider.revision },
@@ -113,6 +165,7 @@ export function SmartAiSection({ project }: { project: Project }) {
           </div>
           <Button
             disabled={!data.instanceAnswersEnabled || !data.infrastructureConfigured || select.isPending}
+            loading={selecting === 'instance'}
             onClick={() => select.mutate({ providerId: 'instance', answersEnabled: true }, { onSuccess: () => toast.success(t('common.saved')) })}
             type="button"
             variant="outline"
@@ -124,7 +177,7 @@ export function SmartAiSection({ project }: { project: Project }) {
       <section className="space-y-3 rounded-xl border p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-semibold">{t('settings.smartAi.indexTitle')}</h3>
-          <Button disabled={query.isFetching} onClick={() => void query.refetch()} size="sm" type="button" variant="ghost">
+          <Button loading={refreshing} onClick={() => void refresh()} size="sm" type="button" variant="ghost">
             <RefreshCw className="size-4" />
             {t('common.refresh')}
           </Button>
@@ -137,19 +190,18 @@ export function SmartAiSection({ project }: { project: Project }) {
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
-            disabled={!data.index.published || !data.infrastructureConfigured || !providerConfigured || reindex.isPending || indexActive}
-            onClick={() => reindex.mutate(undefined, { onSuccess: () => void query.refetch() })}
+            disabled={!data.index.published || !data.infrastructureConfigured || !providerConfigured || indexActive}
+            loading={reindex.isPending}
+            onClick={() => reindex.mutate()}
             type="button"
             variant="outline"
           >
-            {reindex.isPending && <LoaderCircle className="size-4 animate-spin" />}
             {t('settings.smartAi.reindex')}
           </Button>
           <Button nativeButton={false} render={<Link params={{ projectId: project.id }} to="/sites/$projectId" />} type="button" variant="outline">
             {t('settings.smartAi.reviewReader')}
           </Button>
         </div>
-        <AiError error={reindex.error} />
       </section>
       <section className="rounded-xl border p-5">
         <h3 className="font-semibold">{t('settings.smartAi.oauthTitle')}</h3>
@@ -167,7 +219,7 @@ export function SmartAiSection({ project }: { project: Project }) {
         <ShieldCheck className="size-4 shrink-0" />
         {t('settings.smartAi.security')}
       </p>
-    </div>
+    </>
   );
 }
 
@@ -178,6 +230,7 @@ function ProviderCard({
   canSave,
   canEnable,
   busy,
+  selecting,
   onSelect,
 }: {
   provider: WorkspaceAiProvider;
@@ -185,7 +238,10 @@ function ProviderCard({
   selected: boolean;
   canSave: boolean;
   canEnable: boolean;
+  /** Some Smart AI choice is being saved. */
   busy: boolean;
+  /** This provider is the one being enabled. */
+  selecting: boolean;
   onSelect: () => void;
 }) {
   const t = useT();
@@ -255,11 +311,11 @@ function ProviderCard({
         )}
         <Button
           disabled={pending || (!apiKey.trim() && !provider.configured)}
+          loading={models.isPending}
           onClick={() => models.mutate({ providerId: provider.id, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) })}
           type="button"
           variant="outline"
         >
-          {models.isPending && <LoaderCircle className="size-4 animate-spin" />}
           {t('settings.smartAi.verifyModels')}
         </Button>
         <div className="space-y-2">
@@ -286,18 +342,23 @@ function ProviderCard({
             {t(options.length > 0 ? 'settings.smartAi.modelsVerified' : 'settings.smartAi.noModels')}
           </p>
         )}
-        <AiError error={models.error ?? save.error} />
         <div className="flex flex-wrap gap-2">
           <Button
             disabled={
               pending || !canSave || !answerModel || (!provider.configured && !apiKey.trim()) || (provider.configured && Boolean(apiKey) && !replace)
             }
+            loading={save.isPending}
             type="submit"
           >
-            {save.isPending && <LoaderCircle className="size-4 animate-spin" />}
             {t('common.save')}
           </Button>
-          <Button disabled={pending || !provider.verified || !canEnable || selected} onClick={onSelect} type="button" variant="outline">
+          <Button
+            disabled={pending || !provider.verified || !canEnable || selected}
+            loading={selecting}
+            onClick={onSelect}
+            type="button"
+            variant="outline"
+          >
             {t('settings.smartAi.useProvider')}
           </Button>
         </div>

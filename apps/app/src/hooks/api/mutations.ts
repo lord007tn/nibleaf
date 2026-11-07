@@ -672,11 +672,15 @@ export const useDeleteComment = (projectId: string) => {
 
 // ─── AI drafting assistant ───────────────────────────────────────────────────
 
-export const useAiDraft = (projectId: string) =>
-  useMutation({
+export const useAiDraft = (projectId: string) => {
+  const t = useT();
+  return useMutation({
     mutationFn: async (body: AiDraftBody) =>
       mutateData(await api.app.projects[':projectId'].ai.$post({ param: { projectId }, json: body }), 'Could not draft content.'),
+    // 429 is the workspace's daily AI limit.
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.ai.draftError', { 429: 'editor.ai.rateLimited' }) },
   });
+};
 
 // ─── Languages ───────────────────────────────────────────────────────────────
 

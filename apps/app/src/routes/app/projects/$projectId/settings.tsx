@@ -77,6 +77,7 @@ import {
   projectQueryOptions,
   projectUsageQueryOptions,
   readerAccessQueryOptions,
+  workspaceAiQueryOptions,
   workspaceSettingsQueryOptions,
 } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -188,6 +189,9 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
         break;
       case 'integrations':
         prefetchRouteData(queryClient, integrationsQueryOptions(projectId));
+        break;
+      case 'smartAi':
+        prefetchRouteData(queryClient, workspaceAiQueryOptions(projectId));
         break;
       case 'apiKeys':
         prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));

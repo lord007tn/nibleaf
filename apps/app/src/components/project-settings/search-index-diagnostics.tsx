@@ -9,7 +9,6 @@ import { ChevronLeft, ChevronRight, Database, RefreshCw, ShieldCheck, TriangleAl
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { useCreateProjectSearchReindex, useProjectSearchIndexDiagnostics } from '@/hooks/api';
-import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { localeTag } from '@/lib/format';
 
 const healthVariant = (health: string) => {
@@ -28,15 +27,14 @@ export function SearchIndexDiagnostics({ projectId }: { projectId: string }) {
   const diagnostics = useProjectSearchIndexDiagnostics(projectId, cursor);
   const reindex = useCreateProjectSearchReindex(projectId);
 
-  const createReindex = async () => {
-    try {
-      await reindex.mutateAsync();
-      setCursors([undefined]);
-      toast.success(t('settings.search.diagnostics.reindexQueued'));
-    } catch (error) {
-      toast.error(friendlyErrorMessage(t, error, 'settings.search.diagnostics.reindexError'));
-    }
-  };
+  // A failure is toasted by the hook (meta.errorMessage).
+  const createReindex = () =>
+    reindex.mutate(undefined, {
+      onSuccess: () => {
+        setCursors([undefined]);
+        toast.success(t('settings.search.diagnostics.reindexQueued'));
+      },
+    });
 
   return (
     <section className="mt-9 border-border border-t pt-8" data-testid="search-index-diagnostics">

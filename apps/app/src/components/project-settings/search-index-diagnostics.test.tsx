@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: state.toastError } }));
 vi.mock('@/hooks/api', () => ({
   useProjectSearchIndexDiagnostics: () => ({ data: state.data, isPending: false, isError: false }),
-  useCreateProjectSearchReindex: () => ({ isPending: false, mutateAsync: state.mutate }),
+  useCreateProjectSearchReindex: () => ({ isPending: false, mutate: state.mutate }),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@nibleaf/i18n', () => ({ getLocale: () => 'en' }));
@@ -43,17 +43,19 @@ describe('index recovery controls', () => {
       expect(state.mutate).toHaveBeenCalledOnce();
     }
   });
-  it('reports a failed reindex in plain words, never the server text', async () => {
+  it('leaves a failed reindex to the hook, so it is reported once', async () => {
+    // The hook's meta.errorMessage toasts the plain-language message (see workspace-ai.test.tsx).
     state.data = { availability: { reason: 'provider_unavailable' }, health: 'unavailable' };
-    state.mutate.mockRejectedValueOnce(new Error('PrismaClientKnownRequestError: Unique constraint failed'));
-    const quiet = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    state.mutate.mockImplementationOnce((_variables, options: { onError?: (error: unknown) => void } | undefined) =>
+      options?.onError?.(new Error('PrismaClientKnownRequestError: Unique constraint failed')),
+    );
     const container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
     await act(async () => root.render(<SearchIndexDiagnostics projectId="qa-project" />));
     const button = [...container.querySelectorAll('button')].find((b) => b.textContent?.startsWith('settings.search.diagnostics.reindex'));
     await act(async () => button?.click());
-    expect(state.toastError).toHaveBeenCalledExactlyOnceWith('settings.search.diagnostics.reindexError');
-    quiet.mockRestore();
+    expect(state.mutate).toHaveBeenCalledOnce();
+    expect(state.toastError).not.toHaveBeenCalled();
   });
 });

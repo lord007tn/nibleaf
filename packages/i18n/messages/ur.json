@@ -898,6 +898,7 @@
   "settings_search_diagnostics_description": "Inspect privacy-safe indexing health and bounded metadata for the current published revision.",
   "settings_search_diagnostics_reindexqueued": "Reindexing was queued.",
   "settings_search_diagnostics_reindexerror": "Reindexing could not be queued.",
+  "settings_search_diagnostics_reindexactive": "انڈیکسنگ پہلے سے جاری ہے۔ مکمل ہونے پر اس کی حالت یہاں اپ ڈیٹ ہو جائے گی۔",
   "settings_search_diagnostics_reindexing": "Queuing…",
   "settings_search_diagnostics_reindex": "Reindex",
   "settings_search_diagnostics_errortitle": "Diagnostics unavailable",

@@ -1096,6 +1096,7 @@ export const MESSAGE_IDS = {
   'settings.search.diagnostics.description': 'settings_search_diagnostics_description',
   'settings.search.diagnostics.reindexQueued': 'settings_search_diagnostics_reindexqueued',
   'settings.search.diagnostics.reindexError': 'settings_search_diagnostics_reindexerror',
+  'settings.search.diagnostics.reindexActive': 'settings_search_diagnostics_reindexactive',
   'settings.search.diagnostics.reindexing': 'settings_search_diagnostics_reindexing',
   'settings.search.diagnostics.reindex': 'settings_search_diagnostics_reindex',
   'settings.search.diagnostics.errorTitle': 'settings_search_diagnostics_errortitle',

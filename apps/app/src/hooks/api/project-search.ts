@@ -83,12 +83,26 @@ export const useProjectSearchIndexDiagnostics = (projectId: string, cursor?: str
     },
   });
 
-/** Callers report a failure themselves (an inline error or their own toast). */
+/** Reindex from Search or Smart AI. Both show the index's status, so both
+ * refresh; a failure is toasted once, in plain words. */
 export const useCreateProjectSearchReindex = (projectId: string) => {
   const queryClient = useQueryClient();
+  const t = useT();
   return useMutation({
     mutationFn: async () =>
       mutateData(await api.app.projects[':projectId'].settings.search.reindex.$post({ param: { projectId } }), 'Could not queue search indexing.'),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.projectSearch.allIndex(projectId) }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectSearch.allIndex(projectId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaceAi.detail(projectId) }),
+      ]),
+    meta: {
+      // 404: no published revision to index; 409: a run is already going.
+      errorMessage: (error) =>
+        friendlyErrorMessage(t, error, 'settings.search.diagnostics.reindexError', {
+          404: 'settings.smartAi.indexUnpublished',
+          409: 'settings.search.diagnostics.reindexActive',
+        }),
+    },
   });
 };
