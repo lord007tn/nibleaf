@@ -62,6 +62,51 @@ describe('table column alignment', () => {
     editor.commands.setContent(saved, { emitUpdate: false });
     expect(semantic()).toEqual(before);
   });
+  // The pipe escaping adds one backslash per pipe and never escapes backslashes
+  // itself (CodeQL js/incomplete-sanitization): the serializer already writes a
+  // literal backslash as `\\`. Each cell must reload with the same text, marks
+  // and column count.
+  it.each([
+    ['a plain pipe', { text: 'a|b' }],
+    ['a typed backslash', { text: 'a\\b' }],
+    ['a typed backslash and pipe', { text: 'a\\|b' }],
+    ['a trailing backslash', { text: 'ab\\' }],
+    ['inline code with a pipe', { text: 'a|b', marks: [{ type: 'code' }] }],
+    ['inline code with a backslash and pipe', { text: 'a\\|b', marks: [{ type: 'code' }] }],
+    ['a link whose text has a pipe', { text: 'a|b', marks: [{ type: 'link', attrs: { href: 'https://example.com/x' } }] }],
+  ])('round-trips a cell holding %s with the same contents and column count', (_label, content) => {
+    const editor = makeEditor('| A | B | C |\n| --- | --- | --- |\n| x | y | z |');
+    let cellPosition = -1;
+    editor.state.doc.descendants((node, position) => {
+      if (cellPosition < 0 && node.type.name === 'tableCell') cellPosition = position;
+    });
+    const cell = editor.state.doc.nodeAt(cellPosition);
+    if (!cell) throw new Error('no body cell');
+    editor.commands.insertContentAt({ from: cellPosition + 2, to: cellPosition + cell.nodeSize - 2 }, { type: 'text', ...content });
+    const table = () => {
+      const rows: { text: string; marks: string[] }[][] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name !== 'tableRow') return;
+        const row: { text: string; marks: string[] }[] = [];
+        node.forEach((column) => {
+          const marks = new Set<string>();
+          column.descendants((child) => {
+            for (const mark of child.marks) marks.add(mark.type.name);
+          });
+          row.push({ text: column.textContent, marks: [...marks] });
+        });
+        rows.push(row);
+      });
+      return rows;
+    };
+    const before = table();
+    expect(before[1]?.[0]?.text).toBe(content.text);
+    expect(before.map((row) => row.length)).toEqual([3, 3]);
+    const saved = getMarkdown(editor);
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(table()).toEqual(before);
+    expect(getMarkdown(editor)).toBe(saved);
+  });
   it('keeps a literal backslash right before a pipe, in text and in code, through save and reload', () => {
     const editor = makeEditor('| A | B |\n| --- | --- |\n| x | y |');
     const cells: number[] = [];
