@@ -1,8 +1,19 @@
 import { spawn } from 'node:child_process';
-import { rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 
 const entrypoint = process.argv[2];
 if (!entrypoint) throw new Error('Usage: node scripts/graceful-web-service.mjs <server-entrypoint>');
+const output = dirname(dirname(entrypoint));
+if (
+  (existsSync(join(output, '.nibleaf-runtime-required')) && !existsSync(join(output, '.nibleaf-runtime-configured'))) ||
+  /nibleaf-runtime-(?:app|admin|api|site)\.invalid/.test(await readFile(entrypoint, 'utf8'))
+) {
+  throw new Error(
+    `Web runtime configuration is incomplete. Run node scripts/configure-web-runtime.mjs ${output} with APP_URL before starting this service.`,
+  );
+}
 
 const drainFile = process.env.NIBLEAF_DRAIN_FILE ?? '/tmp/nibleaf-draining';
 const drainDelayMs = Number(process.env.NIBLEAF_DRAIN_DELAY_MS ?? 15_000);
