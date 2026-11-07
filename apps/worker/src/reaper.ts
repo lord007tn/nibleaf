@@ -1,5 +1,8 @@
-import { prisma } from '@nibleaf/database';
+import { createJob, getJob, QueueNames } from '@nibleaf/bullmq';
+import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
+import { notifyDeployment } from './lib/notify';
 
 const log = createLogger({ processor: 'reaper' });
 
@@ -7,18 +10,106 @@ const log = createLogger({ processor: 'reaper' });
  *  worker likely crashed/restarted mid-build). The publish lock is 10 min. */
 const STALE_MINUTES = 15;
 
-/** Flip deployments stranded in PENDING/BUILDING to FAILED so the dashboard
+/** Flip stranded builds and abandoned automatic retries to terminal failures so the dashboard
  *  doesn't show a perpetual in-progress publish after a worker crash. */
-async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
+export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
   const cutoff = new Date(Date.now() - staleMinutes * 60_000);
   const { count } = await prisma.deployment.updateMany({
     where: { status: { in: ['PENDING', 'BUILDING'] }, createdAt: { lt: cutoff } },
-    data: { status: 'FAILED', error: `Build did not finish within ${staleMinutes} min (the worker may have restarted).` },
+    data: { status: 'FAILED', completedAt: new Date(), error: `Build did not finish within ${staleMinutes} min (the worker may have restarted).` },
   });
   if (count > 0) {
     log.warn({ count }, 'reaped stale deployments');
   }
-  return count;
+  const finalized = await finalizeAbandonedRetries(prisma, staleMinutes);
+  // The canonical publish receipt is written only after indexing is enqueued.
+  // READY without that receipt is a durable recovery marker, including after
+  // every BullMQ attempt is exhausted. Give normal delivery a minute to finish.
+  const missing = await findRecoverableDeployments();
+  for (const deployment of missing) {
+    try {
+      const original = await getJob(QueueNames.PUBLISH, `publish-${deployment.id}`);
+      const data: PublishDeploymentJobData = original?.data ?? {
+        deploymentId: deployment.id,
+        projectId: deployment.projectId,
+        auto: true,
+      };
+      // A fresh bounded time bucket also recovers exhausted recovery jobs. A
+      // stable ID within each bucket deduplicates concurrent reaper processes.
+      await createJob(
+        QueueNames.PUBLISH,
+        { name: 'publish-deployment', data },
+        {
+          jobId: `publish-recovery-${deployment.id}-${Math.floor(Date.now() / 60_000)}`,
+        },
+      );
+    } catch (error) {
+      log.warn({ deploymentId: deployment.id, error }, 'publish delivery recovery will retry');
+    }
+  }
+  return count + finalized;
+}
+
+/** Bound failure notices to recent retries; pre-receipt history must stay silent. */
+export async function finalizeAbandonedRetries(
+  db: Pick<Prisma.TransactionClient, 'deployment'> = prisma,
+  staleMinutes = STALE_MINUTES,
+  now = new Date(),
+  projectIds?: string[],
+) {
+  const scope = projectIds ? { projectId: { in: projectIds } } : {};
+  const windowStart = new Date(now.getTime() - 24 * 60 * 60_000);
+  // Close expired retries without re-announcing historical failures. Otherwise
+  // an old row could remain "retrying" and accept a delayed job indefinitely.
+  const expired = await db.deployment.updateMany({
+    where: { ...scope, status: 'FAILED', completedAt: null, createdAt: { lte: windowStart } },
+    data: { completedAt: now },
+  });
+  const createdAt = { gt: windowStart, lt: new Date(now.getTime() - staleMinutes * 60_000) };
+  const abandoned = await db.deployment.findMany({
+    where: { ...scope, status: 'FAILED', completedAt: null, createdAt },
+    select: { id: true, projectId: true, version: true, error: true, project: { select: { name: true } } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    take: 50,
+  });
+  let finalized = expired.count;
+  for (const deployment of abandoned) {
+    // Compete with the worker's retry claim and other reapers. A completed
+    // failure cannot be claimed by a delayed job that resurfaces later.
+    const result = await db.deployment.updateMany({
+      where: { id: deployment.id, status: 'FAILED', completedAt: null, createdAt },
+      data: { completedAt: now },
+    });
+    if (!result.count) continue;
+    finalized += result.count;
+    try {
+      await notifyDeployment({
+        deploymentId: deployment.id,
+        projectId: deployment.projectId,
+        projectName: deployment.project.name,
+        version: deployment.version,
+        outcome: 'failed',
+        error: deployment.error ?? undefined,
+      });
+    } catch (error) {
+      log.warn({ deploymentId: deployment.id, error }, 'abandoned retry finalized but failure notification failed');
+    }
+  }
+  return finalized;
+}
+
+/** Only recover recent, undelivered snapshots that are still the live version. */
+export function findRecoverableDeployments(db: Pick<Prisma.TransactionClient, '$queryRaw'> = prisma, now = new Date(), projectIds?: string[]) {
+  const deliveryCutoff = new Date(now.getTime() - 60_000);
+  const recoverySince = new Date(now.getTime() - 24 * 60 * 60_000);
+  return db.$queryRaw<Array<{ id: string; projectId: string }>>`
+    SELECT d.id, d."projectId" FROM deployment d
+    WHERE d.status = 'READY' AND d.snapshot IS NOT NULL
+      AND d."completedAt" > ${recoverySince} AND d."completedAt" < ${deliveryCutoff}
+      AND (${projectIds ?? null}::text[] IS NULL OR d."projectId" = ANY(${projectIds ?? null}::text[]))
+      AND NOT EXISTS (SELECT 1 FROM deployment newer WHERE newer."projectId" = d."projectId" AND newer.status = 'READY' AND newer.version > d.version)
+      AND NOT EXISTS (SELECT 1 FROM platform_event e WHERE e.id = 'publish-ready:' || d.id)
+    ORDER BY d."completedAt", d.id LIMIT 50`;
 }
 
 /** Run the reaper once on boot, then on an interval. Returns the timer handle. */

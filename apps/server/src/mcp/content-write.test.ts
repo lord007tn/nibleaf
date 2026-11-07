@@ -69,6 +69,7 @@ const mocks = vi.hoisted(() => ({
   assertBranchInProject: vi.fn(),
   getDefaultBranch: vi.fn(),
   pageFindMany: vi.fn(),
+  queryRaw: vi.fn(),
   pageUpdateMany: vi.fn(),
   deploymentFindFirst: vi.fn(),
   domainFindFirst: vi.fn(),
@@ -97,7 +98,10 @@ vi.mock('@nibleaf/database', () => ({
       if (typeof work !== 'function') return Promise.all(work as Promise<unknown>[]);
       const before = structuredClone(state.pages);
       try {
-        return await (work as (tx: unknown) => Promise<unknown>)({ page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany } });
+        return await (work as (tx: unknown) => Promise<unknown>)({
+          $queryRaw: mocks.queryRaw,
+          page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany },
+        });
       } catch (error) {
         state.pages = before;
         throw error;
@@ -262,6 +266,7 @@ const lastAudit = () => mocks.audit.mock.calls.at(-1)?.[2] as Record<string, unk
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.queryRaw.mockResolvedValue([]);
   state.pages = [page()];
   state.records = new Map();
   state.deployments = [];
@@ -945,6 +950,11 @@ describe('move_page', () => {
     expect(mocks.updatePage).toHaveBeenCalledWith('project-1', 'page-1', { parentId: 'group-1' }, 'user-1', {
       expectedUpdatedAt: new Date('2026-11-02T00:00:00.000Z'),
     });
+    const locks = mocks.queryRaw.mock.calls.map(([parts]) => parts.join('?'));
+    expect(locks[0]).toContain('FROM "project" WHERE id =');
+    expect(locks[0]).toContain('FOR NO KEY UPDATE');
+    expect(locks[1]).toContain('ORDER BY id FOR NO KEY UPDATE');
+    expect(mocks.queryRaw.mock.invocationCallOrder[1]).toBeLessThan(mocks.pageFindMany.mock.invocationCallOrder[0] ?? 0);
     const guard = { projectId: 'project-1', branchId: 'version-1', languageId: 'lang-en', parentId: 'group-1' };
     // Each write is a compare-and-set on the position that was read.
     expect(mocks.pageUpdateMany.mock.calls.map(([call]) => call)).toEqual([
@@ -956,23 +966,23 @@ describe('move_page', () => {
     await client.close();
   });
 
-  it('refuses to replace an order someone changed after it was read, and writes nothing', async () => {
+  it('preserves a competing page placement committed before the project lock', async () => {
     state.pages.push(page({ id: 'child-1', title: 'A', slug: 'a', path: 'a', position: 1 }));
     state.pages.push(page({ id: 'child-2', title: 'B', slug: 'b', path: 'b', position: 2 }));
-    const original = mocks.pageFindMany.getMockImplementation();
-    mocks.pageFindMany.mockImplementationOnce(async (...args: unknown[]) => {
+    const original = mocks.updatePage.getMockImplementation();
+    mocks.updatePage.mockImplementationOnce(async (...args: unknown[]) => {
       const rows = await original?.(...(args as Parameters<NonNullable<typeof original>>));
-      // A person reorders the siblings right after we read them.
-      Object.assign(state.pages.find((row) => row.id === 'child-2') as PageRow, { position: 7 });
+      // Another structural writer commits before placement takes the project lock.
+      Object.assign(state.pages.find((row) => row.id === 'page-1') as PageRow, { position: 7 });
       return rows;
     });
     const client = await connect(makePrincipal());
     const response = await client.call('move_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', parentId: null, position: 2 });
     expect(response.structuredContent.error?.code).toBe('mcp:revision_conflict');
     expect(state.pages.map((row) => [row.id, row.position])).toEqual([
-      ['page-1', 0],
+      ['page-1', 7],
       ['child-1', 1],
-      ['child-2', 7],
+      ['child-2', 2],
     ]);
     await client.close();
   });
