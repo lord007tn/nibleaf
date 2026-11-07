@@ -67,9 +67,13 @@ is coming soon. When a branch is promoted:
 - **Pages added on main** stay. If one has the same address as a page from the
   branch, the branch's page gets a numbered address, such as `refunds-2`.
 - **Pages deleted on main** stay deleted, unless you changed them in the branch.
+- **Pages you deleted in the branch** are removed from main.
 
-Branches created before this check can't show pages deleted on main. Look over
-main yourself before you promote an older branch.
+Comments follow the page: comments on a page in the branch move to main's page,
+and comments on a page that ends up removed are removed with it.
+
+Branches created before this check, and branches made from them, can't show
+pages deleted on main. Look over main yourself before you promote one.
 
 ## Recover from a bad draft
 
