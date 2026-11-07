@@ -56,7 +56,9 @@ function GitPreviewPage() {
       versionSlug && (segments === versionSlug || segments.startsWith(`${versionSlug}/`))
         ? segments.slice(versionSlug.length).replace(/^\/+/, '')
         : segments;
-    const target = pages.find((item) => item.languageCode === page.languageCode && item.versionId === page.versionId && item.path === path);
+    // An authored `?lang=` picks that language's page; otherwise stay in this one.
+    const language = url.searchParams.get('lang') ?? page.languageCode;
+    const target = pages.find((item) => item.languageCode === language && item.versionId === page.versionId && item.path === path);
     if (!target) return;
     event.preventDefault();
     setPageId(target.id);

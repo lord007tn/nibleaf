@@ -110,6 +110,9 @@ describe('reader language and access', () => {
     onTestFinished(() => {
       vi.unstubAllEnvs();
     });
+    // The stub only works where the worker's clock follows process.env.TZ
+    // (Vitest's forks pool); fail loudly rather than pass in UTC.
+    expect(new Date('2026-09-03T22:30:00.000Z').getDate()).toBe(4);
     mocks.getSite.mockResolvedValue({
       ...shell,
       languages: [

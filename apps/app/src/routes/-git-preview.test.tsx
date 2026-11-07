@@ -97,3 +97,28 @@ it('keeps a link’s #fragment and scrolls to that heading once the page renders
   expect(window.scrollTo).not.toHaveBeenCalled();
   await act(async () => root.unmount());
 });
+
+it('opens the page in the language an authored ?lang= link names', async () => {
+  window.scrollTo = vi.fn();
+  window.history.replaceState(null, '', '/git-preview/token');
+  const arabicSetup = { ...page('الإعداد', 'guides/setup', 'محتوى الإعداد.'), id: 'Setup-ar', languageCode: 'ar' };
+  const bilingual = {
+    ...snapshot,
+    project: {
+      ...snapshot.project,
+      languages: [...snapshot.project.languages, { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null }],
+    },
+    pages: [page('Intro', 'intro', 'Read it [in Arabic](/guides/setup?lang=ar).'), page('Setup', 'guides/setup', 'Setup body.'), arabicSetup],
+  } as SiteSnapshot;
+  vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot: bilingual } as never);
+  const Page = Route.options.component as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Page />));
+  await vi.waitFor(() => expect(container.querySelector('article a')).not.toBeNull());
+
+  await act(async () => container.querySelector<HTMLAnchorElement>('article a')?.click());
+  expect(container.querySelector('article h1')?.textContent).toBe('الإعداد');
+  await act(async () => root.unmount());
+});
