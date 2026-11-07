@@ -62,18 +62,25 @@ branch. If someone changed pages on main after the branch was created, Promote
 stops, says why, and changes nothing. A step to review those pages and confirm
 is coming soon. When a branch is promoted:
 
-- **Pages you changed in the branch** replace main's, even if main changed them too.
+- **What you changed in the branch** replaces main's, one field at a time. If you
+  fixed a page's text and main renamed it, both changes are kept. If both
+  changed the same thing, the branch's version wins.
 - **Pages you didn't touch** keep main's latest edits.
-- **Pages added on main** stay. If one has the same address as a page from the
-  branch, the branch's page gets a numbered address, such as `refunds-2`.
-- **Pages deleted on main** stay deleted, unless you changed them in the branch.
+- **Pages added on main** stay. If a page's folder is gone, the page moves up to
+  the nearest folder that's left. If a page would share an address with another
+  page, it gets a numbered address, such as `refunds-2`.
+- **Pages deleted on main** stay deleted, unless you changed them in the branch
+  or a page you kept is inside them.
 - **Pages you deleted in the branch** are removed from main.
 
-Comments follow the page: comments on a page in the branch move to main's page,
-and comments on a page that ends up removed are removed with it.
+If the moves on both sides would put two pages inside each other, Promote stops.
+Move one of them in the branch, then promote again.
 
-Branches created before this check, and branches made from them, can't show
-pages deleted on main. Look over main yourself before you promote one.
+Comments and reader access follow the page: on a page from the branch they move
+to main's page, and on a page that ends up removed they're removed with it.
+
+Promote refuses branches created before this check, and branches made from
+them. Create a new branch from main and move your changes there.
 
 ## Recover from a bad draft
 
