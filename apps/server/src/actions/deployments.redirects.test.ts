@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   pageFindMany: vi.fn(),
   deploymentAggregate: vi.fn(),
   deploymentCreate: vi.fn(),
+  deploymentFindFirst: vi.fn(),
+  deploymentUpdateMany: vi.fn(),
   platformEventCreate: vi.fn(),
 }));
 
@@ -16,12 +18,17 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     project: { findFirst: mocks.projectFindFirst, findUnique: mocks.projectFindUnique },
     page: { findMany: mocks.pageFindMany },
-    deployment: { aggregate: mocks.deploymentAggregate, create: mocks.deploymentCreate },
+    deployment: {
+      aggregate: mocks.deploymentAggregate,
+      create: mocks.deploymentCreate,
+      findFirst: mocks.deploymentFindFirst,
+      updateMany: mocks.deploymentUpdateMany,
+    },
     platformEvent: { create: mocks.platformEventCreate },
   },
 }));
 
-import { createDeployment, getCurrentSnapshot } from './deployments';
+import { createDeployment, getCurrentSnapshot, rollbackDeployment } from './deployments';
 
 const project = (redirects: Array<{ from: string; to: string }>) => ({
   id: 'project-1',
@@ -122,16 +129,20 @@ describe('createDeployment redirect preflight', () => {
       }),
     ).resolves.toMatchObject({ id: 'deployment-3', version: 3 });
     expect(mocks.deploymentCreate).toHaveBeenCalledTimes(1);
-    expect(mocks.createJob).toHaveBeenCalledWith('publish', {
-      name: 'publish-deployment',
-      data: {
-        deploymentId: 'deployment-3',
-        projectId: 'project-1',
-        skipGrammarChecks: false,
-        auto: false,
-        firstPublishAttribution: { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' },
+    expect(mocks.createJob).toHaveBeenCalledWith(
+      'publish',
+      {
+        name: 'publish-deployment',
+        data: {
+          deploymentId: 'deployment-3',
+          projectId: 'project-1',
+          skipGrammarChecks: false,
+          auto: false,
+          firstPublishAttribution: { entry_point: 'free_tool', intent: 'first_publish', source: 'rtl_readiness_grader' },
+        },
       },
-    });
+      { jobId: 'publish-deployment-3' },
+    );
   });
 
   it('removes enabled add-ons from preflight delivery when the entitlement is disabled', async () => {
@@ -151,5 +162,61 @@ describe('createDeployment redirect preflight', () => {
     expect(mocks.projectFindUnique).not.toHaveBeenCalled();
     expect(mocks.deploymentCreate).not.toHaveBeenCalled();
     expect(mocks.createJob).not.toHaveBeenCalled();
+  });
+
+  it('settles a queue rejection immediately and returns a plain retryable error', async () => {
+    mocks.projectFindFirst.mockResolvedValue(project([]));
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.createJob.mockRejectedValueOnce(new Error('Redis connection refused: private connection details'));
+    mocks.deploymentUpdateMany.mockResolvedValue({ count: 1 });
+    await expect(createDeployment('org-1', 'project-1', 'user-1', {})).rejects.toMatchObject({
+      code: 'http:internal',
+      message: 'Publishing could not be queued. Please try publishing again.',
+      details: { deploymentId: 'deployment-3' },
+    });
+    expect(mocks.deploymentUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'deployment-3', projectId: 'project-1', status: 'PENDING' },
+      data: { status: 'FAILED', error: 'Publishing could not be queued. Please try publishing again.', completedAt: expect.any(Date) },
+    });
+  });
+
+  it('queues a rollback with the exact historical snapshot for worker activation and indexing', async () => {
+    mocks.projectFindFirst.mockResolvedValue(project([]));
+    const snapshot = { project: { name: 'Historical docs' }, pages: [{ content: 'Historical content' }] };
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'old', status: 'READY', version: 1, snapshot, pagesCount: 1 });
+    await rollbackDeployment('org-1', 'project-1', 'old', 'user-1', 'ar');
+    expect(mocks.deploymentCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: 'PENDING', snapshot, pagesCount: 1 }) });
+    expect(mocks.createJob).toHaveBeenCalledWith(
+      'publish',
+      {
+        name: 'publish-deployment',
+        data: { deploymentId: 'deployment-3', projectId: 'project-1', auto: false, locale: 'ar' },
+      },
+      { jobId: 'publish-deployment-3' },
+    );
+  });
+
+  it('keeps an accepted publish active when the queue loses its acknowledgement after the worker claim', async () => {
+    mocks.projectFindFirst.mockResolvedValue(project([]));
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    mocks.createJob.mockRejectedValueOnce(new Error('ACK lost'));
+    mocks.deploymentUpdateMany.mockResolvedValue({ count: 0 });
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-3', projectId: 'project-1', status: 'BUILDING' });
+    await expect(createDeployment('org-1', 'project-1', 'user-1', {})).resolves.toMatchObject({ status: 'BUILDING' });
+  });
+
+  it('settles a rollback enqueue failure without replacing the current live deployment', async () => {
+    mocks.projectFindFirst.mockResolvedValue(project([]));
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'READY', version: 1, snapshot: { pages: [] }, pagesCount: 0 });
+    mocks.createJob.mockRejectedValueOnce(new Error('Redis unavailable'));
+    mocks.deploymentUpdateMany.mockResolvedValue({ count: 1 });
+    await expect(rollbackDeployment('org-1', 'project-1', 'old', 'user-1')).rejects.toMatchObject({ code: 'http:internal' });
+    expect(mocks.deploymentCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: 'PENDING' }) });
+    expect(mocks.deploymentUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'deployment-3', projectId: 'project-1', status: 'PENDING' },
+        data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
   });
 });

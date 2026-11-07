@@ -25,12 +25,14 @@ const readApiError = async (res: Response, fallback: string) => {
     if (detailMessage) {
       return {
         code: body.error?.code,
+        details: body.error?.details,
         message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
         details: body.error?.details,
       };
     }
     return {
       code: body.error?.code,
+      details: body.error?.details,
       message,
       path: body.error?.details?.path,
       sourceFile: body.error?.details?.sourceFile,
