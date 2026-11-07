@@ -1,6 +1,7 @@
+import { completeWorkspaceText, resolveWorkspaceAiConfiguration, type WorkspaceAiRuntime } from '@nibleaf/search/workspace';
 import type { AiDraftBody } from '@nibleaf/validators';
-import { OpenRouter } from '@openrouter/sdk';
 import { env } from '@/env';
+import { isAiQuotaExhausted } from '@/lib/ai-quota';
 import { envExtras } from '@/lib/env-extras';
 
 const SYSTEM_PROMPT = `You write accurate technical documentation for the reader's task.
@@ -36,39 +37,55 @@ const userPrompt = ({ mode, content, instruction }: AiDraftBody) => {
   return parts.join('\n');
 };
 
-const callOpenRouter = async (body: AiDraftBody) => {
-  const completion = await new OpenRouter({
-    apiKey: env.OPENROUTER_API_KEY,
-    httpReferer: env.APP_URL,
-    appTitle: env.APP_NAME,
-  }).chat.send({
-    chatRequest: {
-      model: env.AI_DRAFT_MODEL,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt(body) },
-      ],
-      temperature: 0.4,
-      stream: false,
-    },
-  });
-  if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
-  const text = String(completion.choices[0]?.message.content ?? '').trim();
-  if (!text) throw new Error('OpenRouter returned an empty completion.');
-  return { text, promptTokens: completion.usage?.promptTokens, completionTokens: completion.usage?.completionTokens };
+export interface AiDraftRuntime extends WorkspaceAiRuntime {
+  source: 'workspace' | 'instance';
+}
+
+/** Resolve once per request so capability and drafting agree on connection policy. */
+export const resolveAiDraft = async (projectId: string) => {
+  if (envExtras.AI_DAILY_LIMIT === 0) return { runtime: null, reason: 'disabled' as const };
+  const resolved = await resolveWorkspaceAiConfiguration(projectId, { instanceFallback: true });
+  if (!resolved.runtime) return { runtime: null, reason: resolved.reason };
+  const source = resolved.runtime.revision === 'instance' ? ('instance' as const) : ('workspace' as const);
+  return {
+    runtime: { ...resolved.runtime, source, answerModel: source === 'instance' ? env.AI_DRAFT_MODEL : resolved.runtime.answerModel },
+    reason: null,
+  };
 };
 
-/** AI drafting needs a provider key and a non-zero daily workspace budget. */
+export const getAiDraftCapability = async (projectId: string, organizationId: string) => {
+  const { runtime, reason } = await resolveAiDraft(projectId);
+  const exhausted = runtime ? await isAiQuotaExhausted(organizationId) : false;
+  return {
+    available: Boolean(runtime) && !exhausted,
+    source: runtime?.source ?? null,
+    provider: runtime?.providerId ?? null,
+    reason: exhausted ? ('quota' as const) : reason,
+  };
+};
+
+/** Legacy instance-wide public meta flag; project capability is reported separately. */
 export const aiDraftAvailable = () => Boolean(env.OPENROUTER_API_KEY) && envExtras.AI_DAILY_LIMIT > 0;
 
-/** Draft through OpenRouter and report content-free operational metrics. Provider failures propagate. */
-export const draftContentWithTelemetry = async (body: AiDraftBody) => {
+/** Content-free operational metrics identify the actual connection, never its key. */
+export const draftContentWithTelemetry = async (body: AiDraftBody, runtime: AiDraftRuntime) => {
   const started = performance.now();
-  const result = await callOpenRouter(body);
+  const result = await completeWorkspaceText(
+    runtime,
+    [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt(body) },
+    ],
+    { siteUrl: env.APP_URL, title: env.APP_NAME },
+  );
+  const text = result.text.trim();
+  if (!text) throw new Error('AI provider returned an empty completion.');
   return {
     ...result,
-    provider: 'openrouter' as const,
-    model: env.AI_DRAFT_MODEL,
+    text,
+    source: runtime.source,
+    provider: runtime.providerId,
+    model: runtime.answerModel,
     latencyMs: Math.round(performance.now() - started),
   };
 };

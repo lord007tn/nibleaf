@@ -122,6 +122,7 @@ const aiPayload = z
   .object({
     name: z.enum(['answer_started', 'answer_completed', 'answer_failed', 'answer_cancelled', 'citation_shown', 'citation_clicked']),
     provider: boundedDimension.optional(),
+    connectionSource: z.enum(['workspace', 'instance']).optional(),
     model: boundedDimension.optional(),
     latencyMs: z.number().int().min(0).max(3_600_000).optional(),
     promptTokens: z.number().int().min(0).max(100_000_000).optional(),

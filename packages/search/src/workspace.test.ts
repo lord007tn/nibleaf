@@ -4,7 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const db = vi.hoisted(() => ({ project: vi.fn(), connection: vi.fn() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: db.project }, projectIntegration: { findUnique: db.connection } } }));
 
-import { type ChatCostSink, costReportingFetch, knownChatCost, resolveWorkspaceAi, workspaceChatModelOptions } from './workspace';
+import {
+  type ChatCostSink,
+  costReportingFetch,
+  knownChatCost,
+  resolveWorkspaceAi,
+  resolveWorkspaceAiConfiguration,
+  workspaceChatModelOptions,
+} from './workspace';
 
 const key = Buffer.alloc(32, 13).toString('base64');
 const encrypted = (projectId = 'workspace-a', providerId = 'openai', apiKey = 'workspace-owned-secret') =>
@@ -50,6 +57,21 @@ describe('workspace AI credential ownership', () => {
       await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
     },
   );
+
+  it('allows only drafting to opt into the instance fallback', async () => {
+    db.connection.mockResolvedValue(null);
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true })).resolves.toMatchObject({
+      runtime: { providerId: 'openrouter', apiKey: 'instance-secret-must-not-be-used', revision: 'instance' },
+      reason: null,
+    });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+
+  it('never overrides explicit disable even with drafting fallback enabled', async () => {
+    db.project.mockResolvedValue({ config: { search: { aiProvider: 'disabled' } } });
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true })).resolves.toEqual({ runtime: null, reason: 'disabled' });
+    expect(db.connection).not.toHaveBeenCalled();
+  });
 
   it('rejects a credential envelope copied from another workspace', async () => {
     db.connection.mockResolvedValue(connection({ credentialEncrypted: encrypted('workspace-b') }));

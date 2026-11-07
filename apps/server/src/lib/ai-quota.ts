@@ -63,3 +63,17 @@ export const assertAiQuota = async (organizationId: string): Promise<void> => {
     });
   }
 };
+
+/** Read today's counter without consuming a drafting request. Read failures are
+ * unavailable, never a false claim that there is budget. */
+export const isAiQuotaExhausted = async (organizationId: string): Promise<boolean> => {
+  if (envExtras.AI_DAILY_LIMIT === 0) return true;
+  const day = new Date().toISOString().slice(0, 10);
+  try {
+    const used = Number(await getRedis().get(`nibleaf:ai-quota:${organizationId}:${day}`));
+    if (!Number.isSafeInteger(used) || used < 0) throw new Error('Invalid quota counter.');
+    return used >= envExtras.AI_DAILY_LIMIT;
+  } catch {
+    throw new AppError({ code: 'search:unavailable' });
+  }
+};
