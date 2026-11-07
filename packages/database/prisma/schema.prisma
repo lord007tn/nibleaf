@@ -711,6 +711,14 @@ model Branch {
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// When this version was copied from main. Null on versions created before
+  /// fork tracking and on versions copied from another version.
+  forkedAt     DateTime?
+  /// Main's pages at the fork, read and hashed in one locked statement:
+  /// { version: 1, pages: { [mainPageId]: { hash, title, path, languageId,
+  /// updatedAt } } }. "Promote into main" refuses when main no longer matches
+  /// it. Null when there is no reliable baseline (see `forkedAt`).
+  forkBaseline Json?
 
   pages Page[]
 
