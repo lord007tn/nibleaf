@@ -5,13 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SkeletonCard, SkeletonListRow, SkeletonStatTile, SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { RangeTabs } from '@/components/analytics/range-tabs';
 import { conversationFilters, useAiContentGaps, useAiConversationSummary, useAiConversations } from '@/hooks/api/ai-conversations';
 import { ConversationList } from './conversation-list';
 import { ConversationDetail } from './detail';
+import { searchAiDocsUrl } from './docs';
 import { ContentGaps } from './gaps';
 import { Overview } from './overview';
 import type { AiDashboardSearch } from './search';
@@ -75,6 +76,8 @@ export function AiDashboard({
 }) {
   const t = useT();
   const [text, setText] = useState(search.q ?? '');
+  const { locale } = useLocale();
+  const setupDocsUrl = searchAiDocsUrl(locale);
   const [previousQuery, setPreviousQuery] = useState(search.q);
   if (previousQuery !== search.q) {
     setPreviousQuery(search.q);
@@ -179,7 +182,7 @@ export function AiDashboard({
             // Only the instance operator can add the encryption key.
             <AlertDescription>
               {t('dashboard.ai.captureInstance')}{' '}
-              <a className="underline" href="/docs/self-hosting/search-ai">
+              <a className="underline" href={setupDocsUrl}>
                 {t('dashboard.ai.selfHosting')}
               </a>
             </AlertDescription>
@@ -197,7 +200,7 @@ export function AiDashboard({
         <Alert variant="info">
           <AlertDescription>
             {t('dashboard.ai.disabled')}{' '}
-            <a className="underline" href="/docs/self-hosting/search-ai">
+            <a className="underline" href={setupDocsUrl}>
               {t('dashboard.ai.selfHosting')}
             </a>
           </AlertDescription>

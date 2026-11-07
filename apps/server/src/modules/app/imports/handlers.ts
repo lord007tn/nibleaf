@@ -19,6 +19,7 @@ const notifyImportCompleted = (projectId: string, actorUserId: string, source: s
     projectId,
     {
       type: 'import_completed',
+      params: { imported: summary.imported, updated: summary.updated, source },
       title: 'Content import completed',
       body: `${summary.imported} pages imported and ${summary.updated} updated from ${source}.`,
       href: `/app/projects/${projectId}`,

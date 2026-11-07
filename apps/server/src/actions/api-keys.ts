@@ -81,10 +81,11 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
     // Rotation re-issues the key AS the caller, so it is limited to the caller's
     // own keys: an admin rotating someone else's key would silently take it over.
     // Admins can still revoke any key.
-    const current = await tx.apiKey.findFirst({ where: { id, projectId, createdById: actor.id }, select: { id: true, name: true } });
+    const current = await tx.apiKey.findFirst({ where: { id, projectId, createdById: actor.id }, select: { id: true, name: true, expiresAt: true } });
     if (!current) throw notFound('api key', { id });
 
-    const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: new Date() } });
+    const now = new Date();
+    const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: now } });
     if (claimed.count !== 1) throw conflict('API key has already been rotated or revoked.');
 
     const { secret } = newApiKeySecret('live');
@@ -97,7 +98,8 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
         hashedSecret: hashApiKeySecret(secret),
         lastFour: secret.slice(-4),
         scopes,
-        expiresAt: expiresAt(body.expiresInDays),
+        // Keep an active key's lifetime; expired and legacy keys need a usable replacement.
+        expiresAt: current.expiresAt && current.expiresAt > now ? current.expiresAt : expiresAt(body.expiresInDays),
       },
       select: keySelect,
     });
