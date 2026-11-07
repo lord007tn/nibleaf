@@ -425,7 +425,12 @@ function CommentSelectionMenu({
 }) {
   const t = useT();
   return (
-    <BubbleMenu editor={editor} shouldShow={({ editor: current }) => !current.state.selection.empty} options={{ placement: 'top' }}>
+    <BubbleMenu
+      data-editor-bubble-menu=""
+      editor={editor}
+      shouldShow={({ editor: current }) => !current.state.selection.empty}
+      options={{ placement: 'top' }}
+    >
       <button
         type="button"
         onMouseDown={(event) => event.preventDefault()}
@@ -631,7 +636,7 @@ function EditorFooter({ editor, documentMode = false }: { editor: Editor; docume
         documentMode ? 'shrink-0 border-border border-t bg-background/95 px-3 py-1.5' : 'sticky bottom-3 mt-auto',
       )}
     >
-      <span className="rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
+      <span className="pl-editor-word-count rounded-full border border-border bg-background/85 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums shadow-sm backdrop-blur">
         {t('editor.wordCount', { words: counts.words, characters: counts.characters })}
       </span>
     </div>
@@ -879,6 +884,7 @@ function CalloutMenu({ editor }: { editor: Editor }) {
   const variants = ['note', 'tip', 'info', 'check', 'warning', 'danger'] as const;
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
       editor={editor}
       pluginKey="callout-controls"
       options={{ placement: 'bottom' }}

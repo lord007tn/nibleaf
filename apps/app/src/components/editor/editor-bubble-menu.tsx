@@ -196,6 +196,7 @@ export function EditorBubbleMenu({ editor }: EditorBubbleMenuProps) {
 
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-text-menu"
       options={{ placement: 'bottom' }}

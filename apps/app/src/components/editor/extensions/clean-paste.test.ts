@@ -26,7 +26,7 @@ describe('clipboard HTML cleanup', () => {
   it('converts Google Docs inline marks without changing Arabic or bidi text', () => {
     const html = cleanPastedHTML(google);
     expect(html).toBe(
-      '<h2><strong>دليل الاستخدام</strong></h2><p><em>مرحبًا، </em><u>بالعالم؟</u>\u200f <s>قديم</s> H<sub>2</sub> E<sup>2</sup></p><ul><li><p>خطوة أولى</p></li></ul>',
+      '<h2><strong>دليل الاستخدام</strong></h2><p><em>مرحبًا، </em><u>بالعالم؟</u>\u200f <s>قديم</s> H<sub>2</sub> E<sup>2</sup></p><ul><li>خطوة أولى</li></ul>',
     );
     const markdown = getMarkdown(paste(google));
     expect(markdown).toContain('## **دليل الاستخدام**');
@@ -47,10 +47,36 @@ describe('clipboard HTML cleanup', () => {
   it('keeps a Word list item’s leading letter when its hidden marker is absent', () => {
     expect(cleanPastedHTML('<p style="mso-list:l0 level1 lfo1">Open settings</p>')).toBe('<ul><li>Open settings</li></ul>');
   });
+  it('removes the exact Word supportLists marker spans and padding from nested bullets', () => {
+    const html = `<p class=MsoListParagraphCxSpFirst style='text-indent:-.25in;mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;</span></span><![endif]>Check the billing email<o:p></o:p></p><p class=MsoListParagraphCxSpMiddle style='margin-left:1.0in;text-indent:-.25in;mso-list:l0 level2 lfo1'><![if !supportLists]><span style='font-family:"Courier New"'>o<span style='font:7.0pt "Times New Roman"'>&nbsp;</span></span><![endif]>It must match the account owner<o:p></o:p></p>`;
+    expect(cleanPastedHTML(html)).toBe('<ul><li>Check the billing email<ul><li>It must match the account owner</li></ul></li></ul>');
+    expect(getMarkdown(paste(html))).toBe('- Check the billing email\n  - It must match the account owner');
+  });
+  it.each(['·', 'o', '§', '1.', 'a)', 'i.', '\uf0b7', '\uf0a7'])('removes Word conditional marker %s including padding outside its span', (glyph) => {
+    const html = `<p style="mso-list:l0 level1 lfo1"><![if !supportLists]><span style="font-family:Wingdings">${glyph}<span>&nbsp;</span></span><![endif]>&nbsp; <span>  </span><b>  Keep this text</b></p>`;
+    const markdown = getMarkdown(paste(html));
+    expect(markdown).toBe(`${/^(1\.|a\)|i\.)$/.test(glyph) ? '1.' : '-'} **Keep this text**`);
+  });
+  it('removes redundant Google Docs link underlining while keeping non-link underline', () => {
+    const html =
+      '<p><a href="https://example.com/reset" style="color:rgb(17,85,204);text-decoration:underline"><span style="text-decoration:underline;color:#1155cc"><u>Send reset link</u></span></a> and <span style="text-decoration:underline">keep this underline</span></p>';
+    expect(cleanPastedHTML(html)).toBe('<p><a href="https://example.com/reset">Send reset link</a> and <u>keep this underline</u></p>');
+    expect(getMarkdown(paste(html))).toBe('[Send reset link](https://example.com/reset) and <u>keep this underline</u>');
+  });
+  it('pastes single-paragraph Google Docs list items as a tight list', () => {
+    const html = '<ol><li><p><span>Open settings</span></p></li><li><p>Choose billing</p></li></ol>';
+    expect(cleanPastedHTML(html)).toBe('<ol><li>Open settings</li><li>Choose billing</li></ol>');
+    expect(getMarkdown(paste(html))).toBe('1. Open settings\n2. Choose billing');
+  });
+  it('keeps multiple paragraph blocks in genuinely loose list items', () => {
+    const html = '<ul><li><p>First paragraph</p><p>Second paragraph</p></li><li><p>Next item</p></li></ul>';
+    expect(cleanPastedHTML(html)).toContain('<li><p>First paragraph</p><p>Second paragraph</p></li>');
+    expect(getMarkdown(paste(html))).toBe('- First paragraph\n\n  Second paragraph\n\n- Next item');
+  });
   it('keeps Notion semantic content, task checkboxes, language and media', () => {
     const html = cleanPastedHTML(notion);
     expect(html).not.toMatch(/notion|data-block|line-height|<nav|&nbsp;/);
-    expect(html).toContain('<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>Ready</p>');
+    expect(html).toContain('<ul data-type="taskList"><li data-type="taskItem" data-checked="true">Ready</li>');
     expect(html).toContain('<code class="language-typescript">');
     const markdown = getMarkdown(paste(notion));
     for (const text of [

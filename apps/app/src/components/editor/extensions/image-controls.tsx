@@ -4,7 +4,7 @@ import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
-import { type KeyboardEvent, useEffect, useId, useRef } from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef } from 'react';
 import { imagePromptKey } from './block-image';
 
 export function addImageCaption(editor: Editor): number | null {
@@ -23,6 +23,13 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
   const t = useT();
   const hintId = useId();
   const input = useRef<HTMLInputElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const dismissed = useRef(false);
+  const hide = useCallback(() => {
+    if (editor.isDestroyed || dismissed.current) return;
+    dismissed.current = true;
+    editor.commands.setMeta('image-description', 'hide');
+  }, [editor]);
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -32,11 +39,35 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
     }),
   });
   useEffect(() => {
-    if (!state.prompt) return;
+    const onOutside = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || menu.current?.contains(target) || editor.isDestroyed) return;
+      if (target === editor.view.dom || (target instanceof Element && editor.view.dom.contains(target) && target.closest('.editor-image'))) {
+        const selectedImage = editor.isActive('image') ? editor.view.nodeDOM(editor.state.selection.from) : null;
+        const reopen = dismissed.current && editor.isEditable && (target === editor.view.dom || selectedImage?.contains(target));
+        dismissed.current = false;
+        if (reopen && selectedImage) editor.commands.setMeta('image-description', 'show');
+        return;
+      }
+      hide();
+    };
+    document.addEventListener('focusin', onOutside, true);
+    document.addEventListener('pointerdown', onOutside, true);
+    return () => {
+      document.removeEventListener('focusin', onOutside, true);
+      document.removeEventListener('pointerdown', onOutside, true);
+    };
+  }, [editor, hide]);
+  useEffect(() => {
+    if (!state.prompt || !editor.isEditable || !editor.isActive('image')) return;
+    dismissed.current = false;
+    editor.commands.setMeta('image-description', 'show');
     // BubbleMenu mounts its portal in the same commit; focus after it is visible.
-    const frame = requestAnimationFrame(() => input.current?.focus());
+    const frame = requestAnimationFrame(() => {
+      if (!editor.isDestroyed && !dismissed.current && editor.isActive('image')) input.current?.focus();
+    });
     return () => cancelAnimationFrame(frame);
-  }, [state.prompt]);
+  }, [editor, state.prompt]);
   const dismiss = () => {
     const { selection, doc } = editor.state;
     if (selection instanceof NodeSelection) {
@@ -53,11 +84,13 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
   };
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
+      ref={menu}
       editor={editor}
       pluginKey="image-description"
       updateDelay={0}
       options={{ placement: 'bottom' }}
-      shouldShow={() => editor.isEditable && editor.isActive('image')}
+      shouldShow={() => editor.isEditable && editor.isActive('image') && !dismissed.current}
     >
       <div
         role="dialog"
@@ -110,6 +143,7 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
           variant="outline"
           className="min-h-11"
           onClick={() => {
+            hide();
             const pos = addImageCaption(editor);
             if (pos !== null)
               requestAnimationFrame(() => {

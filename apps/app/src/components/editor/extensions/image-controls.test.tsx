@@ -79,5 +79,61 @@ describe('image description controls', () => {
     });
     expect(editor.state.doc.firstChild?.type.name).toBe('mdxFrame');
     expect(document.activeElement?.classList.contains('pl-frame-title-input')).toBe(true);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    // A caption edit still leaves ProseMirror's image selection in place.
+    await act(async () => {
+      editor.commands.updateAttributes('mdxFrame', { caption: 'A caption' });
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement?.classList.contains('pl-frame-title-input')).toBe(true);
+  });
+  it('hides on outside focus or pointer interaction, and reopens for a newly inserted image', async () => {
+    await mount();
+    await act(async () => {
+      editor.commands.setImage({ src: '/first.png' });
+    });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    const size = container.querySelector<HTMLSelectElement>('select');
+    await act(async () => {
+      size?.focus();
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside editor';
+    container.append(outside);
+    await act(async () => {
+      outside.focus();
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(editor.isActive('image')).toBe(true);
+    await act(async () => {
+      editor.commands.updateAttributes('image', { alt: 'Still selected' });
+    });
+    expect(editor.isActive('image')).toBe(true);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => {
+      editor.view.dom.querySelector('img')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    await act(async () => {
+      await vi.waitFor(() => expect(container.querySelector('[role="dialog"]')).not.toBeNull());
+    });
+    await act(async () => {
+      outside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    await act(async () => {
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'image', attrs: { src: '/second.png' } });
+    });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('input'));
+    await act(async () => {
+      outside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
   });
 });

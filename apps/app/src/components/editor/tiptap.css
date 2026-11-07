@@ -767,3 +767,8 @@
   .editor-image-handle {
   display: block;
 }
+/* Bubble menus attach inside this editor only while open. Keep the count's
+   space, but hide its pill so floating controls cannot cover it on phones. */
+.pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {
+  visibility: hidden;
+}

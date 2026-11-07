@@ -142,6 +142,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
 
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-table-menu"
       options={{ placement: 'bottom' }}
