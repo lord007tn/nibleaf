@@ -323,7 +323,14 @@ describe('addDomainBody', () => {
   it('never joins two words into a different domain', () => {
     expect(normalizeDomainInput('docs example.com')).toBe('docs example.com');
     expect(addDomainBody.safeParse({ domain: 'docs example.com' }).success).toBe(false);
-    expect(addDomainBody.safeParse({ domain: 'docs.	example.com' }).success).toBe(true);
+    for (const whitespace of ['\t', '\r', '\n', '\r\n', '\u00a0']) {
+      const domain = `docs${whitespace}example.com`;
+      expect(addDomainBody.safeParse({ domain }).success, JSON.stringify(domain)).toBe(false);
+      expect(normalizeDomainInput(domain)).not.toBe('docsexample.com');
+    }
+    // A stray newline at the end of a paste is still fine.
+    expect(normalizeDomainInput('docs.example.com\r\n')).toBe('docs.example.com');
+    expect(addDomainBody.safeParse({ domain: 'docs.\texample.com' }).success).toBe(true);
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);

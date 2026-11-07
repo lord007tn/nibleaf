@@ -702,15 +702,17 @@ export const DOMAIN_NAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+
  * form shows is exactly what the server stores.
  */
 export const normalizeDomainInput = (raw: string): string => {
-  // Spaces around a dot are a typo (`docs . example.com`); any other space inside
-  // separates two words, so it stays and the pattern rejects it rather than
-  // silently connecting a different domain (`docs example.com` ≠ `docsexample.com`).
+  // Spaces around a dot are a typo (`docs . example.com`); any other whitespace in
+  // the host separates two words, so it is kept for the pattern to reject rather
+  // than silently connecting a different domain (`docs example.com` ≠ `docsexample.com`).
   let value = raw
     .trim()
     .replace(/\s*\.\s*/g, '.')
     .toLowerCase();
   value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
   value = value.split(/[/?#\\]/, 1)[0] ?? '';
+  // `new URL()` below would drop a tab, CR or LF and join the words.
+  if (/\s/.test(value)) return value;
   value = value.slice(value.lastIndexOf('@') + 1);
   value = value.replace(/:\d*$/, '').replace(/\.+$/, '');
   if (value && /[^a-z0-9.-]/.test(value)) {
