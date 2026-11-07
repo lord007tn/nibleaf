@@ -244,6 +244,72 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     },
   );
 
+  it('refuses, keeping it, when a child insert under a deleted main page commits while the promote waits to delete', {
+    timeout: DB_TEST_TIMEOUT_MS,
+  }, async () => {
+    const { projectId, main, base, guide } = await fixture();
+    const version = await branches.createBranch(projectId, { name: 'v2' });
+    // The insert holds KEY SHARE on `guide` (compatible with the promote's NO
+    // KEY UPDATE), so only the FOR UPDATE upgrade makes the promote wait for it.
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started: (value: { pid: number; id: string }) => void = () => undefined;
+    const inserting = new Promise<{ pid: number; id: string }>((resolve) => {
+      started = resolve;
+    });
+    const insert = db.prisma.$transaction(
+      async (tx) => {
+        const child = await tx.page.create({
+          data: { ...base, parentId: guide.id, title: 'Late', slug: 'late', path: 'guide/late', position: 9 },
+          select: { id: true },
+        });
+        const [backend] = await tx.$queryRaw<{ pid: number }[]>(db.Prisma.sql`SELECT pg_backend_pid() AS pid`);
+        started({ pid: backend?.pid ?? -1, id: child.id });
+        await gate;
+      },
+      { timeout: 30_000 },
+    );
+    const inserter = await inserting;
+    const outcome = branches.mergeBranch(projectId, version.id).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    try {
+      await untilWaiting(inserter.pid);
+    } finally {
+      release();
+    }
+    await insert;
+    expect(await outcome).toMatchObject({
+      status: 409,
+      code: 'branch:main_changed',
+      details: { changedOnMainSinceFork: [expect.objectContaining({ pageId: inserter.id, path: 'guide/late', change: 'added' })] },
+    });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toContain('guide/late');
+    expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
+  });
+
+  it('promotes a version created from an empty main', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const id = `promote-${randomUUID()}`;
+    const org = await db.prisma.organization.create({ data: { name: 'Synthetic promote' } });
+    organizations.push(org.id);
+    await db.prisma.project.create({ data: { id, organizationId: org.id, name: 'Synthetic promote', slug: id } });
+    const main = await db.prisma.branch.create({ data: { projectId: id, name: 'main', isDefault: true } });
+    const language = await db.prisma.language.create({ data: { projectId: id, code: 'en', label: 'English', isDefault: true } });
+    const version = await branches.createBranch(id, { name: 'v2' });
+    const stored = await db.prisma.branch.findUniqueOrThrow({ where: { id: version.id }, select: { forkBaseline: true } });
+    expect(stored.forkBaseline).toEqual({ version: 2, pages: {} });
+    await db.prisma.page.create({
+      data: { projectId: id, branchId: version.id, languageId: language.id, title: 'Welcome', slug: 'welcome', path: 'welcome' },
+    });
+    // No main pages: the upgrade is skipped and the fresh check runs with an empty id array.
+    await branches.mergeBranch(id, version.id);
+    expect((await pagesOn(id, main.id)).map((p) => p.path)).toEqual(['welcome']);
+    expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).toBeNull();
+  });
+
   it('promotes a project with more than 500 pages, nested, without a false failure', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, base } = await fixture();
     const rows: Array<{ id: string; parentId: string | null; kind: 'GROUP' | 'PAGE'; title: string; slug: string; path: string; position: number }> =
