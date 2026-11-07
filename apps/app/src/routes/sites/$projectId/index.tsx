@@ -43,9 +43,9 @@ export const Route = createFileRoute('/sites/$projectId/')({
       throw notFound();
     }
   },
-  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.page),
+  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.page, loaderData?.lang),
   head: ({ loaderData, params, matches }) =>
-    pageHead(loaderData?.page ?? null, params.projectId, loaderData?.lang ?? siteLanguageFromMatches(matches), loaderData?.siteOrigin),
+    pageHead(loaderData?.page ?? null, params.projectId, loaderData ? loaderData.lang : siteLanguageFromMatches(matches), loaderData?.siteOrigin),
 });
 
 function SiteHome() {

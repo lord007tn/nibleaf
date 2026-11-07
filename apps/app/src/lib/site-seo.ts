@@ -192,9 +192,15 @@ export const siteLanguageFromMatches = (matches: ReadonlyArray<{ routeId: string
  *  `Link` discovery header (then strips it). */
 export const SITE_MARKDOWN_ALTERNATE_HEADER = 'x-nibleaf-markdown-alternate';
 
+/** Whether this page view has a public Markdown alternate. A page that fell
+ *  back from the requested `?lang=` to another language has none: the
+ *  Markdown endpoint serves only the requested language (it answers 404). */
+const hasMarkdownAlternate = (data: SitePage, requestedLanguage?: string): boolean =>
+  isPublicMarkdownPage(data) && (!requestedLanguage || requestedLanguage === data.activeLanguage);
+
 /** Route `headers` for a published page: flag Markdown eligibility. */
-export const pageMarkdownHeaders = (data: SitePage | null | undefined): Record<string, string> | undefined =>
-  data && isPublicMarkdownPage(data) ? { [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } : undefined;
+export const pageMarkdownHeaders = (data: SitePage | null | undefined, requestedLanguage?: string): Record<string, string> | undefined =>
+  data && hasMarkdownAlternate(data, requestedLanguage) ? { [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } : undefined;
 
 /** An empty icon: stops the browser falling back to the origin's
  *  /favicon.ico, which is Nibleaf's on the app origin. */
@@ -258,6 +264,9 @@ export function unavailableSiteHead(reason: 'private' | undefined, lang?: string
  * SEO values cascade with the page winning over the language, which wins over
  * the project: `page.config.seo` › `languageConfig.seo` › `project.config.seo`.
  * This mirrors Mintlify, where page frontmatter overrides the site defaults.
+ *
+ * `lang` is the requested `?lang=` for a page (a language fallback has no
+ * Markdown alternate), and the reader's language for the not-found title.
  */
 export function pageHead(data: SitePage | null | undefined, projectId: string, lang?: string, origin?: string): Head {
   if (!data) {
@@ -346,7 +355,7 @@ export function pageHead(data: SitePage | null | undefined, projectId: string, l
 
   // A page may pin its own canonical URL (e.g. when content is syndicated).
   const links: Tag[] = [{ rel: 'canonical', href: pageSeo?.canonicalUrl?.trim() || url }];
-  if (isPublicMarkdownPage(data)) {
+  if (hasMarkdownAlternate(data, lang)) {
     links.push(
       { rel: 'alternate', type: 'text/markdown', href: markdownAlternateUrl(url) },
       { rel: 'describedby', href: `${canonicalSiteBase(projectId, urlOptions)}/llms.txt` },

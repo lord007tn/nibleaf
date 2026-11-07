@@ -1,6 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
-import { canonicalSiteBase, changelogFeedUrl, pageHead, siteHead, siteIconHref, siteLanguageFromMatches, unavailableSiteHead } from './site-seo';
+import {
+  canonicalSiteBase,
+  changelogFeedUrl,
+  pageHead,
+  pageMarkdownHeaders,
+  siteHead,
+  siteIconHref,
+  siteLanguageFromMatches,
+  unavailableSiteHead,
+} from './site-seo';
 
 // Keep the canonical tests hermetic: a developer's local .env may configure a
 // VITE_SITE_BASE_DOMAIN, which would flip the default canonical to a subdomain.
@@ -175,6 +184,16 @@ describe('pageHead canonical + hreflang', () => {
     expect(noindex.links?.some((link) => link.type === 'text/markdown')).toBe(false);
     const external = pageHead(base({ page: { ...base().page, config: { seo: { canonicalUrl: 'https://example.com/source' } } } }), 'p1');
     expect(external.links?.some((link) => link.type === 'text/markdown')).toBe(false);
+  });
+
+  it('does not advertise Markdown for an untranslated page that fell back from the requested language', () => {
+    // /quickstart?lang=ar renders the English page; /quickstart.md?lang=ar would 404.
+    const fallback = base({ activeLanguage: 'en' });
+    expect(pageHead(fallback, 'p1', 'ar').links?.some((link) => link.type === 'text/markdown')).toBe(false);
+    expect(pageMarkdownHeaders(fallback, 'ar')).toBeUndefined();
+    // The requested language itself, or no `?lang=` at all, keeps the alternate.
+    expect(pageHead(fallback, 'p1', 'en').links?.some((link) => link.type === 'text/markdown')).toBe(true);
+    expect(pageMarkdownHeaders(fallback)).toEqual({ 'x-nibleaf-markdown-alternate': '1' });
   });
 
   it('does not advertise Markdown unless the project is explicitly public', () => {

@@ -107,7 +107,7 @@ export const Route = createFileRoute('/sites/$projectId/$')({
   },
   // Lets the server entry add the Markdown `Link` header from this already
   // loaded page instead of rendering the page a second time to find out.
-  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.kind === 'page' ? loaderData.page : null),
+  headers: ({ loaderData }) => pageMarkdownHeaders(loaderData?.kind === 'page' ? loaderData.page : null, loaderData?.lang),
   head: ({ loaderData, params, matches }) => {
     if (loaderData?.kind === 'openapi') {
       const siteName = loaderData.site.languageConfig?.name || loaderData.site.project.name;
@@ -126,7 +126,8 @@ export const Route = createFileRoute('/sites/$projectId/$')({
     return pageHead(
       loaderData?.kind === 'page' ? loaderData.page : null,
       params.projectId,
-      loaderData?.lang ?? siteLanguageFromMatches(matches),
+      // A loaded page needs the requested `?lang=`; a not-found page, the reader's language.
+      loaderData ? loaderData.lang : siteLanguageFromMatches(matches),
       loaderData?.siteOrigin,
     );
   },
