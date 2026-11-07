@@ -1,7 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { translateFn } from '@nibleaf/i18n';
 import {
   canonicalPathFromMarkdownAlias,
   decodePublishedPathname,
@@ -15,12 +14,11 @@ import { createServerEntry } from '@tanstack/react-start/server-entry';
 import got from 'got';
 import { z } from 'zod';
 import { serverEnv } from '@/env.server';
-import { BLOG_ENTRIES } from '@/lib/blog';
-import { nibleafPricing, nibleafProductLimitations } from '@/lib/comparison-data';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { observeCrawlerResponse } from '@/lib/crawler-hits';
+import { marketingLlms, marketingLlmsFull, marketingPricingMarkdown } from '@/lib/marketing-llms';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
-import { marketingMarkdownSourceUrls, marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
+import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
 import { readerRateLimitResponse } from '@/lib/reader-rate-limit';
@@ -605,219 +603,6 @@ function marketingRobots(origin: string): string {
     `Sitemap: ${origin}/sitemap.xml`,
     '',
   ].join('\n');
-}
-
-function marketingLlms(origin: string): string {
-  return `# Nibleaf
-
-> Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
-
-Last reviewed: 2026-10-31
-
-## Key facts
-
-- Public AGPL-3.0 source repository with an anonymously accessible pinned GHCR container release
-- Guided Docker Compose installer for the app, API, worker, database, cache, and object storage
-- Notion-style WYSIWYG editor over plain Markdown/MDX - content round-trips losslessly, no proprietary format
-- First-class Arabic and English authoring with full right-to-left (RTL) support, per-language page trees, and hreflang
-- Versioned publishing: every publish is an immutable snapshot, rollback is atomic
-- Built-in Orama full-text/fuzzy search remains the default and immediate rollback; v0.2.0 adds an optional tenant-filtered Qdrant hybrid path, privacy-safe diagnostics, and opt-in grounded answers. The hybrid path needs a Qdrant service, and embeddings and answers need an AI provider key
-- Usage, add-ons, integrations, themes, and MCP below ship in the pinned v0.2.0 self-host release, whose image is published for linux/amd64 only. Self-hosted MCP is off until an operator enables it
-- Provider-neutral usage events and ClickHouse rollups keep missing state unknown and limits advisory; they do not implement payments
-- Audited project add-ons and integrations expose explicit availability, consent, credential ownership, and health without returning stored secrets
-- Harbor, Manuscript, and Signal support validated theme exchange and runnable Git-native repositories
-- Project-bound MCP uses expiring scoped keys and read-only adapters; theme import is preview-only
-- Custom-domain and project-subdomain workflows are active; operators must still verify their own DNS and TLS configuration
-- First-party reader analytics (page views, top pages, top searches); the hosted service also uses Cloudflare for delivery, security, and web analytics
-- Works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service)
-- Nibleaf Cloud (nibleaf.com) is a managed instance, free while in beta
-
-## Guide academy
-
-- [English guide hub](${markdownAlternateUrl(`${origin}/guides`)}): practical decision labs, migration runbooks, operations recovery, Arabic evaluation, and AI-ready documentation
-- [Arabic guide hub](${markdownAlternateUrl(`${origin}/ar/guides`)}): Arabic-first routing to the same evidence, with every card's available language stated explicitly
-
-## Pages
-
-- [Home](${markdownAlternateUrl(`${origin}/`)}): overview and features
-- [Arabic home](${markdownAlternateUrl(`${origin}/ar`)}): Arabic product overview and RTL-first workflow
-- [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/documentation-platforms`)}): English source-backed platform evaluation
-- [Documentation platforms for Arabic teams](${markdownAlternateUrl(`${origin}/ar/documentation-platforms`)}): source-backed Arabic buyer guide
-- [Nibleaf Cloud](${markdownAlternateUrl(`${origin}/cloud`)}): hosted documentation sites, free during beta
-- [Pricing](${markdownAlternateUrl(`${origin}/pricing`)}): free cloud beta and self-hosting requirements
-- [Self-hosting](${markdownAlternateUrl(`${origin}/self-hosting`)}): guided installer and deployment architecture
-- [About](${markdownAlternateUrl(`${origin}/about`)}): mission and stack
-- [Contact](${markdownAlternateUrl(`${origin}/contact`)}): product support, privacy, security, abuse, and editorial corrections
-- [Nibleaf developer resources](${markdownAlternateUrl(`${origin}/developers`)}): public API contract, agent access, authentication boundaries, and CLI status
-- [RTL documentation readiness grader](${markdownAlternateUrl(`${origin}/tools/rtl-documentation-readiness`)}): browser-only static HTML checks with transparent unknowns
-- [Nibleaf vs Mintlify](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-mintlify`)})
-- [Nibleaf vs GitBook](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-gitbook`)})
-- [Nibleaf vs Docusaurus](${markdownAlternateUrl(`${origin}/compare/nibleaf-vs-docusaurus`)})
-- [Mintlify alternatives](${markdownAlternateUrl(`${origin}/alternatives/mintlify`)})
-- [GitBook alternatives](${markdownAlternateUrl(`${origin}/alternatives/gitbook`)})
-- [ReadMe alternatives](${markdownAlternateUrl(`${origin}/alternatives/readme`)})
-- [Terms of Service](${markdownAlternateUrl(`${origin}/terms`)})
-- [Privacy Policy](${markdownAlternateUrl(`${origin}/privacy`)})
-
-## Product truth and source
-
-- [Public source repository](https://github.com/lord007tn/nibleaf): AGPL-3.0 code, issues, releases, and implementation details
-- [Product documentation](https://docs.nibleaf.com): current public user and operator documentation
-- [Machine-readable pricing](${origin}/pricing.md): current plans, limits, and operational responsibilities
-- [Nibleaf public OpenAPI specification](${origin}/openapi.json): typed public reader endpoints with unique operation IDs
-- [Security contact](${origin}/.well-known/security.txt): supported disclosure channel
-
-## When to use Nibleaf
-
-Use Nibleaf when a team needs to author, publish, search, or self-host versioned Markdown documentation, especially for bilingual English/Arabic sites, right-to-left interfaces, portable MDX content, or immutable release snapshots. Do not use Nibleaf as a general-purpose CMS, transactional database, or hosted write API: the supported developer contract currently covers public read access only.
-
-## How agents should call Nibleaf
-
-1. Read this file for product routing, then use [llms-full.txt](${origin}/llms-full.txt) when the complete product description is needed.
-2. Request a human-facing Nibleaf URL with \`Accept: text/markdown\` for its clean Markdown representation.
-3. Read [openapi.json](${origin}/openapi.json) before calling public reader endpoints. Use the \`siteId\` from a published site's URL and do not assume dashboard session endpoints are a supported write API.
-4. For a published documentation site, prefer its own \`/llms.txt\`, \`/llms-full.txt\`, \`/sitemap.xml\`, and, when configured by that site owner, \`/openapi.json\`.
-5. If a path returns 404, follow the sitemap or llms index instead of guessing paths.
-
-## Current limitations
-
-- No paid Nibleaf Cloud plan is offered while the service is in beta.
-${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
-- GitHub has a two-way authoring workflow; public GitLab and generic Git imports are currently one-way.
-
-## Blog
-
-${BLOG_ENTRIES.map((entry) => `- [${entry.title}](${markdownAlternateUrl(`${origin}/blog/${entry.slug}`)}): ${entry.description}`).join('\n')}
-
-## Full details
-
-- [llms-full.txt](${origin}/llms-full.txt): complete plain-text product description
-`;
-}
-
-function marketingLlmsFull(origin: string): string {
-  return `# Nibleaf - full description
-
-Nibleaf is a documentation platform with a visual Markdown editor, versioned publishing, built-in search, Arabic/RTL support, custom domains, and a free cloud beta at nibleaf.com.
-
-Nibleaf lets teams write documentation in Markdown/MDX, organize it into a navigable tree, and publish a searchable, multilingual site with versioned deploys, per-site teams, custom domains, and analytics. The managed cloud at nibleaf.com is free while in beta.
-
-## What is Nibleaf?
-
-Nibleaf combines a browser editor, Markdown content, publishing, search, analytics, and multilingual reader sites. Pages are stored as Markdown in the database and can be exported as Markdown, so the content format is portable even though the live source is not a Git directory.
-
-Nibleaf was built with English and Arabic authoring as core features, including right-to-left layout and per-language page trees.
-
-## Features
-
-- Rich editor: WYSIWYG and raw Markdown/MDX modes with live preview, a Notion-style block handle and slash menu, and a drag-and-drop, nestable page tree.
-- MDX components: callouts, cards, steps, tabs, code groups, accordions, param/response fields, frames, tooltips, inline icons, KaTeX math, and Mermaid diagrams - all round-trip losslessly between visual and source modes.
-- Versioned publishing: every publish is an immutable snapshot with atomic roll-forward; readers never see a half-written page.
-- Branches: git-style, database-backed branches - fork, edit in isolation, and merge into main.
-- Anchored comments: review comments pinned to the exact block, Figma-style.
-- Search: the built-in Orama full-text/fuzzy path remains the default and immediate rollback. v0.2.0 adds an optional tenant-filtered Qdrant BM25+dense path, privacy-safe diagnostics, and opt-in grounded answers. The hybrid path needs a Qdrant service, and embeddings and answers need an AI provider key. Operators begin with SEARCH_RUNTIME=shadow and must evaluate their configured providers before cutover.
-- The usage, add-on, integration, theme, and MCP capabilities below ship in the pinned v0.2.0 self-host release. Self-hosted MCP is off until an operator sets MCP_ENABLED=true.
-- Usage and entitlements: provider-neutral events, exact ClickHouse rollups, deletion fences, and explicit unknown states. Limits remain advisory and no payment flow is present.
-- Project add-ons: audited feedback, edit/issue links, consent presentation, publishing checks, grammar-lint preview, and preview-deployment controls with current plan/entitlement availability.
-- Integrations: project-managed encrypted write-only webhook credentials and instance-managed provider status with explicit ownership and health states.
-- Documentation themes: Harbor, Manuscript, and Signal structural templates, bounded JSON exchange, and runnable Git-native repositories with platform/shared/customer ownership.
-- MCP: project-bound, expiring scoped API keys expose read-only content, search, usage, add-on, integration, operation, and theme adapters. Theme import is preview-only and cannot apply changes.
-- Multilingual and RTL: per-language page trees, RTL layout, hreflang, and 12 interface locale options. Some interface strings remain in English. English and Arabic authoring include RTL support.
-- Custom domains and subdomains: guided DNS setup and verification plus host-based published-site routing. Production DNS readiness depends on the configured domain and must be verified separately.
-- SEO built in: server-side rendering, per-page canonical/Open Graph/Twitter/JSON-LD, sitemaps, robots controls, hreflang, and noindex controls.
-- Per-site teams: each site is its own workspace with role-based members (owner/admin/editor).
-- Analytics: first-party page views, unique visitors, top pages, top searches, plus device and language breakdowns. Nibleaf Cloud also uses Cloudflare for delivery, security, and web analytics.
-- Bring-your-own storage: any S3-compatible store (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).
-
-## Self-hosting
-
-The codebase is licensed under AGPL-3.0. Its public repository, pinned GHCR release, guided installer, and production Docker Compose file are anonymously accessible. The pinned release is v0.2.0, and its image is published for linux/amd64 only. The stack contains the app, API, worker, PostgreSQL, cache, and object storage. Operators remain responsible for DNS, TLS, backups, monitoring, and restore testing; see ${origin}/self-hosting for the verified installation path and production checklist.
-
-## Nibleaf Cloud
-
-Nibleaf Cloud (${origin}) is the managed instance run by the Nibleaf team: hosted dashboard, managed database, queues and storage, automatic upgrades, custom domains, and analytics. It is free while in beta. No paid plan is currently offered.
-
-## License
-
-AGPL-3.0. The license governs your rights to use, copy, modify, and distribute the software, including the AGPL's network-use clause.
-
-## Links
-
-- Home: ${origin}/
-- Arabic home: ${origin}/ar
-- English platform comparison: ${origin}/documentation-platforms
-- Arabic platform comparison: ${origin}/ar/documentation-platforms
-- Cloud: ${origin}/cloud
-- Pricing: ${origin}/pricing
-- Machine-readable pricing: ${origin}/pricing.md
-- Self-hosting: ${origin}/self-hosting
-- Blog: ${origin}/blog
-- About: ${origin}/about
-- Developer resources: ${origin}/developers
-- Nibleaf public OpenAPI specification: ${origin}/openapi.json
-- Terms of Service: ${origin}/terms
-- Privacy Policy: ${origin}/privacy
-- Support: support@nibleaf.com
-- RTL documentation readiness grader: ${origin}/tools/rtl-documentation-readiness
-- Product documentation: https://docs.nibleaf.com
-- Release notes: https://docs.nibleaf.com/releases/v0-2-0
-- v0.1.2 to v0.2.0 upgrade and rollback guide: https://docs.nibleaf.com/self-hosting/upgrade-v0-2
-- Add-ons reference: https://docs.nibleaf.com/use-nibleaf/add-ons
-- MCP operator guide: https://docs.nibleaf.com/self-hosting/mcp
-- Public source: https://github.com/lord007tn/nibleaf
-
-## Public Markdown source inventory
-
-Every URL in the public marketing sitemap has a clean Markdown sibling. This list is generated from the same sitemap registry, so additions cannot silently disappear from llms-full.txt.
-
-${marketingMarkdownSourceUrls(origin)
-  .map((url) => `- ${url}`)
-  .join('\n')}
-`;
-}
-
-/** Stable, non-JavaScript pricing truth for search engines and software agents.
- * Keep this synchronized with /pricing and lib/comparison-data.ts. */
-function marketingPricingMarkdown(origin: string): string {
-  const cloud = nibleafPricing.rows.find((row) => row.plan === 'Cloud');
-  const selfHosted = nibleafPricing.rows.find((row) => row.plan === 'Self-hosted');
-
-  return `# Nibleaf pricing
-
-Last reviewed: 2026-08-22
-
-Nibleaf currently has no paid cloud plan. The managed cloud is free while in beta, and the self-hosted codebase is available under AGPL-3.0. No credit card is required to create a cloud account.
-
-## Nibleaf Cloud beta
-
-- Price: ${cloud?.price ?? 'Free while in beta'}
-- Billing: no paid plan is currently offered
-- Includes: ${cloud?.includes ?? 'Hosted dashboard and documentation sites, managed database and storage, custom domains, analytics, and search.'}
-- Limits: fair-use controls apply; product limits can change during beta
-- Sign up: ${origin}/sign-up
-
-## Self-hosted Nibleaf
-
-- Software price: ${selfHosted?.price ?? 'Free under AGPL-3.0'}
-- Source: https://github.com/lord007tn/nibleaf
-- Includes: ${selfHosted?.includes ?? 'App, API, worker, PostgreSQL, cache, object storage, installer, and production Docker Compose configuration.'}
-- Operator responsibilities: infrastructure, DNS, TLS, secrets, backups, monitoring, upgrades, incident response, and restore testing
-- Deployment guide: ${origin}/self-hosting
-
-## Important limitations
-
-- There is no committed date or price for a future paid cloud plan.
-${nibleafProductLimitations.map((limitation) => `- ${limitation}`).join('\n')}
-- Cloudflare processes traffic for delivery, security, and web analytics on the managed service.
-
-## ${translateFn('marketing.machine.arabic.heading', undefined, 'ar')}
-
-- ${translateFn('marketing.machine.arabic.betaPricing', undefined, 'ar')}
-- ${translateFn('marketing.machine.arabic.selfHosting', undefined, 'ar')}
-- ${translateFn('marketing.machine.arabic.pageLabel', undefined, 'ar')}: ${origin}/ar
-
-For the human-readable plan comparison and current policy details, see ${origin}/pricing.
-`;
 }
 
 /** Serve the four SEO docs at the APP origin's root. On the cloud marketing

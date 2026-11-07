@@ -366,7 +366,7 @@
   background: color-mix(in oklch, #16a34a 10%, var(--color-card));
 }
 /* info = primary tint, check = neutral/stone tint — mirrors the live site's
-   callout palette (site/mdx-components.tsx: border-primary/30 bg-primary/10 and
+   callout palette (site/mdx/callout.tsx: border-primary/30 bg-primary/10 and
    border-stone-500/30 bg-stone-500/10). */
 .pl-editor .ProseMirror .pl-callout[data-variant="info"] {
   border-color: color-mix(
@@ -720,4 +720,75 @@
   display: flex;
   min-height: 100%;
   flex-direction: column;
+}
+/* Physical handles resize from either side; the block follows its page's direction.
+   Keyboard users have the same sizing controls in the image description menu. */
+.pl-editor .ProseMirror .editor-image {
+  position: relative;
+  max-width: 100%;
+  margin-block: 1rem;
+}
+
+.pl-editor .ProseMirror .editor-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+.pl-editor .ProseMirror .editor-image-handle {
+  display: none;
+  position: absolute;
+  top: calc(50% - 22px);
+  width: 44px;
+  height: 44px;
+  touch-action: none;
+  cursor: ew-resize;
+}
+
+.pl-editor .ProseMirror .editor-image-handle::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 2px solid var(--color-background);
+  border-radius: 50%;
+  background: var(--color-primary);
+}
+
+.pl-editor .ProseMirror .editor-image-handle-left {
+  left: -22px;
+}
+.pl-editor .ProseMirror .editor-image-handle-right {
+  right: -22px;
+}
+
+.pl-editor.is-comment-mode .editor-image-handle,
+.pl-editor.is-comment-mode .editor-image button {
+  display: none;
+}
+.pl-editor
+  .ProseMirror
+  .editor-image.ProseMirror-selectednode
+  .editor-image-handle {
+  display: block;
+}
+.pl-editor.is-comment-mode
+  .ProseMirror
+  .editor-image.ProseMirror-selectednode
+  .editor-image-handle {
+  display: none;
+}
+/* Bubble menus attach inside this editor only while open. Keep the count's
+   space, but hide its pill so floating controls cannot cover it on phones. */
+.pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {
+  visibility: hidden;
+}
+.pl-editor .ProseMirror :is(td, th)[align="left"] {
+  text-align: left;
+}
+.pl-editor .ProseMirror :is(td, th)[align="center"] {
+  text-align: center;
+}
+.pl-editor .ProseMirror :is(td, th)[align="right"] {
+  text-align: right;
 }

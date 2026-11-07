@@ -1,0 +1,199 @@
+---
+title: 'Mintlify component and authoring parity'
+description: 'Compare every Mintlify component and authoring feature with what Nibleaf renders, edits visually, and round-trips today, and see when each gap closes.'
+audience: 'documentation leads evaluating a move from Mintlify, and Nibleaf contributors'
+content_type: 'reference'
+last_reviewed: '2026-11-07'
+verified_against: 'Mintlify documentation (components, create, organize/pages, api-playground) read on 2026-11-07; packages/shared/src/documentation-components.ts, apps/app/src/components/site/mdx-config.ts, apps/app/src/components/editor/extensions, apps/worker/src/exports/render.ts, and packages/shared/src/theme-repository-templates'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'reference/mintlify-parity'
+---
+
+This page compares Nibleaf with the components and authoring features in the
+[Mintlify documentation](https://www.mintlify.com/docs/components/index), as
+published on 7 November 2026. It is a working tracker: each row names the change
+that closes a gap, and rows move to **Has** as those changes ship.
+
+## How to read the statuses
+
+- **Has**: you can insert and edit it in the visual editor, it survives switching
+  to source mode, Git sync, and exports, and it renders in the Harbor, Manuscript,
+  and Signal themes in light and dark mode, left to right and right to left.
+  For site and page features that aren't blocks (the OpenAPI reference, page
+  settings, the changelog feed), **Has** means you can set them up in the
+  dashboard and they work end to end.
+- **Partial**: it works, but the listed Mintlify options or editing paths are missing.
+- **Missing**: Nibleaf doesn't support it yet.
+- **Out of scope**: not planned, for the reason given.
+
+The **Planned in** column refers to the parity work stream: 3 component options,
+4 code blocks, 5 new components and media, 6 editing experience, and 7 reusable
+content and page metadata.
+
+Unknown components never break a page. The editor keeps any tag it can't edit as
+a protected block, so saving never drops it.
+
+Exported theme repositories ship their own, simpler reader. In them:
+- code groups show their blocks one after another, without tabs;
+- Card icons aren't shown;
+- `Icon` knows only a few icon names and shows the first letter of any other;
+- Mermaid diagrams and math stay as source.
+
+Your Nibleaf site renders all of them.
+
+Public Markdown (each page's `.md` and the llms files) and the HTML and PDF exports use a simpler projection of components than the site. Today, in them, a component that wraps a code block can show as source in `.md`, an attribute value containing `>` ends the tag early, so the rest of the tag shows as text, tooltips keep only their text, and subscript, superscript and underline show as tags. A follow-up covers this projection work (#341).
+
+## Callouts
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `Note`, `Tip`, `Info`, `Warning`, `Check`, `Danger` | Has | Slash menu, type switcher, and both MDX tags and GitHub alerts (`> [!TIP]`) | |
+| `Callout` with a custom `icon`, `iconType`, or `color` | Partial | Only `type` is read; custom icons and colors are missing | 3 |
+
+## Cards, columns, and tiles
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path; icons come from the same set of about 60 names as `Icon`; exported theme repositories don't show the icon | |
+| `Card` with `horizontal`, `img`, `cta`, `arrow`, `color`, `iconType` | Missing | | 3 |
+| `CardGroup` with `cols` | Partial | Two, three or four columns, chosen when inserted; can't be changed afterwards | 3 |
+| `Columns` with `cols`, and `Column` | Partial | The column count comes from the children; `cols` is ignored | 3 |
+| `Tile` | Missing | | 5 |
+| `Panel` (right side panel) | Missing | | 5 |
+
+## Structure and disclosure
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `Tabs` and `Tab` with `title` | Has | Arrow keys follow the reading direction; titles are plain text, so Markdown in a title shows as typed | |
+| `Tab` `icon` and `id`; `Tabs` `defaultTabIndex`, `sync`, `borderBottom` | Missing | | 3 |
+| `Accordion` with `title`, and `AccordionGroup` | Has | Titles are plain text, so Markdown in a title shows as typed | |
+| `Accordion` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
+| `Accordion` `description`, `icon`, `id` | Missing | | 3 |
+| `Steps` and `Step` with `title` | Has | Numbered automatically; titles are plain text, so Markdown in a title shows as typed | |
+| `Step` `icon`, `stepNumber`, `titleSize`; `Steps` `titleSize` | Missing | | 3 |
+| `Expandable` with `title` | Has | | |
+| `Expandable` `defaultOpen` | Partial | Rendered and kept, but no editor control yet | 3 |
+| `View` | Missing | | 5 |
+| `Tree`, `Tree.Folder`, `Tree.File` | Partial | `FileTree`, `Folder`, and `File` cover the same tree; the Mintlify tag names, `highlight`, and `openable` are missing | 5 |
+| `Visibility` for humans or AI agents | Missing | | 5 |
+| `Visibility` by sign-in state or group | Out of scope | Needs reader groups; private sites already control access per site | |
+
+## Code
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| Fenced code with highlighting and a copy button | Has | | |
+| Title (`title="app.js"` or a bare title) | Partial | Rendered and kept, but the visual editor has no field to add or change it | 4 |
+| `icon`, line highlighting (`{1,3-5}`, `highlight=`), `focus` | Missing | | 4 |
+| Line numbers (`lines`), `wrap`, `expandable`, `nocopy` | Missing | | 4 |
+| Diff lines (`// [!code ++]`, `# [!code --:3]`) | Missing | | 4 |
+| `CodeGroup` tabs | Has | Exported theme repositories show the blocks without tabs | |
+| `CodeGroup` `dropdown` | Missing | | 4 |
+| Twoslash type hovers | Out of scope | Needs the TypeScript compiler in the reader | |
+| `CodeBlock` React component | Out of scope | Nibleaf doesn't run author JavaScript | |
+
+## API documentation
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `ParamField` (`path`, `query`, `header`, `body`, `type`, `required`, `default`, `deprecated`) | Partial | Rendered and kept; the editor edits only the description; `placeholder`, `pre`, `post` are missing | 3 |
+| `ResponseField` (`name`, `type`, `required`, `default`, `deprecated`) | Partial | Same as `ParamField`; `pre` and `post` are missing | 3 |
+| `RequestExample`, `ResponseExample` | Partial | Shown side by side in the article, not pinned in a side panel; `dropdown` is missing | 5 |
+| OpenAPI reference and playground | Has | Generated from the project's OpenAPI document | |
+| Per-page `openapi:` and `api:` frontmatter | Missing | | 7 |
+| AsyncAPI and GraphQL references | Out of scope | | |
+
+## Inline and emphasis
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `Tooltip` with `tip` | Partial | Keyboard and screen reader accessible; public Markdown keeps only the text, not the tip; the visual editor has no field to change `tip` after inserting it | 3 |
+| `Tooltip` `headline`, `cta`, `href` | Missing | | 3 |
+| `Badge` with `color` | Partial | `color` is kept but not styled on the site, and the visual editor has no field for it | 3 |
+| `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Missing | | 3 |
+| `Icon` with `icon`, `color`, `size` | Partial | About 60 common Lucide icon names; other Lucide names, Font Awesome, Tabler, image URLs, and `iconType` aren't resolved | 3 |
+| Site banner | Has | Set in site settings | |
+| Page `Banner` with `type` | Partial | Can be inserted on a page, but its `type` has no editor field yet | 3 |
+| `Color`, `Color.Row`, `Color.Item` | Missing | | 5 |
+| `Prompt` | Missing | | 5 |
+| `GitHub.Repo` with live stars and forks | Out of scope | Renderers never fetch component data over the network | |
+
+## Component styling
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `className` on components (`<Card className="…">`) | Missing | The reader drops it, and exported theme repositories ignore it, so custom styling on a component is lost. A list of allowed styling classes comes with the reader security hardening | |
+
+## Images, media, and diagrams
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| Images with alt text, click to zoom, light and dark pairs | Partial | Alt text and click to zoom work; light and dark pairs are written in source mode, and the visual editor drops their classes on save | 6 |
+| `noZoom` on an image | Missing | | 5 |
+| `Frame` with `caption` | Partial | Plain-text captions; Markdown links and emphasis in a caption are shown as typed | 3 |
+| `Frame` `hint` | Missing | | 3 |
+| YouTube and other `iframe` embeds | Missing | | 5 |
+| Self-hosted `video` with autoplay, loop, and muted | Missing | | 5 |
+| Mermaid diagrams | Partial | Rendered on the site; the editor shows the source with no preview; `actions` and `placement` are missing | 5 |
+| LaTeX math (`$…$`, `$$…$$`) | Partial | Rendered on the site with KaTeX; the editor has no math block or preview | 5 |
+
+## Text, lists, and tables
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| Headings, emphasis, links, quotes, rules | Has | | |
+| Superscript, subscript, underline | Partial | Shown on the site; public Markdown and HTML and PDF exports show them as literal tags | |
+| Custom heading IDs (`## Setup {#setup}`) | Missing | | 5 |
+| Ordered, unordered, nested, and task lists | Has | | |
+| Tables | Has | Add and remove rows and columns from the table menu | |
+| Table column alignment (`:---:`) | Partial | Rendered on the site, but the visual editor drops the alignment when it saves | 6 |
+
+## Reusable content
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| Snippets (`import Snippet from '/snippets/x.mdx'`) | Missing | | 7 |
+| Variables (`export const`, `{name}`) | Missing | | 7 |
+| Personalized content from visitor data | Out of scope | | |
+| `MDX` component and custom React components | Out of scope | Nibleaf doesn't run author JavaScript | |
+
+## Page frontmatter
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `title`, `description`, `icon` | Has | Page settings and Git sync | |
+| `sidebarTitle`, `tag`, `hidden`, `noindex`, `og:image`, canonical URL | Partial | Set in page settings, with a meta title and description, but Git sync doesn't carry them yet | 7 |
+| Other `og:*` tags | Missing | | 7 |
+| `mode`: default, wide, center | Partial | Page settings only, not in Git sync | 7 |
+| `mode`: custom, frame, assistant | Out of scope | | |
+| `keywords` | Partial | Page tags are kept, but search doesn't boost them yet | 7 |
+| `deprecated`, `hideFooterPagination`, `timestamp`, `lastUpdatedDate`, external `url` | Missing | | 7 |
+
+## Changelogs
+
+| Mintlify | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| `Update` with `label`, `description` | Partial | Rendered and kept, but the visual editor has no fields for `label` or `description` | 3 |
+| `Update` `tags` and tag filters | Missing | | 3 |
+| Changelog RSS feed | Has | One feed per site at `changelog/rss.xml` | |
+
+## Visual editing experience
+
+| Capability | Nibleaf | Notes | Planned in |
+| --- | --- | --- | --- |
+| Slash menu with search and descriptions, in English and Arabic | Has | | |
+| Drag handles to move blocks | Has | | |
+| Block menu: duplicate, move, turn into, delete | Missing | | 6 |
+| Markdown shortcuts (`#`, `-`, `1.`, `>`, code fences) | Has | | |
+| Clean paste from Google Docs, Notion, Word, and web pages | Partial | | 6 |
+| Images: paste or drop, alt text | Has | | |
+| Images: upload progress, resize | Missing | | 6 |
+| Keyboard shortcuts help sheet | Missing | | 6 |
+| Autosave with visible save state, undo and redo | Has | | |
+| Comments | Has | | |
+| Source mode without losing content | Partial | Components, special characters and code examples round-trip unchanged; a component tag written inside inline code that runs onto the next line is saved with the editor's internal markup | |
+| A settings panel for every component | Partial | Titles and a few fields are inline; most options have no field | 3 |
+| Arabic and mixed-direction typing | Has | Each block follows its own text direction | |
+| Editing on a 390 px phone screen | Partial | | 6 |

@@ -46,15 +46,37 @@ export {
   THEME_REPOSITORY_TEMPLATE_META,
   type ThemeRepositoryTemplateOptions,
 } from './types';
+// The component lists these two files carry are checked against the reader
+// contract by apps/app/src/components/documentation-component-contract.test.tsx.
+export { markdownTemplate, mdxIndexTemplate };
 
 export interface ThemeRepositoryTemplateFile {
   path: string;
   content: string;
 }
 
+/** The exported reader pipeline: Markdown rendering and the MDX components.
+ * They take no options, so apps/app renders them in its contract tests. */
+export const themeRepositoryReaderTemplateFiles = (): ThemeRepositoryTemplateFile[] => [
+  { path: 'src/lib/markdown.tsx', content: markdownTemplate() },
+  { path: 'src/components/mdx/shared.ts', content: mdxSharedTemplate() },
+  { path: 'src/components/mdx/callouts.tsx', content: mdxCalloutsTemplate() },
+  { path: 'src/components/mdx/cards.tsx', content: mdxCardsTemplate() },
+  { path: 'src/components/mdx/tabs.tsx', content: mdxTabsTemplate() },
+  { path: 'src/components/mdx/disclosure.tsx', content: mdxDisclosureTemplate() },
+  { path: 'src/components/mdx/steps.tsx', content: mdxStepsTemplate() },
+  { path: 'src/components/mdx/fields.tsx', content: mdxFieldsTemplate() },
+  { path: 'src/components/mdx/file-tree.tsx', content: mdxFileTreeTemplate() },
+  { path: 'src/components/mdx/api-example.tsx', content: mdxApiExampleTemplate() },
+  { path: 'src/components/mdx/tooltip.tsx', content: mdxTooltipTemplate() },
+  { path: 'src/components/mdx/inline.tsx', content: mdxInlineTemplate() },
+  { path: 'src/components/mdx/index.tsx', content: mdxIndexTemplate() },
+];
+
 /** Every customer-owned file of the generated repository, in a stable order. */
 export const themeRepositoryTemplateFiles = (options: ThemeRepositoryTemplateOptions): ThemeRepositoryTemplateFile[] => {
   const messages = messagesTemplate(options);
+  const [markdownFile, ...mdxFiles] = themeRepositoryReaderTemplateFiles();
   return [
     { path: 'README.md', content: readmeTemplate(options) },
     { path: 'package.json', content: packageJsonTemplate(options) },
@@ -74,7 +96,7 @@ export const themeRepositoryTemplateFiles = (options: ThemeRepositoryTemplateOpt
     { path: 'src/routes/$.tsx', content: splatRouteTemplate() },
     { path: 'src/lib/site.ts', content: siteLibTemplate(options) },
     { path: 'src/lib/site.test.ts', content: siteLibTestTemplate() },
-    { path: 'src/lib/markdown.tsx', content: markdownTemplate() },
+    ...(markdownFile ? [markdownFile] : []),
     { path: 'src/lib/markdown.test.tsx', content: markdownTestTemplate() },
     { path: 'src/components/route-link.tsx', content: routeLinkTemplate() },
     { path: 'src/components/theme-toggle.tsx', content: themeToggleTemplate() },
@@ -90,17 +112,6 @@ export const themeRepositoryTemplateFiles = (options: ThemeRepositoryTemplateOpt
     { path: 'src/components/layout/ManuscriptLayout.tsx', content: manuscriptLayoutTemplate() },
     { path: 'src/components/layout/SignalLayout.tsx', content: signalLayoutTemplate() },
     { path: 'src/components/layout/index.tsx', content: layoutIndexTemplate() },
-    { path: 'src/components/mdx/shared.ts', content: mdxSharedTemplate() },
-    { path: 'src/components/mdx/callouts.tsx', content: mdxCalloutsTemplate() },
-    { path: 'src/components/mdx/cards.tsx', content: mdxCardsTemplate() },
-    { path: 'src/components/mdx/tabs.tsx', content: mdxTabsTemplate() },
-    { path: 'src/components/mdx/disclosure.tsx', content: mdxDisclosureTemplate() },
-    { path: 'src/components/mdx/steps.tsx', content: mdxStepsTemplate() },
-    { path: 'src/components/mdx/fields.tsx', content: mdxFieldsTemplate() },
-    { path: 'src/components/mdx/file-tree.tsx', content: mdxFileTreeTemplate() },
-    { path: 'src/components/mdx/api-example.tsx', content: mdxApiExampleTemplate() },
-    { path: 'src/components/mdx/tooltip.tsx', content: mdxTooltipTemplate() },
-    { path: 'src/components/mdx/inline.tsx', content: mdxInlineTemplate() },
-    { path: 'src/components/mdx/index.tsx', content: mdxIndexTemplate() },
+    ...mdxFiles,
   ];
 };
