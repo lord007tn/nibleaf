@@ -711,6 +711,13 @@ model Branch {
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  /// When this version was copied from main. Null on versions created before
+  /// fork tracking; those fall back to `createdAt`.
+  forkedAt     DateTime?
+  /// Main's pages at the fork: { version: 1, pages: { [mainPageId]: { copyId,
+  /// updatedAt, title, path, languageId, kind } } }. Promote compares main
+  /// against it to list pages changed on main since the fork.
+  forkBaseline Json?
 
   pages Page[]
 
