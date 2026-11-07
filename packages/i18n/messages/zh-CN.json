@@ -1831,6 +1831,8 @@
   "error_signedout": "你的会话已结束，请重新登录后继续。",
   "error_notfound": "此内容已不存在，可能已被他人删除。请刷新页面后重试。",
   "error_conflict": "其他人同时修改了此内容。请刷新页面后重试。",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Bring those changes into this version, or undo them on main, then promote again.",
+  "error_branchbaselinemissing": "This version was created before Nibleaf could check main for changes, or copied from a version that was. Create a new version from main and move your changes there.",
   "error_toolarge": "文件过大，请尝试更小的文件。",
   "error_ratelimited": "尝试次数过多，请稍后再试。",
   "notfound_badge": "404",
