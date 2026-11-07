@@ -64,9 +64,16 @@ headroom. Use a committed source revision for the final acceptance image.
 
 ```sh
 node scripts/docker-context-smoke.mjs
-docker build --pull --no-cache-filter runner --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --build-arg VITE_APP_URL=http://localhost:4410 --build-arg VITE_API_URL=http://server:4311 --tag nibleaf-runtime:local .
+docker build --pull --no-cache-filter runner --target runner --progress=plain --build-arg REVISION="$(git rev-parse HEAD)" --tag nibleaf-runtime:local .
 node scripts/runtime-image-audit.mjs nibleaf-runtime:local output/runtime-image/inventory.json
 ```
+
+Set `APP_URL`, `ADMIN_URL`, `API_URL`, and `SITE_BASE_DOMAIN` on the running
+web containers. The image resolves its reserved Vite markers at startup; these
+are runtime settings, not Docker build arguments. The service UID needs write
+access to its generated web output; configuration fails clearly on read-only or
+unwritable output. Keep the normal entrypoint and web wrapper so incomplete
+configuration cannot be served.
 
 The context smoke creates uniquely named synthetic files beneath excluded QA,
 browser-auth, local-volume, and environment paths. A real Docker `COPY` must omit
