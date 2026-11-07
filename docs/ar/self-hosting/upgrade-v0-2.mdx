@@ -3,7 +3,7 @@ title: 'الترقية من v0.1.2 إلى v0.2.0'
 description: 'انقل تثبيت Nibleaf v0.1.2 المستضاف ذاتيًا إلى v0.2.0 على مرحلتين، مع ترحيل جداول المهام المتكررة قبل بدء الإصدار الجديد.'
 audience: 'مشغّلو Nibleaf المستضاف ذاتيًا على الإصدار v0.1.2'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
 lang: 'ar'
 dir: 'rtl'
@@ -554,3 +554,12 @@ rm nibleaf-queues.ts
 - **التنظيف.** بعد أن تتأكد من عدم حاجتك إلى التراجع، احذف الصورة المرحلية باستخدام
   `docker image rm "ghcr.io/lord007tn/nibleaf:$STAGED"`، وانقل نسخك الاحتياطية إلى
   تخزين طويل الأمد.
+
+## فصل إجراء الإصدار عن المصدر الحالي
+
+هذا إجراء تاريخي للترقية من v0.1.2 إلى v0.2.0. لا تستبدل الصورة المرحلية
+المحتفظ بها أو أصول الإصدار المتحقق منها بصورة المصدر الحالي. لا يمرّر ملف
+Compose الإنتاجي المثبّت `WORKER_QUEUES` أو إعدادات التصدير أو متغيّرات
+التحليلات أو حدود كتابة MCP اللاحقة. لتخصيصها في صورة تدعمها، مرّرها صراحة
+بملف تجاوز للمشغّل؛ إضافتها إلى `.env` وحده لا يؤثر. احتفظ بملف التجاوز في
+كل أوامر الترقية والنسخ والاستعادة. راجع [مرجع البيئة](/ar/reference/environment-variables).

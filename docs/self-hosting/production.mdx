@@ -3,7 +3,7 @@ title: 'Take a self-hosted installation to production'
 description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
 audience: 'operators responsible for production readiness'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
@@ -100,7 +100,7 @@ production content publish.
 
 ## Analytics capacity and recovery
 
-Keep analytics health independent from core readiness. The bundled ClickHouse budget
+Keep analytics health independent from core readiness. The source quickstart/Coolify ClickHouse budget
 is a starting point for small hosts; measure disk headroom before enabling ingestion.
 Review [analytics operations](/self-hosting/clickhouse-analytics) and perform the
 [isolated analytics restore drill](/self-hosting/backups-upgrades) before upgrades.
@@ -108,3 +108,23 @@ Non-Coolify inline Compose configs require Docker Compose 2.23.1 or newer.
 The Coolify file instead uses its documented bind-mount `content:` extension to
 create the ClickHouse XML file. Plain `docker compose config` rejects this
 Coolify-only extension; deploy that file through Coolify.
+
+## Check current-source AI and MCP separately
+
+The pinned v0.2.0 Compose file has no ClickHouse service. The current-source
+analytics, workspace provider, chat and MCP OAuth guides need a compatible
+image, migrations and explicit environment wiring. An environment example does
+not prove the released Compose file passes a setting.
+
+For features you deploy, verify the chosen provider and READY publication index,
+one English and one Arabic chat answer with working citations, a refusal, stop
+and retry, and a budget-limited request. Confirm transcript capture matches the
+site setting and visitor consent, and that unknown usage remains unknown.
+Provider verification only reads model catalogs; perform a real question to
+check account credit and model availability. Editor drafting still uses the
+instance OpenRouter key, separately from a workspace search provider.
+
+For MCP OAuth, check discovery on the HTTPS dashboard origin, connect one
+least-privilege app, and verify disconnect stops the next request. For MCP
+writes, preview a fictional project with another writer’s pending draft and
+confirm the preview includes the whole project before publishing.

@@ -3,16 +3,23 @@ title: 'Production environment variables'
 description: 'Look up the production image, origin, domain, secret, storage, authentication, email, proxy, worker, and lifecycle settings Nibleaf consumes.'
 audience: 'self-hosted operators and infrastructure reviewers'
 content_type: 'reference'
-last_reviewed: '2026-11-06'
-verified_against: '.env.production.example, docker-compose.prod.yml, and apps/server/src/env.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/*/src/env*.ts, apps/server/src/lib/env-extras.ts, packages/*/src/keys*.ts, compose files, and docker-entrypoint.sh'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'reference/environment-variables'
 ---
 
 Start from `.env.production.example` shipped with the release. This page explains
-the setting groups, but the template and Compose file determine what that release
-actually consumes. Never commit a populated `.env`.
+the setting groups for the current source. The pinned v0.2.0 Compose file and
+its image have a separate release boundary. Never commit a populated `.env`.
+
+The first tables use production Compose defaults unless marked otherwise. The
+search, analytics, connection, and logging tables below give **schema defaults**.
+An empty value is treated as unset by the env schemas. Optional means the
+process can parse without it; a feature may still require it. A value in `.env`
+does not reach a container unless Compose passes it in `environment` or
+`env_file`. See the release wiring notes at the end before changing a setting.
 
 ## Image and public application
 
@@ -24,10 +31,10 @@ actually consumes. Never commit a populated `.env`.
 | `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
 | `APP_PORT` | No | `4310` | Host port mapped to the app container. |
 | `BETTER_AUTH_URL` | No | `APP_URL` | Explicit authentication base override. |
-| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. Include both `APP_URL` and `ADMIN_URL` when the admin console is exposed so native support impersonation can begin there. |
-| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. Include both `APP_URL` and `ADMIN_URL` when the admin console calls the shared API directly. |
+| `TRUSTED_ORIGINS` | No | `APP_URL` | Comma-separated authentication origins. Include both `APP_URL` and `ADMIN_URL` when the operator console is exposed so native support impersonation can begin there. |
+| `CORS_ALLOWED_ORIGINS` | No | `APP_URL` | Comma-separated API origins. Include both `APP_URL` and `ADMIN_URL` when the operator console calls the shared API directly. |
 | `PINO_LOG_LEVEL` | No | `info` in production | Minimum structured log level. |
-| `PINO_LOG_FILE` | No | Empty | Optional JSONL disk destination in addition to terminal output. Mount the parent directory to persist container logs. |
+| `PINO_LOG_FILE` | No | Empty | Deprecated compatibility setting in current source: only its parent directory selects the evlog file drain; the requested filename is not preserved. Prefer `EVLOG_FS_DIR`. Mount the directory to persist logs. |
 
 ## Published documentation domains
 
@@ -92,13 +99,13 @@ Both variables must be present and non-blank after trimming surrounding whitespa
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `OPENROUTER_API_KEY` | Only for AI features | Empty | Enables editor drafting, embeddings, and optional grounded answers through OpenRouter. |
+| `OPENROUTER_API_KEY` | For editor drafting or instance-managed AI | Empty | Instance OpenRouter credential for drafting, embeddings and answers. A selected workspace search connection uses its own saved key. |
 | `AI_DRAFT_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model used for explicit editor writing actions. |
-| `AI_DAILY_LIMIT` | No | Application default | Per-workspace daily AI request limit; `0` disables drafting. |
+| `AI_DAILY_LIMIT` | No | `50` | Per-workspace daily editor-drafting request limit; `0` disables drafting. |
 | `MARKETING_GTM_ID` | No | Empty | Preferred GTM container ID for public instance marketing pages. It is public metadata and loads only after explicit visitor consent. Configure the GA4 Google tag in GTM with automatic pageviews disabled; Nibleaf pushes one manual `page_view` per accepted route plus allowlisted events. This variable takes precedence over `MARKETING_GA4_ID`. |
 | `MARKETING_GA4_ID` | No | Empty | Legacy direct-GA4 fallback for existing self-hosters. It loads only after explicit consent and is ignored when `MARKETING_GTM_ID` is configured. |
-| `RATE_LIMIT_PUBLIC_PER_MIN` | No | Application default | Public site-serving requests per address per minute. |
-| `TRUSTED_PROXY_HOPS` | No | `0` | Count of trusted public proxies that append to the forwarding chain. |
+| `RATE_LIMIT_PUBLIC_PER_MIN` | No | `300` | Public site-serving requests per address per minute. |
+| `TRUSTED_PROXY_HOPS` | No | `0` | Number of addresses after the client in `X-Forwarded-For`, private ones included. Set the same value on the app and API; see [how to count them](/self-hosting/troubleshooting#readers-see-too-many-requests). |
 
 ### GTM container contract
 
@@ -157,7 +164,7 @@ include `git`.
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` | To create project webhook connections | None | Independent 32-byte base64 key for versioned AES-256-GCM credential envelopes and purpose-separated HMAC digests. Do not reuse the Git key. |
+| `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` | For webhook and workspace AI credentials | None | Independent 32-byte base64 key for versioned AES-256-GCM credential envelopes and purpose-separated HMAC digests. Do not reuse the Git key. |
 | `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS` | During key rotation only | Empty | Comma-separated prior integration keys accepted for decrypt and digest lookup during a bounded dual-read window. |
 | `INTEGRATION_CONFIRMATION_TTL_SECONDS` | No | `300` | Lifetime of a one-time, revision-bound integration delete confirmation; accepted range is 60–1800 seconds. |
 | `INTEGRATION_CONFIRMATION_RETENTION_HOURS` | No | `24` | Retention for consumed confirmation tombstones before bounded cleanup; accepted range is 1–168 hours. Expired unconsumed challenges are removed on the next project challenge. |
@@ -176,3 +183,162 @@ Follow the rotation and rollback procedure in [Integrations engine](/reference/i
 
 After changing origins, secrets, or storage, recreate the affected services and
 repeat the workflow checks in [production readiness](/self-hosting/production).
+
+## Search and answer runtime
+
+| Variable | Schema default | Requirement and effect |
+| --- | --- | --- |
+| `QDRANT_URL` | `unset` | Required for hybrid retrieval; HTTP(S) Qdrant endpoint. |
+| `QDRANT_API_KEY` | `unset` | Optional client key; provision authentication on Qdrant itself too. |
+| `QDRANT_COLLECTION_ALIAS` | `nibleaf_search_active` | Stable read alias; letters, digits, underscore and hyphen only. |
+| `QDRANT_COLLECTION_VERSION` | `v1` | Physical collection generation; v followed by a positive integer. |
+| `QDRANT_VECTOR_SIZE` | `1536` | Dense-vector dimensions, 64–8192; must match embedding dimensions. |
+| `QDRANT_TIMEOUT_MS` | `8000` | Qdrant request timeout, 250–120000 ms. |
+| `SEARCH_RUNTIME` | `shadow` | legacy returns Orama; shadow returns Orama while evaluating hybrid; hybrid uses Qdrant. |
+| `SEARCH_FUZZY_TOLERANCE` | `2` | Typo tolerance, 0–3; shorter query tokens use less tolerance. |
+| `SEARCH_EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Instance-owned model for API retrieval and worker indexing. |
+| `SEARCH_EMBEDDING_DIMENSIONS` | `1536` | Embedding width, 64–8192; changing it requires a compatible new collection. |
+| `SEARCH_EMBEDDING_TIMEOUT_MS` | `20000` | Embedding provider timeout, 500–120000 ms. |
+| `SEARCH_CANDIDATE_LIMIT` | `48` | Retrieval candidates, 10–200. |
+| `SEARCH_DENSE_MIN_SCORE` | `0.35` | Cosine-score threshold before rank fusion, -1 to 1. |
+| `SEARCH_CACHE_TTL_MS` | `60000` | Search cache lifetime, 0–3600000 ms. |
+| `SEARCH_ANSWER_ENABLED` | `false` | Enables instance-managed answers; workspace selection and site opt-in are separate. |
+| `SEARCH_ANSWER_MODEL` | `openai/gpt-5.6-luna` | Instance answer model; a selected workspace connection has its own model. |
+| `SEARCH_ANSWER_TIMEOUT_MS` | `30000` | Answer provider timeout, 1000–120000 ms. |
+| `SEARCH_ANSWER_DAILY_PER_PROJECT` | `200` | Daily project answer quota, 0–100000; each chat question also counts. |
+| `SEARCH_ANSWER_RATE_LIMIT_PER_MIN` | `10` | Per-IP minute limit, 1–1000; separate buckets for answer and chat routes. |
+| `SEARCH_ANSWER_MIN_CONFIDENCE` | `0.2` | Minimum retrieval confidence for an answer, 0–1. |
+| `SEARCH_CHAT_MAX_TURNS` | `20` | Questions per conversation, 1–200. |
+| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `150000` | Conversation token budget, 1000–10000000. The current search overlay and production example set 60000 instead; set 150000 explicitly for the schema default. |
+| `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | UTC-day project token budget, 0–1000000000; 0 disables this budget. |
+| `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Prior messages supplied per turn, 0–12. |
+| `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated history token cap, 0–16000. |
+| `SEARCH_CHAT_UTILITY_MODEL` | `unset` | Optional OpenRouter rewrite/suggestions model, 1–120 characters; unset uses the answer model. |
+| `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS` | `15000` | Suggestions timeout after the checked answer, 1000–60000 ms. |
+
+## Analytics and conversation storage
+
+| Variable | Schema default | Requirement and effect |
+| --- | --- | --- |
+| `ANALYTICS_MODE` | `disabled` | disabled, dual_write, shadow_read or clickhouse; see the staged analytics guide. |
+| `ANALYTICS_HASH_SALT` | `unset` | Required for ClickHouse event ingestion; missing salt drops events. Preserve the existing secret. |
+| `CLICKHOUSE_URL` | `http://localhost:8123` | ClickHouse HTTP endpoint; source containers use http://clickhouse:8123. |
+| `CLICKHOUSE_DATABASE` | `nibleaf_analytics` | Database name: letter or underscore first, then letters, digits or underscore; at most 63 characters. |
+| `CLICKHOUSE_READER_USERNAME` | `default` | SELECT identity; provision the user and grants separately. |
+| `CLICKHOUSE_READER_PASSWORD` | `unset` | Reader password; optional in schema, required when the server user requires it. |
+| `CLICKHOUSE_WRITER_USERNAME` | `default` | Writer identity; worker also needs reads, erasure, and DDL if boot migrations are on. |
+| `CLICKHOUSE_WRITER_PASSWORD` | `unset` | Writer password; keep it in deployment secrets. |
+| `CLICKHOUSE_REQUEST_TIMEOUT_MS` | `5000` | Transport deadline, 250–60000 ms. |
+| `CLICKHOUSE_MAX_BATCH_SIZE` | `500` | Maximum events per batch, 1–10000. |
+| `CLICKHOUSE_MAX_BUFFERED_EVENTS` | `10000` | Buffer bound, 100–100000 events; not a replacement for durable queues. |
+| `CLICKHOUSE_FLUSH_INTERVAL_MS` | `1000` | Batch flush interval, 25–30000 ms. |
+| `CLICKHOUSE_RAW_RETENTION_DAYS` | `180` | Human raw-event retention, 7–730 days. |
+| `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | `90` | Crawler raw-event retention, 7–730 days. |
+| `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | `730` | Aggregate retention, 30–3650 days. |
+| `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | `30` | Opted-in public search-text retention, 1–90 days. |
+| `CLICKHOUSE_MIGRATE_ON_BOOT` | `true` | Worker retries schema migrations in the background; false needs a migration operator. |
+| `AI_CONVERSATION_ENCRYPTION_KEY` | `unset` | Optional 32-byte base64 queue-encryption key on API and worker; otherwise derived from the integration key. With neither key, no conversation text is saved. |
+| `AI_CONVERSATION_RETENTION_DAYS` | `90` | Conversation turns and feedback TTL, 1–365 days; same value on API, worker and migration CLI. |
+
+## Connections, processes, and queues
+
+| Variable | Schema default | Requirement and effect |
+| --- | --- | --- |
+| `NODE_ENV` | `development` | development, test or production; the official image uses production. |
+| `POSTGRES_URL` | `postgresql://nibleaf:nibleaf@localhost:5442/nibleaf` | Direct-process development default only. Production Compose constructs it from POSTGRES_PASSWORD and postgres:5432; do not use development credentials in production. |
+| `REDIS_HOST` | `localhost` | Queue host; production Compose fixes it to dragonfly. |
+| `REDIS_PORT` | `6379` | Queue port; production Compose fixes it to 6379. |
+| `REDIS_PASSWORD` | `unset` | Optional queue authentication. |
+| `REDIS_DB` | `0` | Queue database number. |
+| `QUEUE_CLUSTER` | `true` | Hash-tags queue names; keep consistent with Dragonfly hashtag locking. |
+| `WORKER_QUEUES` | `empty` | Comma-separated worker allowlist; empty runs all queues. Include export, git, analytics, search and erasure as needed. |
+| `PUBLISH_CONCURRENCY` | `2` | Publish jobs per worker. |
+| `SEARCH_CONCURRENCY` | `4` | Search/index jobs per worker. |
+| `EMAIL_CONCURRENCY` | `3` | Email jobs per worker. |
+| `ANALYTICS_CONCURRENCY` | `10` | Analytics jobs per worker. |
+| `APP_NAME` | `Nibleaf` | API application name. |
+| `API_PORT` | `4311` | API listener; fixed to 4311 by production Compose. |
+| `WORKER_PORT` | `4312` | Worker listener; fixed to 4312 by production Compose. |
+| `API_URL` | `http://localhost:4311` | API origin; production Compose uses http://server:4311. |
+| `PORT` | `4310 / 4315` | Dashboard/admin listener respectively; separate from the host APP_PORT mapping. |
+| `NITRO_PORT` | `unset` | Optional Nitro listener override for app/admin. |
+| `SERVICE_NAME` | `nibleaf-api / nibleaf` | API health label / logger default respectively. |
+| `ALLOW_SEED` | `unset` | Explicit opt-in for the production seed guard; migration entrypoint passes 1 only when seeding was requested. |
+| `CDN_URL` | `unset` | Optional public asset CDN base in the storage package. |
+
+## Current-source logging and frontend builds
+
+| Variable | Schema default | Requirement and effect |
+| --- | --- | --- |
+| `EVLOG_LOG_LEVEL` | `info / debug` | Production / development fallback; error, warn, info, debug or silent. Overrides PINO_LOG_LEVEL. |
+| `EVLOG_FS_DIR` | `unset` | Optional JSONL drain directory; overrides the parent directory from PINO_LOG_FILE. |
+| `EVLOG_FS_MAX_FILES` | `14` | Positive number of retained drain files. |
+| `EVLOG_FS_MAX_SIZE_BYTES` | `10000000` | Positive maximum size per drain file. |
+| `VITE_APP_URL` | `https://nibleaf.com` | Build-time public URL; localhost:4310 in development. Admin server also accepts a runtime override. Never put secrets in VITE_ variables. |
+| `VITE_ADMIN_URL` | `https://admin.nibleaf.com` | App build-time admin URL; localhost:4315 in development. |
+| `VITE_GITHUB_URL` | `https://github.com/lord007tn/nibleaf` | App build-time repository link. |
+| `VITE_SITE_BASE_DOMAIN` | `unset` | Optional app build-time project-domain value. |
+
+## Check release wiring before applying settings
+
+The pinned `docker-compose.prod.yml` for v0.2.0 has no ClickHouse or Qdrant
+service. It does not pass analytics variables, search variables,
+`AI_DRAFT_MODEL`, `MCP_WRITE_RATE_LIMIT_PER_MIN`,
+`MCP_PUBLISH_RATE_LIMIT_PER_HOUR`, `WORKER_QUEUES`, export tuning, or the new
+`EVLOG_*` settings. The corresponding values in `.env.production.example` are
+not proof that they reach a service. A newer setting also requires an image
+that implements it; adding an environment variable cannot add a feature to an
+older image.
+
+For a reviewed current-source deployment, put missing settings in a separate
+Compose override. For example, this `docker-compose.operator.yml` passes two
+MCP controls and a worker queue allowlist (the listed queues enable all current
+workers):
+
+```yaml
+services:
+  server:
+    environment:
+      MCP_WRITE_RATE_LIMIT_PER_MIN: ${MCP_WRITE_RATE_LIMIT_PER_MIN:-20}
+      MCP_PUBLISH_RATE_LIMIT_PER_HOUR: ${MCP_PUBLISH_RATE_LIMIT_PER_HOUR:-6}
+  worker:
+    environment:
+      WORKER_QUEUES: ${WORKER_QUEUES:-publish,search,email,analytics,export,git,erasure}
+```
+
+Include that file in every subsequent operation:
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.operator.yml config --services
+docker compose -f docker-compose.prod.yml -f docker-compose.operator.yml up -d
+```
+
+In an installer directory use `docker-compose.yml` as the first file. Keep any
+search or analytics overrides in the same command as well. Do not publish the
+full rendered configuration; it contains secrets.
+
+`docker-compose.search.yml` adds Qdrant and a subset of search/chat variables to
+API and worker. It does not configure authentication on the Qdrant service when
+you set only the client-side `QDRANT_API_KEY`. Provision the server key too before
+exposing Qdrant. `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS` and several advanced search
+knobs are not passed by that overlay; add explicit environment mappings if you
+change them. Its 60000-token cap differs from the schema default above.
+
+Source quickstart (`docker-compose.yml`) and Coolify include ClickHouse, backup
+disk configuration and the `analytics-tools` profile. Their bootstrap settings
+include `CLICKHOUSE_USERNAME` / `CLICKHOUSE_PASSWORD` (quickstart fallback
+`nibleaf` / `nibleaf`), or `SERVICE_PASSWORD_64_CLICKHOUSE` (required in Coolify).
+These create service credentials; the app uses reader/writer variables instead.
+Do not use quickstart credentials for a public deployment.
+
+Coolify also uses `NIBLEAF_IMAGE_TAG` (fallback `latest`),
+`SERVICE_USER_POSTGRES`, `SERVICE_PASSWORD_64_POSTGRES`, `POSTGRES_DB` (fallback
+`nibleaf`), `SERVICE_HEX_64_NIBLEAF`, and storage fallbacks `SERVICE_USER_STORAGE`
+and `SERVICE_PASSWORD_64_STORAGE`. Set an explicit image tag and keep the generated
+secrets. These are Compose inputs, not app schema variables. Review that file
+before moving a portable `.env` into Coolify.
+
+After recreating services, verify their actual behavior: health, an upload,
+publishing, search, and any optional feature you enabled. A parsed environment
+or a passing health endpoint does not prove mail delivery, AI provider credit,
+index quality, or backup recovery.

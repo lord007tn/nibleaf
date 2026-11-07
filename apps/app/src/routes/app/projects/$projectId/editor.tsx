@@ -200,14 +200,12 @@ function EditorPage() {
   };
 
   // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
-  const onUploadImage = async (file: File): Promise<string | null> => {
-    try {
-      return (await uploadAsset.mutateAsync(file)).url;
-    } catch {
-      toast.error(t('editor.imageUploadFailed'));
-      return null;
-    }
-  };
+  const onUploadImage = async (
+    file: File,
+    onProgress?: (percent: number) => void,
+    signal?: AbortSignal,
+    onFinishing?: () => void,
+  ): Promise<string | null> => (await uploadAsset.mutateAsync({ file, onProgress, signal, onFinishing })).url;
 
   // Languages ordered default-first, then by position; pages grouped per language.
   const orderedLanguages = useMemo<Language[]>(
