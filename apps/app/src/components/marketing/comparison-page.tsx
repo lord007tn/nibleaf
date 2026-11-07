@@ -14,6 +14,8 @@ const featureSources: Record<string, { label: string; href: string }[]> = {
     { label: 'Analytics on Pro/Enterprise', href: 'https://www.mintlify.com/docs/analytics' },
     { label: 'GitLab', href: 'https://www.mintlify.com/docs/deploy/gitlab' },
     { label: 'Bitbucket Cloud', href: 'https://www.mintlify.com/docs/deploy/bitbucket' },
+    { label: 'Multi-repo on Enterprise', href: 'https://www.mintlify.com/docs/deploy/multi-repo' },
+    { label: 'Self-hosting on Enterprise (pricing)', href: 'https://www.mintlify.com/pricing' },
   ],
   GitBook: [
     { label: 'Plans and capabilities', href: 'https://www.gitbook.com/pricing' },

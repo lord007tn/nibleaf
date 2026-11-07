@@ -38,6 +38,19 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     ],
   },
   {
+    title: 'AI and support (rolling out)',
+    rows: [
+      {
+        label: 'Ask AI reader chat with section citations',
+        cloud: 'Rolling out; per-site opt-in',
+        self: 'Next release; workspace or instance AI provider key, site opt-in, optional Qdrant',
+      },
+      { label: 'Workspace OpenAI/OpenRouter keys', cloud: 'Rolling out', self: 'Next release; needs the credential encryption key' },
+      { label: 'Support MCP with Read only, Support writer, and Full admin presets', cloud: 'Rolling out', self: 'Next release; off by default' },
+      { label: 'Docs-owner insights', cloud: 'Rolling out', self: 'Next release; advanced insights need optional ClickHouse' },
+    ],
+  },
+  {
     title: 'Languages',
     rows: [
       { label: 'English and Arabic authoring with RTL; 12 interface locales, with some strings still in English', cloud: true, self: true },
@@ -166,12 +179,10 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <Eyebrow>What's included</Eyebrow>
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities. Ask AI reader chat, workspace
-              OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release
-              and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when
-              self-hosting. Insights need optional ClickHouse when self-hosting. MCP is off by default for self-hosters and can draft, edit, move,
-              translate, set visibility, and publish only after a confirmed preview, using Read only / Support writer / Full admin presets and OAuth
-              sign-in or expiring personal keys. The editor writing assistant uses the instance key.
+              Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities in both. The AI and support rows are in the
+              open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. MCP can draft, edit, move,
+              translate, set visibility, and publish only after a confirmed preview, with OAuth sign-in or expiring personal keys. The editor writing
+              assistant uses the instance key.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

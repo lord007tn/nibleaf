@@ -141,7 +141,7 @@ const mintlifyPricing: PricingTable = {
       plan: 'Enterprise',
       price: 'Custom',
       includes:
-        'Automations, SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration and support. Static export is available by request on Enterprise.',
+        'Automations, SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration and support. The pricing page lists self-hosting on Enterprise only; multi-repository projects and Bitbucket Cloud also need Enterprise. Static export is available by request on Enterprise.',
     },
   ],
   note: 'Mintlify meters AI features with credits — its pricing page lists 10,000 credits/month included and $0.01 per credit for overages. Enterprise static export produces independent HTML/CSS/JS output by request. A headless custom frontend is a separate option that can use managed content, search, and AI services.',
@@ -228,7 +228,7 @@ export const nibleafVsMintlify: Comparison = {
   heading: 'Nibleaf vs Mintlify',
   breadcrumbName: 'Nibleaf vs Mintlify',
   directAnswer: [
-    'Mintlify is a polished managed platform with API tooling, a headless frontend option, and Enterprise static export available by request. Nibleaf offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
+    'Mintlify is a polished managed platform with API tooling and a headless frontend option. Its Enterprise plan lists self-hosting, and static export is available by request. Nibleaf offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
@@ -236,7 +236,9 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'Public self-hosting',
       nibleaf: yes('AGPL-3.0 source and Docker Compose deployment configuration'),
-      competitor: partial('Enterprise static export by request; headless frontends can use managed services'),
+      competitor: partial(
+        'Self-hosting is listed on Enterprise only; Enterprise static export by request; headless frontends can use managed services',
+      ),
     },
     {
       feature: 'WYSIWYG editor over plain Markdown',
@@ -284,7 +286,7 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'Git providers',
       nibleaf: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
-      competitor: yes('GitHub and GitLab; Bitbucket Cloud is Enterprise-only'),
+      competitor: yes('GitHub and GitLab; Bitbucket Cloud and multi-repository projects are Enterprise-only'),
     },
     {
       feature: 'Custom components, CSS, and JavaScript',
@@ -314,7 +316,7 @@ export const nibleafVsMintlify: Comparison = {
     title: 'When to pick Mintlify instead',
     reasons: [
       'You want a managed AI assistant and agent on Pro, with credit-based usage. Nibleaf Ask AI requires a configured provider and site opt-in.',
-      'You need real-time co-editing or GitLab/Bitbucket workflows; confirm provider availability for your plan.',
+      'You need real-time co-editing or GitLab workflows, or, on Enterprise, Bitbucket Cloud, multi-repository projects, or self-hosting.',
       'You need arbitrary custom components and runtime CSS or JavaScript, adaptive content, or a broad catalog of managed integrations.',
       'You need SSO, SCIM, and enterprise compliance guarantees today.',
     ],
@@ -330,7 +332,7 @@ export const nibleafVsMintlify: Comparison = {
     ],
   },
   verdict: [
-    'Mintlify is the more mature product today. Its free Starter plan includes a custom domain, web editor, MCP server, and API playground; Pro adds its assistant and agent. It documents Arabic localization, headless frontends using managed services, and Enterprise static export by request. Validate the RTL editing and reader layouts your team needs in a trial.',
+    'Mintlify is the more mature product today. Its free Starter plan includes a custom domain, web editor, MCP server, and API playground; Pro adds its assistant and agent. It documents Arabic localization, headless frontends using managed services, and Enterprise static export by request, and its pricing page lists self-hosting on Enterprise. Validate the RTL editing and reader layouts your team needs in a trial.',
     'Nibleaf is strongest on full-stack self-hosting, browser-based Markdown editing, multilingual and RTL authoring, a focused bidirectional GitHub workflow, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on real-time collaboration, provider breadth, custom runtime components, integrations, personalization, and enterprise identity governance.',
   ],
   faqs: [
@@ -340,7 +342,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'Is Mintlify open source?',
-      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. Nibleaf’s public source repository are licensed under AGPL-3.0 and can be installed with Docker Compose.',
+      a: 'The Mintlify platform is closed source, although some components are open source. Its pricing page lists self-hosting on Enterprise only. Nibleaf’s public source repository is licensed under AGPL-3.0 and can be installed with Docker Compose.',
     },
     {
       q: 'How much does Mintlify cost?',
@@ -352,7 +354,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'Nibleaf does not currently provide live multi-user co-editing, two-way GitLab or Bitbucket authoring, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
+      a: 'Nibleaf does not currently provide live multi-user co-editing, two-way GitLab or Bitbucket authoring, multi-repository projects (a Nibleaf site syncs with one repository), arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
     },
   ],
 };
@@ -470,7 +472,7 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       q: 'Can I self-host GitBook?',
-      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook discourages this path and cannot guarantee support, maintenance, or updates. The hosted workspace and editor are not included. Nibleaf publishes its full AGPL-3.0 stack, Docker Compose deployment configuration for self-hosting.',
+      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook discourages this path and cannot guarantee support, maintenance, or updates. The hosted workspace and editor are not included. Nibleaf publishes its full AGPL-3.0 stack and Docker Compose deployment configuration for self-hosting.',
     },
     {
       q: 'Does Nibleaf have git sync like GitBook?',
@@ -594,7 +596,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       q: 'Can I self-host Nibleaf and Docusaurus?',
-      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full-stack application with public source, Docker Compose deployment configuration.',
+      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full-stack application with public source and Docker Compose deployment configuration.',
     },
     {
       q: 'Which is better for non-developers?',
@@ -632,7 +634,7 @@ const scalarEntry: AlternativeEntry = {
   name: 'Scalar',
   url: 'https://scalar.com',
   description:
-    'API-first documentation: interactive references generated from OpenAPI/AsyncAPI documents, Markdown/MDX guides, and two-way git sync. Its API client is open source, and hosted plans are available.',
+    'API-first documentation: interactive references generated from OpenAPI/AsyncAPI documents, Markdown/MDX guides, and two-way git sync. Its API client is open source (MIT), and its pricing page lists Free, Pro, Business, and Enterprise plans.',
   bestFor: 'Teams whose documentation is primarily an API reference.',
 };
 
@@ -648,7 +650,7 @@ const mintlifyEntry: AlternativeEntry = {
   name: 'Mintlify',
   url: 'https://www.mintlify.com',
   description:
-    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground) and Pro with an assistant, agent and previews, and Enterprise with SSO and request-only static export; headless frontends can use managed services, as of November 7, 2026.',
+    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground), Pro with an assistant, agent, and previews, and Enterprise with SSO, self-hosting, and static export by request. Headless frontends can use managed services. As of November 7, 2026.',
   bestFor: 'API-heavy startup docs where AI tooling and an API playground matter most.',
 };
 
@@ -713,7 +715,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'Can I self-host a GitBook alternative?',
-      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf publishes its full AGPL-3.0 stack, Docker Compose deployment configuration.',
+      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf publishes its full AGPL-3.0 stack and Docker Compose deployment configuration.',
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',

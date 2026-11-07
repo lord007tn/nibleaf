@@ -9,7 +9,7 @@ const origin = 'https://nibleaf.example';
 describe('machine-readable marketing copy', () => {
   it.each([marketingLlms, marketingLlmsFull, marketingPricingMarkdown])('%s keeps product claims current and qualified', (render) => {
     const text = render(origin);
-    expect(text).not.toMatch(/v0\.2|read-only|atomic|public read access only|round-trip losslessly/i);
+    expect(text).not.toMatch(/v0\.2|read-only|atomic|public read access only|round-trips? losslessly|queues a new publish/i);
     expect(text).toContain('draft, edit, move, translate, set visibility, and publish only after a confirmed preview');
     expect(text).toContain('Read only / Support writer / Full admin');
     expect(text).toContain('OAuth sign-in or expiring personal keys');
@@ -19,7 +19,8 @@ describe('machine-readable marketing copy', () => {
     expect(text).toContain('optional Qdrant service');
     expect(text).toContain('optional ClickHouse');
     expect(text).toContain('editor writing assistant separately uses the instance key');
-    expect(text).toContain('Rollback queues a new publish of an earlier snapshot');
+    expect(text).toContain('Rollback creates a new ready deployment from an earlier published snapshot');
+    expect(text).toContain('SEARCH_ANSWER_ENABLED=true');
     expect(text).toContain('No paid cloud plan is offered today');
     expect(text).toContain('no card at sign-up');
   });

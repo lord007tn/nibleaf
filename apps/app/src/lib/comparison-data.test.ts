@@ -22,8 +22,8 @@ describe('competitor facts', () => {
   it('describes vendor capabilities without stale feature gaps', () => {
     expect(serialized).toContain('Analytics on Pro/Enterprise');
     expect(serialized).toContain('Enterprise static export by request');
-    expect(serialized).toContain('Bitbucket Cloud is Enterprise-only');
-    expect(serialized).not.toContain('Enterprise multi-repo');
+    expect(serialized).toContain('Bitbucket Cloud and multi-repository projects are Enterprise-only');
+    expect(serialized).toContain('Self-hosting is listed on Enterprise only');
     expect(serialized).not.toContain('not recommended or supported');
   });
 
