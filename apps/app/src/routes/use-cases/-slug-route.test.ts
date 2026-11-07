@@ -8,7 +8,7 @@ vi.mock('@/functions/marketing', () => ({ getGithubStarsFn: vi.fn(async () => 7)
 import { Route as ArabicRoute } from '../ar/use-cases/$slug';
 import { Route as EnglishRoute } from './$slug';
 
-type Loader = (input: { params: { slug: string } }) => Promise<{ meta: { slug: string; title: string }; stars: number }>;
+type Loader = (input: { params: { slug: string } }) => Promise<{ slug: string; head: unknown; stars: number }>;
 type Head = (input: { loaderData?: unknown }) => {
   meta?: Record<string, string>[];
   links?: { rel: string; hrefLang?: string; href: string }[];
@@ -31,7 +31,7 @@ describe.each([
     const data = await loader({ params: { slug: 'support-teams' } });
     const copy = copies['support-teams'];
     expect(data.stars).toBe(7);
-    expect(data.meta.title).toBe(copy.meta.title);
+    expect(data.slug).toBe('support-teams');
 
     const result = head({ loaderData: data });
     const path = `${lang === 'ar' ? '/ar' : ''}/use-cases/support-teams`;
