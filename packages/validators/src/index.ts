@@ -690,6 +690,9 @@ export type CreateDeploymentBody = z.infer<typeof createDeploymentBody>;
 
 // ─── Domain ──────────────────────────────────────────────────────────────—
 
+/** Longest pasted value worth reading; a full URL to a custom domain is far shorter. */
+const MAX_DOMAIN_INPUT_LENGTH = 2048;
+
 /** A hostname of dot-separated DNS labels (`docs.example.com`), lower case and punycoded. */
 export const DOMAIN_NAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 
@@ -705,9 +708,14 @@ export const normalizeDomainInput = (raw: string): string => {
   // Spaces around a dot are a typo (`docs . example.com`); any other whitespace in
   // the host separates two words, so it is kept for the pattern to reject rather
   // than silently connecting a different domain (`docs example.com` ≠ `docsexample.com`).
+  // Splitting on dots and trimming each part closes those spaces up in linear time;
+  // the input is capped first because nothing longer can be a valid domain or URL.
   let value = raw
+    .slice(0, MAX_DOMAIN_INPUT_LENGTH)
     .trim()
-    .replace(/\s*\.\s*/g, '.')
+    .split('.')
+    .map((part) => part.trim())
+    .join('.')
     .toLowerCase();
   value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
   // Trim again: a space before the path (`docs.example.com /help`) is not part of the host.

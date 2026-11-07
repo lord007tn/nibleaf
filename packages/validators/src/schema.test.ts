@@ -341,6 +341,27 @@ describe('addDomainBody', () => {
     expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '*.example.com' }).success).toBe(false);
   });
+
+  it('closes up whitespace around every dot, including tabs and no-break spaces', () => {
+    expect(normalizeDomainInput(' docs . example . com ')).toBe('docs.example.com');
+    expect(normalizeDomainInput('docs\t. example.com')).toBe('docs.example.com');
+    expect(normalizeDomainInput('docs .example. com/help')).toBe('docs.example.com');
+  });
+
+  it('stays fast on long runs of whitespace and dots', () => {
+    const hostile = `a${' '.repeat(50_000)}.${' '.repeat(50_000)}`.repeat(4);
+    const started = performance.now();
+    const value = normalizeDomainInput(hostile);
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(addDomainBody.safeParse({ domain: hostile }).success).toBe(false);
+    expect(value.length).toBeLessThanOrEqual(2048);
+  });
+
+  it('reads at most 2,048 characters of a paste', () => {
+    const long = `docs.example.com/${'x'.repeat(5000)}`;
+    expect(normalizeDomainInput(long)).toBe('docs.example.com');
+    expect(normalizeDomainInput('a'.repeat(5000)).length).toBe(2048);
+  });
 });
 
 describe('transferOwnershipBody', () => {
