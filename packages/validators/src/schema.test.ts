@@ -14,6 +14,7 @@ import {
   inviteReaderBody,
   jwtAccessConfigBody,
   languageConfigSchema,
+  normalizeDomainInput,
   pageConfigSchema,
   paginationQuery,
   presignAssetBody,
@@ -295,11 +296,71 @@ describe('addDomainBody', () => {
     expect(parsed.success && parsed.data.domain).toBe('docs.example.com');
   });
 
+  it.each([
+    'https://docs.example.com/',
+    'HTTPS://DOCS.EXAMPLE.COM',
+    'http://docs.example.com/help/getting-started?ref=nav#top',
+    'docs.example.com/',
+    'docs.example.com.',
+    'docs.example.com:443',
+    ' docs . example.com ',
+    '//docs.example.com',
+    'https://user:pass@docs.example.com',
+  ])('accepts the address copied from a browser or a colleague: %s', (domain) => {
+    const parsed = addDomainBody.safeParse({ domain });
+    expect(parsed.success && parsed.data.domain).toBe('docs.example.com');
+  });
+
+  it('punycodes internationalized domain names', () => {
+    expect(normalizeDomainInput('Docs.Bücher.de')).toBe('docs.xn--bcher-kva.de');
+  });
+
   it('rejects non-domains', () => {
+    expect(addDomainBody.safeParse({ domain: 'https://' }).success).toBe(false);
+    expect(addDomainBody.safeParse({ domain: 'docs example' }).success).toBe(false);
+  });
+
+  it('never joins two words into a different domain', () => {
+    expect(normalizeDomainInput('docs example.com')).toBe('docs example.com');
+    expect(addDomainBody.safeParse({ domain: 'docs example.com' }).success).toBe(false);
+    for (const whitespace of ['\t', '\r', '\n', '\r\n', '\u00a0']) {
+      const domain = `docs${whitespace}example.com`;
+      expect(addDomainBody.safeParse({ domain }).success, JSON.stringify(domain)).toBe(false);
+      expect(normalizeDomainInput(domain)).not.toBe('docsexample.com');
+    }
+    // Whitespace before a path or query belongs to neither the host nor the words around it.
+    for (const domain of ['docs.example.com /', 'docs.example.com\t/help', 'https://docs.example.com ?ref=nav', 'docs.example.com\n#top']) {
+      expect(normalizeDomainInput(domain), JSON.stringify(domain)).toBe('docs.example.com');
+    }
+    expect(addDomainBody.safeParse({ domain: 'docs example.com /' }).success).toBe(false);
+    // A stray newline at the end of a paste is still fine.
+    expect(normalizeDomainInput('docs.example.com\r\n')).toBe('docs.example.com');
+    expect(addDomainBody.safeParse({ domain: 'docs.\texample.com' }).success).toBe(true);
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '*.example.com' }).success).toBe(false);
+  });
+
+  it('closes up whitespace around every dot, including tabs and no-break spaces', () => {
+    expect(normalizeDomainInput(' docs . example . com ')).toBe('docs.example.com');
+    expect(normalizeDomainInput('docs\t. example.com')).toBe('docs.example.com');
+    expect(normalizeDomainInput('docs .example. com/help')).toBe('docs.example.com');
+  });
+
+  it('stays fast on long runs of whitespace and dots', () => {
+    const hostile = `a${' '.repeat(50_000)}.${' '.repeat(50_000)}`.repeat(4);
+    const started = performance.now();
+    const value = normalizeDomainInput(hostile);
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(addDomainBody.safeParse({ domain: hostile }).success).toBe(false);
+    expect(value.length).toBeLessThanOrEqual(2048);
+  });
+
+  it('reads at most 2,048 characters of a paste', () => {
+    const long = `docs.example.com/${'x'.repeat(5000)}`;
+    expect(normalizeDomainInput(long)).toBe('docs.example.com');
+    expect(normalizeDomainInput('a'.repeat(5000)).length).toBe(2048);
   });
 });
 

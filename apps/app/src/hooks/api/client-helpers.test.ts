@@ -20,6 +20,28 @@ it('retains the concrete navigation limit for the localized import error', async
   await expect(mutateData(response, 'Import failed')).rejects.toMatchObject({ code: 'import:limit', limit: 500 });
 });
 
+it('keeps the structured details and exposes a named reason', async () => {
+  const response = Response.json(
+    {
+      error: {
+        code: 'domain:already_connected',
+        message: 'Taken',
+        details: { reason: 'scope', scope: 'same_workspace', siteName: 'Docs', demoted: true },
+      },
+    },
+    { status: 409 },
+  );
+  const error = await mutateData(response, 'Could not add the domain.').catch((caught: unknown) => caught);
+  expect(error).toBeInstanceOf(ApiResponseError);
+  expect(error).toMatchObject({ code: 'domain:already_connected', details: { scope: 'same_workspace', siteName: 'Docs', demoted: true } });
+  expect((error as ApiResponseError).reason).toBe('scope');
+});
+
+it('has no reason when the server sends none, or sends one that is not text', async () => {
+  expect(new ApiResponseError('x', 409, 'c').reason).toBeUndefined();
+  expect(new ApiResponseError('x', 409, 'c', undefined, undefined, undefined, undefined, { reason: 7 }).reason).toBeUndefined();
+});
+
 it('keeps the server details and reads their reason', async () => {
   const response = Response.json(
     { error: { code: 'database:not_found', message: 'site not found', details: { reason: 'private', identifier: 'docs' } } },
