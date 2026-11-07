@@ -14,6 +14,37 @@ const markdownText = (value?: string): string =>
     .replace(/[\r\n]+/g, ' ')
     .trim();
 
+/** Decode what a Markdown renderer would decode in a link destination
+ *  (character references, backslash escapes, ignored whitespace) before
+ *  reading its scheme. */
+const destinationForScheme = (href: string): string =>
+  href
+    .replace(/&#x([\da-f]{1,6});?/gi, (_match, hex: string) => String.fromCodePoint(Math.min(Number.parseInt(hex, 16), 0x10_ff_ff)))
+    .replace(/&#(\d{1,7});?/g, (_match, decimal: string) => String.fromCodePoint(Math.min(Number(decimal), 0x10_ff_ff)))
+    .replace(/&(colon|tab|newline);/gi, (_match, name: string) => ({ colon: ':', tab: '\t', newline: '\n' })[name.toLowerCase()] ?? '')
+    .replace(/\\([!-/:-@[-`{-~])/g, '$1')
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are ignored inside URL schemes
+    .replace(/[\u0000- \u007f]/g, '');
+
+/** True for a link destination that is relative, `#`, http(s), mailto or tel.
+ *  Angle brackets are refused: `<javascript:…>` would hide its scheme. */
+export const isSafeLinkDestination = (href: string): boolean => {
+  const decoded = destinationForScheme(href);
+  if (/[<>]/.test(decoded)) return false;
+  const scheme = /^([a-z][a-z\d+.-]*):/i.exec(decoded)?.[1]?.toLowerCase();
+  return !scheme || ['http', 'https', 'mailto', 'tel'].includes(scheme);
+};
+
+/** A projected link destination: safe, with the characters that would end a
+ *  Markdown destination (spaces, parentheses) percent-encoded, so it can't
+ *  close its link and open another. */
+const safeHref = (value?: string): string | undefined => {
+  const href = value?.trim();
+  if (!href || !isSafeLinkDestination(href)) return undefined;
+  // UTF-8 bytes, as a browser would send them: U+2003 is `%E2%80%83`, not `%2003`.
+  return href.replace(/[\s()]/g, (character) => (character === '(' ? '%28' : character === ')' ? '%29' : encodeURIComponent(character)));
+};
+
 const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {
   const pattern = new RegExp(`<${tag}\\b([^>]*)>([\\s\\S]*?)<\\/${tag}>`, 'gi');
   let current = source;
@@ -35,7 +66,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
   output = output.replace(/<RelatedCard\b([^>]*)\/>/gi, (_match, attributes: string) => {
     const title = markdownText(mdxAttribute(attributes, 'title'));
     const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = mdxAttribute(attributes, 'href')?.trim();
+    const href = safeHref(mdxAttribute(attributes, 'href'));
     return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
   });
   output = output.replace(/<Icon\b[^>]*\/>/gi, '');
@@ -59,7 +90,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
   output = mdxContainer(output, 'RelatedCard', (attributes, body) => {
     const title = markdownText(mdxAttribute(attributes, 'title'));
     const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = mdxAttribute(attributes, 'href')?.trim();
+    const href = safeHref(mdxAttribute(attributes, 'href'));
     return `${title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : ''}${body ? `\n  ${body}` : ''}`;
   });
 
@@ -78,7 +109,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
     output = mdxContainer(output, tag, (attributes, body) => {
       const title = markdownText(mdxAttribute(attributes, 'title'));
       const status = tag === 'ResponseExample' ? markdownText(mdxAttribute(attributes, 'status')) : '';
-      const href = tag === 'Card' ? mdxAttribute(attributes, 'href')?.trim() : undefined;
+      const href = tag === 'Card' ? safeHref(mdxAttribute(attributes, 'href')) : undefined;
       const label = title ? (href ? `[${title}](${href})` : title) : '';
       return `${label || status ? `${'#'.repeat(level)} ${label}${status ? ` · ${status}` : ''}\n\n` : ''}${body}`;
     });
@@ -95,7 +126,7 @@ export const portablePublicMdxMarkdown = (source: string): string => {
     return `${body}${caption ? `\n\n_${caption}_` : ''}`;
   });
   output = mdxContainer(output, 'Button', (attributes, body) => {
-    const href = mdxAttribute(attributes, 'href')?.trim();
+    const href = safeHref(mdxAttribute(attributes, 'href'));
     return href ? `[${body}](${href})` : body;
   });
   output = mdxContainer(output, 'Tooltip', (_attributes, body) => body);
