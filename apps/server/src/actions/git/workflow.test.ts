@@ -5,10 +5,10 @@ const mocks = vi.hoisted(() => {
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
     branch: { findFirst: vi.fn() },
-    gitAuditEvent: { create: vi.fn() },
+    gitAuditEvent: { count: vi.fn(), create: vi.fn() },
     gitConflict: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     gitConnection: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
-    gitFileState: { deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
+    gitFileState: { createMany: vi.fn(), deleteMany: vi.fn(), findMany: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     gitPreview: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     gitPullRequest: { upsert: vi.fn() },
     gitSyncOperation: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
@@ -52,7 +52,7 @@ vi.mock('@nibleaf/bullmq', () => ({
   QueueNames: { GIT: 'git' },
   QUEUE_CONFIGS: { git: { operationClaimTimeout: 12 * 60 * 1000 } },
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
+vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma, Prisma: { join: (values: unknown[]) => values } }));
 // The repository generator derives docs.json navigation with the real buildNavTree.
 vi.mock('@nibleaf/shared/site', async (importOriginal) => ({ ...(await importOriginal<object>()), buildSnapshot: vi.fn() }));
 vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
@@ -100,6 +100,7 @@ vi.mock('./reconcile', () => ({
 
 import { buildThemeRepository, THEME_REPOSITORY_DOCS_CONFIG_PATH, THEME_REPOSITORY_MANIFEST_PATH } from '@nibleaf/shared/theme-repository';
 import { serializeGitPage } from '../importers/content';
+import { applyGitContentChanges, type ObservedPage } from './apply';
 import { connectGitHub, processGitOperation } from './workflow';
 
 const actualContent = await vi.importActual<typeof import('../importers/content')>('../importers/content');
@@ -131,6 +132,7 @@ const rowMatches = (row: PageRow, where: Record<string, unknown> = {}) =>
     if (expected === undefined) return true;
     const actual = row[key as keyof PageRow];
     if (expected instanceof Date) return actual instanceof Date && actual.getTime() === expected.getTime();
+    if (expected && typeof expected === 'object' && 'in' in expected) return (expected as { in: unknown[] }).in.includes(actual);
     return actual === expected;
   });
 const installPageStore = () => {
@@ -157,9 +159,20 @@ const installPageStore = () => {
     return { count: rows.length };
   });
   page.deleteMany.mockImplementation(async ({ where }: { where: Record<string, unknown> }) => {
-    const before = pageStore.rows.length;
-    pageStore.rows = pageStore.rows.filter((row) => !rowMatches(row, where));
-    return { count: before - pageStore.rows.length };
+    // Page.parent is ON DELETE CASCADE: children go with their parent.
+    const matched = pageStore.rows.filter((row) => rowMatches(row, where)).map((row) => row.id);
+    const doomed = new Set(matched);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const row of pageStore.rows) {
+        if (row.parentId && doomed.has(row.parentId) && !doomed.has(row.id)) {
+          doomed.add(row.id);
+          grew = true;
+        }
+      }
+    }
+    pageStore.rows = pageStore.rows.filter((row) => !doomed.has(row.id));
+    return { count: matched.length };
   });
   page.create.mockImplementation(async ({ data }: { data: Partial<PageRow> }) => {
     const now = tick();
@@ -181,7 +194,7 @@ const installPageStore = () => {
     return { _max: { position: positions.length ? Math.max(...positions) : null } };
   });
 };
-const seedPage = (fields: Pick<PageRow, 'id' | 'title' | 'slug' | 'content'>) => {
+const seedPage = (fields: Pick<PageRow, 'id' | 'title' | 'slug' | 'content'> & Partial<Pick<PageRow, 'parentId' | 'path' | 'kind'>>) => {
   const now = tick();
   const row: PageRow = {
     projectId: 'project-1',
@@ -274,6 +287,17 @@ const operation = (status = 'QUEUED') => ({
   completedAt: null,
 });
 
+/** Every ledger row the sync wrote: bulk-created rows and updated rows. */
+const ledgerWrites = () => [
+  ...mocks.prisma.gitFileState.createMany.mock.calls.flatMap(
+    ([input]) => (input as { data: Array<{ path: string; pageId: string | null; ownership: string }> }).data,
+  ),
+  ...mocks.prisma.gitFileState.update.mock.calls.map(([input]) => {
+    const { where, data } = input as { where: { connectionId_path: { path: string } }; data: { pageId: string | null; ownership: string } };
+    return { path: where.connectionId_path.path, ...data };
+  }),
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   installPageStore();
@@ -298,6 +322,7 @@ beforeEach(() => {
   mocks.prisma.gitFileState.findMany.mockResolvedValue([]);
   mocks.prisma.gitConflict.findMany.mockResolvedValue([]);
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
+  mocks.prisma.gitAuditEvent.count.mockResolvedValue(0);
   mocks.getDefaultBranch.mockResolvedValue({ id: 'branch-1', name: 'Main' });
   mocks.getDefaultLanguage.mockResolvedValue({ id: 'language-1', code: 'en' });
   mocks.provider.getBranchSha.mockImplementation(async (_repository: string, branch: string) => (branch === 'main' ? 'base-sha' : 'head-sha'));
@@ -328,7 +353,7 @@ describe('connectGitHub', () => {
     ).rejects.toThrow(/docs\.json.*generated by Nibleaf/);
 
     expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
-    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(ledgerWrites()).toEqual([]);
   });
 });
 
@@ -352,7 +377,7 @@ describe('processGitOperation', () => {
   it('does not tombstone customer scaffolding when a pull precedes the first push', async () => {
     await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
 
-    const customerCreates = mocks.prisma.gitFileState.upsert.mock.calls.filter(([input]) => input.create.ownership === 'CUSTOMER');
+    const customerCreates = ledgerWrites().filter((row) => row.ownership === 'CUSTOMER');
     expect(customerCreates).toEqual([]);
   });
 
@@ -413,7 +438,7 @@ describe('processGitOperation', () => {
 
     await expect(processGitOperation('operation-1')).rejects.toThrow(/schema v1 .* no longer supported/);
 
-    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(ledgerWrites()).toEqual([]);
     expect(mocks.prisma.page.update).not.toHaveBeenCalled();
   });
 
@@ -447,7 +472,7 @@ describe('processGitOperation', () => {
     expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'operation-1' }, data: expect.objectContaining({ status: 'CONFLICT' }) }),
     );
-    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(ledgerWrites()).toEqual([]);
   });
 
   it('reconciles exported version and language paths back to the source page', async () => {
@@ -474,6 +499,8 @@ describe('processGitOperation', () => {
     mocks.prisma.page.findMany.mockResolvedValue([
       {
         id: page.id,
+        parentId: null,
+        kind: 'PAGE',
         title: page.title,
         path: page.path,
         content: page.content,
@@ -497,7 +524,7 @@ describe('processGitOperation', () => {
         data: expect.objectContaining({ content: 'Updated from Git' }),
       }),
     );
-    expect(mocks.prisma.gitFileState.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: expect.objectContaining({ pageId: page.id }) }));
+    expect(mocks.prisma.gitFileState.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ pageId: page.id }) }));
   });
 
   it('rejects a concurrent operation on the same connection without reconciling or marking it failed', async () => {
@@ -606,7 +633,7 @@ describe('processGitOperation applying Git changes to pages', () => {
     );
     expect(lastOperationStatus()).toContain('CONFLICT');
     expect(lastOperationStatus()).not.toContain('SUCCEEDED');
-    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(ledgerWrites()).toEqual([]);
   });
 
   it('does not delete a page that was edited after the merge read saw it unchanged', async () => {
@@ -664,7 +691,7 @@ describe('processGitOperation applying Git changes to pages', () => {
 
     expect(pageStore.rows).toHaveLength(1);
     expect(pageStore.rows[0]?.content).toBe('Original');
-    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(ledgerWrites()).toEqual([]);
     expect(String(failure)).toMatch(/nothing was changed in Nibleaf.*ar\/البدء\.mdx is outside/);
     expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED', error: expect.stringContaining('nothing was changed') }) }),
@@ -704,11 +731,136 @@ describe('processGitOperation applying Git changes to pages', () => {
       ['البدء', 'مرحبا'],
       ['النشر', 'انشر'],
     ]);
-    const ledgerPageIds = mocks.prisma.gitFileState.upsert.mock.calls
-      .map(([input]) => input as { create: { path: string; pageId: string | null } })
-      .filter((input) => input.create.path.endsWith('.mdx'))
-      .map((input) => input.create.pageId);
+    const ledgerPageIds = ledgerWrites()
+      .filter((row) => row.path.endsWith('.mdx'))
+      .map((row) => row.pageId);
     expect(new Set(ledgerPageIds).size).toBe(2);
     expect(ledgerPageIds).not.toContain(null);
+  });
+});
+
+describe('Git apply safety', () => {
+  const ledger = (path: string, baseContent: string) => ({ path, baseContent, baseExists: true, pageId: null, ownership: 'SHARED' });
+  const remote = (path: string, content: string) => ({ path, sha: `sha-${path}`, content });
+  const statuses = () =>
+    mocks.prisma.gitSyncOperation.update.mock.calls.map(([input]) => (input as { data: { status?: string } }).data.status).filter(Boolean);
+  const seedTree = () => {
+    const parent = seedPage({ id: 'page-guide', title: 'Guide', slug: 'guide', content: 'Guide' });
+    const child = seedPage({ id: 'page-setup', title: 'Setup', slug: 'setup', path: 'guide/setup', parentId: parent.id, content: 'Setup' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(parent), snapshotPage(child)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([
+      ledger('guide.mdx', serializeGitPage(parent)),
+      ledger('guide/setup.mdx', serializeGitPage(child)),
+    ]);
+    return { parent, child };
+  };
+
+  it('treats a save in the same millisecond as a change: the revision includes the content', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('about.mdx', '---\ntitle: "About"\n---\n\nUpdated from Git')]);
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(async () => {
+      // Same updatedAt, different content.
+      const row = pageStore.rows.find((page) => page.id === about.id);
+      if (row) row.content = 'Saved by the writer';
+      return [];
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.find((page) => page.id === about.id)?.content).toBe('Saved by the writer');
+    expect(statuses()).toContain('CONFLICT');
+  });
+
+  it('does not cascade a remote deletion into a child page Git still has', async () => {
+    const { parent } = seedTree();
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('guide/setup.mdx', serializeGitPage(pageStore.rows[1] as PageRow))]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.map((page) => page.id)).toEqual(['page-guide', 'page-setup']);
+    expect(mocks.prisma.gitConflict.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ path: 'guide.mdx', oursContent: serializeGitPage(parent), theirsContent: null }) }),
+    );
+    expect(statuses()).toContain('CONFLICT');
+  });
+
+  it('does not delete a subtree whose child was saved after the merge read', async () => {
+    seedTree();
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([]);
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(async () => {
+      const row = pageStore.rows.find((page) => page.id === 'page-setup');
+      if (row) Object.assign(row, { content: 'Saved by the writer', updatedAt: tick() });
+      return [];
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.find((page) => page.id === 'page-setup')?.content).toBe('Saved by the writer');
+    expect(pageStore.rows).toHaveLength(2);
+    expect(statuses()).toContain('CONFLICT');
+  });
+
+  it('deletes a parent together with children Git deleted too', async () => {
+    seedTree();
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows).toEqual([]);
+    expect(statuses()).toContain('SUCCEEDED');
+  });
+
+  const applyContext = (observed: ObservedPage[]) => ({
+    projectId: 'project-1',
+    contentPath: '',
+    branch: { id: 'branch-1', name: 'Main' },
+    language: { id: 'language-1', code: 'en' },
+    snapshot: currentSnapshot,
+    observed: new Map(observed.map((page) => [page.id, page])),
+  });
+
+  it('never deletes a page the merge did not read, and takes the project lock before page rows', async () => {
+    seedPage({ id: 'page-elsewhere', title: 'Elsewhere', slug: 'elsewhere', content: 'Keep me' });
+
+    const pageIds = await applyGitContentChanges(mocks.prisma as never, applyContext([]), [
+      { type: 'delete', path: 'elsewhere.mdx', pageId: 'page-elsewhere', resolved: false },
+    ]);
+
+    expect(pageIds.get('elsewhere.mdx')).toBeNull();
+    expect(pageStore.rows.map((page) => page.id)).toEqual(['page-elsewhere']);
+    const locks = mocks.prisma.$queryRaw.mock.calls.map(([sql]) => (sql as string[]).join('?'));
+    expect(locks[0]).toContain('FROM "project"');
+    expect(locks[0]).toContain('FOR NO KEY UPDATE');
+    expect(locks[1]).toContain('FROM "page"');
+    expect(locks[1]).toContain('ORDER BY "id" FOR NO KEY UPDATE');
+  });
+
+  it('requeues with backoff, then stops after three tries when pages keep changing', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    const upstream = '---\ntitle: "About"\n---\n\nSame text';
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('about.mdx', upstream)]);
+    const saveSameText = async () => {
+      const row = pageStore.rows.find((page) => page.id === about.id);
+      if (row) Object.assign(row, { content: 'Same text', updatedAt: tick() });
+      return [];
+    };
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(saveSameText);
+    mocks.prisma.gitAuditEvent.count.mockResolvedValueOnce(1);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+    expect(mocks.createJob).toHaveBeenCalledWith('git', expect.anything(), expect.objectContaining({ delay: 10_000 }));
+
+    vi.clearAllMocks();
+    Object.assign(pageStore.rows[0] as PageRow, { content: 'Original' });
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(saveSameText);
+    mocks.prisma.gitAuditEvent.count.mockResolvedValueOnce(3);
+
+    await expect(processGitOperation('operation-1')).rejects.toThrow(/stopped after 3 tries/);
+    expect(mocks.createJob).not.toHaveBeenCalled();
+    expect(statuses()).toContain('FAILED');
   });
 });

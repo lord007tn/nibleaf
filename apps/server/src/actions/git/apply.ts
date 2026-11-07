@@ -1,4 +1,4 @@
-import type { Prisma } from '@nibleaf/database';
+import { Prisma } from '@nibleaf/database';
 import { themeContentLocation } from '@nibleaf/shared/theme-repository';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
@@ -6,17 +6,38 @@ import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
 /**
  * Applies a reconciled Git result to Nibleaf pages inside ONE caller-owned
  * transaction, so a sync either lands completely (pages + file ledger) or not
- * at all. Every write to a page the merge read is conditional on the
- * `updatedAt` it observed: a dashboard save that lands between the merge read
- * and this apply makes the write miss, and the whole apply is rolled back with
- * a {@link GitApplyConflictError} instead of overwriting the newer edit.
+ * at all.
+ *
+ * Locking follows the shared page-write protocol: the project row first
+ * (`FOR NO KEY UPDATE`), then every page row the apply touches — including the
+ * whole subtree under a deletion — in ascending id order. Page moves and
+ * creations take the same project lock, so the page tree cannot change under
+ * the apply, and the apply cannot deadlock with them.
+ *
+ * Every write to a page the merge read is conditional on the revision it
+ * observed: `updatedAt` AND the protected fields themselves, so even two saves
+ * inside one millisecond cannot slip through. A miss rolls the whole apply
+ * back with a {@link GitApplyConflictError} instead of overwriting the newer
+ * edit.
  */
 
-/** One page change computed by reconciliation. `observedUpdatedAt` is the
- * page revision the merge read; null when the page was not part of that read. */
+/** The page state the merge read. Writes are conditional on all of it. */
+export type ObservedPage = {
+  id: string;
+  parentId: string | null;
+  kind: 'PAGE' | 'GROUP';
+  updatedAt: Date;
+  title: string;
+  content: string;
+  description: string | null;
+  icon: string | null;
+};
+
+/** One page change computed by reconciliation. `resolved` marks a deletion a
+ * writer explicitly chose while resolving a conflict. */
 export type GitContentChange =
-  | { type: 'delete'; path: string; pageId: string; observedUpdatedAt: Date | null }
-  | { type: 'write'; path: string; pageId: string | null; observedUpdatedAt: Date | null; content: string };
+  | { type: 'delete'; path: string; pageId: string; resolved: boolean }
+  | { type: 'write'; path: string; pageId: string | null; content: string };
 
 export interface GitApplyContext {
   projectId: string;
@@ -24,105 +45,53 @@ export interface GitApplyContext {
   branch: { id: string; name: string };
   language: { id: string; code: string };
   snapshot: Parameters<typeof themeContentLocation>[1];
+  /** Every page (any kind) of the authoring branch/language, as the merge read it. */
+  observed: ReadonlyMap<string, ObservedPage>;
 }
 
-/** Raised when pages changed after the merge read them. Nothing was written. */
+/**
+ * Why a path could not be applied. `edited`: the page changed after the merge
+ * read it, so re-reconciling decides whether it really conflicts. `subtree`: a
+ * deletion would also remove pages under it that changed or that Git still
+ * has; the page itself is unchanged, so the writer must choose explicitly.
+ */
+export type GitApplyConflict = { path: string; reason: 'edited' | 'subtree' };
+
+/** Raised when the apply cannot proceed without losing an edit. Nothing was written. */
 export class GitApplyConflictError extends Error {
-  constructor(readonly paths: string[]) {
-    super(`These pages changed while Git sync was running: ${paths.join(', ')}. Nothing was applied.`);
+  constructor(readonly conflicts: GitApplyConflict[]) {
+    super(`These pages changed while Git sync was running: ${conflicts.map((conflict) => conflict.path).join(', ')}. Nothing was applied.`);
     this.name = 'GitApplyConflictError';
   }
 }
 
-type Scope = { projectId: string; branchId: string; languageId: string };
+/** Lock-protocol rule 1: never `FOR UPDATE`, which would block every insert
+ * with a foreign key to the project. */
+const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
+  tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
 
-/** A slug no sibling (page or group) in the same branch/language uses yet. */
-const uniqueSiblingSlug = async (tx: Prisma.TransactionClient, scope: Scope, parentId: string | null, desired: string, fallback: string) => {
-  const base = slugifyUnicode(desired) || fallback;
-  for (let suffix = 1; ; suffix += 1) {
-    const slug = suffix === 1 ? base : `${base}-${suffix}`;
-    const clash = await tx.page.findFirst({ where: { ...scope, parentId, slug }, select: { id: true } });
-    if (!clash) return slug;
-  }
+/** Lock-protocol rule 3: page rows after the project row, ascending id. */
+const lockPages = async (tx: Prisma.TransactionClient, ids: string[]) => {
+  if (ids.length === 0) return;
+  const sorted = [...new Set(ids)].sort();
+  await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(sorted)}) ORDER BY "id" FOR NO KEY UPDATE`;
 };
 
-const nextPosition = async (tx: Prisma.TransactionClient, scope: Scope, parentId: string | null) => {
-  const max = await tx.page.aggregate({ where: { ...scope, parentId }, _max: { position: true } });
-  return (max._max.position ?? -1) + 1;
-};
-
-/** Find-or-create a folder group. Matches by slug, then by title (oldest
- * first), the same rule the importers use, so earlier syncs' groups — including
- * ones created before slugs kept Arabic letters — are reused. */
-const ensureGroup = async (
-  tx: Prisma.TransactionClient,
-  scope: Scope,
-  parent: { id: string | null; path: string | null },
-  segment: string,
-): Promise<{ id: string; path: string }> => {
-  const title = humanize(segment);
-  const slug = slugifyUnicode(segment) || 'group';
-  const where = { ...scope, parentId: parent.id, kind: 'GROUP' as const };
-  const existing =
-    (await tx.page.findFirst({ where: { ...where, slug }, select: { id: true, path: true } })) ??
-    (await tx.page.findFirst({ where: { ...where, title }, orderBy: { createdAt: 'asc' }, select: { id: true, path: true } }));
-  if (existing) return existing;
-  const uniqueSlug = await uniqueSiblingSlug(tx, scope, parent.id, slug, 'group');
-  return tx.page.create({
-    data: {
-      ...scope,
-      parentId: parent.id,
-      kind: 'GROUP',
-      title,
-      slug: uniqueSlug,
-      path: joinPath(parent.path, uniqueSlug),
-      content: '',
-      position: await nextPosition(tx, scope, parent.id),
-    },
-    select: { id: true, path: true },
-  });
-};
-
-/** Create a page for a repository file Nibleaf has no page for yet. A new
- * file always gets a NEW page with a sibling-unique slug: it never adopts an
- * existing page by slug, so two files whose names normalize alike (or two
- * Arabic names, which used to collapse to `page`) cannot overwrite each other. */
-const createPageForFile = async (tx: Prisma.TransactionClient, context: GitApplyContext, path: string, raw: string): Promise<string> => {
-  const { branch, language } = context;
-  // Repository layout v2: the default language/version lives at the content
-  // root, other languages under `<lang>/`, other versions under `versions/<slug>/`.
-  const location = themeContentLocation(path, context.snapshot, context.contentPath);
-  if (!location || location.versionId !== branch.id || location.languageCode !== language.code) {
-    throw new Error(
-      `Git sync stopped and changed nothing: ${path} is outside the ${branch.name}/${language.code} content folder this connection syncs. Move or remove the file, or change the connection's language and version.`,
-    );
-  }
-  const scope: Scope = { projectId: context.projectId, branchId: branch.id, languageId: language.id };
-  const segments = location.relative.split('/').filter(Boolean);
-  const fileName = segments.pop() ?? 'index';
-  const isIndex = /^(index|readme)$/i.test(fileName);
-  const leafName = isIndex ? (segments.pop() ?? 'index') : fileName;
-  let parent: { id: string | null; path: string | null } = { id: null, path: null };
-  for (const segment of segments) parent = await ensureGroup(tx, scope, parent, segment);
-  const parsed = parseFrontmatter(raw);
-  const slug = await uniqueSiblingSlug(tx, scope, parent.id, leafName, 'page');
-  const created = await tx.page.create({
-    data: {
-      ...scope,
-      parentId: parent.id,
-      kind: 'PAGE',
-      title: deriveTitle(parsed.meta, parsed.body, leafName),
-      slug,
-      path: joinPath(parent.path, slug),
-      content: parsed.body,
-      description: parsed.meta.description?.slice(0, 500) ?? null,
-      icon: parsed.meta.icon?.slice(0, 64) ?? null,
-      position: await nextPosition(tx, scope, parent.id),
-    },
-    select: { id: true },
-  });
-  return created.id;
-};
+const revisionFields = { updatedAt: true, title: true, content: true, description: true, icon: true } as const;
+type Revision = Pick<ObservedPage, 'updatedAt' | 'title' | 'content' | 'description' | 'icon'>;
+const revisionWhere = (page: Revision) => ({
+  updatedAt: page.updatedAt,
+  title: page.title,
+  content: page.content,
+  description: page.description,
+  icon: page.icon,
+});
+const sameRevision = (a: Revision, b: Revision) =>
+  a.updatedAt.getTime() === b.updatedAt.getTime() &&
+  a.title === b.title &&
+  a.content === b.content &&
+  a.description === b.description &&
+  a.icon === b.icon;
 
 const pageData = (raw: string) => {
   const parsed = parseFrontmatter(raw);
@@ -134,58 +103,199 @@ const pageData = (raw: string) => {
   };
 };
 
+type TreeRow = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string; path: string; title: string; position: number };
+
+/**
+ * Creates pages for repository files Nibleaf has no page for yet. The sibling
+ * index is read once under the project lock (nothing else can create pages
+ * while it is held), so each new page is a single insert. A new file always
+ * gets a NEW page with a sibling-unique slug: it never adopts an existing page
+ * by slug, so two files whose names normalize alike cannot overwrite each other.
+ */
+class PageCreator {
+  private readonly bySlug = new Map<string, Set<string>>();
+  private readonly maxPosition = new Map<string, number>();
+  private readonly groups: TreeRow[];
+  private readonly scope: { projectId: string; branchId: string; languageId: string };
+
+  constructor(
+    private readonly tx: Prisma.TransactionClient,
+    private readonly context: GitApplyContext,
+    rows: TreeRow[],
+  ) {
+    this.scope = { projectId: context.projectId, branchId: context.branch.id, languageId: context.language.id };
+    this.groups = rows.filter((row) => row.kind === 'GROUP');
+    for (const row of rows) this.remember(row.parentId, row.slug, row.position);
+  }
+
+  private key(parentId: string | null) {
+    return parentId ?? '';
+  }
+
+  private remember(parentId: string | null, slug: string, position: number) {
+    const key = this.key(parentId);
+    const slugs = this.bySlug.get(key) ?? new Set<string>();
+    slugs.add(slug);
+    this.bySlug.set(key, slugs);
+    this.maxPosition.set(key, Math.max(this.maxPosition.get(key) ?? -1, position));
+  }
+
+  private uniqueSlug(parentId: string | null, desired: string, fallback: string) {
+    const base = slugifyUnicode(desired) || fallback;
+    const taken = this.bySlug.get(this.key(parentId));
+    for (let suffix = 1; ; suffix += 1) {
+      const slug = suffix === 1 ? base : `${base}-${suffix}`;
+      if (!taken?.has(slug)) return slug;
+    }
+  }
+
+  private async insert(parent: { id: string | null; path: string | null }, kind: 'PAGE' | 'GROUP', title: string, slug: string, extra = {}) {
+    const position = (this.maxPosition.get(this.key(parent.id)) ?? -1) + 1;
+    const row = await this.tx.page.create({
+      data: { ...this.scope, parentId: parent.id, kind, title, slug, path: joinPath(parent.path, slug), position, content: '', ...extra },
+      select: { id: true, parentId: true, kind: true, slug: true, path: true, title: true, position: true },
+    });
+    this.remember(row.parentId, row.slug, row.position);
+    return row;
+  }
+
+  /** Find-or-create a folder group: by slug, then by title (oldest first) —
+   * the rule the importers use, so earlier syncs' groups are reused. */
+  private async group(parent: { id: string | null; path: string | null }, segment: string) {
+    const title = humanize(segment);
+    const slug = slugifyUnicode(segment) || 'group';
+    const siblings = this.groups.filter((row) => row.parentId === parent.id);
+    const existing = siblings.find((row) => row.slug === slug) ?? siblings.find((row) => row.title === title);
+    if (existing) return existing;
+    const created = await this.insert(parent, 'GROUP', title, this.uniqueSlug(parent.id, slug, 'group'));
+    this.groups.push(created);
+    return created;
+  }
+
+  async create(path: string, raw: string): Promise<string> {
+    const { branch, language } = this.context;
+    // Repository layout v2: the default language/version lives at the content
+    // root, other languages under `<lang>/`, other versions under `versions/<slug>/`.
+    const location = themeContentLocation(path, this.context.snapshot, this.context.contentPath);
+    if (!location || location.versionId !== branch.id || location.languageCode !== language.code) {
+      throw new Error(
+        `${path} is outside the ${branch.name}/${language.code} content folder this connection syncs. Move or remove the file, or change the connection's language and version.`,
+      );
+    }
+    const segments = location.relative.split('/').filter(Boolean);
+    const fileName = segments.pop() ?? 'index';
+    const isIndex = /^(index|readme)$/i.test(fileName);
+    const leafName = isIndex ? (segments.pop() ?? 'index') : fileName;
+    let parent: { id: string | null; path: string | null } = { id: null, path: null };
+    for (const segment of segments) parent = await this.group(parent, segment);
+    const parsed = parseFrontmatter(raw);
+    const created = await this.insert(parent, 'PAGE', deriveTitle(parsed.meta, parsed.body, leafName), this.uniqueSlug(parent.id, leafName, 'page'), {
+      content: parsed.body,
+      description: parsed.meta.description?.slice(0, 500) ?? null,
+      icon: parsed.meta.icon?.slice(0, 64) ?? null,
+    });
+    return created.id;
+  }
+}
+
 /**
  * Apply every change, or throw. Returns the page id each changed path now maps
- * to (null after a deletion). Revision misses are collected across all changes
- * and raised together, so one retry surfaces every concurrently edited page.
+ * to (null when it no longer maps to a page). Conflicts are collected across
+ * all changes and raised together, so one retry surfaces every affected page.
  */
 export const applyGitContentChanges = async (
   tx: Prisma.TransactionClient,
   context: GitApplyContext,
   changes: GitContentChange[],
 ): Promise<Map<string, string | null>> => {
-  const { projectId } = context;
   const pageIds = new Map<string, string | null>();
-  const conflicts: string[] = [];
-  // Creating pages allocates sibling slugs; take the project row lock that
-  // createPage and structural page updates take, and take it first, so this
-  // transaction locks in the same order they do.
-  if (changes.some((change) => change.type === 'write' && (change.pageId === null || change.observedUpdatedAt === null))) {
-    await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`;
+  if (changes.length === 0) return pageIds;
+  const { projectId, observed } = context;
+
+  // Rules 2 and 6: any applied change takes the project lock first.
+  await lockProject(tx, projectId);
+  const tree = await tx.page.findMany({
+    where: { projectId, branchId: context.branch.id, languageId: context.language.id },
+    select: { id: true, parentId: true, kind: true, slug: true, path: true, title: true, position: true },
+  });
+  const children = new Map<string, string[]>();
+  for (const row of tree) {
+    if (!row.parentId) continue;
+    children.set(row.parentId, [...(children.get(row.parentId) ?? []), row.id]);
   }
+  const descendantsOf = (id: string): string[] => {
+    const found: string[] = [];
+    const stack = [...(children.get(id) ?? [])];
+    while (stack.length > 0) {
+      const next = stack.pop() as string;
+      found.push(next);
+      stack.push(...(children.get(next) ?? []));
+    }
+    return found;
+  };
+
+  const deletions = changes.flatMap((change) => (change.type === 'delete' ? [change.pageId] : []));
+  const subtrees = new Map(deletions.map((id) => [id, descendantsOf(id)]));
+  const touched = [...changes.flatMap((change) => (change.pageId ? [change.pageId] : [])), ...[...subtrees.values()].flat()];
+  // Rule 3: page rows after the project row, in id order. Once held, a write
+  // that started earlier has committed and the reads below see it.
+  await lockPages(tx, touched);
+  const current = new Map(
+    (await tx.page.findMany({ where: { id: { in: [...new Set(touched)] }, projectId }, select: { id: true, kind: true, ...revisionFields } })).map(
+      (row) => [row.id, row],
+    ),
+  );
+  const deleting = new Set(deletions);
+  const creator = new PageCreator(tx, context, tree);
+  const conflicts: GitApplyConflict[] = [];
+
   for (const change of changes) {
     if (change.type === 'delete') {
-      if (change.observedUpdatedAt === null) {
-        await tx.page.deleteMany({ where: { id: change.pageId, projectId, kind: 'PAGE' } });
-      } else {
-        const deleted = await tx.page.deleteMany({ where: { id: change.pageId, projectId, kind: 'PAGE', updatedAt: change.observedUpdatedAt } });
-        // Already gone is the outcome the deletion wanted; still present means
-        // someone saved it after the merge read.
-        if (deleted.count === 0 && (await tx.page.findFirst({ where: { id: change.pageId, projectId }, select: { id: true } }))) {
-          conflicts.push(change.path);
-        }
-      }
       pageIds.set(change.path, null);
+      const seen = observed.get(change.pageId);
+      // Never delete a page the merge did not read: it is not part of this
+      // sync's content, so only the link to it is dropped.
+      if (!seen) continue;
+      if (!current.has(change.pageId)) continue; // Already gone (or removed with its parent above).
+      const subtree = subtrees.get(change.pageId) ?? [];
+      const subtreeSafe = subtree.every((id) => {
+        const now = current.get(id);
+        if (!now) return true;
+        const before = observed.get(id);
+        if (!(before && sameRevision(before, now))) return false;
+        // Deleting a parent cascades to its children; a child PAGE that Git
+        // still has may only go when a writer chose that explicitly.
+        return change.resolved || now.kind !== 'PAGE' || deleting.has(id);
+      });
+      if (!subtreeSafe) {
+        conflicts.push({ path: change.path, reason: 'subtree' });
+        continue;
+      }
+      const deleted = await tx.page.deleteMany({ where: { id: change.pageId, projectId, kind: 'PAGE', ...revisionWhere(seen) } });
+      if (deleted.count === 0) {
+        // Rows are locked, so a miss means the page changed after the merge read it.
+        if (current.get(change.pageId)) conflicts.push({ path: change.path, reason: 'edited' });
+        continue;
+      }
+      for (const id of [change.pageId, ...subtree]) current.delete(id);
       continue;
     }
-    if (change.pageId && change.observedUpdatedAt !== null) {
-      const updated = await tx.page.updateMany({
-        where: { id: change.pageId, projectId, updatedAt: change.observedUpdatedAt },
-        data: pageData(change.content),
-      });
+    const seen = change.pageId ? observed.get(change.pageId) : undefined;
+    if (change.pageId && seen) {
+      const updated = await tx.page.updateMany({ where: { id: change.pageId, projectId, ...revisionWhere(seen) }, data: pageData(change.content) });
       // A miss means the page was saved or deleted after the merge read it.
-      if (updated.count === 0) conflicts.push(change.path);
+      if (updated.count === 0) conflicts.push({ path: change.path, reason: 'edited' });
       pageIds.set(change.path, change.pageId);
       continue;
     }
-    if (change.pageId && (await tx.page.findFirst({ where: { id: change.pageId, projectId }, select: { id: true } }))) {
+    if (change.pageId && current.has(change.pageId)) {
       // A ledger-linked page the merge did not read (it is outside the current
-      // export map): keep the long-standing update-by-id behavior.
+      // export map). Its row is locked, so the update cannot race a save.
       await tx.page.update({ where: { id: change.pageId }, data: pageData(change.content) });
       pageIds.set(change.path, change.pageId);
       continue;
     }
-    pageIds.set(change.path, await createPageForFile(tx, context, change.path, change.content));
+    pageIds.set(change.path, await creator.create(change.path, change.content));
   }
   if (conflicts.length > 0) throw new GitApplyConflictError(conflicts);
   return pageIds;

@@ -16,7 +16,7 @@ import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
 import { serializeGitPage } from '../importers/content';
 import { getDefaultLanguage } from '../languages';
-import { applyGitContentChanges, GitApplyConflictError, type GitContentChange } from './apply';
+import { applyGitContentChanges, type GitApplyConflict, GitApplyConflictError, type GitContentChange, type ObservedPage } from './apply';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { GitHubProvider } from './github';
 import { conflictSnapshotMatches, reconcileOwnedFile, repositoryOurs } from './reconcile';
@@ -121,16 +121,7 @@ const providerFor = (connection: { provider: string; credentialEncrypted: string
   return new GitHubProvider(decryptGitSecret(connection.credentialEncrypted));
 };
 
-type AuthoringPage = {
-  id: string;
-  title: string;
-  path: string;
-  content: string;
-  description: string | null;
-  icon: string | null;
-  /** The revision the merge read; apply writes are conditional on it. */
-  updatedAt: Date;
-};
+type AuthoringPage = ObservedPage & { path: string };
 
 const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const [branch, language] = await Promise.all([
@@ -149,10 +140,12 @@ type LocalRepositoryFile = { page: AuthoringPage | null; content: string; owners
 
 const localFiles = async (connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const { branch, language } = await authoringContext(connection);
-  const pages = await prisma.page.findMany({
-    where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id, kind: 'PAGE' },
+  // Every page of the authoring scope, groups included: apply checks a
+  // deletion's whole subtree against these revisions.
+  const pages: AuthoringPage[] = await prisma.page.findMany({
+    where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id },
     orderBy: { path: 'asc' },
-    select: { id: true, title: true, path: true, content: true, description: true, icon: true, updatedAt: true },
+    select: { id: true, parentId: true, kind: true, title: true, path: true, content: true, description: true, icon: true, updatedAt: true },
   });
   const snapshot = await getCurrentSnapshot(connection.projectId);
   const pageById = new Map(pages.map((page) => [page.id, page]));
@@ -161,12 +154,12 @@ const localFiles = async (connection: { projectId: string; contentPath: string; 
   const files = new Map<string, LocalRepositoryFile>();
   for (const [path, pageId] of pageIdByPath) {
     const page = pageById.get(pageId);
-    if (page) files.set(path, { page, content: serializeGitPage(page), ownership: 'SHARED' });
+    if (page?.kind === 'PAGE') files.set(path, { page, content: serializeGitPage(page), ownership: 'SHARED' });
   }
   for (const file of buildThemeRepository(snapshot, { contentPath: connection.contentPath })) {
     files.set(file.path, { page: null, content: file.content, ownership: file.ownership });
   }
-  return { files, snapshot, pageIdByPath };
+  return { files, snapshot, pageIdByPath, observed: pageById as ReadonlyMap<string, ObservedPage> };
 };
 
 const initializeFileStates = async (
@@ -492,30 +485,44 @@ const upsertPullRequest = async (
   });
 };
 
+/** How many times one operation re-runs itself because pages changed under it. */
+const MAX_EDIT_REQUEUES = 3;
+const EDIT_REQUEUE_BASE_DELAY_MS = 5000;
+
 /**
- * Pages were saved after the merge read them, so the apply rolled back. Re-read
- * those pages and, where the save now conflicts with Git, record ordinary
- * conflicts for the writer to resolve; otherwise run the operation again so it
- * reconciles against the newer content. A PUSH that already updated the remote
- * branch forgets its commit, so the next run commits only what is still new.
+ * The apply rolled back because pages changed after the merge read them, or
+ * because a deletion would also remove pages under it. Re-read those pages and
+ * record conflicts for the writer where they now really conflict with Git
+ * (always, for a deletion's subtree); otherwise run the operation again, with
+ * backoff and a small cap so a constantly edited page cannot loop it against
+ * the provider. A PUSH that already updated the remote branch forgets its
+ * commit, so the next run commits only what is still new.
  */
 const surfaceConcurrentEdits = async (
   operation: { id: string; kind: string; requestedById: string | null },
   connection: { id: string; projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
   entries: MergeEntry[],
-  paths: string[],
+  applyConflicts: GitApplyConflict[],
   remoteBranchUpdated: boolean,
 ): Promise<void> => {
   const fresh = await localFiles(connection);
   const entryByPath = new Map(entries.map((entry) => [entry.path, entry]));
-  const conflicted = paths.flatMap((path) => {
+  const conflicted = applyConflicts.flatMap(({ path, reason }) => {
     const entry = entryByPath.get(path);
     if (!entry) return [];
     const current = { ...entry, ours: fresh.files.get(path)?.content ?? null };
-    return hasConflict(current) ? [current] : [];
+    return reason === 'subtree' || hasConflict(current) ? [current] : [];
   });
   const forgetCommit = remoteBranchUpdated ? { remoteSha: null } : {};
   if (conflicted.length === 0) {
+    const requeues = await prisma.gitAuditEvent.count({
+      where: { connectionId: connection.id, action: 'operation.requeued_after_edit', metadata: { path: ['operationId'], equals: operation.id } },
+    });
+    if (requeues >= MAX_EDIT_REQUEUES) {
+      throw new Error(
+        `Git sync stopped after ${MAX_EDIT_REQUEUES} tries because pages kept changing while it ran. Nothing was changed in Nibleaf; run the sync again.`,
+      );
+    }
     await prisma.$transaction([
       prisma.gitSyncOperation.update({ where: { id: operation.id }, data: { status: 'QUEUED', completedAt: null, ...forgetCommit } }),
       prisma.gitConnection.update({ where: { id: connection.id }, data: { lastSyncStatus: 'QUEUED', lastSyncError: null } }),
@@ -523,9 +530,13 @@ const surfaceConcurrentEdits = async (
     await createJob(
       QueueNames.GIT,
       { name: 'process-git-operation', data: { operationId: operation.id } },
-      { jobId: `${operation.id}-edited-${Date.now()}` },
+      { jobId: `${operation.id}-edited-${requeues + 1}`, delay: EDIT_REQUEUE_BASE_DELAY_MS * 2 ** requeues },
     );
-    await audit(connection, operation.requestedById, 'operation.requeued_after_edit', { operationId: operation.id, files: paths.length });
+    await audit(connection, operation.requestedById, 'operation.requeued_after_edit', {
+      operationId: operation.id,
+      files: applyConflicts.length,
+      attempt: requeues + 1,
+    });
     return;
   }
   const snapshot = (entry: MergeEntry) => ({ baseContent: entry.base, oursContent: entry.ours, theirsContent: entry.theirs });
@@ -543,7 +554,7 @@ const surfaceConcurrentEdits = async (
   await audit(connection, operation.requestedById, 'operation.conflict_detected', {
     operationId: operation.id,
     files: conflicted.length,
-    reason: 'edited_during_sync',
+    reason: applyConflicts.some((conflict) => conflict.reason === 'subtree') ? 'delete_with_subpages' : 'edited_during_sync',
   });
 };
 
@@ -655,7 +666,6 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     ]);
     const ours = local.files;
     const theirs = new Map(remoteFiles.map((file) => [file.path, file]));
-    const existingStatePaths = new Set(states.map((state) => state.path));
     const repositoryIssues = remoteThemeRepositoryIssues(remoteFiles, local.snapshot, connection.contentPath);
     const fatalRepositoryIssues = repositoryIssues.filter((issue) => issue.code !== 'PLATFORM_FILE_MODIFIED');
     if (fatalRepositoryIssues.length > 0) {
@@ -744,15 +754,16 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
     const contentChanges = entries.flatMap((entry): GitContentChange[] => {
       const desired = target.get(entry.path) ?? null;
       if (entry.ownership !== 'SHARED' || valueEqual(desired, entry.ours)) return [];
-      const observed = ours.get(entry.path)?.page;
-      const observedUpdatedAt = observed && observed.id === entry.pageId ? observed.updatedAt : null;
-      if (desired === null) return entry.pageId ? [{ type: 'delete', path: entry.path, pageId: entry.pageId, observedUpdatedAt }] : [];
-      return [{ type: 'write', path: entry.path, pageId: entry.pageId, observedUpdatedAt, content: desired }];
+      if (desired === null) {
+        return entry.pageId ? [{ type: 'delete', path: entry.path, pageId: entry.pageId, resolved: resolved.has(entry.path) }] : [];
+      }
+      return [{ type: 'write', path: entry.path, pageId: entry.pageId, content: desired }];
     });
     const { branch: authoringBranch, language: authoringLanguage } =
       contentChanges.length > 0 ? await authoringContext(connection) : { branch: null, language: null };
 
     const baseline = operation.kind === 'PUSH' ? target : new Map(entries.map((entry) => [entry.path, entry.theirs]));
+    const stateByPath = new Map(states.map((state) => [state.path, state]));
     const applyAndRecordBaseline = async (tx: Prisma.TransactionClient) => {
       const applied =
         authoringBranch && authoringLanguage
@@ -764,44 +775,58 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
                 branch: authoringBranch,
                 language: authoringLanguage,
                 snapshot: local.snapshot,
+                observed: local.observed,
               },
               contentChanges,
             )
           : new Map<string, string | null>();
-      const pageIds = new Map(entries.map((entry) => [entry.path, applied.has(entry.path) ? (applied.get(entry.path) ?? null) : entry.pageId]));
+      // Only ledger rows whose recorded base or page link actually changes are
+      // written, so a large, mostly unchanged repository keeps the transaction
+      // (and the project lock it may hold) short.
+      const removed: string[] = [];
+      const created: Prisma.GitFileStateCreateManyInput[] = [];
       for (const entry of entries) {
         const content = baseline.get(entry.path) ?? null;
-        if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !existingStatePaths.has(entry.path) && entry.theirs === null) {
+        const pageId = applied.has(entry.path) ? (applied.get(entry.path) ?? null) : entry.pageId;
+        const state = stateByPath.get(entry.path);
+        if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !state && entry.theirs === null) {
           // A pull before the initial scaffold push must not turn a missing
           // customer file into a durable deletion. Leaving the ledger absent
           // lets the next push seed the generated starter exactly once.
           continue;
         }
         if (entry.ownership === 'SHARED' && content === null && (target.get(entry.path) ?? null) === null) {
-          await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: entry.path } });
+          if (state) removed.push(entry.path);
           continue;
         }
-        await tx.gitFileState.upsert({
-          where: { connectionId_path: { connectionId: connection.id, path: entry.path } },
-          create: {
+        const next = { ownership: entry.ownership, pageId, baseContent: content, baseExists: content !== null };
+        if (!state) {
+          created.push({
             connectionId: connection.id,
             path: entry.path,
-            ownership: entry.ownership,
-            pageId: pageIds.get(entry.path) ?? null,
             branchId: connection.importBranchId,
             languageId: connection.importLanguageId,
-            baseContent: content,
-            baseExists: content !== null,
-          },
-          update: { ownership: entry.ownership, pageId: pageIds.get(entry.path) ?? null, baseContent: content, baseExists: content !== null },
-        });
+            ...next,
+          });
+          continue;
+        }
+        const unchanged =
+          state.ownership === next.ownership &&
+          state.pageId === next.pageId &&
+          state.baseExists === next.baseExists &&
+          (state.baseExists ? state.baseContent : null) === next.baseContent;
+        if (!unchanged) {
+          await tx.gitFileState.update({ where: { connectionId_path: { connectionId: connection.id, path: entry.path } }, data: next });
+        }
       }
+      if (removed.length > 0) await tx.gitFileState.deleteMany({ where: { connectionId: connection.id, path: { in: removed } } });
+      if (created.length > 0) await tx.gitFileState.createMany({ data: created });
     };
     try {
       await prisma.$transaction(applyAndRecordBaseline, GIT_APPLY_TRANSACTION);
     } catch (error) {
       if (error instanceof GitApplyConflictError) {
-        await surfaceConcurrentEdits(operation, connection, entries, error.paths, operation.kind === 'PUSH' && changes.length > 0);
+        await surfaceConcurrentEdits(operation, connection, entries, error.conflicts, operation.kind === 'PUSH' && changes.length > 0);
         return;
       }
       const detail = error instanceof Error ? error.message : String(error);

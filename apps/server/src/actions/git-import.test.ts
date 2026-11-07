@@ -1,13 +1,16 @@
+import { slugifyUnicode } from '@nibleaf/shared/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+type Row = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string; title: string; content: string; config: unknown };
 
 const mocks = vi.hoisted(() => ({
   prisma: {
     organization: { findUnique: vi.fn(), update: vi.fn() },
-    page: { findFirst: vi.fn() },
+    page: { findMany: vi.fn(), update: vi.fn() },
   },
   files: new Map<string, string>(),
   failingPath: null as string | null,
-  pages: [] as Array<{ id: string; parentId: string | null; slug: string; title: string; content: string }>,
+  rows: [] as Row[],
 }));
 
 vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
@@ -21,35 +24,58 @@ vi.mock('./importers/github', () => ({
     return mocks.files.get(path) ?? null;
   }),
 }));
-// Same matching rule as the real persistence: a leaf is (parent, slug).
+// Groups: find by slug or create, like the real persistence helper.
 vi.mock('./importers/persistence', () => ({
-  ensureGroupPage: vi.fn(async (_target: unknown, group: { parentId: string | null; slug: string }) => `group:${group.parentId ?? ''}/${group.slug}`),
-  upsertLeafPage: vi.fn(async (_target: unknown, page: { parentId: string | null; slug: string; title: string; content: string }) => {
-    const found = mocks.pages.find((row) => row.parentId === page.parentId && row.slug === page.slug);
-    if (found) {
-      Object.assign(found, { title: page.title, content: page.content });
-      return 'updated';
-    }
-    mocks.pages.push({ id: `page-${mocks.pages.length + 1}`, parentId: page.parentId, slug: page.slug, title: page.title, content: page.content });
-    return 'imported';
+  ensureGroupPage: vi.fn(async (_target: unknown, group: { parentId: string | null; slug: string; title: string }) => {
+    const found = mocks.rows.find((row) => row.kind === 'GROUP' && row.parentId === group.parentId && row.slug === group.slug);
+    if (found) return found.id;
+    const id = `group-${mocks.rows.length + 1}`;
+    mocks.rows.push({ id, parentId: group.parentId, kind: 'GROUP', slug: group.slug, title: group.title, content: '', config: null });
+    return id;
+  }),
+}));
+// createPage's sibling-unique slug allocation, over pages and groups alike.
+vi.mock('./pages', () => ({
+  createPage: vi.fn(async (_projectId: string, body: { parentId: string | null; slug: string; title: string; content: string; config: unknown }) => {
+    const base = slugifyUnicode(body.slug) || 'page';
+    let slug = base;
+    for (let suffix = 2; mocks.rows.some((row) => row.parentId === body.parentId && row.slug === slug); suffix++) slug = `${base}-${suffix}`;
+    const row: Row = {
+      id: `page-${mocks.rows.length + 1}`,
+      parentId: body.parentId,
+      kind: 'PAGE',
+      slug,
+      title: body.title,
+      content: body.content,
+      config: body.config,
+    };
+    mocks.rows.push(row);
+    return row;
   }),
 }));
 
-import { importFromGitProvider, normalizeGitContentPath, planImportSlugs } from './git-import';
-import { upsertLeafPage } from './importers/persistence';
+import { importedSourcePath, importFromGitProvider, normalizeGitContentPath } from './git-import';
+import { createPage } from './pages';
+
+const page = (slug: string, parentId: string | null = null) =>
+  mocks.rows.find((row) => row.kind === 'PAGE' && row.slug === slug && row.parentId === parentId);
+const runImport = () => importFromGitProvider('org-1', 'project-1');
 
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.files.clear();
   mocks.failingPath = null;
-  mocks.pages = [];
+  mocks.rows = [];
   mocks.prisma.organization.findUnique.mockResolvedValue({
     metadata: JSON.stringify({ git: { provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' } }),
   });
   mocks.prisma.organization.update.mockResolvedValue({});
-  mocks.prisma.page.findFirst.mockImplementation(async ({ where }: { where: { parentId: string | null; slug: string } }) => {
-    const row = mocks.pages.find((page) => page.parentId === where.parentId && page.slug === where.slug);
-    return row ? { id: row.id } : null;
+  mocks.prisma.page.findMany.mockImplementation(async () => mocks.rows.map((row) => ({ ...row })));
+  mocks.prisma.page.update.mockImplementation(async ({ where, data }: { where: { id: string }; data: Partial<Row> }) => {
+    const row = mocks.rows.find((candidate) => candidate.id === where.id);
+    if (!row) throw new Error('Record to update not found.');
+    Object.assign(row, data);
+    return row;
   });
 });
 
@@ -64,58 +90,108 @@ describe('normalizeGitContentPath', () => {
   });
 });
 
-describe('planImportSlugs', () => {
-  it('keeps Arabic file names as distinct, readable slugs', () => {
-    const slugs = planImportSlugs(['ar/البدء.md', 'ar/النشر.md', 'ar/دليل/index.md']);
-    expect(Object.fromEntries(slugs)).toEqual({ 'ar/البدء.md': 'البدء', 'ar/النشر.md': 'النشر', 'ar/دليل/index.md': 'دليل' });
-  });
-
-  it('strips tashkeel like dashboard slugs do', () => {
-    expect(planImportSlugs(['مُقَدِّمَة.md']).get('مُقَدِّمَة.md')).toBe('مقدمة');
-  });
-
-  it('suffixes names that normalize alike, independent of listing order', () => {
-    const paths = ['Intro.md', 'intro.mdx', 'intro-2.md', 'guide.md', 'guide/index.md', '🎉.md', '✨.md'];
-    const forward = planImportSlugs(paths);
-    expect(planImportSlugs([...paths].reverse())).toEqual(forward);
-    expect(Object.fromEntries(forward)).toEqual({
-      'Intro.md': 'intro',
-      'intro.mdx': 'intro-3', // intro-2 is another file's own slug
-      'intro-2.md': 'intro-2',
-      'guide.md': 'guide',
-      'guide/index.md': 'guide-2',
-      '✨.md': 'page',
-      '🎉.md': 'page-2',
-    });
-    expect(new Set(forward.values()).size).toBe(paths.length);
-  });
-
-  it('only compares files that land in the same folder', () => {
-    expect(Object.fromEntries(planImportSlugs(['a/intro.md', 'b/intro.md']))).toEqual({ 'a/intro.md': 'intro', 'b/intro.md': 'intro' });
-  });
-});
-
 describe('importFromGitProvider', () => {
-  it('imports two Arabic files as two pages and maps them to the same pages on re-import', async () => {
+  it('imports two Arabic files as two pages with readable slugs and maps them to the same pages on re-import', async () => {
     mocks.files.set('docs/البدء.md', '# البدء\n\nابدأ هنا');
     mocks.files.set('docs/النشر.md', '# النشر\n\nانشر موقعك');
 
-    await expect(importFromGitProvider('org-1', 'project-1')).resolves.toMatchObject({ imported: 2, updated: 0 });
-    expect(mocks.pages.map((page) => page.slug).sort()).toEqual(['البدء', 'النشر']);
+    await expect(runImport()).resolves.toMatchObject({ imported: 2, updated: 0 });
+    expect(mocks.rows.map((row) => row.slug).sort()).toEqual(['البدء', 'النشر']);
+    expect(importedSourcePath(page('النشر')?.config)).toBe('docs/النشر.md');
 
     mocks.files.set('docs/النشر.md', '# النشر\n\nنسخة محدثة');
-    await expect(importFromGitProvider('org-1', 'project-1')).resolves.toMatchObject({ imported: 0, updated: 2 });
-    expect(mocks.pages).toHaveLength(2);
-    expect(mocks.pages.find((page) => page.slug === 'البدء')?.content).toContain('ابدأ هنا');
-    expect(mocks.pages.find((page) => page.slug === 'النشر')?.content).toContain('نسخة محدثة');
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 2 });
+    expect(mocks.rows).toHaveLength(2);
+    expect(page('البدء')?.content).toContain('ابدأ هنا');
+    expect(page('النشر')?.content).toContain('نسخة محدثة');
   });
 
-  it('keeps updating a page imported under its older ASCII-only slug', async () => {
-    mocks.pages.push({ id: 'page-legacy', parentId: null, slug: 'caf', title: 'Café', content: 'old' });
+  it('keeps every file on its own page when look-alike siblings are added and removed', async () => {
+    mocks.files.set('docs/Intro.md', 'A');
+    mocks.files.set('docs/intro.md', 'B');
+    await runImport();
+    const pageOf = (source: string) => mocks.rows.find((row) => importedSourcePath(row.config) === source);
+    const idA = pageOf('docs/Intro.md')?.id;
+    const idB = pageOf('docs/intro.md')?.id;
+    expect(new Set([idA, idB]).size).toBe(2);
+
+    // New look-alikes that would renumber positional suffixes.
+    mocks.files.set('docs/intro-2.md', 'C');
+    mocks.files.set('docs/INTRO.md', 'D');
+    await expect(runImport()).resolves.toMatchObject({ imported: 2, updated: 2 });
+    expect(pageOf('docs/Intro.md')).toMatchObject({ id: idA, content: 'A' });
+    expect(pageOf('docs/intro.md')).toMatchObject({ id: idB, content: 'B' });
+    expect(pageOf('docs/intro-2.md')?.content).toBe('C');
+    expect(pageOf('docs/INTRO.md')?.content).toBe('D');
+
+    // Removing the file that held the plain slug must not hand its page to another file.
+    mocks.files.delete('docs/Intro.md');
+    mocks.files.set('docs/intro.md', 'B2');
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 3 });
+    expect(pageOf('docs/intro.md')).toMatchObject({ id: idB, content: 'B2' });
+    expect(mocks.rows.find((row) => row.id === idA)?.content).toBe('A');
+    expect(mocks.rows.filter((row) => row.kind === 'PAGE')).toHaveLength(4);
+  });
+
+  it('does not duplicate a page whose name matches a folder group created before it', async () => {
+    mocks.files.set('docs/guide/setup.md', 'Setup');
+    await runImport();
+    mocks.files.set('docs/guide.md', 'Guide');
+    await expect(runImport()).resolves.toMatchObject({ imported: 1, updated: 1 });
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 2 });
+    expect(mocks.rows.filter((row) => row.kind === 'PAGE' && row.parentId === null)).toEqual([
+      expect.objectContaining({ slug: 'guide-2', content: 'Guide' }),
+    ]);
+  });
+
+  it('adopts a page an older import left at `-2` beside a same-named group, once', async () => {
+    mocks.rows.push({ id: 'group-legacy', parentId: null, kind: 'GROUP', slug: 'guide', title: 'Guide', content: '', config: null });
+    mocks.rows.push({ id: 'page-legacy', parentId: null, kind: 'PAGE', slug: 'guide-2', title: 'Guide', content: 'old', config: null });
+    mocks.files.set('docs/guide.md', 'new');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 1 });
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 1 });
+    expect(mocks.rows.find((row) => row.id === 'page-legacy')).toMatchObject({ content: 'new', config: { gitImport: { path: 'docs/guide.md' } } });
+    expect(createPage).not.toHaveBeenCalled();
+  });
+
+  it('keeps updating a page imported under its older ASCII-only slug, and keeps its config', async () => {
+    mocks.rows.push({
+      id: 'page-legacy',
+      parentId: null,
+      kind: 'PAGE',
+      slug: 'caf',
+      title: 'Café',
+      content: 'old',
+      config: { sidebarTitle: 'Café' },
+    });
     mocks.files.set('docs/café.md', '# Café\n\nnew');
 
-    await expect(importFromGitProvider('org-1', 'project-1')).resolves.toMatchObject({ imported: 0, updated: 1 });
-    expect(mocks.pages).toEqual([expect.objectContaining({ id: 'page-legacy', slug: 'caf', content: expect.stringContaining('new') })]);
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 1 });
+    expect(mocks.rows).toEqual([
+      expect.objectContaining({
+        id: 'page-legacy',
+        slug: 'caf',
+        content: expect.stringContaining('new'),
+        config: { sidebarTitle: 'Café', gitImport: { path: 'docs/café.md' } },
+      }),
+    ]);
+  });
+
+  it('never adopts a page that belongs to another source file', async () => {
+    mocks.rows.push({
+      id: 'page-owned',
+      parentId: null,
+      kind: 'PAGE',
+      slug: 'intro',
+      title: 'Intro',
+      content: 'other',
+      config: { gitImport: { path: 'docs/old/intro.md' } },
+    });
+    mocks.files.set('docs/intro.md', 'mine');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 1, updated: 0 });
+    expect(mocks.rows.find((row) => row.id === 'page-owned')?.content).toBe('other');
   });
 
   it('writes nothing when a file cannot be downloaded part-way through', async () => {
@@ -123,7 +199,8 @@ describe('importFromGitProvider', () => {
     mocks.files.set('docs/b.md', '# B');
     mocks.failingPath = 'docs/b.md';
 
-    await expect(importFromGitProvider('org-1', 'project-1')).rejects.toThrow('GitHub API 502');
-    expect(upsertLeafPage).not.toHaveBeenCalled();
+    await expect(runImport()).rejects.toThrow('GitHub API 502');
+    expect(createPage).not.toHaveBeenCalled();
+    expect(mocks.prisma.page.update).not.toHaveBeenCalled();
   });
 });
