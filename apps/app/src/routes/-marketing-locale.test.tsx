@@ -5,9 +5,9 @@ import { act } from 'react';
 import { hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, expect, it } from 'vitest';
+import { AboutPage } from '@/components/marketing/about-page';
+import { DeveloperResourcesPage } from '@/components/marketing/developer-resources-page';
 import englishCatalog from '../../../../packages/i18n/messages/en.json' with { type: 'json' };
-import { AboutPage } from './about';
-import { DeveloperResourcesPage } from './developers';
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
