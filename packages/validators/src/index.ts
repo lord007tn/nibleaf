@@ -703,19 +703,55 @@ export type CreateDeploymentBody = z.infer<typeof createDeploymentBody>;
 
 // ─── Domain ──────────────────────────────────────────────────────────────—
 
+/** Longest pasted value worth reading; a full URL to a custom domain is far shorter. */
+const MAX_DOMAIN_INPUT_LENGTH = 2048;
+
+/** A hostname of dot-separated DNS labels (`docs.example.com`), lower case and punycoded. */
+export const DOMAIN_NAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * Reduce what someone pastes into a "custom domain" field to the bare hostname:
+ * `  HTTPS://Docs.Example.com:443/help?x#y ` → `docs.example.com`. Trims the ends,
+ * closes up spaces around dots, and strips the scheme, credentials, port, path, query, fragment and trailing dots, and
+ * punycodes internationalized names. The result may still be invalid (check it
+ * with `DOMAIN_NAME_PATTERN`); the dashboard and the API share this, so what the
+ * form shows is exactly what the server stores.
+ */
+export const normalizeDomainInput = (raw: string): string => {
+  // Spaces around a dot are a typo (`docs . example.com`); any other whitespace in
+  // the host separates two words, so it is kept for the pattern to reject rather
+  // than silently connecting a different domain (`docs example.com` ≠ `docsexample.com`).
+  // Splitting on dots and trimming each part closes those spaces up in linear time;
+  // the input is capped first because nothing longer can be a valid domain or URL.
+  let value = raw
+    .slice(0, MAX_DOMAIN_INPUT_LENGTH)
+    .trim()
+    .split('.')
+    .map((part) => part.trim())
+    .join('.')
+    .toLowerCase();
+  value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
+  // Trim again: a space before the path (`docs.example.com /help`) is not part of the host.
+  value = (value.split(/[/?#\\]/, 1)[0] ?? '').trim();
+  // `new URL()` below would drop a tab, CR or LF and join the words.
+  if (/\s/.test(value)) return value;
+  value = value.slice(value.lastIndexOf('@') + 1);
+  value = value.replace(/:\d*$/, '').replace(/\.+$/, '');
+  if (value && /[^a-z0-9.-]/.test(value)) {
+    try {
+      value = new URL(`http://${value}`).hostname.replace(/\.+$/, '');
+    } catch {
+      // Not a hostname at all; the pattern check reports it.
+    }
+  }
+  return value;
+};
+
 export const addDomainBody = z.object({
   domain: z
     .string()
-    .trim()
-    .toLowerCase()
-    .transform((value) => value.replace(/\.$/, ''))
-    .pipe(
-      z
-        .string()
-        .min(3)
-        .max(253)
-        .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Enter a valid domain like docs.example.com'),
-    ),
+    .transform(normalizeDomainInput)
+    .pipe(z.string().min(3).max(253).regex(DOMAIN_NAME_PATTERN, 'Enter a valid domain like docs.example.com')),
 });
 export type AddDomainBody = z.infer<typeof addDomainBody>;
 

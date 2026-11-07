@@ -194,6 +194,33 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
             hidden: p.hidden,
           })),
         });
+        // Git import identities follow the copies, so a copy that is later
+        // promoted keeps updating from the same repository files.
+        const languageByPage = new Map(sourcePages.map((p) => [p.id, p.languageId]));
+        const sources = await tx.pageGitImportSource.findMany({
+          where: { pageId: { in: sourcePages.map((p) => p.id) } },
+          select: { pageId: true, path: true, branchId: true },
+        });
+        // One path per language in the copy: a row whose stored scope went stale
+        // (its page was moved here) yields to the row already scoped here.
+        const copies = new Map<string, { pageId: string; languageId: string; path: string; inScope: boolean }>();
+        for (const s of sources) {
+          const languageId = languageByPage.get(s.pageId) as string;
+          const key = JSON.stringify([languageId, s.path]);
+          const inScope = s.branchId === source.id;
+          if (!copies.has(key) || (inScope && !copies.get(key)?.inScope)) copies.set(key, { pageId: s.pageId, languageId, path: s.path, inScope });
+        }
+        if (copies.size > 0) {
+          await tx.pageGitImportSource.createMany({
+            data: [...copies.values()].map((s) => ({
+              pageId: idMap.get(s.pageId) as string,
+              projectId,
+              branchId: branch.id,
+              languageId: s.languageId,
+              path: s.path,
+            })),
+          });
+        }
       }
       // Only the copies are hashed now; the source's hashes came with its read.
       const copies = await tx.$queryRaw<{ id: string; hash: string; configHash: string }[]>(

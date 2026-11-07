@@ -36,6 +36,13 @@ export type ErrorCode =
   | 'branch:baseline_missing'
   | 'branch:promote_blocked'
   | 'storage:error'
+  | 'domain:already_added'
+  | 'domain:already_connected'
+  | 'domain:provider_failed'
+  | 'domain:ownership_missing'
+  | 'domain:not_pointed'
+  | 'domain:not_ready'
+  | 'domain:check_inconclusive'
   | 'search:unavailable'
   | 'ai:provider_response'
   | 'import:invalid_document'
@@ -111,6 +118,13 @@ const ERROR_STATUS = {
   'branch:baseline_missing': 409,
   'branch:promote_blocked': 409,
   'storage:error': 502,
+  'domain:already_added': 409,
+  'domain:already_connected': 409,
+  'domain:provider_failed': 502,
+  'domain:ownership_missing': 422,
+  'domain:not_pointed': 422,
+  'domain:not_ready': 409,
+  'domain:check_inconclusive': 503,
   'search:unavailable': 503,
   'ai:provider_response': 502,
   'import:invalid_document': 422,

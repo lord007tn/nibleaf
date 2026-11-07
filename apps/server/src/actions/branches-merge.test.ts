@@ -33,6 +33,7 @@ const db = vi.hoisted(() => ({
   page: { findMany: vi.fn(), createMany: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
   comment: { groupBy: vi.fn(), updateMany: vi.fn() },
   audienceGrant: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  pageGitImportSource: { findMany: vi.fn(), createMany: vi.fn() },
   language: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
@@ -105,6 +106,7 @@ beforeEach(() => {
   db.page.count.mockResolvedValue(0);
   db.comment.groupBy.mockResolvedValue([]);
   db.audienceGrant.findMany.mockResolvedValue([]);
+  db.pageGitImportSource.findMany.mockResolvedValue([]);
   db.language.findMany.mockResolvedValue([{ id: 'lang-en', code: 'en' }]);
   db.$queryRaw.mockImplementation(async (query: { text: string }) => {
     state.sql.push(query.text);
