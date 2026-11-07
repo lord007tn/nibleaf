@@ -1,5 +1,7 @@
 # PR3 fact log — 2026-11-07
 
+> Read the later "scoring fixes" sections as the current state. The claim table below records the first pass; where a later round changed a row (C06 search wording, for example), the later section wins.
+
 Audited main: `ed15240ef891115d908e44317010ea0eca4d93f1`. Source capabilities do not establish Cloud deployment. Official pages fetched 2026-11-07. Counts deduplicate finding IDs; repeated occurrences share a row.
 
 | Finding | Location | Old text → new text | Verdict | Evidence |
@@ -156,6 +158,8 @@ These are source receipts, not paid-account trials or measured competitor perfor
 
 ## Limits and other owners
 
+> Partly superseded: round 2 changed `apps/app/src/routes/pricing.tsx`, because the FAQ now loads in its loader. The PR body lists the current file set.
+
 - No live Cloud deployment, production Ask AI/MCP/insights availability, container install, paid competitor account or full competitor RTL trial was verified. Copy uses the required Cloud rollout qualification and does not promise current artifacts without checking them.
 - A11 Fumadocs default search is in `apps/app/src/content/blog/open-source-documentation-tools{,-ar}.mdx`, outside this PR's ownership; no Fumadocs claim was edited or newly re-verified here.
 - Excluded occurrences from the audit in `README.md`, `docs/**`, `apps/app/src/content/blog/**`, `apps/app/src/lib/blog-manifest.ts`, `apps/app/src/lib/marketing-seo.ts`, `apps/app/src/components/cloud-marketing.tsx` and `apps/app/src/routes/**` belong to their respective owners. No edits were applied there for this task.
@@ -169,6 +173,8 @@ Applied the ai-slop-cleanup review to the task-owned changes. Removed the now-un
 
 
 ## Final verification — 2026-11-07
+
+> Historical. This records a run in the shared worktree before packaging; its bundle-budget failure came from unrelated work in that worktree at the time. The PR body's Verification section has the current results.
 
 Validation ran in the shared worktree at HEAD `a168fdde965f29bdf503b253be06184641edfe4e` plus the uncommitted PR3 changes and other agents' concurrent changes. The capability evidence baseline remains the pinned audited main revision above.
 
@@ -258,3 +264,13 @@ Task-owned files:
 | Analytics in the Mintlify and Docusaurus rows and in `llms.txt` | Kept as current: "first-party event analytics with consent". Moved under the release wording: hashed identities, search-text controls and docs-owner insights (search gaps, feedback, AI crawler activity, web vitals). | overclaim (fixed) | `git grep -il clickhouse v0.1.2` finds nothing; `sessionHash` exists only on `main`; v0.1.2 has `site-analytics-consent.tsx` |
 | `/pricing` meta description | "installed with a pinned container" → "Nibleaf Cloud is free during the beta, with no card at sign-up. The AGPL-3.0 release can be self-hosted with Docker Compose." | consistency | Same wording as the page body |
 | `llms.txt` page index | Restored the links that `main`'s `llms.txt` had: the three comparisons, the three alternatives pages, Cloud, About, Contact, the RTL readiness grader, the blog index and `security.txt`. All use their Markdown aliases. | discoverability (fixed) | A test checks that every `.md` link is in the generated public Markdown inventory |
+
+## Round-4 scoring fixes — 2026-11-07
+
+| Change | Old text → new text | Verdict | Evidence |
+| --- | --- | --- | --- |
+| First-party analytics "with consent" (Docusaurus row, `llms.txt`) | "First-party event analytics with consent" → "First-party event analytics". Consent-aware event handling joins the release wording. | overclaim (fixed) | In v0.1.2, `site-page-view.tsx` posts page views and `actions/sites.ts` records them without a consent check; `site-analytics-consent.tsx` gates third-party scripts only. Consent-aware first-party handling is in `providers/site-analytics-provider.tsx` on `main`. |
+| `marketing.release.stack` (About page), EN and AR | "…and optional Qdrant and ClickHouse services form the deployment architecture" → the core stack, then "Optional Qdrant (hybrid retrieval and Ask AI) and ClickHouse (docs-owner insights) services are in the open-source code now, arriving…" | overclaim (fixed) | `git grep -il "qdrant\|clickhouse" v0.1.2` finds nothing |
+| `/pricing` insights cell and the Arabic platform caveat | "advanced insights need optional ClickHouse" → "needs optional ClickHouse"; «التحليلات المتقدمة» → «تحليلات مالك الوثائق» | understated requirement (fixed) | All `get*Insights` actions in `apps/server/src/actions/analytics-insights.ts` query ClickHouse; `packages/clickhouse/src/insights/queries.ts` returns `not_configured` without it |
+| Arabic Full admin preset name | «إدارة كاملة» → «صلاحيات مشرف كاملة» | label match | `settings_apikeys_full_admin` on `main` after #318/#319 |
+| FAQ "How does search work?" | Two release sentences merged into one list | readability | — |

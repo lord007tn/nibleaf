@@ -41,7 +41,7 @@ describe('competitor facts', () => {
 
   it('keeps features newer than the latest self-hosted release out of shared copy as shipped', () => {
     expect(JSON.stringify(marketingFaqs)).not.toMatch(/optional Qdrant/);
-    expect(serialized).not.toMatch(/hashed identities|New insights are/);
+    expect(serialized).not.toMatch(/hashed identities|New insights are|analytics with consent/);
     for (const locale of ['en', 'ar'] as const) {
       expect(searchPublishing({}, { locale })).not.toMatch(/section links|روابط للأقسام/);
     }

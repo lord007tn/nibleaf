@@ -48,7 +48,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
       },
       { label: 'Workspace OpenAI/OpenRouter keys', cloud: 'Rolling out', self: 'Next release; needs the credential encryption key' },
       { label: 'Support MCP with Read only, Support writer, and Full admin presets', cloud: 'Rolling out', self: 'Next release; off by default' },
-      { label: 'Docs-owner insights', cloud: 'Rolling out', self: 'Next release; advanced insights need optional ClickHouse' },
+      { label: 'Docs-owner insights', cloud: 'Rolling out', self: 'Next release; needs optional ClickHouse' },
     ],
   },
   {

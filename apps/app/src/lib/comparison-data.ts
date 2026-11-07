@@ -538,7 +538,7 @@ export const nibleafVsDocusaurus: Comparison = {
     {
       feature: 'Built-in reader analytics',
       nibleaf: yes(
-        'First-party event analytics with consent. Search-text controls and docs-owner insights (optional ClickHouse when self-hosting) are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
+        'First-party event analytics. Consent-aware event handling, search-text controls and docs-owner insights (optional ClickHouse when self-hosting) are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.',
       ),
       competitor: no('Bring your own'),
     },
