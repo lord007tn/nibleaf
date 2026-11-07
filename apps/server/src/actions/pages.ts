@@ -145,16 +145,17 @@ const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
   const page = await prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
       const parentId = body.parentId ?? null;
       const parent = await parentInfo(tx, projectId, parentId);
       // A child inherits its parent's branch + language; otherwise use the requested
       // ones or the project's required defaults.
       const branchId =
-        parent.branchId ?? (body.branchId ? (await assertBranchInProject(projectId, body.branchId)).id : (await getDefaultBranch(projectId)).id);
+        parent.branchId ??
+        (body.branchId ? (await assertBranchInProject(projectId, body.branchId, tx)).id : (await getDefaultBranch(projectId, tx)).id);
       const languageId =
         parent.languageId ??
-        (body.languageId ? (await assertLanguageInProject(projectId, body.languageId)).id : (await getDefaultLanguage(projectId)).id);
+        (body.languageId ? (await assertLanguageInProject(projectId, body.languageId, tx)).id : (await getDefaultLanguage(projectId, tx)).id);
       const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title);
       const maxPosition = await tx.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
       return tx.page.create({
@@ -211,97 +212,120 @@ interface UpdatePageOptions {
   expectedUpdatedAt?: Date;
 }
 
+const pageRouteEdit = (page: { title: string; slug: string; parentId: string | null }, body: UpdatePageBody) => {
+  const adoptsTitle =
+    body.slug === undefined &&
+    body.title !== undefined &&
+    body.title.trim() !== '' &&
+    body.title !== page.title &&
+    PLACEHOLDER_SLUG_RE.test(page.slug) &&
+    PLACEHOLDER_TITLES.has(page.title);
+  const desired = body.slug || (adoptsTitle ? body.title : page.slug) || page.slug;
+  const parentId = body.parentId === undefined ? page.parentId : body.parentId;
+  return {
+    parentId,
+    desiredSlug: desired,
+    structural: parentId !== page.parentId || (desired !== page.slug && (slugifyUnicode(desired) || 'page') !== page.slug),
+  };
+};
+
+// Reclassify if the page changed while waiting for its row lock; release that
+// lock before retrying in project -> page order.
+class StructuralPageEdit extends Error {}
+
 export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string, options?: UpdatePageOptions) => {
-  const { page, updated } = await prisma.$transaction(
-    async (tx) => {
-      // Serialize route changes and config merges before reading their base state.
-      // Content-only autosaves omit route fields and need no project-wide lock.
-      if (body.slug !== undefined || body.parentId !== undefined || body.title !== undefined || body.config !== undefined) {
-        await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`;
-      }
-      const page = await tx.page.findFirst({ where: { id, projectId } });
-      if (!page) {
-        throw notFound('page', { id });
-      }
-      const expectedUpdatedAt = options?.expectedUpdatedAt;
-      if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
-        throw pageRevisionConflict(id);
-      }
-      // The slug/URL is decoupled from the title (Mintlify-style): it only changes
-      // when the slug is set explicitly or the page is re-parented (which needs a
-      // uniqueness re-check among the new siblings). A title-only edit — e.g. every
-      // editor autosave keystroke — must NOT silently rewrite the slug/path.
-      const nextParentId = body.parentId === undefined ? page.parentId : body.parentId;
-      if (nextParentId !== null && nextParentId !== page.parentId) {
-        const parent = await parentInfo(tx, projectId, nextParentId);
-        if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
-          throw badRequest('A page can only be moved under a parent in the same branch and language.', { id, parentId: nextParentId });
+  const initial = await getPage(projectId, id);
+  const save = (lockStructure: boolean) =>
+    prisma.$transaction(
+      async (tx) => {
+        if (lockStructure) {
+          await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+          await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+        } else {
+          await tx.$queryRaw`SELECT 1 FROM "page" WHERE id = ${id} AND "projectId" = ${projectId} FOR NO KEY UPDATE`;
         }
-        const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, parentId: true, branchId: true, languageId: true } });
-        assertNoParentCycle(new Map(pages.map((node) => [node.id, node])), id, nextParentId);
-      }
-      const slugChanged = body.slug !== undefined;
-      const reparented = body.parentId !== undefined && nextParentId !== page.parentId;
-      const shouldAdoptTitleSlug =
-        !slugChanged &&
-        body.title !== undefined &&
-        body.title.trim() !== '' &&
-        body.title !== page.title &&
-        PLACEHOLDER_SLUG_RE.test(page.slug) &&
-        PLACEHOLDER_TITLES.has(page.title);
-      const structural = slugChanged || reparented || shouldAdoptTitleSlug;
-      let nextSlug = page.slug;
-      if (structural) {
-        const desiredSlug = body.slug || (shouldAdoptTitleSlug && body.title ? body.title : page.slug);
-        nextSlug = await uniqueSiblingSlug(tx, projectId, page.languageId, page.branchId, nextParentId, desiredSlug, id);
-      }
-      const nextConfig = mergePageConfig(page.config, body.config);
-      const updated = await tx.page
-        .update({
-          // With a precondition the write matches only the revision that was read;
-          // a concurrent edit makes it match nothing (P2025) instead of being lost.
-          where: expectedUpdatedAt ? { id, updatedAt: expectedUpdatedAt } : { id },
-          data: {
-            ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
-            ...(body.title === undefined ? {} : { title: body.title }),
-            ...(structural ? { slug: nextSlug } : {}),
-            ...(body.icon === undefined ? {} : { icon: body.icon }),
-            ...(body.description === undefined ? {} : { description: body.description }),
-            ...(body.content === undefined ? {} : { content: body.content }),
-            ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
-            ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
-            ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
-          },
-        })
-        .catch((error: unknown) => {
-          throw expectedUpdatedAt && isRecordNotFound(error) ? pageRevisionConflict(id) : error;
-        });
-      // A structural change commits with the path recomputation, so a failure
-      // never leaves the page or its descendants with stale paths.
-      if (structural) await recomputeProjectPaths(projectId, tx);
-      return { page, updated: structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated };
-    },
-    { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
-  );
+        const page = await tx.page.findFirst({ where: { id, projectId } });
+        if (!page) throw notFound('page', { id });
+        const route = pageRouteEdit(page, body);
+        if (!lockStructure && route.structural) throw new StructuralPageEdit();
+        const expectedUpdatedAt = options?.expectedUpdatedAt;
+        if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
+          throw pageRevisionConflict(id);
+        }
+        // The slug/URL is decoupled from the title (Mintlify-style): it only changes
+        // when the slug is set explicitly or the page is re-parented (which needs a
+        // uniqueness re-check among the new siblings). A title-only edit — e.g. every
+        // editor autosave keystroke — must NOT silently rewrite the slug/path.
+        const nextParentId = route.parentId;
+        if (nextParentId !== null && nextParentId !== page.parentId) {
+          const parent = await parentInfo(tx, projectId, nextParentId);
+          if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
+            throw badRequest('A page can only be moved under a parent in the same branch and language.', { id, parentId: nextParentId });
+          }
+          const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, parentId: true, branchId: true, languageId: true } });
+          assertNoParentCycle(new Map(pages.map((node) => [node.id, node])), id, nextParentId);
+        }
+        const structural = route.structural;
+        const nextSlug = structural
+          ? await uniqueSiblingSlug(tx, projectId, page.languageId, page.branchId, nextParentId, route.desiredSlug, id)
+          : page.slug;
+        const nextConfig = mergePageConfig(page.config, body.config);
+        const updated = await tx.page
+          .update({
+            // With a precondition the write matches only the revision that was read;
+            // a concurrent edit makes it match nothing (P2025) instead of being lost.
+            where: expectedUpdatedAt ? { id, updatedAt: expectedUpdatedAt } : { id },
+            data: {
+              ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
+              ...(body.title === undefined ? {} : { title: body.title }),
+              ...(structural ? { slug: nextSlug } : {}),
+              ...(body.icon === undefined ? {} : { icon: body.icon }),
+              ...(body.description === undefined ? {} : { description: body.description }),
+              ...(body.content === undefined ? {} : { content: body.content }),
+              ...(body.hidden === undefined ? {} : { hidden: body.hidden }),
+              ...(body.translationKey === undefined ? {} : { translationKey: body.translationKey }),
+              ...(nextConfig === undefined ? {} : { config: nextConfig ?? Prisma.JsonNull }),
+            },
+          })
+          .catch((error: unknown) => {
+            throw expectedUpdatedAt && isRecordNotFound(error) ? pageRevisionConflict(id) : error;
+          });
+        // A structural change commits with the path recomputation, so a failure
+        // never leaves the page or its descendants with stale paths.
+        if (structural) await recomputeProjectPaths(projectId, tx);
+        return { page, updated: structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated };
+      },
+      { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
+    );
+  let result: Awaited<ReturnType<typeof save>>;
+  try {
+    result = await save(pageRouteEdit(initial, body).structural);
+  } catch (error) {
+    if (!(error instanceof StructuralPageEdit)) throw error;
+    result = await save(true);
+  }
+  const { page, updated } = result;
   if (userId && page.kind === 'PAGE' && body.content !== undefined && body.content.trim() !== page.content.trim()) {
     logFirstContentEdit(userId, projectId);
   }
   return updated;
 };
 
-export const deletePage = async (projectId: string, id: string) => {
-  const page = await prisma.page.findFirst({ where: { id, projectId }, select: { id: true } });
-  if (!page) {
-    throw notFound('page', { id });
-  }
-  await prisma.page.delete({ where: { id } });
-  return { id };
-};
+export const deletePage = async (projectId: string, id: string) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+    await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+    const page = await tx.page.findFirst({ where: { id, projectId }, select: { id: true } });
+    if (!page) throw notFound('page', { id });
+    await tx.page.delete({ where: { id } });
+    return { id };
+  });
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
   const branchId = await prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
       const pages = await tx.page.findMany({
         where: { projectId },
         select: { id: true, parentId: true, branchId: true, languageId: true, slug: true },
@@ -334,13 +358,20 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
       for (const item of body.items) {
         assertNoParentCycle(nextTree, item.id, item.parentId);
       }
-      const siblings = new Set<string>();
-      for (const page of nextTree.values()) {
-        const key = JSON.stringify([page.branchId, page.languageId, page.parentId, page.slug]);
-        if (siblings.has(key)) {
-          throw conflict('Pages under the same parent must have different slugs. Change the slug before moving the page.', { id: page.id });
+      for (const item of body.items) {
+        const page = nextTree.get(item.id);
+        if (!page || byPage.get(item.id)?.parentId === item.parentId) continue;
+        const clash = [...nextTree.values()].find(
+          (sibling) =>
+            sibling.id !== page.id &&
+            sibling.branchId === page.branchId &&
+            sibling.languageId === page.languageId &&
+            sibling.parentId === page.parentId &&
+            sibling.slug === page.slug,
+        );
+        if (clash) {
+          throw conflict('A page with this address already exists in that group. Change its address first.', { id: page.id, reason: 'slug_taken' });
         }
-        siblings.add(key);
       }
       for (const item of body.items) {
         await tx.page.updateMany({ where: { id: item.id, projectId }, data: { parentId: item.parentId, position: item.position } });

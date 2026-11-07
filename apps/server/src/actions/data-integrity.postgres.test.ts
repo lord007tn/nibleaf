@@ -17,7 +17,9 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     pages = await import('./pages');
     languages = await import('./languages');
     members = await import('./members');
-  });
+    // Loading the server action graph cold can take longer than the default
+    // hook timeout on a busy machine.
+  }, 120_000);
   afterAll(async () => {
     if (!db) return;
     try {
@@ -40,7 +42,11 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
 
   /** Start both requests while their real PostgreSQL lock is held. Observing
    * blocked backends proves the actions actually serialize before their reads. */
-  const whileLocked = async <T>(lock: (tx: Prisma.TransactionClient) => Promise<unknown>, requests: () => Promise<T>[]) => {
+  const whileLocked = async <T>(
+    lock: (tx: Prisma.TransactionClient) => Promise<unknown>,
+    requests: () => Promise<T>[],
+    duringWait?: () => Promise<void>,
+  ) => {
     let release: () => void = () => undefined;
     let held: (pid: number) => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
@@ -70,14 +76,22 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     try {
       let waiting = 0;
       for (let attempt = 0; attempt < 100; attempt++) {
+        // PostgreSQL queues a second waiter on the same row behind the first
+        // waiter, not behind the holder, so count the whole wait chain.
         const [row] = await db.prisma.$queryRaw<Array<{ count: number }>>`
-          SELECT count(*)::int AS count FROM pg_stat_activity
-          WHERE datname = current_database() AND ${pid} = ANY(pg_blocking_pids(pid))`;
+          WITH RECURSIVE chain(pid) AS (
+            SELECT ${pid}::int
+            UNION
+            SELECT activity.pid FROM pg_stat_activity activity JOIN chain ON chain.pid = ANY(pg_blocking_pids(activity.pid))
+            WHERE activity.datname = current_database()
+          )
+          SELECT (count(*) - 1)::int AS count FROM chain`;
         waiting = row?.count ?? 0;
         if (waiting >= pending.length) break;
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
       expect(waiting).toBeGreaterThanOrEqual(pending.length);
+      await duringWait?.();
     } finally {
       release();
       await holder;
@@ -88,7 +102,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
   it('merges overlapping language sections after acquiring the project lock', async () => {
     const { project, language } = await fixture();
     const results = await whileLocked(
-      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR UPDATE`,
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
       () => [
         languages.updateLanguage(project.id, language.id, { config: { banner: { message: 'Synthetic announcement' } } }),
         languages.updateLanguage(project.id, language.id, { config: { seo: { metaTitle: 'Synthetic documentation' } } }),
@@ -121,7 +135,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
   it('reauthorizes concurrent ownership transfers under the organization lock', async () => {
     const { organization, owner, first, second } = await memberFixture();
     const results = await whileLocked(
-      (tx) => tx.$queryRaw`SELECT id FROM organization WHERE id = ${organization.id} FOR UPDATE`,
+      (tx) => tx.$queryRaw`SELECT id FROM organization WHERE id = ${organization.id} FOR NO KEY UPDATE`,
       () => [members.transferOwnership(organization.id, owner.userId, first.id), members.transferOwnership(organization.id, owner.userId, second.id)],
     );
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
@@ -132,10 +146,10 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     const { organization, owner, first } = await memberFixture(true);
     const change = (id: string) =>
       operation === 'demote'
-        ? members.updateMemberRole(organization.id, id, 'owner', { role: 'admin' })
-        : members.removeMember(organization.id, id, 'owner');
+        ? members.updateMemberRole(organization.id, id, id === owner.id ? owner.userId : first.userId, { role: 'admin' })
+        : members.removeMember(organization.id, id, id === owner.id ? owner.userId : first.userId);
     const results = await whileLocked(
-      (tx) => tx.$queryRaw`SELECT id FROM organization WHERE id = ${organization.id} FOR UPDATE`,
+      (tx) => tx.$queryRaw`SELECT id FROM organization WHERE id = ${organization.id} FOR NO KEY UPDATE`,
       () => [change(owner.id), change(first.id)],
     );
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
@@ -159,7 +173,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     const child = await create('child', first.id);
     const move = (id: string) => pages.reorderPages(project.id, { items: [{ id, parentId: group.id, position: 0 }] });
     const results = await whileLocked(
-      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR UPDATE`,
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
       () => [move(first.id), move(second.id)],
     );
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
@@ -173,7 +187,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     const { project, branch, language } = await fixture();
     const create = () => pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });
     const results = await whileLocked(
-      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR UPDATE`,
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
       () => [create(), create()],
     );
     expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
@@ -188,7 +202,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     const page = await pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });
     const results = await whileLocked(
       (tx) => tx.page.update({ where: { id: page.id }, data: { slug: 'start', path: 'start' } }),
-      () => [pages.updatePage(project.id, page.id, { content: 'Synthetic autosave' })],
+      () => [pages.updatePage(project.id, page.id, { title: 'Intro updated', content: 'Synthetic autosave' })],
     );
     expect(results[0]?.status).toBe('fulfilled');
     expect(await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).toMatchObject({
@@ -197,4 +211,74 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
       content: 'Synthetic autosave',
     });
   });
+  it('autosaves title and content while a structural move holds project and page locks', async () => {
+    const { project, branch, language } = await fixture();
+    const group = await pages.createPage(project.id, { title: 'Guides', branchId: branch.id, languageId: language.id });
+    const page = await pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });
+    const results = await whileLocked(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${project.id} FOR NO KEY UPDATE`;
+        await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${project.id} ORDER BY id FOR NO KEY UPDATE`;
+        await tx.page.update({ where: { id: page.id }, data: { parentId: group.id, path: 'guides/intro' } });
+      },
+      () => [pages.updatePage(project.id, page.id, { title: 'Intro updated', content: 'Concurrent autosave' })],
+    );
+    expect(results[0]?.status).toBe('fulfilled');
+    expect(await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).toMatchObject({
+      parentId: group.id,
+      slug: 'intro',
+      path: 'guides/intro',
+      title: 'Intro updated',
+      content: 'Concurrent autosave',
+    });
+  });
+
+  it('allows an AnalyticsEvent insert while createPage holds the production project lock', async () => {
+    const { project, branch, language } = await fixture();
+    await whileLocked(
+      // Pause createPage at its branch FK check, after its project lock is held.
+      (tx) => tx.$queryRaw`SELECT 1 FROM branch WHERE id = ${branch.id} FOR UPDATE`,
+      () => [pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id })],
+      async () => {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const inserted = await Promise.race([
+            db.prisma.analyticsEvent.create({ data: { projectId: project.id, type: 'pageview' } }),
+            new Promise<never>((_resolve, reject) => {
+              timer = setTimeout(() => reject(new Error('Analytics insert blocked by project lock')), 1500);
+            }),
+          ]);
+          expect(inserted.projectId).toBe(project.id);
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+    );
+  });
+
+  it('merges a language save after a sync transaction releases the shared project lock', async () => {
+    const { project, language } = await fixture();
+    const results = await whileLocked(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${project.id} FOR NO KEY UPDATE`;
+        await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${project.id} ORDER BY id FOR NO KEY UPDATE`;
+        await tx.language.update({ where: { id: language.id }, data: { config: { banner: { message: 'Saved by sync transaction' } } } });
+      },
+      () => [languages.updateLanguage(project.id, language.id, { config: { seo: { metaTitle: 'Saved by editor' } } })],
+    );
+    expect(results[0]?.status).toBe('fulfilled');
+    expect((await db.prisma.language.findUniqueOrThrow({ where: { id: language.id } })).config).toEqual({
+      banner: { message: 'Saved by sync transaction' },
+      seo: { metaTitle: 'Saved by editor' },
+    });
+  });
+
+  it('finishes a pool-sized burst of creates without global-client helper reads', async () => {
+    const { project } = await fixture();
+    // adapter-pg's default pool has ten connections. Each locked create must
+    // perform its default branch/language lookups through its own transaction.
+    const created = await Promise.all(Array.from({ length: 10 }, (_, index) => pages.createPage(project.id, { title: `Burst ${index}` })));
+    expect(created).toHaveLength(10);
+    expect(await db.prisma.page.count({ where: { projectId: project.id } })).toBe(10);
+  }, 40_000);
 });

@@ -270,6 +270,7 @@ export const useDeletePage = (projectId: string) => {
 /** Reorder optimistically: the tree shows the drop result at once and rolls
  *  back if the server rejects it (the caller shows the error). */
 export const useReorderPages = (projectId: string) => {
+  const t = useT();
   const qc = useQueryClient();
   const listFilter = {
     queryKey: queryKeys.pages.allForProject(projectId),
@@ -289,6 +290,7 @@ export const useReorderPages = (projectId: string) => {
     onError: (_error, _body, context) => {
       for (const [key, pages] of context?.previous ?? []) qc.setQueryData(key, pages);
     },
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.reorderFailed', { 409: 'editor.reorderSlugTaken' }) },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -310,7 +312,7 @@ const invalidatePublishState = (qc: QueryClient, projectId: string) => {
  *  READY can tell it was in flight. */
 const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deployment) => {
   qc.setQueryData<Deployment[]>(queryKeys.deployments.all(projectId), (old) =>
-    old && !old.some((item) => item.id === deployment.id) ? [deployment, ...old] : old,
+    !old?.some((item) => item.id === deployment.id) ? [deployment, ...(old ?? [])] : old,
   );
   invalidatePublishState(qc, projectId);
 };
@@ -350,7 +352,7 @@ export const useRollback = (projectId: string) => {
         await api.app.projects[':projectId'].deployments[':id'].rollback.$post({ param: { projectId, id: deploymentId } }),
         'Could not roll back.',
       ),
-    onSuccess: () => invalidatePublishState(qc, projectId),
+    onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
   });
 };
 

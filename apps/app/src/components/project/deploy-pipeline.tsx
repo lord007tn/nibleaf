@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/compo
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useRollback } from '@/hooks/api';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
@@ -87,9 +87,14 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const confirm = useConfirm();
   const t = useT();
 
-  const deployments = useDeployments(project.id, { enabled: open || Boolean(trackedDeploymentId), pollIntervalMs: 1500 });
+  const [restoreRequest, setRestoration] = useState<{ id: string; version: number; projectId: string; sourceId: string | null | undefined } | null>(
+    null,
+  );
+  const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
+  const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
+  const deployments = useDeployments(project.id, { enabled: open || Boolean(observedDeploymentId), pollIntervalMs: 1500 });
 
-  const deployment = trackedDeploymentId ? deployments.data?.find((item) => item.id === trackedDeploymentId) : deployments.data?.[0];
+  const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
   const running = status === 'PENDING' || status === 'BUILDING';
   const done = status === 'READY';
@@ -116,16 +121,20 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   // Fire the "published" toast exactly once, on transition into READY while the dialog is open.
   const announced = useRef<string | null>(null);
   useEffect(() => {
-    if (done && deployment && (open || deployment.id === trackedDeploymentId) && announced.current !== deployment.id) {
+    if (done && deployment && (open || deployment.id === observedDeploymentId) && announced.current !== deployment.id) {
       announced.current = deployment.id;
-      toast.success(t('deploy.published'), {
+      toast.success(restoration ? t('deploy.rollback.success', { version: restoration.version }) : t('deploy.published'), {
         action: {
           label: t('deploy.viewSiteArrow'),
           onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
         },
       });
     }
-  }, [open, done, deployment, siteUrl, t, trackedDeploymentId]);
+    if (failed && restoration && deployment?.id === restoration.id && announced.current !== deployment.id) {
+      announced.current = deployment.id;
+      toast.error(t('deploy.rollback.error'));
+    }
+  }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration]);
 
   const viewSite = () => window.open(siteUrl, '_blank', 'noopener,noreferrer');
 
@@ -144,9 +153,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
       return;
     }
     rollback.mutate(previousReady.id, {
-      onSuccess: () => {
-        toast.success(t('deploy.rollback.success', { version: previousReady.version }));
-        onOpenChange(false);
+      onSuccess: (queued) => {
+        setRestoration({ id: queued.id, version: previousReady.version, projectId: project.id, sourceId: trackedDeploymentId });
       },
       onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
     });
@@ -172,7 +180,13 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             )}
             <div className="min-w-0 leading-snug">
               <DialogTitle className="font-semibold text-base tracking-tight">
-                {done ? t('deploy.deployed') : failed ? t('deploy.failed') : t('deploy.deploying')}
+                {done
+                  ? t('deploy.deployed')
+                  : failed
+                    ? t('deploy.failed')
+                    : restoration
+                      ? t('deploy.rollback.restoring', { version: restoration.version })
+                      : t('deploy.deploying')}
               </DialogTitle>
               <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
                 {siteUrl}

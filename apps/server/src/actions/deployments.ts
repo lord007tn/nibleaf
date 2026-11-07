@@ -493,7 +493,7 @@ export const createDeployment = async (organizationId: string, projectId: string
 };
 
 /** Re-publish a previous READY deployment's snapshot as a new deployment. */
-export const rollbackDeployment = async (organizationId: string, projectId: string, deploymentId: string, userId: string) => {
+export const rollbackDeployment = async (organizationId: string, projectId: string, deploymentId: string, userId: string, locale?: string) => {
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
@@ -518,5 +518,5 @@ export const rollbackDeployment = async (organizationId: string, projectId: stri
       },
     }),
   );
-  return enqueuePublish(deployment, { deploymentId: deployment.id, projectId, auto: false });
+  return enqueuePublish(deployment, { deploymentId: deployment.id, projectId, auto: false, locale });
 };

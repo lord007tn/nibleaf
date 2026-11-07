@@ -184,13 +184,13 @@ describe('createDeployment redirect preflight', () => {
     mocks.projectFindFirst.mockResolvedValue(project([]));
     const snapshot = { project: { name: 'Historical docs' }, pages: [{ content: 'Historical content' }] };
     mocks.deploymentFindFirst.mockResolvedValue({ id: 'old', status: 'READY', version: 1, snapshot, pagesCount: 1 });
-    await rollbackDeployment('org-1', 'project-1', 'old', 'user-1');
+    await rollbackDeployment('org-1', 'project-1', 'old', 'user-1', 'ar');
     expect(mocks.deploymentCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ status: 'PENDING', snapshot, pagesCount: 1 }) });
     expect(mocks.createJob).toHaveBeenCalledWith(
       'publish',
       {
         name: 'publish-deployment',
-        data: { deploymentId: 'deployment-3', projectId: 'project-1', auto: false },
+        data: { deploymentId: 'deployment-3', projectId: 'project-1', auto: false, locale: 'ar' },
       },
       { jobId: 'publish-deployment-3' },
     );

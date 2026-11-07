@@ -2,7 +2,7 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { MemberRole } from '@nibleaf/shared/constants';
-import { canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
+import { canAdminister, canAssignRole, canManageMember, planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import type { UpdateMemberRoleBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
@@ -115,19 +115,22 @@ export const inviteMember = async (
   return invitation;
 };
 
-export const updateMemberRole = async (organizationId: string, memberId: string, actorRole: string, body: UpdateMemberRoleBody) => {
+export const updateMemberRole = async (organizationId: string, memberId: string, actorUserId: string, body: UpdateMemberRoleBody) => {
   return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
+    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    if (!actor) throw forbidden('You are not a member of this workspace.');
+    if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
     const member = await tx.member.findFirst({ where: { id: memberId, organizationId } });
     if (!member) {
       throw notFound('member', { id: memberId });
     }
     // You can't act on a member ranked above you (e.g. an admin changing an owner)…
-    if (!canManageMember(actorRole, member.role)) {
+    if (!canManageMember(actor.role, member.role)) {
       throw forbidden('You cannot change the role of a member with a higher role than your own.');
     }
     // …nor promote anyone above your own rank (blocks admin→owner escalation).
-    if (!canAssignRole(actorRole, body.role)) {
+    if (!canAssignRole(actor.role, body.role)) {
       throw forbidden('You cannot grant a role higher than your own.', { role: body.role });
     }
     // Never leave a workspace without an owner. `body.role` can no longer be
@@ -159,7 +162,7 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
  */
 export const transferOwnership = async (organizationId: string, actorUserId: string, targetMemberId: string) =>
   prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
     const members = await tx.member.findMany({ where: { organizationId }, select: { id: true, userId: true, role: true } });
     const actor = members.find((member) => member.userId === actorUserId);
     const plan = planOwnershipTransfer(members, actor?.id ?? '', targetMemberId);
@@ -190,14 +193,17 @@ export const transferOwnership = async (organizationId: string, actorUserId: str
     });
   });
 
-export const removeMember = async (organizationId: string, memberId: string, actorRole: string) =>
+export const removeMember = async (organizationId: string, memberId: string, actorUserId: string) =>
   prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR NO KEY UPDATE`;
+    const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
+    if (!actor) throw forbidden('You are not a member of this workspace.');
+    if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
     const member = await tx.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true } });
     if (!member) {
       throw notFound('member', { id: memberId });
     }
-    if (!canManageMember(actorRole, member.role)) {
+    if (!canManageMember(actor.role, member.role)) {
       throw forbidden('You cannot remove a member with a higher role than your own.');
     }
     if (member.role === MemberRole.OWNER) {

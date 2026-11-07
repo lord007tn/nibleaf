@@ -1,3 +1,5 @@
+import { createJob, getJob, QueueNames } from '@nibleaf/bullmq';
+import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 
@@ -9,7 +11,7 @@ const STALE_MINUTES = 15;
 
 /** Flip deployments stranded in PENDING/BUILDING to FAILED so the dashboard
  *  doesn't show a perpetual in-progress publish after a worker crash. */
-async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
+export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<number> {
   const cutoff = new Date(Date.now() - staleMinutes * 60_000);
   const { count } = await prisma.deployment.updateMany({
     where: { status: { in: ['PENDING', 'BUILDING'] }, createdAt: { lt: cutoff } },
@@ -17,6 +19,36 @@ async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promise<numbe
   });
   if (count > 0) {
     log.warn({ count }, 'reaped stale deployments');
+  }
+  // The canonical publish receipt is written only after indexing is enqueued.
+  // READY without that receipt is a durable recovery marker, including after
+  // every BullMQ attempt is exhausted. Give normal delivery a minute to finish.
+  const deliveryCutoff = new Date(Date.now() - 60_000);
+  const missing = await prisma.$queryRaw<Array<{ id: string; projectId: string }>>`
+    SELECT d.id, d."projectId" FROM deployment d
+    WHERE d.status = 'READY' AND d.snapshot IS NOT NULL AND d."completedAt" < ${deliveryCutoff}
+      AND NOT EXISTS (SELECT 1 FROM platform_event e WHERE e.id = 'publish-ready:' || d.id)
+    ORDER BY d."completedAt", d.id LIMIT 50`;
+  for (const deployment of missing) {
+    try {
+      const original = await getJob(QueueNames.PUBLISH, `publish-${deployment.id}`);
+      const data: PublishDeploymentJobData = original?.data ?? {
+        deploymentId: deployment.id,
+        projectId: deployment.projectId,
+        auto: true,
+      };
+      // A fresh bounded time bucket also recovers exhausted recovery jobs. A
+      // stable ID within each bucket deduplicates concurrent reaper processes.
+      await createJob(
+        QueueNames.PUBLISH,
+        { name: 'publish-deployment', data },
+        {
+          jobId: `publish-recovery-${deployment.id}-${Math.floor(Date.now() / 60_000)}`,
+        },
+      );
+    } catch (error) {
+      log.warn({ deploymentId: deployment.id, error }, 'publish delivery recovery will retry');
+    }
   }
   return count;
 }

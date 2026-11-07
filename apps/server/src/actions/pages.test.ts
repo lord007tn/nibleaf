@@ -1,3 +1,4 @@
+import type { Prisma } from '@nibleaf/database';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +8,7 @@ const database = vi.hoisted(() => ({
   update: vi.fn(),
   updateMany: vi.fn(),
   transaction: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
@@ -62,6 +64,7 @@ const row = (overrides: Partial<Row> = {}): Row => ({
 /** A one-page project: lookups return the page, sibling-slug clash checks find nothing. */
 const seed = (page: Row) => {
   let current = page;
+  database.queryRaw.mockResolvedValue([]);
   database.findFirst.mockImplementation(async ({ where }: { where: Record<string, unknown> }) => ('slug' in where ? null : current));
   database.update.mockImplementation(async ({ data }: { data: Partial<Row> }) => {
     current = { ...current, ...data };
@@ -74,7 +77,7 @@ const seed = (page: Row) => {
   database.transaction.mockImplementation(async (work: unknown) =>
     typeof work === 'function'
       ? (work as (tx: unknown) => Promise<unknown>)({
-          $queryRaw: async () => [],
+          $queryRaw: database.queryRaw,
           page: {
             findFirst: database.findFirst,
             findFirstOrThrow: database.findFirst,
@@ -89,6 +92,7 @@ const seed = (page: Row) => {
 
 const seedTree = (initial: Row[]) => {
   let current = structuredClone(initial);
+  database.queryRaw.mockResolvedValue([]);
   database.findMany.mockImplementation(async () => structuredClone(current));
   const update = async ({ where, data }: { where: { id: string }; data: Partial<Row> }) => {
     const index = current.findIndex((page) => page.id === where.id);
@@ -107,7 +111,7 @@ const seedTree = (initial: Row[]) => {
     try {
       return typeof work === 'function'
         ? await work({
-            $queryRaw: async () => [],
+            $queryRaw: database.queryRaw,
             page: { findMany: database.findMany, update: database.update, updateMany: database.updateMany },
           })
         : await Promise.all(work);
@@ -178,6 +182,72 @@ describe('updatePage placeholder slug adoption', () => {
 describe('updatePage structural changes', () => {
   beforeEach(() => {
     for (const mock of Object.values(database)) mock.mockReset();
+  });
+
+  it('keeps branch and language helper reads on the supplied transaction', async () => {
+    const branches = await vi.importActual<typeof import('./branches')>('./branches');
+    const languages = await vi.importActual<typeof import('./languages')>('./languages');
+    const branch = { id: 'branch', projectId: 'project' };
+    const language = { id: 'language', projectId: 'project' };
+    const tx = {
+      branch: { findFirst: vi.fn().mockResolvedValue(branch), findMany: vi.fn().mockResolvedValue([branch]) },
+      language: { findFirst: vi.fn().mockResolvedValue(language), findMany: vi.fn().mockResolvedValue([language]) },
+    };
+    const client = tx as unknown as Prisma.TransactionClient;
+    await expect(branches.getDefaultBranch('project', client)).resolves.toEqual(branch);
+    await expect(branches.assertBranchInProject('project', 'branch', client)).resolves.toEqual(branch);
+    await expect(languages.getDefaultLanguage('project', client)).resolves.toEqual(language);
+    await expect(languages.assertLanguageInProject('project', 'language', client)).resolves.toEqual(language);
+    expect(tx.branch.findFirst).toHaveBeenCalledOnce();
+    expect(tx.language.findFirst).toHaveBeenCalledOnce();
+  });
+
+  it('locks only the page for the real title/content autosave payload', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { title: 'Updated guide', content: 'Autosaved content' });
+    const sql = database.queryRaw.mock.calls.map(([parts]) => parts.join('?'));
+    expect(sql).toHaveLength(1);
+    expect(sql[0]).toContain('FROM "page" WHERE id =');
+    expect(sql[0]).toContain('FOR NO KEY UPDATE');
+  });
+
+  it('keeps legacy custom slugs unchanged during title/content autosave', async () => {
+    seed(row({ title: 'Guide', slug: 'API_v1', path: 'API_v1' }));
+    const updated = await updatePage('project-1', 'page-1', { title: 'Updated guide', content: 'Autosaved content' });
+    expect(updated).toMatchObject({ slug: 'API_v1', path: 'API_v1' });
+    expect(database.queryRaw).toHaveBeenCalledOnce();
+    expect(database.queryRaw.mock.calls[0]?.[0].join('?')).toContain('FROM "page" WHERE id =');
+  });
+
+  it('uses a single page lock for a config merge', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { config: { hideToc: true } });
+    expect(database.queryRaw).toHaveBeenCalledOnce();
+    expect(database.queryRaw.mock.calls[0]?.[0].join('?')).toContain('FROM "page" WHERE id =');
+  });
+
+  it('releases a page lock before retrying a newly structural edit in project-first order', async () => {
+    seed(row());
+    database.findFirst.mockResolvedValueOnce(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    const updated = await updatePage('project-1', 'page-1', { title: 'Getting started', content: 'Saved content' });
+    expect(updated.slug).toBe('getting-started');
+    expect(database.transaction).toHaveBeenCalledTimes(2);
+    const sql = database.queryRaw.mock.calls.map(([parts]) => parts.join('?'));
+    expect(sql[0]).toContain('FROM "page" WHERE id =');
+    expect(sql[1]).toContain('FROM "project"');
+    expect(sql[2]).toContain('ORDER BY id FOR NO KEY UPDATE');
+  });
+
+  it('does not let a pre-existing duplicate elsewhere prevent an unrelated move', async () => {
+    const current = seedTree([
+      row({ id: 'legacy-one', slug: 'duplicate', path: 'duplicate' }),
+      row({ id: 'legacy-two', slug: 'duplicate', path: 'duplicate' }),
+      row({ id: 'group', slug: 'guides', path: 'guides' }),
+      row({ id: 'moving', slug: 'intro', path: 'intro' }),
+    ]);
+    await reorderPages('project-1', { items: [{ id: 'moving', parentId: 'group', position: 0 }] });
+    expect(current().find((page) => page.id === 'moving')?.path).toBe('guides/intro');
+    expect(current().filter((page) => page.path === 'duplicate')).toHaveLength(2);
   });
 
   it('does not overwrite a concurrent URL change during content autosave', async () => {

@@ -414,7 +414,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       // the same retryable indexing and notification pipeline as a new publish.
       const ready = await prisma.deployment.update({
         where: { id: deploymentId, projectId },
-        data: { status: 'READY', snapshot: deployment.snapshot, error: null, errorDetails: Prisma.DbNull, completedAt: new Date() },
+        data: { status: 'READY', error: null, errorDetails: Prisma.DbNull, completedAt: new Date() },
       });
       snapshotReady = true;
       return await completePublish(job.data, ready, project, lifecycleOccurredAt);
