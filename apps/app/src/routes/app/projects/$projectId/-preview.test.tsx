@@ -17,12 +17,14 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children?: ReactNode }) => <a href="/link">{children}</a>,
   useNavigate: () => vi.fn(),
 }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } }, isPending: false }) }));
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
   useLanguages: () => ({ data: [] }),
   usePage: () => queries.page,
   usePages: () => queries.pages,
   useProject: () => queries.project,
+  useProjectMembers: () => ({ data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false, isError: false }),
 }));
 vi.mock('@/hooks/api/query-options', () => ({ pageQueryOptions: vi.fn() }));
 vi.mock('@/hooks/api/route-prefetch', () => ({ defaultScopeId: () => undefined, prefetchScopedPages: vi.fn() }));
