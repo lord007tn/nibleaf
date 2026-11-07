@@ -26,7 +26,7 @@ describe('README latest-release link check', () => {
   it('does not count the address embedded in another host or path', () => {
     for (const target of [
       `https://evil.example/?next=${LATEST}`,
-      `https://github.com.evil.example/lord007tn/nibleaf/releases/latest`,
+      'https://github.com.evil.example/lord007tn/nibleaf/releases/latest',
       `https://evil.example/${LATEST}`,
       'https://github.com/lord007tn/nibleaf/releases/latest-preview',
       'https://github.com/someone/nibleaf/releases/latest',
