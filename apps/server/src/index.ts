@@ -110,7 +110,7 @@ async function bootstrapStorage(attempt = 1, delayMs = 1000): Promise<void> {
       logger.info('Storage bucket check succeeded');
     } catch (error) {
       bucketBootstrapStopped = storageCredentialsRejected(error);
-      logger[bucketBootstrapStopped || attempt === 1 ? 'warn' : 'debug'](
+      logger[bucketBootstrapStopped || attempt === 1 || attempt % 10 === 0 ? 'warn' : 'debug'](
         { error, attempt, stopped: bucketBootstrapStopped, retryMs: bucketBootstrapStopped ? null : delayMs },
         bucketBootstrapStopped
           ? 'Storage bucket bootstrap stopped: fix rejected storage credentials or bucket permissions, then restart the API'
@@ -124,7 +124,7 @@ async function bootstrapStorage(attempt = 1, delayMs = 1000): Promise<void> {
       storageCors = true;
     } catch (error) {
       corsBootstrapStopped = storageCredentialsRejected(error);
-      logger[corsBootstrapStopped || attempt === 1 ? 'warn' : 'debug'](
+      logger[corsBootstrapStopped || attempt === 1 || attempt % 10 === 0 ? 'warn' : 'debug'](
         { error, attempt, stopped: corsBootstrapStopped, retryMs: corsBootstrapStopped ? null : delayMs },
         corsBootstrapStopped
           ? 'Storage CORS bootstrap stopped: fix credentials or CORS permissions and restart the API, or manage CORS externally with STORAGE_AUTO_CORS=false. CORS does not gate API health'

@@ -246,6 +246,38 @@ describe('storage bootstrap readiness', () => {
     expect((await app.request('/health')).status).toBe(200);
   });
 
+  it.each(['NoSuchBucket', 'InvalidBucketName', 'PermanentRedirect'])(
+    'keeps repeated configuration failures visible every tenth attempt (%s)',
+    async (name) => {
+      mocks.ensureBucket.mockRejectedValue(Object.assign(new Error('bucket configuration failure'), { name }));
+      mocks.configureUploadCors.mockRejectedValue(Object.assign(new Error('CORS configuration failure'), { name }));
+      const app = await boot();
+      for (const delay of [1000, 2000, 4000, 8000, 16_000, 30_000, 30_000, 30_000]) await vi.advanceTimersByTimeAsync(delay);
+      expect(mocks.ensureBucket).toHaveBeenCalledTimes(9);
+      expect(mocks.warn).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(mocks.ensureBucket).toHaveBeenCalledTimes(10);
+      expect(mocks.warn).toHaveBeenCalledTimes(4);
+      expect(mocks.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ attempt: 10, retryMs: 30_000, stopped: false }),
+        'Storage bucket check failed; retrying automatically',
+      );
+      expect(mocks.warn).toHaveBeenCalledWith(
+        expect.objectContaining({ attempt: 10, retryMs: 30_000, stopped: false }),
+        expect.stringContaining('Storage upload CORS setup failed'),
+      );
+      await vi.advanceTimersByTimeAsync(30_000);
+      expect(mocks.warn).toHaveBeenCalledTimes(4);
+      expect(mocks.debug).toHaveBeenCalledWith(expect.objectContaining({ attempt: 11, stopped: false }), expect.any(String));
+      await vi.advanceTimersByTimeAsync(9 * 30_000);
+      expect(mocks.ensureBucket).toHaveBeenCalledTimes(20);
+      expect(mocks.configureUploadCors).toHaveBeenCalledTimes(20);
+      expect(mocks.warn).toHaveBeenCalledTimes(6);
+      expect(mocks.warn).toHaveBeenCalledWith(expect.objectContaining({ attempt: 20, stopped: false }), expect.any(String));
+      expect((await app.request('/health')).status).toBe(200);
+    },
+  );
+
   it('cancels pending reconciliation when shutting down', async () => {
     mocks.ensureBucket.mockRejectedValue(new Error('storage offline'));
     const app = await boot();

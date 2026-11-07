@@ -63,8 +63,11 @@ docker compose -f docker-compose.prod.yml exec -T server sh -c \
 
 The detailed route uses the same readiness HTTP status, so the example omits
 `curl -f` to show diagnostics during `503` responses. Never place the secret in a
-URL, browser code, public probe, or support transcript. Keep this endpoint and
-the worker operations listener off public ingress.
+URL, browser code, public probe, or support transcript. A proxy or ingress can
+make the detailed route reachable; it fails closed without the matching secret
+header. The dashboard's standard proxy preserves `/api`: `/api/health/details`
+is forwarded to that same API path, while the detailed handler is registered at
+API-root `/health/details`. Keep the worker operations listener private.
 
 `STORAGE_REQUIRED_FOR_HEALTH=false` is the default: failed bucket checks are
 diagnostic and do not block an initialized API. With `true`, a successful bucket
@@ -74,7 +77,8 @@ container environment; an older pinned Compose file may need a reviewed override
 to forward it without editing its checksummed release asset.
 
 Network and provider `5xx` failures retry with backoff capped at 30 seconds,
-including outages longer than the initial startup window. Rejected credentials
+including outages longer than the initial startup window. Continuing failures
+use debug logs between warnings on every tenth attempt. Rejected credentials
 or permissions stop the affected bootstrap operation with a warning: fix the
 credentials/permissions and restart the API, or provision CORS externally and set
 `STORAGE_AUTO_CORS=false`. Detailed health exposes `storage.ready`, `storage.cors`,
