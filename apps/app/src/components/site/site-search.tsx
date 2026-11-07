@@ -139,7 +139,8 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
         onOpenChange(true);
         return;
       }
-      if (isShortcutKey(event, 'k', 'KeyK') && (event.metaKey || event.ctrlKey)) {
+      // AltGr arrives as Ctrl+Alt on Windows: that is typing, not Ctrl+K.
+      if (isShortcutKey(event, 'k', 'KeyK') && (event.metaKey || event.ctrlKey) && !event.altKey) {
         event.preventDefault();
         preloadSiteSearch();
         onOpenChange(!open);

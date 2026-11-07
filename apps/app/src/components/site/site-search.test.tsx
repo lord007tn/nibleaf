@@ -136,6 +136,18 @@ describe('published reader search', () => {
     expect(props.onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('never opens while the reader types with AltGr (Ctrl+Alt on Windows) in a field', async () => {
+    const { props } = await render({ open: false });
+    const field = document.createElement('input');
+    document.body.append(field);
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'ĸ', code: 'KeyK', ctrlKey: true, altKey: true, bubbles: true, cancelable: true }));
+      field.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, altKey: true, bubbles: true, cancelable: true }));
+    });
+    expect(props.onOpenChange).not.toHaveBeenCalled();
+    field.remove();
+  });
+
   it.each([
     ['en', 'Search documentation', 'Results'],
     ['ar', 'البحث في الوثائق', 'النتائج'],
