@@ -32,6 +32,7 @@ export type ErrorCode =
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
+  | 'branch:main_changed'
   | 'storage:error'
   | 'search:unavailable'
   | 'ai:provider_response'
@@ -104,6 +105,7 @@ const ERROR_STATUS = {
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,
+  'branch:main_changed': 409,
   'storage:error': 502,
   'search:unavailable': 503,
   'ai:provider_response': 502,

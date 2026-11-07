@@ -125,6 +125,12 @@ jobs:
           ACTIVATION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/platform-events.postgres.test.ts
 
+      - name: Verify promoting a version keeps edits made on main
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          BRANCH_PROMOTE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

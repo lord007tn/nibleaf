@@ -1,12 +1,18 @@
 import { createHash } from 'node:crypto';
-import { type Branch, type Prisma, prisma } from '@nibleaf/database';
+import { type Branch, Prisma, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
-import type { CreateBranchBody } from '@nibleaf/validators';
+import type { CreateBranchBody, MergeBranchBody } from '@nibleaf/validators';
 import { AppError, conflict, notFound } from '@/errors';
+import { buildForkBaseline, diffMainSinceFork, forkPointOf, type MergePreview, planPromote } from './branch-fork';
+import { recomputeProjectPaths } from './pages';
+
+/** The fork baseline is promote's bookkeeping and can be large; API responses
+ *  leave it out. */
+const publicBranch = { forkBaseline: true } as const;
 
 /** Every branch of a project, default ('main') first. */
-export const listBranches = async (projectId: string): Promise<Branch[]> =>
-  await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] });
+export const listBranches = async (projectId: string): Promise<Omit<Branch, 'forkBaseline'>[]> =>
+  await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: publicBranch });
 
 /** The project's required default branch. Missing data is an invariant error. */
 export const getDefaultBranch = async (projectId: string) => {
@@ -90,7 +96,14 @@ export const promoteImportReplacementBranch = async (
 
 /** Create a branch by forking another branch's pages (the default by default).
  *  Pages are deep-copied with fresh ids and remapped parent links, so the new
- *  branch is an independent, editable copy across every language. */
+ *  branch is an independent, editable copy across every language.
+ *
+ *  A fork of main records the fork point (`forkedAt` + a baseline of main's
+ *  pages, see ./branch-fork) so a later promote can tell what changed on main.
+ *  The copies carry `forkedAt` as their `updatedAt`, which is how promote tells
+ *  an edited copy from an untouched one. A fork of another version inherits
+ *  that version's fork time without a baseline, so promote compares main from
+ *  the earlier fork (never later) and reports the comparison as incomplete. */
 export const createBranch = async (projectId: string, body: CreateBranchBody) => {
   const name = body.name.trim();
   const clash = await prisma.branch.findFirst({ where: { projectId, name }, select: { id: true } });
@@ -100,17 +113,20 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await getDefaultBranch(projectId);
 
   return prisma.$transaction(async (tx) => {
-    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false } });
+    const forkedAt = new Date();
     const sourcePages = await tx.page.findMany({ where: { projectId, branchId: source.id }, orderBy: { position: 'asc' } });
     // old page id → new page id, so parentId links can be remapped onto the copies.
     const idMap = new Map<string, string>();
     for (const p of sourcePages) {
       idMap.set(p.id, newId());
     }
+    const copyIdOf = (id: string) => idMap.get(id) ?? newId();
+    const fork = source.isDefault ? { forkedAt, forkBaseline: buildForkBaseline(sourcePages, copyIdOf) } : { forkedAt: forkPointOf(source).forkedAt };
+    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, ...fork }, omit: publicBranch });
     if (sourcePages.length > 0) {
       await tx.page.createMany({
         data: sourcePages.map((p) => ({
-          id: idMap.get(p.id) ?? newId(),
+          id: copyIdOf(p.id),
           projectId,
           branchId: branch.id,
           languageId: p.languageId,
@@ -126,6 +142,8 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
           translationKey: p.translationKey,
           position: p.position,
           hidden: p.hidden,
+          createdAt: forkedAt,
+          updatedAt: forkedAt,
         })),
       });
     }
@@ -133,23 +151,84 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   });
 };
 
-/** Merge a branch into the default branch ('main'): main adopts this branch's
- *  (edited) pages, then the now-consumed branch is removed. This is a squash /
- *  promote — main's prior pages are replaced, so concurrent edits made directly
- *  on main since the fork are overwritten. */
-export const mergeBranch = async (projectId: string, id: string) => {
+const mainPageSelect = { id: true, parentId: true, kind: true, title: true, path: true, languageId: true, createdAt: true, updatedAt: true } as const;
+const versionPageSelect = { id: true, parentId: true, languageId: true, path: true, updatedAt: true } as const;
+
+/** Read the version, main and the fork point for a promote. With `lock`, it
+ *  first locks the project row, then the version row, then main's page rows
+ *  (the order other page writes use: project first), so no save on main can
+ *  land between this check and the promote that follows in the same
+ *  transaction. Pages created on main meanwhile are kept by promote anyway. */
+const readPromoteState = async (tx: Prisma.TransactionClient, projectId: string, branchId: string, mainId: string, lock: boolean) => {
+  if (lock) {
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`);
+    const locked = await tx.$queryRaw<{ id: string }[]>(
+      Prisma.sql`SELECT "id" FROM "branch" WHERE "id" = ${branchId} AND "projectId" = ${projectId} FOR UPDATE`,
+    );
+    if (locked.length === 0) throw notFound('branch', { id: branchId });
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${mainId} ORDER BY "id" FOR UPDATE`);
+  }
+  const branch = await tx.branch.findFirst({ where: { id: branchId, projectId }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
+  if (!branch) throw notFound('branch', { id: branchId });
+  const mainPages = await tx.page.findMany({ where: { projectId, branchId: mainId }, select: mainPageSelect });
+  const versionPages = await tx.page.findMany({ where: { projectId, branchId }, select: versionPageSelect });
+  const languages = await tx.language.findMany({ where: { projectId }, select: { id: true, code: true } });
+  const fork = forkPointOf(branch);
+  const preview = diffMainSinceFork(mainPages, fork, new Map(languages.map((l) => [l.id, l.code])));
+  return { fork, mainPages, versionPages, preview };
+};
+
+const assertPromotable = async (projectId: string, id: string) => {
   const branch = await assertBranchInProject(projectId, id);
   if (branch.isDefault) {
     throw conflict('The default branch cannot be merged into itself.');
   }
-  const main = await getDefaultBranch(projectId);
-  await prisma.$transaction(async (tx) => {
-    // Replace main's pages with this branch's pages (which keep their ids + paths
-    // + remapped parent links), then drop the emptied branch.
-    await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
-    await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
-    await tx.branch.delete({ where: { id: branch.id } });
-  });
+  return { branch, main: await getDefaultBranch(projectId) };
+};
+
+/** What changed on main since this version was created (read-only). */
+export const getMergePreview = async (projectId: string, id: string): Promise<MergePreview> => {
+  const { branch, main } = await assertPromotable(projectId, id);
+  return prisma.$transaction(async (tx) => (await readPromoteState(tx, projectId, branch.id, main.id, false)).preview);
+};
+
+/** Promote a version into the default branch ('main'): main adopts the
+ *  version's pages, then the consumed version is removed. Pages on main that
+ *  changed since the fork are checked first: unless the caller confirms with
+ *  `confirmChangedOnMain`, promote stops with 409 `branch:main_changed` and
+ *  changes nothing. Pages added on main since the fork are kept; see
+ *  ./branch-fork for the full keep/replace/drop rules. The check and the
+ *  promote share one locked transaction. */
+export const mergeBranch = async (projectId: string, id: string, body: MergeBranchBody = {}) => {
+  const { branch, main } = await assertPromotable(projectId, id);
+  await prisma.$transaction(
+    async (tx) => {
+      const state = await readPromoteState(tx, projectId, branch.id, main.id, true);
+      if (state.preview.changedOnMainSinceFork.length > 0 && body.confirmChangedOnMain !== true) {
+        throw new AppError({
+          code: 'branch:main_changed',
+          message: 'Pages on main changed since this version was created. Review them before promoting.',
+          details: { ...state.preview },
+        });
+      }
+      const plan = planPromote(state.mainPages, state.versionPages, state.fork);
+      // Re-home kept main pages before their old parents go: page deletes
+      // cascade to children.
+      for (const move of plan.reparent) {
+        await tx.page.update({ where: { id: move.id }, data: { parentId: move.parentId } });
+      }
+      if (plan.dropVersionIds.length > 0) {
+        await tx.page.deleteMany({ where: { projectId, branchId: branch.id, id: { in: plan.dropVersionIds } } });
+      }
+      if (plan.deleteMainIds.length > 0) {
+        await tx.page.deleteMany({ where: { projectId, branchId: main.id, id: { in: plan.deleteMainIds } } });
+      }
+      await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+      await tx.branch.delete({ where: { id: branch.id } });
+      if (plan.reparent.length > 0) await recomputeProjectPaths(projectId, tx);
+    },
+    { timeout: 30_000 },
+  );
   return main;
 };
 

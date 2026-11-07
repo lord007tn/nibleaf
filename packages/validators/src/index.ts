@@ -663,6 +663,12 @@ export const createBranchBody = z.object({
 });
 export type CreateBranchBody = z.infer<typeof createBranchBody>;
 
+/** Promote a version into main. Without `confirmChangedOnMain: true`, promote
+ *  refuses (409 `branch:main_changed`) when pages on main changed since the
+ *  version was created. The body is optional: none or `{}` is a plain promote. */
+export const mergeBranchBody = z.object({ confirmChangedOnMain: z.boolean().optional() });
+export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
+
 export const updatePageBody = z.object({
   parentId: z.string().nullable().optional(),
   title: z.string().min(1).max(200).optional(),

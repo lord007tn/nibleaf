@@ -120,7 +120,7 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
 
 /** Recompute the materialized `path` of every page in a project from the tree.
  *  Given a transaction client, the path writes join that transaction. */
-const recomputeProjectPaths = async (projectId: string, tx?: Prisma.TransactionClient): Promise<void> => {
+export const recomputeProjectPaths = async (projectId: string, tx?: Prisma.TransactionClient): Promise<void> => {
   const db = tx ?? prisma;
   const pages = await db.page.findMany({ where: { projectId }, select: { id: true, parentId: true, slug: true, path: true } });
   const byId = new Map(pages.map((p) => [p.id, p]));
