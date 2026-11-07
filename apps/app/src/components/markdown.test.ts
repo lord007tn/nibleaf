@@ -1,7 +1,7 @@
 import { PassThrough } from 'node:stream';
 import { createElement } from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
 import { convertGitBookMarkdown, plainGitBookText } from '../../../server/src/actions/importers/gitbook-markdown';
 
@@ -23,6 +23,25 @@ const render = (content: string, language?: string): Promise<string> =>
       },
     );
   });
+
+// The first rich render pays for the lazy renderer's cold import (parse5,
+// KaTeX). Load it once up front so no single test carries that cost.
+beforeAll(async () => {
+  await import('./markdown-rich');
+}, 30_000);
+
+describe('Markdown renderer — default element renderers', () => {
+  it('keeps react-markdown internals out of the HTML and keeps authored image classes and empty alt text', async () => {
+    const html = await render(
+      '# Title\n\n## Section\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\n![](/plain.png)\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n\n```js\nconst answer = 42;\n```\n',
+    );
+    expect(html).toContain('answer');
+    expect(html.match(/<[a-z0-9]+ [^>]*node=[^>]*>/g) ?? []).toEqual([]);
+    expect(html).not.toContain('[object Object]');
+    expect(html).toMatch(/<img[^>]*src="\/plain\.png"[^>]*alt=""|<img[^>]*alt=""[^>]*src="\/plain\.png"/);
+    expect(html).toMatch(/<img[^>]*class="[^"]*rounded-xl[^"]*block dark:hidden[^"]*"/);
+  });
+});
 
 describe('Markdown renderer — Mintlify component parity', () => {
   it('renders KaTeX for inline and block math', async () => {

@@ -11,7 +11,7 @@ export const Route = createFileRoute('/pricing')({
   head: ({ loaderData }) => ({
     meta: pageMeta({
       title: 'Nibleaf pricing: free cloud beta and self-hosting status',
-      description: 'Nibleaf Cloud is free while in beta. The public AGPL-3.0 release can be installed with a pinned container and Docker Compose.',
+      description: 'Nibleaf Cloud is free during the beta, with no card at sign-up. The AGPL-3.0 release can be self-hosted with Docker Compose.',
       path: '/pricing',
     }),
     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],

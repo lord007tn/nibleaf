@@ -2,11 +2,11 @@
 export const marketingFaqs: { q: string; a: string }[] = [
   {
     q: 'Can I use Nibleaf Cloud now?',
-    a: 'Yes. Nibleaf Cloud is live and free while in beta — managed docs hosting, sign-in, publishing, search, and custom domains.',
+    a: 'Yes. Nibleaf Cloud is free during the beta, with no card at sign-up. It provides managed docs hosting, sign-in, publishing, built-in search, and custom domains. No paid cloud plan is offered today.',
   },
   {
     q: 'Is Nibleaf open source?',
-    a: 'Yes. The source repository is public under AGPL-3.0, and the self-hosted release includes a pinned GHCR image and guided Docker Compose installer.',
+    a: 'Yes. The source repository is public under AGPL-3.0, and the self-hosted release has Docker Compose deployment configuration. Check release assets and deployment prerequisites before installing.',
   },
   {
     q: 'What happens after the beta?',
@@ -14,14 +14,14 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'Are there limits during the beta?',
-    a: 'The beta runs on a fair-use basis rather than hard plan limits. If a workspace is unusually heavy on resources, we will reach out before anything changes.',
+    a: 'No page or seat plan cap is published for the beta. Fair-use safeguards, feature limits, and operator quotas still apply, including AI request/token budgets and import/export limits.',
   },
   {
     q: 'Can I use my own object storage?',
-    a: 'Absolutely. Nibleaf speaks the S3 API, so it works with any S3-compatible storage (AWS S3, Cloudflare R2, Backblaze B2, or the bundled storage service).',
+    a: 'When you self-host, the instance operator can configure S3-compatible object storage. This is an instance-level integration; workspace-level bring-your-own storage on Nibleaf Cloud is not promised here.',
   },
   {
     q: 'How does search work?',
-    a: 'The built-in Orama path provides full-text and fuzzy results. v0.2.0 adds an optional tenant-filtered Qdrant hybrid path and opt-in grounded answers, which need Qdrant and an AI provider key; operators start in shadow mode and retain the legacy path for rollback.',
+    a: 'Built-in Orama full-text and fuzzy search works without an AI key. Section links, recent queries, cross-language results, retry states, optional hybrid retrieval (Qdrant plus an embedding connection), Ask AI reader chat with citations and follow-ups, and workspace OpenAI/OpenRouter keys are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. The editor writing assistant uses the instance key.',
   },
 ];

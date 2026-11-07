@@ -1,46 +1,13 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { siteContentT } from '@nibleaf/i18n/site-content';
-import { Check, Copy } from 'lucide-react';
-import { type ComponentProps, type FunctionComponent, lazy, type ReactNode, Suspense, useMemo, useRef, useState } from 'react';
+import { type ComponentProps, lazy, Suspense, useMemo } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeSlug from 'rehype-slug';
 import remarkGfm from 'remark-gfm';
-import { z } from 'zod';
-import {
-  Accordion,
-  AccordionGroup,
-  ApiExample,
-  Badge,
-  Banner,
-  Callout,
-  Card,
-  CardGroup,
-  CodeGroup,
-  Column,
-  Columns,
-  Expandable,
-  File,
-  FileTree,
-  Folder,
-  Frame,
-  Icon,
-  MdxButton,
-  ParamField,
-  RelatedCard,
-  RelatedContent,
-  RequestExample,
-  ResponseExample,
-  ResponseField,
-  Step,
-  Steps,
-  Tab,
-  Tabs,
-  Tooltip,
-  Update,
-} from '@/components/site/mdx-components';
+import { Callout } from '@/components/site/mdx/callout';
+import { type DocumentationComponents, str } from '@/components/site/mdx/props';
 import {
   normalizeMdxBlocks,
   rehypeAuthoredComponentProps,
@@ -50,7 +17,8 @@ import {
   sanitizeSchema,
 } from '@/components/site/mdx-config';
 import { MermaidBlock } from '@/components/site/mermaid-block';
-import { announce, ContentImage, SectionLink } from '@/components/site/reader-content-controls';
+import { Pre } from '@/components/site/reader-code-block';
+import { ContentImage, SectionLink } from '@/components/site/reader-content-controls';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 
 /** Link context for a published site: lets the renderer rewrite authored
@@ -78,7 +46,7 @@ export const needsRichMarkdown = (content: string): boolean => /<\/?[A-Za-z][^>]
 
 /** Rewrite a root-relative internal doc link to the site base. External URLs,
  *  in-page anchors, mailto/tel, and protocol-relative links are left untouched. */
-function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefined): string | undefined {
+export function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefined): string | undefined {
   if (!href || !site) {
     return href;
   }
@@ -91,88 +59,6 @@ function resolveDocHref(href: string | undefined, site: SiteLinkContext | undefi
   return href;
 }
 
-/** A code block with a one-click copy button (Mintlify-style). When the fence
- *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
- *  filename header bar is drawn; otherwise the language shows as a floating badge. */
-function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) {
-  const ref = useRef<HTMLPreElement>(null);
-  const [copied, setCopied] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const t = siteContentT(locale);
-  // Language + optional title come from the fence meta. mdast→hast may attach
-  // them to this <pre> or to the child <code>, so check both.
-  const ownProps = props as ComponentProps<'pre'> & { 'data-title'?: string; 'data-lang'?: string };
-  const child = props.children as { props?: { className?: string; 'data-title'?: string; 'data-lang'?: string } } | null | undefined;
-  const cls = child?.props?.className ?? '';
-  const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
-  const title = ownProps['data-title'] ?? child?.props?.['data-title'];
-  const copy = async () => {
-    setCopied(false);
-    setFailed(false);
-    try {
-      await navigator.clipboard.writeText(ref.current?.textContent ?? '');
-      setCopied(true);
-      announce(t('copied'));
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setFailed(true);
-      announce(t('copyFailed'));
-    }
-  };
-  const copyButton = (
-    <button
-      type="button"
-      onClick={copy}
-      aria-label={copied ? t('copied') : t('copyCode')}
-      className={cn(
-        // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
-        // matching the force-LTR code content (else it collides with the badge).
-        'reader-code-copy reader-control grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
-        title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
-      )}
-    >
-      {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-    </button>
-  );
-  return (
-    // data-not-typeset: this block owns its own chrome (dark panel, header bar,
-    // copy button) — typeset must not restyle the <pre> inside. The wrapper's
-    // flow margin tracks the configured rhythm.
-    <div
-      className="group relative mt-(--typeset-flow) overflow-hidden rounded-xl border border-black/20 bg-[#0d1117] shadow-xs dark:border-white/10"
-      data-theme-component="code"
-      data-not-typeset
-    >
-      {title ? (
-        <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
-          <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
-          <div className="flex shrink-0 items-center gap-2">
-            {lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null}
-            {copyButton}
-          </div>
-        </div>
-      ) : (
-        <>
-          {lang ? (
-            <span className="absolute start-3.5 top-2.5 z-10 font-mono text-[11px] text-white/60 uppercase tracking-wide [direction:ltr]">
-              {lang}
-            </span>
-          ) : null}
-          {copyButton}
-        </>
-      )}
-      {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
-      {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
-      <pre
-        dir="ltr"
-        ref={ref}
-        className={cn('overflow-x-auto p-4 text-[13px] leading-relaxed [direction:ltr]', !title && 'reader-code-untitled', !title && lang && 'pt-9')}
-        {...props}
-      />
-    </div>
-  );
-}
-
 // Base document typography (sizes, spacing, rhythm) is owned by typeset.css —
 // the reader-configurable engine driven by --typeset-size/-leading/-flow. Only
 // behavioural concerns live here: sticky-header scroll margins, the table
@@ -181,18 +67,22 @@ function Pre({ locale, ...props }: ComponentProps<'pre'> & { locale?: string }) 
 // Heading scroll margins track the site chrome's sticky header height via
 // --content-scroll-mt (set on the chrome wrapper); the 6rem fallback keeps
 // editor preview and changelog offsets sane.
+// react-markdown passes its hast `node` to custom components; it must not reach
+// the DOM (it would render as `node="[object Object]"`).
 const htmlComponents: Components = {
-  h1: (props) => <h1 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h2: (props) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h3: (props) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  h4: (props) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
-  table: (props) => (
+  h1: ({ node: _node, ...props }) => <h1 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h2: ({ node: _node, ...props }) => <h2 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h3: ({ node: _node, ...props }) => <h3 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  h4: ({ node: _node, ...props }) => <h4 className="scroll-mt-[var(--content-scroll-mt,6rem)]" {...props} />,
+  table: ({ node: _node, ...props }) => (
     <div className="typeset-scroll">
       <table {...props} />
     </div>
   ),
   pre: Pre,
-  img: (props) => <img className="rounded-xl border border-border" alt={props.alt ?? ''} {...props} />,
+  // Authored classes (light/dark image pairs) add to the default frame, and an
+  // image without alt text is marked decorative instead of losing the attribute.
+  img: ({ node: _node, ...props }) => <img {...props} alt={props.alt ?? ''} className={cn('rounded-xl border border-border', props.className)} />,
 };
 
 /** Anchor renderer, built per site-context. Heading self-links (added by
@@ -201,7 +91,7 @@ const htmlComponents: Components = {
  *  hyperlinks. Everything else gets normal link styling and internal doc links
  *  are rewritten to the site base. */
 function anchorRenderer(site: SiteLinkContext | undefined) {
-  return function Anchor({ className, href, ...props }: ComponentProps<'a'>) {
+  return function Anchor({ className, href, node: _node, ...props }: ComponentProps<'a'> & { node?: unknown }) {
     const isHeadingAnchor = className?.split(/\s+/).includes('heading-anchor');
     if (isHeadingAnchor) {
       return <a className={cn('font-[inherit] text-inherit no-underline hover:no-underline', className)} href={href} {...props} />;
@@ -216,176 +106,12 @@ function anchorRenderer(site: SiteLinkContext | undefined) {
   };
 }
 
-// MDX component tags. react-markdown's Components type only knows HTML tags, so
-// custom tags are typed separately and merged into the HTML component map.
-interface MdxProps {
-  children?: ReactNode;
-  type?: unknown;
-  title?: unknown;
-  href?: unknown;
-  icon?: unknown;
-  cols?: unknown;
-  defaultopen?: unknown;
-  caption?: unknown;
-  tip?: unknown;
-  color?: unknown;
-  size?: unknown;
-  label?: unknown;
-  description?: unknown;
-  path?: unknown;
-  query?: unknown;
-  header?: unknown;
-  body?: unknown;
-  name?: unknown;
-  dataDisplayName?: unknown;
-  'data-display-name'?: unknown;
-  required?: unknown;
-  default?: unknown;
-  deprecated?: unknown;
-  variant?: unknown;
-  status?: unknown;
-}
-
-type DocumentationTag =
-  | 'callout'
-  | 'note'
-  | 'info'
-  | 'tip'
-  | 'check'
-  | 'warning'
-  | 'danger'
-  | 'card'
-  | 'cardgroup'
-  | 'tabs'
-  | 'tab'
-  | 'accordion'
-  | 'accordiongroup'
-  | 'steps'
-  | 'step'
-  | 'mdxframe'
-  | 'tooltip'
-  | 'icon'
-  | 'update'
-  | 'codegroup'
-  | 'expandable'
-  | 'paramfield'
-  | 'responsefield'
-  | 'columns'
-  | 'column'
-  | 'banner'
-  | 'badge'
-  | 'button'
-  | 'filetree'
-  | 'folder'
-  | 'file'
-  | 'apiexample'
-  | 'requestexample'
-  | 'responseexample'
-  | 'relatedcontent'
-  | 'relatedcard'
-  | 'mermaid';
-type ButtonMdxProps = ComponentProps<'button'> & { href?: unknown; variant?: unknown };
-type DocumentationComponents = Omit<Record<DocumentationTag, FunctionComponent<MdxProps>>, 'button'> & {
-  button: FunctionComponent<ButtonMdxProps>;
-};
-
-const optionalStringSchema = z.string().optional().catch(undefined);
-const str = (value: unknown) => optionalStringSchema.parse(value);
-const authoredName = (props: MdxProps): string | undefined => str(props['data-display-name']) ?? str(props.dataDisplayName) ?? str(props.name);
-
-const mdxComponents: DocumentationComponents = {
+/** The only component elements reachable without raw HTML: `callout` from
+ *  `> [!NOTE]` admonitions (remarkCallouts) and `mermaid` from ```mermaid fences
+ *  (rehypeMermaid). Every authored component tag needs raw HTML, so its renderer
+ *  ships with the lazy rich renderer (see site/mdx/component-map.tsx). */
+export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'mermaid'> = {
   callout: ({ type, children }) => <Callout type={str(type)}>{children}</Callout>,
-  note: ({ children }) => <Callout type="note">{children}</Callout>,
-  info: ({ children }) => <Callout type="info">{children}</Callout>,
-  tip: ({ children }) => <Callout type="tip">{children}</Callout>,
-  check: ({ children }) => <Callout type="check">{children}</Callout>,
-  warning: ({ children }) => <Callout type="warning">{children}</Callout>,
-  danger: ({ children }) => <Callout type="danger">{children}</Callout>,
-  card: ({ title, href, icon, children }) => (
-    <Card title={str(title)} href={str(href)} icon={str(icon)}>
-      {children}
-    </Card>
-  ),
-  cardgroup: ({ cols, children }) => <CardGroup cols={str(cols)}>{children}</CardGroup>,
-  tabs: ({ children }) => <Tabs>{children}</Tabs>,
-  tab: ({ title, children }) => <Tab title={str(title)}>{children}</Tab>,
-  accordion: ({ title, defaultopen, children }) => (
-    <Accordion title={str(title)} defaultOpen={str(defaultopen)}>
-      {children}
-    </Accordion>
-  ),
-  accordiongroup: ({ children }) => <AccordionGroup>{children}</AccordionGroup>,
-  steps: ({ children }) => <Steps>{children}</Steps>,
-  step: ({ title, children }) => <Step title={str(title)}>{children}</Step>,
-  mdxframe: ({ caption, children }) => <Frame caption={str(caption)}>{children}</Frame>,
-  tooltip: ({ tip, children }) => <Tooltip tip={str(tip)}>{children}</Tooltip>,
-  icon: (props) => <Icon icon={str(props.icon)} name={authoredName(props)} color={str(props.color)} size={str(props.size)} />,
-  update: ({ label, description, children }) => (
-    <Update label={str(label)} description={str(description)}>
-      {children}
-    </Update>
-  ),
-  codegroup: ({ children }) => <CodeGroup>{children}</CodeGroup>,
-  expandable: ({ title, defaultopen, children }) => (
-    <Expandable title={str(title)} defaultOpen={str(defaultopen)}>
-      {children}
-    </Expandable>
-  ),
-  paramfield: (props) => (
-    <ParamField
-      path={str(props.path)}
-      query={str(props.query)}
-      header={str(props.header)}
-      body={str(props.body)}
-      name={authoredName(props)}
-      type={str(props.type)}
-      required={props.required}
-      default={str(props.default)}
-      deprecated={props.deprecated}
-    >
-      {props.children}
-    </ParamField>
-  ),
-  responsefield: (props) => (
-    <ResponseField
-      name={authoredName(props)}
-      type={str(props.type)}
-      required={props.required}
-      default={str(props.default)}
-      deprecated={props.deprecated}
-    >
-      {props.children}
-    </ResponseField>
-  ),
-  columns: ({ children }) => <Columns>{children}</Columns>,
-  column: ({ children }) => <Column>{children}</Column>,
-  banner: ({ type, children }) => <Banner type={str(type)}>{children}</Banner>,
-  badge: ({ color, children }) => <Badge color={str(color)}>{children}</Badge>,
-  button: ({ href, variant, children }: ButtonMdxProps) => (
-    <MdxButton href={str(href)} variant={str(variant)}>
-      {children}
-    </MdxButton>
-  ),
-  filetree: ({ children }) => <FileTree>{children}</FileTree>,
-  folder: (props) => (
-    <Folder name={authoredName(props)} defaultOpen={str(props.defaultopen)}>
-      {props.children}
-    </Folder>
-  ),
-  file: (props) => <File name={authoredName(props)} icon={str(props.icon)} />,
-  apiexample: ({ title, children }) => <ApiExample title={str(title)}>{children}</ApiExample>,
-  requestexample: ({ title, children }) => <RequestExample title={str(title)}>{children}</RequestExample>,
-  responseexample: ({ title, status, children }) => (
-    <ResponseExample title={str(title)} status={str(status)}>
-      {children}
-    </ResponseExample>
-  ),
-  relatedcontent: ({ title, children }) => <RelatedContent title={str(title)}>{children}</RelatedContent>,
-  relatedcard: ({ title, description, href, icon, children }) => (
-    <RelatedCard title={str(title)} description={str(description)} href={str(href)} icon={str(icon)}>
-      {children}
-    </RelatedCard>
-  ),
   mermaid: ({ children }) => <MermaidBlock>{children}</MermaidBlock>,
 };
 
@@ -410,72 +136,16 @@ export function MarkdownRenderer({
   extraRemarkPlugins = [],
   extraRehypePlugins = [],
   afterSanitizePlugins = [],
+  mdxComponents,
 }: MarkdownProps & {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
   /** Internal trusted renderers only: authored HTML must be sanitized first. */
   afterSanitizePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
+  /** Renderers for authored component tags, supplied by the rich renderer. */
+  mdxComponents?: Components;
 }) {
   const components = useMemo(() => {
-    const localizedMdxComponents: DocumentationComponents = {
-      ...mdxComponents,
-      tabs: ({ children }: MdxProps) => <Tabs language={site?.lang}>{children}</Tabs>,
-      accordion: ({ title, defaultopen, children }: MdxProps) => (
-        <Accordion title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
-          {children}
-        </Accordion>
-      ),
-      codegroup: ({ children }: MdxProps) => <CodeGroup language={site?.lang}>{children}</CodeGroup>,
-      expandable: ({ title, defaultopen, children }: MdxProps) => (
-        <Expandable title={str(title)} defaultOpen={str(defaultopen)} language={site?.lang}>
-          {children}
-        </Expandable>
-      ),
-      paramfield: (props: MdxProps) => (
-        <ParamField
-          path={str(props.path)}
-          query={str(props.query)}
-          header={str(props.header)}
-          body={str(props.body)}
-          name={authoredName(props)}
-          type={str(props.type)}
-          required={props.required}
-          default={str(props.default)}
-          deprecated={props.deprecated}
-          language={site?.lang}
-        >
-          {props.children}
-        </ParamField>
-      ),
-      responsefield: (props: MdxProps) => (
-        <ResponseField
-          name={authoredName(props)}
-          type={str(props.type)}
-          required={props.required}
-          default={str(props.default)}
-          deprecated={props.deprecated}
-          language={site?.lang}
-        >
-          {props.children}
-        </ResponseField>
-      ),
-      // Card links are internal doc targets too — rewrite them to the site base.
-      card: ({ title, href, icon, children }: MdxProps) => (
-        <Card title={str(title)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
-          {children}
-        </Card>
-      ),
-      button: ({ href, variant, children }: ButtonMdxProps) => (
-        <MdxButton href={resolveDocHref(str(href), site)} variant={str(variant)}>
-          {children}
-        </MdxButton>
-      ),
-      relatedcard: ({ title, description, href, icon, children }: MdxProps) => (
-        <RelatedCard title={str(title)} description={str(description)} href={resolveDocHref(str(href), site)} icon={str(icon)}>
-          {children}
-        </RelatedCard>
-      ),
-    };
     const mergedComponents: Components = {
       ...htmlComponents,
       ...(site
@@ -506,10 +176,11 @@ export function MarkdownRenderer({
         : {}),
       pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
       a: anchorRenderer(site),
-      ...localizedMdxComponents,
+      ...baseMdxComponents,
+      ...mdxComponents,
     };
     return mergedComponents;
-  }, [site]);
+  }, [site, mdxComponents]);
   return (
     <div className={cn('typeset', className)}>
       <ReactMarkdown
