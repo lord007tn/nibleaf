@@ -391,6 +391,7 @@
   "editor_ai_sectiondrafted": "Section drafted.",
   "editor_ai_drafterror": "Could not draft content.",
   "editor_ai_ratelimited": "Daily AI limit reached. Try again tomorrow.",
+  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_summarylabel": "Summary",
   "editor_ai_suggestionlabel": "Suggestion",
   "editor_ai_replace": "Replace",
