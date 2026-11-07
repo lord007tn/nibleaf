@@ -138,7 +138,14 @@ export interface LandingCopy {
     /** `availability` marks a capability that is still rolling out; its note renders with the item and Cloud-only lists leave it out. */
     items: { icon: MarketingIcon; title: string; body: string; availability?: RolloutCapability }[];
   };
-  howItWorks: { eyebrow: string; title: string; body: string; steps: { title: string; body: string }[] };
+  howItWorks: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    steps: { title: string; body: string }[];
+    /** Rollout caption for steps that rely on capabilities still rolling out. */
+    note?: string;
+  };
   paths: { eyebrow: string; title: string; body: string; cloud: PathCard; selfHost: PathCard; detailsLink: Cta };
   compare: { eyebrow: string; title: string; body: string; links: (Cta & { description: string })[] };
   faq: { eyebrow: string; title: string; items: { q: string; a: string }[] };

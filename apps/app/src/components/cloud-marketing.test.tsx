@@ -7,6 +7,7 @@ import { CloudPage } from './marketing/cloud-page';
 import { availabilityNote, heroAvailabilityNote, isRollingOut } from './marketing/copy/availability';
 import { landingAr } from './marketing/copy/landing.ar';
 import { landingEn } from './marketing/copy/landing.en';
+import { LANDING_META } from './marketing/copy/landing-meta';
 import { ArabicLandingPage } from './marketing/landing/arabic-landing-page';
 import { LandingPage } from './marketing/landing/landing-page';
 
@@ -128,5 +129,31 @@ describe('availability honesty', () => {
     for (const item of landingEn.more.items.filter((candidate) => candidate.availability && isRollingOut(candidate.availability))) {
       expect(root.textContent).not.toContain(item.title);
     }
+  });
+});
+
+describe('previews and secondary copy stay qualified', () => {
+  it('qualifies AI answers in the search and social preview text', () => {
+    expect(LANDING_META.en.title).not.toMatch(/AI answers/);
+    expect(LANDING_META.en.description).toMatch(/AI answers that cite your docs are rolling out/);
+    expect(LANDING_META.ar.description).toContain('تصل تدريجيًا');
+  });
+
+  it.each([
+    ['en', landingEn, LandingPage],
+    ['ar', landingAr, ArabicLandingPage],
+  ] as const)('captions the AI steps and answers that are still rolling out (%s)', (lang, copy, Page) => {
+    expect(copy.howItWorks.note).toContain(availabilityNote('askAi', lang));
+    const arabicAnswer = copy.faq.items.find((item) => item.q.includes(lang === 'ar' ? 'العربية' : 'Arabic'));
+    expect(arabicAnswer?.a).toContain(availabilityNote('askAi', lang));
+    expect(copy.more.items.find((item) => item.icon === 'llms')?.body).toContain('llms-full.txt');
+    const text = markup(renderToStaticMarkup(<Page />)).textContent ?? '';
+    expect(text).toContain(copy.howItWorks.note);
+  });
+
+  it('keeps unverified Cloud claims off the Cloud page', () => {
+    const text = markup(renderToStaticMarkup(<CloudPage />)).textContent ?? '';
+    expect(text).not.toMatch(/automatic upgrades|custom domains, analytics/);
+    expect(text).not.toContain(landingEn.paths.body);
   });
 });

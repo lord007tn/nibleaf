@@ -4,7 +4,7 @@ import { isRollingOut } from './copy/availability';
 import { landingEn } from './copy/landing.en';
 import { Eyebrow, outlineButton, primaryButton } from './site/primitives';
 
-/** The Nibleaf Cloud page (`/cloud`). Lists only capabilities already live on Cloud. */
+/** The Nibleaf Cloud page (`/cloud`). It omits capabilities that are still rolling out. */
 export function CloudPage({ stars = 0 }: { stars?: number }) {
   return (
     <MarketingShell stars={stars}>
@@ -14,9 +14,9 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
           <h1 className="mt-4 text-balance font-semibold text-4xl leading-tight tracking-tight sm:text-5xl">
             Hosted documentation sites, free during beta
           </h1>
-          <p className="mt-5 max-w-[72ch] text-lg text-muted-foreground leading-8">
-            Nibleaf managed for you: hosted dashboard, database and storage, automatic upgrades, custom domains, analytics, and multilingual authoring
-            with first-class RTL.
+          <p className="mt-5 max-w-[72ch] text-foreground/80 text-lg leading-8">
+            Nibleaf managed for you: hosted dashboard, database and storage, upgrades handled for you, and multilingual authoring with first-class
+            RTL.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <a className={primaryButton} href="/sign-up">
@@ -47,7 +47,9 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
         </div>
         <div className="mt-12 rounded-xl border border-border bg-card p-6">
           <h2 className="font-semibold text-2xl">{landingEn.paths.title}</h2>
-          <p className="mt-3 text-muted-foreground leading-7">{landingEn.paths.body}</p>
+          <p className="mt-3 text-muted-foreground leading-7">
+            Prefer your own servers? Install the AGPL-3.0 release with Docker Compose. New features reach it when a version that includes them ships.
+          </p>
           <a className={`${outlineButton} mt-6`} href="/self-hosting">
             {landingEn.paths.selfHost.cta.label}
           </a>

@@ -172,3 +172,15 @@ Evidence keys: **F1–F12** are sections of `facts.md`. `path:line` items are co
 | Final CTA paragraph contrast in the light theme (about 4.2:1) | `text-foreground/80` instead of muted grey on the tinted panel. | `packages/design-system/src/styles/globals.css` tokens. |
 | Recording focus | Pressing play moves focus to the video instead of the page body. | `media/marketing-media.tsx`. |
 | Arabic wording | "يصرّح بذلك حين لا يجد إجابة". Reading time is "مدة القراءة: …" with the nominative count. | Reviewer suggestions. |
+
+## Round-3 scoring fixes — 2026-11-07
+
+| Claim | Change | Evidence |
+| --- | --- | --- |
+| Meta title, description and OG cards advertised AI answers with no qualifier | Title: "open-source docs and help center in English and Arabic". The descriptions and both OG cards say AI answers are "rolling out" (Arabic: «تصل تدريجيًا»). | `copy/availability.ts`: `askAi` is `in-source`, and `site-chat.ts` and `answer-chat.ts` are absent from v0.1.2 |
+| "…and each has a Markdown version" | "…with their full text in llms-full.txt" | Per-page Markdown arrived with #142 (2026-09-03, `packages/shared/src/public-markdown.ts`). v0.1.2 has `llms.txt` and `llms-full.txt` only. |
+| How-it-works steps 3–4 and the Arabic-support FAQ ("Ask AI replies in Arabic") had no note | Both carry the central note | `copy/availability.ts` |
+| Hero caption said "rolling out to the self-hosted release" | Now the approved wording: "arriving in the next self-hosted release and on Nibleaf Cloud as they roll out" | Owner-approved phrase |
+| The Cloud vs self-host FAQ opened "It's the same open-source product" | "It's one open-source codebase." | Matches the paths section |
+| `/cloud` claimed "automatic upgrades, custom domains, analytics", and its code comment said "live on Cloud" | "upgrades handled for you"; custom domains and analytics removed from the hero and the route description. The comment now says it omits capabilities still rolling out. | Cloud is a manual, pinned deploy, and its feature set is unverified (A14 and A15 above) |
+| `/cloud` intro contrast in the light theme (about 4.2:1) | `text-foreground/80` | Same tokens as the final CTA fix |

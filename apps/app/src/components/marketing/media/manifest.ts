@@ -142,7 +142,7 @@ export interface MediaEntry {
   /** Optional dark-theme captures. */
   wideDark?: ImageVariant;
   phoneDark?: ImageVariant;
-  /** Optional screen recording, played only when the visitor presses play (`preload="none"`). */
+  /** Optional screen recording, mounted only when the visitor presses play. */
   video?: { src: string; width: number; height: number };
 }
 

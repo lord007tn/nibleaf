@@ -78,8 +78,8 @@ export function isRollingOut(capability: RolloutCapability): boolean {
 }
 
 const HERO_NOTES: Record<MarketingLang, string> = {
-  en: 'Ask AI, search insights and AI-assistant connections are new: they are in the open-source code now and rolling out to the self-hosted release and Nibleaf Cloud.',
-  ar: 'ميزات «اسأل المساعد» ورؤى البحث وربط مساعدي الذكاء الاصطناعي جديدة: موجودة الآن في الشيفرة المفتوحة المصدر، وتصل تدريجيًا إلى إصدار الاستضافة الذاتية وإلى Nibleaf Cloud.',
+  en: 'Ask AI, search insights and AI-assistant connections are new: they are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as they roll out.',
+  ar: 'ميزات «اسأل المساعد» ورؤى البحث وربط مساعدي الذكاء الاصطناعي جديدة: موجودة الآن في الشيفرة المفتوحة المصدر، وتصل مع الإصدار القادم للاستضافة الذاتية وإلى Nibleaf Cloud تدريجيًا.',
 };
 
 /** One-line caption for the hero while any AI capability is still rolling out; `undefined` once all are live. */

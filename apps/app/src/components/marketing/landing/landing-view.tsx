@@ -249,7 +249,7 @@ export function LandingView({
       <section className="border-border border-y bg-muted/20">
         <div className={section}>
           <Heading copy={copy.howItWorks} />
-          <ol className="mt-10 grid gap-8 md:grid-cols-3">
+          <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {copy.howItWorks.steps.map((step, index) => (
               <li key={step.title} className="border-border border-t pt-5">
                 <span aria-hidden="true" className="font-mono text-primary text-sm">
@@ -260,6 +260,7 @@ export function LandingView({
               </li>
             ))}
           </ol>
+          {copy.howItWorks.note && <p className="mt-8 max-w-[72ch] text-muted-foreground text-xs leading-6">{copy.howItWorks.note}</p>}
         </div>
       </section>
 
