@@ -1,9 +1,17 @@
 name: nibleaf-dev
 
 # Local development infrastructure only (Postgres, Dragonfly, maxio). Run the
-# apps with `pnpm dev`. For a full self-hosted stack see docker-compose.yml.
+# apps with `node scripts/dev.mjs`. For a full self-hosted stack see docker-compose.yml.
 
+# Fixed credentials and unauthenticated services below are for loopback-only dev.
 services:
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -12,7 +20,7 @@ services:
       POSTGRES_PASSWORD: nibleaf
       POSTGRES_DB: nibleaf
     ports:
-      - '5442:5432'
+      - '127.0.0.1:5442:5432'
     volumes:
       - nibleaf-pg:/var/lib/postgresql/data
     healthcheck:
@@ -30,7 +38,7 @@ services:
     ulimits:
       memlock: -1
     ports:
-      - '6381:6379'
+      - '127.0.0.1:6381:6379'
     volumes:
       - nibleaf-dragonfly:/data
 
@@ -39,7 +47,7 @@ services:
     image: qdrant/qdrant:v1.19.0
     restart: unless-stopped
     ports:
-      - '6333:6333'
+      - '127.0.0.1:6333:6333'
     volumes:
       - nibleaf-qdrant:/qdrant/storage
 
@@ -52,7 +60,7 @@ services:
       CLICKHOUSE_PASSWORD: nibleaf
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
     ports:
-      - '8123:8123'
+      - '127.0.0.1:8123:8123'
     volumes:
       - nibleaf-clickhouse:/var/lib/clickhouse
       - nibleaf-clickhouse-logs:/var/log/clickhouse-server
@@ -82,7 +90,7 @@ services:
       MAXIO_PUBLIC_BUCKETS: nibleaf
       MAXIO_ALLOW_INSECURE_DEV: 'true'
     ports:
-      - '9300:9000'
+      - '127.0.0.1:9300:9000'
     volumes:
       - nibleaf-maxio:/data
     healthcheck:

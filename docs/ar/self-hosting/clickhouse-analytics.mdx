@@ -45,7 +45,9 @@ pnpm --filter @nibleaf/clickhouse migrate
 ```
 
 تفشل الأداة إذا كان القفل مشغولاً؛ أعد تشغيلها بعد انتهاء العملية الأخرى.
-تحتوي استجابة `/health` للخادم والعامل على حقل مستقل:
+تحتوي استجابة `/health` للعامل واستجابة `/health/details` المحمية لواجهة API
+على الحقل المستقل التالي. يتطلب مسار API الترويسة `x-nibleaf-internal`؛ راجع
+[فحوص الصحة والتشخيصات الخاصة](/ar/self-hosting/troubleshooting#فحوص-الصحة-والتشخيصات-الخاصة):
 
 ```json
 {"analytics":{"configured":true,"latencyMs":4,"status":"ok"}}
