@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 349,500-byte gzip JavaScript budget. The
+Public documentation pages have a 349,700-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
 measured size. CI also rejects public profiles that contain known
@@ -62,12 +62,13 @@ include that chunk. So:
 
 ## Budget history
 
-### 356,000 → 349,500 bytes: marketing heads and non-reader loaders (#345)
+### 356,000 → 349,700 bytes: marketing heads and non-reader loaders (#345)
 
 | Build | public-docs | public-docs-index |
 | --- | --- | --- |
 | main@afd79476 | 346.32 KiB | 345.51 KiB |
 | this change | 339.26 KiB | 338.46 KiB |
+| this change with main@26c089c0 (#336's two use-case routes, +0.21 KiB) | 339.47 KiB | 338.67 KiB |
 
 Each step, measured on main@831657aa (346.35 and 345.55 KiB):
 
@@ -117,7 +118,8 @@ to load marketing analytics), `lib/comparison-*`, `lib/blog-seo.ts` and
 modules. The patterns live in `scripts/bundle-boundaries.mjs`, and
 `scripts/bundle-boundaries.test.mjs` checks them against a fixture module list.
 
-The budget is the measured 347,402 bytes plus a ~2 KiB margin.
+The budget is the 347,620 bytes measured for public-docs after merging main with
+#336, plus a ~2 KiB margin (2,080 bytes of headroom).
 
 ### 365,000 → 356,000 bytes: dashboard code out of the reader (#291)
 

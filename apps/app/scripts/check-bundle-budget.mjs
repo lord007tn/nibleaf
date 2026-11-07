@@ -30,12 +30,13 @@ const profiles = {
 // that. The margin is ~4 KiB over the measured size. See BUNDLE_BUDGET.md.
 // 365_000 → 356_000 (#291): dashboard loaders load with their routes, and the
 // settings and auth routes' search checks no longer pull in icons or MCP code.
-// 356_000 → 349_500 (#345): marketing routes build their head in the loader
+// 356_000 → 349_700 (#345): marketing routes build their head in the loader
 // from a lazy import, and every non-reader route's loader loads with its route,
-// about 7.1 KiB less. The margin is ~2 KiB over the measured 347,402 bytes.
+// about 7.1 KiB less. The margin is ~2 KiB over the 347,620 bytes measured
+// after #336's use-case routes.
 const gzipBudgets = {
-  'public-docs': 349_500,
-  'public-docs-index': 349_500,
+  'public-docs': 349_700,
+  'public-docs-index': 349_700,
 };
 
 // A size budget catches overall growth; these signatures make accidental
