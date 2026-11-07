@@ -45,6 +45,18 @@ export function linksToLatestRelease(markdown) {
   });
 }
 
+export function assertReadmeInstallInstructions(readme, command) {
+  // A latest-release link must never mask stale installer examples. Installer
+  // instructions, when present, must be standalone generated command lines.
+  const installerLines = readme.split(/\r?\n/).filter((line) => line.includes('nibleaf-install.sh'));
+  if (installerLines.some((line) => line.trim() !== command)) {
+    throw new Error('README.md contains an unverified nibleaf-install.sh instruction; use only the generated verified install command');
+  }
+  if (!readme.includes(command) && !linksToLatestRelease(readme)) {
+    throw new Error('README.md must link to the latest release or contain the verified install command generated from release/self-host.json');
+  }
+}
+
 export async function buildSelfHostRelease() {
   const [manifestSource, installerTemplate, compose, readme] = await Promise.all([
     readFile(manifestPath, 'utf8'),
@@ -65,9 +77,7 @@ export async function buildSelfHostRelease() {
   // Source pins can describe a release still being prepared. The README may
   // direct readers to published release instructions instead of advertising
   // that unpublished installer. Generated asset hashes remain mandatory below.
-  if (!readme.includes(command) && !linksToLatestRelease(readme)) {
-    throw new Error('README.md must link to the latest release or contain the verified install command generated from release/self-host.json');
-  }
+  assertReadmeInstallInstructions(readme, command);
 
   return {
     actualManifest: { version: manifest.version, installerSha256: installerDigest, composeSha256: composeDigest },

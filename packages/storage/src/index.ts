@@ -44,7 +44,10 @@ export const ensureBucket = async (target?: StorageTarget): Promise<void> => {
   const bucket = getBucket(target);
   try {
     await client.send(new HeadBucketCommand({ Bucket: bucket }));
-  } catch {
+  } catch (error) {
+    // Missing bucket is the only reason to create one. Permission and transport
+    // failures must not cause CreateBucket audit alerts on managed storage.
+    if (!isNotFound(error)) throw error;
     try {
       await client.send(new CreateBucketCommand({ Bucket: bucket }));
       logger.info({ bucket }, 'created storage bucket');

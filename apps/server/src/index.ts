@@ -27,6 +27,18 @@ let ready = false;
 let storageReady = false;
 let storageCors: boolean | null = env.STORAGE_AUTO_CORS ? false : null;
 let storageRetry: NodeJS.Timeout | undefined;
+let bucketBootstrapStopped = false;
+let corsBootstrapStopped = false;
+const STORAGE_BOOTSTRAP_MAX_ATTEMPTS = 5;
+
+function storagePermissionDenied(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const failure = error as { name?: string; code?: string; $metadata?: { httpStatusCode?: number } };
+  return (
+    failure.$metadata?.httpStatusCode === 403 ||
+    ['AccessDenied', 'AccessDeniedException', 'Forbidden'].some((code) => failure.name === code || failure.code === code)
+  );
+}
 
 app.get(
   '/openapi.json',
@@ -58,29 +70,34 @@ app.get('/health', async (ctx) => {
   );
 });
 
-async function bootstrapStorage(delayMs = 1000): Promise<void> {
-  if (!storageReady) {
+async function bootstrapStorage(attempt = 1, delayMs = 1000): Promise<void> {
+  if (!storageReady && !bucketBootstrapStopped) {
     try {
       await ensureBucket();
       storageReady = true;
       logger.info('Storage bucket check succeeded');
     } catch (error) {
-      logger.warn({ error, retryMs: delayMs }, 'Storage bucket check failed; retrying. Object-only credentials may lack HeadBucket permission');
+      bucketBootstrapStopped = storagePermissionDenied(error) || attempt >= STORAGE_BOOTSTRAP_MAX_ATTEMPTS;
+      logger[attempt === 1 ? 'warn' : 'debug'](
+        { error, attempt, stopped: bucketBootstrapStopped, retryMs: bucketBootstrapStopped ? null : delayMs },
+        'Storage bucket check failed; retries stop on denied permissions or after 5 attempts. Restart the API after fixing stopped bootstrap checks',
+      );
     }
   }
-  if (env.STORAGE_AUTO_CORS && !storageCors) {
+  if (env.STORAGE_AUTO_CORS && !storageCors && !corsBootstrapStopped) {
     try {
       await configureUploadCors(env.STORAGE_CORS_ALLOWED_ORIGINS);
       storageCors = true;
     } catch (error) {
-      logger.warn(
-        { error, retryMs: delayMs },
-        'Storage upload CORS setup failed; configure CORS externally or set STORAGE_AUTO_CORS=false. CORS does not gate API health',
+      corsBootstrapStopped = storagePermissionDenied(error) || attempt >= STORAGE_BOOTSTRAP_MAX_ATTEMPTS;
+      logger[attempt === 1 ? 'warn' : 'debug'](
+        { error, attempt, stopped: corsBootstrapStopped, retryMs: corsBootstrapStopped ? null : delayMs },
+        'Storage upload CORS setup failed; retries stop on denied permissions or after 5 attempts. Configure CORS externally or set STORAGE_AUTO_CORS=false. CORS does not gate API health',
       );
     }
   }
-  if (!shuttingDown && (!storageReady || (env.STORAGE_AUTO_CORS && !storageCors))) {
-    storageRetry = setTimeout(() => void bootstrapStorage(Math.min(delayMs * 2, 30_000)), delayMs);
+  if (!shuttingDown && ((!storageReady && !bucketBootstrapStopped) || (env.STORAGE_AUTO_CORS && !storageCors && !corsBootstrapStopped))) {
+    storageRetry = setTimeout(() => void bootstrapStorage(attempt + 1, Math.min(delayMs * 2, 30_000)), delayMs);
     storageRetry.unref();
   }
 }

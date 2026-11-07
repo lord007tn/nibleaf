@@ -236,6 +236,20 @@ test('documented dev launcher loads root env for every frontend task', () => {
   }
 });
 
+test('development launcher explains how to create a missing root .env', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'nibleaf-dev-no-env-'));
+  try {
+    mkdirSync(join(directory, 'scripts'));
+    writeFileSync(join(directory, 'scripts', 'dev.mjs'), readFileSync(new URL('./dev.mjs', import.meta.url), 'utf8'));
+    const result = spawnSync(process.execPath, [join(directory, 'scripts', 'dev.mjs')], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Copy \.env\.example to \.env first/);
+    assert.doesNotMatch(result.stderr, /ENOENT|at loadEnvFile/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 for (const signal of ['SIGINT', 'SIGTERM']) {
   test(`development launcher forwards ${signal} and uses the child's final exit status`, () => {
     const directory = mkdtempSync(join(tmpdir(), 'nibleaf-dev-signals-'));

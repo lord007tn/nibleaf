@@ -1,9 +1,15 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-loadEnvFile(new URL('../.env', import.meta.url));
+const envFile = new URL('../.env', import.meta.url);
+if (!existsSync(envFile)) {
+  console.error('Copy .env.example to .env first');
+  process.exit(1);
+}
+loadEnvFile(envFile);
 const mode = process.argv[2] ?? 'app';
 const filters = {
   app: ['-F', '@nibleaf/server', '-F', '@nibleaf/worker', '-F', '@nibleaf/app'],
