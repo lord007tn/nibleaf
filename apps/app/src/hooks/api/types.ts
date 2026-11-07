@@ -181,6 +181,9 @@ interface BranchChangedOnMainPage {
   onPromote: 'kept' | 'merged' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
   newPath?: string;
   newParentPath?: string | null;
+  /** `replaced` only: which of main's own edits the version overwrites (field
+   *  names, plus `content`, `settings`, `parent`). */
+  replacedFields?: string[];
   updatedAt: string;
 }
 

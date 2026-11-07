@@ -27,11 +27,11 @@ describe('friendlyErrorMessage', () => {
   it.each([
     [
       'en',
-      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Bring those changes into this version, or undo them on main, then promote again.",
+      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
     ],
     [
       'ar',
-      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أدخِل تلك التغييرات في هذا الإصدار، أو تراجع عنها في main، ثم أعد محاولة الترقية.',
+      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أنشئ إصدارًا جديدًا من main، وانقل إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
     ],
   ] as const)('gives the editor’s promote error its own %s text for branch:main_changed, not "refresh and try again"', async (locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
@@ -93,11 +93,11 @@ describe('friendlyErrorMessage', () => {
   it.each([
     [
       'en',
-      'This version was created before Nibleaf could check main for changes, or copied from a version that was. Create a new version from main and move your changes there.',
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
     ],
     [
       'ar',
-      'أُنشئ هذا الإصدار قبل أن يتمكن Nibleaf من التحقق من تغييرات main، أو نُسخ من إصدار أُنشئ كذلك. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فهو أقدم من هذا التحقق، أو مستورد، أو منسوخ من إصدار كهذا. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
     ],
   ] as const)('explains, in %s, that a version without a baseline cannot be promoted', async (locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
