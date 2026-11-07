@@ -668,7 +668,12 @@ export type CreateBranchBody = z.infer<typeof createBranchBody>;
  *  unless `confirmPreview` is the `fingerprint` of the preview the writer
  *  reviewed, and that preview is still current. The body is optional: none or
  *  `{}` is a plain promote. */
-export const mergeBranchBody = z.object({ confirmPreview: z.string().regex(/^[0-9a-f]{64}$/).optional() });
+export const mergeBranchBody = z.object({
+  confirmPreview: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+});
 export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 
 export const updatePageBody = z.object({

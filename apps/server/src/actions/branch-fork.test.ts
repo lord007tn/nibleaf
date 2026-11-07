@@ -92,11 +92,39 @@ describe('analyzePromote: preview', () => {
   });
 
   it('lists modified, added and deleted pages sorted by path, with what promote will do', () => {
-    const now = [page('billing', { title: 'Billing fixed', updatedAt: AFTER }), page('guide', { kind: 'GROUP' }), page('refunds', { languageId: 'ar', updatedAt: AFTER })];
+    const now = [
+      page('billing', { title: 'Billing fixed', updatedAt: AFTER }),
+      page('guide', { kind: 'GROUP' }),
+      page('refunds', { languageId: 'ar', updatedAt: AFTER }),
+    ];
     expect(analyze(now, untouchedVersion, forkOf(atFork)).preview.changedOnMainSinceFork).toEqual([
-      { pageId: 'billing', title: 'Billing fixed', path: 'billing', languageCode: 'en', change: 'modified', onPromote: 'kept', updatedAt: AFTER.toISOString() },
-      { pageId: 'intro', title: 'intro', path: 'guide/intro', languageCode: 'en', change: 'deleted', onPromote: 'removed', updatedAt: BEFORE.toISOString() },
-      { pageId: 'refunds', title: 'refunds', path: 'refunds', languageCode: 'ar', change: 'added', onPromote: 'kept', updatedAt: AFTER.toISOString() },
+      {
+        pageId: 'billing',
+        title: 'Billing fixed',
+        path: 'billing',
+        languageCode: 'en',
+        change: 'modified',
+        onPromote: 'kept',
+        updatedAt: AFTER.toISOString(),
+      },
+      {
+        pageId: 'intro',
+        title: 'intro',
+        path: 'guide/intro',
+        languageCode: 'en',
+        change: 'deleted',
+        onPromote: 'removed',
+        updatedAt: BEFORE.toISOString(),
+      },
+      {
+        pageId: 'refunds',
+        title: 'refunds',
+        path: 'refunds',
+        languageCode: 'ar',
+        change: 'added',
+        onPromote: 'kept',
+        updatedAt: AFTER.toISOString(),
+      },
     ]);
   });
 
@@ -174,7 +202,11 @@ describe('analyzePromote: plan', () => {
   it('updates main pages in place, taking only what the version changed', () => {
     const atFork = [page('guide', { kind: 'GROUP' }), page('billing', { position: 1 }), page('faq', { position: 2 })];
     const now = [at(atFork, 0), page('billing', { position: 1, contentHash: 'main-edit', updatedAt: AFTER }), page('faq', { position: 5 })];
-    const version = [copyOf(at(atFork, 0)), copyOf(at(atFork, 1), { title: 'Billing v2' }), copyOf(at(atFork, 2), { parentId: 'v-guide', position: 0 })];
+    const version = [
+      copyOf(at(atFork, 0)),
+      copyOf(at(atFork, 1), { title: 'Billing v2' }),
+      copyOf(at(atFork, 2), { parentId: 'v-guide', position: 0 }),
+    ];
     const { plan } = analyze(now, version, forkOf(atFork));
     expect(plan.mainUpdates).toEqual([
       { id: 'billing', data: { title: 'Billing v2' } },
@@ -278,7 +310,11 @@ describe('analyzePromote: plan', () => {
 
   it('settles duplicates that come only from the version, keeping the lowest id', () => {
     const atFork = [page('g', { kind: 'GROUP' })];
-    const version = [copyOf(at(atFork, 0)), page('v-b', { parentId: 'v-g', slug: 'x', path: 'g/x' }), page('v-a', { parentId: 'v-g', slug: 'x', path: 'g/x' })];
+    const version = [
+      copyOf(at(atFork, 0)),
+      page('v-b', { parentId: 'v-g', slug: 'x', path: 'g/x' }),
+      page('v-a', { parentId: 'v-g', slug: 'x', path: 'g/x' }),
+    ];
     const { preview, plan } = analyze(atFork, version, forkOf(atFork));
     expect(plan.moves).toEqual([
       { id: 'v-a', data: { parentId: 'g' } },
@@ -289,7 +325,11 @@ describe('analyzePromote: plan', () => {
 
   it('renames a clashing folder once: its pages follow it instead of getting their own suffix', () => {
     const atFork = [page('billing')];
-    const now = [...atFork, page('docs', { kind: 'GROUP', updatedAt: AFTER }), page('intro', { parentId: 'docs', path: 'docs/intro', updatedAt: AFTER })];
+    const now = [
+      ...atFork,
+      page('docs', { kind: 'GROUP', updatedAt: AFTER }),
+      page('intro', { parentId: 'docs', path: 'docs/intro', updatedAt: AFTER }),
+    ];
     const version = [
       copyOf(at(atFork, 0)),
       page('v-docs', { kind: 'GROUP', slug: 'docs', path: 'docs' }),
@@ -356,7 +396,11 @@ describe('inheritForkBaseline (a version made from another version)', () => {
 
   it('promotes after the source without duplicating the pages the source created', () => {
     // V2 was promoted: intro took its text, old is gone, faq moved onto main as v2-faq.
-    const afterV2 = [at(main, 0), withHash({ ...at(main, 1), contentHash: 'v2 text', updatedAt: AFTER }), withHash({ ...at(v2Pages, 2), parentId: 'guide', updatedAt: AFTER })];
+    const afterV2 = [
+      at(main, 0),
+      withHash({ ...at(main, 1), contentHash: 'v2 text', updatedAt: AFTER }),
+      withHash({ ...at(v2Pages, 2), parentId: 'guide', updatedAt: AFTER }),
+    ];
     const { preview, plan } = analyze(afterV2, v3Pages, v3Baseline);
     expect(plan.moves).toEqual([]);
     expect(plan.consumed).toContainEqual({ copyId: 'v3-faq', mainId: 'v2-faq' });

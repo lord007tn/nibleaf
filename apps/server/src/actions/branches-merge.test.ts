@@ -53,7 +53,10 @@ import { createBranch, getMergePreview, mergeBranch } from './branches';
 const FORK = new Date('2026-11-01T10:00:00.000Z');
 const AFTER = new Date('2026-11-02T10:00:00.000Z');
 /** Stand-in for the SQL hash: any field change changes it. */
-const rehash = (r: Row) => Object.assign(r, { hash: JSON.stringify([r.kind, r.title, r.slug, r.icon, r.description, r.contentHash, r.configHash, r.translationKey, r.hidden]) });
+const rehash = (r: Row) =>
+  Object.assign(r, {
+    hash: JSON.stringify([r.kind, r.title, r.slug, r.icon, r.description, r.contentHash, r.configHash, r.translationKey, r.hidden]),
+  });
 const row = (id: string, branchId: string, overrides: Partial<Row> = {}): Row =>
   rehash({
     id,
@@ -128,10 +131,11 @@ const forkMain = async () => {
   return (mainId: string) => forkBaseline.pages[mainId]?.copyId as string;
 };
 /** The 409 a promote answers, or null when it went through. */
-const attempt = (body?: Parameters<typeof mergeBranch>[2]) => mergeBranch('project', 'v2', body).then(
-  () => null,
-  (error: { status?: number; code?: string; details?: { fingerprint?: string; reason?: string } }) => error,
-);
+const attempt = (body?: Parameters<typeof mergeBranch>[2]) =>
+  mergeBranch('project', 'v2', body).then(
+    () => null,
+    (error: { status?: number; code?: string; details?: { fingerprint?: string; reason?: string } }) => error,
+  );
 
 describe('createBranch', () => {
   it('takes the project lock first, then reads pages, hashes and per-field values in one statement', async () => {
@@ -237,7 +241,9 @@ describe('mergeBranch', () => {
       { id: 'g1', audienceId: 'partners', pageId: copyOf('billing') },
       { id: 'g2', audienceId: 'staff', pageId: copyOf('intro') },
     ]);
-    db.audienceGrant.findUnique.mockImplementation(async ({ where }) => (where.audienceId_scopeKey.audienceId === 'staff' ? { id: 'existing' } : null));
+    db.audienceGrant.findUnique.mockImplementation(async ({ where }) =>
+      where.audienceId_scopeKey.audienceId === 'staff' ? { id: 'existing' } : null,
+    );
     await mergeBranch('project', 'v2');
     expect(db.audienceGrant.update).toHaveBeenCalledWith({ where: { id: 'g1' }, data: { pageId: 'billing', scopeKey: 'PAGE:billing' } });
     expect(db.audienceGrant.delete).toHaveBeenCalledWith({ where: { id: 'g2' } });
