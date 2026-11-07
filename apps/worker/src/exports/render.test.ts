@@ -540,6 +540,16 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     }
   });
 
+  it('renders atoms written as an empty pair without leaking their tags', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: '<FileTree>\n<File name="setup.ts"></File>\n</FileTree>\n\nA <Icon icon="star"></Icon> star.',
+    };
+    const html = renderPageMarkdown(snapshot, page, assets);
+    expect(html).toContain('setup.ts');
+    expect(html).not.toMatch(/&lt;\/?(?:File|Icon)/);
+  });
+
   it('renders formatting tags only with a partner in the same text, so an unclosed one cannot spread to later pages', () => {
     const first = { ...required(snapshot.pages[0]), content: 'An <u>unclosed underline and x<sup>2.\n\nNext paragraph.' };
     const second = {

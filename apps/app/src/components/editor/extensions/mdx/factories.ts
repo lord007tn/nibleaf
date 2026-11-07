@@ -36,11 +36,23 @@ export const attrKeysOf = (tag: string): string[] => {
   return definition.attrs;
 };
 
-/** A serializer that writes an MDX block tag wrapping its (blank-line-padded) content. */
+const SELF_CLOSING_OPENER = /\s*\/\s*>$/;
+const hasNoBody = (node: PMNode): boolean =>
+  node.childCount === 0 || (node.childCount === 1 && node.firstChild?.type.name === 'paragraph' && node.firstChild.content.size === 0);
+
+/** A serializer that writes an MDX block tag wrapping its (blank-line-padded)
+ *  content. An authored self-closing tag (`<RelatedCard … />`) stays one while
+ *  it has no body: a closing tag after it breaks MDX compilers. Once the writer
+ *  gives it a body, it is written as an opening and closing pair. */
 const mdxBlockSerializer =
   (tag: string) =>
   (state: SerializeState, node: PMNode): void => {
-    writeBlockTag(state, node, preservedOpeningTag(node, tag, attrKeysOf(tag)));
+    const opening = preservedOpeningTag(node, tag, attrKeysOf(tag));
+    if (SELF_CLOSING_OPENER.test(opening) && hasNoBody(node)) {
+      writeBlockTag(state, node, opening);
+      return;
+    }
+    writeBlockTag(state, node, opening.replace(SELF_CLOSING_OPENER, '>'));
     state.renderContent(node);
     writeBlockTag(state, node, preservedClosingTag(node, tag));
   };

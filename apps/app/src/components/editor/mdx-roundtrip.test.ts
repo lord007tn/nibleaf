@@ -133,6 +133,29 @@ afterEach(() => {
 });
 
 describe('MDX round trips', () => {
+  it('keeps a self-closing RelatedCard self-closing, and pairs it once it gains a body', () => {
+    const source =
+      'Intro.\n\n<RelatedContent title="More">\n\n<RelatedCard title="Auth" description="Sign requests" href="/auth" />\n\n</RelatedContent>\n';
+    const editor = createEditor(source);
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('<RelatedCard title="Auth" description="Sign requests" href="/auth" />');
+    expect(saved).not.toContain('</RelatedCard>');
+    // Saving again changes nothing.
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+    // A body typed into the card turns it into a pair, so the text is kept.
+    const card = createEditor(source);
+    let cardBody = -1;
+    card.state.doc.descendants((node, position) => {
+      if (node.type.name === 'mdxRelatedCard') cardBody = position + 2;
+    });
+    card.commands.setTextSelection(cardBody);
+    card.commands.insertContent('Body text');
+    const paired = getMarkdown(card);
+    expect(paired).toMatch(/<RelatedCard title="Auth" description="Sign requests" href="\/auth">\s+Body text\s+<\/RelatedCard>/);
+  });
+
   it.each([
     '```python\nimport requests\nexport_token = "demo"\n```',
     '~~~sh\nexport API_URL=http://localhost:4311\n~~~',

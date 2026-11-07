@@ -66,6 +66,27 @@ import Example from './example'
     expect(normalizePublicMarkdownContent('Literal \\{braces\\} and \\\\{hidden}.')).toBe('Literal \\{braces\\} and \\\\.');
   });
 
+  it('decodes the entities the editor writes in attributes once, so they are not escaped twice', () => {
+    expect(normalizePublicMarkdownContent('<Tooltip tip="R&amp;D &quot;labs&quot;">API</Tooltip> and R&D.')).toBe(
+      'API (R&amp;D &quot;labs&quot;) and R&amp;D.',
+    );
+    // An entity that was itself escaped stays literal text.
+    expect(portablePublicMdxMarkdown('<Tooltip tip="&amp;lt;b&amp;gt;">tag</Tooltip>')).toBe('tag (&lt;b&gt;)');
+  });
+
+  it('reads an attribute value containing ">" whole', () => {
+    expect(portablePublicMdxMarkdown('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a \\> b)');
+    expect(portablePublicMdxMarkdown('<Frame caption="When x > 1">\n\n![Chart](/c.png)\n\n</Frame>')).toBe('![Chart](/c.png)\n\n_When x \\> 1_');
+  });
+
+  it('projects atoms written as an empty pair like self-closing ones', () => {
+    expect(portablePublicMdxMarkdown('<FileTree>\n<File name="a.ts"></File>\n<File name="b.ts" />\n</FileTree>')).toBe('- `a.ts`\n- `b.ts`');
+    expect(portablePublicMdxMarkdown('Before <Icon icon="star"></Icon><Icon icon="rocket" /> after.')).toBe('Before  after.');
+    expect(
+      portablePublicMdxMarkdown('<RelatedCard title="A" href="/a" />\n<RelatedCard title="B" description="Second">\n\nBody of B.\n\n</RelatedCard>'),
+    ).toBe('- [A](/a)\n- B — Second\n\nBody of B.');
+  });
+
   it('keeps underlined text, and subscript and superscript as plain inline HTML so their meaning survives', () => {
     expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe(
       'A underlined word, H<sub>2</sub>O and x<sup>2</sup>.',
@@ -85,8 +106,8 @@ import Example from './example'
       'x<sup>&lt;b onmouseover=&quot;a()&quot;&gt;2&lt;/b&gt;</sup>',
     );
     // Correctly nested pairs keep their notation; crossed ones keep only what nests.
-    expect(normalizePublicMarkdownContent('x<sub>i<sup>2</sup></sub> and a<sub>1<sup>2</sup></sub>')).toBe(
-      'x<sub>i<sup>2</sup></sub> and a<sub>1<sup>2</sup></sub>',
+    expect(normalizePublicMarkdownContent('x<sub>i<sup>2</sup></sub>, a<sub>1<sup>2</sup></sub> and x<sup>a<sub>b</sub>c</sup>')).toBe(
+      'x<sub>i<sup>2</sup></sub>, a<sub>1<sup>2</sup></sub> and x<sup>a<sub>b</sub>c</sup>',
     );
     expect(normalizePublicMarkdownContent('a<sub>b<sup>c</sub>d</sup> and e<sub>f</sup>g</sub>')).toBe('ab<sup>cd</sup> and e<sub>fg</sub>');
     // Escaped text that spells a tag is not turned back into one.

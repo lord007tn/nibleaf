@@ -3,10 +3,21 @@ import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectM
 const escapeHtml = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
+const ATTRIBUTE_ENTITIES: Record<string, string> = { amp: '&', quot: '"', '#34': '"', apos: "'", '#39': "'", lt: '<', gt: '>' };
+
+/** An authored attribute value, with the entities the editor writes (`&amp;`,
+ *  `&quot;`) decoded once, so the output's own escaping isn't doubled. */
 const mdxAttribute = (source: string, name: string): string | undefined => {
   const match = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(source);
-  return match?.[1] ?? match?.[2];
+  const value = match?.[1] ?? match?.[2];
+  return value?.replace(/&(amp|quot|#34|apos|#39|lt|gt);/g, (entity, key: string) => ATTRIBUTE_ENTITIES[key] ?? entity);
 };
+
+/** A tag's attributes, read up to the first `>` outside quotes, so a value
+ *  such as `tip="a > b"` stays whole. */
+const ATTRIBUTES = String.raw`((?:[^>"']|"[^"]*"|'[^']*')*)`;
+/** An atom, self-closing (`<File … />`) or written as an empty pair (`<File …></File>`). */
+const atomPattern = (tag: string) => new RegExp(String.raw`<${tag}\b${ATTRIBUTES}(?:\/>|>\s*<\/${tag}>)`, 'gi');
 
 const markdownText = (value?: string): string =>
   (value ?? '')
@@ -15,7 +26,7 @@ const markdownText = (value?: string): string =>
     .trim();
 
 const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {
-  const pattern = new RegExp(`<${tag}\\b([^>]*)>([\\s\\S]*?)<\\/${tag}>`, 'gi');
+  const pattern = new RegExp(String.raw`<${tag}\b${ATTRIBUTES}>([\s\S]*?)<\/${tag}>`, 'gi');
   let current = source;
   for (let pass = 0; pass < 8; pass += 1) {
     const next = current.replace(pattern, (_match, attributes: string, body: string) => render(attributes, body.trim()));
@@ -28,17 +39,24 @@ const mdxContainer = (source: string, tag: string, render: (attributes: string, 
 /** Convert supported authored MDX to inert Markdown for every public machine
  * representation. Only text and allowlisted attributes are projected. */
 export const portablePublicMdxMarkdown = (source: string): string => {
-  let output = source.replace(/<(?:File)\b([^>]*)\/>/gi, (_match, attributes: string) => {
+  let output = source.replace(atomPattern('File'), (_match, attributes: string) => {
     const name = markdownText(mdxAttribute(attributes, 'name'));
     return name ? `- \`${name}\`` : '';
   });
-  output = output.replace(/<RelatedCard\b([^>]*)\/>/gi, (_match, attributes: string) => {
+  const relatedCard = (attributes: string, body = '') => {
     const title = markdownText(mdxAttribute(attributes, 'title'));
     const description = markdownText(mdxAttribute(attributes, 'description'));
     const href = mdxAttribute(attributes, 'href')?.trim();
-    return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
-  });
-  output = output.replace(/<Icon\b[^>]*\/>/gi, '');
+    const item = title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
+    return [item, body.trim()].filter(Boolean).join('\n\n');
+  };
+  // Self-closing cards first, so a pair after one can't be read as its body.
+  output = output.replace(new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}\/>`, 'gi'), (_match, attributes: string) => relatedCard(attributes));
+  output = output.replace(
+    new RegExp(String.raw`<RelatedCard\b${ATTRIBUTES}>([\s\S]*?)<\/RelatedCard>`, 'gi'),
+    (_match, attributes: string, body: string) => relatedCard(attributes, body),
+  );
+  output = output.replace(atomPattern('Icon'), '');
 
   for (const tag of ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger']) {
     output = mdxContainer(output, tag, (_attributes, body) =>
