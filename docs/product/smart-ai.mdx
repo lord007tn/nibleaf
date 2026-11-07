@@ -1,0 +1,23 @@
+---
+title: 'Use your site’s Smart AI connection'
+description: 'Connect your site’s OpenAI or OpenRouter key for AI assist in the editor.'
+audience: 'documentation owners and administrators'
+content_type: 'how-to'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/server/src/actions/ai.ts, packages/search/src/workspace.ts, apps/server/src/lib/ai-quota.ts'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/smart-ai'
+---
+
+## Choose the site connection
+
+Open **Site settings → Smart AI**, connect an OpenAI or OpenRouter key, then select the connection you want to use.
+
+## Use AI assist in the editor
+
+AI assist in the editor uses your site’s key when the selected connection is usable. Your draft and instructions are sent to that provider to generate the text.
+
+If no usable site connection is available, AI assist uses the Nibleaf instance’s OpenRouter connection when one is configured. Turning off Smart AI for the site also turns off AI assist.
+
+Drafting has a daily limit shared by the workspace, including requests made with your site’s key. If you reach the limit, wait for it to reset. Review suggested text before adding it to your page.
