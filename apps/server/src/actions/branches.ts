@@ -62,6 +62,14 @@ const draftFingerprint = async (db: Prisma.TransactionClient, projectId: string,
     .digest('hex');
 };
 
+/** After main's pages are replaced (a promote or a replacing import), every
+ *  other version's baseline names main page ids that no longer exist. Forget
+ *  them in the same transaction, so those versions get `branch:baseline_missing`
+ *  instead of a list of every page as deleted. `exceptId` is the version being
+ *  consumed, which is deleted anyway. */
+const forgetOtherForkPoints = (tx: Prisma.TransactionClient, projectId: string, exceptId: string) =>
+  tx.branch.updateMany({ where: { projectId, isDefault: false, id: { not: exceptId } }, data: { forkedAt: null, forkBaseline: Prisma.DbNull } });
+
 const importTransactionOptions = { isolationLevel: 'Serializable', timeout: 30_000 } as const;
 const importTransactionFailure = (error: unknown): never => {
   if (error && typeof error === 'object' && 'code' in error) {
@@ -94,6 +102,7 @@ export const promoteImportReplacementBranch = async (
       }
       await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
       await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+      await forgetOtherForkPoints(tx, projectId, branch.id);
       await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
       if (projectConfig !== undefined) {
         await tx.project.update({ where: { id: projectId }, data: { config: projectConfig } });
@@ -342,6 +351,7 @@ export const mergeBranch = async (projectId: string, id: string) => {
         await tx.page.deleteMany({ where: { projectId, id: { in: mainIds.slice(i, i + DELETE_CHUNK) } } });
       }
       await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+      await forgetOtherForkPoints(tx, projectId, branch.id);
       await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
     },
     { timeout: 30_000 },

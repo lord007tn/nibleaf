@@ -291,6 +291,39 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
   });
 
+  it('forgets the other versions’ baselines when a promote replaces main’s pages', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId } = await fixture();
+    const a = await branches.createBranch(projectId, { name: 'a' });
+    const b = await branches.createBranch(projectId, { name: 'b' });
+    await branches.mergeBranch(projectId, a.id);
+    expect(await db.prisma.branch.findUniqueOrThrow({ where: { id: b.id }, select: { forkedAt: true, forkBaseline: true } })).toEqual({
+      forkedAt: null,
+      forkBaseline: null,
+    });
+    await expect(branches.getMergePreview(projectId, b.id)).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: false });
+    await expect(promoteError(projectId, b.id)).resolves.toMatchObject({
+      status: 409,
+      code: 'branch:baseline_missing',
+      details: { since: b.createdAt.toISOString() },
+    });
+  });
+
+  it('forgets the other versions’ baselines when an import replaces main’s pages', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, base } = await fixture();
+    const b = await branches.createBranch(projectId, { name: 'b' });
+    const replacement = await branches.createImportReplacementBranch(projectId, 'gitbook', false);
+    await db.prisma.page.create({
+      data: { projectId, branchId: replacement.id, languageId: base.languageId, title: 'Imported', slug: 'imported', path: 'imported' },
+    });
+    await branches.promoteImportReplacementBranch(projectId, replacement.id);
+    expect((await pagesOn(projectId, main.id)).map((p) => p.path)).toEqual(['imported']);
+    expect(await db.prisma.branch.findUniqueOrThrow({ where: { id: b.id }, select: { forkedAt: true, forkBaseline: true } })).toEqual({
+      forkedAt: null,
+      forkBaseline: null,
+    });
+    await expect(promoteError(projectId, b.id)).resolves.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
+  });
+
   it('promotes a version created from an empty main', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const id = `promote-${randomUUID()}`;
     const org = await db.prisma.organization.create({ data: { name: 'Synthetic promote' } });
@@ -363,7 +396,8 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       const a = await branches.createBranch(projectId, { name: 'a' });
       const b = await branches.createBranch(projectId, { name: 'b', fromBranchId: a.id });
       await branches.mergeBranch(projectId, a.id);
-      await expect(promoteError(projectId, b.id)).resolves.toMatchObject({ status: 409, code: 'branch:main_changed' });
+      // Promoting a replaced main's pages, so b's inherited baseline was forgotten.
+      await expect(promoteError(projectId, b.id)).resolves.toMatchObject({ status: 409, code: 'branch:baseline_missing' });
     });
 
     it('keeps its copied baseline when the source version is deleted', { timeout: DB_TEST_TIMEOUT_MS }, async () => {

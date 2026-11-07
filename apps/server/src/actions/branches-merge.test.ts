@@ -1,24 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type Sql = { text: string; values: unknown[] };
-const { sql } = vi.hoisted(() => {
+const { sql, DbNull } = vi.hoisted(() => {
   const render = (value: unknown) => (value && typeof value === 'object' && 'text' in value ? (value as { text: string }).text : '?');
   return {
     sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({
       text: strings.reduce((acc, part, i) => acc + (i > 0 ? render(values[i - 1]) : '') + part, ''),
       values,
     }),
+    DbNull: Symbol('DbNull'),
   };
 });
 
 const db = vi.hoisted(() => ({
-  branch: { findMany: vi.fn(), findFirst: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  branch: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUniqueOrThrow: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    delete: vi.fn(),
+  },
   page: { deleteMany: vi.fn(), updateMany: vi.fn(), createMany: vi.fn(), count: vi.fn() },
   language: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: db, Prisma: { sql } }));
+vi.mock('@nibleaf/database', () => ({ prisma: db, Prisma: { sql, DbNull } }));
 
 import { buildForkBaseline, changedOnMainSinceFork, forkPointOf, inheritForkBaseline, pageContentHash } from './branch-fork';
 import { createBranch, getMergePreview, mergeBranch } from './branches';
@@ -241,6 +250,14 @@ describe('mergeBranch', () => {
     expect(db.page.updateMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'v2' }, data: { branchId: 'main' } });
     expect(db.branch.delete).toHaveBeenCalledWith({ where: { id: 'v2' }, select: { id: true } });
     expect(db.page.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(db.page.updateMany.mock.invocationCallOrder[0] ?? 0);
+    // Main's page ids changed: every other version's baseline is forgotten, in the same transaction.
+    expect(db.branch.updateMany).toHaveBeenCalledWith({
+      where: { projectId: 'project', isDefault: false, id: { not: 'v2' } },
+      data: { forkedAt: null, forkBaseline: DbNull },
+    });
+    expect(db.branch.updateMany.mock.invocationCallOrder[0]).toBeGreaterThan(
+      db.page.updateMany.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+    );
   });
 
   it('refuses with branch:main_changed and the changed pages, changing nothing', async () => {
@@ -261,6 +278,7 @@ describe('mergeBranch', () => {
     expect(db.page.deleteMany).not.toHaveBeenCalled();
     expect(db.page.updateMany).not.toHaveBeenCalled();
     expect(db.branch.delete).not.toHaveBeenCalled();
+    expect(db.branch.updateMany).not.toHaveBeenCalled();
   });
 
   it('refuses, listing it as added, when a main page appeared after the locked read', async () => {
@@ -280,6 +298,7 @@ describe('mergeBranch', () => {
     expect(db.page.deleteMany).not.toHaveBeenCalled();
     expect(db.page.updateMany).not.toHaveBeenCalled();
     expect(db.branch.delete).not.toHaveBeenCalled();
+    expect(db.branch.updateMany).not.toHaveBeenCalled();
   });
 
   it('deletes more than one chunk of main pages by id, without comparing counts', async () => {
