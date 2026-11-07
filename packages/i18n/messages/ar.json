@@ -946,6 +946,7 @@
   "settings_search_diagnostics_description": "افحص صحة الفهرسة وبيانات وصفية محدودة وآمنة للخصوصية للإصدار المنشور الحالي.",
   "settings_search_diagnostics_reindexqueued": "تمت إضافة إعادة الفهرسة إلى قائمة الانتظار.",
   "settings_search_diagnostics_reindexerror": "تعذرت إضافة إعادة الفهرسة إلى قائمة الانتظار.",
+  "settings_search_diagnostics_reindexactive": "الفهرسة قيد التشغيل بالفعل. ستتحدّث حالتها هنا عند انتهائها.",
   "settings_search_diagnostics_reindexing": "جارٍ الإضافة…",
   "settings_search_diagnostics_reindex": "إعادة الفهرسة",
   "settings_search_diagnostics_errortitle": "التشخيص غير متاح",

@@ -184,6 +184,12 @@ export const projectUsageQueryOptions = (projectId: string | undefined) =>
     queryFn: projectId ? async () => getData(await api.app.projects[':projectId'].settings.usage.$get({ param: { projectId } }), 'usage') : skipToken,
   });
 
+export const workspaceAiQueryOptions = (projectId: string) =>
+  queryOptions({
+    queryKey: queryKeys.workspaceAi.detail(projectId),
+    queryFn: async () => getData(await api.app.projects[':projectId'].settings.ai.$get({ param: { projectId } }), 'Smart AI'),
+  });
+
 export const commentsQueryOptions = (projectId: string | undefined, pageId?: string) =>
   queryOptions({
     queryKey: queryKeys.comments.all(projectId ?? '', pageId),

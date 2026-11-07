@@ -54,6 +54,10 @@ export const queryKeys = {
     /** Per-site usage counters for the settings Usage tab. */
     forProject: (projectId: string) => ['usage', projectId] as const,
   },
+  /** The workspace's own AI provider, model and search index (settings → Smart AI). */
+  workspaceAi: {
+    detail: (projectId: string) => ['workspace-ai', projectId] as const,
+  },
   projectSearch: {
     configuration: (projectId: string) => ['projects', projectId, 'search', 'configuration'] as const,
     index: (projectId: string, cursor?: string, limit?: number) => ['projects', projectId, 'search', 'index', cursor ?? null, limit ?? null] as const,
