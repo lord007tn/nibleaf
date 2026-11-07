@@ -75,7 +75,10 @@ pnpm --filter @nibleaf/clickhouse migrate
 
 The CLI waits up to ten minutes for another migration process, retrying every
 five seconds, then exits with an error if the lock is still held. Investigate
-the holder before retrying. Server and worker `/health` include this independent field:
+the holder before retrying. The worker's `/health` and the API's authenticated
+`/health/details` include this independent field. The API route requires the
+`x-nibleaf-internal` header; see
+[Health probes and private diagnostics](/self-hosting/troubleshooting#health-probes-and-private-diagnostics):
 
 ```json
 {"analytics":{"configured":true,"latencyMs":4,"status":"ok"}}
