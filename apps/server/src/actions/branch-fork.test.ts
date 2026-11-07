@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzePromote, buildForkBaseline, type ForkPoint, forkPointOf, type PromotePageRow } from './branch-fork';
+import { analyzePromote, buildForkBaseline, type ForkPoint, forkPointOf, inheritForkBaseline, type PromotePageRow } from './branch-fork';
 
 const FORK = new Date('2026-11-01T10:00:00.000Z');
 const BEFORE = new Date('2026-10-30T10:00:00.000Z');
@@ -60,6 +60,7 @@ describe('analyzePromote: preview', () => {
       consumed: atFork.map((p) => ({ copyId: `v-${p.id}`, mainId: p.id })),
       dropVersionIds: [],
       deleteMainIds: [],
+      blocked: false,
     });
   });
 
@@ -141,6 +142,24 @@ describe('analyzePromote: preview', () => {
   });
 });
 
+describe('inheritForkBaseline', () => {
+  it("remaps a version's baseline onto its own copies, keeping the first version's edits as its own", () => {
+    const atFork = [page('intro'), page('billing'), page('old')];
+    const v2 = forkOf(atFork, 'v2');
+    if (!v2.baseline) throw new Error('no baseline');
+    // V3 is forked from V2 (which edited intro and deleted old): v2-x → v3-x.
+    const v3Baseline = inheritForkBaseline(v2.baseline, (id) => (id === 'v2-old' ? undefined : id.replace('v2-', 'v3-')));
+    const v3 = forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: v3Baseline as never });
+    const v3Pages = [copyOf(atFork[0] as PromotePageRow, { hash: 'h:intro-v2' }, 'v3'), copyOf(atFork[1] as PromotePageRow, {}, 'v3')];
+    const { preview, plan } = analyze(atFork, v3Pages, v3);
+    expect(preview).toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    // Main keeps its ids: intro takes V2's (now V3's) text in place, old is deleted.
+    expect(plan.mainUpdates).toEqual([{ id: 'intro', fromCopyId: 'v3-intro', data: {} }]);
+    expect(plan.deleteMainIds).toEqual(['old']);
+    expect(plan.moves).toEqual([]);
+  });
+});
+
 describe('analyzePromote: plan', () => {
   it('updates main pages in place, taking only what the version changed', () => {
     const atFork = [page('guide', { kind: 'GROUP' }), page('billing', { position: 1 }), page('faq', { position: 2 })];
@@ -180,13 +199,18 @@ describe('analyzePromote: plan', () => {
     expect(analyze(atFork, version, forkOf(atFork)).plan.moves).toEqual([{ id: 'v-new', data: { parentId: 'guide' } }]);
   });
 
-  it('keeps pages added on main, moving them up when the version deleted their parent', () => {
-    const atFork = [page('root', { kind: 'GROUP' }), page('guide', { kind: 'GROUP', parentId: 'root' })];
-    const now = [...atFork, page('refunds', { parentId: 'guide', createdAt: AFTER, updatedAt: AFTER })];
-    const keptRoot = analyze(now, [copyOf(atFork[0] as PromotePageRow)], forkOf(atFork)).plan;
-    expect(keptRoot.deleteMainIds).toEqual(['guide']);
-    expect(keptRoot.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: 'root' } }]);
-    expect(analyze(now, [], forkOf(atFork)).plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: null } }]);
+  it('keeps pages added on main, moving them up when the version deleted their parent, and says so', () => {
+    const atFork = [page('root', { kind: 'GROUP' }), page('guide', { kind: 'GROUP', parentId: 'root', path: 'root/guide' })];
+    const now = [...atFork, page('refunds', { parentId: 'guide', path: 'root/guide/refunds', createdAt: AFTER, updatedAt: AFTER })];
+    const keptRoot = analyze(now, [copyOf(atFork[0] as PromotePageRow)], forkOf(atFork));
+    expect(keptRoot.plan.deleteMainIds).toEqual(['guide']);
+    expect(keptRoot.plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: 'root' } }]);
+    expect(keptRoot.preview.changedOnMainSinceFork).toEqual([
+      expect.objectContaining({ pageId: 'refunds', change: 'added', onPromote: 'moved', newParentPath: 'root' }),
+    ]);
+    const topLevel = analyze(now, [], forkOf(atFork));
+    expect(topLevel.plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: null } }]);
+    expect(topLevel.preview.changedOnMainSinceFork).toContainEqual(expect.objectContaining({ pageId: 'refunds', onPromote: 'moved', newParentPath: null }));
   });
 
   it('brings back a page deleted on main only when the version edited it, or keeps a page under it', () => {
@@ -235,9 +259,67 @@ describe('analyzePromote: plan', () => {
     const { preview, plan } = analyze(now, version, forkOf(atFork));
     expect(preview.changedOnMainSinceFork).toEqual([
       expect.objectContaining({ pageId: 'refunds', change: 'added', onPromote: 'kept' }),
-      expect.objectContaining({ pageId: 'refunds', path: 'refunds', change: 'conflict', onPromote: 'renamed', newPath: 'refunds-2' }),
+      expect.objectContaining({ pageId: 'v-refunds-new', path: 'refunds', change: 'conflict', onPromote: 'renamed', newPath: 'refunds-2' }),
     ]);
     expect(plan.moves).toEqual([{ id: 'v-refunds-new', data: { parentId: null, slug: 'refunds-2' } }]);
+  });
+
+  it('settles duplicates that come only from the version, keeping the lowest id', () => {
+    const atFork = [page('g', { kind: 'GROUP' })];
+    const version = [
+      copyOf(atFork[0] as PromotePageRow),
+      page('v-b', { parentId: 'v-g', slug: 'x', path: 'g/x', hash: 'h:b' }),
+      page('v-a', { parentId: 'v-g', slug: 'x', path: 'g/x', hash: 'h:a' }),
+    ];
+    const { preview, plan } = analyze(atFork, version, forkOf(atFork));
+    expect(plan.moves).toEqual([
+      { id: 'v-a', data: { parentId: 'g' } },
+      { id: 'v-b', data: { parentId: 'g', slug: 'x-2' } },
+    ]);
+    expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v-b', path: 'g/x', change: 'conflict', newPath: 'g/x-2' })]);
+  });
+
+  it('renames a clashing folder once: its pages follow it instead of getting their own suffix', () => {
+    const atFork = [page('billing')];
+    // Main added folder "docs" with "intro"; the version added its own "docs" with "intro".
+    const now = [...atFork, page('docs', { kind: 'GROUP', createdAt: AFTER }), page('intro', { parentId: 'docs', path: 'docs/intro', createdAt: AFTER })];
+    const version = [
+      copyOf(atFork[0] as PromotePageRow),
+      page('v-docs', { kind: 'GROUP', slug: 'docs', path: 'docs', hash: 'h:vdocs' }),
+      page('v-intro', { parentId: 'v-docs', slug: 'intro', path: 'docs/intro', hash: 'h:vintro' }),
+    ];
+    const { preview, plan } = analyze(now, version, forkOf(atFork));
+    expect(plan.moves).toEqual([
+      { id: 'v-docs', data: { parentId: null, slug: 'docs-2' } },
+      { id: 'v-intro', data: { parentId: 'v-docs' } },
+    ]);
+    expect(preview.changedOnMainSinceFork.filter((c) => c.change === 'conflict')).toEqual([
+      expect.objectContaining({ pageId: 'v-docs', path: 'docs', newPath: 'docs-2' }),
+    ]);
+  });
+
+  it('does not let a content-only edit decide who keeps an address', () => {
+    const atFork = [page('a')];
+    // The version only rewrote the text of "a", and added a new page with slug "a".
+    const version = [copyOf(atFork[0] as PromotePageRow, { hash: 'h:a-text' }), page('v-new', { slug: 'a', path: 'a', hash: 'h:new' })];
+    const { preview, plan } = analyze(atFork, version, forkOf(atFork));
+    // Main's "a" keeps its address (its slug still comes from main); the new page is renamed.
+    expect(plan.mainUpdates).toEqual([{ id: 'a', fromCopyId: 'v-a', data: {} }]);
+    expect(plan.moves).toEqual([{ id: 'v-new', data: { parentId: null, slug: 'a-2' } }]);
+    expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v-new', change: 'conflict', newPath: 'a-2' })]);
+  });
+
+  it('refuses a plan that would put two pages inside each other', () => {
+    const atFork = [page('a'), page('b')];
+    // Main moved A under B; the version moved B under A.
+    const now = [page('a', { parentId: 'b', path: 'b/a', updatedAt: AFTER }), page('b')];
+    const version = [copyOf(atFork[0] as PromotePageRow), copyOf(atFork[1] as PromotePageRow, { parentId: 'v-a', path: 'a/b' })];
+    const { preview, plan } = analyze(now, version, forkOf(atFork));
+    expect(plan.blocked).toBe(true);
+    expect(preview.changedOnMainSinceFork.filter((c) => c.change === 'conflict')).toEqual([
+      expect.objectContaining({ pageId: 'b', path: 'b', onPromote: 'blocked' }),
+      expect.objectContaining({ pageId: 'a', path: 'b/a', onPromote: 'blocked' }),
+    ]);
   });
 
   it('without a baseline, replaces forked pages and re-homes added ones by address', () => {

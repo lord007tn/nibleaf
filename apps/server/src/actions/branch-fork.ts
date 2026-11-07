@@ -31,15 +31,26 @@ import { joinPath } from '@nibleaf/shared/utils';
  *    unedited copy still comes back when a page the version keeps lives under
  *    it, so no page loses its parent.
  *  - Pages added on main since the fork are kept. If their parent goes away
- *    they move up to the nearest kept ancestor (or the top level).
+ *    they move up to the nearest kept ancestor (or the top level), listed as
+ *    `onPromote: 'moved'` with `newParentPath`.
  *  - Pages created in the version move onto main.
- *  - Same address: when a page from main (added or kept) and a page coming from
- *    the version would end up at the same path in the same language, main's
- *    page keeps the address readers know and the version's page gets a
- *    numbered slug ("refunds-2"). The preview lists it as `conflict`.
+ *  - Same address: when two pages would end up at the same path in the same
+ *    language, one keeps it and the others get a numbered slug ("refunds-2"),
+ *    listed as `conflict`. A page whose address comes from main keeps it (main
+ *    page first, then lowest id); a content-only edit does not move ownership.
+ *    Clashes are settled top-down, so a renamed folder's pages follow it
+ *    instead of being renamed again. Duplicates that were already on main and
+ *    that the version did not touch are left as they are.
+ *  - Cycles: if combining both sides' moves would put pages inside each other,
+ *    promote is refused (409 `branch:promote_blocked`) and the pages are listed
+ *    as `conflict` / `blocked`; confirming does not override it.
+ *
+ * A version forked from another version inherits that version's baseline, with
+ * each copy id remapped onto its own copies, so it promotes with the same rules
+ * and the first version's edits count as its own.
  *
  * Versions without a baseline (created before fork tracking, or forked from
- * another version) use their fork time instead: main pages created after it are
+ * such a version) use their fork time instead: main pages created after it are
  * "added" and kept, pages updated after it are "modified" and replaced, and
  * deletions on main cannot be detected (`baselineComplete: false`). All of the
  * version's pages move onto main.
@@ -50,7 +61,7 @@ import { joinPath } from '@nibleaf/shared/utils';
  *  separately, against logical ids). The same SQL hashes main pages and their
  *  copies, at the fork and at promote time. */
 export const pageContentHash = () =>
-  Prisma.sql`md5(concat_ws(chr(31), "kind"::text, "title", "slug", coalesce("icon", chr(30)), coalesce("description", chr(30)), "content", coalesce("config"::text, chr(30)), coalesce("translationKey", chr(30)), "hidden"::text))`;
+  Prisma.sql`md5(json_build_array("kind", "title", "slug", "icon", "description", "content", "config", "translationKey", "hidden")::text)`;
 
 type ForkBaselineEntry = {
   /** The version's copy of this main page. */
@@ -93,10 +104,11 @@ export type PromotePageRow = {
   hash: string;
 };
 
-type OnPromote = 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed';
+type OnPromote = 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
 
 type ChangedOnMainPage = {
-  /** Main page id. For a deleted page, the id it had on main. */
+  /** Main page id (for a deleted page, the id it had). For `conflict`, the
+   *  page being renamed or blocked, which may be a version page. */
   pageId: string;
   title: string;
   path: string;
@@ -104,8 +116,10 @@ type ChangedOnMainPage = {
   change: 'modified' | 'added' | 'deleted' | 'conflict';
   /** What promote will do with it. */
   onPromote: OnPromote;
-  /** `conflict` only: the address the version's page moves to. */
+  /** `renamed` only: the page's new address. */
   newPath?: string;
+  /** `moved` only: the address of its new parent (null: the top level). */
+  newParentPath?: string | null;
   /** When main last changed the page. For a deleted page, its last known
    *  `updatedAt` before the fork (the deletion time is not recorded). */
   updatedAt: string;
@@ -126,6 +140,8 @@ export type PromotePlan = {
   dropVersionIds: string[];
   /** Main pages the version deleted (or, without a baseline, replaced). */
   deleteMainIds: string[];
+  /** Combining both sides would create a parent cycle: promote must refuse. */
+  blocked: boolean;
 };
 
 export const buildForkBaseline = (
@@ -188,6 +204,17 @@ const parseForkBaseline = (value: Prisma.JsonValue | null): ForkBaseline | null 
   return Object.values(pages).every(isEntry) ? (value as ForkBaseline) : null;
 };
 
+/** The baseline for a version forked from `source` (another version): the same
+ *  main pages and fork-time hashes, with each copy id remapped onto the new
+ *  version's copies. An entry whose copy the source deleted keeps a copy id
+ *  that no longer exists, so it reads as "deleted in the version" (and is
+ *  removed from main on promote) rather than as "added on main". */
+export const inheritForkBaseline = (source: ForkBaseline, copyIdOf: (sourcePageId: string) => string | undefined): Prisma.InputJsonObject => {
+  const pages: Record<string, ForkBaselineEntry> = {};
+  for (const [mainId, e] of Object.entries(source.pages)) pages[mainId] = { ...e, copyId: copyIdOf(e.copyId) ?? e.copyId };
+  return { version: 2, pages } satisfies ForkBaseline;
+};
+
 export const forkPointOf = (branch: { createdAt: Date; forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkPoint => {
   const baseline = branch.forkedAt ? parseForkBaseline(branch.forkBaseline) : null;
   return { forkedAt: branch.forkedAt ?? branch.createdAt, baseline };
@@ -222,7 +249,7 @@ export const analyzePromote = (
 
   const mainById = new Map(mainPages.map((p) => [p.id, p]));
   const versionById = new Map(versionPages.map((p) => [p.id, p]));
-  const plan: PromotePlan = { mainUpdates: [], moves: [], consumed: [], dropVersionIds: [], deleteMainIds: [] };
+  const plan: PromotePlan = { mainUpdates: [], moves: [], consumed: [], dropVersionIds: [], deleteMainIds: [], blocked: false };
   const deleteMain = new Set<string>();
   /** Version page id → the main id it is folded into. */
   const foldedInto = new Map<string, string>();
@@ -348,11 +375,14 @@ export const analyzePromote = (
     }
     return null;
   };
+  /** Main pages that keep main's place but lose their parent. */
+  const rehomed = new Set<string>();
   for (const [id, parent] of finalParent) {
     if (parent && !survives(parent)) {
       const next = nearestKept(parent);
       finalParent.set(id, next);
       if (mainById.has(id) && !moved.has(id)) {
+        rehomed.add(id);
         const update = mainData.get(id) ?? { data: {} };
         update.data.parentId = next;
         mainData.set(id, update);
@@ -360,61 +390,134 @@ export const analyzePromote = (
     }
   }
 
-  // Same-address check on the final tree.
-  /** The page's address comes from the version (its slug or its parent). */
-  const fromVersion = (id: string) => moved.has(id) || mainData.get(id)?.fromCopyId !== undefined || versionPlaced.has(id);
-  const node = (id: string) => {
-    const m = mainById.get(id);
-    if (m && !moved.has(id)) {
-      const source = mainData.get(id)?.fromCopyId;
-      return { slug: (source && versionById.get(source)?.slug) || m.slug, languageId: m.languageId };
+  const titleOf = (id: string) => {
+    const source = mainData.get(id)?.fromCopyId;
+    return (source ? versionById.get(source)?.title : undefined) ?? mainById.get(id)?.title ?? versionById.get(id)?.title ?? '';
+  };
+  const rowOf = (id: string) => (moved.has(id) ? versionById.get(id) : (mainById.get(id) ?? versionById.get(id)));
+
+  // Cycles: both sides' moves combined must still form a tree.
+  const state = new Map<string, 'walking' | 'done'>();
+  const inCycle = new Set<string>();
+  for (const start of [...finalParent.keys()].sort()) {
+    const path: string[] = [];
+    let current: string | null = start;
+    while (current && finalParent.has(current) && !state.has(current)) {
+      state.set(current, 'walking');
+      path.push(current);
+      current = finalParent.get(current) ?? null;
     }
-    const v = versionById.get(id);
-    return { slug: v?.slug ?? '', languageId: v?.languageId ?? '' };
+    if (current && state.get(current) === 'walking') {
+      for (const id of path.slice(path.indexOf(current))) inCycle.add(id);
+    }
+    for (const id of path) state.set(id, 'done');
+  }
+  if (inCycle.size > 0) {
+    plan.blocked = true;
+    for (const id of [...inCycle].sort()) {
+      const r = rowOf(id);
+      changed.push({
+        pageId: id,
+        title: titleOf(id),
+        path: r?.path ?? '',
+        languageCode: code(r?.languageId ?? ''),
+        change: 'conflict',
+        onPromote: 'blocked',
+        updatedAt: (r?.updatedAt ?? new Date(0)).toISOString(),
+      });
+    }
+  }
+
+  // Addresses on the final tree, settled top-down so a renamed folder's pages
+  // follow it.
+  const copySlug = (id: string) => {
+    const source = mainData.get(id)?.fromCopyId;
+    return source ? versionById.get(source)?.slug : undefined;
+  };
+  const slugOf = (id: string) => copySlug(id) ?? rowOf(id)?.slug ?? '';
+  const languageOf = (id: string) => rowOf(id)?.languageId ?? '';
+  /** The page's address comes from the version: it moved in, the version
+   *  placed it, or the version renamed it. A content-only edit does not count. */
+  const addressFromVersion = (id: string) => {
+    if (moved.has(id) || versionPlaced.has(id)) return true;
+    const slug = copySlug(id);
+    return slug !== undefined && slug !== mainById.get(id)?.slug;
   };
   const renamedSlug = new Map<string, string>();
-  const pathMemo = new Map<string, string>();
-  const pathOf = (id: string, seen = new Set<string>()): string => {
-    const memo = pathMemo.get(id);
-    if (memo !== undefined) return memo;
-    if (seen.has(id)) return '';
-    seen.add(id);
+  const finalPath = new Map<string, string>();
+  const parentPathOf = (id: string): string | null => {
     const parent = finalParent.get(id) ?? null;
-    const slug = renamedSlug.get(id) ?? node(id).slug;
-    const path = parent ? joinPath(pathOf(parent, seen), slug) : slug;
-    pathMemo.set(id, path);
-    return path;
+    return parent ? (finalPath.get(parent) ?? null) : null;
   };
-  const groups = new Map<string, string[]>();
-  for (const id of [...finalParent.keys()].sort()) {
-    const key = `${node(id).languageId}${KEY}${pathOf(id)}`;
-    groups.set(key, [...(groups.get(key) ?? []), id]);
-  }
-  const taken = new Set(groups.keys());
-  for (const [key, ids] of [...groups].sort(([a], [b]) => a.localeCompare(b, 'en'))) {
-    const keeper = ids.find((id) => !fromVersion(id));
-    if (!keeper || ids.length < 2) continue;
-    for (const id of ids.filter((x) => x !== keeper && fromVersion(x))) {
-      const { slug, languageId } = node(id);
+  const newParentPath = new Map<string, string | null>();
+  if (!plan.blocked) {
+    const depth = new Map<string, number>();
+    const depthOf = (id: string): number => {
+      const known = depth.get(id);
+      if (known !== undefined) return known;
       const parent = finalParent.get(id) ?? null;
-      const parentPath = parent ? pathOf(parent) : null;
-      let n = 2;
-      let candidate = `${slug}-${n}`;
-      while (taken.has(`${languageId}${KEY}${joinPath(parentPath, candidate)}`)) candidate = `${slug}-${++n}`;
-      const newPath = joinPath(parentPath, candidate);
-      taken.add(`${languageId}${KEY}${newPath}`);
-      renamedSlug.set(id, candidate);
-      const keeperRow = mainById.get(keeper);
-      changed.push({
-        pageId: keeper,
-        title: keeperRow?.title ?? '',
-        path: key.slice(key.indexOf(KEY) + 1),
-        languageCode: code(languageId),
-        change: 'conflict',
-        onPromote: 'renamed',
-        newPath,
-        updatedAt: (keeperRow?.updatedAt ?? new Date(0)).toISOString(),
-      });
+      const d = parent && finalParent.has(parent) ? depthOf(parent) + 1 : 0;
+      depth.set(id, d);
+      return d;
+    };
+    const levels = new Map<number, string[]>();
+    for (const id of finalParent.keys()) levels.set(depthOf(id), [...(levels.get(depthOf(id)) ?? []), id]);
+    for (const level of [...levels.keys()].sort((a, b) => a - b)) {
+      const ids = (levels.get(level) ?? []).sort();
+      const groups = new Map<string, string[]>();
+      for (const id of ids) {
+        const path = joinPath(parentPathOf(id), slugOf(id));
+        finalPath.set(id, path);
+        const key = `${languageOf(id)}${KEY}${path}`;
+        groups.set(key, [...(groups.get(key) ?? []), id]);
+      }
+      const taken = new Set(groups.keys());
+      for (const [key, group] of [...groups].sort(([a], [b]) => a.localeCompare(b, 'en'))) {
+        if (group.length < 2 || !group.some(addressFromVersion)) continue;
+        const [, ...others] = [...group].sort(
+          (a, b) =>
+            Number(addressFromVersion(a)) - Number(addressFromVersion(b)) ||
+            Number(!mainById.has(a) || moved.has(a)) - Number(!mainById.has(b) || moved.has(b)) ||
+            a.localeCompare(b, 'en'),
+        );
+        for (const id of others) {
+          // Duplicates already on main that the version did not touch stay.
+          if (!addressFromVersion(id)) continue;
+          const slug = slugOf(id);
+          const parentPath = parentPathOf(id);
+          let n = 2;
+          let candidate = `${slug}-${n}`;
+          while (taken.has(`${languageOf(id)}${KEY}${joinPath(parentPath, candidate)}`)) candidate = `${slug}-${++n}`;
+          const newPath = joinPath(parentPath, candidate);
+          taken.add(`${languageOf(id)}${KEY}${newPath}`);
+          renamedSlug.set(id, candidate);
+          finalPath.set(id, newPath);
+          changed.push({
+            pageId: id,
+            title: titleOf(id),
+            path: key.slice(key.indexOf(KEY) + 1),
+            languageCode: code(languageOf(id)),
+            change: 'conflict',
+            onPromote: 'renamed',
+            newPath,
+            updatedAt: (rowOf(id)?.updatedAt ?? new Date(0)).toISOString(),
+          });
+        }
+      }
+    }
+    // Pages main keeps but whose parent goes away: say where they land.
+    for (const id of rehomed) newParentPath.set(id, parentPathOf(id));
+  }
+  for (const [id, parentPath] of newParentPath) {
+    const entry = changed.find((c) => c.pageId === id && (c.change === 'added' || c.change === 'modified'));
+    if (entry) {
+      if (entry.onPromote === 'kept') entry.onPromote = 'moved';
+      entry.newParentPath = parentPath;
+    } else {
+      const r = mainById.get(id);
+      if (r) list(r, id, 'modified', 'moved', r.updatedAt.toISOString());
+      const added = changed.at(-1);
+      if (added) added.newParentPath = parentPath;
     }
   }
 

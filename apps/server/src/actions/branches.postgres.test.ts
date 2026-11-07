@@ -11,12 +11,14 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
   let db: typeof import('@nibleaf/database');
   let branches: typeof import('./branches');
   const organizations: string[] = [];
+  const users: string[] = [];
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     branches = await import('./branches');
   }, IMPORT_TIMEOUT_MS);
   afterAll(async () => {
     if (organizations.length > 0) await db?.prisma.organization.deleteMany({ where: { id: { in: organizations } } });
+    if (users.length > 0) await db?.prisma.user.deleteMany({ where: { id: { in: users } } });
     await db?.prisma.$disconnect();
   }, DB_TEST_TIMEOUT_MS);
 
@@ -59,10 +61,12 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
   };
-  /** An autosave of `pageId` (a content-only edit: its own row lock, no
-   *  project lock) that holds its transaction open while `during` runs, then
-   *  commits once `during` is queued behind it. Returns what `during` settled to. */
-  const whileSaving = async (pageId: string, content: string, during: () => Promise<unknown>) => {
+  /** Run `work` in a transaction and hold it open while `during` runs; commit
+   *  once `during` is queued behind it. Returns what `during` settled to. */
+  const whileHolding = async (
+    work: (tx: import('@nibleaf/database').Prisma.TransactionClient) => Promise<unknown>,
+    during: () => Promise<unknown>,
+  ) => {
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -73,8 +77,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     });
     const save = db.prisma.$transaction(
       async (tx) => {
-        await tx.$queryRaw(db.Prisma.sql`SELECT 1 FROM "page" WHERE "id" = ${pageId} FOR NO KEY UPDATE`);
-        await tx.page.update({ where: { id: pageId }, data: { content } });
+        await work(tx);
         const [backend] = await tx.$queryRaw<{ pid: number }[]>(db.Prisma.sql`SELECT pg_backend_pid() AS pid`);
         saved(backend?.pid ?? -1);
         await gate;
@@ -94,6 +97,17 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     }
     await save;
     return outcome;
+  };
+  /** An autosave of `pageId`: a content-only edit, its own row lock, no project lock. */
+  const whileSaving = (pageId: string, content: string, during: () => Promise<unknown>) =>
+    whileHolding(async (tx) => {
+      await tx.$queryRaw(db.Prisma.sql`SELECT 1 FROM "page" WHERE "id" = ${pageId} FOR NO KEY UPDATE`);
+      await tx.page.update({ where: { id: pageId }, data: { content } });
+    }, during);
+  const writer = async () => {
+    const user = await db.prisma.user.create({ data: { name: 'Synthetic writer', email: `writer-${randomUUID()}@example.test` } });
+    users.push(user.id);
+    return user;
   };
   const pagesOn = (projectId: string, branchId: string) =>
     db.prisma.page.findMany({
@@ -205,6 +219,151 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       ['guide/refunds', 'Refunds (main)'],
       ['guide/refunds-2', 'Refunds (version)'],
     ]);
+  });
+
+  it('keeps main ids, comments and reader grants when promoting a version made from another version', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version: v2, billing, legacy } = await fixture();
+    const user = await writer();
+    const comment = await db.prisma.comment.create({ data: { projectId, pageId: billing.id, userId: user.id, body: 'Check the price' } });
+    const audience = await db.prisma.audience.create({ data: { projectId, name: 'Partners' } });
+    const grant = await db.prisma.audienceGrant.create({
+      data: { projectId, audienceId: audience.id, pageId: billing.id, scopeKey: `page:${billing.id}` },
+    });
+    // V2 edits billing; V3 is made from V2 (as the editor does from the open version).
+    await db.prisma.page.update({ where: { id: (await copyIn(v2.id, 'guide/billing')).id }, data: { content: 'V2 price' } });
+    const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
+
+    await expect(branches.getMergePreview(projectId, v3.id)).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    await branches.mergeBranch(projectId, v3.id);
+    const after = await pagesOn(projectId, main.id);
+    expect(after.map((p) => [p.id, p.path, p.content])).toEqual([
+      [expect.any(String), 'guide', ''],
+      [billing.id, 'guide/billing', 'V2 price'],
+      [legacy.id, 'legacy', ''],
+    ]);
+    expect(await db.prisma.comment.findUnique({ where: { id: comment.id } })).toMatchObject({ pageId: billing.id });
+    expect(await db.prisma.audienceGrant.findUnique({ where: { id: grant.id } })).toMatchObject({ pageId: billing.id });
+    // V2 still promotes cleanly afterwards: main's ids are the ones its baseline knows.
+    const preview = await branches.getMergePreview(projectId, v2.id);
+    expect(preview.changedOnMainSinceFork.filter((c) => c.change !== 'modified')).toEqual([]);
+  });
+
+  it('promotes a project with more than 1,000 nested pages', { timeout: 180_000 }, async () => {
+    const { projectId, main, base } = await fixture();
+    // 55 folders x 19 pages = 1,100 more pages, nested, on main.
+    const folders = Array.from({ length: 55 }, (_, i) => ({
+      ...base,
+      id: `fold-${randomUUID()}`,
+      kind: 'GROUP' as const,
+      title: `F${i}`,
+      slug: `f${i}`,
+      path: `f${i}`,
+      position: i,
+    }));
+    await db.prisma.page.createMany({ data: folders });
+    await db.prisma.page.createMany({
+      data: folders.flatMap((f, i) =>
+        Array.from({ length: 19 }, (_, j) => ({
+          ...base,
+          id: `leaf-${randomUUID()}`,
+          parentId: f.id,
+          title: `P${i}.${j}`,
+          slug: `p${j}`,
+          path: `${f.path}/p${j}`,
+          position: j,
+        })),
+      ),
+    });
+    const big = await branches.createBranch(projectId, { name: 'big' });
+    // The version deletes one folder (and so its pages) and edits one page.
+    await db.prisma.page.delete({ where: { id: (await copyIn(big.id, 'f3')).id } });
+    await db.prisma.page.update({ where: { id: (await copyIn(big.id, 'f7/p2')).id }, data: { content: 'Edited in the version' } });
+
+    await branches.mergeBranch(projectId, big.id);
+    const after = await pagesOn(projectId, main.id);
+    expect(after).toHaveLength(3 + 55 + 1045 - 20);
+    expect(after.some((p) => p.path === 'f3' || p.path.startsWith('f3/'))).toBe(false);
+    expect(after.find((p) => p.path === 'f7/p2')?.content).toBe('Edited in the version');
+    expect(await db.prisma.page.count({ where: { branchId: big.id } })).toBe(0);
+  });
+
+  it('moves a comment that lands on a version copy while the promote waits, instead of deleting it', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, version, billing } = await fixture();
+    const user = await writer();
+    const copy = await copyIn(version.id, 'guide/billing');
+    let commentId = '';
+    const outcome = await whileHolding(
+      async (tx) => {
+        commentId = (await tx.comment.create({ data: { projectId, pageId: copy.id, userId: user.id, body: 'Left during the promote' } })).id;
+      },
+      () => branches.mergeBranch(projectId, version.id),
+    );
+    expect(outcome).toBeNull();
+    expect(await db.prisma.comment.findUnique({ where: { id: commentId } })).toMatchObject({ pageId: billing.id });
+  });
+
+  it('refuses cleanly, and keeps the page, when a page is created under one the promote removes', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, version, base, legacy } = await fixture();
+    // The version deleted "Legacy"; meanwhile someone creates a page under it on main.
+    await db.prisma.page.delete({ where: { id: (await copyIn(version.id, 'legacy')).id } });
+    let childId = '';
+    const outcome = await whileHolding(
+      async (tx) => {
+        childId = (await tx.page.create({ data: { ...base, parentId: legacy.id, title: 'Child', slug: 'child', path: 'legacy/child' } })).id;
+      },
+      () => branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true }),
+    );
+    expect(outcome).toMatchObject({ status: 409, details: { reason: 'promote_raced' } });
+    expect((await pagesOn(projectId, main.id)).map((p) => p.id)).toEqual(expect.arrayContaining([legacy.id, childId]));
+    expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
+  });
+
+  it('notices later a save on main that commits while the version is being created', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, billing } = await fixture();
+    // An autosave on main is in flight (uncommitted) while the version is copied.
+    let commit: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      commit = resolve;
+    });
+    let started: () => void = () => undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const save = db.prisma.$transaction(
+      async (tx) => {
+        await tx.page.update({ where: { id: billing.id }, data: { content: 'Saved while forking' } });
+        started();
+        await gate;
+      },
+      { timeout: 30_000 },
+    );
+    await inFlight;
+    const version = await branches.createBranch(projectId, { name: 'v-during-save' });
+    commit();
+    await save;
+    // The copy has the old text and the baseline knows it: the save shows up as a change on main.
+    expect((await copyIn(version.id, 'guide/billing')).content).toBe('Teh price');
+    const preview = await branches.getMergePreview(projectId, version.id);
+    expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: billing.id, change: 'modified', onPromote: 'kept' })]);
+  });
+
+  it('refuses a promote whose moves would put two pages inside each other', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, version, guide, legacy } = await fixture();
+    // Main moves Legacy under Guide; the version moves Guide under Legacy.
+    await db.prisma.page.update({ where: { id: legacy.id }, data: { parentId: guide.id, path: 'guide/legacy' } });
+    const versionLegacy = await copyIn(version.id, 'legacy');
+    await db.prisma.page.update({
+      where: { id: (await copyIn(version.id, 'guide')).id },
+      data: { parentId: versionLegacy.id, path: 'legacy/guide' },
+    });
+
+    await expect(branches.mergeBranch(projectId, version.id, { confirmChangedOnMain: true })).rejects.toMatchObject({
+      status: 409,
+      code: 'branch:promote_blocked',
+      details: { reason: 'cycle' },
+    });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: guide.id } })).parentId).toBeNull();
+    expect(await db.prisma.branch.findUnique({ where: { id: version.id } })).not.toBeNull();
   });
 
   it('promotes an untouched main without confirmation', { timeout: DB_TEST_TIMEOUT_MS }, async () => {

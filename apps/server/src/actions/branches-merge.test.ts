@@ -30,7 +30,8 @@ vi.mock('@nibleaf/database', () => {
   const sql = (strings: TemplateStringsArray, ...values: unknown[]): Fragment => ({
     text: strings.reduce((out, part, i) => out + part + (i < values.length ? ((values[i] as Fragment | undefined)?.text ?? '?') : ''), ''),
   });
-  return { prisma: db, Prisma: { sql, empty: { text: '' }, DbNull: 'DbNull' } };
+  const join = (values: unknown[]): Fragment => ({ text: values.map(() => '?').join(', ') });
+  return { prisma: db, Prisma: { sql, join, empty: { text: '' }, DbNull: 'DbNull' } };
 });
 vi.mock('./pages', () => ({ recomputeProjectPaths: recompute }));
 
@@ -65,16 +66,18 @@ beforeEach(() => {
   db.branch.findMany.mockResolvedValue([{ id: 'main', isDefault: true, createdAt: FORK, forkedAt: null }]);
   db.branch.findFirst.mockImplementation(async ({ where }) => (where.id === 'v2' ? state.branch : null));
   db.branch.create.mockImplementation(async ({ data }) => ({ id: 'v2', ...data }));
-  db.page.findMany.mockImplementation(async ({ where }) => state.rows.filter((r) => where.id.in.includes(r.id)));
+  db.page.findMany.mockImplementation(async ({ where }) =>
+    where.parentId ? state.rows.filter((r) => where.parentId.in.includes(r.parentId)) : state.rows.filter((r) => where.id.in.includes(r.id)),
+  );
   db.page.updateMany.mockResolvedValue({ count: 1 });
-  db.page.deleteMany.mockImplementation(async ({ where }) => ({ count: where.OR.length }));
+  db.page.deleteMany.mockImplementation(async ({ where }) => ({ count: where.id.in.length }));
   db.page.count.mockResolvedValue(0);
   db.comment.groupBy.mockResolvedValue([]);
   db.language.findMany.mockResolvedValue([{ id: 'lang-en', code: 'en' }]);
   db.$queryRaw.mockImplementation(async (query: { text: string }) => {
     state.sql.push(query.text);
     if (query.text.includes('FROM "branch"')) return [{ id: 'v2' }];
-    if (query.text.includes('"position"')) return state.rows;
+    if (query.text.includes('"position"')) return [...state.rows];
     if (query.text.includes('AS "hash"')) return state.rows.map((r) => ({ id: r.id, hash: r.hash }));
     return [];
   });
@@ -85,7 +88,6 @@ beforeEach(() => {
  *  from the real fork code. Returns main id → copy id. */
 const forkMain = async () => {
   state.rows = [row('billing', 'main'), row('intro', 'main')];
-  db.page.findMany.mockResolvedValueOnce([...state.rows]);
   db.page.createMany.mockImplementationOnce(async ({ data }: { data: Row[] }) => {
     for (const c of data) state.rows.push(row(c.id, 'v2', { title: c.title, slug: c.slug, path: c.path, hash: `h:${c.title}` }));
   });
@@ -101,7 +103,9 @@ describe('createBranch', () => {
   it('takes the project lock first, then records a baseline hashed with the promote SQL', async () => {
     const copyOf = await forkMain();
     expect(db.$queryRaw.mock.calls[0]?.[0].text).toBe('SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE');
-    expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.page.findMany.mock.invocationCallOrder[0] ?? 0);
+    // Then one statement reads main's pages and their hashes together.
+    expect(db.$queryRaw.mock.calls[1]?.[0].text).toMatch(/"content", "config".*AS "hash"\s+FROM "page"/s);
+    expect(db.$queryRaw.mock.invocationCallOrder[1]).toBeLessThan(db.page.createMany.mock.invocationCallOrder[0] ?? 0);
     expect(db.branch.update.mock.calls[0]?.[0].data.forkBaseline).toMatchObject({
       version: 2,
       pages: { billing: { copyId: copyOf('billing'), hash: 'h:billing', copyHash: 'h:billing', parentId: null, position: 0 } },
@@ -110,29 +114,23 @@ describe('createBranch', () => {
 });
 
 describe('mergeBranch', () => {
-  it('locks project, version, then both branches’ pages in one ascending pass, all FOR NO KEY UPDATE', async () => {
+  it('locks project, version, both branches’ pages, then the rows it deletes, in that order', async () => {
     await forkMain();
     await mergeBranch('project', 'v2');
-    expect(state.sql.map((s) => s.match(/FROM "(\w+)"/)?.[1])).toEqual(['project', 'branch', 'page']);
-    expect(state.sql.every((s) => s.trimEnd().endsWith('FOR NO KEY UPDATE'))).toBe(true);
-    expect(state.sql.some((s) => /FOR UPDATE/.test(s))).toBe(false);
-    expect(state.sql[2]).toMatch(/"branchId" IN \(\?, \?\)\s+ORDER BY "id" ASC FOR NO KEY UPDATE/);
+    expect(state.sql.map((s) => s.match(/FROM "(\w+)"/)?.[1])).toEqual(['project', 'branch', 'page', 'page']);
+    // Project: NO KEY UPDATE (never FOR UPDATE). Version row: FOR UPDATE, so no page can be inserted into it.
+    expect(state.sql[0]).toMatch(/FOR NO KEY UPDATE$/);
+    expect(state.sql[1]).toMatch(/FROM "branch".*FOR UPDATE$/);
+    expect(state.sql[2]).toMatch(/"branchId" IN \(\?, \?\)\s+ORDER BY "id" ASC FOR NO KEY UPDATE$/);
+    // Rows to delete: FOR UPDATE, so nothing can be attached to them meanwhile.
+    expect(state.sql[3]).toMatch(/"id" IN \(\?, \?\) ORDER BY "id" ASC FOR UPDATE$/);
   });
 
   it('promotes an untouched main without a flag: folds the copies, writes no page content', async () => {
     const copyOf = await forkMain();
     await mergeBranch('project', 'v2');
     expect(db.page.updateMany).not.toHaveBeenCalled();
-    expect(db.page.deleteMany).toHaveBeenCalledWith({
-      where: {
-        projectId: 'project',
-        branchId: 'v2',
-        OR: [
-          { id: copyOf('billing'), updatedAt: FORK },
-          { id: copyOf('intro'), updatedAt: FORK },
-        ],
-      },
-    });
+    expect(db.page.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'project', id: { in: [copyOf('billing'), copyOf('intro')] } } });
     expect(db.branch.delete).toHaveBeenCalledWith({ where: { id: 'v2' } });
     expect(recompute).toHaveBeenCalledWith('project', db);
   });
