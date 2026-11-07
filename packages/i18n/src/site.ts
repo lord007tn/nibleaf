@@ -1,13 +1,6 @@
 import { resolveLocale } from './locales';
 import type { MessageKey } from './message-ids';
 import type { MessageFn, MessageVariables } from './message-types';
-import { marketing_arabiclanding_description } from './paraglide/messages/marketing_arabiclanding_description.js';
-import { marketing_arabiclanding_imagealt } from './paraglide/messages/marketing_arabiclanding_imagealt.js';
-import { marketing_arabiclanding_title } from './paraglide/messages/marketing_arabiclanding_title.js';
-import { marketing_arabicplatforms_breadcrumb } from './paraglide/messages/marketing_arabicplatforms_breadcrumb.js';
-import { marketing_arabicplatforms_description } from './paraglide/messages/marketing_arabicplatforms_description.js';
-import { marketing_arabicplatforms_imagealt } from './paraglide/messages/marketing_arabicplatforms_imagealt.js';
-import { marketing_arabicplatforms_title } from './paraglide/messages/marketing_arabicplatforms_title.js';
 import { site_analyticsconsentaccept } from './paraglide/messages/site_analyticsconsentaccept.js';
 import { site_analyticsconsentbody } from './paraglide/messages/site_analyticsconsentbody.js';
 import { site_analyticsconsentdecline } from './paraglide/messages/site_analyticsconsentdecline.js';
@@ -141,13 +134,6 @@ const siteMessages = {
   importBlog: site_importblog,
   importPages: site_importpages,
   importAdditionalPages: site_importadditionalpages,
-  arabicLandingTitle: marketing_arabiclanding_title,
-  arabicLandingDescription: marketing_arabiclanding_description,
-  arabicLandingImageAlt: marketing_arabiclanding_imagealt,
-  arabicPlatformsTitle: marketing_arabicplatforms_title,
-  arabicPlatformsDescription: marketing_arabicplatforms_description,
-  arabicPlatformsImageAlt: marketing_arabicplatforms_imagealt,
-  arabicPlatformsBreadcrumb: marketing_arabicplatforms_breadcrumb,
   changeLanguage: site_changelanguage,
   toggleTheme: site_toggletheme,
   toggleSubpages: site_togglesubpages,
@@ -178,11 +164,14 @@ const siteMessages = {
 } satisfies Record<string, MessageFn>;
 
 type SiteContractKey = Extract<MessageKey, `site.${string}`>;
+/** The Arabic marketing pages' head copy. Those routes load it lazily
+ * (apps/app/src/lib/arabic-marketing-copy.ts) so it stays out of every reader's first load. */
+type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
  * (./site-search), article renderer (./site-content) and AI chat panel (./site-chat). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey
+  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey>;
