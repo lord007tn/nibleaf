@@ -1,4 +1,8 @@
+import { heroAvailabilityNote } from './availability';
 import type { MarketingLang, UseCaseSlug, UseCasesTeaserCopy } from './types';
+
+/** Appends the rollout caption while any AI capability the copy names is still rolling out. */
+const withRollout = (text: string, lang: MarketingLang) => [text, heroAvailabilityNote(lang)].filter(Boolean).join(' ');
 
 /**
  * The few use-case strings needed outside the pages themselves: route `head`
@@ -26,11 +30,13 @@ export const USE_CASE_META: Record<MarketingLang, Record<UseCaseSlug, UseCaseMet
   en: {
     'support-teams': {
       slug: 'support-teams',
-      title: 'Help center software with cited AI answers | Nibleaf',
-      description:
+      title: 'Help center software for support teams | Nibleaf',
+      description: withRollout(
         'Give customers AI answers that cite your help center, see which searches fail, and fix gaps from your AI assistant. Open source, in English and Arabic.',
+        'en',
+      ),
       navLabel: 'Support teams',
-      cardSummary: 'Answer repeat questions with cited AI answers, and see what customers can’t find.',
+      cardSummary: withRollout('Answer repeat questions with cited AI answers, and see what customers can’t find.', 'en'),
     },
     'product-docs': {
       slug: 'product-docs',
@@ -52,11 +58,13 @@ export const USE_CASE_META: Record<MarketingLang, Record<UseCaseSlug, UseCaseMet
   ar: {
     'support-teams': {
       slug: 'support-teams',
-      title: 'مركز مساعدة بإجابات ذكية موثّقة المصادر | Nibleaf',
-      description:
+      title: 'مركز مساعدة لفرق الدعم بالعربية والإنجليزية | Nibleaf',
+      description: withRollout(
         'مركز مساعدة يجيب عملاءك بالذكاء الاصطناعي مع ذكر المصدر، ويكشف عمليات البحث المتعثّرة، ويتيح سدّ النقص من مساعدك الذكي. بالعربية والإنجليزية.',
+        'ar',
+      ),
       navLabel: 'فرق الدعم',
-      cardSummary: 'أجب عن الأسئلة المتكررة بإجابات ذكية تذكر مصادرها، واعرف ما لا يجده عملاؤك.',
+      cardSummary: withRollout('أجب عن الأسئلة المتكررة بإجابات ذكية تذكر مصادرها، واعرف ما لا يجده عملاؤك.', 'ar'),
     },
     'product-docs': {
       slug: 'product-docs',

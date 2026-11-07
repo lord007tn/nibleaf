@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { heroAvailabilityNote } from './availability';
 import { findUseCaseMeta, getUseCaseHref, USE_CASE_META, USE_CASE_SLUGS, USE_CASES_TEASER } from './use-case-meta';
 import { useCasesAr, useCasesTeaserAr } from './use-cases.ar';
 import { useCasesEn, useCasesTeaserEn } from './use-cases.en';
@@ -33,5 +34,15 @@ describe('use-case metadata', () => {
   it('builds language-prefixed paths', () => {
     expect(getUseCaseHref('en', 'product-docs')).toBe('/use-cases/product-docs');
     expect(getUseCaseHref('ar', 'product-docs')).toBe('/ar/use-cases/product-docs');
+  });
+
+  it.each(['en', 'ar'] as const)('keeps the %s support title neutral and its summaries qualified while AI capabilities roll out', (lang) => {
+    const meta = USE_CASE_META[lang]['support-teams'];
+    expect(meta.title).not.toMatch(/AI|ذكية/);
+    const note = heroAvailabilityNote(lang);
+    if (note) {
+      expect(meta.description).toContain(note);
+      expect(meta.cardSummary).toContain(note);
+    }
   });
 });

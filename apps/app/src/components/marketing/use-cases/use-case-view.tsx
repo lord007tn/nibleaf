@@ -72,14 +72,14 @@ export function UseCaseView({
             <h1 className="mt-5 text-balance font-semibold text-[2.5rem] leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem] rtl:text-[2.1rem] rtl:leading-[1.6] rtl:tracking-normal rtl:sm:text-5xl">
               {copy.hero.title}
             </h1>
-            <p className="mt-5 max-w-[60ch] text-lg text-muted-foreground leading-8">{copy.hero.subtitle}</p>
+            <p className="mt-5 max-w-[60ch] text-foreground/80 text-lg leading-8">{copy.hero.subtitle}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <MarketingLink cta={copy.hero.primaryCta} lang={lang} placement="hero" className={primaryButton}>
                 <ArrowRight aria-hidden="true" className={arrow} />
               </MarketingLink>
               <MarketingLink cta={copy.hero.secondaryCta} lang={lang} placement="hero" className={outlineButton} />
             </div>
-            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-muted-foreground text-xs leading-6">{copy.hero.availabilityNote}</p>}
+            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-foreground/70 text-xs leading-6">{copy.hero.availabilityNote}</p>}
           </div>
           <HeroMedia lang={lang} media={copy.hero.media} />
         </div>

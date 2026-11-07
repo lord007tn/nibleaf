@@ -1,5 +1,8 @@
 import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
-import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
+import type { MarketingLang, MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
+
+/** Appends the rollout caption while any AI capability the copy names is still rolling out. */
+const withRollout = (text: string, lang: MarketingLang) => [text, heroAvailabilityNote(lang)].filter(Boolean).join(' ');
 
 // Evidence for every claim is in
 // .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md.
@@ -48,12 +51,14 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
   'support-teams': {
     slug: 'support-teams',
     meta: {
-      title: 'Help center software with cited AI answers | Nibleaf',
-      description:
+      title: 'Help center software for support teams | Nibleaf',
+      description: withRollout(
         'Give customers AI answers that cite your help center, see which searches fail, and fix gaps from your AI assistant. Open source, in English and Arabic.',
+        'en',
+      ),
     },
     navLabel: 'Support teams',
-    cardSummary: 'Answer repeat questions with cited AI answers, and see what customers can’t find.',
+    cardSummary: withRollout('Answer repeat questions with cited AI answers, and see what customers can’t find.', 'en'),
     hero: {
       eyebrow: 'For support teams',
       title: 'Let your help center answer first.',

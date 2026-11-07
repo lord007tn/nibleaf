@@ -1,5 +1,8 @@
 import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
-import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
+import type { MarketingLang, MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
+
+/** Appends the rollout caption while any AI capability the copy names is still rolling out. */
+const withRollout = (text: string, lang: MarketingLang) => [text, heroAvailabilityNote(lang)].filter(Boolean).join(' ');
 
 // Written as Arabic, not translated line by line. Facts match use-cases.en.ts;
 // evidence is in .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md.
@@ -45,12 +48,14 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
   'support-teams': {
     slug: 'support-teams',
     meta: {
-      title: 'مركز مساعدة بإجابات ذكية موثّقة المصادر | Nibleaf',
-      description:
+      title: 'مركز مساعدة لفرق الدعم بالعربية والإنجليزية | Nibleaf',
+      description: withRollout(
         'مركز مساعدة يجيب عملاءك بالذكاء الاصطناعي مع ذكر المصدر، ويكشف عمليات البحث المتعثّرة، ويتيح سدّ النقص من مساعدك الذكي. بالعربية والإنجليزية.',
+        'ar',
+      ),
     },
     navLabel: 'فرق الدعم',
-    cardSummary: 'أجب عن الأسئلة المتكررة بإجابات ذكية تذكر مصادرها، واعرف ما لا يجده عملاؤك.',
+    cardSummary: withRollout('أجب عن الأسئلة المتكررة بإجابات ذكية تذكر مصادرها، واعرف ما لا يجده عملاؤك.', 'ar'),
     hero: {
       eyebrow: 'لفرق الدعم',
       title: 'دع مركز المساعدة يُجيب أولًا.',
