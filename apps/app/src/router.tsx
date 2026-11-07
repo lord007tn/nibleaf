@@ -5,6 +5,7 @@ import { ErrorPage } from '@/components/error-page';
 import { NotFound } from '@/components/not-found';
 import { PageLoader } from '@/components/page-loader';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
+import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
@@ -13,7 +14,14 @@ const requestNonce = createIsomorphicFn()
   .server(() => ssrNonce.getStore())
   .client(() => undefined);
 
+// getRouter runs once in the browser before hydration, so the stale-chunk
+// recovery is in place before any route chunk loads, on every page.
+const recoverFromStaleChunks = createIsomorphicFn()
+  .server(() => undefined)
+  .client(reloadOnceOnChunkLoadFailure);
+
 export function getRouter() {
+  recoverFromStaleChunks();
   const customDomainProjectId = hydratedCustomDomainProjectId();
   // One cache for every route (dashboard, auth, invitations, published sites),
   // available to loaders as `context.queryClient` and to components through the
