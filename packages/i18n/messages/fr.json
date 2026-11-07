@@ -337,6 +337,8 @@
   "editor_pages": "Pages",
   "editor_backtodashboard": "Retour au tableau de bord",
   "editor_config_heading": "Paramètres du site",
+  "editor_config_adminonly": "Seuls les administrateurs peuvent modifier les paramètres du site. Si quelque chose doit être modifié, adressez-vous à un administrateur de ce site.",
+  "editor_config_backtowriting": "Revenir à la rédaction",
   "editor_viewonsite": "A voir sur place",
   "editor_ai_title": "Assistance IA",
   "editor_ai_intro": "Continuez à écrire, reformulez pour plus de clarté ou générez à partir d'une invite - ancré dans ce document.",
