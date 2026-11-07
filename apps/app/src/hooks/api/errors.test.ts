@@ -1,5 +1,6 @@
+import { type MessageKey, type MessageVariables, translateFn } from '@nibleaf/i18n';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiResponseError } from './client-helpers';
+import { ApiResponseError, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 
 const t = (key: string) => `t:${key}`;
@@ -23,11 +24,35 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, new ApiResponseError('Slow down', 429), 'editor.deleteFailed')).toBe('t:error.rateLimited');
   });
 
-  it('explains a promote blocked by changes on main instead of asking for a refresh', () => {
-    const blocked = new ApiResponseError('Pages on main changed since this version was created.', 409, 'branch:main_changed');
-    expect(friendlyErrorMessage(t, blocked, 'editor.branch.mergeError')).toBe('t:error.branchMainChanged');
-    // A plain 409 keeps the concurrent-edit wording.
-    expect(friendlyErrorMessage(t, new ApiResponseError('Conflict', 409, 'database:conflict'), 'editor.branch.mergeError')).toBe('t:error.conflict');
+  it.each([
+    [
+      'en',
+      "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
+    ],
+    [
+      'ar',
+      'تغيّرت صفحات في main بعد إنشاء هذا الإصدار، لذلك لم تتم ترقيته. ستتمكن قريبًا من مراجعة هذه الصفحات وتأكيد الترقية. حتى ذلك الحين، يبقى إصدارك كما هو.',
+    ],
+  ] as const)('gives the editor’s promote error its own %s text for branch:main_changed, not "refresh and try again"', async (locale, expected) => {
+    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
+    // The 409 exactly as the server sends it, through the mutation helper the promote hook uses.
+    const response = Response.json(
+      {
+        error: {
+          code: 'branch:main_changed',
+          message: 'Pages on main changed since this version was created.',
+          details: { changedOnMainSinceFork: [] },
+        },
+      },
+      { status: 409 },
+    );
+    const blocked = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    // The editor's existing, generic call (branch-switcher's promote onError).
+    expect(friendlyErrorMessage(localized, blocked, 'editor.branch.mergeError')).toBe(expected);
+    // Any other 409 keeps the concurrent-edit wording.
+    expect(friendlyErrorMessage(localized, new ApiResponseError('Conflict', 409, 'database:conflict'), 'editor.branch.mergeError')).toBe(
+      translateFn('error.conflict', undefined, locale),
+    );
   });
 
   it('recognises a request that never reached the server', () => {

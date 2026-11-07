@@ -3,11 +3,13 @@ import { ApiResponseError } from './client-helpers';
 
 type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 
-/** Server error codes whose meaning no HTTP status conveys. They win over the
- *  status wording: refreshing never helps a promote blocked by changes on main. */
-const CODE_KEYS: Partial<Record<string, MessageKey>> = {
+/** Server cases whose meaning no HTTP status conveys, keyed by error code or
+ *  by `details.reason`. Checked before the status wording: refreshing never
+ *  helps a promote blocked by changes on main. */
+const ERROR_KEYS: Record<string, MessageKey> = {
   'branch:main_changed': 'error.branchMainChanged',
 };
+const keyFor = (value: string | undefined) => (value && Object.hasOwn(ERROR_KEYS, value) ? ERROR_KEYS[value] : undefined);
 
 /**
  * Turn a failed request into a short, localized message a writer can act on.
@@ -28,8 +30,8 @@ export function friendlyErrorMessage(
 ): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
-    const byCode = error.code ? CODE_KEYS[error.code] : undefined;
-    if (byCode) return t(byCode);
+    const known = keyFor(error.code) ?? keyFor(error.reason);
+    if (known) return t(known);
     const specific = statusKeys?.[error.status];
     if (specific) return t(specific);
     if (error.status === 401) return t('error.signedOut');

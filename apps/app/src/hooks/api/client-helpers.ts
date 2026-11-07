@@ -2,7 +2,13 @@ interface ApiErrorBody {
   error?: {
     code?: string;
     message?: string;
-    details?: { path?: string; sourceFile?: string; limit?: number; errors?: Array<string | { path?: string; message?: string }> };
+    details?: {
+      path?: string;
+      sourceFile?: string;
+      limit?: number;
+      reason?: string;
+      errors?: Array<string | { path?: string; message?: string }>;
+    };
   };
 }
 
@@ -20,6 +26,7 @@ const readApiError = async (res: Response, fallback: string) => {
       return {
         code: body.error?.code,
         message: `${message} ${detailPath && detailPath !== '$' ? `${detailPath}: ` : ''}${detailMessage}`,
+        reason: body.error?.details?.reason,
       };
     }
     return {
@@ -28,6 +35,7 @@ const readApiError = async (res: Response, fallback: string) => {
       path: body.error?.details?.path,
       sourceFile: body.error?.details?.sourceFile,
       limit: body.error?.details?.limit,
+      reason: body.error?.details?.reason,
     };
   } catch {
     return { code: undefined, message: fallback };
@@ -44,6 +52,8 @@ export class ApiResponseError extends Error {
     readonly path?: string,
     readonly sourceFile?: string,
     readonly limit?: number,
+    /** `details.reason` from the server, when it names a specific case. */
+    readonly reason?: string,
   ) {
     super(message);
     this.name = 'ApiResponseError';
@@ -61,6 +71,7 @@ export async function getData<TData = never, TResponse extends Response = Respon
       error.path,
       error.sourceFile,
       error.limit,
+      error.reason,
     );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
@@ -78,6 +89,7 @@ export async function mutateData<TData = never, TResponse extends Response = Res
       error.path,
       error.sourceFile,
       error.limit,
+      error.reason,
     );
   }
   return (await res.json()).data as ResolvedData<TData, TResponse>;
