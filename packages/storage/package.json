@@ -10,7 +10,8 @@
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1160.0",
