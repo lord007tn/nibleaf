@@ -8,6 +8,7 @@ import { getProjectUsage } from './usage';
 import { parseWorkspaceMetadata } from './workspace';
 
 const MAX_PROJECT_SLUG_LENGTH = 63;
+const INTERNAL_DELIVERY_EVENT_TYPES = ['publish_delivery_backfilled', 'publish_announced'];
 
 type InviteOrganizationInput = {
   organizationName: string;
@@ -249,7 +250,7 @@ export async function getAdminUser(userId: string) {
   }
 
   const events = await prisma.platformEvent.findMany({
-    where: { userId },
+    where: { userId, type: { notIn: INTERNAL_DELIVERY_EVENT_TYPES } },
     orderBy: { createdAt: 'desc' },
     take: 30,
     select: { id: true, type: true, projectId: true, createdAt: true },
@@ -491,7 +492,7 @@ export async function getAdminSite(projectId: string) {
     getProjectUsage(project.organization.id, project.id),
     prisma.exportJob.groupBy({ by: ['status'], where: { projectId }, _count: { _all: true } }),
     prisma.platformEvent.findMany({
-      where: { projectId },
+      where: { projectId, type: { notIn: INTERNAL_DELIVERY_EVENT_TYPES } },
       orderBy: { createdAt: 'desc' },
       take: 30,
       select: { id: true, type: true, userId: true, createdAt: true },

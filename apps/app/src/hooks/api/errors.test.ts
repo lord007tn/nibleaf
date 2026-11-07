@@ -75,6 +75,20 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, new TypeError('fetch failed'), 'editor.createFailed')).toBe('t:error.network');
   });
 
+  it.each([
+    ['en', 'A page with this address already exists in that group. Change its address first.'],
+    ['ar', 'توجد صفحة بهذا الرابط في هذه المجموعة. غيّر رابطها أولًا.'],
+  ] as const)('explains a taken address in %s through the existing editor call', async (locale, message) => {
+    const response = new Response(JSON.stringify({ error: { code: 'database:conflict', details: { reason: 'slug_taken' } } }), { status: 409 });
+    const error = await mutateData(response, 'Move failed').catch((error: unknown) => error);
+    const translate: Parameters<typeof friendlyErrorMessage>[0] = (key, variables) => translateFn(key, variables, locale);
+    expect(friendlyErrorMessage(translate, error, 'editor.reorderFailed')).toBe(message);
+  });
+
+  it('also recognizes a mapped server code before generic status text', () => {
+    expect(friendlyErrorMessage(t, new ApiResponseError('Conflict', 409, 'slug_taken'), 'editor.reorderFailed')).toBe('t:editor.reorderSlugTaken');
+  });
+
   it("lets an action say what a status means for it, so an invite's 409 isn't called a concurrent edit", () => {
     const conflict = new ApiResponseError('That person is already a member of this workspace.', 409);
     expect(friendlyErrorMessage(t, conflict, 'members.toast.inviteError', { 409: 'members.toast.alreadyMember' })).toBe(

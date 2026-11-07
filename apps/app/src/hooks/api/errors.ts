@@ -10,6 +10,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // `details.reason` (e.g. a 409 `database:conflict` whose reason is a slug
 // clash); a reason entry wins over its code.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
+  ['slug_taken', 'editor.reorderSlugTaken'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],
 ]);
@@ -33,6 +34,7 @@ export function friendlyErrorMessage(
 ): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
+    // Shared code/reason messages take precedence over the caller's statusKeys.
     const messageKey = (error.reason ? API_ERROR_MESSAGE_KEYS.get(error.reason) : undefined) ?? API_ERROR_MESSAGE_KEYS.get(error.code ?? '');
     if (messageKey) return t(messageKey);
     const specific = statusKeys?.[error.status];
