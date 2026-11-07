@@ -70,10 +70,14 @@ case "$cmd" in
     exec node --import tsx src/index.ts
     ;;
   app)
+    export VITE_APP_URL="${APP_URL:?APP_URL is required for web services}"
+    node scripts/configure-web-runtime.mjs apps/app/.output
     echo "[nibleaf] starting dashboard on :${PORT:-4310}"
     exec node scripts/graceful-web-service.mjs apps/app/.output/server/index.mjs
     ;;
   admin)
+    export VITE_APP_URL="${APP_URL:?APP_URL is required for web services}"
+    node scripts/configure-web-runtime.mjs apps/admin/.output
     echo "[nibleaf] starting admin panel on :${PORT:-4315}"
     exec node scripts/graceful-web-service.mjs apps/admin/.output/server/index.mjs
     ;;
