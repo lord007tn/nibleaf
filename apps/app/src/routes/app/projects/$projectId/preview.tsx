@@ -4,7 +4,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Eye, FileText } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
@@ -20,6 +19,7 @@ import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch'
 import type { PageNode } from '@/hooks/api/types';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
+import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 import { useSession } from '@/services/auth-client';
 
@@ -60,12 +60,10 @@ function ProjectPreview() {
   const membersQuery = useProjectMembers(projectId);
   const { data: members } = membersQuery;
   const { data: session, isPending: sessionPending } = useSession();
-  const previewAccess =
-    membersQuery.isPending || sessionPending || !members || !session
-      ? 'pending'
-      : canAdminister(members.members.find((member) => member.user.id === session.user.id)?.role ?? '')
-        ? 'admin'
-        : 'notAdmin';
+  const previewAccess = resolveProjectSettingsAccess(
+    members?.members.find((member) => member.user.id === session?.user.id)?.role,
+    membersQuery.isPending || sessionPending || !members || !session,
+  );
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
   const activeLanguageId = search.languageId ?? defaultScopeId(languages);
@@ -146,7 +144,7 @@ function ProjectPreview() {
           <Eye className="size-5 text-muted-foreground" /> {t('preview.title')}
         </div>
         <p className="text-muted-foreground text-sm">{t('preview.disabled')}</p>
-        {membersQuery.isError ? (
+        {membersQuery.isError && !members ? (
           <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
         ) : previewAccess === 'pending' ? (
           <div aria-busy="true" className="mt-4">

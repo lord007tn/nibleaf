@@ -3,7 +3,6 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -39,6 +38,7 @@ import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/que
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
+import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { useSession } from '@/services/auth-client';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
@@ -79,12 +79,10 @@ function SiteOverviewPage() {
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const { data: session, isPending: sessionPending } = useSession();
-  const settingsAccess =
-    membersPending || sessionPending || !members || !session
-      ? 'pending'
-      : canAdminister(members.members.find((member) => member.user.id === session.user.id)?.role ?? '')
-        ? 'admin'
-        : 'notAdmin';
+  const settingsAccess = resolveProjectSettingsAccess(
+    members?.members.find((member) => member.user.id === session?.user.id)?.role,
+    membersPending || sessionPending || !members || !session,
+  );
   const canManageSettings = settingsAccess === 'admin';
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
@@ -164,7 +162,7 @@ function SiteOverviewPage() {
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed && settingsAccess !== 'pending' && !membersQuery.isError ? (
+      {deployments && !hasReadyDeployment && !publishFailed && settingsAccess !== 'pending' && !(membersQuery.isError && !members) ? (
         <PublishNudge canManageSettings={canManageSettings} projectId={projectId} />
       ) : null}
 
@@ -368,7 +366,7 @@ function SiteOverviewPage() {
               to="/app/projects/$projectId/settings"
             />
           </ManageRow>
-          {membersQuery.isError ? (
+          {membersQuery.isError && !members ? (
             <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
           ) : settingsAccess === 'pending' ? (
             <div aria-busy="true" className="space-y-3">

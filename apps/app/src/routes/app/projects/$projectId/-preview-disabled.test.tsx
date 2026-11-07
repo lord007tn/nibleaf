@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   role: 'member',
   membersPending: false,
   membersError: false,
+  membersAvailable: true,
   retry: vi.fn(),
   retryMembers: vi.fn(),
 }));
@@ -23,7 +24,7 @@ vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { 
 vi.mock('@/hooks/api', () => ({
   useProject: () => state.project,
   useProjectMembers: () => ({
-    data: state.membersPending ? undefined : { members: [{ role: state.role, user: { id: 'viewer' } }] },
+    data: state.membersPending || !state.membersAvailable ? undefined : { members: [{ role: state.role, user: { id: 'viewer' } }] },
     isPending: state.membersPending,
     isError: state.membersError,
     refetch: state.retryMembers,
@@ -51,6 +52,7 @@ let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
   state.membersPending = false;
   state.membersError = false;
+  state.membersAvailable = true;
 });
 afterEach(async () => {
   await act(async () => root?.unmount());
@@ -103,6 +105,7 @@ it('does not label a loading Admin as an Editor', async () => {
 });
 it('shows a retryable permission error instead of an Editor message', async () => {
   state.membersError = true;
+  state.membersAvailable = false;
   state.project = { data: { config: { addons: { previewDeployments: false } } } };
   const host = await mount();
   expect(host.textContent).not.toContain('preview.disabledAskAdmin');
@@ -115,4 +118,15 @@ it('retains a usable preview when a background project refetch fails', async () 
   const host = await mount();
   expect(host.querySelector('[data-testid="usable-preview"]')).not.toBeNull();
   expect(host.querySelector('[role="alert"]')).toBeNull();
+});
+
+it.each(['owner', 'admin', 'member'])('retains the cached %s preview action after a background member failure', async (role) => {
+  state.role = role;
+  state.project = { data: { config: { addons: { previewDeployments: false } } } };
+  const host = await mount();
+  state.membersError = true;
+  await act(async () => root.render(<Preview />));
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+  if (role === 'member') expect(host.textContent).toContain('preview.disabledAskAdmin');
+  else expect(host.querySelector('a')?.getAttribute('href')).toBe('/settings?section=addons');
 });

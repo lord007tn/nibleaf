@@ -3231,7 +3231,7 @@
   "site_searchkeysclose": "to close",
   "site_searchversionlabel": "Version",
   "settings_permissions_title": "Administrator access required",
-  "settings_permissions_body": "Ask a site owner or administrator to update these settings. You can still edit documentation and use the sections available to your role.",
+  "settings_permissions_body": "Ask a site owner or Admin to update these settings. You can still edit documentation and use the sections available to your role.",
   "settings_members_removeconfirm": "Remove {name} from this site? They will lose access to its documentation and settings.",
   "settings_members_revokeconfirm": "Revoke the invitation for {email}? This invitation link will stop working.",
   "settings_config_discarddescription": "You have unsaved settings changes. Leaving this section will discard them.",

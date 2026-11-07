@@ -271,3 +271,8 @@ it('keeps the settings arrow and replacement warnings clear in English, Arabic a
   expect(loadCatalog('en').settings_apikeys_rotateconfirm_expireddescription).toContain('The new key will expire in 90 days.');
   expect(loadCatalog('ar').settings_apikeys_rotateconfirm_expireddescription).toContain('90 يومًا');
 });
+
+it('uses the glossary Admin role in English settings permission guidance', () => {
+  expect(loadCatalog('en').settings_permissions_body).toContain('Admin');
+  expect(loadCatalog('en').settings_permissions_body).not.toContain('administrator');
+});

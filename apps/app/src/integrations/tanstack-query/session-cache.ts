@@ -1,20 +1,6 @@
 import { CancelledError, type DefaultError, type QueryClient, type UseMutationOptions, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-
-interface SessionCache {
-  userId?: string | null;
-  generation: number;
-  client?: QueryClient;
-}
-const sessions = new WeakMap<QueryClient, SessionCache>();
-const sessionOf = (client: QueryClient): SessionCache => {
-  let session = sessions.get(client);
-  if (!session) {
-    session = { generation: 0 };
-    sessions.set(client, session);
-  }
-  return session;
-};
+import { getSessionGeneration, type SessionCache, sessionOf } from './session-generation';
 
 function clearDashboardData(queryClient: QueryClient, session: SessionCache) {
   // Revoke old callbacks' cache access before cancellation can settle a read.
@@ -98,12 +84,13 @@ export function useSessionMutation<TData = unknown, TError = DefaultError, TVari
 ) {
   const client = useQueryClient();
   const session = sessionOf(client);
-  const generation = useMemo(() => sessionOf(client).generation, [client]);
+  const generation = useMemo(() => getSessionGeneration(client), [client]);
   const current = () => generation === session.generation;
   const mutationFn = options.mutationFn;
   const onMutate = options.onMutate;
   return useMutation<TData, TError, TVariables, TContext>({
     ...options,
+    meta: { ...options.meta, sessionGeneration: generation },
     mutationFn: mutationFn
       ? (variables, context) => {
           if (!current()) return Promise.reject(new CancelledError());

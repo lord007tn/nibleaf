@@ -4,6 +4,7 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { syncDashboardSession, useSessionMutation, useSessionQueryClient } from './session-cache';
+import { getSessionGeneration } from './session-generation';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const cacheKey = ['private-list'];
@@ -87,8 +88,13 @@ it.each(['success', 'failure'])('ignores delayed mutation %s cache effects after
   await act(async () => {
     result = mutate().catch((error) => error);
   });
+  const oldMutation = client.getMutationCache().getAll()[0];
+  const generation = oldMutation?.meta?.sessionGeneration;
+  expect(generation).toBe(getSessionGeneration(client));
   switchAccount();
   await mutate.rerender();
+  expect(oldMutation?.meta?.sessionGeneration).toBe(generation);
+  expect(generation).not.toBe(getSessionGeneration(client));
   const invalidate = vi.spyOn(client, 'invalidateQueries');
   await act(async () => {
     if (outcome === 'success') response.resolve('saved');
@@ -189,6 +195,7 @@ it('still applies current-session mutation results', async () => {
     await mutate();
   });
   expect(client.getQueryData(cacheKey)).toEqual(['saved']);
+  expect(client.getMutationCache().getAll()[0]?.meta?.sessionGeneration).toBe(getSessionGeneration(client));
 });
 
 it('rejects a stale hook intent after rerendering without running optimistic work or a request', async () => {

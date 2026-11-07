@@ -110,6 +110,22 @@ describe('site overview first load', () => {
     expect(retry).toHaveBeenCalledOnce();
   });
 
+  it.each(['member', 'admin', 'owner'])('retains cached %s settings rows and publish nudge after a background member failure', async (role) => {
+    const data = { members: [{ role, user: { id: 'viewer' } }] };
+    navigation.members = { data, isPending: false };
+    navigation.deployments = { data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const settingsHref = `/settings?section=${role === 'member' ? 'languages' : 'general'}`;
+    expect(container.querySelector(`a[href="${settingsHref}"]`)).not.toBeNull();
+    expect(container.textContent).toContain('overview.nudge.title');
+    navigation.members = { data, isPending: false, isError: true };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector(`a[href="${settingsHref}"]`)).not.toBeNull();
+    expect(container.textContent).toContain('overview.nudge.title');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    if (role !== 'member') expect(container.querySelector('a[href="/settings?section=integrations"]')).not.toBeNull();
+  });
+
   it('prefetches the page views the overview opens with, in the loader', async () => {
     const queryClient = {};
     (Route.options.loader as (context: { context: { queryClient: unknown }; params: { projectId: string } }) => void)({
