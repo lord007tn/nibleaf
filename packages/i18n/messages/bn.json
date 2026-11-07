@@ -1864,6 +1864,8 @@
   "error_conflict": "একই সময়ে অন্য কেউ এটি বদলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
   "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
   "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
+  "error_promoteraced": "Someone saved during the promote. Nothing changed; try again.",
+  "error_promoteblocked": "Promoting would put pages inside each other, so nothing changed. In the version, move one of those pages out of the other, then promote again.",
   "error_toolarge": "এটি খুব বড়। একটি ছোট ফাইল চেষ্টা করুন।",
   "error_ratelimited": "অনেকবার চেষ্টা করা হয়েছে। একটু অপেক্ষা করে আবার চেষ্টা করুন।",
   "notfound_badge": "404",

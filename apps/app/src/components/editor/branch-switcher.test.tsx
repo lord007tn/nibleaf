@@ -34,6 +34,7 @@ const branch = (id: string, name: string, isDefault: boolean): Branch => ({
   projectId: 'project-1',
   name,
   isDefault,
+  forkedAt: isDefault ? null : '2026-11-01T00:00:00.000Z',
   createdAt: '2026-11-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
 });

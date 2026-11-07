@@ -121,7 +121,7 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
 };
 
 /** Recompute materialized paths in the same transaction as the tree change. */
-const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<void> => {
+export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<void> => {
   const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, parentId: true, slug: true, path: true } });
   const byId = new Map(pages.map((p) => [p.id, p]));
   const pathOf = (id: string, seen = new Set<string>()): string => {
