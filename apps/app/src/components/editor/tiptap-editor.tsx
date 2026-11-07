@@ -53,9 +53,11 @@ import {
 import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
+import { ComponentSettingsLayer } from './component-settings/component-settings-layer';
 import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
+import { ComponentSettings } from './extensions/component-settings';
 import { ImageUpload, uploadEditorImage } from './extensions/image-upload';
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
@@ -375,6 +377,7 @@ export function buildEditorExtensions({
     Callout,
     ...mdxNodes,
     ...opaqueMdxNodes,
+    ComponentSettings,
     SlashCommand.configure({ locale, onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
@@ -863,6 +866,13 @@ export function TiptapEditor({
     });
   }, [comments, activeCommentId, editor]);
 
+  // The settings layer is positioned against this wrapper, so its gear scrolls with the text.
+  const canvas = (
+    <div className="pl-editor-canvas">
+      <EditorContent editor={editor} />
+      {editor && editable && !commentMode ? <ComponentSettingsLayer editor={editor} dir={dir} /> : null}
+    </div>
+  );
   return (
     <div
       className={cn('pl-editor', variant === 'wysiwyg' && 'pl-editor-document', commentMode && 'is-comment-mode', className)}
@@ -883,11 +893,11 @@ export function TiptapEditor({
         <div className="pl-document-scroll">
           <div className="pl-document-page">
             {titleSlot ? <div className="pl-document-title">{titleSlot}</div> : null}
-            <EditorContent editor={editor} />
+            {canvas}
           </div>
         </div>
       ) : (
-        <EditorContent editor={editor} />
+        canvas
       )}
       {editor && editable && !commentMode ? <EditorFooter documentMode={variant === 'wysiwyg'} editor={editor} /> : null}
     </div>

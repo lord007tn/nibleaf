@@ -47,6 +47,11 @@ function PopoverContent({
   )
 }
 
+/** Closes the popover. Rendering one inside a `modal="trap-focus"` popover enables its focus trap. */
+function PopoverClose({ ...props }: PopoverPrimitive.Close.Props) {
+  return <PopoverPrimitive.Close data-slot="popover-close" {...props} />
+}
+
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -82,6 +87,7 @@ function PopoverDescription({
 
 export {
   Popover,
+  PopoverClose,
   PopoverContent,
   PopoverDescription,
   PopoverHeader,

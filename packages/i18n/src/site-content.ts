@@ -8,6 +8,7 @@ import { site_copysectionlink } from './paraglide/messages/site_copysectionlink.
 import { site_defaultvalue } from './paraglide/messages/site_defaultvalue.js';
 import { site_deprecated } from './paraglide/messages/site_deprecated.js';
 import { site_details } from './paraglide/messages/site_details.js';
+import { site_placeholder } from './paraglide/messages/site_placeholder.js';
 import { site_required } from './paraglide/messages/site_required.js';
 import { site_showproperties } from './paraglide/messages/site_showproperties.js';
 import { site_tab } from './paraglide/messages/site_tab.js';
@@ -35,6 +36,7 @@ const contentMessages = {
   defaultValue: site_defaultvalue,
   deprecated: site_deprecated,
   details: site_details,
+  placeholder: site_placeholder,
   required: site_required,
   showProperties: site_showproperties,
   tab: site_tab,

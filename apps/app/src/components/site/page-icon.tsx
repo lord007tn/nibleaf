@@ -148,3 +148,6 @@ export function PageIcon({ name, className }: { name?: string | null; className?
 
 /** Whether an authored icon name resolves to a real icon. */
 export const hasIcon = (name?: string | null): boolean => Boolean(name && ICONS[normalize(name)]);
+
+/** The full name→icon map (aliases included), for the editor's icon picker. */
+export { ICONS as PAGE_ICONS };

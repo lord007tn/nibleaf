@@ -586,6 +586,24 @@
   font-size: 0.75rem;
   font-weight: 600;
 }
+/* A step with an authored icon draws the icon in the same marker. */
+.reader-steps > li[data-step-icon]::before {
+  content: none;
+}
+.reader-steps > li > .reader-step-marker {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: -2.25rem;
+  display: grid;
+  place-items: center;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 0.75rem;
+}
 /* The scrollbar follows the theme's code surface (warm in Manuscript, author-set
  * anywhere), falling back to the default dark panel. A transparent track blends
  * with every code surface, including the "dim" mix. */

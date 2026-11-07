@@ -13,7 +13,8 @@ import type { CalloutType } from './callouts';
  * names every other surface that still needs it.
  */
 
-export type DocumentationComponentAttributeType = 'string' | 'boolean' | 'number' | 'enum' | 'url' | 'icon' | 'color';
+/** `list` is an array of strings (`tags={["Feature", "Fix"]}`). */
+export type DocumentationComponentAttributeType = 'string' | 'boolean' | 'number' | 'enum' | 'url' | 'icon' | 'color' | 'list';
 
 export interface DocumentationComponentContract {
   kind: 'block' | 'inline';
@@ -42,7 +43,7 @@ export interface DocumentationComponentContract {
 
 /** Keyed by canonical (PascalCase) MDX tag. */
 export const DOCUMENTATION_COMPONENT_CONTRACT = {
-  Callout: { kind: 'block', attributes: { type: 'enum' }, markdownBody: true, callout: 'note' },
+  Callout: { kind: 'block', attributes: { type: 'enum', icon: 'icon', color: 'color' }, markdownBody: true, callout: 'note' },
   Note: { kind: 'block', attributes: {}, markdownBody: true, callout: 'note' },
   Tip: { kind: 'block', attributes: {}, markdownBody: true, callout: 'tip' },
   Check: { kind: 'block', attributes: {}, markdownBody: true, callout: 'check' },
@@ -50,17 +51,41 @@ export const DOCUMENTATION_COMPONENT_CONTRACT = {
   Danger: { kind: 'block', attributes: {}, markdownBody: true, callout: 'danger' },
   Info: { kind: 'block', attributes: {}, markdownBody: true, callout: 'info' },
   CardGroup: { kind: 'block', attributes: { cols: 'number' }, markdownBody: true },
-  Card: { kind: 'block', attributes: { title: 'string', icon: 'icon', href: 'url' }, markdownBody: true, structural: true },
-  Steps: { kind: 'block', attributes: {}, markdownBody: true },
-  Step: { kind: 'block', attributes: { title: 'string' }, markdownBody: true, structural: true },
-  Tabs: { kind: 'block', attributes: {}, markdownBody: true },
-  Tab: { kind: 'block', attributes: { title: 'string' }, markdownBody: true, structural: true },
+  Card: {
+    kind: 'block',
+    attributes: {
+      title: 'string',
+      icon: 'icon',
+      href: 'url',
+      horizontal: 'boolean',
+      img: 'url',
+      cta: 'string',
+      arrow: 'boolean',
+      color: 'color',
+    },
+    markdownBody: true,
+    structural: true,
+  },
+  Steps: { kind: 'block', attributes: { titleSize: 'enum' }, markdownBody: true },
+  Step: {
+    kind: 'block',
+    attributes: { title: 'string', icon: 'icon', stepNumber: 'number', titleSize: 'enum' },
+    markdownBody: true,
+    structural: true,
+  },
+  Tabs: { kind: 'block', attributes: { defaultTabIndex: 'number', sync: 'boolean', borderBottom: 'boolean' }, markdownBody: true },
+  Tab: { kind: 'block', attributes: { title: 'string', icon: 'icon', id: 'string' }, markdownBody: true, structural: true },
   AccordionGroup: { kind: 'block', attributes: {}, markdownBody: true },
-  Accordion: { kind: 'block', attributes: { title: 'string', defaultOpen: 'boolean' }, markdownBody: true, structural: true },
+  Accordion: {
+    kind: 'block',
+    attributes: { title: 'string', defaultOpen: 'boolean', description: 'string', icon: 'icon', id: 'string' },
+    markdownBody: true,
+    structural: true,
+  },
   // Holds fenced code blocks only, so its tags are left exactly as authored.
   CodeGroup: { kind: 'block', attributes: {} },
   // `frame` is a real (deprecated) HTML element that the HTML5 parser drops outside a frameset.
-  Frame: { kind: 'block', attributes: { caption: 'string' }, markdownBody: true, readerTag: 'mdxframe' },
+  Frame: { kind: 'block', attributes: { caption: 'string', hint: 'string' }, markdownBody: true, readerTag: 'mdxframe' },
   ParamField: {
     kind: 'block',
     attributes: {
@@ -73,23 +98,37 @@ export const DOCUMENTATION_COMPONENT_CONTRACT = {
       required: 'boolean',
       default: 'string',
       deprecated: 'boolean',
+      placeholder: 'string',
+      pre: 'list',
+      post: 'list',
     },
     markdownBody: true,
   },
   ResponseField: {
     kind: 'block',
-    attributes: { name: 'string', type: 'string', required: 'boolean', default: 'string', deprecated: 'boolean' },
+    attributes: {
+      name: 'string',
+      type: 'string',
+      required: 'boolean',
+      default: 'string',
+      deprecated: 'boolean',
+      pre: 'list',
+      post: 'list',
+    },
     markdownBody: true,
   },
   Expandable: { kind: 'block', attributes: { title: 'string', defaultOpen: 'boolean' }, markdownBody: true },
-  Columns: { kind: 'block', attributes: {}, markdownBody: true },
+  Columns: { kind: 'block', attributes: { cols: 'number' }, markdownBody: true },
   Column: { kind: 'block', attributes: {}, markdownBody: true, structural: true },
   Banner: { kind: 'block', attributes: { type: 'enum' }, markdownBody: true },
-  Badge: { kind: 'inline', attributes: { color: 'color' } },
+  Badge: {
+    kind: 'inline',
+    attributes: { color: 'color', size: 'enum', shape: 'enum', icon: 'icon', stroke: 'boolean', disabled: 'boolean' },
+  },
   Button: { kind: 'inline', attributes: { href: 'url', variant: 'enum' } },
-  Tooltip: { kind: 'inline', attributes: { tip: 'string' } },
+  Tooltip: { kind: 'inline', attributes: { tip: 'string', headline: 'string', cta: 'string', href: 'url' } },
   Icon: { kind: 'inline', selfClosing: true, attributes: { icon: 'icon', name: 'icon', color: 'color', size: 'number' } },
-  Update: { kind: 'block', attributes: { label: 'string', description: 'string' }, markdownBody: true },
+  Update: { kind: 'block', attributes: { label: 'string', description: 'string', tags: 'list' }, markdownBody: true },
   // File/folder names are display-only: nothing may resolve them against a repository or filesystem.
   FileTree: { kind: 'block', attributes: {}, markdownBody: true },
   Folder: { kind: 'block', attributes: { name: 'string', defaultOpen: 'boolean' }, markdownBody: true, structural: true },

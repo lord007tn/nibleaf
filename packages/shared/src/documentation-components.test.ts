@@ -53,7 +53,7 @@ describe('documentation component registry', () => {
   it('only gives enum values to enum attributes and keeps defaults among them', () => {
     for (const component of DOCUMENTATION_COMPONENTS) {
       for (const attribute of component.attributes) {
-        if (attribute.values) expect(attribute.type, `${component.id}.${attribute.name}`).toMatch(/^(enum|number)$/);
+        if (attribute.values) expect(attribute.type, `${component.id}.${attribute.name}`).toMatch(/^(enum|number|color)$/);
         if (attribute.type === 'enum') expect(attribute.values?.length, `${component.id}.${attribute.name}`).toBeGreaterThan(0);
         if (attribute.values && attribute.default !== undefined) expect(attribute.values).toContain(String(attribute.default));
         if (attribute.type === 'boolean' && attribute.default !== undefined) expect(typeof attribute.default).toBe('boolean');

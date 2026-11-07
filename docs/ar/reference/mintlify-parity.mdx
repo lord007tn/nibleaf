@@ -36,16 +36,16 @@ translation_key: 'reference/mintlify-parity'
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
 | `Note` و`Tip` و`Info` و`Warning` و`Check` و`Danger` | متوفر | قائمة الشرطة المائلة، ومبدّل النوع، ووسوم MDX وتنبيهات GitHub (`> [!TIP]`) معًا | |
-| `Callout` مع `icon` أو `iconType` أو `color` مخصّص | جزئي | يُقرأ `type` فقط؛ الأيقونات والألوان المخصّصة غير متوفرة | 3 |
+| `Callout` مع `icon` أو `iconType` أو `color` مخصّص | جزئي | يُعرض `icon` (اسم أيقونة أو رمز تعبيري) و`color` ويُضبطان من لوحة الإعدادات؛ ولا تُدعم `iconType` ولا روابط الأيقونات ولا أيقونات SVG | |
 
 ## البطاقات والأعمدة والمربعات
 
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
 | `Card` مع `title` و`icon` و`href` | متوفر | تتبع الروابط الداخلية المسار الأساسي للموقع | |
-| `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` | غير متوفر | | 3 |
+| `Card` مع `horizontal` و`img` و`cta` و`arrow` و`color` | متوفر | تُضبط من لوحة إعدادات المكوّن؛ والنص البديل للصورة هو عنوان البطاقة | |
 | `CardGroup` مع `cols` | متوفر | من عمود واحد إلى أربعة أعمدة | |
-| `Columns` مع `cols`، و`Column` | جزئي | يُحسب عدد الأعمدة من العناصر الفرعية؛ ويُتجاهل `cols` | 3 |
+| `Columns` مع `cols`، و`Column` | متوفر | دون `cols` يأخذ كل عنصر فرعي عمودًا (حتى أربعة أعمدة) | |
 | `Tile` | غير متوفر | | 5 |
 | `Panel` (اللوحة الجانبية) | غير متوفر | | 5 |
 
@@ -54,11 +54,11 @@ translation_key: 'reference/mintlify-parity'
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
 | `Tabs` و`Tab` مع `title` | متوفر | تتبع مفاتيح الأسهم اتجاه القراءة | |
-| `icon` و`id` في `Tab`؛ و`defaultTabIndex` و`sync` و`borderBottom` في `Tabs` | غير متوفر | | 3 |
+| `icon` و`id` في `Tab`؛ و`defaultTabIndex` و`sync` و`borderBottom` في `Tabs` | جزئي | يبدّل `sync` علامات التبويب التي تحمل العنوان نفسه في الصفحة كلها، لكن مجموعات الشيفرة لا تتبعها بعد؛ ويفتح الرابط إلى `id` علامة التبويب (أو إلى عنوانها) | 4 |
 | `Accordion` مع `title` و`defaultOpen`، و`AccordionGroup` | متوفر | | |
-| `description` و`icon` و`id` في `Accordion` | غير متوفر | | 3 |
+| `description` و`icon` و`id` في `Accordion` | متوفر | يفتح الرابط إلى `id` (أو إلى العنوان) الأكورديون | |
 | `Steps` و`Step` مع `title` | متوفر | تُرقَّم تلقائيًا | |
-| `icon` و`stepNumber` و`titleSize` في `Step`؛ و`titleSize` في `Steps` | غير متوفر | | 3 |
+| `icon` و`stepNumber` و`titleSize` في `Step`؛ و`titleSize` في `Steps` | متوفر | | |
 | `Expandable` مع `title` و`defaultOpen` | متوفر | | |
 | `View` | غير متوفر | | 5 |
 | `Tree` و`Tree.Folder` و`Tree.File` | جزئي | تغطي `FileTree` و`Folder` و`File` الشجرة نفسها؛ أسماء وسوم Mintlify و`highlight` و`openable` غير متوفرة | 5 |
@@ -83,8 +83,8 @@ translation_key: 'reference/mintlify-parity'
 
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
-| `ParamField` (`path` و`query` و`header` و`body` و`type` و`required` و`default` و`deprecated`) | جزئي | يُعرض ويُحفظ؛ لكن المحرّر يحرّر الوصف فقط؛ و`placeholder` و`pre` و`post` غير متوفرة | 3 |
-| `ResponseField` (`name` و`type` و`required` و`default` و`deprecated`) | جزئي | مثل `ParamField`؛ و`pre` و`post` غير متوفرين | 3 |
+| `ParamField` (`path` و`query` و`header` و`body` و`type` و`required` و`default` و`deprecated` و`placeholder` و`pre` و`post`) | متوفر | تُحرَّر كل الخصائص من لوحة الإعدادات؛ ولعدم وجود ساحة تجربة API يظهر `placeholder` بجانب الحقل | |
+| `ResponseField` (`name` و`type` و`required` و`default` و`deprecated` و`pre` و`post`) | متوفر | | |
 | `RequestExample` و`ResponseExample` | جزئي | يظهران متجاورين داخل المقال لا مثبّتين في لوحة جانبية؛ و`dropdown` غير متوفر | 5 |
 | مرجع OpenAPI وساحة تجربة الطلبات | متوفر | يُنشأ من مستند OpenAPI الخاص بالمشروع | |
 | البيانات الوصفية `openapi:` و`api:` لكل صفحة | غير متوفر | | 7 |
@@ -95,9 +95,9 @@ translation_key: 'reference/mintlify-parity'
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
 | `Tooltip` مع `tip` | متوفر | يمكن الوصول إليه بلوحة المفاتيح وقارئات الشاشة | |
-| `headline` و`cta` و`href` في `Tooltip` | غير متوفر | | 3 |
+| `headline` و`cta` و`href` في `Tooltip` | متوفر | | |
 | `Badge` مع `color` | متوفر | | |
-| `size` و`shape` و`icon` و`stroke` و`disabled` في `Badge` | غير متوفر | | 3 |
+| `size` و`shape` و`icon` و`stroke` و`disabled` في `Badge` | متوفر | تتبع الألوان المسمّاة كل سمة في الوضعين الفاتح والداكن | |
 | `Icon` مع `icon` و`color` و`size` | جزئي | أسماء أيقونات Lucide فقط؛ ولا تُدعم Font Awesome وTabler وروابط الصور و`iconType` | 3 |
 | `Banner` على مستوى الموقع | متوفر | من إعدادات الموقع، إضافةً إلى كتلة `Banner` داخل الصفحة | |
 | `Color` و`Color.Row` و`Color.Item` | غير متوفر | | 5 |
@@ -111,7 +111,7 @@ translation_key: 'reference/mintlify-parity'
 | صور مع نص بديل، والتكبير بالنقر، وأزواج الصور الفاتحة والداكنة | متوفر | | |
 | `noZoom` على صورة | غير متوفر | | 5 |
 | `Frame` مع `caption` | متوفر | | |
-| `hint` في `Frame` | غير متوفر | | 3 |
+| `hint` في `Frame` | متوفر | | |
 | تضمين YouTube وغيره عبر `iframe` | غير متوفر | | 5 |
 | `video` مستضاف ذاتيًا مع التشغيل التلقائي والتكرار وكتم الصوت | غير متوفر | | 5 |
 | مخططات Mermaid | جزئي | تُعرض على الموقع؛ ويعرض المحرّر المصدر دون معاينة؛ و`actions` و`placement` غير متوفرين | 5 |
@@ -152,7 +152,7 @@ translation_key: 'reference/mintlify-parity'
 | Mintlify | Nibleaf | ملاحظات | مخطط في |
 | --- | --- | --- | --- |
 | `Update` مع `label` و`description` | متوفر | | |
-| `tags` في `Update` وتصفية الوسوم | غير متوفر | | 3 |
+| `tags` في `Update` وتصفية الوسوم | جزئي | تظهر الوسوم في كل إدخال وفي التصدير؛ ولوحة تصفية الوسوم غير متوفرة | 3 |
 | موجز RSS لسجل التغييرات | متوفر | موجز واحد لكل موقع على `changelog/rss.xml` | |
 
 ## تجربة التحرير المرئي
@@ -170,6 +170,6 @@ translation_key: 'reference/mintlify-parity'
 | الحفظ التلقائي مع حالة حفظ ظاهرة، والتراجع والإعادة | متوفر | | |
 | التعليقات | متوفر | | |
 | وضع المصدر دون فقدان المحتوى | متوفر | | |
-| لوحة إعدادات لكل مكوّن | جزئي | العناوين وبعض الحقول مضمّنة؛ ومعظم الخيارات بلا حقل | 3 |
+| لوحة إعدادات لكل مكوّن | متوفر | زر الترس على المكوّن، أو Alt+Enter داخله؛ وتظهر لوحةً سفلية على الهاتف. وتبقى العناوين قابلة للتحرير في مكانها | |
 | الكتابة بالعربية وبالاتجاهات المختلطة | متوفر | تتبع كل كتلة اتجاه نصها | |
 | التحرير على شاشة هاتف بعرض 390 بكسل | جزئي | | 6 |

@@ -12,6 +12,23 @@ export type { DocumentationComponentAttributeType, DocumentationComponentTag } f
 
 export const DOCUMENTATION_COMPONENT_SCHEMA_VERSION = 1 as const;
 
+/** Mintlify's step title sizes (`<Steps titleSize="h3">`). */
+export const STEP_TITLE_SIZES = ['p', 'h2', 'h3', 'h4'] as const;
+/** Mintlify's named badge colors; any other value is read as a CSS color. */
+export const BADGE_COLORS = [
+  'gray',
+  'blue',
+  'green',
+  'yellow',
+  'orange',
+  'red',
+  'purple',
+  'white',
+  'surface',
+  'white-destructive',
+  'surface-destructive',
+] as const;
+
 export type DocumentationComponentCategory = 'structure' | 'emphasis' | 'media' | 'api' | 'navigation' | 'inline';
 export type DocumentationComponentSyntax = 'mdx' | 'markdown' | 'fence';
 
@@ -32,8 +49,11 @@ export interface DocumentationComponentAttribute {
   /** Authored spelling (`defaultOpen`, not `defaultopen`). */
   name: string;
   type: DocumentationComponentAttributeType;
-  /** Choices for an `enum` attribute. */
+  /** Choices for an `enum` attribute, or the named presets of a `color` one. */
   values?: readonly string[];
+  /** Bounds of a `number` attribute. */
+  min?: number;
+  max?: number;
   /** Value assumed when the attribute is absent. The editor round-trip compares
    *  edits against it, so it must match what the editor node defaults to;
    *  leaving it out means the empty string. */
@@ -72,7 +92,7 @@ export interface DocumentationComponentDefinition {
   catalog: boolean;
 }
 
-type AttributeDetails = Pick<DocumentationComponentAttribute, 'values' | 'default'>;
+type AttributeDetails = Pick<DocumentationComponentAttribute, 'values' | 'default' | 'min' | 'max'>;
 
 interface ComponentDetails<Tag extends DocumentationComponentTag> {
   id: string;
@@ -142,12 +162,38 @@ export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition
     visualEditor: true,
     interactive: false,
     allowedChildren: ['Card'],
-    attributes: { cols: { values: ['1', '2', '3', '4'], default: 2 } },
+    attributes: { cols: { values: ['1', '2', '3', '4'], default: 2, min: 1, max: 4 } },
   }),
-  mdx('Card', { id: 'card', category: 'navigation', visualEditor: true, interactive: true }),
-  mdx('Steps', { id: 'steps', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Step'] }),
-  mdx('Step', { id: 'step', category: 'structure', visualEditor: true, interactive: false }),
-  mdx('Tabs', { id: 'tabs', category: 'structure', visualEditor: true, interactive: true, allowedChildren: ['Tab'] }),
+  mdx('Card', {
+    id: 'card',
+    category: 'navigation',
+    visualEditor: true,
+    interactive: true,
+    attributes: { horizontal: { default: false }, arrow: { default: false } },
+  }),
+  mdx('Steps', {
+    id: 'steps',
+    category: 'structure',
+    visualEditor: true,
+    interactive: false,
+    allowedChildren: ['Step'],
+    attributes: { titleSize: { values: STEP_TITLE_SIZES, default: 'p' } },
+  }),
+  mdx('Step', {
+    id: 'step',
+    category: 'structure',
+    visualEditor: true,
+    interactive: false,
+    attributes: { stepNumber: { min: 0, max: 999 }, titleSize: { values: STEP_TITLE_SIZES } },
+  }),
+  mdx('Tabs', {
+    id: 'tabs',
+    category: 'structure',
+    visualEditor: true,
+    interactive: true,
+    allowedChildren: ['Tab'],
+    attributes: { defaultTabIndex: { default: 0, min: 0, max: 99 }, sync: { default: true }, borderBottom: { default: false } },
+  }),
   mdx('Tab', { id: 'tab', category: 'structure', visualEditor: true, interactive: false }),
   mdx('AccordionGroup', { id: 'accordion-group', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Accordion'] }),
   mdx('Accordion', {
@@ -187,7 +233,15 @@ export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition
   mdx('ParamField', { id: 'param-field', category: 'api', visualEditor: true, interactive: false }),
   mdx('ResponseField', { id: 'response-field', category: 'api', visualEditor: true, interactive: false }),
   mdx('Expandable', { id: 'expandable', category: 'api', visualEditor: true, interactive: true, attributes: { defaultOpen: { default: false } } }),
-  mdx('Columns', { id: 'columns', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Column'] }),
+  // Without `cols` the reader lays out one column per child (up to four).
+  mdx('Columns', {
+    id: 'columns',
+    category: 'structure',
+    visualEditor: true,
+    interactive: false,
+    allowedChildren: ['Column'],
+    attributes: { cols: { min: 1, max: 4 } },
+  }),
   mdx('Column', { id: 'column', category: 'structure', visualEditor: true, interactive: false }),
   mdx('Banner', {
     id: 'banner',
@@ -197,7 +251,19 @@ export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition
     attributes: { type: { values: ['info', 'warning'] } },
     editorOnlyAttributes: { dismissible: { type: 'boolean' } },
   }),
-  mdx('Badge', { id: 'badge', category: 'inline', visualEditor: true, interactive: false }),
+  mdx('Badge', {
+    id: 'badge',
+    category: 'inline',
+    visualEditor: true,
+    interactive: false,
+    attributes: {
+      color: { values: BADGE_COLORS },
+      size: { values: ['xs', 'sm', 'md', 'lg'], default: 'md' },
+      shape: { values: ['rounded', 'pill'], default: 'rounded' },
+      stroke: { default: false },
+      disabled: { default: false },
+    },
+  }),
   mdx('Button', {
     id: 'button',
     category: 'inline',

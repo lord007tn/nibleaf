@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizePublicMarkdownContent } from './public-markdown-content';
+import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 
 describe('public Markdown content normalization', () => {
   it.each(['$&', '$$', "$'", '$`'])('preserves replacement metacharacters in literal public code: %s', (token) => {
@@ -44,5 +44,26 @@ import Example from './example'
     expect(normalized).toContain('`{"mode":"safe"}`');
     expect(normalized).toContain('``literal `tick`, <tag>, and {value}``');
     expect(normalized).not.toContain('globalThis.stolen');
+  });
+
+  it('projects a changelog Update with its label, tags and description', () => {
+    const source = [
+      '<Update label="v2.1" description="Faster search" tags={["Feature", "Fix"]}>',
+      '',
+      'Search is **twice** as fast.',
+      '',
+      '</Update>',
+    ].join('\n');
+    expect(portablePublicMdxMarkdown(source)).toBe(['## v2.1', 'Feature · Fix', '_Faster search_', 'Search is **twice** as fast.'].join('\n\n'));
+    const normalized = normalizePublicMarkdownContent(source);
+    expect(normalized).not.toMatch(/Update/);
+    expect(normalized).toContain('## v2.1');
+  });
+
+  it('reads literal JSX string props and ignores code expressions', () => {
+    expect(portablePublicMdxMarkdown(['<Update label={"v3"} tags={tagsFromCode}>', '', 'Body', '', '</Update>'].join('\n'))).toBe('## v3\n\nBody');
+    expect(portablePublicMdxMarkdown(['<Card title={"Guide"} href="/guide">', '', 'Read it.', '', '</Card>'].join('\n'))).toBe(
+      '### [Guide](/guide)\n\nRead it.',
+    );
   });
 });

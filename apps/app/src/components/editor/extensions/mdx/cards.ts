@@ -1,4 +1,4 @@
-import { containerNode, stringAttr, titledNode } from './factories';
+import { boolAttr, containerNode, stringAttrs, titledNode } from './factories';
 
 // ─── Cards ──────────────────────────────────────────────────────────────────
 export const CardGroup = containerNode({
@@ -19,6 +19,6 @@ export const Card = titledNode({
   name: 'mdxCard',
   tag: 'Card',
   className: 'pl-card',
-  attrs: { ...stringAttr('title'), ...stringAttr('icon'), ...stringAttr('href') },
-  attrKeys: ['title', 'icon', 'href'],
+  attrs: { ...stringAttrs('title', 'icon', 'href', 'img', 'cta', 'color'), ...boolAttr('horizontal'), ...boolAttr('arrow') },
+  attrKeys: ['title', 'icon', 'href', 'horizontal', 'img', 'cta', 'arrow', 'color'],
 });

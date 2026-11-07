@@ -5,7 +5,7 @@
     "tag": "Callout",
     "category": "emphasis",
     "kind": "block",
-    "attributes": ["type"],
+    "attributes": ["type", "icon", "color"],
     "visualEditor": true,
     "interactive": false
   },
@@ -76,7 +76,16 @@
     "tag": "Card",
     "category": "navigation",
     "kind": "block",
-    "attributes": ["title", "icon", "href"],
+    "attributes": [
+      "title",
+      "icon",
+      "href",
+      "horizontal",
+      "img",
+      "cta",
+      "arrow",
+      "color"
+    ],
     "visualEditor": true,
     "interactive": true
   },
@@ -86,7 +95,7 @@
     "tag": "Steps",
     "category": "structure",
     "kind": "block",
-    "attributes": [],
+    "attributes": ["titleSize"],
     "allowedChildren": ["Step"],
     "visualEditor": true,
     "interactive": false
@@ -97,7 +106,7 @@
     "tag": "Step",
     "category": "structure",
     "kind": "block",
-    "attributes": ["title"],
+    "attributes": ["title", "icon", "stepNumber", "titleSize"],
     "visualEditor": true,
     "interactive": false
   },
@@ -107,7 +116,7 @@
     "tag": "Tabs",
     "category": "structure",
     "kind": "block",
-    "attributes": [],
+    "attributes": ["defaultTabIndex", "sync", "borderBottom"],
     "allowedChildren": ["Tab"],
     "visualEditor": true,
     "interactive": true
@@ -118,7 +127,7 @@
     "tag": "Tab",
     "category": "structure",
     "kind": "block",
-    "attributes": ["title"],
+    "attributes": ["title", "icon", "id"],
     "visualEditor": true,
     "interactive": false
   },
@@ -139,7 +148,7 @@
     "tag": "Accordion",
     "category": "structure",
     "kind": "block",
-    "attributes": ["title", "defaultOpen"],
+    "attributes": ["title", "defaultOpen", "description", "icon", "id"],
     "visualEditor": true,
     "interactive": true
   },
@@ -159,7 +168,7 @@
     "tag": "Frame",
     "category": "media",
     "kind": "block",
-    "attributes": ["caption"],
+    "attributes": ["caption", "hint"],
     "visualEditor": true,
     "interactive": false
   },
@@ -214,7 +223,10 @@
       "type",
       "required",
       "default",
-      "deprecated"
+      "deprecated",
+      "placeholder",
+      "pre",
+      "post"
     ],
     "visualEditor": true,
     "interactive": false
@@ -225,7 +237,15 @@
     "tag": "ResponseField",
     "category": "api",
     "kind": "block",
-    "attributes": ["name", "type", "required", "default", "deprecated"],
+    "attributes": [
+      "name",
+      "type",
+      "required",
+      "default",
+      "deprecated",
+      "pre",
+      "post"
+    ],
     "visualEditor": true,
     "interactive": false
   },
@@ -245,7 +265,7 @@
     "tag": "Columns",
     "category": "structure",
     "kind": "block",
-    "attributes": [],
+    "attributes": ["cols"],
     "allowedChildren": ["Column"],
     "visualEditor": true,
     "interactive": false
@@ -276,7 +296,7 @@
     "tag": "Badge",
     "category": "inline",
     "kind": "inline",
-    "attributes": ["color"],
+    "attributes": ["color", "size", "shape", "icon", "stroke", "disabled"],
     "visualEditor": true,
     "interactive": false
   },
@@ -296,7 +316,7 @@
     "tag": "Tooltip",
     "category": "inline",
     "kind": "inline",
-    "attributes": ["tip"],
+    "attributes": ["tip", "headline", "cta", "href"],
     "visualEditor": true,
     "interactive": true
   },
@@ -316,7 +336,7 @@
     "tag": "Update",
     "category": "emphasis",
     "kind": "block",
-    "attributes": ["label", "description"],
+    "attributes": ["label", "description", "tags"],
     "visualEditor": true,
     "interactive": false
   },

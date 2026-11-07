@@ -1,11 +1,24 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+import { parseMdxList, parseMdxLiteralExpression } from './mdx-attributes';
 
 const escapeHtml = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
+const attributePattern = (name: string): RegExp =>
+  new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|(\\{(?:[^{}"']|"[^"]*"|'[^']*')*\\}))`, 'i');
+
+/** A quoted attribute, or a JSX string/number literal (`label={"v2"}`); other expressions are ignored. */
 const mdxAttribute = (source: string, name: string): string | undefined => {
-  const match = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(source);
-  return match?.[1] ?? match?.[2];
+  const match = attributePattern(name).exec(source);
+  if (match?.[3] === undefined) return match?.[1] ?? match?.[2];
+  const literal = parseMdxLiteralExpression(match[3]);
+  return typeof literal === 'string' || typeof literal === 'number' ? String(literal) : undefined;
+};
+
+/** A list attribute: `tags={["Feature", "Fix"]}` or its quoted JSON form. */
+const mdxListAttribute = (source: string, name: string): string[] => {
+  const match = attributePattern(name).exec(source);
+  return parseMdxList(match?.[1] ?? match?.[2] ?? match?.[3]);
 };
 
 const markdownText = (value?: string): string =>
@@ -83,6 +96,14 @@ export const portablePublicMdxMarkdown = (source: string): string => {
       return `${label || status ? `${'#'.repeat(level)} ${label}${status ? ` · ${status}` : ''}\n\n` : ''}${body}`;
     });
   }
+  output = mdxContainer(output, 'Update', (attributes, body) => {
+    const label = markdownText(mdxAttribute(attributes, 'label'));
+    const description = markdownText(mdxAttribute(attributes, 'description'));
+    const tags = mdxListAttribute(attributes, 'tags')
+      .map((tag) => markdownText(tag))
+      .filter(Boolean);
+    return [label ? `## ${label}` : '', tags.join(' · '), description ? `_${description}_` : '', body].filter(Boolean).join('\n\n');
+  });
   for (const tag of ['ParamField', 'ResponseField']) {
     output = mdxContainer(output, tag, (attributes, body) => {
       const name = markdownText(mdxAttribute(attributes, 'name'));

@@ -3,16 +3,31 @@ import { containsLink } from './utils';
 
 // ─── Tooltip ────────────────────────────────────────────────────────────────
 
-export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
+export function Tooltip({
+  tip,
+  headline,
+  cta,
+  href,
+  children,
+}: {
+  tip?: string;
+  /** Bold text shown before the tip. */
+  headline?: string;
+  /** Text of a link shown under the tip (needs `href`). */
+  cta?: string;
+  href?: string;
+  children?: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const pointerOpen = useRef(false);
   const wrapper = useRef<HTMLSpanElement>(null);
   const linked = containsLink(children);
+  const hasContent = Boolean(tip || headline);
   // A tooltip around a link has no button of its own, so the link carries the
   // description (added to any it already has).
   useEffect(() => {
-    if (!tip || !linked) return;
+    if (!hasContent || !linked) return;
     const link = wrapper.current?.querySelector<HTMLElement>('a[href], [href]');
     if (!link) return;
     const existing = link.getAttribute('aria-describedby');
@@ -23,8 +38,9 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
       if (existing) link.setAttribute('aria-describedby', existing);
       else link.removeAttribute('aria-describedby');
     };
-  }, [tip, linked, id]);
-  if (!tip) return <>{children}</>;
+  }, [hasContent, linked, id]);
+  if (!hasContent) return <>{children}</>;
+  const action = cta && href ? { cta, href } : undefined;
   return (
     // Hover, focus and Escape are handled on the wrapper so the pointer can move
     // onto the tip without closing it (WCAG 1.4.13) and focus inside a link works.
@@ -35,7 +51,10 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onBlur={(event) => {
+        // Moving focus from the trigger to the tip's own link keeps it open.
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -59,8 +78,21 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
         </button>
       )}
       {/* Bottom padding, not a margin, keeps the gap above the trigger hoverable. */}
-      <span id={id} role="tooltip" hidden={!open} className="absolute start-0 bottom-full z-20 w-max max-w-[min(20rem,80vw)] pb-2">
-        <span className="block rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md">{tip}</span>
+      <span
+        id={id}
+        role={action ? undefined : 'tooltip'}
+        hidden={!open}
+        className="absolute start-0 bottom-full z-20 w-max max-w-[min(20rem,80vw)] pb-2"
+      >
+        <span className="block rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md">
+          {headline ? <strong className="block font-semibold">{headline}</strong> : null}
+          {tip ? <span className="block">{tip}</span> : null}
+          {action ? (
+            <a href={action.href} className="mt-1 inline-block font-medium text-primary underline underline-offset-4">
+              {action.cta}
+            </a>
+          ) : null}
+        </span>
       </span>
     </span>
   );

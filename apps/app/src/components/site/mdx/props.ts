@@ -30,6 +30,26 @@ export interface MdxProps {
   deprecated?: unknown;
   variant?: unknown;
   status?: unknown;
+  // Mintlify parity props. Camel-cased names arrive lowercased from the HTML parser.
+  horizontal?: unknown;
+  img?: unknown;
+  cta?: unknown;
+  arrow?: unknown;
+  defaulttabindex?: unknown;
+  sync?: unknown;
+  borderbottom?: unknown;
+  id?: unknown;
+  titlesize?: unknown;
+  stepnumber?: unknown;
+  headline?: unknown;
+  shape?: unknown;
+  stroke?: unknown;
+  disabled?: unknown;
+  hint?: unknown;
+  placeholder?: unknown;
+  pre?: unknown;
+  post?: unknown;
+  tags?: unknown;
 }
 
 export type ButtonMdxProps = ComponentProps<'button'> & { href?: unknown; variant?: unknown };

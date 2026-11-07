@@ -24,12 +24,7 @@ import { sanitizeSchema } from './site/mdx-config';
  * A component that legitimately lacks one is listed below with the reason.
  */
 const KNOWN_GAPS: { portableMarkdown: Readonly<Record<string, string>> } = {
-  portableMarkdown: {
-    // The public machine representations keep `<Update>` as authored text
-    // (normalizePublicMarkdownContent HTML-escapes it). Projecting it is a
-    // separate, output-changing fix.
-    Update: 'portablePublicMdxMarkdown has no Update projection yet',
-  },
+  portableMarkdown: {},
 };
 
 type MdxComponent = DocumentationComponentDefinition & { tag: string; reader: NonNullable<DocumentationComponentDefinition['reader']> };
@@ -59,6 +54,8 @@ const sampleUsage = (component: MdxComponent): string => {
   const attributes = component.attributes
     .filter((attribute) => !attribute.editorOnly)
     .map((attribute) => {
+      // Lists are authored as Mintlify writes them: a literal JSX array.
+      if (attribute.type === 'list') return ` ${attribute.name}={["Sample"]}`;
       const value = sampleValue(attribute);
       return value === true ? ` ${attribute.name}` : ` ${attribute.name}="${value}"`;
     })

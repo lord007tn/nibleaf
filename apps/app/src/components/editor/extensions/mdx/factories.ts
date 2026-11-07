@@ -1,3 +1,4 @@
+import { parseMdxList } from '@nibleaf/shared/mdx-attributes';
 import type { Attributes } from '@tiptap/core';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
@@ -48,16 +49,40 @@ export const stringAttr = (name: string): Attributes => ({
   },
 });
 
-/** A boolean attribute (presence / "true"). */
-export const boolAttr = (name: string): Attributes => ({
+/** A boolean attribute (presence / "true" / "false"). Rendered whenever it
+ *  differs from its default so a copied `sync={false}` survives a paste. */
+export const boolAttr = (name: string, defaultValue = false): Attributes => ({
   [name]: {
-    default: false,
+    default: defaultValue,
     parseHTML: (element) => {
       const dataValue = element.getAttribute(`data-${name}`);
-      if (dataValue != null) return dataValue === 'true' ? true : dataValue;
-      return element.hasAttribute(name);
+      if (dataValue != null) return dataValue === 'true' ? true : dataValue === 'false' ? false : dataValue;
+      if (!element.hasAttribute(name)) return defaultValue;
+      return element.getAttribute(name) !== 'false';
     },
-    renderHTML: (attributes) => (attributes[name] ? { [`data-${name}`]: String(attributes[name]) } : {}),
+    renderHTML: (attributes) => (attributes[name] !== defaultValue ? { [`data-${name}`]: String(attributes[name]) } : {}),
+  },
+});
+
+/** A number attribute, kept as its authored text ("3") so an unparsed
+ *  expression (`{flags.cols}`) survives untouched; '' when absent. */
+export const numberAttr = (name: string, defaultValue = ''): Attributes => ({
+  [name]: {
+    default: defaultValue,
+    parseHTML: (element) => element.getAttribute(`data-${name}`) ?? element.getAttribute(name) ?? defaultValue,
+    renderHTML: (attributes) => (attributes[name] !== '' && attributes[name] != null ? { [`data-${name}`]: String(attributes[name]) } : {}),
+  },
+});
+
+/** A list-of-strings attribute (`tags={["Feature", "Fix"]}`), stored as an array. */
+export const listAttr = (name: string): Attributes => ({
+  [name]: {
+    default: [],
+    parseHTML: (element) => parseMdxList(element.getAttribute(`data-${name}`) ?? element.getAttribute(name) ?? ''),
+    renderHTML: (attributes) => {
+      const value = attributes[name];
+      return Array.isArray(value) && value.length > 0 ? { [`data-${name}`]: JSON.stringify(value) } : {};
+    },
   },
 });
 

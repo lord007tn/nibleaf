@@ -6,20 +6,40 @@ import { truthyAttr } from './utils';
 
 // ─── API reference: ParamField / ResponseField / Expandable ───────────────────
 
+/** Mintlify's `pre`/`post` labels around a field name. */
+function FieldLabels({ labels }: { labels?: readonly string[] }) {
+  return labels?.map((label) => (
+    <span key={label} dir="auto" className="rounded border border-border px-1.5 py-px font-medium text-[11px] text-muted-foreground">
+      {label}
+    </span>
+  ));
+}
+
+interface FieldLabelProps {
+  /** Labels shown before the name. */
+  pre?: readonly string[];
+  /** Labels shown after the name. */
+  post?: readonly string[];
+}
+
 function FieldRow({
   name,
   type,
   required,
   defaultValue,
   deprecated,
+  placeholder,
+  pre,
+  post,
   children,
   language,
-}: {
+}: FieldLabelProps & {
   name?: string;
   type?: string;
   required?: unknown;
   defaultValue?: string;
   deprecated?: unknown;
+  placeholder?: string;
   children?: ReactNode;
   language?: string;
 }) {
@@ -27,6 +47,7 @@ function FieldRow({
   return (
     <div className="border-border border-b py-3 first:pt-0 last:border-b-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <FieldLabels labels={pre} />
         {name ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold text-[0.8rem]">{name}</code> : null}
         {type ? <span className="font-mono text-muted-foreground text-xs">{type}</span> : null}
         {truthyAttr(required) ? (
@@ -40,6 +61,12 @@ function FieldRow({
             {t('defaultValue')}: <code className="font-mono">{defaultValue}</code>
           </span>
         ) : null}
+        {placeholder ? (
+          <span className="text-muted-foreground text-xs">
+            {t('placeholder')}: <code className="font-mono">{placeholder}</code>
+          </span>
+        ) : null}
+        <FieldLabels labels={post} />
       </div>
       {children ? <div className="mt-1.5 text-muted-foreground text-sm [&>:first-child]:mt-0 [&>:last-child]:mb-0">{children}</div> : null}
     </div>
@@ -56,9 +83,13 @@ export function ParamField({
   required,
   default: defaultValue,
   deprecated,
+  placeholder,
+  pre,
+  post,
   children,
   language,
-}: {
+}: FieldLabelProps & {
+  placeholder?: string;
   path?: string;
   query?: string;
   header?: string;
@@ -78,6 +109,9 @@ export function ParamField({
       required={required}
       defaultValue={defaultValue}
       deprecated={deprecated}
+      placeholder={placeholder}
+      pre={pre}
+      post={post}
       language={language}
     >
       {children}
@@ -91,9 +125,11 @@ export function ResponseField({
   required,
   default: defaultValue,
   deprecated,
+  pre,
+  post,
   children,
   language,
-}: {
+}: FieldLabelProps & {
   name?: string;
   type?: string;
   required?: unknown;
@@ -103,7 +139,16 @@ export function ResponseField({
   language?: string;
 }) {
   return (
-    <FieldRow name={name} type={type} required={required} defaultValue={defaultValue} deprecated={deprecated} language={language}>
+    <FieldRow
+      name={name}
+      type={type}
+      required={required}
+      defaultValue={defaultValue}
+      deprecated={deprecated}
+      pre={pre}
+      post={post}
+      language={language}
+    >
       {children}
     </FieldRow>
   );

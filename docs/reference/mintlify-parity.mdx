@@ -36,16 +36,16 @@ a protected block, so saving never drops it.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Note`, `Tip`, `Info`, `Warning`, `Check`, `Danger` | Has | Slash menu, type switcher, and both MDX tags and GitHub alerts (`> [!TIP]`) | |
-| `Callout` with a custom `icon`, `iconType`, or `color` | Partial | Only `type` is read; custom icons and colors are missing | 3 |
+| `Callout` with a custom `icon`, `iconType`, or `color` | Partial | `icon` (an icon name or an emoji) and `color` render and are set in the settings panel; `iconType`, icon URLs, and SVG icons are not supported | |
 
 ## Cards, columns, and tiles
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Card` with `title`, `icon`, `href` | Has | Internal links follow the site base path | |
-| `Card` with `horizontal`, `img`, `cta`, `arrow`, `color` | Missing | | 3 |
+| `Card` with `horizontal`, `img`, `cta`, `arrow`, `color` | Has | Set in the component settings panel; the image's alternative text is the card title | |
 | `CardGroup` with `cols` | Has | One to four columns | |
-| `Columns` with `cols`, and `Column` | Partial | The column count comes from the children; `cols` is ignored | 3 |
+| `Columns` with `cols`, and `Column` | Has | Without `cols`, each child gets a column (up to four) | |
 | `Tile` | Missing | | 5 |
 | `Panel` (right side panel) | Missing | | 5 |
 
@@ -54,11 +54,11 @@ a protected block, so saving never drops it.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Tabs` and `Tab` with `title` | Has | Arrow keys follow the reading direction | |
-| `Tab` `icon` and `id`; `Tabs` `defaultTabIndex`, `sync`, `borderBottom` | Missing | | 3 |
+| `Tab` `icon` and `id`; `Tabs` `defaultTabIndex`, `sync`, `borderBottom` | Partial | `sync` switches tabs with the same title across the page, but code groups don't follow yet; a link to a tab's `id` (or title) opens it | 4 |
 | `Accordion` with `title`, `defaultOpen`, and `AccordionGroup` | Has | | |
-| `Accordion` `description`, `icon`, `id` | Missing | | 3 |
+| `Accordion` `description`, `icon`, `id` | Has | A link to the `id` (or the title) opens the accordion | |
 | `Steps` and `Step` with `title` | Has | Numbered automatically | |
-| `Step` `icon`, `stepNumber`, `titleSize`; `Steps` `titleSize` | Missing | | 3 |
+| `Step` `icon`, `stepNumber`, `titleSize`; `Steps` `titleSize` | Has | | |
 | `Expandable` with `title`, `defaultOpen` | Has | | |
 | `View` | Missing | | 5 |
 | `Tree`, `Tree.Folder`, `Tree.File` | Partial | `FileTree`, `Folder`, and `File` cover the same tree; the Mintlify tag names, `highlight`, and `openable` are missing | 5 |
@@ -83,8 +83,8 @@ a protected block, so saving never drops it.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| `ParamField` (`path`, `query`, `header`, `body`, `type`, `required`, `default`, `deprecated`) | Partial | Rendered and kept; the editor edits only the description; `placeholder`, `pre`, `post` are missing | 3 |
-| `ResponseField` (`name`, `type`, `required`, `default`, `deprecated`) | Partial | Same as `ParamField`; `pre` and `post` are missing | 3 |
+| `ParamField` (`path`, `query`, `header`, `body`, `type`, `required`, `default`, `deprecated`, `placeholder`, `pre`, `post`) | Has | Every prop is edited in the settings panel; with no API playground, `placeholder` shows beside the field | |
+| `ResponseField` (`name`, `type`, `required`, `default`, `deprecated`, `pre`, `post`) | Has | | |
 | `RequestExample`, `ResponseExample` | Partial | Shown side by side in the article, not pinned in a side panel; `dropdown` is missing | 5 |
 | OpenAPI reference and playground | Has | Generated from the project's OpenAPI document | |
 | Per-page `openapi:` and `api:` frontmatter | Missing | | 7 |
@@ -95,9 +95,9 @@ a protected block, so saving never drops it.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Tooltip` with `tip` | Has | Keyboard and screen reader accessible | |
-| `Tooltip` `headline`, `cta`, `href` | Missing | | 3 |
+| `Tooltip` `headline`, `cta`, `href` | Has | | |
 | `Badge` with `color` | Has | | |
-| `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Missing | | 3 |
+| `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Has | Named colors follow each theme in light and dark mode | |
 | `Icon` with `icon`, `color`, `size` | Partial | Lucide icon names only; Font Awesome, Tabler, image URLs, and `iconType` aren't resolved | 3 |
 | Site `Banner` | Has | Site settings, plus a page-level `Banner` block | |
 | `Color`, `Color.Row`, `Color.Item` | Missing | | 5 |
@@ -111,7 +111,7 @@ a protected block, so saving never drops it.
 | Images with alt text, click to zoom, light and dark pairs | Has | | |
 | `noZoom` on an image | Missing | | 5 |
 | `Frame` with `caption` | Has | | |
-| `Frame` `hint` | Missing | | 3 |
+| `Frame` `hint` | Has | | |
 | YouTube and other `iframe` embeds | Missing | | 5 |
 | Self-hosted `video` with autoplay, loop, and muted | Missing | | 5 |
 | Mermaid diagrams | Partial | Rendered on the site; the editor shows the source with no preview; `actions` and `placement` are missing | 5 |
@@ -152,7 +152,7 @@ a protected block, so saving never drops it.
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
 | `Update` with `label`, `description` | Has | | |
-| `Update` `tags` and tag filters | Missing | | 3 |
+| `Update` `tags` and tag filters | Partial | Tags show on each entry and in exports; the tag filter panel is missing | 3 |
 | Changelog RSS feed | Has | One feed per site at `changelog/rss.xml` | |
 
 ## Visual editing experience
@@ -170,6 +170,6 @@ a protected block, so saving never drops it.
 | Autosave with visible save state, undo and redo | Has | | |
 | Comments | Has | | |
 | Source mode without losing content | Has | | |
-| A settings panel for every component | Partial | Titles and a few fields are inline; most options have no field | 3 |
+| A settings panel for every component | Has | The gear on a component, or Alt+Enter inside it; a bottom sheet on phones. Titles stay editable in place | |
 | Arabic and mixed-direction typing | Has | Each block follows its own text direction | |
 | Editing on a 390 px phone screen | Partial | | 6 |

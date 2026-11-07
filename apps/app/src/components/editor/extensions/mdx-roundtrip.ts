@@ -1,5 +1,10 @@
 import { translateFn } from '@nibleaf/i18n';
-import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
+import {
+  DOCUMENTATION_COMPONENTS,
+  type DocumentationComponentAttribute,
+  type DocumentationComponentDefinition,
+} from '@nibleaf/shared/documentation-components';
+import { formatMdxLiteralExpression, parseMdxList, parseMdxLiteralExpression } from '@nibleaf/shared/mdx-attributes';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -35,6 +40,93 @@ export type SupportedDefinition = {
   inline?: boolean;
   calloutVariant?: string;
 };
+
+/** What the round-trip needs to know about one attribute to read and write it. */
+export type AttributeSpec = Pick<DocumentationComponentAttribute, 'type' | 'default'>;
+
+/** Attribute specs by canonical tag and authored attribute name. */
+const ATTRIBUTE_SPECS: Readonly<Record<string, Readonly<Record<string, AttributeSpec>>>> = Object.fromEntries(
+  DOCUMENTATION_COMPONENTS.flatMap((component) =>
+    component.tag
+      ? [
+          [
+            component.tag,
+            Object.fromEntries(component.attributes.map((attribute) => [attribute.name, { type: attribute.type, default: attribute.default }])),
+          ],
+        ]
+      : [],
+  ),
+);
+
+const attributeSpec = (canonical: string, name: string): AttributeSpec | undefined => ATTRIBUTE_SPECS[canonical]?.[name];
+
+/** A value the editor keeps in a node attribute. */
+type MdxAttributeValue = string | boolean | readonly string[];
+
+const NUMBER_TEXT = /^-?(?:\d+(?:\.\d+)?|\.\d+)$/;
+const isExpression = (value: string): boolean => /^\{[\s\S]*\}$/.test(value.trim());
+
+/**
+ * The node value of one authored attribute. Literal JSX expressions are read
+ * (`cols={3}` → "3", `defaultOpen={false}` → false, `tags={["A"]}` → ["A"]);
+ * any other expression is kept as its exact source text so it round-trips.
+ */
+function authoredAttributeValue(raw: string | boolean, spec: AttributeSpec | undefined): MdxAttributeValue {
+  const type = spec?.type ?? 'string';
+  if (raw === true) return type === 'list' ? [] : true;
+  if (raw === false) return false;
+  if (isExpression(raw)) {
+    const literal = parseMdxLiteralExpression(raw);
+    if (literal === undefined) return raw;
+    if (type === 'list') return Array.isArray(literal) ? [...literal] : typeof literal === 'string' ? [literal] : raw;
+    if (type === 'boolean') return typeof literal === 'boolean' ? literal : raw;
+    if (Array.isArray(literal) || typeof literal === 'boolean') return raw;
+    return String(literal);
+  }
+  if (type === 'boolean' && (raw === 'true' || raw === 'false')) return raw === 'true';
+  if (type === 'list') return parseMdxList(raw);
+  return raw;
+}
+
+const comparable = (value: unknown): string => {
+  if (value == null || value === '' || value === false) return '';
+  if (Array.isArray(value)) return value.length === 0 ? '' : JSON.stringify(value);
+  return String(value);
+};
+
+/** True when two node values write the same attribute. */
+const sameAttributeValue = (left: unknown, right: unknown): boolean => comparable(left) === comparable(right);
+
+const escapeAttributeText = (value: string): string => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+
+/**
+ * The canonical authored form of one attribute, or null when it should be
+ * absent (empty, or equal to its default): `title="Intro"`, `cols={3}`,
+ * `defaultOpen`, `sync={false}`, `tags={["Feature", "Fix"]}`.
+ */
+export function renderMdxAttribute(name: string, value: unknown, spec: AttributeSpec | undefined): string | null {
+  if (value == null || value === '') return null;
+  const type = spec?.type ?? 'string';
+  const fallback = spec?.default;
+  if (Array.isArray(value)) {
+    const items = value.filter((item): item is string => typeof item === 'string');
+    return items.length > 0 ? `${name}=${formatMdxLiteralExpression(items)}` : null;
+  }
+  const text = String(value);
+  if (typeof value === 'boolean' || type === 'boolean') {
+    const flag = value === true || text === 'true' ? true : value === false || text === 'false' ? false : undefined;
+    if (flag === undefined) return isExpression(text) ? `${name}=${text.trim()}` : `${name}="${escapeAttributeText(text)}"`;
+    if (flag === (fallback === true)) return null;
+    return flag ? name : `${name}={false}`;
+  }
+  if (type === 'number' && NUMBER_TEXT.test(text.trim())) {
+    if (fallback !== undefined && Number(text) === Number(fallback)) return null;
+    return `${name}=${formatMdxLiteralExpression(Number(text))}`;
+  }
+  if (type === 'number' && isExpression(text)) return `${name}=${text.trim()}`;
+  if (fallback !== undefined && text === String(fallback)) return null;
+  return `${name}="${escapeAttributeText(text)}"`;
+}
 
 const supportedDefinition = (component: DocumentationComponentDefinition, tag: string): SupportedDefinition => {
   const defaults = Object.fromEntries(
@@ -296,10 +388,13 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
 const attributeValue = (attrs: AttributeToken[], name: string): string | boolean | undefined =>
   attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase())?.value;
 
-function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeToken[]): Record<string, string | boolean> {
-  const result: Record<string, string | boolean> = {};
+function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeToken[]): Record<string, MdxAttributeValue> {
+  const result: Record<string, MdxAttributeValue> = {};
   for (const name of definition.attrs) {
-    result[name] = attributeValue(attrs, name) ?? definition.defaults?.[name] ?? '';
+    const spec = attributeSpec(definition.canonical, name);
+    const authored = attributeValue(attrs, name);
+    result[name] =
+      authored === undefined ? (definition.defaults?.[name] ?? (spec?.type === 'list' ? [] : '')) : authoredAttributeValue(authored, spec);
   }
   return result;
 }
@@ -312,10 +407,12 @@ function placeholder(range: SourceRange): string {
 function metadataAttributes(open: TagToken, close: TagToken | undefined, definition: SupportedDefinition): string {
   const attrs = parseAttributes(open.raw, open.name);
   const effective = effectiveAttributes(definition, attrs);
+  // `false` is written too: a `sync={false}` must not fall back to a `true` default.
   const known = definition.attrs
     .map((name) => {
       const value = effective[name];
-      return value === '' || value === false || value == null ? '' : ` data-${name}="${escapeHtmlAttribute(String(value))}"`;
+      if (value === '' || value == null || (Array.isArray(value) && value.length === 0)) return '';
+      return ` data-${name}="${escapeHtmlAttribute(Array.isArray(value) ? JSON.stringify(value) : String(value))}"`;
     })
     .join('');
   return ` data-mdx-source-open="${encodeMdxSource(open.raw)}" data-mdx-source-close="${encodeMdxSource(close?.raw ?? '')}" data-mdx-source-original="${encodeMdxSource(
@@ -384,7 +481,7 @@ function prepareMdxForEditor(source: string): string {
     const marker = definition.calloutVariant
       ? ` data-callout="" data-variant="${escapeHtmlAttribute(
           definition.canonical === 'Callout'
-            ? String(attributeValue(parseAttributes(token.raw, token.name), 'type') ?? definition.calloutVariant)
+            ? String(authoredAttributeValue(attributeValue(parseAttributes(token.raw, token.name), 'type') ?? definition.calloutVariant, undefined))
             : definition.calloutVariant,
         )}"`
       : ` data-mdx="${definition.canonical}"`;
@@ -438,33 +535,33 @@ export function sourceMetadataAttributes() {
   };
 }
 
-const equalSourceValue = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
-
-function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
+function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown, spec: AttributeSpec | undefined): string {
   const attrs = parseAttributes(raw, componentName);
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
-  const remove = value == null || value === '' || value === false;
+  const rendered = renderMdxAttribute(existing?.name ?? name, value, spec);
   if (existing) {
-    if (remove) return `${raw.slice(0, existing.start)}${raw.slice(existing.end)}`;
-    const rendered = value === true ? existing.name : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+    if (rendered === null) {
+      // Drop the separating whitespace too, so no double space is left behind.
+      let start = existing.start;
+      while (start > 0 && /[ \t]/.test(raw[start - 1] ?? '')) start--;
+      return `${raw.slice(0, start)}${raw.slice(existing.end)}`;
+    }
     return `${raw.slice(0, existing.start)}${rendered}${raw.slice(existing.end)}`;
   }
-  if (remove) return raw;
-  const insertAt = raw.search(/\/?>\s*$/);
-  const rendered = value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+  if (rendered === null) return raw;
+  const insertAt = raw.search(/\s*\/?>\s*$/);
   return insertAt < 0 ? raw : `${raw.slice(0, insertAt)} ${rendered}${raw.slice(insertAt)}`;
 }
 
-/** Reuse an author's exact opener until a visually editable prop changes. */
+/** Reuse an author's exact opener until a visually editable prop changes; a
+ *  changed prop is written in its canonical form (see `renderMdxAttribute`). */
 export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: string[], selfClosing = false): string {
   const raw = String(node.attrs.sourceOpen ?? '');
   if (!raw) {
     const attrs = attrKeys
-      .map((key) => {
-        const value = node.attrs[key];
-        if (value == null || value === '' || value === false) return '';
-        return value === true ? ` ${key}` : ` ${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
-      })
+      .map((key) => renderMdxAttribute(key, node.attrs[key], attributeSpec(canonical, key)))
+      .filter((attribute): attribute is string => attribute !== null)
+      .map((attribute) => ` ${attribute}`)
       .join('');
     return `<${canonical}${attrs}${selfClosing ? ' /' : ''}>`;
   }
@@ -474,11 +571,13 @@ export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: s
   } catch {
     return raw;
   }
-  if (attrKeys.every((key) => equalSourceValue(node.attrs[key], original[key]))) return raw;
+  if (attrKeys.every((key) => sameAttributeValue(node.attrs[key], original[key]))) return raw;
   const sourceName = /^<([A-Za-z][\w.:-]*)/.exec(raw)?.[1] ?? canonical;
   return attrKeys.reduce(
     (opening, key) =>
-      equalSourceValue(node.attrs[key], original[key]) ? opening : replaceOpeningAttribute(opening, sourceName, key, node.attrs[key]),
+      sameAttributeValue(node.attrs[key], original[key])
+        ? opening
+        : replaceOpeningAttribute(opening, sourceName, key, node.attrs[key], attributeSpec(canonical, key)),
     raw,
   );
 }

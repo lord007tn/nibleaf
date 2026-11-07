@@ -3,8 +3,8 @@ import type { Editor } from '@tiptap/core';
 import { useLanguages, usePages } from '@/hooks/api';
 import { useActiveBranchId } from '../active-branch-context';
 
-/** Loaded when the link panel opens; the basic formatting tools need no API client. */
-export default function PageLinkPicker({ editor, query, onDone }: { editor: Editor; query: string; onDone: () => void }) {
+/** Pages of the edited language and version whose title matches `query`. */
+export function useLinkablePages(editor: Editor, query: string, limit = 6) {
   const params = useParams({ strict: false });
   const projectId = 'projectId' in params ? params.projectId : undefined;
   const languages = useLanguages(projectId);
@@ -14,9 +14,24 @@ export default function PageLinkPicker({ editor, query, onDone }: { editor: Edit
   // the version the page is published in.
   const branchId = useActiveBranchId();
   const pages = usePages(projectId, language?.id, branchId);
-  const matches = (pages.data ?? [])
-    .filter((page) => page.kind === 'PAGE' && page.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-    .slice(0, 6);
+  const needle = query.toLocaleLowerCase();
+  return (pages.data ?? []).filter((page) => page.kind === 'PAGE' && page.title.toLocaleLowerCase().includes(needle)).slice(0, limit);
+}
+
+/** Loaded when the link panel opens; the basic formatting tools need no API client.
+ *  `onSelect` receives the page path instead of setting a link mark (component settings use it). */
+export default function PageLinkPicker({
+  editor,
+  query,
+  onDone,
+  onSelect,
+}: {
+  editor: Editor;
+  query: string;
+  onDone: () => void;
+  onSelect?: (href: string) => void;
+}) {
+  const matches = useLinkablePages(editor, query);
   return (
     <div className="w-full">
       {matches.map((page) => (
@@ -26,12 +41,14 @@ export default function PageLinkPicker({ editor, query, onDone }: { editor: Edit
           className="block w-full rounded p-2 text-start text-sm hover:bg-muted"
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => {
-            editor
-              .chain()
-              .focus()
-              .extendMarkRange('link')
-              .setLink({ href: `/${page.path}` })
-              .run();
+            if (onSelect) onSelect(`/${page.path}`);
+            else
+              editor
+                .chain()
+                .focus()
+                .extendMarkRange('link')
+                .setLink({ href: `/${page.path}` })
+                .run();
             onDone();
           }}
         >

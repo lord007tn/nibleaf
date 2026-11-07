@@ -2,7 +2,32 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, sourceMetadataAttributes, writeBlockTag } from './mdx-roundtrip';
+import { stringAttrs } from './mdx/factories';
+import { preservedClosingTag, preservedOpeningTag, renderMdxAttribute, sourceMetadataAttributes, writeBlockTag } from './mdx-roundtrip';
+
+/** Custom look props only the generic `<Callout>` accepts (Mintlify). */
+const CALLOUT_LOOK = ['icon', 'color'] as const;
+
+/**
+ * The opening tag of a callout carrying a custom icon or color. A typed tag
+ * (`<Note>`) cannot take them, so it becomes `<Callout type="note" …>` while
+ * keeping its other authored props.
+ */
+function calloutOpeningTag(attributes: Record<string, unknown>, variant: string): { open: string; close: string } | null {
+  const custom = CALLOUT_LOOK.some((name) => String(attributes[name] ?? '') !== '');
+  const sourceOpen = String(attributes.sourceOpen ?? '');
+  const sourceClose = String(attributes.sourceClose ?? '');
+  const node = { attrs: attributes } as unknown as Parameters<typeof preservedOpeningTag>[0];
+  if (/^\s*<Callout\b/.test(sourceOpen)) return { open: preservedOpeningTag(node, 'Callout', [...CALLOUT_LOOK]), close: sourceClose || '</Callout>' };
+  if (!custom) return null;
+  const look = CALLOUT_LOOK.map((name) => renderMdxAttribute(name, attributes[name], { type: name }))
+    .filter((attribute): attribute is string => attribute !== null)
+    .map((attribute) => ` ${attribute}`)
+    .join('');
+  const typed = /^(\s*)<(?:Note|Tip|Info|Check|Warning|Danger)\b([^>]*?)(\s*\/?)>\s*$/.exec(sourceOpen);
+  const authored = typed ? (typed[2] ?? '') : '';
+  return { open: `${typed?.[1] ?? ''}<Callout type="${variant}"${authored}${look}>`, close: '</Callout>' };
+}
 
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
 const CALLOUT_VARIANTS = {
@@ -148,6 +173,7 @@ export const Callout = Node.create({
   addAttributes() {
     return {
       ...sourceMetadataAttributes(),
+      ...stringAttrs(...CALLOUT_LOOK),
       variant: {
         default: 'note' as CalloutVariant,
         // Derive the variant from data-variant, or from a Mintlify-style tag
@@ -230,6 +256,14 @@ export const Callout = Node.create({
     return {
       markdown: {
         serialize(state, node) {
+          const variant = (node.attrs.variant as CalloutVariant) ?? 'note';
+          const custom = calloutOpeningTag(node.attrs, variant);
+          if (custom) {
+            writeBlockTag(state, node, custom.open);
+            state.renderContent(node);
+            writeBlockTag(state, node, custom.close);
+            return;
+          }
           const sourceOpen = String(node.attrs.sourceOpen ?? '');
           if (sourceOpen) {
             writeBlockTag(state, node, sourceOpen);
@@ -237,7 +271,6 @@ export const Callout = Node.create({
             writeBlockTag(state, node, preservedClosingTag(node, 'Callout'));
             return;
           }
-          const variant = (node.attrs.variant as CalloutVariant) ?? 'note';
           const def = CALLOUT_VARIANTS[variant] ?? CALLOUT_VARIANTS.note;
           state.write(`> [!${def.keyword}]\n`);
           state.wrapBlock('> ', null, node, () => state.renderContent(node));

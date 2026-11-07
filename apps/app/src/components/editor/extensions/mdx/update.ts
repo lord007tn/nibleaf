@@ -1,4 +1,4 @@
-import { containerNode, stringAttr } from './factories';
+import { containerNode, listAttr, stringAttrs } from './factories';
 
 // ─── Update (changelog entry) ─────────────────────────────────────────────────
 export const Update = containerNode({
@@ -6,6 +6,6 @@ export const Update = containerNode({
   tag: 'Update',
   content: 'block+',
   className: 'pl-update',
-  attrs: { ...stringAttr('label'), ...stringAttr('description') },
-  attrKeys: ['label', 'description'],
+  attrs: { ...stringAttrs('label', 'description'), ...listAttr('tags') },
+  attrKeys: ['label', 'description', 'tags'],
 });
