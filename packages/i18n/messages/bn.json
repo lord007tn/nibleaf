@@ -233,6 +233,7 @@
   "editor_branch_merged": "\"{name}\"কে প্রধানে উন্নীত করা হয়েছে৷",
   "editor_branch_mergeerror": "সংস্করণ প্রচার করা যায়নি",
   "editor_branch_trigger": "সংস্করণ: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "একটি ভাষা যোগ করুন",
   "editor_addlanguage_desc": "এই সাইটের পৃষ্ঠাগুলির একটি নতুন স্থানীয় সংস্করণ তৈরি করুন৷",
   "editor_addlanguage_adding": "যোগ করা হচ্ছে...",

@@ -233,6 +233,7 @@
   "editor_branch_merged": "Mempromosikan “{name}” menjadi utama",
   "editor_branch_mergeerror": "Tidak dapat mempromosikan versi tersebut",
   "editor_branch_trigger": "Versi: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "Tambahkan bahasa",
   "editor_addlanguage_desc": "Buat versi lokal baru dari halaman situs ini.",
   "editor_addlanguage_adding": "Menambahkan…",

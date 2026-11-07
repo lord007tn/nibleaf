@@ -233,6 +233,7 @@
   "editor_branch_merged": "\"{name}\" को मुख्य रूप से प्रचारित किया गया",
   "editor_branch_mergeerror": "संस्करण का प्रचार नहीं किया जा सका",
   "editor_branch_trigger": "संस्करण: {name}",
+  "editor_branch_switchtomain": "Switch to main",
   "editor_addlanguage_title": "एक भाषा जोड़ें",
   "editor_addlanguage_desc": "इस साइट के पृष्ठों का एक नया स्थानीय संस्करण बनाएं।",
   "editor_addlanguage_adding": "जोड़ा जा रहा है...",
