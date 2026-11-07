@@ -25,6 +25,28 @@ describe('Paraglide message catalogs', () => {
   const orderedKeys = Object.keys(english).filter((key) => key !== '$schema');
   const expectedKeys = [...orderedKeys].sort();
 
+  it('distinguishes server administrators from site Admins in failure instructions', () => {
+    const arabic = loadCatalog('ar');
+    for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {
+      expect(english[key]).toContain('your server administrator');
+      expect(arabic[key]).toContain('مسؤول الخادم');
+      expect(arabic[key]).not.toContain('المسؤول');
+    }
+    expect(english.failures_access).toContain('a site Admin');
+    expect(arabic.failures_access).toContain('مشرف الموقع');
+    expect(arabic.failures_access).not.toContain('المسؤول');
+  });
+
+  it('gives both Cloud and self-hosted users a support contact in operator-dependent failures', () => {
+    const arabic = loadCatalog('ar');
+    for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {
+      expect(english[key]).toContain('Nibleaf support on Cloud');
+      expect(english[key]).toContain('if you self-host');
+      expect(arabic[key]).toContain('دعم Nibleaf للخدمة السحابية');
+      expect(arabic[key]).toContain('مسؤول الخادم للاستضافة الذاتية');
+    }
+  });
+
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
     expect(
