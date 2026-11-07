@@ -3,7 +3,7 @@ title: 'نسخ Nibleaf احتياطيًا واستعادته وترقيته'
 description: 'اجمع بيانات Postgres وتخزين الكائنات في مجموعة استعادة واحدة، واختبر الاستعادة في بيئة معزولة، ثم رقِّ إصدار Nibleaf المثبّت أو تراجع إلى الإصدار السابق.'
 audience: 'مشغّلو Nibleaf المستضاف ذاتيًا'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: 'scripts/backup.sh, docker-compose.prod.yml, scripts/self-host-release.mjs, and packages/database/prisma/migrations'
 lang: 'ar'
 dir: 'rtl'
@@ -23,16 +23,27 @@ translation_key: 'self-hosting/backups-upgrades'
 
 ## إنشاء نسخة احتياطية
 
+خصّص نافذة صيانة: توقف الأوامر كتّاب التطبيق وmaxio حتى اكتمال النسختين. أوقف
+أي كاتب خارجي أيضاً واستخدم `.env` واسم مشروع Compose الحاليين. يخرج الغلاف عند
+أول فشل وتبقى الخدمات متوقفة للتحقيق. لا تنفّذ الإجراء مع عمليات رفع أو نشر أخرى.
+
 أنشئ تفريغًا لـPostgres بالتنسيق المخصّص، ثم أرشف وحدة تخزين maxio المضمّنة:
 
 ```bash
+set -eu
 mkdir -m 700 -p backups
 STAMP=$(date +%Y%m%d-%H%M%S)
+docker compose --profile admin stop app admin server worker
+docker compose stop maxio
 docker compose exec -T postgres pg_dump -U nibleaf -d nibleaf --format=custom > "backups/nibleaf-db-$STAMP.dump"
-MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps -q maxio)")
-test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
-  && docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data . \
-  || echo 'Stop: could not identify or archive the maxio volume.'
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)")
+test -n "$MAXIO_VOLUME"
+docker volume inspect "$MAXIO_VOLUME" >/dev/null
+docker run --rm -v "$MAXIO_VOLUME":/data:ro -v "$PWD/backups":/backup alpine:3.22 tar czf "/backup/nibleaf-storage-$STAMP.tar.gz" -C /data .
+cp -p .env "backups/env-$STAMP"
+cp -p "${COMPOSE_FILE:-docker-compose.yml}" "backups/compose-$STAMP.yml"
+ls -lh "backups/nibleaf-db-$STAMP.dump" "backups/nibleaf-storage-$STAMP.tar.gz"
+docker compose up -d
 ```
 
 تحدد هذه الأوامر وحدة التخزين المثبتة عند `/data` في حاوية maxio القائمة، لذا تعمل مع
@@ -40,9 +51,15 @@ test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
 الخارجية في هذه الوحدة، لذا تخطَّ هذه الأسطر واستخدم إمكانات المزوّد لإدارة
 الإصدارات أو النسخ المتماثل، أو أنشئ نسخة احتياطية مستقلة للحاوية.
 
-من نسخة محلية للمستودع، ينفّذ `./scripts/backup.sh` الخطوتين نفسيهما ويحذف النسخ
-المحلية بعد 14 يومًا. لا يُعد هذا السكربت من أصول الإصدار، لذا لا يوجد في المجلدات
-التي ينشئها برنامج التثبيت.
+في مستودع المصدر، يفرّغ `bash scripts/backup.sh` القاعدة ويؤرشف وحدة التخزين
+المسماة إن وجدت ويحذف النسخ المحلية المطابقة الأقدم من 14 يوماً. لا يوقف الكتّاب
+ولا ينسخ `.env` ولا يكتشف الوحدة. افتراضي `STORAGE_VOLUME` هو
+`nibleaf_nibleaf-maxio`؛ مع اسم مشروع مختلف، مرّر الوحدة الفعلية وإلا قد يتخطى
+التخزين ويعلن النجاح. استخدم قيمة `MAXIO_VOLUME` المفحوصة أعلاه. افتراضي
+`COMPOSE_FILE` هو `docker-compose.prod.yml` و`BACKUP_DIR` هو `./backups`
+و`RETENTION_DAYS` هو `14` و`PGUSER` و`PGDATABASE` هما `nibleaf`. يقبل السكربت
+اسم ملف Compose واحداً؛ استخدم غلافاً مراجعاً بنفس قائمة ملفات النشر عند وجود
+تجاوزات متعددة. السكربت ليس ضمن أصول الإصدار.
 
 يحتوي `.env` على الأسرار التي تجعل الاستعادة قابلة للاستخدام، ومنها مفاتيح تشفير
 بيانات اعتماد Git والتكاملات. احتفظ بنسخة محمية منه بتحكم وصول مستقل. فمن دون هذه
@@ -57,16 +74,22 @@ test -n "$MAXIO_VOLUME" && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
 ومصدر تطبيق معزولة، ثم استعد النسخة فيها. على مضيف منفصل يملك منظومته الخاصة،
 وباستخدام قيمة `$STAMP` نفسها:
 
+اضبط `STAMP` على اللاحقة المشتركة لملفات النسخة. ابدأ بقاعدة جديدة فارغة ووحدة
+تخزين معزولة فارغة، ولا تشغّل خدمة الترحيل قبل الاستعادة. يرفض الفحص قاعدة بها
+جداول عامة. لا توجّه الأوامر إلى مشروع Compose الحي؛ عند الفشل أبقِ خدمات التطبيق متوقفة.
+
 ```bash
-docker compose --profile admin stop app admin server worker \
-  && docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --clean --if-exists < "backups/nibleaf-db-$STAMP.dump" \
-  && MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)") \
-  && test -n "$MAXIO_VOLUME" \
-  && docker volume inspect "$MAXIO_VOLUME" >/dev/null \
-  && docker compose stop maxio \
-  && docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data" \
-  && docker compose up -d \
-  || echo 'Stop: restore failed; do not start application services.'
+set -eu
+docker compose --profile admin stop app admin server worker
+docker compose up -d postgres dragonfly maxio
+test "$(docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc "SELECT count(*) FROM pg_tables WHERE schemaname='public'")" = 0
+docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --exit-on-error < "backups/nibleaf-db-$STAMP.dump"
+MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)")
+test -n "$MAXIO_VOLUME"
+docker volume inspect "$MAXIO_VOLUME" >/dev/null
+docker compose stop maxio
+docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
+docker compose up -d
 ```
 
 ثم تحقق من المشاريع والعضويات وأشجار الصفحات والمسودات الحالية وعمليات النشر ذات
@@ -133,7 +156,7 @@ API وعامل المعالجة (worker) جاهزين.
 ## استعادة تحليلات ClickHouse
 
 يعرّف ملفّا Compose للتشغيل السريع من المصدر ولـCoolify قرص `backups` عند `/var/lib/clickhouse/backups` على وحدة تخزين مسماة مستقلة.
-أما `docker-compose.prod.yml` في الإصدار v0.2.0 فسابق لذلك: إلى أن يتضمنه إصدارك، اربط وحدة تخزين عند `/var/lib/clickhouse/backups` وأضف هذا الملف بالمسار `/etc/clickhouse-server/config.d/backups.xml`:
+لا يتضمن `docker-compose.prod.yml` في v0.2.0 خدمة ClickHouse أصلاً. جهّز خدمة مستقلة وتعيينات بيئة التطبيق أولاً. ثم اربط فيها وحدة تخزين عند `/var/lib/clickhouse/backups` وأضف الملف التالي بالمسار `/etc/clickhouse-server/config.d/backups.xml`:
 
 ```xml
 <clickhouse>
@@ -178,3 +201,8 @@ SELECT version FROM nibleaf_analytics_restore.analytics_schema_migrations FINAL 
 الترقيات التلقائية إضافية ولا تعيد المخطط إلى إصدار أقدم. تقصير الاحتفاظ لا يمكن التراجع عنه بعد الدمج.
 هذه الأوامر إجراء تدريب على الاستعادة؛ ولا تعد دليلاً على نجاح استعادة نشرك إلا بعد تنفيذ استعادة معزولة ومطابقة البيانات.
 يتبع إعداد القرص وأوامر SQL [مرجع النسخ الأصلي في ClickHouse](https://clickhouse.com/docs/operations/backup/disk).
+
+إذا كنت تشغّل خدمة الإدارة عادة، فاستخدم `docker compose --profile admin up -d`
+بدلاً من آخر `up -d` بعد نجاح النسخ أو الاستعادة. لا تعِد الكتّاب الخارجيين
+إلا بعد التحقق. عند تعدد ملفات Compose، احتفظ بالقائمة كاملة وانسخ كل ملف
+تجاوز للمشغّل ضمن مجموعة الاستعادة.

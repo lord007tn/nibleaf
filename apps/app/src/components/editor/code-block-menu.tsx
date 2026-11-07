@@ -60,6 +60,7 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
 
   return (
     <BubbleMenu
+      data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-code-block-menu"
       options={{ placement: 'top-end' }}

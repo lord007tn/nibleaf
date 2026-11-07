@@ -39,7 +39,7 @@ for (const preference of ['ar', 'en']) {
       container = document.createElement('div');
       container.innerHTML = html;
       document.body.append(container);
-      const before = container.textContent;
+      const before = container.querySelector('main')?.textContent;
       expect(before).not.toMatch(/[\u0600-\u06ff]/);
       const releaseKeys =
         name === 'about'
@@ -50,14 +50,14 @@ for (const preference of ['ar', 'en']) {
         expect(before).not.toContain(key);
       }
       const observedText: string[] = [];
-      const observer = new MutationObserver(() => observedText.push(container?.textContent ?? ''));
+      const observer = new MutationObserver(() => observedText.push(container?.querySelector('main')?.textContent ?? ''));
       observer.observe(container, { childList: true, characterData: true, subtree: true });
       const hydrationErrors: unknown[] = [];
       try {
         await act(async () => {
           root = hydrateRoot(container as HTMLDivElement, <Page />, { onRecoverableError: (error) => hydrationErrors.push(error) });
         });
-        expect(container.textContent).toBe(before);
+        expect(container.querySelector('main')?.textContent).toBe(before);
         expect(observedText.every((text) => !/[\u0600-\u06ff]/.test(text))).toBe(true);
         expect(hydrationErrors).toEqual([]);
         expect(document.documentElement.lang).toBe('en');

@@ -16,13 +16,14 @@ const platforms = [
   {
     name: 'Mintlify',
     bestFor: 'Teams prioritizing a managed, polished developer-documentation experience and an established component vocabulary.',
-    arabic:
-      'The product documents internationalization; evaluate navigation direction, search, mixed-direction code, and authoring with your corpus.',
-    model: 'Managed commercial platform.',
+    arabic: 'Arabic is a documented locale; evaluate RTL navigation, search, mixed-direction code, and authoring with your corpus.',
+    model: 'Managed platform; headless frontend option and Enterprise static export by request.',
     caveat: 'Confirm the plan, collaboration, export, and localization limits that apply to your account rather than inferring them from examples.',
     sources: [
       { href: 'https://www.mintlify.com/docs/guides/internationalization', label: 'Internationalization' },
       { href: 'https://www.mintlify.com/pricing', label: 'Pricing' },
+      { href: 'https://www.mintlify.com/docs/guides/custom-frontend', label: 'Headless frontend' },
+      { href: 'https://www.mintlify.com/docs/api/static-export/overview', label: 'Enterprise static export' },
     ],
   },
   {
@@ -32,7 +33,7 @@ const platforms = [
     model: 'Managed commercial platform with Git synchronization options.',
     caveat: 'Separate site variants, interface localization, and bidirectional rendering in the evaluation—one does not prove the others.',
     sources: [
-      { href: 'https://gitbook.com/docs/publishing-documentation/site-structure/variants', label: 'Variants' },
+      { href: 'https://gitbook.com/docs/manage-your-site/site-structure/variants', label: 'Variants' },
       { href: 'https://www.gitbook.com/pricing', label: 'Pricing' },
     ],
   },
@@ -58,7 +59,7 @@ const platforms = [
     arabic: 'Evaluate Arabic prose and RTL rendering separately from API-console behavior, where methods, paths, JSON, and code remain LTR.',
     model: 'Managed API development and documentation product.',
     caveat: 'Verify OpenAPI version fidelity, credential safety, browser CORS, export behavior, and pricing for the intended team size.',
-    sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools-ar/', label: 'Product article' }],
+    sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools/', label: 'Product article' }],
   },
 ];
 
@@ -82,7 +83,7 @@ export function DocumentationPlatformsPage({ stars = 0 }: { stars?: number }) {
               aid, not a universal ranking.
             </p>
             <p className="mt-5 border-border border-t pt-5 text-muted-foreground text-sm leading-7">
-              Reviewed on September 3, 2026 from linked public product documentation. Plans and product behavior can change; verify material
+              Reviewed on November 7, 2026 from linked public product documentation. Plans and product behavior can change; verify material
               constraints in a representative trial. Nibleaf is our product and is labelled accordingly below.
             </p>
           </div>

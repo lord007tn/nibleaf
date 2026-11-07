@@ -1,7 +1,7 @@
 import { ArrowRight, BookOpen, CheckCircle2, Compass, Languages } from 'lucide-react';
 import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
-import { ArabicShell } from '@/components/marketing/arabic-seo';
+import { ArabicShell } from '@/components/marketing/arabic-shell';
 import { GUIDE_PILLARS, GUIDES, type GuideLocale, guidePillar } from '@/lib/guides';
 
 const copy = {
