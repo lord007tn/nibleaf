@@ -60,7 +60,8 @@ describe.each(pages)('%s use-case pages', (lang, Page, copies, alternate, altern
       const row = root.querySelector(`section#${feature.id}`);
       expect(row?.getAttribute('aria-labelledby')).toBe(`${feature.id}-title`);
       expect(row?.querySelector('h2')?.textContent).toBe(feature.title);
-      if (feature.note) expect(row?.textContent).toContain(`${requirements} ${feature.note}`);
+      const label = feature.noteLabel ? `${feature.noteLabel}:` : requirements;
+      if (feature.note) expect(row?.textContent).toContain(`${label} ${feature.note}`);
       else expect(row?.textContent).not.toContain(requirements);
     }
     expect(root.querySelectorAll('#workflow ol > li')).toHaveLength(copy.workflow.steps.length);
@@ -157,7 +158,9 @@ describe('use-case release honesty', () => {
   it.each(pages)('qualifies %s features newer than the latest self-hosted release', (lang, Page, copies) => {
     const themes = copies['product-docs'].solutions.find((solution) => solution.id === 'themes');
     expect(themes?.note).toBe(availabilityNote('readerThemes', lang));
-    expect(copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.note).toContain(availabilityNote('readerThemes', lang));
+    expect(copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.note).toContain(
+      availabilityNote('readerThemes', lang),
+    );
     for (const copy of Object.values(copies)) {
       for (const step of copy.workflow.steps) expect(step.body).not.toContain('GitBook');
     }
