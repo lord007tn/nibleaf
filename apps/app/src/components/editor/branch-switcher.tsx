@@ -24,6 +24,11 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import type { Branch } from '@/hooks/api';
 import { friendlyErrorMessage, useCreateBranch, useMergeBranch } from '@/hooks/api';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
+
+/** Promote refusals the writer resolves from main: the toast keeps the server's
+ *  explanation and offers the one step it starts with. */
+const RESOLVED_FROM_MAIN = new Set(['branch:main_changed', 'branch:baseline_missing']);
 
 /** Docs version switcher for the editor. Internally versions are backed by the
  *  existing Branch model, but authors see v1/v2-style docs versions. */
@@ -88,7 +93,15 @@ export function BranchSwitcher({
           onSwitch(main.id);
         }
       },
-      onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.branch.mergeError')),
+      onError: (e) => {
+        const message = friendlyErrorMessage(t, e, 'editor.branch.mergeError');
+        if (main && e instanceof ApiResponseError && RESOLVED_FROM_MAIN.has(e.code ?? '')) {
+          // Long enough to read the steps; the action only switches, it never creates a version.
+          toast.error(message, { duration: 20_000, action: { label: t('editor.branch.switchToMain'), onClick: () => onSwitch(main.id) } });
+          return;
+        }
+        toast.error(message);
+      },
     });
   };
 

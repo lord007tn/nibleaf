@@ -34,6 +34,7 @@ export type ErrorCode =
   | 'database:conflict'
   | 'branch:main_changed'
   | 'branch:baseline_missing'
+  | 'branch:promote_blocked'
   | 'storage:error'
   | 'domain:already_added'
   | 'domain:already_connected'
@@ -115,6 +116,7 @@ const ERROR_STATUS = {
   'database:conflict': 409,
   'branch:main_changed': 409,
   'branch:baseline_missing': 409,
+  'branch:promote_blocked': 409,
   'storage:error': 502,
   'domain:already_added': 409,
   'domain:already_connected': 409,

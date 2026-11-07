@@ -29,7 +29,7 @@ const branchesRoutes = {
     guard: [...editor],
     tags: ['branches'],
     description:
-      "Merge a branch into the default branch ('main'), replacing main's pages. Answers 409 branch:main_changed (listing the pages) when main changed since the fork, and 409 branch:baseline_missing when the branch has no fork baseline.",
+      "Merge a branch into the default branch ('main'). Answers 409 branch:main_changed with the preview when main changed since the fork; resend with confirmPreview set to that preview's fingerprint to promote it. 409 branch:promote_blocked (a parent cycle) and branch:baseline_missing cannot be confirmed.",
     responses: ok,
   }),
   remove: createRouteConfig({ guard: [...editor], tags: ['branches'], description: 'Delete a non-default branch.', responses: ok }),

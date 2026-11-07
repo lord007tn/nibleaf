@@ -240,7 +240,16 @@ export const Callout = Node.create({
           const variant = (node.attrs.variant as CalloutVariant) ?? 'note';
           const def = CALLOUT_VARIANTS[variant] ?? CALLOUT_VARIANTS.note;
           state.write(`> [!${def.keyword}]\n`);
-          state.wrapBlock('> ', null, node, () => state.renderContent(node));
+          state.wrapBlock('> ', null, node, () =>
+            node.forEach((child, _offset, index) => {
+              // Write the blank line and `> ` a paragraph would write first, before
+              // its first mark opens: tiptap-markdown records where bold or italic
+              // starts before that prefix, so `**second**` after an image or another
+              // paragraph would save as `****second**`.
+              if (child.type.name === 'paragraph' && child.childCount > 0) state.write();
+              state.render(child, node, index);
+            }),
+          );
         },
         parse: {
           updateDOM(element: HTMLElement) {
