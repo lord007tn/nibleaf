@@ -3,7 +3,7 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { ArrowDownToLine, Check, Replace, Sparkles, Wand2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { AiAction, AiAssistSession } from './use-ai-assist-session';
 
 /** Shown on the clicked button while the assistant works. */
@@ -23,7 +23,9 @@ interface AiAssistProps {
 export function AiAssist({ session }: AiAssistProps) {
   const t = useT();
   const [instruction, setInstruction] = useState('');
-  const { pending, running, preview, run, busyElsewhere } = session;
+  const { pending, running, preview, run, busyElsewhere, trackCard } = session;
+  // While the card is on screen, a draft that lands here is seen without a toast.
+  useEffect(trackCard, [trackCard]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -36,9 +38,14 @@ export function AiAssist({ session }: AiAssistProps) {
 
       <div className="space-y-3 p-4">
         <p className="text-muted-foreground text-sm leading-relaxed">{t('editor.ai.intro')}</p>
-        {/* Always rendered so the announcement fires when a draft for another page is still running. */}
-        <p className="text-muted-foreground text-sm empty:hidden" role="status">
-          {busyElsewhere ? t('editor.ai.busyOtherPage') : null}
+        {busyElsewhere ? (
+          <p aria-hidden="true" className="text-muted-foreground text-sm">
+            {t('editor.ai.busyOtherPage')}
+          </p>
+        ) : null}
+        {/* A live region must exist before its text changes to be announced, so it is always rendered. */}
+        <p className="sr-only" role="status">
+          {busyElsewhere ? t('editor.ai.busyOtherPage') : ''}
         </p>
 
         <div className="space-y-2">
@@ -98,10 +105,16 @@ export function AiAssist({ session }: AiAssistProps) {
               {preview.text}
             </p>
             <div className="grid grid-cols-1 gap-2">
-              <Button className="w-full justify-start whitespace-normal text-start" onClick={session.replace} size="sm">
+              <Button className="w-full justify-start whitespace-normal text-start" disabled={pending} onClick={session.replace} size="sm">
                 <Replace className="size-3.5" /> {t('editor.ai.replace')}
               </Button>
-              <Button className="w-full justify-start whitespace-normal text-start" onClick={session.insert} size="sm" variant="outline">
+              <Button
+                className="w-full justify-start whitespace-normal text-start"
+                disabled={pending}
+                onClick={session.insert}
+                size="sm"
+                variant="outline"
+              >
                 <ArrowDownToLine className="size-3.5" /> {t('editor.ai.insert')}
               </Button>
             </div>

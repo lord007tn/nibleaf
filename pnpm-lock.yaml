@@ -71,6 +71,9 @@ importers:
       knip:
         specifier: 6.44.0
         version: 6.44.0
+      playwright-core:
+        specifier: ^1.64.1
+        version: 1.64.1
       react-doctor:
         specifier: 0.9.18
         version: 0.9.18(@opentelemetry/core@2.12.0(@opentelemetry/api@1.9.1))(eslint@10.9.0(jiti@2.7.0))(react@19.3.1)
@@ -156,6 +159,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 6.1.2
         version: 6.1.2(oxc-transform-react@0.156.0)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      hono:
+        specifier: ^4.13.14
+        version: 4.13.14
       oxc-transform-react:
         specifier: 0.156.0
         version: 0.156.0
@@ -409,6 +415,9 @@ importers:
       '@vitejs/plugin-react':
         specifier: 6.1.2
         version: 6.1.2(oxc-transform-react@0.156.0)(vite@8.3.5(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      hono:
+        specifier: ^4.13.14
+        version: 4.13.14
       jsdom:
         specifier: ^30.1.3
         version: 30.1.3(@noble/hashes@2.4.0)
