@@ -71,7 +71,7 @@ const mocks = vi.hoisted(() => ({
   pageFindMany: vi.fn(),
   pageUpdateMany: vi.fn(),
   deploymentFindFirst: vi.fn(),
-  domainFindFirst: vi.fn(),
+  domainFindMany: vi.fn(),
   idempotency: { deleteMany: vi.fn(), create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   env: {
     MCP_RATE_LIMIT_PER_MIN: 120,
@@ -89,7 +89,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     page: { findMany: mocks.pageFindMany, updateMany: mocks.pageUpdateMany },
     deployment: { findFirst: mocks.deploymentFindFirst },
-    domain: { findFirst: mocks.domainFindFirst },
+    domain: { findMany: mocks.domainFindMany },
     mcpIdempotencyRecord: mocks.idempotency,
     // Batch transactions resolve their queries; interactive ones run against the
     // same page client and roll the in-memory pages back when they throw.
@@ -284,7 +284,7 @@ beforeEach(() => {
     const row = begun.get(id);
     await mocks.audit(ctx, row?.principal, { ...row?.event, ...settled, target: settled.target ?? row?.event.target });
   });
-  mocks.domainFindFirst.mockResolvedValue(null);
+  mocks.domainFindMany.mockResolvedValue([]);
   mocks.assertLanguageInProject.mockImplementation(async (_projectId: string, languageId: string) => {
     if (!['lang-en', 'lang-ar'].includes(languageId)) throw new AppError({ code: 'database:not_found', message: 'language not found' });
     return { id: languageId };
@@ -1300,9 +1300,11 @@ describe('preview and publish', () => {
     await client.close();
   });
 
-  it('caps the change list, prefers a verified custom domain, and withholds tokens when blocked or empty', async () => {
+  it('caps the change list, prefers a live custom domain, and withholds tokens when blocked or empty', async () => {
     state.pages = Array.from({ length: 60 }, (_, index) => page({ id: `page-${index}`, slug: `p${index}`, path: `p${index}` }));
-    mocks.domainFindFirst.mockResolvedValueOnce({ domain: 'help.example.com' });
+    mocks.domainFindMany.mockResolvedValueOnce([
+      { domain: 'help.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' },
+    ]);
     const client = await connect(makePrincipal());
     const capped = await preview(client);
     expect((capped.changes as unknown[]).length).toBe(50);

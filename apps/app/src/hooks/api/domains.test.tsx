@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { ApiResponseError } from './client-helpers';
-import { domainErrorMessage, domainStage, isDomainLive } from './domain-state';
+import { domainErrorMessage, domainStage, pickLiveDomain } from './domain-state';
 import { useDeleteDomain, useSetPrimaryDomain, useVerifyDomain } from './domains';
 
 const mocks = vi.hoisted(() => ({ remove: vi.fn(), primary: vi.fn(), verify: vi.fn(), toastError: vi.fn() }));
@@ -39,11 +39,17 @@ describe('domain status helpers', () => {
     expect(domainStage({ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' })).toBe('live');
   });
 
-  it('treats only a verified domain with working DNS and HTTPS as live', () => {
-    expect(isDomainLive({ verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' })).toBe(true);
+  it('sends readers only to a verified domain with working DNS and HTTPS, primary first', () => {
+    const live = { verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' } as const;
+    expect(
+      pickLiveDomain([
+        { ...live, isPrimary: false, domain: 'a' },
+        { ...live, isPrimary: true, domain: 'b' },
+      ])?.domain,
+    ).toBe('b');
     // Ownership passed, routing or HTTPS did not (the self-host path sets `verified` first).
-    expect(isDomainLive({ verified: true, dnsStatus: 'ERROR', sslStatus: 'PENDING' })).toBe(false);
-    expect(isDomainLive({ verified: true, dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' })).toBe(false);
+    expect(pickLiveDomain([{ ...live, dnsStatus: 'ERROR', isPrimary: true }])).toBeUndefined();
+    expect(pickLiveDomain([{ ...live, sslStatus: 'PROVISIONING', isPrimary: false }])).toBeUndefined();
   });
 
   it('words server failures from their code, never the raw message', () => {

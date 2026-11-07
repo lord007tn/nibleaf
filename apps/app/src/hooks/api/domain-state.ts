@@ -1,4 +1,5 @@
 import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
+import { pickLiveDomain } from '@nibleaf/shared/domains';
 import { ApiResponseError } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 import type { Domain } from './types';
@@ -15,9 +16,8 @@ export const domainStage = (domain: Pick<Domain, 'dnsStatus' | 'sslStatus'>): Do
   return domain.sslStatus === 'ERROR' ? 'httpsProblem' : 'securing';
 };
 
-/** Readers can open the docs at this address: ownership, routing and HTTPS all work. */
-export const isDomainLive = (domain: Pick<Domain, 'verified' | 'dnsStatus' | 'sslStatus'>): boolean =>
-  domain.verified && domainStage(domain) === 'live';
+// One rule for where readers go, shared with the API's links (see @nibleaf/shared/domains).
+export { pickLiveDomain };
 
 const DOMAIN_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
   'validation:failed': 'settings.domain.error.invalid',

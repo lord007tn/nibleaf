@@ -33,7 +33,7 @@ import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import {
   friendlyErrorMessage,
-  isDomainLive,
+  pickLiveDomain,
   useDeployments,
   useDomains,
   usePages,
@@ -98,7 +98,7 @@ function SiteOverviewPage() {
   const publishFailed = latestDeployment?.status === 'FAILED';
   // Only a domain whose DNS and HTTPS both work opens the docs; one still connecting
   // (or broken) would greet the owner with a browser error, so link the default address.
-  const primaryDomain = domains?.find((domain) => domain.isPrimary && isDomainLive(domain)) ?? domains?.find(isDomainLive);
+  const primaryDomain = pickLiveDomain(domains ?? []);
   const connectingDomain = primaryDomain ? undefined : domains?.[0];
   const baseDomain = siteBaseDomain();
   // Prefer a live custom domain; else a configured free-subdomain host; else
