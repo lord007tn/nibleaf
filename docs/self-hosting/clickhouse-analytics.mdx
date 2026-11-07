@@ -3,7 +3,7 @@ title: 'Operate ClickHouse analytics'
 description: 'Configure analytics modes, schema migrations, privacy, retention, and recovery.'
 audience: 'documentation owners and self-hosted operators'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
+last_reviewed: '2026-11-07'
 verified_against: 'packages/clickhouse/src/initialization.ts and analytics insights contract'
 lang: 'en'
 dir: 'ltr'
@@ -14,6 +14,16 @@ Postgres owns accounts, projects and publishing. ClickHouse stores analytics.
 **Analytics unavailable means your documentation site is fine.** Unknown metrics
 must not be interpreted as zero. The reader never connects to ClickHouse.
 
+## Before you start
+
+This page describes current-source analytics, including the November insights
+and chat tables. The pinned v0.2.0 production Compose file has **no ClickHouse
+service, no analytics environment mappings, and no `analytics-tools` profile**.
+Setting `ANALYTICS_MODE` in its `.env` alone has no effect. Provision ClickHouse
+and a reviewed compatible image, and pass the analytics settings to API and
+worker. Source quickstart and Coolify include the service and migration profile.
+Keep the pinned release file intact and use a separate override for custom wiring.
+
 ## Choose a mode
 
 | Mode | When to use it |
@@ -23,10 +33,24 @@ must not be interpreted as zero. The reader never connects to ClickHouse.
 | `shadow_read` | Compare legacy reads while validating ClickHouse. The new insights dashboard reads ClickHouse. |
 | `clickhouse` | After reconciliation, use ClickHouse analytics and stop relational analytics writes. |
 
-Back up both stores before advancing. Run `pnpm analytics:backfill -- --project=<id>`
-and `pnpm analytics:reconcile -- --project=<id>`, then observe a full reporting
-window. Keep relational history through the rollback window. Returning to
-`dual_write` cannot restore relational events missed in ClickHouse-only mode.
+Back up both stores before advancing. From an installed source checkout, export
+`POSTGRES_URL`, `ANALYTICS_HASH_SALT`, and the ClickHouse connection variables
+for the intended databases. These scripts do not load the root `.env` themselves.
+Enter the project ID from `/app/projects/<projectId>` in your dashboard URL:
+
+```bash
+read -r -p 'Project ID from the site dashboard URL: ' PROJECT_ID
+test -n "$PROJECT_ID"
+pnpm analytics:backfill -- --project="$PROJECT_ID"
+pnpm analytics:reconcile -- --project="$PROJECT_ID"
+```
+
+The backfill copies retained relational events and never recreates historic
+consent or raw search text. Reconciliation compares relational event IDs against
+ClickHouse; it does not prove every insight dimension or post-cutover event.
+Observe a full reporting window and keep relational history through rollback.
+Returning to `dual_write` cannot restore relational events missed in
+ClickHouse-only mode.
 
 ## Migrations and health
 
@@ -43,13 +67,15 @@ well before that ceiling and never launch an overlapping manual migration.
 For a dedicated migration identity, disable boot migrations and run:
 
 ```bash
+# Source quickstart only; use the Coolify deployment job for its Compose file.
 docker compose --profile analytics-tools run --rm analytics-migrate
 # Or from a source checkout with POSTGRES_URL and ClickHouse writer credentials:
 pnpm --filter @nibleaf/clickhouse migrate
 ```
 
-The command reports failure if another process holds the lock; rerun after it
-finishes. The worker's `/health` and the API's authenticated
+The CLI waits up to ten minutes for another migration process, retrying every
+five seconds, then exits with an error if the lock is still held. Investigate
+the holder before retrying. The worker's `/health` and the API's authenticated
 `/health/details` include this independent field. The API route requires the
 `x-nibleaf-internal` header; see
 [Health probes and private diagnostics](/self-hosting/troubleshooting#health-probes-and-private-diagnostics):
@@ -139,12 +165,13 @@ connecting restored data to the application.
 | `CLICKHOUSE_CRAWLER_RETENTION_DAYS` | 90 | 7-730 |
 | `CLICKHOUSE_ROLLUP_RETENTION_DAYS` | 730 | 30-3650 |
 | `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | 30 | 1-90 |
+| `AI_CONVERSATION_RETENTION_DAYS` | 90 | 1-365 |
 
 Every migration run reapplies TTLs with `materialize_ttl_after_modify=0`.
 Changes affect subsequent merges without an immediate rewrite; deletion is
 asynchronous. Shortening retention permanently removes older history.
 
-Bundled Compose limits ClickHouse to 1.5 GiB container memory, with a 1 GiB server
+Source quickstart and Coolify Compose limit ClickHouse to 1.5 GiB container memory, with a 1 GiB server
 budget and 128 MiB mark cache, and rotates warning logs. Noisy system log tables
 are disabled for new writes; existing system tables still occupy disk and need
 operator review. These are starting limits, not a capacity guarantee. Monitor
@@ -159,6 +186,23 @@ coverage; do not read missing origin requests as an absence of crawlers.
 
 The app server reports crawler visits to published pages, page Markdown,
 `llms.txt`, sitemaps and robots files to the API with `INTERNAL_API_SECRET`.
-Set the same random value (`openssl rand -hex 32`) on the app, API and worker.
+Set the same random value (`openssl rand -hex 32`) on the app and API services.
 Without it, only crawlers that call the API directly are counted, and the app
 logs a warning once at startup.
+
+## Conversation text and usage
+
+The current source also stores AI turns, feedback and daily model usage. Text
+capture needs the site setting, permitted visitor consent, and the same
+`AI_CONVERSATION_ENCRYPTION_KEY` (or integration-derived fallback) on API and
+worker. The queue is encrypted; redacted ClickHouse text columns are readable
+to database readers. Restrict access and use your storage encryption policy.
+Content-free turn facts can be recorded without transcript capture. See
+[chat privacy and budgets](/self-hosting/search-ai) for the exact gates.
+
+A healthy schema is not an ingestion test. Check a consented fictional visit,
+a search, a crawler request and an AI turn in the dashboard. Unknown figures
+show as unavailable or partial; they are not proof of zero traffic. Crawler
+identity is classified by user agent, not verified against vendor IP feeds.
+The maintained snapshots do not establish large-site capacity; measure your
+reporting ranges and restore on the exact ClickHouse version you deploy.

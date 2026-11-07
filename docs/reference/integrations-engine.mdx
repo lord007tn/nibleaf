@@ -3,8 +3,8 @@ title: 'Integrations engine'
 description: 'Understand provider ownership, secure project connections, lifecycle actions, MCP boundaries, and safe migration or key rotation.'
 audience: 'self-hosted operators, contributors, and security reviewers'
 content_type: 'reference'
-last_reviewed: '2026-08-24'
-verified_against: 'packages/shared/src/integrations.ts and apps/server/src/actions/integrations'
+last_reviewed: '2026-11-07'
+verified_against: 'packages/shared/src/integrations.ts, packages/shared/src/mcp.ts, apps/server/src/actions/integrations, apps/server/src/actions/workspace-ai.ts, and apps/server/src/mcp/integrations.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'reference/integrations-engine'
@@ -22,7 +22,8 @@ modules; project webhook connections use the common encrypted lifecycle.
 | Source control | GitHub, GitLab, public Git | Existing Git connection or workspace metadata adapter | Official Octokit for GitHub; existing Git adapters for other imports |
 | Site analytics | Google Analytics 4, Plausible | Existing project configuration adapter | Published-site analytics configuration |
 | Webhooks and automation | Slack, Discord, Zapier | Project integration engine | Official `@slack/webhook`; Got only for Discord and Zapier, which have no required server SDK here |
-| AI and search | OpenRouter, Qdrant | Instance-managed, read-only in project settings | Official `@openrouter/sdk` and `@qdrant/js-client-rest` |
+| Workspace AI | OpenAI, OpenRouter | Project-backed Smart AI connections; administrators save credentials and explicitly select a provider | Shared encrypted integration storage; answer and embedding runtime resolve the selected connection |
+| Search index | Qdrant | Instance-managed, read-only in project settings | Official `@qdrant/js-client-rest` |
 | Product analytics | ClickHouse | Instance-managed, read-only in project settings | Existing ClickHouse client boundary |
 | Email | Postmark, SMTP | Instance-managed, read-only in project settings | Official Postmark SDK or the existing SMTP transport |
 | Asset storage | Maxio, MinIO, Amazon S3, Cloudflare R2, Backblaze B2 | Instance-managed, read-only in project settings | Existing AWS S3 SDK boundary |
@@ -51,8 +52,9 @@ own credential creation and replacement. Provider-visible Slack and Zapier test
 events require explicit dashboard confirmation; Discord and GitHub verification
 are passive.
 
-API keys must carry the exact `integrations:read`, `integrations:write`,
-`integrations:verify`, or `integrations:delete` scope required by the action.
+Internal lifecycle authorization checks the exact `integrations:read`, `integrations:write`,
+`integrations:verify`, or `integrations:delete` scope required by the action; this is not a promise that the dashboard issues all
+of these scopes.
 The legacy `*` scope grants no integration access. Every action reloads the key,
 checks revocation and expiry, binds it to the project, and applies project
 authorization itself. Cross-tenant access returns the ordinary not-found
@@ -82,11 +84,12 @@ Lifecycle clients may branch on the stable integration errors
 sanitized at the normal error boundary and are not relabeled as one of these
 business conditions.
 
-MCP may expose credential-free `list`, `get`, `activate`, `deactivate`, passive
-`verify`, and confirmed `delete` only. MCP tools never accept, return, or persist
-credentials. A Better Auth dashboard session mints the single-use delete
-confirmation, optionally bound to one API key, project, provider, connection,
-and revision. MCP cannot mint that confirmation or send a provider-visible test.
+The current MCP registry exposes only `list_integrations`, `get_integration`,
+and `get_git_integration_status`, all with `integrations:read`. It registers no
+integration activation, verification, deletion, or credential tool. The internal
+action permission vocabulary is not the MCP scope catalog: the dashboard only
+issues the MCP scopes in `packages/shared/src/mcp.ts`. Use the dashboard for
+connection changes and provider-visible tests.
 
 ## Secrets, replay, and audit
 
@@ -104,8 +107,7 @@ returns `integration:idempotency_conflict`. Raw keys, credential-bearing request
 bodies, and provider response bodies are never persisted.
 
 Request digests use an explicit provider-discriminated canonical serialization
-that excludes the separately digested idempotency key. Equivalent dashboard and
-MCP requests replay regardless of object property order; changing the provider,
+that excludes the separately digested idempotency key. Equivalent authorized lifecycle requests replay regardless of object property order; changing the provider,
 revision, configuration, or credential changes the digest and conflicts.
 
 Connection revisions use an atomic compare-and-swap predicate. Webhook
@@ -134,11 +136,16 @@ removed when the next challenge is created.
 1. Generate a new independent 32-byte base64 key. Set it as
    `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` and add the old key to
    `INTEGRATION_CREDENTIAL_PREVIOUS_KEYS`.
-2. Deploy all API replicas together. New credentials and digests now use the new
-   key; existing ciphertext, ledger entries, and confirmations remain readable.
-3. Reconnect each project-owned webhook to re-encrypt it. Keep the old key until
-   every credential is replaced and the longest idempotency and confirmation TTL
-   has elapsed.
+2. Deploy the current key and previous-key list to every API and search worker.
+   New credentials and digests use the current key; existing envelopes remain
+   readable during the dual-read window.
+3. Replace each webhook and Smart AI credential through its dashboard workflow
+   to re-encrypt it. Keep the old key until every credential is replaced, the
+   longest replay/confirmation TTL has elapsed, and queued conversation payloads
+   sealed with a key derived from it have drained. If conversation capture uses
+   that fallback, plan its encryption-key change separately: replacing the
+   integration key changes the derived conversation key. The conversation
+   transport does not try previous integration keys.
 4. Verify each connection, then remove the old key. To roll back during the
    window, restore the old key as current and retain the new key as previous.
 
