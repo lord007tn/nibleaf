@@ -1,7 +1,7 @@
 import { appendResponseHeader, getRequest, getRequestHeader, setCookie, setResponseHeader, setResponseStatus } from '@tanstack/react-start/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
-import { pageHead } from '@/lib/site-seo';
+import { pageHead, pageMarkdownHeaders, SITE_MARKDOWN_ALTERNATE_HEADER } from '@/lib/site-seo';
 
 const mocks = vi.hoisted(() => ({
   got: vi.fn(),
@@ -166,34 +166,59 @@ describe('published Markdown edge routing', () => {
         expect(head.links?.find((link) => link.rel === 'canonical')?.href).toBe(`${origin}${path}`);
         expect(head.meta?.find((meta) => meta.property === 'og:url')?.content).toBe(`${origin}${path}`);
         expect(head.links?.find((link) => link.type === 'text/markdown')?.href).toBe(`${origin}${path}.md`);
-        return new Response('<!doctype html><title>Guide</title>', { headers: { 'content-type': 'text/html' } });
+        // The page route flags the SSR response from the page it loaded.
+        return new Response('<!doctype html><title>Guide</title>', { headers: { 'content-type': 'text/html', ...pageMarkdownHeaders(data) } });
       });
       const response = await server.fetch(
         new Request(`${origin}${path}`, { headers: { accept: 'text/html', 'x-nibleaf-site-origin': 'https://client-origin.example' } }),
       );
       expect(response.status).toBe(200);
       expect(response.headers.get('link')).toContain(`${origin}${path}.md`);
+      expect(response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER)).toBeNull();
       expect(mocks.startHandler).toHaveBeenCalledOnce();
+      // The HTML never waits on a second, full Markdown render to decide the header.
+      expect(mocks.got.mock.calls.some(([url]) => String(url).includes('/markdown?'))).toBe(false);
     },
   );
 
-  it.each(['noindex page', 'language indexing disabled', 'external canonical', 'hidden page', 'private site'])(
-    'omits HTML discovery when %s has no public Markdown response',
-    async () => {
-      mocks.got.mockImplementation(async (url: string) => {
-        if (url.endsWith('/api/public/sites/project-1')) {
-          return upstream({ data: { project: { config: { visibility: 'public' }, primaryDomain: null } } });
-        }
-        if (url.includes('/api/public/sites/project-1/markdown?')) return upstream('Not found', 404);
-        throw new Error(`Unexpected URL: ${url}`);
-      });
+  it('omits HTML discovery when the page route did not flag a public Markdown alternate', async () => {
+    const response = await server.fetch(new Request('http://localhost:4310/sites/project-1/authentication', { headers: { accept: 'text/html' } }));
 
-      const response = await server.fetch(new Request('http://localhost:4310/sites/project-1/authentication', { headers: { accept: 'text/html' } }));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('link')).toBeNull();
+    expect(mocks.got.mock.calls.some(([url]) => String(url).includes('/markdown?'))).toBe(false);
+  });
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get('link')).toBeNull();
-    },
-  );
+  it('never advertises Markdown for a private site, even when flagged, and strips the internal flag', async () => {
+    // Its own project: the site metadata cache already holds project-1 as public.
+    mocks.got.mockImplementation(async (url: string) => {
+      if (url.endsWith('/api/public/sites/private-project')) {
+        return upstream({ data: { project: { config: { visibility: 'private' }, primaryDomain: null } } });
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    mocks.startHandler.mockResolvedValueOnce(
+      new Response('<!doctype html>', { headers: { 'content-type': 'text/html', [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } }),
+    );
+
+    const response = await server.fetch(
+      new Request('http://localhost:4310/sites/private-project/authentication', { headers: { accept: 'text/html' } }),
+    );
+
+    expect(response.headers.get('link')).toBeNull();
+    expect(response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER)).toBeNull();
+  });
+
+  it.each(['/sites/project-1/v1.0', '/sites/project-1/sdk/node.js'])('never leaks the internal Markdown flag on dotted path %s', async (path) => {
+    mocks.startHandler.mockResolvedValueOnce(
+      new Response('<!doctype html>', { headers: { 'content-type': 'text/html', [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } }),
+    );
+
+    const response = await server.fetch(new Request(`http://localhost:4310${path}`, { headers: { accept: 'text/html' } }));
+
+    expect(mocks.startHandler).toHaveBeenCalledOnce();
+    expect(response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER)).toBeNull();
+  });
 
   it('fails closed for a malformed escape without calling the Markdown endpoint', async () => {
     const response = await server.fetch(new Request('http://localhost:4310/sites/project-1/%E0%A4%A', { headers: { accept: 'text/markdown' } }));

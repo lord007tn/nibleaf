@@ -1972,18 +1972,53 @@
   "site_previous": "السابق",
   "site_next": "التالي",
   "site_onthispage": "في هذه الصفحة",
-  "site_minread": "دقيقة قراءة",
-  "site_screenshot": "لقطة شاشة",
-  "site_screenshots": "لقطات شاشة",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "دقيقة واحدة للقراءة",
+        "form=two": "دقيقتان للقراءة",
+        "form=few": "{count} دقائق للقراءة",
+        "form=*": "{count} دقيقة للقراءة"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "لقطة شاشة واحدة",
+        "form=two": "لقطتا شاشة",
+        "form=few": "{count} لقطات شاشة",
+        "form=*": "{count} لقطة شاشة"
+      }
+    }
+  ],
   "site_updated": "آخر تحديث",
   "site_notpublishedtitle": "لم يُنشر بعد",
   "site_notpublishedbody": "لم يتم نشر موقع الوثائق هذا. انشره من المحرر لرؤيته مباشرةً.",
+  "site_privatetitle": "هذا التوثيق خاص",
+  "site_privatebody": "لقراءته، افتح رابط الدعوة الذي وصلك عبر البريد الإلكتروني.",
+  "site_privatemembers": "يمكن لأعضاء مساحة العمل هذه تسجيل الدخول لعرضه.",
+  "site_privatesignin": "تسجيل الدخول",
   "site_pageunavailable": "هذه الصفحة غير متاحة.",
   "site_changelogsubtitle": "كل تحديث صدر لهذه الوثائق.",
   "site_changelogempty": "لا توجد إصدارات بعد.",
   "site_changelogrelease": "إصدار",
-  "site_changelogpage": "صفحة",
-  "site_changelogpages": "صفحات",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "صفحة واحدة",
+        "form=two": "صفحتان",
+        "form=few": "{count} صفحات",
+        "form=*": "{count} صفحة"
+      }
+    }
+  ],
   "site_feedbackquestion": "هل كانت هذه الصفحة مفيدة؟",
   "site_feedbackyes": "نعم",
   "site_feedbackno": "لا",
@@ -1994,7 +2029,8 @@
   "site_analyticsconsentaccept": "قبول التحليلات",
   "site_analyticsconsentdecline": "رفض",
   "site_changelanguage": "تغيير اللغة",
-  "site_toggletheme": "تبديل السمة",
+  "site_darkmode": "الوضع الداكن",
+  "site_breadcrumb": "مسار التنقّل",
   "site_togglesubpages": "تبديل الصفحات الفرعية",
   "site_articledetails": "تفاصيل المقالة",
   "site_copycode": "نسخ الشيفرة",
@@ -3224,7 +3260,7 @@
   "site_searchsuggested": "صفحات مقترحة",
   "site_searchnoresultsfor": "لا توجد نتائج لـ «{query}»",
   "site_searchnoresultshint": "تحقّق من الإملاء، أو جرّب كلمات أقل أو مختلفة.",
-  "site_searchaskaiabout": "اسأل الذكاء الاصطناعي عن «{query}»",
+  "site_searchaskaiabout": "اسأل المساعد عن «{query}»",
   "site_searchaskaihint": "احصل على إجابة مكتوبة من هذه الوثائق",
   "site_searchpages": "الصفحات",
   "site_searchresultcount": "عدد النتائج: {count}",

@@ -837,6 +837,7 @@
       [data-theme-region="overlays"],
       [data-theme-region="footer"],
       [data-theme-region="search-trigger"],
+      [data-theme-surface="ai"],
       .fixed,
       a[href="#main-content"],
       [data-theme-region="skip-link"],

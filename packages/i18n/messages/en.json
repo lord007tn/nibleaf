@@ -1972,18 +1972,46 @@
   "site_previous": "Previous",
   "site_next": "Next",
   "site_onthispage": "On this page",
-  "site_minread": "min read",
-  "site_screenshot": "screenshot",
-  "site_screenshots": "screenshots",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} min read"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} screenshot",
+        "form=*": "{count} screenshots"
+      }
+    }
+  ],
   "site_updated": "Updated",
   "site_notpublishedtitle": "Not published yet",
   "site_notpublishedbody": "This documentation site hasn't been published. Publish it from the editor to see it live.",
+  "site_privatetitle": "This documentation is private",
+  "site_privatebody": "To read it, open the invitation link you received by email.",
+  "site_privatemembers": "Members of this workspace can sign in to view it.",
+  "site_privatesignin": "Sign in",
   "site_pageunavailable": "This page is not available.",
   "site_changelogsubtitle": "Every update shipped to these docs.",
   "site_changelogempty": "No releases yet.",
   "site_changelogrelease": "Release",
-  "site_changelogpage": "page",
-  "site_changelogpages": "pages",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "site_feedbackquestion": "Was this page helpful?",
   "site_feedbackyes": "Yes",
   "site_feedbackno": "No",
@@ -1994,7 +2022,8 @@
   "site_analyticsconsentaccept": "Accept analytics",
   "site_analyticsconsentdecline": "Decline",
   "site_changelanguage": "Change language",
-  "site_toggletheme": "Toggle theme",
+  "site_darkmode": "Dark mode",
+  "site_breadcrumb": "Breadcrumb",
   "site_togglesubpages": "Toggle subpages",
   "site_articledetails": "Article details",
   "site_copycode": "Copy code",

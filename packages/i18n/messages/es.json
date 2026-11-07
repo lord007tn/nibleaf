@@ -1932,18 +1932,46 @@
   "site_previous": "Anterior",
   "site_next": "Siguiente",
   "site_onthispage": "En esta página",
-  "site_minread": "min de lectura",
-  "site_screenshot": "captura de pantalla",
-  "site_screenshots": "capturas de pantalla",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} min de lectura"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} captura de pantalla",
+        "form=*": "{count} capturas de pantalla"
+      }
+    }
+  ],
   "site_updated": "Actualizado",
   "site_notpublishedtitle": "Aún no publicado",
   "site_notpublishedbody": "Este sitio de documentación no ha sido publicado. Publícalo desde el editor para verlo en vivo.",
+  "site_privatetitle": "Esta documentación es privada",
+  "site_privatebody": "Para leerla, abre el enlace de invitación que recibiste por correo electrónico.",
+  "site_privatemembers": "Los miembros de este espacio de trabajo pueden iniciar sesión para verla.",
+  "site_privatesignin": "Iniciar sesión",
   "site_pageunavailable": "Esta página no está disponible.",
   "site_changelogsubtitle": "Cada actualización enviada a estos documentos.",
   "site_changelogempty": "Aún no hay lanzamientos.",
   "site_changelogrelease": "Lanzamiento",
-  "site_changelogpage": "página",
-  "site_changelogpages": "páginas",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} página",
+        "form=*": "{count} páginas"
+      }
+    }
+  ],
   "site_feedbackquestion": "¿Te resultó útil esta página?",
   "site_feedbackyes": "Sí",
   "site_feedbackno": "No",
@@ -1954,7 +1982,8 @@
   "site_analyticsconsentaccept": "Aceptar",
   "site_analyticsconsentdecline": "Rechazar",
   "site_changelanguage": "Cambiar idioma",
-  "site_toggletheme": "Alternar tema",
+  "site_darkmode": "Modo oscuro",
+  "site_breadcrumb": "Ruta de navegación",
   "site_togglesubpages": "Mostrar u ocultar subpáginas",
   "site_articledetails": "Detalles del artículo",
   "site_copycode": "Copiar código",
