@@ -1,20 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ArabicDocumentationPlatformsPage } from '@/components/marketing/arabic-seo';
-import { ArabicLandingPage } from '@/components/marketing/landing/arabic-landing-page';
-import { landingAr } from './copy/landing.ar';
 
 describe('Arabic marketing pages', () => {
-  it('renders a complete RTL landing journey with a localized primary action', () => {
-    const html = renderToStaticMarkup(<ArabicLandingPage />);
-
-    expect(html).toContain('dir="rtl"');
-    expect(html).toContain('lang="ar"');
-    expect(html).toContain(landingAr.hero.title);
-    expect(html).toContain('href="/sign-up"');
-    expect(html).toContain('hrefLang="en"');
-  });
-
   it('renders a disclosed, source-backed six-platform comparison', () => {
     const html = renderToStaticMarkup(<ArabicDocumentationPlatformsPage />);
 

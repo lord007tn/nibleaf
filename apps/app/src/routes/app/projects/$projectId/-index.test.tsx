@@ -5,9 +5,12 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
-const navigation = vi.hoisted(() => ({ members: {} as Record<string, unknown>, deployments: {} as Record<string, unknown> }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'viewer' } } }) }));
 const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
+const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session', unknown>);
+/** The settings-access tests' name for the same mocked members and publishes. */
+const navigation = queries;
+/** Signed in as the `viewer` the settings-access tests give a role to. */
+const viewer = { data: { user: { id: 'viewer' } }, isPending: false };
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -29,13 +32,15 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 vi.mock('@/env', () => ({ env: {} }));
-vi.mock('@/hooks/api', () => ({
+vi.mock('@/services/auth-client', () => ({ useSession: () => queries.session }));
+vi.mock('@/hooks/api', async () => ({
+  ...(await vi.importActual<object>('@/hooks/api/domain-state')),
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useDeployments: () => navigation.deployments,
-  useDomains: () => pending,
-  usePages: () => pending,
-  useProject: () => pending,
-  useProjectMembers: () => navigation.members,
+  useDeployments: () => queries.deployments,
+  useDomains: () => queries.domains,
+  usePages: () => queries.pages,
+  useProject: () => queries.project,
+  useProjectMembers: () => queries.members,
   usePublishAnyway: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('@/hooks/api/analytics', () => ({ useProjectAnalytics: analytics.hook }));
@@ -81,6 +86,7 @@ describe('site overview first load', () => {
 
   beforeEach(() => {
     analytics.hook.mockReturnValue(pending);
+    Object.assign(queries, { project: pending, pages: pending, members: pending, deployments: pending, domains: pending, session: viewer });
   });
 
   it.each(['member', 'admin', 'owner'])('keeps overview settings links within the %s role', async (role) => {
@@ -219,5 +225,135 @@ describe('site overview first load', () => {
     expect(heading?.textContent).toBe('overview.title');
     expect(heading?.querySelector('div')).toBeNull();
     expect(heading?.querySelector('[data-slot="skeleton"]')?.tagName).toBe('SPAN');
+  });
+});
+
+const failed = () => ({ data: undefined, isPending: false, isError: true, isFetching: false, refetch: vi.fn() });
+const loaded = (data: unknown) => ({ data, isPending: false, isError: false, isFetching: false, refetch: vi.fn() });
+const readyDeployment = { id: 'dep-1', version: 3, status: 'READY', createdAt: '2026-11-01T00:00:00Z', completedAt: '2026-11-01T00:01:00Z' };
+const domain = (patch: Record<string, unknown>) => ({
+  id: 'domain-1',
+  domain: 'docs.example.com',
+  verified: true,
+  isPrimary: true,
+  dnsStatus: 'VERIFIED',
+  sslStatus: 'ACTIVE',
+  ...patch,
+});
+
+describe('site overview when something fails or is still connecting', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    analytics.hook.mockReturnValue({ isPending: false, data: { availability: 'available', totalViews: 0, timeseries: [] } });
+    Object.assign(queries, {
+      project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs' }),
+      pages: loaded([]),
+      members: loaded({ members: [] }),
+      deployments: loaded([readyDeployment]),
+      domains: loaded([]),
+      session: { data: { user: { id: 'user-1' } }, isPending: false },
+    });
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.clearAllMocks();
+  });
+
+  const tile = (label: string) =>
+    [...container.querySelectorAll('[data-slot="card"]')].find((card) => card.textContent?.includes(label))?.querySelector('[data-slot="card-title"]')
+      ?.textContent;
+  const liveLink = () => container.querySelector<HTMLAnchorElement>('a[target="_blank"][href]:not([aria-label])');
+
+  it('shows a retry, not "no pages yet" or zero counts, when pages and members fail to load', async () => {
+    const pages = failed();
+    Object.assign(queries, { pages, members: failed() });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.noPages');
+    expect(tile('overview.stats.pages')).toBe('—');
+    expect(tile('overview.stats.members')).toBe('—');
+    // One Retry per failed request: the recent pages, then the settings links that need the team.
+    const retry = [...container.querySelectorAll<HTMLButtonElement>('[role="alert"] button')];
+    expect(retry).toHaveLength(2);
+    await act(async () => retry[0]?.click());
+    expect(pages.refetch).toHaveBeenCalled();
+    await act(async () => retry[1]?.click());
+    expect((queries.members as { refetch: () => void }).refetch).toHaveBeenCalled();
+  });
+
+  it('does not claim the site is unpublished when publishes fail to load', async () => {
+    Object.assign(queries, { deployments: failed() });
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.live.unavailable');
+    expect(container.textContent).not.toContain('overview.activity.empty');
+    expect(container.textContent).toContain('overview.live.loadError');
+    expect(container.querySelector('[role="alert"]')).not.toBeNull();
+    expect(tile('overview.stats.deploys')).toBe('—');
+  });
+
+  it('links a custom domain only once its DNS and HTTPS both work', async () => {
+    queries.domains = loaded([domain({})]);
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(liveLink()?.getAttribute('href')).toBe('https://docs.example.com');
+    expect(container.textContent).not.toContain('overview.live.domainConnecting');
+  });
+
+  it.each([
+    { dnsStatus: 'ERROR', sslStatus: 'PENDING' },
+    { dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' },
+  ])('keeps readers on the default address while the domain is not ready: %o', async (status) => {
+    queries.domains = loaded([domain(status)]);
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+    expect(container.querySelector('[aria-label="overview.viewSite"]')?.getAttribute('href')).toBe('/sites/project-1');
+    expect(container.textContent).toContain('overview.live.domainConnecting');
+  });
+
+  it('explains a failed publish in plain words and keeps the raw reason folded away', async () => {
+    queries.deployments = loaded([
+      { ...readyDeployment, id: 'dep-2', version: 4, status: 'FAILED', error: 'Published revision exceeds export limits.' },
+    ]);
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).toContain('overview.publishFailed.unknown');
+    const details = container.querySelector('details');
+    expect(details?.querySelector('summary')?.textContent).toBe('overview.publishFailed.technicalDetails');
+    expect(details?.textContent).toContain('Published revision exceeds export limits.');
+  });
+
+  describe('the "still connecting" note fits who is looking', () => {
+    const connecting = () => loaded([domain({ sslStatus: 'PROVISIONING' })]);
+    const team = (role: string) => loaded({ members: [{ user: { id: 'user-1' }, role }] });
+
+    it('offers Admins the way to finish the setup', async () => {
+      Object.assign(queries, { domains: connecting(), members: team('admin') });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.finishSetup');
+      expect(container.textContent).not.toContain('overview.live.askAdmin');
+    });
+
+    it('asks Editors to involve an Admin instead of linking a section they cannot open', async () => {
+      Object.assign(queries, { domains: connecting(), members: team('member') });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.askAdmin');
+      expect(container.textContent).not.toContain('overview.live.finishSetup');
+    });
+
+    it.each([
+      ['the session is loading', { session: { data: undefined, isPending: true } }],
+      ['the team is loading', { members: pending }],
+      ['the team failed to load', { members: failed() }],
+    ])('stays neutral while %s', async (_label, state) => {
+      Object.assign(queries, { domains: connecting(), members: team('admin'), ...state });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('overview.live.domainConnecting');
+      expect(container.textContent).not.toContain('overview.live.finishSetup');
+      expect(container.textContent).not.toContain('overview.live.askAdmin');
+    });
   });
 });

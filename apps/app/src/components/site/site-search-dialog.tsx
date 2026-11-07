@@ -14,6 +14,7 @@ import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { readerLanguageFirst } from '@/lib/site-search-rank';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { resolveReaderDirection } from '@/lib/text-direction';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
@@ -117,6 +118,21 @@ function Highlight({ text, query }: { text: string; query: string }) {
           <span key={offset}>{value}</span>
         ),
       )}
+    </>
+  );
+}
+
+/** A sentence around the reader's query, with the query bidi-isolated: an
+ *  English query in the Arabic interface (or the reverse) keeps its own
+ *  punctuation and the sentence's quotes stay in place. */
+const QUERY_SLOT = '\uE000';
+export function withIsolatedQuery(message: (query: string) => string, query: string): ReactNode {
+  const [before = '', after = ''] = message(QUERY_SLOT).split(QUERY_SLOT);
+  return (
+    <>
+      {before}
+      <bdi>{query}</bdi>
+      {after}
     </>
   );
 }
@@ -264,7 +280,8 @@ export default function SiteSearchDialog({
   // Keyword search is intentionally language-independent. Omitting `language`
   // asks the public endpoint to search every enabled language in the published
   // snapshot; each hit carries its own language for correct localized routing.
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open);
+  // `prefer` ranks the reader's language first, so it survives the result limit.
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), { prefer: lang, version: selectedVersion, limit: maxResults, enabled: open });
   // Pending: what's on screen doesn't answer the typed text yet. While the next
   // query loads, the last results stay in place, dimmed and inert (the query
   // keeps previous data), so the list doesn't flash empty on every keystroke.
@@ -274,7 +291,8 @@ export default function SiteSearchDialog({
     Boolean(trimmed) &&
     (trimmed !== debouncedQuery.trim() || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
-  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? (hitsQuery.data ?? []) : [];
+  // The reader's own language first; other languages stay available below.
+  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? readerLanguageFirst(hitsQuery.data ?? [], lang) : [];
   const staleHits = queryPending && hits.length > 0;
   const askInert = staleHits && !QUESTION.test(trimmed);
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
@@ -454,9 +472,7 @@ export default function SiteSearchDialog({
           <Sparkles className="size-4" />
         </RowIcon>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium" dir="auto">
-            {t('searchAskAiAbout', { query: trimmed })}
-          </div>
+          <div className="truncate font-medium">{withIsolatedQuery((query) => t('searchAskAiAbout', { query }), trimmed)}</div>
           <div className="truncate text-muted-foreground text-xs">{t('searchAskAiHint')}</div>
         </div>
         <EnterHint />
@@ -601,9 +617,7 @@ export default function SiteSearchDialog({
             ) : null}
             {noResults ? (
               <div className="px-6 pt-8 pb-4 text-center">
-                <p className="font-medium text-sm" dir="auto">
-                  {t('searchNoResultsFor', { query: trimmed })}
-                </p>
+                <p className="font-medium text-sm">{withIsolatedQuery((query) => t('searchNoResultsFor', { query }), trimmed)}</p>
                 <p className="mt-1 text-muted-foreground text-sm">{t('searchNoResultsHint')}</p>
               </div>
             ) : null}

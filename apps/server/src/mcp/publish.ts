@@ -4,6 +4,7 @@ import { summarizeRedirectIssues } from '@nibleaf/shared/redirects';
 import type { SiteSnapshot, SnapshotProject } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { getCurrentSnapshot, getPendingChanges, listDeployments, type PendingChanges } from '@/actions/deployments';
+import { findLiveDomain } from '@/actions/live-domain';
 import { env } from '@/env';
 import { AppError } from '@/errors';
 import { canonicalHash } from './idempotency';
@@ -122,15 +123,12 @@ export const readPublishState = async (
 
 const normalizeBaseDomain = (value: string | undefined) => value?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
 
-/** Where readers see the site, resolved like the dashboard overview: a verified
- *  (primary first) custom domain, else the free subdomain, else /sites/:id. */
+/** Where readers see the site, resolved like the dashboard overview: a live
+ *  custom domain (DNS and HTTPS working, primary first), else the free
+ *  subdomain, else /sites/:id. */
 export const publishedSiteUrl = async (projectId: string, projectSlug: string) => {
-  const domain = await prisma.domain.findFirst({
-    where: { projectId, verified: true },
-    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-    select: { domain: true },
-  });
-  if (domain) return `https://${domain.domain}`;
+  const domain = await findLiveDomain(projectId);
+  if (domain) return `https://${domain}`;
   const baseDomain = normalizeBaseDomain(env.SITE_BASE_DOMAIN);
   return baseDomain ? `https://${projectSlug}.${baseDomain}` : `${env.APP_URL.replace(/\/+$/, '')}/sites/${projectId}`;
 };

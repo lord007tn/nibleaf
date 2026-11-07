@@ -2,7 +2,10 @@ import { customDomainOrigin } from '@/lib/site-origin';
 
 const cleanPath = (path = ''): string => path.replace(/^\/+|\/+$/g, '');
 
-const safeDecode = (value: string): string => {
+/** decodeURIComponent that keeps a malformed escape (`100%`, a truncated
+ *  `%E0%A4`) as typed instead of throwing, so the reader can answer with its
+ *  own not-found page. */
+export const safeDecode = (value: string): string => {
   try {
     return decodeURIComponent(value);
   } catch {
@@ -37,7 +40,8 @@ export function isCustomDomainSite(projectId?: string): boolean {
     return false;
   }
   const pathname = window.location.pathname;
-  if (/^\/(app|sign-in|sign-up|forgot-password|reset-password|verify-email|accept-invite)\b/.test(pathname)) {
+  // Whole path segments only: `/git-preview-guide` is a published page.
+  if (/^\/(?:app|sign-in|sign-up|forgot-password|reset-password|verify-email|accept-invite|git-preview)(?:\/|$)/.test(pathname)) {
     return false;
   }
   return projectId ? !pathname.startsWith(`/sites/${projectId}`) : !pathname.startsWith('/sites/');

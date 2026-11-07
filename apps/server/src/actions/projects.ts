@@ -152,7 +152,7 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
     await tx.language.create({
       data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
     });
-    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true } });
+    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
     return project;
   });
 };

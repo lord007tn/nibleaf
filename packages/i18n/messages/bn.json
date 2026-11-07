@@ -823,6 +823,33 @@
   "settings_domain_toast_provisioning": "DNS প্রস্তুত; TLS এখনও ব্যবস্থা করছে",
   "settings_domain_toast_verifyerror": "ডোমেন চেক ব্যর্থ হয়েছে",
   "settings_domain_toast_primary": "প্রাথমিক ডোমেইন আপডেট করা হয়েছে",
+  "settings_domain_error_invalid": "Enter just the address, like docs.example.com, without https:// or a page path.",
+  "settings_domain_error_alreadyadded": "This domain is already connected to this site. You can find it in the list below.",
+  "settings_domain_error_connectedtosite": "This domain is already connected to {site}. Remove it from that site first, then add it here.",
+  "settings_domain_error_connectedelsewhere": "This domain is already connected to another workspace. Ask whoever manages it to remove it there first.",
+  "settings_domain_error_providerfailed": "We couldn't reach our domain service right now. Wait a few minutes and try again. If it keeps happening, contact support.",
+  "settings_domain_error_ownershipmissing": "We couldn't find the TXT record yet. Add it exactly as shown, save, then check again in a few minutes.",
+  "settings_domain_error_notpointed": "Your domain doesn't point to your docs yet. Check the CNAME record, save, then check again in a few minutes.",
+  "settings_domain_error_notready": "This domain isn't fully connected yet. Wait until it shows as connected, then try again.",
+  "settings_domain_error_checkinconclusive": "We couldn't reach DNS or your site to check this domain right now. Nothing has changed. Try again in a few minutes.",
+  "settings_domain_apexhint": "This is a root domain. Many providers don't allow a CNAME record here. If yours refuses it, use a subdomain such as docs.{domain}, or an ALIAS (also called ANAME or CNAME flattening) record if your provider offers one.",
+  "settings_domain_status_checking": "Checking…",
+  "settings_domain_state_waiting": "We haven't seen your DNS records yet. Add the records below where you manage your domain, then click Check again.",
+  "settings_domain_state_dnsproblem": "We couldn't confirm your DNS records. Compare each record below with what you saved: the Type, Name and Value must match exactly. Fix anything different, wait a few minutes, then check again.",
+  "settings_domain_state_securing": "Your DNS records are correct. We are now setting up HTTPS so your docs open securely. This usually takes a few minutes; check again shortly.",
+  "settings_domain_state_httpsproblem": "Your DNS records are correct, but HTTPS couldn't be set up yet. If this address goes through a proxy or CDN (for example the orange cloud in Cloudflare), turn that off for this record, then check again.",
+  "settings_domain_primaryhint": "Readers who open your other addresses are sent to the main address.",
+  "settings_domain_toast_waiting": "We haven't seen your DNS records yet. Changes can take up to 24 hours to show up.",
+  "settings_domain_toast_needsattention": "The check found something to fix. Follow the steps shown on this domain.",
+  "settings_domain_toast_removed": "Domain removed",
+  "settings_domain_toast_removeerror": "Couldn't remove the domain. Try again in a few minutes.",
+  "settings_domain_toast_primaryerror": "Couldn't change the main address. Try again.",
+  "settings_domain_toast_demoted": "{domain} is no longer your main address. Choose it again once it's fixed.",
+  "settings_domain_toast_txtmissing": "{domain} is still live, but its TXT record is gone. Add it back so later checks can confirm it's yours.",
+  "settings_domain_technicaldetails": "Technical details",
+  "settings_domain_dns_fullname": "If your provider asks for the full name, use:",
+  "settings_domain_dns_purpose_cname": "Sends visitors of this address to your docs.",
+  "settings_domain_dns_purpose_txt": "Proves that you own this domain.",
   "settings_authentication_title": "প্রমাণীকরণ",
   "settings_authentication_description": "এই প্রকাশিত ডক্স সাইট কে পড়তে পারে তা নিয়ন্ত্রণ করুন।",
   "settings_authentication_mode_label": "ডক্স অ্যাক্সেস",
@@ -1831,6 +1858,8 @@
   "error_signedout": "আপনার সেশন শেষ হয়ে গেছে। চালিয়ে যেতে আবার সাইন ইন করুন।",
   "error_notfound": "এটি আর নেই — হয়তো কেউ মুছে ফেলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
   "error_conflict": "একই সময়ে অন্য কেউ এটি বদলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "এটি খুব বড়। একটি ছোট ফাইল চেষ্টা করুন।",
   "error_ratelimited": "অনেকবার চেষ্টা করা হয়েছে। একটু অপেক্ষা করে আবার চেষ্টা করুন।",
   "notfound_badge": "404",
@@ -1890,6 +1919,12 @@
   "overview_publishfailed_publishing": "প্রকাশ করা হচ্ছে...",
   "overview_publishfailed_queued": "প্রকাশ করা শুরু হল।",
   "overview_publishfailed_error": "প্রকাশ করতে পারেনি।",
+  "overview_live_domainconnecting": "{domain} isn't fully connected yet, so this is your site's default address.",
+  "overview_live_finishsetup": "Finish domain setup",
+  "overview_live_askadmin": "Ask an Admin to finish the domain setup.",
+  "overview_live_loaderror": "Couldn't check whether your site is published.",
+  "overview_publishfailed_unknown": "Something went wrong while publishing. Publish again from the editor. If it keeps failing, contact support and include the technical details.",
+  "overview_publishfailed_technicaldetails": "Technical details",
   "overview_publishfailed_type_brokenlink": "ভাঙা লিঙ্ক",
   "overview_publishfailed_type_grammar": "ব্যাকরণ",
   "settings_footer_badge_title": "\"Nibleaf দিয়ে তৈরি\" ব্যাজ দেখান",
@@ -1932,18 +1967,44 @@
   "site_previous": "আগের",
   "site_next": "পরবর্তী",
   "site_onthispage": "এই পৃষ্ঠায়",
-  "site_minread": "মিনিট পড়া",
-  "site_screenshot": "স্ক্রিনশট",
-  "site_screenshots": "স্ক্রিনশট",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} মিনিট পড়া"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি স্ক্রিনশট"
+      }
+    }
+  ],
   "site_updated": "আপডেট করা হয়েছে",
   "site_notpublishedtitle": "এখনো প্রকাশিত হয়নি",
   "site_notpublishedbody": "এই ডকুমেন্টেশন সাইট প্রকাশ করা হয়নি. এটি লাইভ দেখতে সম্পাদক থেকে এটি প্রকাশ করুন৷",
+  "site_privatetitle": "এই ডকুমেন্টেশন ব্যক্তিগত",
+  "site_privatebody": "এটি পড়তে, ইমেলে পাওয়া আমন্ত্রণ লিংকটি খুলুন।",
+  "site_privatemembers": "এই ওয়ার্কস্পেসের সদস্যরা সাইন ইন করে এটি দেখতে পারেন।",
+  "site_privatesignin": "সাইন ইন করুন",
   "site_pageunavailable": "এই পৃষ্ঠাটি উপলব্ধ নয়।",
   "site_changelogsubtitle": "প্রতিটি আপডেট এই ডক্সে পাঠানো হয়।",
   "site_changelogempty": "এখনও কোন রিলিজ.",
   "site_changelogrelease": "মুক্তি",
-  "site_changelogpage": "পৃষ্ঠা",
-  "site_changelogpages": "পৃষ্ঠাগুলি",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি পৃষ্ঠা"
+      }
+    }
+  ],
   "site_feedbackquestion": "এই পৃষ্ঠাটি কি সহায়ক ছিল?",
   "site_feedbackyes": "হ্যাঁ",
   "site_feedbackno": "না",
@@ -1954,7 +2015,8 @@
   "site_analyticsconsentaccept": "গ্রহণ করুন",
   "site_analyticsconsentdecline": "প্রত্যাখ্যান",
   "site_changelanguage": "ভাষা পরিবর্তন করুন",
-  "site_toggletheme": "থিম টগল করুন",
+  "site_darkmode": "ডার্ক মোড",
+  "site_breadcrumb": "ব্রেডক্রাম্ব",
   "site_togglesubpages": "উপপৃষ্ঠা টগল করুন",
   "site_articledetails": "নিবন্ধ বিবরণ",
   "site_copycode": "কোড কপি করুন",
@@ -3610,5 +3672,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

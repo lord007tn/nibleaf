@@ -51,21 +51,49 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
   async () => {
     const run = randomUUID();
     const userId = `notification-qa-${run}`;
-    const project = vi.spyOn(prisma.project, 'findUnique').mockResolvedValue({ organizationId: run } as never);
+    const fixture = await prisma.organization.create({
+      data: { name: 'Synthetic notification QA', projects: { create: { id: run, name: 'Synthetic', slug: run } } },
+    });
+    const project = vi.spyOn(prisma.project, 'findUnique').mockResolvedValue({ organizationId: fixture.id } as never);
     const org = vi.spyOn(prisma.organization, 'findUnique').mockResolvedValue({ metadata: null } as never);
     const members = vi.spyOn(prisma.member, 'findMany').mockResolvedValue([{ userId, user: { email: 'synthetic@example.invalid' } }] as never);
     const opts = { deploymentId: run, projectId: run, projectName: 'Synthetic', version: 1, outcome: 'ready' } as const;
+    const count = (type?: 'deploy_ready' | 'deploy_failed') => prisma.notification.count({ where: { userId, ...(type ? { type } : {}) } });
     try {
+      // Exactly one bell entry per (deployment, outcome), however many retries race.
       await Promise.all(Array.from({ length: 12 }, () => notifyDeployment(opts)));
-      expect(await prisma.notification.count({ where: { userId } })).toBe(1);
-      await notifyDeployment({ ...opts, outcome: 'failed' });
+      expect(await count('deploy_ready')).toBe(1);
+      await Promise.all(Array.from({ length: 12 }, () => notifyDeployment({ ...opts, outcome: 'failed' })));
+      expect(await count('deploy_failed')).toBe(1);
+      expect(await count()).toBe(2);
+
+      // A publish that fails and is then retried to success announces each outcome once.
+      const retried = { ...opts, deploymentId: `retried-${run}` };
+      await Promise.all(Array.from({ length: 12 }, () => notifyDeployment({ ...retried, outcome: 'failed' })));
+      await Promise.all(Array.from({ length: 12 }, () => notifyDeployment(retried)));
+      expect(await count('deploy_failed')).toBe(2);
+      expect(await count('deploy_ready')).toBe(2);
+
+      // Another deployment is never swallowed by an earlier one's identity.
       await notifyDeployment({ ...opts, deploymentId: `other-${run}` });
-      expect(await prisma.notification.count({ where: { userId } })).toBe(3);
+      expect(await count()).toBe(5);
+
+      // The guard must find a real newer READY row, rather than pass because
+      // all deployment ids in the concurrency checks are synthetic/unmatched.
+      await prisma.deployment.create({ data: { projectId: run, version: 2, status: 'READY', completedAt: new Date() } });
+      const { createJob } = await import('@nibleaf/bullmq');
+      vi.mocked(createJob).mockClear();
+      await notifyDeployment({ ...opts, deploymentId: `superseded-${run}` });
+      expect(await count()).toBe(5);
+      expect(createJob).not.toHaveBeenCalled();
+      expect(await prisma.platformEvent.findUnique({ where: { id: `publish-announced:superseded-${run}` } })).toBeNull();
     } finally {
       project.mockRestore();
       org.mockRestore();
       members.mockRestore();
       await prisma.notification.deleteMany({ where: { userId } });
+      await prisma.platformEvent.deleteMany({ where: { projectId: run, type: 'publish_announced' } });
+      await prisma.organization.delete({ where: { id: fixture.id } });
       await prisma.$disconnect();
     }
   },

@@ -9,15 +9,16 @@ import { site_analyticsconsentprivacy } from './paraglide/messages/site_analytic
 import { site_analyticsconsenttitle } from './paraglide/messages/site_analyticsconsenttitle.js';
 import { site_articledetails } from './paraglide/messages/site_articledetails.js';
 import { site_blog } from './paraglide/messages/site_blog.js';
+import { site_breadcrumb } from './paraglide/messages/site_breadcrumb.js';
 import { site_changelanguage } from './paraglide/messages/site_changelanguage.js';
 import { site_changelog } from './paraglide/messages/site_changelog.js';
 import { site_changelogempty } from './paraglide/messages/site_changelogempty.js';
-import { site_changelogpage } from './paraglide/messages/site_changelogpage.js';
-import { site_changelogpages } from './paraglide/messages/site_changelogpages.js';
+import { site_changelogpagecount } from './paraglide/messages/site_changelogpagecount.js';
 import { site_changelogrelease } from './paraglide/messages/site_changelogrelease.js';
 import { site_changelogsubtitle } from './paraglide/messages/site_changelogsubtitle.js';
 import { site_changeversion } from './paraglide/messages/site_changeversion.js';
 import { site_copymarkdown } from './paraglide/messages/site_copymarkdown.js';
+import { site_darkmode } from './paraglide/messages/site_darkmode.js';
 import { site_defaultversion } from './paraglide/messages/site_defaultversion.js';
 import { site_dismissbanner } from './paraglide/messages/site_dismissbanner.js';
 import { site_docs } from './paraglide/messages/site_docs.js';
@@ -41,7 +42,7 @@ import { site_logo } from './paraglide/messages/site_logo.js';
 import { site_madewith } from './paraglide/messages/site_madewith.js';
 import { site_markdowncopyfailed } from './paraglide/messages/site_markdowncopyfailed.js';
 import { site_menu } from './paraglide/messages/site_menu.js';
-import { site_minread } from './paraglide/messages/site_minread.js';
+import { site_minreadcount } from './paraglide/messages/site_minreadcount.js';
 import { site_next } from './paraglide/messages/site_next.js';
 import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
 import { site_notfoundbody } from './paraglide/messages/site_notfoundbody.js';
@@ -54,10 +55,10 @@ import { site_onthispage } from './paraglide/messages/site_onthispage.js';
 import { site_openmenu } from './paraglide/messages/site_openmenu.js';
 import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.js';
 import { site_previous } from './paraglide/messages/site_previous.js';
+import { site_privatetitle } from './paraglide/messages/site_privatetitle.js';
 import { site_raiseissue } from './paraglide/messages/site_raiseissue.js';
 import { site_reportabuse } from './paraglide/messages/site_reportabuse.js';
-import { site_screenshot } from './paraglide/messages/site_screenshot.js';
-import { site_screenshots } from './paraglide/messages/site_screenshots.js';
+import { site_screenshotcount } from './paraglide/messages/site_screenshotcount.js';
 import { site_search } from './paraglide/messages/site_search.js';
 import { site_searchcancel } from './paraglide/messages/site_searchcancel.js';
 import { site_searchdocumentation } from './paraglide/messages/site_searchdocumentation.js';
@@ -70,12 +71,12 @@ import { site_skiptocontent } from './paraglide/messages/site_skiptocontent.js';
 import { site_sources } from './paraglide/messages/site_sources.js';
 import { site_tags } from './paraglide/messages/site_tags.js';
 import { site_togglesubpages } from './paraglide/messages/site_togglesubpages.js';
-import { site_toggletheme } from './paraglide/messages/site_toggletheme.js';
 import { site_updated } from './paraglide/messages/site_updated.js';
 import { site_version } from './paraglide/messages/site_version.js';
 import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
+import type { SiteAccessMessageKey } from './site-access';
 import type { SiteChatMessageKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
 import type { SiteSearchMessageKey } from './site-search';
@@ -85,6 +86,15 @@ import type { SiteSearchMessageKey } from './site-search';
 const siteVariableMessages = {
   languageCurrent: site_languagecurrent,
   versionCurrent: site_versioncurrent,
+};
+
+/** Counted messages: each locale's variants are keyed by the CLDR plural
+ * category (Arabic has zero/one/two/few/many/other), chosen here with
+ * Intl.PluralRules so callers pass only the number. */
+const sitePluralMessages = {
+  minReadCount: site_minreadcount,
+  screenshotCount: site_screenshotcount,
+  changelogPageCount: site_changelogpagecount,
 };
 
 const siteMessages = {
@@ -100,18 +110,14 @@ const siteMessages = {
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,
-  minRead: site_minread,
-  screenshot: site_screenshot,
-  screenshots: site_screenshots,
   updated: site_updated,
   notPublishedTitle: site_notpublishedtitle,
   notPublishedBody: site_notpublishedbody,
+  privateTitle: site_privatetitle,
   pageUnavailable: site_pageunavailable,
   changelogSubtitle: site_changelogsubtitle,
   changelogEmpty: site_changelogempty,
   changelogRelease: site_changelogrelease,
-  changelogPage: site_changelogpage,
-  changelogPages: site_changelogpages,
   feedbackQuestion: site_feedbackquestion,
   feedbackYes: site_feedbackyes,
   feedbackNo: site_feedbackno,
@@ -135,7 +141,8 @@ const siteMessages = {
   importPages: site_importpages,
   importAdditionalPages: site_importadditionalpages,
   changeLanguage: site_changelanguage,
-  toggleTheme: site_toggletheme,
+  darkMode: site_darkmode,
+  breadcrumb: site_breadcrumb,
   toggleSubpages: site_togglesubpages,
   articleDetails: site_articledetails,
   viewMarkdown: site_viewmarkdown,
@@ -168,22 +175,27 @@ type SiteContractKey = Extract<MessageKey, `site.${string}`>;
  * (apps/app/src/lib/arabic-marketing-copy.ts) so it stays out of every reader's first load. */
 type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
- * (./site-search), article renderer (./site-content) and AI chat panel (./site-chat). */
+ * (./site-search), article renderer (./site-content), AI chat panel (./site-chat)
+ * and private-site screen (./site-access). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteMarketingHeadKey
+  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteAccessMessageKey | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
-type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey>;
+type SitePluralKey = keyof typeof sitePluralMessages;
+type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey | SitePluralKey>;
 type SiteVariables<Key extends SiteVariableKey> = Parameters<(typeof siteVariableMessages)[Key]>[0];
 
-/** Translates a reader key; keys whose message has {variables} require them. */
+/** Translates a reader key; keys whose message has {variables} require them,
+ * and counted keys take the number they count. */
 export interface SiteTranslator {
   <Key extends SiteVariableKey>(key: Key, variables: SiteVariables<Key>): string;
+  (key: SitePluralKey, variables: { count: number }): string;
   (key: SitePlainKey): string;
 }
 
 const isVariableKey = (key: SiteMessageKey): key is SiteVariableKey => key in siteVariableMessages;
+const isPluralKey = (key: SiteMessageKey): key is SitePluralKey => key in sitePluralMessages;
 
 /** Published-site chrome uses its content locale explicitly; it must not mutate
  * the dashboard's Paraglide locale or depend on a browser preference. */
@@ -191,7 +203,13 @@ export function siteT(language?: string): SiteTranslator {
   const locale = resolveLocale(language) ?? 'en';
   // The SiteTranslator overloads check variables at each call site; this
   // dispatch only forwards them.
-  const translate = (key: SiteMessageKey, variables?: MessageVariables): string =>
-    isVariableKey(key) ? (siteVariableMessages[key] as unknown as MessageFn)(variables, { locale }) : siteMessages[key](undefined, { locale });
+  const translate = (key: SiteMessageKey, variables?: MessageVariables): string => {
+    if (isPluralKey(key)) {
+      const count = Number(variables?.count ?? 0);
+      const form = new Intl.PluralRules(locale).select(count);
+      return (sitePluralMessages[key] as unknown as MessageFn)({ count, form }, { locale });
+    }
+    return isVariableKey(key) ? (siteVariableMessages[key] as unknown as MessageFn)(variables, { locale }) : siteMessages[key](undefined, { locale });
+  };
   return translate as SiteTranslator;
 }
