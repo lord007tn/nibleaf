@@ -4,7 +4,7 @@ description: 'حدّد من يستطيع قراءة وثائقك المنشور�
 audience: 'مشرفو المواقع ومطوّرو بوابات العملاء'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, and packages/i18n/messages'
+verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, apps/server/src/env.ts, apps/server/src/middlewares/app.ts, and packages/i18n/messages'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'private-reader-access'
@@ -88,17 +88,39 @@ Content-Type: application/json
   `docs.example.com`. فالمتصفحات لا تحتفظ بملف تعريف الارتباط هذا من طلب يرسله
   موقع غير مرتبط.
 
-وهذا يعني أن وثائقك يجب أن تكون على [نطاق مخصّص](/ar/product/custom-domains) ضمن نطاق
-بوابتك نفسه. فالعنوان المجاني الذي يمنحه Nibleaf لموقعك لا يكون أبدًا على الموقع
-نفسه الذي تتبعه بوابتك، لذا لا يعمل التسليم عليه.
+ويعتمد عنوان الوثائق الذي يحقق هذا الشرط على مكان تشغيل Nibleaf:
+
+- **Nibleaf Cloud:** يجب أن تكون وثائقك على [نطاق مخصّص](/ar/product/custom-domains)
+  ضمن نطاق بوابتك نفسه. فالعنوان الافتراضي الذي يمنحه Nibleaf Cloud لموقعك لا يكون
+  أبدًا على الموقع نفسه الذي تتبعه بوابتك، لذا لا يعمل التسليم عليه.
+- **الاستضافة الذاتية:** يجب أن يكون عنوان الوثائق على الموقع نفسه الذي تتبعه بوابتك.
+  ويصلح لذلك النطاق المخصّص، وكذلك عنوان الموقع المجاني عندما يكون `SITE_BASE_DOMAIN`
+  للنسخة ضمن نطاق بوابتك: فمع `SITE_BASE_DOMAIN=docs.example.com` يكون الموقع على
+  `handbook.docs.example.com` على الموقع نفسه الذي يتبعه `app.example.com`.
 
 ويجب أيضًا السماح لعنوان بوابتك باستدعاء Nibleaf من المتصفح:
 
-- **الاستضافة الذاتية:** يضيف المشغّل عنوان بوابتك إلى `CORS_ALLOWED_ORIGINS` مع
-  الإبقاء على القيم الموجودة والفصل بين العناوين بفواصل، مثل
-  `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://app.example.com`، حيث
-  يمثّل العنوان الأول قيمة `APP_URL` الحالية.
-  واستبدال القيم الموجودة يعطّل طلبات لوحة التحكم نفسها.
+- **الاستضافة الذاتية:** يضيف المشغّل عنوان بوابتك إلى `CORS_ALLOWED_ORIGINS` في
+  خدمة API، مع الإبقاء على القيم الموجودة والفصل بين العناوين بفواصل، مثل
+  `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://admin.example.com,https://app.example.com`
+  لقيمة `APP_URL` وقيمة `ADMIN_URL` والبوابة. وقد يؤدي استبدال القيم الموجودة إلى
+  منع وحدة الإدارة والتطبيقات الأخرى المسموح بها مسبقًا. وإذا لم يُضبط المتغيّر قط،
+  فقيمته الافتراضية في ملف Compose للإنتاج هي `APP_URL`، وفي ملف Coolify هي
+  `https://nibleaf.com` و`https://www.nibleaf.com` و`https://admin.nibleaf.com`؛
+  وهذه القيم الافتراضية ليست في ملف `.env`، لذا أدرج ما تعتمد عليه منها. أما ملف
+  المصدر `docker-compose.yml` فيضبط القيمة دائمًا على `APP_URL` ويتجاهل `.env`،
+  لذا اضبطها على خدمة `server` في `docker-compose.override.yml` (راجع
+  [يرى القرّاء رسالة «طلبات كثيرة جدًا»](/ar/self-hosting/troubleshooting#يرى-القرّاء-رسالة-طلبات-كثيرة-جدًا)
+  لمعرفة طريقة تحميل ملفات التجاوز):
+
+```yaml
+# docker-compose.override.yml, next to the source docker-compose.yml
+services:
+  server:
+    environment:
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+```
+
 - **Nibleaf Cloud:** لا يوجد إعداد لذلك في لوحة التحكم. تواصل مع دعم Nibleaf على
   support@nibleaf.com واذكر موقعك وعنوان بوابتك.
 

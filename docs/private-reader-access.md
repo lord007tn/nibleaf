@@ -4,7 +4,7 @@ description: 'Limit who can read your published docs, invite readers into audien
 audience: 'site admins and customer-portal developers'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, and packages/i18n/messages'
+verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, apps/server/src/env.ts, apps/server/src/middlewares/app.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'private-reader-access'
@@ -93,18 +93,42 @@ For the cookie to stick, the reader's browser must send the request:
   at `docs.example.com`. Browsers don't keep this cookie from a request made by
   an unrelated site.
 
-This means your docs must be on a [custom domain](/product/custom-domains) under
-your portal's own domain. The free address Nibleaf gives your site is never on
-the same site as your portal, so the handoff can't work there.
+Which docs address meets that rule depends on where Nibleaf runs:
+
+- **Nibleaf Cloud:** your docs must be on a [custom domain](/product/custom-domains)
+  under your portal's own domain. The default address Nibleaf Cloud gives your
+  site is never on the same site as your portal, so the handoff can't work there.
+- **Self-hosted:** the docs address must be on the same site as your portal. A
+  custom domain works, and so does the free site address when the instance's
+  `SITE_BASE_DOMAIN` is under your portal's domain: with
+  `SITE_BASE_DOMAIN=docs.example.com`, a site at `handbook.docs.example.com` is
+  on the same site as `app.example.com`.
 
 Your portal's address must also be allowed to call Nibleaf from a browser:
 
 - **Self-hosted:** the operator adds your portal's address to
-  `CORS_ALLOWED_ORIGINS`, keeping the values already there and separating
-  entries with commas, for example
-  `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://app.example.com`, where
-  the first entry is your existing `APP_URL`.
-  Replacing the existing values breaks the dashboard's own requests.
+  `CORS_ALLOWED_ORIGINS` on the API service. Keep the values already there and
+  separate entries with commas, for example
+  `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://admin.example.com,https://app.example.com`
+  for your `APP_URL`, your `ADMIN_URL`, and the portal. Replacing the existing
+  values can lock out the admin console and other apps already allowed. If the
+  variable was never set, the production Compose file defaults it to `APP_URL`,
+  and the Coolify Compose file defaults it to `https://nibleaf.com`,
+  `https://www.nibleaf.com`, and `https://admin.nibleaf.com`; those defaults
+  aren't in your `.env`, so include the ones you rely on. The source
+  `docker-compose.yml` always sets the value to `APP_URL` and ignores `.env`,
+  so set it on `server` in `docker-compose.override.yml` (see
+  [Readers see “Too many requests”](/self-hosting/troubleshooting#readers-see-too-many-requests)
+  for how override files are loaded):
+
+```yaml
+# docker-compose.override.yml, next to the source docker-compose.yml
+services:
+  server:
+    environment:
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+```
+
 - **Nibleaf Cloud:** there is no setting for this in the dashboard. Contact
   Nibleaf support at support@nibleaf.com with your site and your portal's
   address.
