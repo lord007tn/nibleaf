@@ -49,7 +49,10 @@ pnpm --filter @nibleaf/clickhouse migrate
 ```
 
 The command reports failure if another process holds the lock; rerun after it
-finishes. Server and worker `/health` include this independent field:
+finishes. The worker's `/health` and the API's authenticated
+`/health/details` include this independent field. The API route requires the
+`x-nibleaf-internal` header; see
+[Health probes and private diagnostics](/self-hosting/troubleshooting#health-probes-and-private-diagnostics):
 
 ```json
 {"analytics":{"configured":true,"latencyMs":4,"status":"ok"}}
