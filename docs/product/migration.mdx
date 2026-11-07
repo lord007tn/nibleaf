@@ -1,116 +1,141 @@
 ---
-title: 'Migrate documentation into Nibleaf'
-description: 'Plan a reversible migration from Mintlify, GitBook, Ghost, or a public Markdown repository, then verify content parity before changing DNS.'
+title: 'Move your docs to Nibleaf'
+description: 'Import documentation from Mintlify, GitBook, Ghost, or a public Git repository, check that nothing was lost, and switch over without breaking links.'
 audience: 'documentation owners planning a platform migration'
 content_type: 'how-to'
-last_reviewed: '2026-08-23'
-verified_against: 'apps/server/src/actions/importers and apps/server/src/actions/export.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/settings/import-tab.tsx and git-tab.tsx, apps/server/src/actions/importers, apps/server/src/actions/importers/content.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/migration'
 ---
 
-Treat an import as a conversion, not proof of parity. Keep the source available,
-import into a disposable project or branch, account for every warning, and move
-traffic only after a crawl and rollback rehearsal.
+An import copies your existing docs into Nibleaf and converts them. It is a
+conversion, so some things will need checking. Keep your old site running until
+you have checked the new one and know how to switch back.
 
-## Choose the source
+## Before you start
 
-| Source | Nibleaf reads | Review closely |
+- You need to be the site's Owner or an Admin.
+- Record what you have now: the number of pages and images, the navigation
+  structure, redirects, languages, and a few searches that must find a
+  particular page.
+- Keep a copy of the source, and decide who is responsible for the switch and for
+  switching back if needed.
+- Consider importing into a new, separate site first, so you can practice
+  without touching your live docs.
+
+## Choose your source
+
+Open **Settings → Import** and choose a source:
+
+| Source | What Nibleaf brings in | Check closely |
 | --- | --- | --- |
-| Mintlify repository | Public GitHub repository, `docs.json` or `mint.json`, recursive navigation, repository-local JSON references, Markdown/MDX, reachable assets, and supported site settings. | Custom components, redirects, asset URLs, and settings that do not have a Nibleaf equivalent. |
-| GitBook Git Sync repository | Public GitHub repository, `.gitbook.yaml` (`root`, `structure`, `redirects`), `SUMMARY.md` sections and nested pages, page frontmatter, GitBook blocks, reusable content, and `.gitbook/assets` images. | OpenAPI blocks, embeds, adaptive content, external navigation links, and blocks without a Nibleaf equivalent. |
-| Ghost export | Published posts and pages, tags, metadata, feature images, HTML, Lexical or legacy Mobiledoc content, and reachable assets from a JSON export. | Language assignment, custom cards and embeds, routes, redirects, members, and missing remote assets. |
-| Public Git repository | Markdown content from the configured public provider and branch. | Source root, ordering, frontmatter, link rewriting, and later synchronization expectations. |
+| **Mintlify** | From a public GitHub repository: `docs.json` or `mint.json`, navigation, pages, languages, versions, images, and site branding. | Custom components, redirects, and settings that have no Nibleaf equivalent. |
+| **GitBook** | From a public GitBook Git Sync repository on GitHub: `.gitbook.yaml`, `SUMMARY.md` sections, pages, GitBook blocks, images, and redirects. | Embeds, OpenAPI blocks, adaptive content, and blocks with no Nibleaf equivalent. |
+| **Ghost** | From a Ghost JSON export: published posts and pages, tags, images, and metadata. | Language tags, custom cards and embeds, routes, and redirects. |
 
-For a Mintlify import, enter `owner/repository` and an optional branch. Nibleaf
-prefers `docs.json`, resolves repository-local `.json` `$ref` files, reads
-languages, versions, products, tabs, menu items, groups, group roots, and pages relative to that file, imports linked
-internal pages omitted from navigation, and preserves existing target settings
-when they are already populated. Mintlify languages become Nibleaf languages,
-and Mintlify versions become Nibleaf documentation versions backed by branches.
-A single import creates at most 500 navigation
-nodes, including groups and pages; sources above that boundary must be split and
-their totals reconciled before cutover.
+To bring in Markdown files from any other public Git repository, use
+**Settings → Git** and open **Import a public repository instead**. That import
+is one-way. To keep editing in both Git and Nibleaf, see
+[Connect a GitHub repository](/git-authoring).
 
-Nibleaf does not read a private Mintlify Cloud editor URL. If the workspace is
-not backed by a public GitHub repository, export or publish its source to a
-disposable public repository first, remove secrets and private content, and use
-that repository for the migration rehearsal.
+One import can bring in up to 500 navigation entries, counting groups and pages.
+Split larger sources into smaller parts.
 
-For a GitBook import, enter the Git Sync `owner/repository`, an optional
-branch, and, for a repository that syncs several spaces, the folder holding that
-space's `.gitbook.yaml`. `SUMMARY.md` sections become sidebar categories that
-keep GitBook URLs, GitBook blocks map onto Nibleaf components, and
-`.gitbook/assets` images are copied into project storage. Blocks without an
-equivalent (embeds, OpenAPI, adaptive content) are converted or unwrapped and
-reported as warnings.
+### Import from Mintlify
 
-For Ghost, open **Settings → Labs → Import/Export** in Ghost Admin and export
-the site content and settings as JSON. Upload that JSON and provide the
-publication origin, such as `https://docs.example.com`, so Nibleaf can resolve
-both `__GHOST_URL__` and ordinary `/content/images/...` paths before copying
-reachable images into project storage. Nibleaf imports published public posts
-and pages; it skips drafts, scheduled posts, and member, paid, or tier-restricted
-content so protected articles cannot become public documentation. Export `routes.yaml` and redirects
-separately and recreate them in **Settings → Redirects** after checking each
-destination. Member accounts, newsletters, email delivery settings, and theme
-code are outside the content importer.
+1. Enter the **GitHub repository** as `owner/repository`, and a
+   **Branch (optional)**.
+2. Decide whether to turn on **Replace the current draft with this repository**.
+   See [Before you import again](#before-you-import-again): with it on, pages that
+   aren't in the repository are deleted from your draft.
+3. Select **Import**.
 
-## Establish a baseline
+Nibleaf can't read a private Mintlify workspace. If your docs aren't in a public
+GitHub repository, copy them to a temporary public repository first, without any
+secrets or private content.
 
-Before import, record:
+### Import from GitBook
 
-- source revision or export timestamp;
-- page and asset counts;
-- navigation hierarchy and redirects;
-- published and draft counts separately;
-- custom domains, canonical rules, indexing, and language relationships;
-- representative Markdown, MDX components, tables, diagrams, and downloads;
-- search queries that must return a particular page.
+Enter the Git Sync **GitHub repository** and an optional **Branch (optional)**. If
+the repository holds several GitBook spaces, also enter the
+**Space folder (optional)**, for example `docs/guides`. The
+**Replace the current draft with this repository** switch works the same way as
+for Mintlify. Then select **Import**. GitBook sections become sidebar headings and
+keep their GitBook addresses.
 
-Export or back up the source and choose an owner for the cutover and rollback.
+### Import from Ghost
 
-## Import and inspect warnings
+1. Give every Ghost post and page exactly one language tag whose slug matches a
+   language on your Nibleaf site, such as `en` or `ar`. The import stops if a
+   tagged language doesn't exist on the site yet.
+2. In Ghost Admin, open **Settings → Labs → Import/Export** and export your
+   content as JSON.
+3. In Nibleaf, choose the **Export file (.json)** (up to 15 MB) and enter the
+   **Ghost site URL**, including `https://`. Nibleaf uses the address to copy your
+   images.
+4. Select **Import**.
 
-Run the import into a new project or isolated branch. Read the summary and
-resolve every skipped page, asset, duplicated slug, and unsupported setting.
-Nibleaf may retain a source URL when an asset cannot be copied; that is not a
-durable migration if the source will be removed.
+Nibleaf imports published public posts and pages only. It skips drafts, scheduled
+posts, and members-only or paid content, so private articles never become public
+docs. Recreate your Ghost redirects yourself in
+**Settings → Appearance → Redirects**.
 
-Search the imported source for old hostnames, `/docs` prefixes, source-specific
-component tags, embedded credentials, and absolute asset URLs.
+## Read the import summary
 
-## Verify parity
+The summary shows how many pages were imported, updated, and skipped, and how
+many images were copied. Select **Show warnings** and deal with each one.
 
-Use this order:
+If an image couldn't be copied, the page still points to the old address. That
+image will break when you shut down the old site, so download and upload it
+again.
 
-1. Compare page count and hierarchy.
-2. Preview one page for every content pattern.
-3. Compare language and version partitions, menu/product navigation, and Ghost post/page separation.
-4. Crawl internal links, images, downloads, redirects, and missing paths.
-5. Test the baseline search queries in every language.
-6. Open **Settings → Languages** and resolve every missing default-language page.
-7. Inspect title, description, canonical, `hreflang`, robots, sitemap, and
-   structured data on the initial HTML response.
-8. Verify keyboard and mobile behavior on representative pages.
-9. Publish to a non-primary hostname and repeat the checks while signed out.
-10. Rehearse the rollback: restore the source hostname and confirm the source
-    remains writable before scheduling the DNS change.
+Imported pages are drafts. Readers see them only after you publish.
 
-Do not delete the source or change DNS until the replacement has a tested
-rollback copy.
+## Before you import again
 
-## Export and recover
+An import can change or remove pages in your draft:
 
-Create a [Markdown export](/product/exports) before a large migration, before
-closing a workspace, and after the final source freeze. Markdown portability is
-separate from disaster recovery: self-hosters also need synchronized Postgres
-and object-storage backups.
+- **An ordinary import overwrites matching pages.** When an imported page has the
+  same address and place in the navigation as an existing page, Nibleaf replaces
+  that page's title and text with the source version. Edits you made to it in
+  Nibleaf are lost. Pages that aren't in the source are kept, except untouched
+  starter placeholder pages, such as an unedited welcome page, which the import
+  removes.
+- **An import with Replace the current draft with this repository turned on**
+  (Mintlify and GitBook) replaces your whole draft with the repository. Pages
+  that aren't in the repository are deleted.
 
-When GitHub will remain in the workflow, complete the [bidirectional Git
-authoring](/git-authoring) setup in a disposable repository first. Name Git or
-Nibleaf as the authority for each phase, use a dedicated authoring branch, and
-rehearse conflict resolution before allowing both browser and repository edits.
-See [known limitations](/reference/known-limitations) for provider and recovery
-boundaries.
+Before you import again, download your drafts: open
+**Settings → Exports → One-time export** and select
+**Download the original Markdown ZIP**. It contains the text of every page as it
+is now, including changes you haven't published, but not images, so you can bring back any edits an
+import overwrites or deletes. A regular export is not enough here, because it
+contains only your latest published version. Your published site doesn't change
+until you publish.
+
+## Check that nothing was lost
+
+1. Compare the page count and navigation with your notes.
+2. Preview at least one page of each kind: tables, code, images, and components.
+3. Check languages and versions, and open **Settings → Languages** to find
+   missing translations.
+4. Click through links, images, downloads, and redirects.
+5. Run the searches you recorded, in every language.
+6. Check page titles and descriptions.
+7. Check a few pages on a phone and with a keyboard.
+8. Publish, then repeat the checks in a private browser window.
+
+## Switch over
+
+Connect your domain only when everything above works. See
+[Connect a custom domain](/product/custom-domains). Before you switch, make sure
+you can point your domain back to the old site, and don't delete the old site
+until the new one has run without problems for a while.
+
+Before a large migration, download your drafts with
+**Download the original Markdown ZIP**. After the final switch and publish,
+[export a copy](/product/exports) of the published site. If you will keep using GitHub, set up
+[two-way Git editing](/git-authoring) in a test repository first. Check the
+[known limitations](/reference/known-limitations) too.

@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { CloudPage } from '@/components/cloud-marketing';
+import { CloudPage } from '@/components/marketing/cloud-page';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   meta: pageMeta({
     title: 'Nibleaf Cloud — hosted documentation sites',
     description:
-      'Managed Nibleaf hosting: dashboard, database, storage, and upgrades handled for you, with custom domains and analytics. Free in beta, no credit card.',
+      'Managed Nibleaf hosting: dashboard, database, storage and upgrades handled for you. Free during the beta, with no credit card at sign-up.',
     path: '/cloud',
   }),
   links: [{ rel: 'canonical', href: canonicalHref('/cloud') }],

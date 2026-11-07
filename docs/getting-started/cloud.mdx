@@ -1,68 +1,87 @@
 ---
-title: 'Publish your first Cloud project'
-description: 'Create a Nibleaf Cloud workspace, replace the starter content, publish two pages, and verify the reader experience while signed out.'
-audience: 'first-time Nibleaf Cloud workspace owners'
+title: 'Publish your first Cloud site'
+description: 'Create a Nibleaf Cloud account, replace the starter content with two real pages, publish them, and check what readers see while signed out.'
+audience: 'first-time Nibleaf Cloud site owners'
 content_type: 'tutorial'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/routes and apps/server/src/actions/projects.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/routes/(auth)/sign-up.tsx, packages/auth/src/server.ts, apps/app/src/routes/app/projects/$projectId/index.tsx and editor.tsx, apps/app/src/components/project-settings/general-section.tsx, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'getting-started/cloud'
 ---
 
-This tutorial takes you from an empty account to a searchable two-page public
-site. It takes about 10 minutes and does not require a credit card.
+This tutorial takes you from a new account to a small, searchable public site.
+It takes about 10 minutes and does not need a credit card.
 
-## Prerequisites
+## Before you start
 
-You need an email address that can receive a verification message and a modern
-browser. Nibleaf Cloud is a free beta; export important content and do not use
-the tutorial project for confidential material.
+You need an email address you can open, or a Google account, and an up-to-date
+browser. Nibleaf Cloud is free during its beta. Don't use this tutorial site for
+confidential material.
 
-## Create the workspace
+## Create your account
 
 1. Open [Nibleaf sign up](https://nibleaf.com/sign-up).
-2. Create an account and complete email verification when prompted.
-3. Open the workspace and starter documentation project created for the new
-   account.
-4. In project settings, replace the starter project name and description.
+2. Enter your name and email, accept the Terms of Service and Privacy Policy, and
+   select **Create account**. You can also select **Create account with Google**.
+3. If you used email, enter the one-time code we sent you. The code works once
+   and expires after 10 minutes. Select **Resend code** if it doesn't arrive, and
+   check your spam folder.
 
-If the verification message does not arrive, check spam and confirm that the
-address is correct before requesting another message. Use the support path in
-[troubleshooting](/self-hosting/troubleshooting) only for self-hosted mail; for
-Cloud, report the failed delivery without posting account tokens publicly.
+Nibleaf creates a starter site called **Documentation** for you and publishes
+it, so you can see a working example straight away. It has three sample pages:
+**Getting started**, **Installation**, and **Components tour**.
+
+## Name your site
+
+1. Open your site from **Sites**. You land on the **Site overview**.
+2. Open **Settings → General**.
+3. Change **Name** and **Description**, then save. The name appears in the site
+   navigation and the browser tab.
+
+The **Site address** field on the same screen sets your free Nibleaf web
+address. To use your own domain later, see
+[Connect a custom domain](/product/custom-domains).
 
 ## Write two useful pages
 
-Keep the first page short. State what the documentation covers, who it is for,
-and the first result the reader can reach. Add a second page named **First task**
-under a **Getting started** group.
+1. Select **Open editor**.
+2. Open the **Getting started** page and replace the sample text. Say what the
+   docs cover, who they are for, and the first thing a reader can achieve.
+3. Select **New page** to add a second page, for example **First task**. Describe
+   one real task, what the reader should see when it worked, and what to do if
+   it didn't.
+4. On the first page, link to the second page.
 
-Link from the introduction to the new page. The second page should contain one
-real workflow or command, an expected result, and a recovery note. Placeholder
-marketing text does not test navigation or search.
-
-Wait for the editor status to report **Saved** after each substantial edit. See
-[authoring](/product/authoring) for the safe editing workflow and
-[Markdown and MDX](/product/markdown-mdx) for supported syntax.
+The editor saves as you type and shows **Draft saved**. Wait for it before you
+leave the page. To learn the editor, read [Write and organize pages](/product/authoring).
+You can delete the sample pages you don't need from the **More options** menu.
 
 ## Preview and publish
 
-1. Open **Preview** for both pages.
-2. Test the internal link, code blocks, heading outline, and mobile width.
-3. Select **Publish** and wait for the deployment to become ready.
-4. Open the public URL in a private or signed-out browser window.
+1. Select **Preview** to open your draft in a new tab. If nothing opens, allow
+   pop-ups for Nibleaf.
+2. Check the link between your pages and how the pages look on a narrow window.
+3. Select **Publish**. Review the list of changes and select **Publish now**.
+4. Wait until the dialog says **Your changes are live**, then select **View site**.
 
-The publish is successful when the homepage and deep link return content, a
-phrase from the second page appears in search, and an unknown path returns a
-404. A ready deployment badge alone does not test access or routing.
+## Check what readers see
 
-## Prepare to share the site
+Open your site's address in a private browser window, where you are signed out.
+You can find the address on the **Site overview** under **Your site's address**.
+Then:
 
-Review the logo and favicon, top and footer links, call to action, site title,
-description, indexing setting, analytics preference, languages, and public
-domain. Add a custom domain only after the default project URL works.
+- open both pages;
+- search for a phrase from the second page;
+- open a made-up address on your site and confirm you see a "page not found"
+  message.
 
-Cloud remains a beta service. Before moving business-critical documentation,
-read [known limitations](/reference/known-limitations) and export a recovery
-copy of the project.
+When all three work, your site is ready to share.
+
+## Next steps
+
+- [Invite your team](/product/team).
+- [Choose a theme](/product/themes) and add your logo.
+- [Connect a custom domain](/product/custom-domains) when the default address works.
+- Read the [known limitations](/reference/known-limitations) and
+  [export a copy](/product/exports) before you move important documentation.
