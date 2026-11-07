@@ -1,59 +1,48 @@
 import { normalizeType } from '@nibleaf/shared/callouts';
+import {
+  type DocumentationComponentContract,
+  documentationComponentContractEntries,
+  documentationReaderTag,
+} from '@nibleaf/shared/documentation-component-contract';
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import type { Root } from 'mdast';
 import { defaultSchema, type Options as SanitizeOptions } from 'rehype-sanitize';
 
-/** The custom component tag names the renderer understands (lowercased, as
- *  rehype-raw emits them). */
-const COMPONENT_TAGS = [
-  'callout',
-  'note',
-  'warning',
-  'info',
-  'tip',
-  'check',
-  'danger',
-  'card',
-  'cardgroup',
-  'tabs',
-  'tab',
-  'accordion',
-  'accordiongroup',
-  'steps',
-  'step',
-  // `<Frame>` is renamed to `mdxframe` before parsing because `frame` is a real
-  // (deprecated) HTML element that the HTML5 parser drops outside a frameset.
-  'mdxframe',
-  'tooltip',
-  // API-reference + extra docs primitives (Mintlify parity).
-  'paramfield',
-  'responsefield',
-  'expandable',
-  'codegroup',
-  'icon',
-  'update',
-  'columns',
-  'column',
-  'banner',
-  'badge',
-  'button',
-  // Authored documentation structures. File/folder names are display-only;
-  // renderers must never resolve them against a repository or filesystem.
-  'filetree',
-  'folder',
-  'file',
-  'apiexample',
-  'requestexample',
-  'responseexample',
-  'relatedcontent',
-  'relatedcard',
-  // `<mermaid>` is synthesized by rehypeMermaid from ```mermaid fences.
-  'mermaid',
-] as const;
+// Everything component-specific below is derived from the reader contract in
+// @nibleaf/shared/documentation-component-contract; add components there.
+const CONTRACT = documentationComponentContractEntries();
+const readerTagsWhere = (predicate: (component: DocumentationComponentContract) => boolean): string[] =>
+  CONTRACT.flatMap(([tag, component]) => (predicate(component) ? [documentationReaderTag(tag)] : []));
 
-// Block-level component tags whose inner content should be parsed as Markdown.
-const BLOCK_TAGS =
-  'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
+/** The custom component tag names the renderer understands (lowercased, as
+ *  rehype-raw emits them). `<mermaid>` is synthesized by rehypeMermaid from
+ *  ```mermaid fences rather than authored. */
+const COMPONENT_TAGS = [...readerTagsWhere(() => true), 'mermaid'];
+
+/** Sanitizer attributes for one component. HTML parsing lowercases attribute
+ *  names, so camelCase props are also allowed in their lowercase spelling;
+ *  `name` arrives as `dataDisplayName` (see rehypeAuthoredComponentProps). */
+const readerAttributes = (component: DocumentationComponentContract): string[] =>
+  Object.keys(component.attributes).flatMap((name) => {
+    if (name === 'name') return ['dataDisplayName'];
+    return name === name.toLowerCase() ? [name] : [name, name.toLowerCase()];
+  });
+const COMPONENT_ATTRIBUTES: Record<string, string[]> = Object.fromEntries(
+  CONTRACT.flatMap(([tag, component]) => {
+    const attributes = readerAttributes(component);
+    return attributes.length > 0 ? [[documentationReaderTag(tag), attributes]] : [];
+  }),
+);
+
+/** Block-level component tags whose inner content should be parsed as Markdown. */
+export const MDX_BLOCK_TAGS: readonly string[] = CONTRACT.flatMap(([tag, component]) => (component.markdownBody ? [tag] : []));
+const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
+const SELF_CLOSING_TAGS = CONTRACT.flatMap(([tag, component]) => (component.selfClosing ? [tag] : [])).join('|');
+const SELF_CLOSING_TAG = new RegExp(`<(${SELF_CLOSING_TAGS})\\b([^>]*)\\/>`, 'gi');
+/** Authored tags the HTML parser would mistake for real elements, with the name they are parsed under. */
+const READER_RENAMES = CONTRACT.flatMap(([tag, component]) =>
+  component.readerTag ? [{ pattern: new RegExp(`<(\\/?)${tag}\\b`, 'gi'), replacement: `<$1${component.readerTag}` }] : [],
+);
 // Matches an opening block tag on its own line — with or without attributes —
 // but not a self-closing tag (`<Frame />`).
 const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
@@ -122,11 +111,10 @@ export function normalizeMdxBlocks(src: string): string {
   // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
   // group 1 is only the optional closing slash) so the tag stays well-formed.
   const rename = (text: string) =>
-    text
-      .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
+    READER_RENAMES.reduce((renamed, { pattern, replacement }) => renamed.replace(pattern, replacement), text)
       // HTML parsers do not honor XML self-closing syntax for unknown elements.
       // Expand authored atoms so sibling File/RelatedCard nodes cannot nest.
-      .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+      .replace(SELF_CLOSING_TAG, '<$1$2></$1>');
   // Rename outside inline code spans only, so component reference pages keep their examples.
   const prose = (text: string) => {
     let output = '';
@@ -160,29 +148,7 @@ export const sanitizeSchema: SanitizeOptions = {
   attributes: {
     ...defaultSchema.attributes,
     '*': [...(defaultSchema.attributes?.['*'] ?? []), 'className', 'id'],
-    callout: ['type'],
-    card: ['title', 'href', 'icon'],
-    cardgroup: ['cols'],
-    tab: ['title'],
-    accordion: ['title', 'defaultOpen', 'defaultopen'],
-    step: ['title'],
-    mdxframe: ['caption'],
-    tooltip: ['tip'],
-    paramfield: ['path', 'query', 'header', 'body', 'dataDisplayName', 'type', 'required', 'default', 'deprecated'],
-    responsefield: ['dataDisplayName', 'type', 'required', 'default', 'deprecated'],
-    expandable: ['title', 'defaultOpen', 'defaultopen'],
-    icon: ['icon', 'dataDisplayName', 'color', 'size'],
-    update: ['label', 'description'],
-    banner: ['type'],
-    badge: ['color'],
-    button: ['href', 'variant'],
-    folder: ['dataDisplayName', 'defaultOpen', 'defaultopen'],
-    file: ['dataDisplayName', 'icon'],
-    apiexample: ['title'],
-    requestexample: ['title'],
-    responseexample: ['title', 'status'],
-    relatedcontent: ['title'],
-    relatedcard: ['title', 'description', 'href', 'icon'],
+    ...COMPONENT_ATTRIBUTES,
     // `dataTitle`/`dataLang` (hast camelCase → data-title/data-lang) carry the
     // fenced-code header (filename + language). mdast→hast may place a code
     // node's hProperties on the wrapping <pre>, so allow them on both elements.
@@ -284,19 +250,10 @@ export function remarkCodeMeta() {
 
 type HastNode = { type: string; tagName?: string; value?: string; properties?: Record<string, unknown>; children?: HastNode[] };
 
-const DISPLAY_NAME_COMPONENTS = new Set(['folder', 'file', 'paramfield', 'responsefield', 'icon']);
-const STRUCTURAL_COMPONENTS = new Set([
-  'card',
-  'tab',
-  'accordion',
-  'step',
-  'column',
-  'folder',
-  'file',
-  'requestexample',
-  'responseexample',
-  'relatedcard',
-]);
+/** Every component with a `name` prop: the sanitizer strips real `name` attributes (DOM clobbering). */
+const DISPLAY_NAME_COMPONENTS = new Set(readerTagsWhere((component) => 'name' in component.attributes));
+/** Items inside a container, which Markdown may wrap in a paragraph of their own. */
+const STRUCTURAL_COMPONENTS = new Set(readerTagsWhere((component) => component.structural === true));
 
 /** Preserve authored component `name` props without disabling rehype-sanitize's
  * DOM-clobber protection for real HTML name attributes. The display value is

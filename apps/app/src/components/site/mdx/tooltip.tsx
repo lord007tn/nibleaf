@@ -1,0 +1,67 @@
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { containsLink } from './utils';
+
+// ─── Tooltip ────────────────────────────────────────────────────────────────
+
+export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  const pointerOpen = useRef(false);
+  const wrapper = useRef<HTMLSpanElement>(null);
+  const linked = containsLink(children);
+  // A tooltip around a link has no button of its own, so the link carries the
+  // description (added to any it already has).
+  useEffect(() => {
+    if (!tip || !linked) return;
+    const link = wrapper.current?.querySelector<HTMLElement>('a[href], [href]');
+    if (!link) return;
+    const existing = link.getAttribute('aria-describedby');
+    const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
+    ids.add(id);
+    link.setAttribute('aria-describedby', [...ids].join(' '));
+    return () => {
+      if (existing) link.setAttribute('aria-describedby', existing);
+      else link.removeAttribute('aria-describedby');
+    };
+  }, [tip, linked, id]);
+  if (!tip) return <>{children}</>;
+  return (
+    // Hover, focus and Escape are handled on the wrapper so the pointer can move
+    // onto the tip without closing it (WCAG 1.4.13) and focus inside a link works.
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/noNoninteractiveElementInteractions: the focusable trigger is a child; the wrapper only keeps the tip open.
+    <span
+      ref={wrapper}
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          setOpen(false);
+        }
+      }}
+    >
+      {linked ? (
+        children
+      ) : (
+        <button
+          type="button"
+          aria-describedby={id}
+          className="cursor-help underline decoration-dotted underline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+          onPointerDown={() => {
+            pointerOpen.current = open;
+          }}
+          onClick={(event) => setOpen(event.detail ? !pointerOpen.current : !open)}
+        >
+          {children}
+        </button>
+      )}
+      {/* Bottom padding, not a margin, keeps the gap above the trigger hoverable. */}
+      <span id={id} role="tooltip" hidden={!open} className="absolute start-0 bottom-full z-20 w-max max-w-[min(20rem,80vw)] pb-2">
+        <span className="block rounded-md border border-border bg-popover p-2 text-popover-foreground text-sm shadow-md">{tip}</span>
+      </span>
+    </span>
+  );
+}

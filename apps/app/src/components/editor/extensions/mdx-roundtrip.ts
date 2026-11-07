@@ -1,4 +1,5 @@
 import { translateFn } from '@nibleaf/i18n';
+import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -27,7 +28,7 @@ export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string):
   state.closeBlock(node);
 };
 
-type SupportedDefinition = {
+export type SupportedDefinition = {
   canonical: string;
   attrs: string[];
   defaults?: Record<string, string | boolean>;
@@ -35,77 +36,30 @@ type SupportedDefinition = {
   calloutVariant?: string;
 };
 
-/** The single capability inventory used by the source adapter and safety UX. */
-const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = {
-  steps: { canonical: 'Steps', attrs: [] },
-  step: { canonical: 'Step', attrs: ['title'], defaults: { title: '' } },
-  cardgroup: { canonical: 'CardGroup', attrs: ['cols'], defaults: { cols: '2' } },
-  card: { canonical: 'Card', attrs: ['title', 'icon', 'href'], defaults: { title: '', icon: '', href: '' } },
-  tabs: { canonical: 'Tabs', attrs: [] },
-  tab: { canonical: 'Tab', attrs: ['title'], defaults: { title: '' } },
-  accordiongroup: { canonical: 'AccordionGroup', attrs: [] },
-  accordion: {
-    canonical: 'Accordion',
-    attrs: ['title', 'defaultOpen'],
-    defaults: { title: '', defaultOpen: false },
-  },
-  frame: { canonical: 'Frame', attrs: ['caption'], defaults: { caption: '' } },
-  expandable: {
-    canonical: 'Expandable',
-    attrs: ['title', 'defaultOpen'],
-    defaults: { title: '', defaultOpen: false },
-  },
-  update: {
-    canonical: 'Update',
-    attrs: ['label', 'description'],
-    defaults: { label: '', description: '' },
-  },
-  filetree: { canonical: 'FileTree', attrs: [] },
-  folder: {
-    canonical: 'Folder',
-    attrs: ['name', 'defaultOpen'],
-    defaults: { name: '', defaultOpen: false },
-  },
-  file: { canonical: 'File', attrs: ['name', 'icon'], defaults: { name: '', icon: '' } },
-  apiexample: { canonical: 'ApiExample', attrs: ['title'], defaults: { title: '' } },
-  requestexample: { canonical: 'RequestExample', attrs: ['title'], defaults: { title: '' } },
-  responseexample: {
-    canonical: 'ResponseExample',
-    attrs: ['title', 'status'],
-    defaults: { title: '', status: '' },
-  },
-  relatedcontent: { canonical: 'RelatedContent', attrs: ['title'], defaults: { title: '' } },
-  relatedcard: {
-    canonical: 'RelatedCard',
-    attrs: ['title', 'description', 'href', 'icon'],
-    defaults: { title: '', description: '', href: '', icon: '' },
-  },
-  paramfield: {
-    canonical: 'ParamField',
-    attrs: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
-  },
-  responsefield: { canonical: 'ResponseField', attrs: ['name', 'type', 'required', 'default', 'deprecated'] },
-  codegroup: { canonical: 'CodeGroup', attrs: [] },
-  columns: { canonical: 'Columns', attrs: [] },
-  column: { canonical: 'Column', attrs: [] },
-  banner: { canonical: 'Banner', attrs: ['type', 'dismissible'] },
-  badge: { canonical: 'Badge', attrs: ['color'], defaults: { color: '' }, inline: true },
-  button: { canonical: 'Button', attrs: ['href', 'variant'], defaults: { href: '', variant: '' }, inline: true },
-  tooltip: { canonical: 'Tooltip', attrs: ['tip'], defaults: { tip: '' }, inline: true },
-  icon: {
-    canonical: 'Icon',
-    attrs: ['icon', 'name', 'color', 'size'],
-    defaults: { icon: '', name: '', color: '', size: '' },
-    inline: true,
-  },
-  callout: { canonical: 'Callout', attrs: ['type'], calloutVariant: 'note' },
-  note: { canonical: 'Note', attrs: [], calloutVariant: 'note' },
-  tip: { canonical: 'Tip', attrs: [], calloutVariant: 'tip' },
-  check: { canonical: 'Check', attrs: [], calloutVariant: 'check' },
-  warning: { canonical: 'Warning', attrs: [], calloutVariant: 'warning' },
-  danger: { canonical: 'Danger', attrs: [], calloutVariant: 'danger' },
-  info: { canonical: 'Info', attrs: [], calloutVariant: 'info' },
+const supportedDefinition = (component: DocumentationComponentDefinition, tag: string): SupportedDefinition => {
+  const defaults = Object.fromEntries(
+    component.attributes.flatMap((attribute) =>
+      attribute.default === undefined
+        ? []
+        : [[attribute.name, typeof attribute.default === 'number' ? String(attribute.default) : attribute.default]],
+    ),
+  );
+  return {
+    canonical: tag,
+    attrs: component.attributes.map((attribute) => attribute.name),
+    ...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+    ...(component.kind === 'inline' ? { inline: true } : {}),
+    ...(component.reader?.callout ? { calloutVariant: component.reader.callout } : {}),
+  };
 };
+
+/** The single capability inventory used by the source adapter and safety UX,
+ *  keyed by lowercase tag and derived from the documentation component registry. */
+export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = Object.fromEntries(
+  DOCUMENTATION_COMPONENTS.flatMap((component) =>
+    component.tag ? [[component.tag.toLowerCase(), supportedDefinition(component, component.tag)]] : [],
+  ),
+);
 
 interface TagToken {
   start: number;

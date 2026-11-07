@@ -1,8 +1,21 @@
+import { CALLOUT_TYPES, type CalloutType } from './callouts';
+import {
+  DOCUMENTATION_COMPONENT_CONTRACT,
+  type DocumentationComponentAttributeName,
+  type DocumentationComponentAttributeType,
+  type DocumentationComponentContract,
+  type DocumentationComponentTag,
+  documentationReaderTag,
+} from './documentation-component-contract';
+
+export type { DocumentationComponentAttributeType, DocumentationComponentTag } from './documentation-component-contract';
+
 export const DOCUMENTATION_COMPONENT_SCHEMA_VERSION = 1 as const;
 
 export type DocumentationComponentCategory = 'structure' | 'emphasis' | 'media' | 'api' | 'navigation' | 'inline';
 export type DocumentationComponentSyntax = 'mdx' | 'markdown' | 'fence';
 
+/** One entry of the versioned public catalog (`DOCUMENTATION_COMPONENT_CATALOG`). */
 export interface DocumentationComponentCapability {
   id: string;
   syntax: DocumentationComponentSyntax;
@@ -15,251 +28,230 @@ export interface DocumentationComponentCapability {
   interactive: boolean;
 }
 
+export interface DocumentationComponentAttribute {
+  /** Authored spelling (`defaultOpen`, not `defaultopen`). */
+  name: string;
+  type: DocumentationComponentAttributeType;
+  /** Choices for an `enum` attribute. */
+  values?: readonly string[];
+  /** Value assumed when the attribute is absent. The editor round-trip compares
+   *  edits against it, so it must match what the editor node defaults to;
+   *  leaving it out means the empty string. */
+  default?: string | boolean | number;
+  /** Preserved by the editor round-trip only: never sanitized for the reader
+   *  and never listed in the public catalog. */
+  editorOnly?: boolean;
+}
+
+/** How the public reader treats an MDX component (see `DocumentationComponentContract`). */
+export interface DocumentationComponentReader {
+  /** Element name after HTML parsing (`mdxframe` for `<Frame>`). */
+  tag: string;
+  /** `name` travels as `dataDisplayName` through the sanitizer. */
+  displayName: boolean;
+  structural: boolean;
+  markdownBody: boolean;
+  callout?: CalloutType;
+}
+
+/** The full registry entry: everything the editor, reader and catalog know about a component. */
+export interface DocumentationComponentDefinition {
+  id: string;
+  syntax: DocumentationComponentSyntax;
+  tag?: DocumentationComponentTag;
+  category: DocumentationComponentCategory;
+  kind: 'block' | 'inline';
+  selfClosing: boolean;
+  attributes: readonly DocumentationComponentAttribute[];
+  allowedChildren?: readonly DocumentationComponentTag[];
+  visualEditor: boolean;
+  interactive: boolean;
+  /** Present for MDX components. */
+  reader?: DocumentationComponentReader;
+  /** False keeps the entry out of the versioned public catalog. */
+  catalog: boolean;
+}
+
+type AttributeDetails = Pick<DocumentationComponentAttribute, 'values' | 'default'>;
+
+interface ComponentDetails<Tag extends DocumentationComponentTag> {
+  id: string;
+  category: DocumentationComponentCategory;
+  visualEditor: boolean;
+  interactive: boolean;
+  allowedChildren?: readonly DocumentationComponentTag[];
+  /** Enum values and defaults, keyed by an attribute the contract declares. */
+  attributes?: { readonly [Name in DocumentationComponentAttributeName<Tag>]?: AttributeDetails };
+  /** Attributes the editor round-trips that are not part of the portable contract. */
+  editorOnlyAttributes?: Readonly<Record<string, AttributeDetails & { type: DocumentationComponentAttributeType }>>;
+  /** Mintlify aliases outside the versioned public catalog. */
+  catalog?: false;
+}
+
+const mdx = <Tag extends DocumentationComponentTag>(tag: Tag, details: ComponentDetails<Tag>): DocumentationComponentDefinition => {
+  const contract: DocumentationComponentContract = DOCUMENTATION_COMPONENT_CONTRACT[tag];
+  const attributeDetails = (details.attributes ?? {}) as Readonly<Record<string, AttributeDetails>>;
+  const attributes: DocumentationComponentAttribute[] = [
+    ...Object.entries(contract.attributes).map(([name, type]) => ({ name, type, ...attributeDetails[name] })),
+    ...Object.entries(details.editorOnlyAttributes ?? {}).map(([name, attribute]) => ({ name, ...attribute, editorOnly: true })),
+  ];
+  return {
+    id: details.id,
+    syntax: 'mdx',
+    tag,
+    category: details.category,
+    kind: contract.kind,
+    selfClosing: contract.selfClosing ?? false,
+    attributes,
+    ...(details.allowedChildren ? { allowedChildren: details.allowedChildren } : {}),
+    visualEditor: details.visualEditor,
+    interactive: details.interactive,
+    reader: {
+      tag: documentationReaderTag(tag),
+      displayName: 'name' in contract.attributes,
+      structural: contract.structural ?? false,
+      markdownBody: contract.markdownBody ?? false,
+      ...(contract.callout ? { callout: contract.callout } : {}),
+    },
+    catalog: details.catalog ?? true,
+  };
+};
+
+/** Plain Markdown / fenced syntax the visual editor also authors. */
+const native = (
+  entry: Pick<DocumentationComponentDefinition, 'id' | 'syntax' | 'category' | 'attributes' | 'visualEditor' | 'interactive'>,
+): DocumentationComponentDefinition => ({ ...entry, kind: 'block', selfClosing: false, catalog: true });
+
+/**
+ * The single registry of documentation components, in public catalog order.
+ * The reader's sanitizer and parsing rules, the editor's MDX round-trip, and the
+ * public catalog are all derived from it (plus the reader contract it extends).
+ */
+export const DOCUMENTATION_COMPONENTS: readonly DocumentationComponentDefinition[] = [
+  mdx('Callout', { id: 'callout', category: 'emphasis', visualEditor: true, interactive: false, attributes: { type: { values: CALLOUT_TYPES } } }),
+  mdx('Note', { id: 'note', category: 'emphasis', visualEditor: true, interactive: false }),
+  mdx('Tip', { id: 'tip', category: 'emphasis', visualEditor: true, interactive: false }),
+  mdx('Check', { id: 'check', category: 'emphasis', visualEditor: true, interactive: false }),
+  mdx('Warning', { id: 'warning', category: 'emphasis', visualEditor: true, interactive: false }),
+  mdx('Danger', { id: 'danger', category: 'emphasis', visualEditor: true, interactive: false }),
+  // Supported by the editor and reader but not (yet) part of the versioned v1 catalog.
+  mdx('Info', { id: 'info', category: 'emphasis', visualEditor: true, interactive: false, catalog: false }),
+  mdx('CardGroup', {
+    id: 'card-group',
+    category: 'navigation',
+    visualEditor: true,
+    interactive: false,
+    allowedChildren: ['Card'],
+    attributes: { cols: { values: ['1', '2', '3', '4'], default: 2 } },
+  }),
+  mdx('Card', { id: 'card', category: 'navigation', visualEditor: true, interactive: true }),
+  mdx('Steps', { id: 'steps', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Step'] }),
+  mdx('Step', { id: 'step', category: 'structure', visualEditor: true, interactive: false }),
+  mdx('Tabs', { id: 'tabs', category: 'structure', visualEditor: true, interactive: true, allowedChildren: ['Tab'] }),
+  mdx('Tab', { id: 'tab', category: 'structure', visualEditor: true, interactive: false }),
+  mdx('AccordionGroup', { id: 'accordion-group', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Accordion'] }),
+  mdx('Accordion', {
+    id: 'accordion',
+    category: 'structure',
+    visualEditor: true,
+    interactive: true,
+    attributes: { defaultOpen: { default: false } },
+  }),
+  mdx('CodeGroup', { id: 'code-group', category: 'api', visualEditor: true, interactive: true }),
+  mdx('Frame', { id: 'frame', category: 'media', visualEditor: true, interactive: false }),
+  native({
+    id: 'image',
+    syntax: 'markdown',
+    category: 'media',
+    attributes: [
+      { name: 'src', type: 'url' },
+      { name: 'alt', type: 'string' },
+      { name: 'title', type: 'string' },
+    ],
+    visualEditor: true,
+    interactive: false,
+  }),
+  native({ id: 'table', syntax: 'markdown', category: 'structure', attributes: [], visualEditor: true, interactive: false }),
+  native({
+    id: 'code-block',
+    syntax: 'fence',
+    category: 'api',
+    attributes: [
+      { name: 'language', type: 'string' },
+      { name: 'title', type: 'string' },
+    ],
+    visualEditor: true,
+    interactive: true,
+  }),
+  native({ id: 'mermaid', syntax: 'fence', category: 'media', attributes: [], visualEditor: true, interactive: true }),
+  mdx('ParamField', { id: 'param-field', category: 'api', visualEditor: true, interactive: false }),
+  mdx('ResponseField', { id: 'response-field', category: 'api', visualEditor: true, interactive: false }),
+  mdx('Expandable', { id: 'expandable', category: 'api', visualEditor: true, interactive: true, attributes: { defaultOpen: { default: false } } }),
+  mdx('Columns', { id: 'columns', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Column'] }),
+  mdx('Column', { id: 'column', category: 'structure', visualEditor: true, interactive: false }),
+  mdx('Banner', {
+    id: 'banner',
+    category: 'emphasis',
+    visualEditor: true,
+    interactive: false,
+    attributes: { type: { values: ['info', 'warning'] } },
+    editorOnlyAttributes: { dismissible: { type: 'boolean' } },
+  }),
+  mdx('Badge', { id: 'badge', category: 'inline', visualEditor: true, interactive: false }),
+  mdx('Button', {
+    id: 'button',
+    category: 'inline',
+    visualEditor: true,
+    interactive: true,
+    attributes: { variant: { values: ['default', 'outline'] } },
+  }),
+  mdx('Tooltip', { id: 'tooltip', category: 'inline', visualEditor: true, interactive: true }),
+  mdx('Icon', { id: 'icon', category: 'inline', visualEditor: true, interactive: false }),
+  mdx('Update', { id: 'update', category: 'emphasis', visualEditor: true, interactive: false }),
+  mdx('FileTree', { id: 'file-tree', category: 'structure', visualEditor: true, interactive: false, allowedChildren: ['Folder', 'File'] }),
+  mdx('Folder', {
+    id: 'folder',
+    category: 'structure',
+    visualEditor: true,
+    interactive: true,
+    allowedChildren: ['Folder', 'File'],
+    attributes: { defaultOpen: { default: false } },
+  }),
+  mdx('File', { id: 'file', category: 'structure', visualEditor: true, interactive: false }),
+  mdx('ApiExample', {
+    id: 'api-example',
+    category: 'api',
+    visualEditor: true,
+    interactive: false,
+    allowedChildren: ['RequestExample', 'ResponseExample'],
+  }),
+  mdx('RequestExample', { id: 'request-example', category: 'api', visualEditor: true, interactive: false }),
+  mdx('ResponseExample', { id: 'response-example', category: 'api', visualEditor: true, interactive: false }),
+  mdx('RelatedContent', { id: 'related-content', category: 'navigation', visualEditor: true, interactive: false, allowedChildren: ['RelatedCard'] }),
+  mdx('RelatedCard', { id: 'related-card', category: 'navigation', visualEditor: true, interactive: true }),
+];
+
+const toCapability = (component: DocumentationComponentDefinition): DocumentationComponentCapability => ({
+  id: component.id,
+  syntax: component.syntax,
+  ...(component.tag ? { tag: component.tag } : {}),
+  category: component.category,
+  kind: component.kind,
+  attributes: component.attributes.filter((attribute) => !attribute.editorOnly).map((attribute) => attribute.name),
+  ...(component.allowedChildren ? { allowedChildren: component.allowedChildren } : {}),
+  visualEditor: component.visualEditor,
+  interactive: component.interactive,
+});
+
 /**
  * Public, code-only authoring contract shared by the editor, renderer, exports,
  * and capability adapters. Entries describe authored syntax only: consumers
  * must never interpret File/Folder names as repository paths or fetch component
  * attributes over the network.
  */
-export const DOCUMENTATION_COMPONENT_CATALOG = [
-  { id: 'callout', syntax: 'mdx', tag: 'Callout', category: 'emphasis', kind: 'block', attributes: ['type'], visualEditor: true, interactive: false },
-  { id: 'note', syntax: 'mdx', tag: 'Note', category: 'emphasis', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'tip', syntax: 'mdx', tag: 'Tip', category: 'emphasis', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'check', syntax: 'mdx', tag: 'Check', category: 'emphasis', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'warning', syntax: 'mdx', tag: 'Warning', category: 'emphasis', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'danger', syntax: 'mdx', tag: 'Danger', category: 'emphasis', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  {
-    id: 'card-group',
-    syntax: 'mdx',
-    tag: 'CardGroup',
-    category: 'navigation',
-    kind: 'block',
-    attributes: ['cols'],
-    allowedChildren: ['Card'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'card',
-    syntax: 'mdx',
-    tag: 'Card',
-    category: 'navigation',
-    kind: 'block',
-    attributes: ['title', 'icon', 'href'],
-    visualEditor: true,
-    interactive: true,
-  },
-  {
-    id: 'steps',
-    syntax: 'mdx',
-    tag: 'Steps',
-    category: 'structure',
-    kind: 'block',
-    attributes: [],
-    allowedChildren: ['Step'],
-    visualEditor: true,
-    interactive: false,
-  },
-  { id: 'step', syntax: 'mdx', tag: 'Step', category: 'structure', kind: 'block', attributes: ['title'], visualEditor: true, interactive: false },
-  {
-    id: 'tabs',
-    syntax: 'mdx',
-    tag: 'Tabs',
-    category: 'structure',
-    kind: 'block',
-    attributes: [],
-    allowedChildren: ['Tab'],
-    visualEditor: true,
-    interactive: true,
-  },
-  { id: 'tab', syntax: 'mdx', tag: 'Tab', category: 'structure', kind: 'block', attributes: ['title'], visualEditor: true, interactive: false },
-  {
-    id: 'accordion-group',
-    syntax: 'mdx',
-    tag: 'AccordionGroup',
-    category: 'structure',
-    kind: 'block',
-    attributes: [],
-    allowedChildren: ['Accordion'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'accordion',
-    syntax: 'mdx',
-    tag: 'Accordion',
-    category: 'structure',
-    kind: 'block',
-    attributes: ['title', 'defaultOpen'],
-    visualEditor: true,
-    interactive: true,
-  },
-  { id: 'code-group', syntax: 'mdx', tag: 'CodeGroup', category: 'api', kind: 'block', attributes: [], visualEditor: true, interactive: true },
-  { id: 'frame', syntax: 'mdx', tag: 'Frame', category: 'media', kind: 'block', attributes: ['caption'], visualEditor: true, interactive: false },
-  { id: 'image', syntax: 'markdown', category: 'media', kind: 'block', attributes: ['src', 'alt', 'title'], visualEditor: true, interactive: false },
-  { id: 'table', syntax: 'markdown', category: 'structure', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'code-block', syntax: 'fence', category: 'api', kind: 'block', attributes: ['language', 'title'], visualEditor: true, interactive: true },
-  { id: 'mermaid', syntax: 'fence', category: 'media', kind: 'block', attributes: [], visualEditor: true, interactive: true },
-  {
-    id: 'param-field',
-    syntax: 'mdx',
-    tag: 'ParamField',
-    category: 'api',
-    kind: 'block',
-    attributes: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'response-field',
-    syntax: 'mdx',
-    tag: 'ResponseField',
-    category: 'api',
-    kind: 'block',
-    attributes: ['name', 'type', 'required', 'default', 'deprecated'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'expandable',
-    syntax: 'mdx',
-    tag: 'Expandable',
-    category: 'api',
-    kind: 'block',
-    attributes: ['title', 'defaultOpen'],
-    visualEditor: true,
-    interactive: true,
-  },
-  {
-    id: 'columns',
-    syntax: 'mdx',
-    tag: 'Columns',
-    category: 'structure',
-    kind: 'block',
-    attributes: [],
-    allowedChildren: ['Column'],
-    visualEditor: true,
-    interactive: false,
-  },
-  { id: 'column', syntax: 'mdx', tag: 'Column', category: 'structure', kind: 'block', attributes: [], visualEditor: true, interactive: false },
-  { id: 'banner', syntax: 'mdx', tag: 'Banner', category: 'emphasis', kind: 'block', attributes: ['type'], visualEditor: true, interactive: false },
-  { id: 'badge', syntax: 'mdx', tag: 'Badge', category: 'inline', kind: 'inline', attributes: ['color'], visualEditor: true, interactive: false },
-  {
-    id: 'button',
-    syntax: 'mdx',
-    tag: 'Button',
-    category: 'inline',
-    kind: 'inline',
-    attributes: ['href', 'variant'],
-    visualEditor: true,
-    interactive: true,
-  },
-  { id: 'tooltip', syntax: 'mdx', tag: 'Tooltip', category: 'inline', kind: 'inline', attributes: ['tip'], visualEditor: true, interactive: true },
-  {
-    id: 'icon',
-    syntax: 'mdx',
-    tag: 'Icon',
-    category: 'inline',
-    kind: 'inline',
-    attributes: ['icon', 'name', 'color', 'size'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'update',
-    syntax: 'mdx',
-    tag: 'Update',
-    category: 'emphasis',
-    kind: 'block',
-    attributes: ['label', 'description'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'file-tree',
-    syntax: 'mdx',
-    tag: 'FileTree',
-    category: 'structure',
-    kind: 'block',
-    attributes: [],
-    allowedChildren: ['Folder', 'File'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'folder',
-    syntax: 'mdx',
-    tag: 'Folder',
-    category: 'structure',
-    kind: 'block',
-    attributes: ['name', 'defaultOpen'],
-    allowedChildren: ['Folder', 'File'],
-    visualEditor: true,
-    interactive: true,
-  },
-  {
-    id: 'file',
-    syntax: 'mdx',
-    tag: 'File',
-    category: 'structure',
-    kind: 'block',
-    attributes: ['name', 'icon'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'api-example',
-    syntax: 'mdx',
-    tag: 'ApiExample',
-    category: 'api',
-    kind: 'block',
-    attributes: ['title'],
-    allowedChildren: ['RequestExample', 'ResponseExample'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'request-example',
-    syntax: 'mdx',
-    tag: 'RequestExample',
-    category: 'api',
-    kind: 'block',
-    attributes: ['title'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'response-example',
-    syntax: 'mdx',
-    tag: 'ResponseExample',
-    category: 'api',
-    kind: 'block',
-    attributes: ['title', 'status'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'related-content',
-    syntax: 'mdx',
-    tag: 'RelatedContent',
-    category: 'navigation',
-    kind: 'block',
-    attributes: ['title'],
-    allowedChildren: ['RelatedCard'],
-    visualEditor: true,
-    interactive: false,
-  },
-  {
-    id: 'related-card',
-    syntax: 'mdx',
-    tag: 'RelatedCard',
-    category: 'navigation',
-    kind: 'block',
-    attributes: ['title', 'description', 'href', 'icon'],
-    visualEditor: true,
-    interactive: true,
-  },
-] as const satisfies readonly DocumentationComponentCapability[];
+export const DOCUMENTATION_COMPONENT_CATALOG: readonly DocumentationComponentCapability[] = DOCUMENTATION_COMPONENTS.filter(
+  (component) => component.catalog,
+).map(toCapability);
 
 export const documentationComponentTags = (): readonly string[] =>
   DOCUMENTATION_COMPONENT_CATALOG.flatMap((component: DocumentationComponentCapability) => (component.tag ? [component.tag] : []));

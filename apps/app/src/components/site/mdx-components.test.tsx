@@ -3,7 +3,10 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Accordion, CodeGroup, Expandable, Tab, Tabs } from './mdx-components';
+import { Accordion } from './mdx/accordion';
+import { CodeGroup } from './mdx/code-group';
+import { Expandable } from './mdx/fields';
+import { Tab, Tabs } from './mdx/tabs';
 
 describe('interactive MDX components', () => {
   let container: HTMLDivElement;

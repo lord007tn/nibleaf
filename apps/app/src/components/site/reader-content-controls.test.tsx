@@ -4,7 +4,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import rehypeRaw from 'rehype-raw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownRenderer } from '../markdown';
-import { Step, Steps, Tooltip } from './mdx-components';
+import RichMarkdown from '../markdown-rich';
+import { Step, Steps } from './mdx/steps';
+import { Tooltip } from './mdx/tooltip';
 import { hasIcon, PageIcon } from './page-icon';
 import { ContentImage } from './reader-content-controls';
 
@@ -182,12 +184,12 @@ describe('reader content ergonomics', () => {
   it('keeps centered images centered and lets a Frame hold a light/dark image pair', async () => {
     await act(async () =>
       root.render(
-        <MarkdownRenderer
+        // Authored component tags render through the rich renderer, which owns their renderers.
+        <RichMarkdown
           content={
             '<img src="/centered.png" alt="Centered" class="block mx-auto" />\n\n<Frame>\n\n<img src="/light.png" alt="Light" class="block dark:hidden" />\n<img src="/dark.png" alt="Dark" class="hidden dark:block" />\n\n</Frame>'
           }
           site={{ projectId: 'test', lang: 'en' }}
-          extraRehypePlugins={[rehypeRaw]}
         />,
       ),
     );

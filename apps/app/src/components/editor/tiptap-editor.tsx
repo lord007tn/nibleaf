@@ -57,7 +57,7 @@ import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
 import { ImageUpload, uploadEditorImage } from './extensions/image-upload';
-import { mdxNodes } from './extensions/mdx-nodes';
+import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
