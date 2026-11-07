@@ -70,9 +70,10 @@ const draftFingerprint = async (db: Prisma.TransactionClient, projectId: string,
     .digest('hex');
 };
 
-/** After main's pages are replaced (a promote or a replacing import), every
- *  other version's baseline names main page ids that no longer exist. Forget
- *  them in the same transaction, so those versions get `branch:baseline_missing`
+/** After main's pages are replaced (a replacing import; a promote merges in
+ *  place and keeps main's page ids, so it doesn't call this), every other
+ *  version's baseline names main page ids that no longer exist. Forget them in
+ *  the same transaction, so those versions get `branch:baseline_missing`
  *  instead of a list of every page as deleted. `exceptId` is the version being
  *  consumed, which is deleted anyway. */
 const forgetOtherForkPoints = (tx: Prisma.TransactionClient, projectId: string, exceptId: string) =>
