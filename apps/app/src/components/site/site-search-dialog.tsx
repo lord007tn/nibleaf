@@ -280,7 +280,8 @@ export default function SiteSearchDialog({
   // Keyword search is intentionally language-independent. Omitting `language`
   // asks the public endpoint to search every enabled language in the published
   // snapshot; each hit carries its own language for correct localized routing.
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), undefined, selectedVersion, maxResults, open);
+  // `prefer` ranks the reader's language first, so it survives the result limit.
+  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), { prefer: lang, version: selectedVersion, limit: maxResults, enabled: open });
   // Pending: what's on screen doesn't answer the typed text yet. While the next
   // query loads, the last results stay in place, dimmed and inert (the query
   // keeps previous data), so the list doesn't flash empty on every keystroke.

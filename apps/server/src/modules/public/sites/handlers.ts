@@ -32,6 +32,8 @@ const siteQuery = z.object({ lang: z.string().optional(), version: z.string().op
 const pageQuery = z.object({ path: z.string().default(''), lang: z.string().optional(), version: z.string().optional() });
 const siteSearchQuery = searchQuery.extend({
   lang: z.string().optional(),
+  // The reader's language: ranks it first without narrowing the search to it.
+  prefer: z.string().optional(),
   version: z.string().optional(),
   sessionId: z.string().max(128).optional(),
   consentState: consentStateSchema.default('unknown'),
@@ -134,10 +136,10 @@ const app = new Hono<HonoEnv>()
     return ctx.json(data.document, 200);
   })
   .get('/:id/search', ...sitesRoutes.search, validator('query', siteSearchQuery), async (ctx) => {
-    const { q, limit, lang, version, sessionId, consentState } = ctx.req.valid('query');
+    const { q, limit, lang, prefer, version, sessionId, consentState } = ctx.req.valid('query');
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
-    return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version, { sessionId, consentState }) }, 200);
+    return ctx.json({ data: await searchSite(ctx.req.param('id'), q, lang, limit, version, { sessionId, consentState }, prefer) }, 200);
   })
   .post('/:id/answer', ...sitesRoutes.answer, validator('json', searchAnswerBody), async (ctx) => {
     const { q, lang, version } = ctx.req.valid('json');

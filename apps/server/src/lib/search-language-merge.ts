@@ -24,7 +24,9 @@ export const mergeLanguageSearchHits = <Hit extends SearchHit>(
   preferredLanguage?: string,
 ): Array<Hit & { language: string }> => {
   const ranked = perLanguage.flatMap(({ language, result }) => result.hits.map((hit, rank) => ({ hit: { ...hit, language }, rank })));
-  const preferred = (language: string) => (language === preferredLanguage ? 0 : 1);
+  const base = (code?: string) => code?.toLowerCase().split(/[-_]/)[0];
+  // Base languages compare, so a reader in `ar` matches an `ar-SA` site language.
+  const preferred = (language: string) => (preferredLanguage && base(language) === base(preferredLanguage) ? 0 : 1);
   const survivors = [...ranked]
     .sort(
       (left, right) =>

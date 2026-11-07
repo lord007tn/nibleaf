@@ -164,6 +164,9 @@ describe('published reader search', () => {
     expect(field?.getAttribute('aria-controls')).toBe(list?.id);
     await typeQuery('setup');
     expect(list?.querySelector('[role="option"]')?.textContent).toContain('Setup guide');
+    // Every language is searched; the reader's own is preferred in the ranking.
+    expect(mocks.search).toHaveBeenLastCalledWith('docs', expect.any(String), expect.objectContaining({ prefer: lang }));
+    expect(mocks.search.mock.lastCall?.[2]).not.toHaveProperty('language');
   });
 
   it('closes with a keyboard Esc hint or a plain Cancel action instead of an icon-only X', async () => {

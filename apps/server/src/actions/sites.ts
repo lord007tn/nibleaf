@@ -38,7 +38,12 @@ import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-c
 import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
 import { getCachedIndex } from '@/lib/search-cache';
-import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from '@/lib/search-configuration';
+import {
+  resolvePreferredSearchLanguage,
+  resolvePublishedSearchContext,
+  resolvePublishedSearchLanguages,
+  resolvePublishedSearchRequest,
+} from '@/lib/search-configuration';
 import { mergeLanguageSearchHits } from '@/lib/search-language-merge';
 import { matchedSearchSection, type SearchHitSection } from '@/lib/search-sections';
 import { trackProjectEvent, trackProjectEvents } from './analytics';
@@ -565,6 +570,8 @@ export const searchSite = async (
   limit?: number,
   version?: string,
   analytics: { sessionId?: string; consentState?: ConsentState } = {},
+  /** The reader's language: ranked first, without narrowing the search. */
+  prefer?: string,
 ) => {
   const searchId = randomUUID();
   const analyticsStartedAt = performance.now();
@@ -604,7 +611,11 @@ export const searchSite = async (
     }),
   );
   const pageById = new Map(versionPages.map((page) => [page.id, page]));
-  const hits: LocalizedSearchHit[] = mergeLanguageSearchHits(perLanguage, resultLimit, request.language).map((hit) => {
+  const hits: LocalizedSearchHit[] = mergeLanguageSearchHits(
+    perLanguage,
+    resultLimit,
+    resolvePreferredSearchLanguage(snapshot, prefer) ?? request.language,
+  ).map((hit) => {
     // Point the reader at the matching heading when the match is inside a
     // section, previewing that section rather than the page's first mention.
     const page = pageById.get(hit.id);
