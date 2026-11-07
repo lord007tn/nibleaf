@@ -382,6 +382,7 @@
   "editor_ai_summarizing": "Summarizing…",
   "editor_ai_outlining": "Building an outline…",
   "editor_ai_drafting": "Drafting a section…",
+  "editor_ai_busyotherpage": "Finishing a draft for another page…",
   "editor_ai_empty": "The assistant returned nothing to add.",
   "editor_ai_outlineadded": "Outline added.",
   "editor_ai_sectiondrafted": "Section drafted.",

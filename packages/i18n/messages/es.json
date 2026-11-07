@@ -348,6 +348,7 @@
   "editor_ai_summarizing": "Resumiendo…",
   "editor_ai_outlining": "Construyendo un esquema…",
   "editor_ai_drafting": "Redactando una sección...",
+  "editor_ai_busyotherpage": "Terminando un borrador para otra página…",
   "editor_ai_empty": "El asistente no respondió nada que añadir.",
   "editor_ai_outlineadded": "Se agregó el esquema.",
   "editor_ai_sectiondrafted": "Sección redactada.",

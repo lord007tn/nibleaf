@@ -540,6 +540,7 @@ export const MESSAGE_IDS = {
   'editor.ai.summarizing': 'editor_ai_summarizing',
   'editor.ai.outlining': 'editor_ai_outlining',
   'editor.ai.drafting': 'editor_ai_drafting',
+  'editor.ai.busyOtherPage': 'editor_ai_busyotherpage',
   'editor.ai.empty': 'editor_ai_empty',
   'editor.ai.outlineAdded': 'editor_ai_outlineadded',
   'editor.ai.sectionDrafted': 'editor_ai_sectiondrafted',
