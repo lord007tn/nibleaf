@@ -152,15 +152,32 @@ const stripMdxExpressions = (source: string): string => {
 };
 
 // Formatting the editor saves as inline HTML (Underline, Subscript, Superscript).
-// Public Markdown escapes HTML, so these keep their text instead of showing tags.
-const inlineFormattingTag = /<\/?(?:u|sub|sup)(?:\s[^>]*)?>/gi;
+// Public Markdown escapes HTML. Underline is presentation only, so it keeps
+// just its text. Subscript and superscript carry meaning (10<sup>-3</sup>,
+// x<sub>i</sub>), so a matched pair on one line stays as attribute-free inline
+// HTML, which Markdown allows. Pairs are restored only after escaping, so
+// nothing else can pass through; an unmatched tag keeps just its text.
+const underlineTag = /<\/?u(?:\s[^>]*)?>/gi;
+const scriptOpenerWithAttributes = /<(sub|sup)\s[^>]*>/gi;
+const escapedScriptPair = /&lt;(sub|sup)&gt;(.*?)&lt;\/\1&gt;/gi;
+const escapedScriptTag = /&lt;\/?(?:sub|sup)&gt;/gi;
+
+const restoreScriptPairs = (line: string): string =>
+  line
+    .replace(escapedScriptPair, (_match, tag: string, text: string) => {
+      const name = tag.toLowerCase();
+      return `<${name}>${text.replace(escapedScriptTag, '')}</${name}>`;
+    })
+    .replace(escapedScriptTag, '');
 
 const sanitizeAuthoredProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content)).replace(inlineFormattingTag, '');
+  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content))
+    .replace(underlineTag, '')
+    .replace(scriptOpenerWithAttributes, '<$1>');
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
-    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
+    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : restoreScriptPairs(escapeHtml(line))))
     .join('\n');
   return protectedCode.restore(sanitized);
 };

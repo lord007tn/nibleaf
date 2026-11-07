@@ -55,9 +55,26 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('A <Tooltip tip="">term</Tooltip> and a <Tooltip>word</Tooltip>.')).toBe('A term and a word.');
   });
 
-  it('keeps underlined, subscript and superscript text without leaking their tags', () => {
-    expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe('A underlined word, H2O and x2.');
-    // Attributes do not change that, and code examples stay literal.
-    expect(normalizePublicMarkdownContent('<u class="x">styled</u> and `<u>code</u>`')).toBe('styled and `<u>code</u>`');
+  it('keeps underlined text, and subscript and superscript as plain inline HTML so their meaning survives', () => {
+    expect(normalizePublicMarkdownContent('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.')).toBe(
+      'A underlined word, H<sub>2</sub>O and x<sup>2</sup>.',
+    );
+    expect(normalizePublicMarkdownContent('10<SUP>-3</SUP> and x<sub>i</sub>')).toBe('10<sup>-3</sup> and x<sub>i</sub>');
+    // Attributes are dropped, and code examples stay literal.
+    expect(normalizePublicMarkdownContent('<u class="x">styled</u>, x<sup onclick="alert(1)" class="y">2</sup> and `<u>code</u>`')).toBe(
+      'styled, x<sup>2</sup> and `<u>code</u>`',
+    );
+  });
+
+  it('lets no other markup through subscript or superscript', () => {
+    // An unmatched tag keeps only its text.
+    expect(normalizePublicMarkdownContent('x<sup>2 and H<sub>2')).toBe('x2 and H2');
+    // Anything inside a pair is still escaped, and nested tags are flattened.
+    expect(normalizePublicMarkdownContent('x<sup><b onmouseover="a()">2</b></sup>')).toBe(
+      'x<sup>&lt;b onmouseover=&quot;a()&quot;&gt;2&lt;/b&gt;</sup>',
+    );
+    expect(normalizePublicMarkdownContent('a<sub>1<sup>2</sup></sub>')).toBe('a<sub>12</sub>');
+    // Escaped text that spells a tag is not turned back into one.
+    expect(normalizePublicMarkdownContent('&lt;sup&gt;2&lt;/sup&gt;')).toBe('&amp;lt;sup&amp;gt;2&amp;lt;/sup&amp;gt;');
   });
 });

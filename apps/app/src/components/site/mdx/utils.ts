@@ -1,7 +1,13 @@
 import { Children, isValidElement, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 
-/** An authored boolean prop: present (`defaultOpen`), empty, or the string "true". */
-export const truthyAttr = (value: unknown): boolean => value === true || value === '' || value === 'true';
+/** An authored boolean prop: present (`defaultOpen`), empty, the string "true",
+ *  or the JSX expression `{true}` that Mintlify pages often use. */
+export const truthyAttr = (value: unknown): boolean => {
+  if (value === true) return true;
+  if (typeof value !== 'string') return false;
+  const text = value.trim();
+  return text === '' || text === 'true' || text === '{true}';
+};
 
 /** Arrow/Home/End navigation between tabs, mirrored on right-to-left pages. */
 export function handleTabKeyDown(

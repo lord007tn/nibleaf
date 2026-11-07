@@ -259,6 +259,18 @@ describe('documentation component contract', () => {
       }
     });
 
+    it('reads a JSX `{true}` boolean like a bare one and `{false}` like an absent one', () => {
+      const bare = inContainer(component, sampleUsage(component)).markdown;
+      for (const attribute of portableAttributes(component)) {
+        if (attribute.type !== 'boolean') continue;
+        const flag = new RegExp(` ${attribute.name}(?=[\\s/>])`);
+        expect(flag.test(bare), `${attribute.name} sample`).toBe(true);
+        expect(renderRich(bare.replace(flag, ` ${attribute.name}={true}`), SITE), `${attribute.name}={true}`).toBe(renderRich(bare, SITE));
+        const absent = renderRich(inContainer(component, sampleUsage(component, attribute.name)).markdown, SITE);
+        expect(renderRich(bare.replace(flag, ` ${attribute.name}={false}`), SITE), `${attribute.name}={false}`).toBe(absent);
+      }
+    });
+
     it('renders its content and props through the rich reader', () => {
       const sample = inContainer(component, sampleUsage(component));
       const html = renderRich(sample.markdown, SITE);

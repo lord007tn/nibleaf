@@ -34,6 +34,8 @@ describe('theme repository component templates', () => {
   // - src/components/mdx/cards.tsx: `CardGroup` read `cols` as a string, but
   //   HTML parses it as a number, so every group had two columns. It now
   //   accepts one to four and sets the column count the stylesheet reads.
+  // - src/components/mdx/shared.ts: `truthy` also reads the JSX `{true}` that
+  //   Mintlify pages use, so `defaultOpen={true}` opens and `required={true}` shows.
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -54,7 +56,7 @@ describe('theme repository component templates', () => {
     expect(sha256Prefixes).toEqual({
       'src/lib/markdown.tsx': '06c83728de3f',
       'src/lib/markdown.test.tsx': '83c141811932',
-      'src/components/mdx/shared.ts': 'b00369d3fd11',
+      'src/components/mdx/shared.ts': '294a4e03b36a',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',
       'src/components/mdx/cards.tsx': 'f8064f401309',
       'src/components/mdx/tabs.tsx': '613800c9ea94',

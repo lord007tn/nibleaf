@@ -66,6 +66,16 @@ describe('exported theme repository Markdown', () => {
     expect(html).toContain(`--mdx-cols:${count}`);
   });
 
+  it.each([
+    ['Accordion', '<Accordion title="More" defaultOpen{value}>\n\nHidden text.\n\n</Accordion>'],
+    ['ParamField', '<ParamField name="limit" type="integer" required{value}>\n\nItems per page.\n\n</ParamField>'],
+  ])('reads a JSX {true} on %s like a bare boolean and {false} like an absent one', (_label, template) => {
+    const usage = (value: string) => render(template.replace('{value}', value));
+    expect(usage('={true}')).toBe(usage(''));
+    expect(usage('={false}')).not.toBe(usage(''));
+    expect(usage('={false}')).toBe(render(template.replace(/ (?:defaultOpen|required)\{value\}/, '')));
+  });
+
   it('defaults a CardGroup without cols to two columns', () => {
     expect(render('<CardGroup>\n<Card title="One">First</Card>\n</CardGroup>')).toContain('data-cols="2"');
   });

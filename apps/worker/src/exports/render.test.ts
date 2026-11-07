@@ -539,4 +539,20 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
       expect(html).toContain('&lt;u class=&quot;x&quot; onclick=&quot;alert(1)&quot;&gt;');
     }
   });
+
+  it('renders formatting tags only with a partner in the same text, so an unclosed one cannot spread to later pages', () => {
+    const first = { ...required(snapshot.pages[0]), content: 'An <u>unclosed underline and x<sup>2.\n\nNext paragraph.' };
+    const second = {
+      ...required(snapshot.pages[0]),
+      id: 'second-page',
+      path: 'second',
+      content: 'A <u>closed</u> one and **<sub>bold</sub>**.\n\n| Head |\n| --- |\n| a <u>cell</u> |',
+    };
+    const pdf = renderPdfHtml({ ...snapshot, pages: [first, second] }, assets);
+    expect(pdf).toContain('An &lt;u&gt;unclosed underline and x&lt;sup&gt;2.');
+    expect(pdf).not.toMatch(/<u>unclosed|<sup>2/);
+    expect(pdf).toContain('<u>closed</u>');
+    expect(pdf).toContain('<strong><sub>bold</sub></strong>');
+    expect(pdf).toContain('<td>a <u>cell</u></td>');
+  });
 });

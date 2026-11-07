@@ -1,7 +1,7 @@
 import { PassThrough } from 'node:stream';
 import { createElement } from 'react';
 import { renderToPipeableStream } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
 import { convertGitBookMarkdown, plainGitBookText } from '../../../server/src/actions/importers/gitbook-markdown';
 
@@ -23,6 +23,12 @@ const render = (content: string, language?: string): Promise<string> =>
       },
     );
   });
+
+// The first rich render pays for the lazy renderer's cold import (parse5,
+// KaTeX). Load it once up front so no single test carries that cost.
+beforeAll(async () => {
+  await import('./markdown-rich');
+}, 30_000);
 
 describe('Markdown renderer — default element renderers', () => {
   it('keeps react-markdown internals out of the HTML and keeps authored image classes and empty alt text', async () => {

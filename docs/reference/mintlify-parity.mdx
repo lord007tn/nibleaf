@@ -104,7 +104,8 @@ a protected block, so saving never drops it.
 | `Badge` with `color` | Partial | `color` is kept but not styled on the site, and the visual editor has no field for it | 3 |
 | `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Missing | | 3 |
 | `Icon` with `icon`, `color`, `size` | Partial | Lucide icon names only; Font Awesome, Tabler, image URLs, and `iconType` aren't resolved | 3 |
-| Site `Banner` | Has | Site settings; a page-level `Banner` block can also be inserted, but its `type` has no editor field yet | |
+| Site banner | Has | Set in site settings | |
+| Page `Banner` with `type` | Partial | Can be inserted on a page, but its `type` has no editor field yet | 3 |
 | `Color`, `Color.Row`, `Color.Item` | Missing | | 5 |
 | `Prompt` | Missing | | 5 |
 | `GitHub.Repo` with live stars and forks | Out of scope | Renderers never fetch component data over the network | |

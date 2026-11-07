@@ -9,7 +9,9 @@ export interface MdxProps {
 }
 
 export const stringAttr = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
-export const truthy = (value: unknown): boolean => value === true || value === '' || value === 'true';
+/** A boolean prop: present, empty, "true", or the JSX expression {true}. */
+export const truthy = (value: unknown): boolean =>
+  value === true || (typeof value === 'string' && ['', 'true', '{true}'].includes(value.trim()));
 export const authoredName = (props: MdxProps): string | undefined =>
   stringAttr(props['data-display-name']) ?? stringAttr(props.dataDisplayName) ?? stringAttr(props.name);
 /** Only same-site, http(s) and mailto links are rendered as anchors. */
