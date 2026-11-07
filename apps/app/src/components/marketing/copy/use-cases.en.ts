@@ -1,7 +1,8 @@
 import { availabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
-// Evidence for every claim is in dogfood-output/marketing/copy-notes.md.
+// Evidence for every claim is in
+// .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md.
 // Cloud availability is worded only through availabilityNote().
 
 const askAiNote = `Needs an AI provider key: your workspace’s own OpenAI or OpenRouter key, or one your instance provides. You turn it on per site, and self-hosters also run the optional Qdrant search service. ${availabilityNote('askAi', 'en')}`;
@@ -358,7 +359,6 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
           'Write guides alongside the reference with code groups and request and response examples',
           'The Signal theme is laid out for code-heavy docs',
         ],
-        media: media.themes,
       },
       {
         id: 'markdown-git',

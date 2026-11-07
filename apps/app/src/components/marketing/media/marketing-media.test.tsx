@@ -47,6 +47,17 @@ it('keeps theme-hidden pictures lazy so they do not eagerly fetch', () => {
   for (const image of root.querySelectorAll('img')) expect(image.getAttribute('loading')).toBe('lazy');
 });
 
+it('gives first-screen media one eager image whose dark capture follows the colour scheme', () => {
+  const darkWide = { ...wide, avif: '/dark.avif 1280w', webp: '/dark.webp 1280w', fallback: '/dark.webp' };
+  vi.mocked(marketingMedia).mockReturnValue({ wide, wideDark: darkWide });
+  const root = render(true);
+  expect(root.querySelectorAll('picture')).toHaveLength(1);
+  expect(root.querySelectorAll('img')).toHaveLength(1);
+  expect(root.querySelector('img')?.getAttribute('loading')).toBe('eager');
+  const dark = root.querySelector('source[media="(prefers-color-scheme: dark)"][type="image/avif"]');
+  expect(dark?.getAttribute('srcset')).toBe(darkWide.avif);
+});
+
 it('loads a recording only on request: lazy still and a play button, no video until clicked', async () => {
   vi.mocked(marketingMedia).mockReturnValue({ wide, video: { src: '/journey.webm', width: 1280, height: 720 } });
   const root = render();

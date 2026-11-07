@@ -142,3 +142,13 @@ describe('use-case availability honesty', () => {
     expect(answers).toContain(availabilityNote('docsInsights', lang));
   });
 });
+
+describe('use-case media honesty', () => {
+  it.each(pages)('shows no borrowed capture beside the %s OpenAPI reference section', (_lang, Page, copies) => {
+    expect(copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.media).toBeUndefined();
+    const root = markup(renderToStaticMarkup(<Page slug="api-docs" stars={0} />));
+    const section = root.querySelector('section#openapi-reference');
+    expect(section?.querySelector('h2')).not.toBeNull();
+    expect(section?.querySelector('img, picture, video')).toBeNull();
+  });
+});

@@ -168,8 +168,11 @@ export interface UseCaseCopy {
   };
   /** The reader's situation today, in their words. */
   problems: { title: string; items: { title: string; body: string }[] };
-  /** How Nibleaf helps, each backed by a real capability and real media where useful. */
-  solutions: FeatureSection[];
+  /**
+   * How Nibleaf helps, each backed by a real capability. A section without a
+   * real capture of that capability has no media rather than a borrowed image.
+   */
+  solutions: (Omit<FeatureSection, 'media'> & { media?: MediaRef })[];
   /** A plain workflow for this team, 3–5 steps. */
   workflow: { title: string; steps: { title: string; body: string }[] };
   faq: { title: string; items: { q: string; a: string }[] };

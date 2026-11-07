@@ -99,8 +99,8 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
               className={`scroll-mt-24 border-border border-b ${flipped ? 'bg-muted/20' : ''}`}
             >
               {/* Grid columns follow the page direction, so the alternation mirrors in RTL on its own. */}
-              <div className={`${section} grid items-center gap-9 lg:grid-cols-2 lg:gap-16`}>
-                <div className={`min-w-0 ${flipped ? 'lg:order-2' : ''}`}>
+              <div className={`${section} grid items-center gap-9 lg:gap-16 ${feature.media ? 'lg:grid-cols-2' : ''}`}>
+                <div className={`min-w-0 ${feature.media ? (flipped ? 'lg:order-2' : '') : 'max-w-3xl'}`}>
                   <Heading id={`${feature.id}-title`} copy={feature} />
                   <div className="mt-6">
                     <Bullets items={feature.bullets} />
@@ -117,9 +117,11 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
                     </MarketingLink>
                   )}
                 </div>
-                <div className={`min-w-0 ${flipped ? 'lg:order-1' : ''}`}>
-                  <MarketingMedia lang={lang} media={feature.media} framed={feature.media.key === 'arabic' ? 'phone' : 'browser'} />
-                </div>
+                {feature.media && (
+                  <div className={`min-w-0 ${flipped ? 'lg:order-1' : ''}`}>
+                    <MarketingMedia lang={lang} media={feature.media} framed={feature.media.key === 'arabic' ? 'phone' : 'browser'} />
+                  </div>
+                )}
               </div>
             </section>
           );

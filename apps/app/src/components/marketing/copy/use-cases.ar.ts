@@ -2,8 +2,8 @@ import { availabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
 // Written as Arabic, not translated line by line. Facts match use-cases.en.ts;
-// evidence is in dogfood-output/marketing/copy-notes.md. Cloud availability is
-// worded only through availabilityNote().
+// evidence is in .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md.
+// Cloud availability is worded only through availabilityNote().
 
 const askAiNote = `يحتاج إلى مفتاح من مزوّد ذكاء اصطناعي: مفتاح OpenAI أو OpenRouter الخاص بمساحة عملك، أو مفتاح يوفّره مشغّل الخادم. تفعّله لكل موقع على حدة، ويشغّل أصحاب الاستضافة الذاتية أيضًا خدمة البحث الاختيارية Qdrant. ${availabilityNote('askAi', 'ar')}`;
 const insightsNote = `يحتاج أصحاب الاستضافة الذاتية إلى خدمة التحليلات الاختيارية ClickHouse لهذه التقارير. ولا تُحفظ كلمات البحث إلا إذا فعّلت ذلك. ${availabilityNote('docsInsights', 'ar')}`;
@@ -350,7 +350,6 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
           'اكتب الأدلة بجانب المرجع، مع مجموعات الشيفرة وأمثلة الطلب والاستجابة',
           'قالب Signal مصمّم للوثائق الغنية بالشيفرة',
         ],
-        media: media.themes,
       },
       {
         id: 'markdown-git',
