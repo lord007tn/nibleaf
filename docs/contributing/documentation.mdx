@@ -3,7 +3,7 @@ title: 'Contribute to Nibleaf documentation'
 description: 'Propose, write, validate, review, publish, and maintain Nibleaf documentation changes with reproducible evidence and product-truth checks.'
 audience: 'open-source contributors and Nibleaf maintainers'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
+last_reviewed: '2026-11-07'
 verified_against: 'CONTRIBUTING.md, docs/docs.json, and scripts/check-docs.mjs'
 lang: 'en'
 dir: 'ltr'
@@ -45,8 +45,12 @@ H2 and H3 headings, descriptive links, language-tagged code fences, meaningful
 image alternative text, and exact interface labels.
 
 Every page requires `title`, `description`, `audience`, `content_type`,
-`last_reviewed`, and `verified_against` frontmatter. Add it to `docs.json`; do
-not leave a navigable page orphaned.
+`last_reviewed`, `verified_against`, `lang`, `dir`, and `translation_key`
+frontmatter. Mirror each English route under `docs/ar/`, use `en`/`ltr` and
+`ar`/`rtl`, and keep the same translation key. Add both routes to `docs.json` in
+the same order. Keep fenced code identical in each pair; translate surrounding
+explanations, interface labels and image alt text. Use `ARABIC_GLOSSARY.md` for
+terminology. Do not leave a navigable page orphaned.
 
 ## Validate and review
 
@@ -54,8 +58,11 @@ Run:
 
 ```bash
 pnpm docs:check
-pnpm --filter @nibleaf/app build
 ```
+
+The check validates structure and translation pairing, not factual accuracy or
+the hosted publication. A text-only change does not need an app build. When
+reader rendering code changes, run the relevant app/build checks as well.
 
 For a user-visible workflow, preview representative desktop and mobile widths.
 Use a screenshot only when it clarifies a hard-to-find state or proves layout;
@@ -77,3 +84,31 @@ Use documentation analytics, no-result searches, support questions, product
 changes, and reader feedback to trigger focused reviews. Remove or correct
 misleading instructions promptly; wrong operational documentation is worse
 than an explicit limitation.
+
+## Extend Nibleaf from source
+
+The repository uses pnpm workspaces and Turbo. The root `package.json` requires
+Node.js 22.22.2 or newer and pins pnpm 10.34.9; prefer those over older setup
+prose. Use an isolated development database and storage namespace, with process
+environment values matching `.env.example`. Generate the Prisma client before
+using database-dependent packages. Never seed or run schema-push commands on
+a production database as a development shortcut.
+
+For frontend contributions, follow `apps/app/DATA_LOADING.md`: one router-owned
+QueryClient, shared `queryOptions()` factories and `queryKeys`, non-blocking
+dashboard prefetch, content-shaped skeletons and `Button loading`. Public reader
+loaders await their content for server-rendered HTML. Keep loader imports free
+of dashboard message catalogs. Check optimistic writes against refetch and
+reconnect behavior, and keep unsaved edits intact on failure.
+
+Nibleaf stores page bodies as Markdown. New interface copy belongs in both the
+English and Arabic message catalogs; use logical spacing and direction-aware
+controls. Add focused checks for changed behavior, then run the applicable
+repository gates. The source CLI and API boundaries are in the
+[developer reference](/reference/api).
+
+Open a ready-for-review PR when implementation and verification are complete.
+For visible UI changes include screenshots and a short recording when
+interaction matters; for text-only edits explain the content/check evidence.
+Docker image builds stay on the explicit manual workflow, not pull-request
+events. A ready PR is not a deployment or hosted-documentation acceptance claim.

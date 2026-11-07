@@ -3,7 +3,7 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
+last_reviewed: '2026-11-07'
 verified_against: 'packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
@@ -14,6 +14,14 @@ Nibleaf v0.2 can retrieve published English, Arabic, and mixed-language content
 with a tenant-filtered BM25 and dense-vector hybrid index. Results mode remains
 available without an answer model. Grounded answers are a separate, explicit
 site opt-in, using either a workspace connection or the instance provider.
+
+## Release boundary
+
+The setup below describes the current source, including workspace AI keys and
+Ask AI chat merged in November. v0.2.0 predates those workflows. Its production
+Compose file includes neither Qdrant nor ClickHouse. Use a reviewed compatible
+image and explicit Compose overrides for current-source features; do not assume
+that adding their variables upgrades the pinned release.
 
 ## Understand the boundary
 
@@ -37,23 +45,24 @@ as the query.
 ## Configure providers
 
 Administrators can open **Site settings → Workspace → Smart AI** to connect
-OpenAI or OpenRouter with a workspace API key. **Verify and load models** checks
+OpenAI or OpenRouter with a workspace API key. **Verify key and load models** checks
 the key and the provider catalog using GET requests; it does not run a paid
 inference request or prove that the account has credit. Choose an answer model
 that supports strict structured outputs, save the connection, then choose
-**Use this provider**. Saving alone does not enable it. Existing keys stay hidden;
+**Enable with this provider**. Saving alone does not enable it. Existing keys stay hidden;
 leaving the key blank preserves it, and replacement requires explicit confirmation.
 
 Workspace credentials use the existing encrypted project integration store.
 Set the same `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` on the API and worker through
-your normal Coolify environment configuration. Keep it and prior decrypt keys
+your deployment environment. This applies to portable Compose as well as
+Coolify; setting a value in `.env` alone is not enough unless the service passes it. Keep it and prior decrypt keys
 backed up securely. Never store provider keys in public site configuration.
 An explicitly selected workspace provider never falls back to the instance key.
 Disabling Smart AI preserves saved connections and keeps ordinary search available.
 
 The embedding model is fixed by the instance so all workspaces use the existing
 index format and dimensions. Direct OpenAI connections require an OpenAI embedding
-model. After enabling, publish documentation or choose **Rebuild search index**.
+model. After enabling, publish documentation or choose **Build or refresh index**.
 The reader offers AI answers only after the current publication has a READY index
 with searchable chunks. The settings screen reports index readiness separately
 from the saved provider selection. Indexing sends published documentation to the
@@ -149,7 +158,8 @@ Each turn runs these steps:
    results always stay in the answer and each such page is sure of three of the
    other places, so one page's sections cannot crowd out the other's or the best
    results. A question the search is not confident about reads nothing more.
-4. If retrieval is not confident enough, the model is not called. The reader is
+4. If retrieval is not confident enough, the answer model is not called. A
+   follow-up rewrite may already have used the utility model. The reader is
    told the docs could not confirm an answer and is offered the best-matching
    articles, plus a **Contact support** link when the site has one.
 5. Otherwise the answer streams as Markdown with inline `[S1]` source markers.
@@ -157,9 +167,9 @@ Each turn runs these steps:
    reader UI uses in place of the streamed text. Each source links to the exact
    section it came from, using the same heading anchor as the article's table of
    contents.
-6. While the answer streams, one small extra model call prepares up to three
-   follow-up questions that the retrieved sources can answer. They appear under
-   an answered question; readers can tap one to ask it.
+6. After the checked answer is sent, a small extra model call prepares up to
+   three follow-up questions from that answer and its cited topics. Suggestions
+   arrive separately; a new question cancels pending suggestions.
 
 Answers lead with the direct answer, give tasks as numbered steps with the exact
 button and setting names from the docs, and put commands in code blocks. They
@@ -177,7 +187,7 @@ An unknown source marker anywhere withdraws the whole answer, as does an answer
 with no valid citation. Headings, short bold section labels, code blocks, short
 lead-ins, and lists that cite a source do not need their own marker. A few uncited
 paragraphs, including an uncited opening summary, are removed from the final
-answer and never shown. If more than a third of the substantive paragraphs are uncited,
+answer. If more than a third of the substantive paragraphs are uncited,
 the answer is withdrawn. A withdrawn answer is replaced with "I couldn't verify
 this from the docs" and links to the best-matching articles.
 
@@ -185,74 +195,10 @@ Streaming is a trade-off: readers see text as it arrives, so they can briefly se
 wording that validation later removes or withdraws. The final event always
 decides what remains on screen and what is stored.
 
-Compare models and policies on Nibleaf's own docs with the bundled benchmark (see
-`packages/search/eval/README.md`):
-
-```bash
-EVAL_FIXTURES=docs EVAL_MODE=chat EVAL_MODELS=openai/gpt-6-luna,openai/gpt-6.1-terra \
-  EVAL_JUDGE_MODEL=openai/gpt-6.1-terra pnpm --filter @nibleaf/search eval:rag
-```
-
-Results on 2026-11-06 with the chat policy (prompt `chat-v2`), on 36 cases from these docs (12
-English, 12 Arabic, 12 mixed; including follow-ups, out-of-scope questions and
-vague ones). Model IDs were resolved from the live OpenRouter catalog, and costs
-are what OpenRouter reported:
-
-| Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | Reply language | First token, median / p90 | Cost per 1,000 answers |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `openai/gpt-6-luna` | 100% / 100% | 100% | 90% | 89% | 4.75 | 100% | 3.4 s / 5.2 s | $0.31 |
-| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 81% | 84% | 4.75 | 100% | 2.7 s / 4.5 s | $0.67 |
-| `openai/gpt-6-luna-pro` | 100% / 100% | 100% | 88% | 74% | 4.78 | 100% | 8.6 s / 18.5 s | $0.61 |
-| `openai/gpt-6.1-terra` | 100% / 100% | 100% | 87% | 100% | 4.85 | 100% | 1.7 s / 4.0 s | $2.82 |
-| `openai/gpt-5.6-terra` | 100% / 100% | 100% | 91% | 84% | 4.81 | 100% | 1.0 s / 1.3 s | $5.36 |
-
-Recommendations:
-
-- **Default answer model: `openai/gpt-5.6-luna`** (the current default). It
-  matched the other Luna models on grounding and starts writing soonest, which is
-  what readers notice most. On the final prompt (`chat-v5`) it answered or
-  correctly refused every case in three runs.
-- **Lower-cost alternative: `openai/gpt-6-luna`.** It cites the expected section
-  slightly more often for half the cost, but the first word arrives about a
-  second later. It is also the fallback if the default is unavailable.
-- **When completeness matters more than cost: `openai/gpt-6.1-terra`.** It
-  covered every required fact and starts in about 1.7 s, at roughly four times the
-  cost of the default.
-- **Follow-up rewriting and suggestions (`SEARCH_CHAT_UTILITY_MODEL`):
-  `openai/gpt-6-luna`.** It turned every follow-up into the right standalone
-  query, slightly faster and at half the cost of the default (about $0.00006
-  each).
-- `openai/gpt-6-luna-pro` spends many reasoning tokens and is too slow for chat.
-
-Confirmation runs on the final prompt (`chat-v5`, same 36 cases, three runs; ranges
-across the runs):
-
-| Model | Answered / correct refusals | Valid citations | Cited the expected section | Required facts | Judge (1–5) | First token, median / p90 | Cost per 1,000 answers |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `openai/gpt-5.6-luna` | 100% / 100% | 100% | 83–87% | 74–84% | 4.72–4.75 | 1.4–1.8 s / 3.8–5.6 s | $0.29–$0.68 |
-| `openai/gpt-6-luna` | 100% / 100% | 97–100% | 86–90% | 79–84% | 4.75–4.89 | 3.0–3.2 s / 5.1–6.6 s | $0.14–$0.34 |
-
-`chat-v5` adds two rules to `chat-v3`. A question is answered when the sources answer
-it in other words (steps done from an open notebook, page or project are how to do it
-for that one item). And when the question asks for something the sources do not
-describe but they describe a related way, the answer first says the documentation does
-not describe it, then gives that way; when nothing helps, the assistant refuses as
-before. Required facts vary from run to run on the same prompt: answers that are
-correct but shorter leave out a secondary detail. Refusals held in every run. On the
-older hand-written cases, both models answered an Arabic question about exporting one
-notebook that `chat-v3` sometimes refused, and both said team sharing is not described
-before giving the export steps; the default model answered one follow-up about a
-response-time guarantee by saying the documentation does not say, where a refusal was
-expected.
-
-Timings vary between runs by a second or more, so compare models within one run.
-
-Two limits apply to these numbers. The judge (`openai/gpt-6.1-terra`) also took
-part, so answers were spot-checked by hand. For the three "which editing mode
-should I pick?" cases, every model compared the modes rather than asking which
-the reader meant. The judge rated those answers 4 of 5. Questions whose subject
-is unclear, such as "How do I set it up?", do get one clarifying question. Re-run
-the benchmark when you change the answer model or the prompts.
+The schema defaults below apply to the current source. Provider availability
+and answer quality need a live check with your documentation and chosen model;
+the benchmark later on this page can help compare candidates. Its results do
+not measure retrieval when the fixtures supply source passages.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
@@ -270,6 +216,13 @@ Budgets use provider-reported token usage. When a provider reports none, Nibleaf
 counts a conservative estimate instead. The site's AI settings can also list up
 to four suggested first questions for the default language.
 
+The search overlay and `.env.production.example` currently set
+`SEARCH_CHAT_MAX_CONVERSATION_TOKENS=60000`, below the schema default of 150000
+and below the largest turn reservation with default history. Set it to 150000
+explicitly on a compatible current-source deployment, or evaluate a different
+budget with its admission rules. A low budget can refuse questions before the
+provider runs. See the [complete settings reference](/reference/environment-variables).
+
 ## Keep AI conversation history and feedback
 
 Readers can rate each answer with a thumbs up or down, pick a reason, and add a
@@ -279,7 +232,7 @@ issued with that answer, so only the reader who received it can rate it.
 Conversations and feedback are stored in ClickHouse next to site analytics. This
 needs `ANALYTICS_MODE` set to anything other than `disabled` and a worker
 processing the `analytics` queue. After upgrading, run the analytics migrations
-once to add the conversation tables (migrations `2026110606` and `2026110607`):
+once to add the conversation tables (migrations `2026110606`, `2026110607`, and `2026110608`):
 
 ```bash
 pnpm analytics:migrate
@@ -354,8 +307,9 @@ retried and replayed after a ClickHouse outage like other events. A browser cann
 claim consent is not required where the site's banner applies. They expire with
 `CLICKHOUSE_RAW_RETENTION_DAYS`, carry a private site's visibility, and are removed
 with their conversation or project. Readers' interaction events go to
-`POST /api/public/sites/:id/chat/events` (60 a minute per IP), which accepts only
-the content-free events above.
+`POST /api/public/sites/:id/chat/events` (60 a minute per IP), which accepts only the client event names
+`chat_opened`, `citation_clicked`, `follow_up_clicked`, `copy`, `stop`, and
+`new_chat`. Completion, quota, provider and feedback events are server-owned.
 
 The conversation tables are registered for retention and erasure like the other
 analytics tables. Turns and feedback expire after `AI_CONVERSATION_RETENTION_DAYS`
@@ -366,54 +320,25 @@ Turns also record `actor_type`, so automated traffic never inflates reader metri
 a provider billed counts against the AI budgets and in usage and cost, scripted
 traffic included.
 
-Each turn reserves the most it can spend against the conversation and daily budgets,
-and settles to what it actually used when it ends. Every prompt counts at one token
-per UTF-8 byte, the most a byte-level tokenizer produces for any text (digits and rare
-characters included), never at an estimate. A turn reserves in two steps:
+Each turn reserves a conservative token bound before provider calls, then
+extends that reservation after retrieval. Admission requires headroom for the
+largest allowed source context. Both the conversation and UTC-day project
+budgets are checked atomically in Redis; unused reservation is returned when
+the turn ends. The API logs a startup warning when configured budgets are too
+small for the largest turn, or leave room for only a few turns. Model output
+caps must be honored by the provider for those bounds to hold.
 
-- Before any provider call, every call's prompt without the documentation it will read
-  (the question, the bounded history, the reader's page, the instructions and the
-  longest answer the suggestions read), every output cap, and the least documentation
-  worth answering from (3,000 tokens). That is about 12,000 tokens for a first question
-  and up to about 29,000 with the default history limits. The API logs a warning at
-  startup when `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` or
-  `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` is below the most room a question can need
-  (about 62,000 with the defaults), or leaves room for only a few questions (below
-  twice that).
-- Once retrieval has found the best matches, what reading them adds: up to 24,000
-  tokens of documentation and the topics suggestions list.
+A call stopped before usage is reported is charged at its prompt bound plus
+full output cap. Stored usage is marked as estimated and cost as unknown. A
+turn with no provider calls costs zero. When `SEARCH_CHAT_UTILITY_MODEL` is
+set, rewriting and suggestion calls have their own model usage; they do not
+borrow the answer model’s known-cost flag. Daily usage can therefore include
+a utility model with token/cost totals and zero questions.
 
-A question is admitted only while both budgets also have room for that second step at
-its largest (about 33,000 more tokens), so an admitted question reads every source it
-found; a conversation without that room is told to start a new one instead of getting
-an answer from less. Only when concurrent questions take the last room of a budget, or
-the counter store is unreachable, does an answer read fewer sources, never more than
-were reserved. Each step is atomic and checked against both budgets, so neither one
-question nor several at once can take spend past a budget, as long as providers honor
-the output caps. Unused reservation comes back when the turn ends. With the defaults,
-a conversation has room for about 15 typical questions. A turn records how many sources
-its answer read (`chunk_count`).
-
-A call that is stopped or fails before reporting its usage is charged to the budgets at
-the most it could have used: its prompt at that bound and its full output cap. Its
-stored token totals are an estimate instead, flagged as such, with its cost unknown.
-A turn that made no provider call (nothing relevant was found) is recorded as costing
-nothing. Each model is judged on its own calls: its stored token totals are flagged as
-estimates, and its cost as unknown, only when one of its own calls never reported, and
-its cost is known only when every response billed to it reported one. When
-`SEARCH_CHAT_UTILITY_MODEL` routes rewriting and suggestions to another model, their
-tokens and cost are recorded under that model, which appears in per-model usage with no
-questions of its own.
-
-Suggested next questions are asked for only after a checked answer, and read that
-answer with the question and the sources' topics, so they never ask what it already
-says. Readers get the answer first; the suggestions follow when they arrive, and a new
-question asked meanwhile takes their place. They read where each source is and how it
-begins, and suggest only what those sections state. A suggestions call that takes longer
-than `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS`, or whose output holds no readable questions, is
-recorded as a provider error
-(`follow_ups`). A turn's latency is the time until the reader had the checked answer,
-without the suggestions that follow it.
+Suggestions run after the checked answer and stop at
+`SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS` or when the reader asks another question.
+Answer latency excludes that later call. Evaluate actual questions per budget
+on your corpus; token caps are not a promise of a fixed conversation length.
 
 `ai_usage_daily` keeps totals per project, day and model: billed turns, outcomes,
 tokens, cost, latency, first-token time and retrieval cache hits. It is rebuilt from
@@ -477,11 +402,14 @@ rather than creating a second search analytics store.
    answer quality signals.
 5. Retain the previous physical collection until the observation window closes.
 
-For an immediate retrieval rollback, set `SEARCH_RUNTIME=legacy`; restart the
-server only if your environment does not reload configuration. To roll back a
+For an immediate retrieval rollback, set `SEARCH_RUNTIME=legacy` and recreate
+the API service with that environment. Environment schemas are read at process
+startup; changing `.env` does not update a running process. To roll back a
 collection migration, point the alias at the retained collection and restore
 the matching embedding model and dimension. Disabling `SEARCH_ANSWER_ENABLED`
-removes answer capability without affecting results mode.
+disables instance-managed answers without affecting search results. A selected
+workspace provider has a separate enablement control; disable Smart AI for that
+site to withdraw its answers.
 
 ## Project settings and privacy-safe diagnostics
 

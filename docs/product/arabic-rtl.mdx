@@ -1,71 +1,91 @@
 ---
-title: 'Publish Arabic and right-to-left documentation'
-description: 'Create an Arabic page tree, connect real translations, and verify direction, mixed technical text, search, metadata, and mobile navigation.'
+title: 'Publish Arabic and right-to-left docs'
+description: 'Add Arabic or another language to your site, link each page to its translation, and check right-to-left layout, mixed text, and search.'
 audience: 'writers and reviewers publishing Arabic documentation'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/lib/languages.ts, packages/search/src/arabic.ts, packages/search/ARABIC_MORPHOLOGY.md, and apps/server/src/actions/sites.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/editor/add-language-dialog.tsx, language-settings-dialog.tsx and page-settings-dialog.tsx, apps/app/src/components/project-settings/languages-section.tsx and general-section.tsx, packages/search/src/arabic.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/arabic-rtl'
 ---
 
-Each Nibleaf language has its own page tree and direction. Arabic reader chrome
-renders right to left while inline code and code blocks remain left to right.
-Publish only real translations and connect the pages that are actual counterparts.
+Each language on your site has its own list of pages and its own text direction.
+Arabic pages read right to left, while code and commands stay left to right.
+Readers switch languages with the language switcher on your published site.
 
-## Add the Arabic language
+## Add a language
 
-Open the page-tree language controls, add Arabic with the correct language code
-and `rtl` direction, and decide which language is the default. An Arabic page
-may use a different slug and location from its English counterpart.
+1. In the editor, select **Add language**. You can also use **Settings →
+   Languages → Add language**.
+2. Choose the language from the list. For a language that isn't listed, select
+   **Add a language not listed** and enter its **Code** (such as `ar`), a
+   **Label**, and its **Direction**: **Right to left** for Arabic, Hebrew, Persian,
+   or Urdu.
+3. Write pages in the new language. Select **New page** while that language is
+   open in the editor.
 
-Do not create empty translated copies just to make the trees match. Missing,
-non-indexable, and external-canonical pages should not be advertised as a
-reciprocal language cluster.
+Each language has a **Language settings** dialog in the editor with its
+**Label**, **Direction**, whether it is the **Default language**, and its
+**Site title**, **Default description**, and search-engine settings. To
+translate the site name and description shown to readers, use
+**Settings → General → Translations**.
 
-## Connect translations
+## Link translated pages
 
-Link each translated page to its actual counterpart. Nibleaf uses that explicit
-relationship when generating `hreflang`; matching slugs are not required.
+Linking a page to its translation lets the language switcher take readers to the
+same page in the other language. It also adds `hreflang` links, which tell search
+engines which pages are translations of each other.
 
-```text
-English: /getting-started
-Arabic:  /البدء
-```
+1. Open the English page and select **Page settings**, then **More options**.
+2. Copy its **Translation key**, or type a short one such as `getting-started`.
+3. Open the Arabic page and set the same **Translation key**.
 
-The initial HTML should agree on `lang`, `dir`, page title, description, Open
-Graph locale, canonical, language alternates, and structured-data language.
+The pages can have different addresses. For example, `/getting-started` in
+English can match `/البدء` in Arabic.
 
-## Test mixed technical text
+Only link real translations. Don't create empty copies just to fill the list.
 
-Use a sentence containing Arabic prose, a command, a path, a query string, and
-a version number:
+## Track translation coverage
+
+**Settings → Languages** shows how many default-language pages each language
+covers, and how many are missing. From there you can also:
+
+- **Make default** to change the language visitors see first;
+- switch off **Serve … on the published site** to hide a language from readers
+  while you keep working on it;
+- **Delete language**, which permanently deletes the language and all its pages.
+
+## Check mixed Arabic and English text
+
+Paste a sentence that mixes Arabic with a command, a path, and a version number,
+such as:
 
 ```text
 شغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.0.
 ```
 
-Check the line in Visual, Markdown, Preview, and the published reader. Copy the
-command into a plain-text field to verify its logical order. Also check focus
-order, previous/next arrows, breadcrumbs, the table of contents, nested sidebars,
-font weights, mobile menus, long code blocks, and heading spacing.
+Check that line in the editor, in **Preview**, and on the published site. Also
+check:
 
-## Verify Arabic search
+- the order of the sidebar, breadcrumbs, and previous and next arrows;
+- the table of contents and nested groups;
+- long code blocks and tables on a phone-sized window;
+- that copying a command gives the same text you wrote.
 
-Arabic projects index exact normalized fields and lower-weight morphology fields.
-Both remove diacritics and tatweel, fold common alef forms, and map alef maqsura
-to ya. The morphology lane then applies a conservative Lucene Light10-style
-affix stemmer. Exact normalized tokens remain available and rank separately, so
-stemming can add recall without replacing the original spelling signal.
+In the editor, put commands, file names, and settings in inline code so they
+keep their left-to-right order.
 
-This is not semantic retrieval, triliteral-root extraction, or general
-lemmatization. Short tokens, code, mixed Arabic/Latin identifiers, and protected
-ambiguous words are excluded from morphology processing. Exact phrases remain
-the strongest signal; lexical, morphology, and bounded fuzzy lanes fill in
-additional results.
+## Check Arabic search
 
-Test words with and without diacritics, alef variants, tatweel, common prefixes
-and suffixes, singular and plural forms, exact technical phrases, and product
-terms written in Arabic and Latin script. Include negative queries that must not
-match. Use real page vocabulary, not synthetic keyword lists.
+Arabic search handles common spelling differences. It ignores diacritics (تشكيل)
+and tatweel (ـ), treats the different alef forms (أ إ آ ا) as the same, and treats
+ى like ي. It also matches common prefixes and suffixes, so a search for a plural
+can often find the singular. Exact matches always rank highest.
+
+Test search with words your readers really use: with and without diacritics,
+singular and plural, and product names written in Arabic and in English letters.
+Also check that unrelated words do not match.
+
+Ask AI follows the reader's language too; see
+[Answer reader questions with Ask AI](/product/ai-assistant).

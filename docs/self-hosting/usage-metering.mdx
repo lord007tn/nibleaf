@@ -3,7 +3,7 @@ title: 'Operate usage metering'
 description: 'Configure, reconcile, retain, export, delete, and roll back provider-neutral Nibleaf usage without enabling payments.'
 audience: 'self-hosted operators, privacy owners, and future billing integrators'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
+last_reviewed: '2026-11-07'
 last_verified: '2026-08-24'
 verified_against: '@nibleaf/usage, @nibleaf/clickhouse migration 3, Prisma usage models, and server usage actions'
 owner: 'platform'
@@ -54,8 +54,7 @@ hashes, raw user agents, user/session ids, provider/model names, or raw errors.
   or publishing work.
 - Deterministic ids use an RFC 9562 UUIDv8 application-defined layout derived
   from purpose- and domain-separated SHA-256 bytes. The version and variant
-  bits are set explicitly; this unreleased contract has no UUIDv5 ids to
-  migrate.
+  bits are set explicitly.
 - Corrections are new signed events that reference the original event. Facts
   are not edited in place.
 - A late event is assigned by `occurredAt` to its original UTC period. Exports
@@ -143,8 +142,7 @@ quantity, reconciliationId
 ```
 
 `UsageProviderCheckpoint.quantity` is stored as Postgres `numeric(38,0)` and
-provider/public boundaries keep it as a canonical string. The unreleased
-ClickHouse migration 3 creates `usage_hourly.quantity` as `Decimal(38,0)`;
+provider/public boundaries keep it as a canonical string. ClickHouse migration 3 creates `usage_hourly.quantity` as `Decimal(38,0)`;
 `usage_events.quantity` remains `Int64`, preserving the event contract while
 preventing rollup narrowing when multiple maximum-sized facts share an hour.
 
@@ -225,12 +223,6 @@ the path that matches the migration state:
 pnpm --filter @nibleaf/database exec prisma migrate resolve --rolled-back 20260823210000_usage_metering
 ```
 
-Do not use `migrate resolve --rolled-back` for a successfully applied migration.
-The real PostgreSQL round-trip check returned Prisma `P3012` for that misuse,
-then passed when the same statements were deployed as a new forward rollback
-migration: all eight usage tables were removed, the fixture organization
-survived, and both migrations had normal completed records.
-
 For ClickHouse, preserve any required evidence and then run:
 
 ```sql
@@ -239,19 +231,24 @@ DROP TABLE IF EXISTS usage_reconciliation_state;
 DROP TABLE IF EXISTS usage_hourly;
 DROP TABLE IF EXISTS usage_events;
 DROP TABLE IF EXISTS usage_deletion_tombstones;
-DROP TABLE IF EXISTS analytics_deletion_tombstones;
 ```
 
 The ClickHouse migration runner is forward-only; these explicit statements are
 the down procedure. Do not run either rollback while usage consumers are live.
 
-## Current product research
+## Preserve shared analytics during rollback
 
-The design was checked against Mintlify's public pages on 2026-08-23. Mintlify
-currently separates editor-seat/feature entitlements from monthly AI credits,
-shows traffic/search/assistant analytics with a short delay, and supports
-time-range exports. Nibleaf uses those presentation concepts, not Mintlify's
-commercial limits or its raw conversation/search export model. See the current
-[Mintlify pricing page](https://www.mintlify.com/pricing),
-[analytics documentation](https://www.mintlify.com/docs/optimize/analytics), and
-[search analytics API](https://www.mintlify.com/docs/api/analytics/searches).
+`analytics_deletion_tombstones` is shared with site analytics and AI data. Do
+not drop it when removing only usage tables. Preserve erasure fences and queued
+work through the rollback; otherwise old retries or restored data can return.
+The SQL above is destructive and is not a normal upgrade step. Stop consumers,
+back up the affected data and migration records, and verify a reviewed forward
+reversal on an isolated database first. The ClickHouse migration ledger is not
+reset by these statements; do not assume restarting migrations will recreate
+a dropped table whose version is already recorded.
+
+The `pnpm` procedures require an installed source checkout and process
+environment containing `POSTGRES_URL` and the ClickHouse connection settings.
+`pnpm analytics:migrate` does not itself load a root `.env`. Installer-only
+directories do not contain the source scripts. The pinned production Compose
+file also has no analytics service; see [ClickHouse setup](/self-hosting/clickhouse-analytics).

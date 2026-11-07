@@ -3,14 +3,14 @@ title: 'Nibleaf v0.2.0 release notes'
 description: 'See what ships in Nibleaf v0.2.0, which capabilities need configuration, and how to install it or upgrade from v0.1.2.'
 audience: 'self-hosted operators, evaluators, and documentation teams choosing a Nibleaf release'
 content_type: 'reference'
-last_reviewed: '2026-10-31'
+last_reviewed: '2026-11-07'
 verified_against: 'CHANGELOG.md v0.2.0, release/self-host.json, docker-compose.prod.yml, docker-compose.search.yml, and scripts/install.sh'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'releases/v0-2-0'
 ---
 
-v0.2.0 is the current published self-host release. The guided installer, the
+v0.2.0 is the self-host release pinned in the committed manifest. The guided installer, the
 production Compose file, and the pinned `ghcr.io/lord007tn/nibleaf:v0.2.0`
 image all point to it. The full list of changes, with pull request numbers, is in
 the repository's `CHANGELOG.md` and on the GitHub release page.
@@ -59,7 +59,7 @@ advisory.
   architectures.
 - `docker-compose.prod.yml` includes neither Qdrant nor ClickHouse.
 - The interface offers 12 locale options, with some strings still in English.
-- Dependency scanning still reports three Medium advisories, in `glob`, `minimatch`,
+- The release-time dependency scan reported three Medium advisories, in `glob`, `minimatch`,
   and `deepmerge`. The image includes them through its email packages. Nibleaf does
   not import them directly, and removing them needs upstream changes.
 
@@ -78,3 +78,12 @@ boundaries.
 - **If you set `WORKER_QUEUES`:** add `erasure`; otherwise, files belonging to
   projects deleted after the upgrade remain in storage.
 - **Something failed:** see [troubleshooting](/self-hosting/troubleshooting).
+
+## Reading these historical notes
+
+The feature list records this release/source baseline. Later merges added
+workspace-owned OpenAI/OpenRouter connections, streaming Ask AI chat, support
+MCP writes and OAuth, redesigned reader search, and expanded analytics. Their
+current operator guides describe the source implementation; they are not a
+promise that the v0.2.0 image contains those later changes. The pinned production
+Compose file still has no ClickHouse service.

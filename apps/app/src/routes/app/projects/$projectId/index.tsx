@@ -44,13 +44,12 @@ import {
 import { useProjectAnalytics } from '@/hooks/api/analytics';
 import { analyticsTimezone, projectAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
-import { useSiteAdminState } from '@/hooks/use-site-admin-state';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { isolate } from '@/lib/bidi';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
-import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
-import { useSession } from '@/services/auth-client';
+import type { SiteAdminState } from '@/lib/project-settings-access';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 
@@ -91,17 +90,12 @@ function SiteOverviewPage() {
   const pagesFailed = pagesQuery.isError && !pages;
   const membersFailed = membersQuery.isError && !members;
   // Domain settings are for Admins; while that's unknown, show neither variant.
-  const adminState = useSiteAdminState(projectId);
+  const { status: settingsAccess } = useProjectAdminStatus(projectId);
   const deploymentsFailed = deploymentsQuery.isError && !deployments;
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
-  const { data: session, isPending: sessionPending } = useSession();
-  const settingsAccess = resolveProjectSettingsAccess(
-    members?.members.find((member) => member.user.id === session?.user.id)?.role,
-    membersPending || sessionPending || !members || !session,
-  );
   const canManageSettings = settingsAccess === 'admin';
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
@@ -228,7 +222,7 @@ function SiteOverviewPage() {
                   {connectingDomain ? (
                     <p className="mt-1 text-muted-foreground text-xs">
                       {t('overview.live.domainConnecting', { domain: isolate(connectingDomain.domain) })}
-                      {adminState === 'admin' ? (
+                      {settingsAccess === 'admin' ? (
                         <>
                           {' '}
                           <Link
@@ -240,7 +234,7 @@ function SiteOverviewPage() {
                             {t('overview.live.finishSetup')}
                           </Link>
                         </>
-                      ) : adminState === 'notAdmin' ? (
+                      ) : settingsAccess === 'notAdmin' ? (
                         ` ${t('overview.live.askAdmin')}`
                       ) : null}
                     </p>
@@ -639,7 +633,7 @@ function PublishNudge({
   permissionError,
 }: {
   projectId: string;
-  settingsAccess: ReturnType<typeof resolveProjectSettingsAccess>;
+  settingsAccess: SiteAdminState;
   permissionError?: React.ReactNode;
 }) {
   const t = useT();

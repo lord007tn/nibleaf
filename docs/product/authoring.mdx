@@ -1,82 +1,143 @@
 ---
-title: 'Write and review a page'
-description: 'Choose an editing mode, organize the page tree, use branches and anchored comments, and recover safely when a draft does not render.'
+title: 'Write and organize pages'
+description: 'Write pages in the visual editor, organize them into groups, review changes with comments and preview, and manage documentation versions safely.'
 audience: 'writers, editors, and documentation reviewers'
 content_type: 'how-to'
-last_reviewed: '2026-08-17'
-verified_against: 'apps/app/src/components/editor and apps/server/src/actions/pages.ts'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/routes/app/projects/$projectId/editor.tsx, apps/app/src/components/editor (save-status, sortable-page-tree, page-settings-dialog, comments-panel, branch-switcher, ai-assist), apps/server/src/actions/branches.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/authoring'
 ---
 
-Every Nibleaf page has one Markdown source. Visual, WYSIWYG, and Markdown are
-editing modes for that source, not separate documents. Preview is a separate
-action that opens the saved draft in a reader view. Wait for **Saved** before
-leaving a page or publishing.
+To write documentation, open your site and select **Editor** in the sidebar, or
+**Open editor** on the site overview. The editor has your page list on one side
+and the page you are writing in the middle. Everything you type is a draft until
+you publish.
 
-## Choose an editing mode
+## Write a page
 
-| Mode | Use it for | Check before leaving |
-| --- | --- | --- |
-| Visual | Structured blocks, slash commands, tables, and rearranging content. | Complex components still contain their attributes and children. |
-| WYSIWYG | Focused prose editing with less interface chrome. | Headings, lists, and links kept their intended structure. |
-| Markdown | Direct source changes, bulk edits, and syntax unavailable as a visual control. | Fences, component tags, and blank lines are balanced. |
-If a page contains a component the structured editor cannot safely round-trip,
-Nibleaf keeps that block read-only or opens the page in Markdown mode. This is a
-data-preservation boundary, not an error to bypass.
+1. Select a page in the **Pages** list, or select **New page**.
+2. Type the page title, then write below it. Type `/` on an empty line to insert
+   a heading, list, table, image, callout, or another block.
+3. Watch the status next to the page name. It shows **Saving draft…** and then
+   **Draft saved**. If it shows **Not saved**, select **Retry saving** before you leave.
 
-Use **Preview** after changing structure, components, links, or mixed-direction
-text. The preview action saves pending content before opening the draft in a new
-tab; allow pop-ups for the Nibleaf origin if the tab does not open.
+The chip next to the status tells you whether readers can see this page yet:
+**Unpublished changes** or **Published**.
 
-## Organize pages around reader tasks
+To change how the editor looks, open **More options** (the `…` button above the
+page):
 
-Use groups to create a shallow hierarchy and pages for content readers can open.
-Give each page one primary purpose. A practical product manual normally exposes
-getting started, common tasks, configuration, operations and troubleshooting,
-and reference without copying the application's internal menu.
+- **Show formatting toolbar** adds a toolbar with bold, links, lists, and more.
+- **Edit as Markdown (advanced)** shows the page as plain text with formatting
+  codes. Use it for bulk edits or syntax the visual editor can't show. Select
+  **Back to the visual editor** when you are done.
 
-Before moving or renaming a published page, record its public path. Parent groups
-contribute to the path. Add a direct permanent redirect from the old path and
-update internal links so readers do not spend a hop on normal navigation.
+Both views edit the same page. If a page contains a component the visual editor
+does not recognize, it keeps that block exactly as written and lets you edit
+everything around it. To change that block, use **Edit as Markdown (advanced)**.
+See [Markdown and MDX](/product/markdown-mdx) for what you can write.
 
-## Review a substantial change
+## Organize pages
 
-Create a branch before a migration, large rewrite, or page-tree reorganization.
-Use a name that describes the outcome. Add anchored comments to the exact block
-being reviewed, then resolve or record every blocking discussion.
+- **New group** creates a heading in the navigation that holds related pages.
+- Drag a page to reorder it, or drop it onto a group to move it inside. With a
+  keyboard, focus the page, press Space or Enter, move it with the arrow keys,
+  and press Space or Enter again.
+- Each page and group has a menu with **Rename**, **Add a page inside**, and
+  **Delete page** or **Delete group**. Deleting can't be undone, and readers
+  stop seeing the page after your next publish.
 
-Review the branch as a reader:
+Keep the structure shallow and organized around reader tasks, such as "Getting
+started", "Common tasks", and "Troubleshooting", rather than copying your
+product's menus.
 
-1. Open every changed page in Preview.
-2. Test new links and paths.
-3. Search using words a reader would type.
-4. Check a narrow mobile viewport and keyboard focus.
-5. Confirm title, description, indexing, and language relationships.
-6. Merge the reviewed branch into the default draft, publish once, and verify
-   the public deployment.
+## Change page details
 
-**Promote into main** replaces main's pages with the version's pages. If any
-page on main was edited, added, deleted or moved under a different parent since
-the version's pages were copied from it, Promote stops, says why, and changes
-nothing. Reordering pages doesn't count. To promote your edits anyway, switch to
-main, create a new version there, copy this version's edits into it, then promote
-the new version. A new version created while another version is open is a copy
-of that version, so it's refused for the same reason.
+Select **Page settings** (the sliders icon above the page) to change:
 
-A version can't be promoted either if it was created before this update, was
-imported, was copied from such a version, or main's pages were replaced since it
-was made (by promoting another version, or by an import that replaces main's
-pages). Recreate it from main: switch to main, create a new version there, and
-move your changes into it.
+- **Title** and **Web address**, the last part of the page's address. Changing
+  the address of a published page breaks links people saved, so add a
+  [redirect](/redirects) from the old address.
+- **Description**, shown under the title and in search results.
+- **Hidden**, which keeps the page out of the navigation.
+
+**More options** in the same dialog holds the sidebar title, search-engine and
+social sharing settings, page width, and the **Translation key** that links a
+page to its translations. See [Arabic and right-to-left docs](/product/arabic-rtl).
+
+## Review a change with your team
+
+1. Select **Comment**, highlight the text you want to discuss, and write your
+   comment. Comments appear in the **Comments** panel next to the page.
+2. Select **Resolve** when the comment is handled.
+3. Select **Preview** to read the draft as a reader would. It opens in a new tab;
+   allow pop-ups for Nibleaf if nothing happens.
+4. When you are ready, select **Publish** and use **Review changes** to see
+   exactly what changed on each page before you publish.
+
+## Get writing help from AI
+
+If your Nibleaf instance has AI drafting turned on, the panel next to the page
+shows an **AI** tab with **AI assist**. It can **Continue writing**,
+**Rephrase**, write an **Outline**, or **Summarize**, and it can write from your
+own instruction. Review every suggestion before you choose **Insert** or
+**Replace**. Nothing reaches readers until you publish.
+
+## Manage documentation versions
+
+Versions let readers switch between docs for different releases of your product,
+such as `v1` and `v2`.
+
+- To create one, open **More options** and select **New version**. The new
+  version starts as a copy of the version you are viewing.
+- When a site has more than one version, a **Version** switcher appears at the
+  top of the editor.
+- **Every publish includes every version**, so readers can see each one. Don't
+  use a version as a private draft for a rewrite.
+
+**Promote into main** brings the version's changes into main, then removes the
+version. You can't undo this, so download your drafts first: open
+**Settings → Exports → One-time export** and select
+**Download the original Markdown ZIP**. A regular export contains only your
+latest published version, not unpublished edits.
+
+If someone changed pages on main after the version was created, Promote stops,
+says why, and changes nothing. A step to review those pages and confirm is
+coming soon. Until then, switch to main, create a new version there, and copy
+this version's edits into it. When a version is promoted:
+
+- **What you changed in the version** replaces main's, one field at a time. If
+  you fixed a page's text and main renamed it, both changes are kept. If both
+  changed the same thing, the version's change wins.
+- **Pages you didn't touch** keep main's latest edits.
+- **Pages added on main** stay. If a page's folder is gone, the page moves up to
+  the nearest folder that's left. If a page would share an address with another
+  page, it gets a numbered address, such as `refunds-2`.
+- **Pages deleted on main** stay deleted, unless you changed them in the version
+  or a page you kept is inside them.
+- **Pages you deleted in the version** are removed from main.
+
+If the moves on both sides would put two pages inside each other, Promote stops.
+Move one of them in the version, then promote again.
+
+Comments and reader access follow the page: on a page from the version they move
+to main's page, and on a page that ends up removed they're removed with it.
+
+Promote refuses versions created before this update, versions made from them,
+and versions created before an import replaced main's pages. Recreate it from
+main: switch to main, create a new version there, and move your changes into it.
 
 ## Recover from a bad draft
 
-If the public version is still correct, stop before publishing. Compare the
-draft with the last ready deployment or a Markdown export, repair one section,
-wait for **Saved**, and preview again. For a conflicting multi-writer change,
-preserve both sources until the intended version has been reconciled.
+If the published site is still correct, don't publish. Fix the draft, wait for
+**Draft saved**, and preview again. The publish dialog's **Review changes** shows
+what differs from the published version, which helps you find the problem.
 
-Publishing history helps with content releases, but it is not a database backup.
-Self-hosters should also follow [backup and restore](/self-hosting/backups-upgrades).
+If a bad version is already live, see
+[Publish your changes](/product/publishing#undo-a-publish).
+
+A published version is not a backup of your drafts. To keep a copy of
+unpublished work, use **Download the original Markdown ZIP**; see
+[Export and archive](/product/exports).

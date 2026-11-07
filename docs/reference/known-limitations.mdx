@@ -3,8 +3,8 @@ title: 'Known limitations and product boundaries'
 description: 'Evaluate Nibleaf honestly against beta operations, identity, Git workflows, API portals, exports, private readers, and search requirements.'
 audience: 'technical evaluators, operators, and documentation leads'
 content_type: 'reference'
-last_reviewed: '2026-08-24'
-verified_against: 'README.md, apps/app/src/lib/comparison-data.ts, and current main branch'
+last_reviewed: '2026-11-07'
+verified_against: 'release/self-host.json, workspace-ai.ts, ai.ts, packages/cli/src/index.ts, packages/bullmq/src/jobs/ai-conversations.ts, and current reader source'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'reference/known-limitations'
@@ -128,3 +128,28 @@ Search the public issue tracker before filing a report. Include the release tag
 and digest, deployment type, expected result, actual result, and a minimal
 reproduction. Remove secrets, customer content, private hostnames, and tokens.
 Report vulnerabilities privately through the repository's `SECURITY.md` path.
+
+## Current-source features and operator checks
+
+The committed self-host manifest pins v0.2.0. Workspace Smart AI, streaming
+Ask AI chat, support-writer MCP/OAuth and the newer insights screens were merged
+later. Their presence in source or in these guides does not prove availability
+in that image or on Cloud. Check the actual serving revision and workflow.
+
+The UI calls the provider settings Workspace Smart AI, but current connection
+storage and selection are project-bound. Configure the site you intend to use;
+do not assume another project in the same organization inherits the key.
+Editor drafting still uses the instance OpenRouter key and its separate daily
+limit. Model-catalog verification proves neither account credit nor the quality
+of an answer on your corpus. Chat can briefly show streamed wording before
+final validation removes it.
+
+Analytics schema health does not prove event delivery, and origin crawler counts
+exclude requests served entirely by a cache in front of Nibleaf. Crawler names
+come from user-agent classification, not IP-feed verification. A missing metric
+is unknown. Conversation transport keys have no previous-key read window: drain
+sealed jobs before a planned key change and keep API/worker values consistent.
+
+The public-site CLI currently requires a valid OpenAPI document for its overall
+inspection to pass, including on documentation-only sites. See its individual
+checks in the [API and CLI reference](/reference/api).
