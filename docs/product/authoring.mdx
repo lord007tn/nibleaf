@@ -57,11 +57,15 @@ Review the branch as a reader:
 6. Merge the reviewed branch into the default draft, publish once, and verify
    the public deployment.
 
-**Promote into main** replaces main's pages with the branch's pages. If main
-changed since the branch's pages were copied from it, Promote stops, says why,
-and changes nothing: bring those changes into the branch, or undo them on main,
-then promote again. A branch created before this check, or copied from one,
-can't be promoted. Create a new branch from main and move your changes there.
+**Promote into main** replaces main's pages with the version's pages. If any
+page on main was edited, added, deleted or moved under a different parent since
+the version's pages were copied from it, Promote stops, says why, and changes
+nothing. Reordering pages doesn't count. To promote anyway, create a new version
+from main, move this version's edits there, then promote the new version.
+
+A version that is older than this check, was imported, or was copied from such a
+version can't be promoted either. Create a new version from main and move your
+changes there.
 
 ## Recover from a bad draft
 
