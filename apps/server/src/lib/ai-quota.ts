@@ -45,10 +45,13 @@ export const assertAiQuota = async (organizationId: string): Promise<void> => {
   let used: number;
   try {
     const redis = getRedis();
-    const results = await redis.multi().incr(key).expire(key, DAY_SECONDS, 'NX').exec();
+    // Create the day's counter with its expiry only if it doesn't exist yet,
+    // then count. INCR keeps an existing TTL, so the window never extends, and
+    // this works on every Redis version (EXPIRE ... NX needs Redis 7).
+    const results = await redis.multi().set(key, 0, 'EX', DAY_SECONDS, 'NX').incr(key).exec();
     if (results?.length !== 2) throw new Error('Quota transaction did not complete');
     for (const [error] of results) if (error) throw error;
-    const count = results[0]?.[1];
+    const count = results[1]?.[1];
     if (typeof count !== 'number') throw new Error('Quota transaction returned an invalid count');
     used = count;
   } catch (cause) {
