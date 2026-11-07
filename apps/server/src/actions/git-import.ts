@@ -242,7 +242,7 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
 /** Where one repository file lands: the folder (`dir`, repo-relative) whose
  * page group it joins and the name its slug derives from. `dir/index.md` and
  * `dir/README.md` stand for the folder itself, one level up. */
-export const importFileLocation = (relativePath: string): { dir: string; name: string } => {
+const importFileLocation = (relativePath: string): { dir: string; name: string } => {
   const segments = relativePath.split('/');
   const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
   const relDir = segments.join('/');
