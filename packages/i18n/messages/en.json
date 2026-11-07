@@ -393,7 +393,7 @@
   "editor_ai_sectiondrafted": "Section drafted.",
   "editor_ai_drafterror": "Could not draft content.",
   "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
-  "editor_ai_notconfigured": "AI assist is not set up for this site. Ask a site administrator to connect a provider in Smart AI.",
+  "editor_ai_notconfigured": "AI assist is not set up for this site. Ask a site Admin to connect a provider in Smart AI.",
   "editor_ai_disabled": "AI assist is turned off for this site. Ask a site Admin to turn on Smart AI.",
   "editor_ai_instancedisabled": "AI drafting is turned off on this Nibleaf server.",
   "editor_ai_ratelimited": "Daily AI limit reached. Try again tomorrow.",
