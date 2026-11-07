@@ -1,6 +1,6 @@
-import rehypeSanitize from 'rehype-sanitize';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { describe, expect, it } from 'vitest';
-import { normalizeMdxBlocks, sanitizeSchema } from './mdx-config';
+import { MDX_BLOCK_TAGS, normalizeMdxBlocks, readerTagRewriter, rehypeAuthoredComponentProps, sanitizeSchema } from './mdx-config';
 
 describe('math sanitization boundary', () => {
   it('preserves only recognized code markers and strips authored styling and handlers', () => {
@@ -117,5 +117,181 @@ describe('normalizeMdxBlocks', () => {
     expect(output).toContain('<File name="index.ts" ></File>');
     expect(output).toContain('<File name="types.ts" ></File>');
     expect(output).toContain('<RelatedCard title="One" ></RelatedCard>');
+  });
+  it('reads attribute values containing ">" whole', () => {
+    expect(normalizeMdxBlocks('<RelatedContent>\n<RelatedCard title="a > b" href="/a" />\nInside\n</RelatedContent>')).toBe(
+      '<RelatedContent>\n\n<RelatedCard title="a > b" href="/a" ></RelatedCard>\nInside\n\n</RelatedContent>',
+    );
+    expect(normalizeMdxBlocks('<Accordion title="a > b">\nBody\n</Accordion>')).toBe('<Accordion title="a > b">\n\nBody\n\n</Accordion>');
+    expect(normalizeMdxBlocks("<Callout type='a > b'>One line.</Callout>")).toBe("<Callout type='a > b'>\n\nOne line.\n\n</Callout>");
+    // A quote that isn't closed on its line is text, so the tag still ends at its own ">".
+    expect(normalizeMdxBlocks("<RelatedContent>\n<RelatedCard title=it's />\nInside\n</RelatedContent>\n\nIt's later.")).toContain(
+      "<RelatedCard title=it's ></RelatedCard>",
+    );
+    // A quoted "/>" doesn't close the tag either.
+    expect(normalizeMdxBlocks('<FileTree>\n<File name="a/>b" />\n</FileTree>')).toContain('<File name="a/>b" ></File>');
+  });
+});
+
+// Literal values from before the reader config was derived from the component
+// registry. A component change that alters these is a deliberate reader change:
+// update the literals in the same commit.
+const COMPONENT_TAG_NAMES = [
+  'callout',
+  'note',
+  'warning',
+  'info',
+  'tip',
+  'check',
+  'danger',
+  'card',
+  'cardgroup',
+  'tabs',
+  'tab',
+  'accordion',
+  'accordiongroup',
+  'steps',
+  'step',
+  'mdxframe',
+  'tooltip',
+  'paramfield',
+  'responsefield',
+  'expandable',
+  'codegroup',
+  'icon',
+  'update',
+  'columns',
+  'column',
+  'banner',
+  'badge',
+  'button',
+  'filetree',
+  'folder',
+  'file',
+  'apiexample',
+  'requestexample',
+  'responseexample',
+  'relatedcontent',
+  'relatedcard',
+  'mermaid',
+];
+const COMPONENT_ATTRIBUTES: Record<string, string[]> = {
+  callout: ['type'],
+  card: ['title', 'href', 'icon'],
+  cardgroup: ['cols'],
+  tab: ['title'],
+  accordion: ['title', 'defaultOpen', 'defaultopen'],
+  step: ['title'],
+  mdxframe: ['caption'],
+  tooltip: ['tip'],
+  paramfield: ['path', 'query', 'header', 'body', 'dataDisplayName', 'type', 'required', 'default', 'deprecated'],
+  responsefield: ['dataDisplayName', 'type', 'required', 'default', 'deprecated'],
+  expandable: ['title', 'defaultOpen', 'defaultopen'],
+  icon: ['icon', 'dataDisplayName', 'color', 'size'],
+  update: ['label', 'description'],
+  banner: ['type'],
+  badge: ['color'],
+  button: ['href', 'variant'],
+  folder: ['dataDisplayName', 'defaultOpen', 'defaultopen'],
+  file: ['dataDisplayName', 'icon'],
+  apiexample: ['title'],
+  requestexample: ['title'],
+  responseexample: ['title', 'status'],
+  relatedcontent: ['title'],
+  relatedcard: ['title', 'description', 'href', 'icon'],
+};
+const BLOCK_TAGS =
+  'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
+
+const sorted = (values: readonly string[]) => [...values].sort();
+type TestElement = { type: string; tagName: string; properties: Record<string, unknown>; children: TestElement[] };
+const element = (tagName: string, properties: Record<string, unknown> = {}, children: TestElement[] = []): TestElement => ({
+  type: 'element',
+  tagName,
+  properties,
+  children,
+});
+
+describe('reader config derived from the component registry', () => {
+  it('allows exactly the component tags it allowed before, plus underline', () => {
+    const defaults = defaultSchema.tagNames ?? [];
+    expect(sanitizeSchema.tagNames?.slice(0, defaults.length)).toEqual(defaults);
+    // `u` was added on purpose: the editor's Underline saves `<u>`, which the
+    // GitHub default schema (unlike `sub`/`sup`) does not allow.
+    expect(sorted(sanitizeSchema.tagNames?.slice(defaults.length) ?? [])).toEqual(sorted([...COMPONENT_TAG_NAMES, 'u']));
+    expect(sanitizeSchema.attributes?.u).toBeUndefined();
+  });
+
+  it('allows exactly the component attributes it allowed before', () => {
+    const { '*': star, pre, code, ...rest } = sanitizeSchema.attributes ?? {};
+    const { '*': defaultStar, pre: defaultPre, code: _defaultCode, ...defaultRest } = defaultSchema.attributes ?? {};
+    expect(star).toEqual([...(defaultStar ?? []), 'className', 'id']);
+    expect(pre).toEqual([...(defaultPre ?? []), 'dataTitle', 'dataLang']);
+    expect(code).toEqual([['className', /^language-./, 'math-inline', 'math-display'], 'dataTitle', 'dataLang']);
+    for (const [tag, attributes] of Object.entries(defaultRest)) {
+      if (!(tag in COMPONENT_ATTRIBUTES)) expect(rest[tag], tag).toEqual(attributes);
+    }
+    const components = Object.entries(rest).filter(([tag]) => !(tag in defaultRest) || tag in COMPONENT_ATTRIBUTES);
+    // Attribute order is irrelevant to the sanitizer; compare as sets.
+    expect(Object.fromEntries(components.map(([tag, attributes]) => [tag, sorted(attributes as string[])]))).toEqual(
+      Object.fromEntries(Object.entries(COMPONENT_ATTRIBUTES).map(([tag, attributes]) => [tag, sorted(attributes)])),
+    );
+  });
+
+  it('treats the same tags as Markdown-bodied blocks', () => {
+    // The tags form a regex alternation followed by \b, so their order does not matter.
+    expect(sorted(MDX_BLOCK_TAGS)).toEqual(sorted(BLOCK_TAGS.split('|')));
+  });
+
+  it('expands every self-closing component and only those', () => {
+    const output = normalizeMdxBlocks('<File name="a" />\n\n<RelatedCard title="b" />\n\nInline <Icon icon="star" /> and <Badge color="x" /> text');
+    expect(output).toContain('<File name="a" ></File>');
+    expect(output).toContain('<RelatedCard title="b" ></RelatedCard>');
+    expect(output).toContain('<Icon icon="star" ></Icon>');
+    expect(output).toContain('<Badge color="x" />');
+  });
+
+  it('moves `name` to a display attribute only on the components it did before', () => {
+    const tags = ['folder', 'file', 'paramfield', 'responsefield', 'icon', 'card', 'tab', 'button', 'input'];
+    const tree = element(
+      'root',
+      {},
+      tags.map((tagName) => element(tagName, { name: 'x' })),
+    );
+    tree.type = 'root';
+    rehypeAuthoredComponentProps()(tree as never);
+    expect(tree.children.map((child) => [child.tagName, child.properties])).toEqual([
+      ['folder', { dataDisplayName: 'x' }],
+      ['file', { dataDisplayName: 'x' }],
+      ['paramfield', { dataDisplayName: 'x' }],
+      ['responsefield', { dataDisplayName: 'x' }],
+      ['icon', { dataDisplayName: 'x' }],
+      ['card', { name: 'x' }],
+      ['tab', { name: 'x' }],
+      ['button', { name: 'x' }],
+      ['input', { name: 'x' }],
+    ]);
+  });
+
+  it('unwraps paragraphs around the same structural items as before', () => {
+    const structural = ['card', 'tab', 'accordion', 'step', 'column', 'folder', 'file', 'requestexample', 'responseexample', 'relatedcard'];
+    const containers = ['cardgroup', 'tabs', 'steps', 'note', 'badge', 'mdxframe', 'filetree', 'apiexample', 'relatedcontent', 'expandable'];
+    const tree = element(
+      'root',
+      {},
+      [...structural, ...containers].map((tagName) => element('p', {}, [element(tagName)])),
+    );
+    tree.type = 'root';
+    rehypeAuthoredComponentProps()(tree as never);
+    expect(tree.children.map((child) => child.tagName)).toEqual([...structural, ...containers.map(() => 'p')]);
+  });
+});
+
+describe('reader tag rewriting', () => {
+  it('expands a self-closing component before renaming it, so a renamed atom is still closed', () => {
+    const rewrite = readerTagRewriter([['Widget', { kind: 'block', selfClosing: true, readerTag: 'mdxwidget', attributes: { label: 'string' } }]]);
+    expect(rewrite('<Widget label="a" />\n<Widget label="b"></Widget>')).toBe(
+      '<mdxwidget label="a" ></mdxwidget>\n<mdxwidget label="b"></mdxwidget>',
+    );
   });
 });

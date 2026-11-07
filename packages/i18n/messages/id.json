@@ -1586,7 +1586,7 @@
   "settings_import_summary_source": "Sumber",
   "settings_import_summary_branch": "Cabang",
   "settings_import_summary_defaultbranch": "Cabang bawaan",
-  "settings_import_summaryhint": "Halaman ditambahkan atau diperbarui dalam proyek ini — tidak ada yang dihapus, dan menjalankan kembali impor aman.",
+  "settings_import_summaryhint": "By default, importing adds new pages and updates the pages it matches by source file or address, replacing their title, text and any details the source sets; nothing you’ve edited is deleted. Where “Replace the current draft with this repository” is offered and turned on, your draft is made to match the source, and pages that aren’t in it are deleted. Download your drafts first (Settings → Exports → One-time export → Download the original Markdown ZIP; the usual export contains only the published version).",
   "settings_import_run": "Impor",
   "settings_import_running": "Mengimpor…",
   "settings_import_success": "Impor selesai",
