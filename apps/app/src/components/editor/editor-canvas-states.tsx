@@ -14,12 +14,18 @@ import type { PageNode, Project } from '@/hooks/api/types';
  * them inside its single <main id="main-content"> landmark.
  */
 
-/** Site configuration: one section of the site's settings, or a skeleton until the site loads. */
+/** Site configuration: an admin-only section, with a skeleton until permissions and the site load. */
 export function ConfigCanvas({
   project,
   section,
   reportDirty,
+  canManage,
+  permissionsPending,
+  onBackToWriting,
 }: {
+  canManage: boolean;
+  permissionsPending: boolean;
+  onBackToWriting: () => void;
   project: Project | undefined;
   section: ConfigSectionId;
   reportDirty: (source: string, dirty: boolean) => void;
@@ -33,7 +39,24 @@ export function ConfigCanvas({
         <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">{t('editor.config.heading')}</span>
       </div>
       <div className="mx-auto w-full max-w-6xl px-5 pt-7 pb-32 sm:px-8">
-        {project ? (
+        {!permissionsPending && !canManage ? (
+          <div className="max-w-xl rounded-xl border border-border bg-card p-6">
+            <p className="text-muted-foreground text-sm" role="status">
+              {t('editor.config.adminOnly')}
+            </p>
+            <Button
+              className="mt-4 min-h-11"
+              onClick={(event) => {
+                onBackToWriting();
+                event.currentTarget.closest('main')?.focus();
+              }}
+              type="button"
+              variant="outline"
+            >
+              {t('editor.config.backToWriting')}
+            </Button>
+          </div>
+        ) : !permissionsPending && canManage && project ? (
           <div className={cn('w-full', section === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
             <ConfigDirtyProvider report={reportDirty}>
               <ConfigSection project={project} section={section} />
