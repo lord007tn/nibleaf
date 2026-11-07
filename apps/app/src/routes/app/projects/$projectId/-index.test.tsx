@@ -12,8 +12,18 @@ const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
-  Link: ({ children, className, search }: { children?: ReactNode; className?: string; search?: { section?: string } }) => (
-    <a className={className} href={search?.section ? `/settings?section=${search.section}` : '/link'}>
+  Link: ({
+    children,
+    className,
+    search,
+    'aria-label': ariaLabel,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    search?: { section?: string };
+    'aria-label'?: string;
+  }) => (
+    <a aria-label={ariaLabel} className={className} href={search?.section ? `/settings?section=${search.section}` : '/link'}>
       {children}
     </a>
   ),
@@ -108,6 +118,41 @@ describe('site overview first load', () => {
     expect(alert).not.toBeNull();
     await act(async () => alert?.querySelector('button')?.click());
     expect(retry).toHaveBeenCalledOnce();
+  });
+
+  it('keeps checklist steps 1 and 2 usable while permissions load, gating only the optional domain step', async () => {
+    navigation.deployments = { data: [], isPending: false };
+    navigation.members = pending;
+    await act(async () => root.render(<SiteOverviewPage />));
+    const checklist = container.querySelector('ol');
+    expect(checklist).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step1"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step2"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step3"]')).toBeNull();
+    expect(checklist?.textContent).toContain('overview.nudge.step3Desc');
+    expect(checklist?.textContent).not.toContain('overview.settings.askAdmin');
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol a[href="/settings?section=domain"]')).not.toBeNull();
+  });
+
+  it('keeps checklist steps 1 and 2 usable after a permission failure and offers Retry inside step 3', async () => {
+    const retry = vi.fn();
+    navigation.deployments = { data: [], isPending: false };
+    navigation.members = { isPending: false, isError: true, refetch: retry };
+    await act(async () => root.render(<SiteOverviewPage />));
+    const checklist = container.querySelector('ol');
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step1"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step2"]')).not.toBeNull();
+    expect(checklist?.querySelector('a[aria-label="overview.nudge.step3"]')).toBeNull();
+    const step3 = checklist?.querySelectorAll('li')[2];
+    expect(step3?.querySelector('[role="alert"]')).not.toBeNull();
+    await act(async () => step3?.querySelector('button')?.click());
+    expect(retry).toHaveBeenCalledOnce();
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('ol [role="alert"]')).toBeNull();
+    expect(container.querySelector('ol a[href="/settings?section=domain"]')).not.toBeNull();
   });
 
   it.each(['member', 'admin', 'owner'])('retains cached %s settings rows and publish nudge after a background member failure', async (role) => {

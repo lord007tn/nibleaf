@@ -128,6 +128,30 @@ describe('site settings permissions', () => {
     expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
   });
 
+  it.each([
+    { role: 'admin', section: 'general', testId: 'general-settings' },
+    { role: 'member', section: 'languages', testId: 'language-settings' },
+  ])('keeps cached $role settings mounted when a member refetch fails', async ({ role, section, testId }) => {
+    const data = { members: [{ user: { id: 'user-1' }, role }] };
+    mocks.section = section;
+    mocks.members.mockReturnValue({ data, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    const form = container.querySelector(`[data-testid="${testId}"]`);
+    expect(form).not.toBeNull();
+    mocks.members.mockReturnValue({ data, isPending: false, isError: true });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector(`[data-testid="${testId}"]`)).toBe(form);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('uses cached editor permissions to redirect the default entry even after a background member failure', async () => {
+    mocks.section = undefined;
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'member' }] }, isPending: false, isError: true });
+    await act(async () => root.render(<SettingsPage />));
+    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'languages' }, replace: true });
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('prefetches site, permissions and the selected domain section', () => {
     const queryClient = {};
     const loader = Route.options.loader as unknown as (args: unknown) => void;

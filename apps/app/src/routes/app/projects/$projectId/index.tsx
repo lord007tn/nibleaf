@@ -162,8 +162,16 @@ function SiteOverviewPage() {
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed && settingsAccess !== 'pending' && !(membersQuery.isError && !members) ? (
-        <PublishNudge canManageSettings={canManageSettings} projectId={projectId} />
+      {deployments && !hasReadyDeployment && !publishFailed ? (
+        <PublishNudge
+          projectId={projectId}
+          settingsAccess={settingsAccess}
+          permissionError={
+            membersQuery.isError && !members ? (
+              <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
+            ) : undefined
+          }
+        />
       ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
@@ -538,7 +546,15 @@ function PublishFailureCard({
 const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
 
 /** First-publish checklist: shown until the site has a READY deployment. */
-function PublishNudge({ projectId, canManageSettings }: { projectId: string; canManageSettings: boolean }) {
+function PublishNudge({
+  projectId,
+  settingsAccess,
+  permissionError,
+}: {
+  projectId: string;
+  settingsAccess: ReturnType<typeof resolveProjectSettingsAccess>;
+  permissionError?: React.ReactNode;
+}) {
   const t = useT();
   const [dismissed, setDismissed] = useState(true);
   useEffect(() => {
@@ -593,8 +609,12 @@ function PublishNudge({ projectId, canManageSettings }: { projectId: string; can
             search={{ publish: true }}
           />
         </NudgeStep>
-        <NudgeStep n={3} title={t('overview.nudge.step3')} desc={t(canManageSettings ? 'overview.nudge.step3Desc' : 'overview.settings.askAdmin')}>
-          {canManageSettings ? (
+        <NudgeStep
+          n={3}
+          title={t('overview.nudge.step3')}
+          desc={permissionError ?? t(settingsAccess === 'notAdmin' ? 'overview.settings.askAdmin' : 'overview.nudge.step3Desc')}
+        >
+          {settingsAccess === 'admin' ? (
             <Link
               className="absolute inset-0"
               aria-label={t('overview.nudge.step3')}
@@ -609,7 +629,7 @@ function PublishNudge({ projectId, canManageSettings }: { projectId: string; can
   );
 }
 
-function NudgeStep({ n, title, desc, children }: { n: number; title: string; desc: string; children: React.ReactNode }) {
+function NudgeStep({ n, title, desc, children }: { n: number; title: string; desc: React.ReactNode; children: React.ReactNode }) {
   return (
     <li className="relative flex items-start gap-3 rounded-lg border border-border bg-card p-3.5 transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none">
       <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">{n}</span>

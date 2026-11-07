@@ -247,6 +247,7 @@ function ProjectSettingsPage() {
     isFetching: membersFetching,
     refetch: retryMembers,
   } = useProjectMembers(projectId);
+  const membersUnavailable = membersError && !memberData;
   const { data: session, isPending: sessionPending } = useSession();
   const t = useT();
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
@@ -262,12 +263,12 @@ function ProjectSettingsPage() {
   // retain their permission explanation instead of silently changing destination.
   const redirectSection = availableSections[0]?.id;
   useEffect(() => {
-    if (!membersPending && !membersError && !sessionPending && currentMember && !requestedSection && !sectionAllowed && redirectSection) {
+    if (!membersPending && !membersUnavailable && !sessionPending && currentMember && !requestedSection && !sectionAllowed && redirectSection) {
       void navigate({ search: { section: redirectSection }, replace: true });
     }
-  }, [membersPending, membersError, sessionPending, currentMember, sectionAllowed, redirectSection, requestedSection, navigate]);
+  }, [membersPending, membersUnavailable, sessionPending, currentMember, sectionAllowed, redirectSection, requestedSection, navigate]);
 
-  if (membersError) {
+  if (membersUnavailable) {
     return (
       <div className="p-6">
         <QueryErrorState onRetry={() => void retryMembers()} retrying={membersFetching} />

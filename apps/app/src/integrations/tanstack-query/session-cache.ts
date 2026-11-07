@@ -53,6 +53,10 @@ const syncCacheWrites = new Set(['setQueryData', 'setQueriesData', 'removeQuerie
 /** Mutations keep the cache access they started with, even across awaits.
  * Reads/method receivers use the real client; stale writes and rollbacks are ignored.
  * This also covers a pending optimistic onMutate that resumes after a session change.
+ * Dashboard consumers must stay under AppGuard's user-keyed ProjectProvider:
+ * /app remounts both session hooks when accounts change. Other consumers need
+ * the same account-keyed lifetime. Pinning the generation prevents a retained
+ * observer from relabelling old pending work as the new account's mutation.
  */
 export function useSessionQueryClient(): QueryClient {
   const queryClient = useQueryClient();
@@ -78,7 +82,10 @@ export function useSessionQueryClient(): QueryClient {
   }, [queryClient]);
 }
 
-/** Old-session requests cannot start after an awaited optimistic step or retry. */
+/** Old-session requests cannot start after an awaited optimistic step or retry.
+ * Like useSessionQueryClient, dashboard consumers must remain in AppGuard's
+ * account-keyed subtree so new-account work starts with freshly mounted hooks.
+ */
 export function useSessionMutation<TData = unknown, TError = DefaultError, TVariables = void, TContext = unknown>(
   options: UseMutationOptions<TData, TError, TVariables, TContext>,
 ) {
