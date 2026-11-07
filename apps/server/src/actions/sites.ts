@@ -775,6 +775,7 @@ const notifyFeedback = async (projectId: string, body: PublicAnalyticsEvent): Pr
     const page = feedbackPath ? `"${feedbackPath.slice(0, 120)}"` : 'a page';
     await createNotificationsForOrgMembers(projectId, {
       type: 'feedback',
+      params: { sentiment, path: feedbackPath ?? null },
       title: 'New reader feedback',
       body: sentiment ? `A reader marked ${page} as ${sentiment}.` : `A reader left feedback on ${page}.`,
       href: `/app/projects/${projectId}/analytics`,
