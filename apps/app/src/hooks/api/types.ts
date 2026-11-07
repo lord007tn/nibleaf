@@ -173,7 +173,8 @@ interface BranchChangedOnMainPage {
   change: 'modified' | 'added' | 'deleted' | 'conflict';
   /** What promote does with it: keep main's page as it is (`kept`), keep
    *  both sides' edits to different fields (`merged`), let the version win a
-   *  field both changed (`replaced`), remove it, bring the version's copy
+   *  field both changed (`replaced`), remove it (its comments and reader
+   *  grants go with it), bring the version's copy
    *  back, give it a numbered address (`newPath`), move it because its parent
    *  goes away (`newParentPath`, null for the top level), or refuse
    *  (`blocked`: promote answers 409 branch:promote_blocked even when
