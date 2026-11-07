@@ -25,6 +25,7 @@ import {
   Waypoints,
 } from 'lucide-react';
 import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
+import { availabilityNote } from '../copy/availability';
 import type { LandingCopy, MarketingIcon, MarketingLang, PathCard } from '../copy/types';
 import { HeroMedia, MarketingMedia } from '../media/marketing-media';
 import { GitHubStarLink } from '../site/github-star-link';
@@ -118,7 +119,18 @@ function HostingCard({ copy, lang, cloud }: { copy: PathCard; lang: MarketingLan
   );
 }
 
-export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; copy: LandingCopy; stars?: number }) {
+export function LandingView({
+  lang,
+  copy,
+  stars = 0,
+  starsLabel,
+}: {
+  lang: MarketingLang;
+  copy: LandingCopy;
+  stars?: number;
+  /** Localized accessible label for the GitHub star count, from the shell copy. */
+  starsLabel?: (count: number) => string;
+}) {
   const posts = BLOG_ENTRIES.filter((post) => (post.language ?? 'en') === lang).slice(0, 3);
   return (
     <>
@@ -147,12 +159,16 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
                 </li>
               ))}
             </ul>
+            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-muted-foreground text-xs leading-6">{copy.hero.availabilityNote}</p>}
           </div>
           <HeroMedia lang={lang} media={copy.hero.media} />
         </div>
       </section>
 
-      <section aria-label={copy.proof.label} className="border-border border-b bg-card/50">
+      <section aria-labelledby="proof-title" className="border-border border-b bg-card/50">
+        <h2 id="proof-title" className="sr-only">
+          {copy.proof.label}
+        </h2>
         <div className={`${container} grid gap-7 py-9 sm:grid-cols-2 lg:grid-cols-4`}>
           {copy.proof.items.map((item) => (
             <div key={item.title} className="flex items-start gap-3">
@@ -160,15 +176,19 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
                 <Icon name={item.icon} />
               </span>
               <div>
-                <h2 className="font-semibold text-sm leading-6">
+                <h3 className="font-semibold text-sm leading-6">
                   {item.href ? (
-                    <a href={item.href} className="inline-flex min-h-11 items-center underline-offset-4 hover:underline">
+                    <a
+                      href={item.href}
+                      className="inline-flex min-h-11 items-center underline-offset-4 hover:underline"
+                      {...(item.href.startsWith('http') ? { rel: 'noopener noreferrer' } : {})}
+                    >
                       {item.title}
                     </a>
                   ) : (
                     item.title
                   )}
-                </h2>
+                </h3>
                 <p className="mt-1 text-muted-foreground text-xs leading-6">{item.body}</p>
               </div>
             </div>
@@ -187,7 +207,10 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
                 </div>
                 {feature.note && (
                   <p className="mt-6 border-border border-s-2 ps-4 text-muted-foreground text-xs leading-6">
-                    <span className="font-medium text-foreground">{lang === 'ar' ? 'المتطلبات: ' : 'Requirements: '}</span>
+                    <span className="font-medium text-foreground">
+                      {feature.noteLabel ?? (lang === 'ar' ? 'المتطلبات' : 'Requirements')}
+                      {': '}
+                    </span>
                     {feature.note}
                   </p>
                 )}
@@ -216,6 +239,7 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
               <div>
                 <h3 className="font-semibold leading-7">{item.title}</h3>
                 <p className="mt-2 text-muted-foreground text-sm leading-7">{item.body}</p>
+                {item.availability && <p className="mt-2 text-muted-foreground text-xs leading-6">{availabilityNote(item.availability, lang)}</p>}
               </div>
             </div>
           ))}
@@ -273,7 +297,7 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
         <div className="min-w-0 divide-y divide-border border-border border-y">
           {copy.faq.items.map((item) => (
             <details key={item.q} className="group py-1">
-              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 [&::-webkit-details-marker]:hidden font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring">
                 <span>{item.q}</span>
                 <Plus aria-hidden="true" className="size-4 shrink-0 group-open:rotate-45" />
               </summary>
@@ -324,7 +348,7 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
               <ArrowRight aria-hidden="true" className="size-4 rtl:rotate-180" />
             </MarketingLink>
             <MarketingLink cta={copy.finalCta.secondary} lang={lang} placement="final" className={outlineButton} />
-            <GitHubStarLink stars={stars} label={lang === 'ar' ? 'GitHub' : 'Star on GitHub'} />
+            <GitHubStarLink stars={stars} label={lang === 'ar' ? 'GitHub' : 'Star on GitHub'} starsLabel={starsLabel} />
           </div>
         </div>
       </section>

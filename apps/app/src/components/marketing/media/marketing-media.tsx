@@ -9,7 +9,7 @@ const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAI
 function Capture({
   wide,
   phone,
-  loop,
+  darkWide,
   alt,
   priority,
   className,
@@ -18,7 +18,8 @@ function Capture({
 }: {
   wide: ImageVariant;
   phone?: ImageVariant;
-  loop?: MediaEntry['loop'];
+  /** Dark capture picked by the system colour scheme, so one eager image serves both themes. */
+  darkWide?: ImageVariant;
   alt: string;
   priority: boolean;
   className?: string;
@@ -37,32 +38,28 @@ function Capture({
           <source media="(max-width: 639px)" type="image/webp" srcSet={phone.webp} sizes={sizes} width={phone.width} height={phone.height} />
         </>
       )}
-      {loop ? (
+      {darkWide && (
         <>
           <source
-            media="(prefers-reduced-motion: reduce)"
+            media="(prefers-color-scheme: dark)"
             type="image/avif"
-            srcSet={wide.avif}
+            srcSet={darkWide.avif}
             sizes={sizes}
-            width={wide.width}
-            height={wide.height}
+            width={darkWide.width}
+            height={darkWide.height}
           />
           <source
-            media="(prefers-reduced-motion: reduce)"
+            media="(prefers-color-scheme: dark)"
             type="image/webp"
-            srcSet={wide.webp}
+            srcSet={darkWide.webp}
             sizes={sizes}
-            width={wide.width}
-            height={wide.height}
+            width={darkWide.width}
+            height={darkWide.height}
           />
-          <source type="image/webp" srcSet={loop.src} width={loop.width} height={loop.height} />
-        </>
-      ) : (
-        <>
-          <source type="image/avif" srcSet={wide.avif} sizes={sizes} width={wide.width} height={wide.height} />
-          <source type="image/webp" srcSet={wide.webp} sizes={sizes} width={wide.width} height={wide.height} />
         </>
       )}
+      <source type="image/avif" srcSet={wide.avif} sizes={sizes} width={wide.width} height={wide.height} />
+      <source type="image/webp" srcSet={wide.webp} sizes={sizes} width={wide.width} height={wide.height} />
       <img
         src={wide.fallback}
         alt={alt}
@@ -122,8 +119,7 @@ export function HeroMedia({ lang, media }: { lang: MarketingLang; media: MediaRe
             <span className="size-2 rounded-full bg-muted-foreground/30" />
             <span className="size-2 rounded-full bg-muted-foreground/30" />
           </div>
-          <Capture wide={entry.wide} alt="" priority hideBelowSm className={entry.wideDark ? 'block dark:hidden' : 'block'} />
-          {entry.wideDark && <Capture wide={entry.wideDark} alt="" priority={false} hideBelowSm className="hidden dark:block" />}
+          <Capture wide={entry.wide} darkWide={entry.wideDark} alt="" priority hideBelowSm className="block" />
         </div>
         <div className="mx-auto w-[min(17rem,78%)] overflow-hidden rounded-[2rem] border-[6px] border-foreground/85 bg-card shadow-2xl sm:absolute sm:end-0 sm:bottom-0 sm:mx-0 sm:w-[38%] sm:max-w-[15rem]">
           <Capture wide={entry.phone} alt={media.alt} priority className="block" phoneSizes />
@@ -166,14 +162,7 @@ export function MarketingMedia({
         )}
         {entry ? (
           <>
-            <Capture
-              wide={entry.wide}
-              phone={entry.phone}
-              loop={entry.loop}
-              alt={media.alt}
-              priority={priority}
-              className={dark ? 'block dark:hidden' : 'block'}
-            />
+            <Capture wide={entry.wide} phone={entry.phone} alt={media.alt} priority={priority} className={dark ? 'block dark:hidden' : 'block'} />
             {dark && (
               <Capture
                 wide={entry.wideDark ?? entry.wide}

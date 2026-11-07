@@ -16,6 +16,8 @@
  * availability on Nibleaf Cloud is worded only through `availability.ts`.
  */
 
+import type { RolloutCapability } from './availability';
+
 export type MarketingLang = 'en' | 'ar';
 
 export interface Cta {
@@ -96,6 +98,8 @@ interface FeatureSection {
   bullets: string[];
   /** Honest prerequisite or scope note, e.g. that answers need an AI provider key. */
   note?: string;
+  /** Label shown before `note`: what kind of note it is (requirements, availability…). */
+  noteLabel?: string;
   cta?: Cta;
   media: MediaRef;
 }
@@ -120,12 +124,20 @@ export interface LandingCopy {
     /** Low-key text link, e.g. to Nibleaf's own docs, which run on Nibleaf. */
     tertiaryLink: Cta;
     assurances: string[];
+    /** Availability caption under the hero while new capabilities roll out (from `availability.ts`). */
+    availabilityNote?: string;
     media: MediaRef;
   };
   /** Verifiable trust signals only. Every item links to its proof where one exists. */
   proof: { label: string; items: { icon: MarketingIcon; title: string; body: string; href?: string }[] };
   features: FeatureSection[];
-  more: { eyebrow: string; title: string; body: string; items: { icon: MarketingIcon; title: string; body: string }[] };
+  more: {
+    eyebrow: string;
+    title: string;
+    body: string;
+    /** `availability` marks a capability that is still rolling out; its note renders with the item and Cloud-only lists leave it out. */
+    items: { icon: MarketingIcon; title: string; body: string; availability?: RolloutCapability }[];
+  };
   howItWorks: { eyebrow: string; title: string; body: string; steps: { title: string; body: string }[] };
   paths: { eyebrow: string; title: string; body: string; cloud: PathCard; selfHost: PathCard; detailsLink: Cta };
   compare: { eyebrow: string; title: string; body: string; links: (Cta & { description: string })[] };

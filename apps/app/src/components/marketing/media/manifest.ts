@@ -15,7 +15,6 @@ import chatArWide640_avif from './assets/chat-ar-wide-640.avif?url';
 import chatArWide640_webp from './assets/chat-ar-wide-640.webp?url';
 import chatArWide1280_avif from './assets/chat-ar-wide-1280.avif?url';
 import chatArWide1280_webp from './assets/chat-ar-wide-1280.webp?url';
-import chatEnLoop960_webp from './assets/chat-en-loop-960.webp?url';
 import chatEnPanel440_avif from './assets/chat-en-panel-440.avif?url';
 import chatEnPanel440_webp from './assets/chat-en-panel-440.webp?url';
 import chatEnWide640_avif from './assets/chat-en-wide-640.avif?url';
@@ -139,8 +138,6 @@ export interface MediaEntry {
   /** Optional dark-theme captures. */
   wideDark?: ImageVariant;
   phoneDark?: ImageVariant;
-  /** Optional short animated WebP loop of the same flow; the still is used when reduced motion is requested. */
-  loop?: { src: string; width: number; height: number };
   /** Optional screen recording, played only when the visitor presses play (`preload="none"`). */
   video?: { src: string; width: number; height: number };
 }
@@ -230,7 +227,6 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
         [1280, chatEnWide1280_avif, chatEnWide1280_webp],
       ]),
       phone: variant(440, 800, [[440, chatEnPanel440_avif, chatEnPanel440_webp]]),
-      loop: { src: chatEnLoop960_webp, width: 960, height: 600 },
     },
   },
   ar: {

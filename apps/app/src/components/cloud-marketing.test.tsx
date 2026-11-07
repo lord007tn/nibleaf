@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { CloudPage, GitHubStarLink, LandingPage } from './cloud-marketing';
 import { ArabicLandingPage } from './marketing/arabic-landing';
+import { availabilityNote, heroAvailabilityNote, isRollingOut } from './marketing/copy/availability';
 import { landingAr } from './marketing/copy/landing.ar';
 import { landingEn } from './marketing/copy/landing.en';
 
@@ -81,5 +82,31 @@ describe('GitHubStarLink', () => {
     const link = markup(renderToStaticMarkup(<GitHubStarLink stars={1234} compact label="GitHub" />)).querySelector('a');
     expect(link?.getAttribute('aria-label')).toBe('GitHub — 1,234 stars');
     expect(link?.querySelector('[data-github-stars="1234"]')?.textContent).toBe('1.2k');
+  });
+});
+
+describe('availability honesty', () => {
+  const rollingOut = { 'ask-ai': 'askAi', search: 'readerSearch', insights: 'docsInsights', mcp: 'supportMcp' } as const;
+
+  it.each([
+    ['en', landingEn, LandingPage],
+    ['ar', landingAr, ArabicLandingPage],
+  ] as const)('qualifies every capability that is still rolling out (%s)', (lang, copy, Page) => {
+    for (const [id, capability] of Object.entries(rollingOut)) {
+      const feature = copy.features.find((candidate) => candidate.id === id);
+      expect(feature?.note, id).toContain(availabilityNote(capability, lang));
+    }
+    expect(copy.more.items.find((item) => item.icon === 'key')?.availability).toBe('bringYourOwnKey');
+    const root = markup(renderToStaticMarkup(<Page />));
+    const caption = heroAvailabilityNote(lang);
+    if (caption) expect(root.textContent).toContain(caption);
+    expect(root.textContent).toContain(availabilityNote('bringYourOwnKey', lang));
+  });
+
+  it('keeps capabilities that are still rolling out off the Cloud page', () => {
+    const root = markup(renderToStaticMarkup(<CloudPage />));
+    for (const item of landingEn.more.items.filter((candidate) => candidate.availability && isRollingOut(candidate.availability))) {
+      expect(root.textContent).not.toContain(item.title);
+    }
   });
 });

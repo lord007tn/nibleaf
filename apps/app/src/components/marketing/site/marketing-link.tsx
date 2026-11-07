@@ -3,13 +3,17 @@ import { type MarketingCtaDestination, type MarketingCtaPlacement, sendMarketing
 import type { Cta, MarketingLang } from '../copy/types';
 
 function destination(href: string): MarketingCtaDestination | undefined {
-  if (href === '/sign-up') return 'signup';
-  if (href === '/self-hosting') return 'self_hosting';
-  if (href === '/pricing') return 'pricing';
-  if (href === '/contact') return 'contact';
-  if (href === 'https://docs.nibleaf.com' || href.startsWith('https://docs.nibleaf.com/')) return 'docs';
-  if (href.startsWith('/compare/') || href === '/ar/documentation-platforms') return 'comparison';
-  if (href === '/tools/rtl-documentation-readiness') return 'rtl_tool';
+  // Parse so query strings (`?lang=ar`) and fragments don't hide a destination.
+  const url = new URL(href, 'https://nibleaf.com');
+  if (url.hostname === 'docs.nibleaf.com') return 'docs';
+  if (url.hostname !== 'nibleaf.com') return undefined;
+  const path = url.pathname.replace(/\/+$/, '') || '/';
+  if (path === '/sign-up') return 'signup';
+  if (path === '/self-hosting') return 'self_hosting';
+  if (path === '/pricing') return 'pricing';
+  if (path === '/contact') return 'contact';
+  if (path.startsWith('/compare/') || path === '/ar/documentation-platforms') return 'comparison';
+  if (path === '/tools/rtl-documentation-readiness') return 'rtl_tool';
   return undefined;
 }
 

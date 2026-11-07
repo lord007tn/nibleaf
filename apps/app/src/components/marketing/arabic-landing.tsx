@@ -21,7 +21,7 @@ export function ArabicShell({ children, englishHref = '/', stars = 0 }: { childr
 export function ArabicLandingPage({ stars = 0 }: { stars?: number }) {
   return (
     <ArabicShell stars={stars}>
-      <LandingView lang="ar" copy={landingAr} stars={stars} />
+      <LandingView lang="ar" copy={landingAr} stars={stars} starsLabel={shellAr.github.starsLabel} />
     </ArabicShell>
   );
 }
