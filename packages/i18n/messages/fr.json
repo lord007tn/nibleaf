@@ -1554,7 +1554,7 @@
   "settings_import_summary_source": "Source",
   "settings_import_summary_branch": "Branche",
   "settings_import_summary_defaultbranch": "Branche par défaut",
-  "settings_import_summaryhint": "Des pages sont ajoutées ou mises à jour dans ce projet : rien n'est supprimé et la réexécution de l'importation est sécurisée.",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address. Nothing is deleted. With “Replace the current draft with this repository” on, your draft is made to match the source, and pages that aren’t in it are deleted. If you have drafts you want to keep, export your project first.",
   "settings_import_run": "Importer",
   "settings_import_running": "Importation…",
   "settings_import_success": "Importation terminée",

@@ -1554,7 +1554,7 @@
   "settings_import_summary_source": "ماخذ",
   "settings_import_summary_branch": "شاخ",
   "settings_import_summary_defaultbranch": "ڈیفالٹ برانچ",
-  "settings_import_summaryhint": "اس پروجیکٹ میں صفحات کو شامل یا اپ ڈیٹ کیا جاتا ہے — کچھ بھی حذف نہیں ہوتا ہے، اور درآمد کو دوبارہ چلانا محفوظ ہے۔",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address. Nothing is deleted. With “Replace the current draft with this repository” on, your draft is made to match the source, and pages that aren’t in it are deleted. If you have drafts you want to keep, export your project first.",
   "settings_import_run": "درآمد کریں۔",
   "settings_import_running": "درآمد ہو رہا ہے…",
   "settings_import_success": "درآمد ختم",

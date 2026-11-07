@@ -1554,7 +1554,7 @@
   "settings_import_summary_source": "উৎস",
   "settings_import_summary_branch": "শাখা",
   "settings_import_summary_defaultbranch": "ডিফল্ট শাখা",
-  "settings_import_summaryhint": "এই প্রকল্পে পৃষ্ঠাগুলি যুক্ত বা আপডেট করা হয়েছে — কিছুই মুছে ফেলা হয় না এবং আমদানি পুনরায় চালানো নিরাপদ।",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address. Nothing is deleted. With “Replace the current draft with this repository” on, your draft is made to match the source, and pages that aren’t in it are deleted. If you have drafts you want to keep, export your project first.",
   "settings_import_run": "আমদানি",
   "settings_import_running": "আমদানি করা হচ্ছে...",
   "settings_import_success": "আমদানি শেষ",

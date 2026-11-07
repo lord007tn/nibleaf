@@ -1554,7 +1554,7 @@
   "settings_import_summary_source": "Sumber",
   "settings_import_summary_branch": "Cabang",
   "settings_import_summary_defaultbranch": "Cabang bawaan",
-  "settings_import_summaryhint": "Halaman ditambahkan atau diperbarui dalam proyek ini — tidak ada yang dihapus, dan menjalankan kembali impor aman.",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address. Nothing is deleted. With “Replace the current draft with this repository” on, your draft is made to match the source, and pages that aren’t in it are deleted. If you have drafts you want to keep, export your project first.",
   "settings_import_run": "Impor",
   "settings_import_running": "Mengimpor…",
   "settings_import_success": "Impor selesai",

@@ -1572,7 +1572,7 @@
   "settings_import_summary_source": "المصدر",
   "settings_import_summary_branch": "الفرع",
   "settings_import_summary_defaultbranch": "الفرع الافتراضي",
-  "settings_import_summaryhint": "تُضاف الصفحات أو تُحدَّث في هذا المشروع — لا يُحذف أي شيء، وإعادة تشغيل الاستيراد آمنة.",
+  "settings_import_summaryhint": "افتراضيًا، يضيف الاستيراد الصفحات الجديدة ويستبدل محتوى الصفحات التي لها العنوان نفسه، ولا يحذف أي شيء. وعند تفعيل «استبدل المسودة الحالية بهذا المستودع» تصبح المسودة مطابقة للمصدر، وتُحذف الصفحات غير الموجودة فيه. إن كانت لديك مسودات تريد الاحتفاظ بها، فصدّر مشروعك أولًا.",
   "settings_import_run": "استيراد",
   "settings_import_running": "جارٍ الاستيراد…",
   "settings_import_success": "اكتمل الاستيراد",
