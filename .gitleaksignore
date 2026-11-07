@@ -3,3 +3,8 @@
 # reordered now; these fingerprints only cover the PR #279 commit that added them.
 0bed799466159ef952316a17f4a3b0c6acd4d3ab:.env.example:generic-api-key:237
 0bed799466159ef952316a17f4a3b0c6acd4d3ab:.env.production.example:generic-api-key:169
+
+# False positive: an inline snapshot of SHA-256 hashes of the exported theme-repository
+# component templates (a drift check), not credentials. Later commits store a short
+# hash prefix instead; this fingerprint only covers the #320 commit that added them.
+912329bd34993a80ac55b02eb72f1960dcdbc26f:packages/shared/src/theme-repository-templates/component-templates.test.ts:generic-api-key:42
