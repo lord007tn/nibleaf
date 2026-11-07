@@ -61,6 +61,7 @@ import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/sit
 import { SortablePageTree } from '@/components/editor/sortable-page-tree';
 import { TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
+import { useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
 import type { Deployment, Language, PageNode } from '@/hooks/api';
@@ -413,6 +414,12 @@ function EditorPage() {
     setStatus('idle');
   }
 
+  const aiAssistSession = useAiAssistSession({
+    projectId,
+    pageId: !switching && page?.id === activeId && synced?.id === activeId ? activeId : null,
+    content,
+    onContentChange: setContent,
+  });
   const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
   // Read the publish state straight from the query cache at save time: a publish
@@ -862,7 +869,7 @@ function EditorPage() {
             commentMode={commentMode}
           />
         ) : (
-          <AiAssist content={content} onContentChange={setContent} projectId={projectId} />
+          <AiAssist session={aiAssistSession} />
         )}
       </div>
     </Tabs>
