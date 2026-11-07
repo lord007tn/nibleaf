@@ -13,8 +13,12 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     rows: [
       { label: 'Notion-style editor over plain Markdown', cloud: true, self: true },
       { label: 'MDX components (callouts, tabs, code groups)', cloud: true, self: true },
-      { label: 'Anchored review comments on blocks', cloud: true, self: true },
-      { label: 'Unlimited sites, pages, and members', cloud: 'Fair use during beta', self: true },
+      { label: 'Review comments on supported block anchors', cloud: true, self: true },
+      {
+        label: 'Sites, pages, and members',
+        cloud: 'No published page/seat plan cap; safeguards apply',
+        self: 'Infrastructure and feature limits apply',
+      },
     ],
   },
   {
@@ -29,7 +33,7 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     title: 'Search, SEO & analytics',
     rows: [
       { label: searchCapability, cloud: true, self: true },
-      { label: 'SSR, canonicals, JSON-LD, sitemaps, hreflang', cloud: true, self: true },
+      { label: 'SSR, canonicals, JSON-LD, sitemaps; hreflang for linked indexable translations', cloud: true, self: true },
       { label: 'Product analytics; Cloudflare also processes hosted traffic', cloud: true, self: true },
     ],
   },
@@ -44,9 +48,13 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     title: 'Infrastructure',
     rows: [
       { label: 'Hosting', cloud: 'Managed for you', self: 'Your servers' },
-      { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres, any S3-compatible store' },
+      { label: 'Database & storage', cloud: 'Managed Postgres + storage', self: 'Your Postgres; operator-configured S3-compatible storage' },
       { label: 'Upgrades', cloud: 'Automatic', self: 'Pull the new release and follow its upgrade notes' },
-      { label: 'Data ownership', cloud: 'Exportable Markdown, always', self: 'Everything stays on your infra' },
+      {
+        label: 'Data ownership',
+        cloud: 'Markdown/MDX export; verify destination components',
+        self: 'You choose hosting and external service destinations',
+      },
       { label: 'Support', cloud: 'support@nibleaf.com', self: 'Community support and your own operations' },
     ],
   },
@@ -55,18 +63,18 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
 const betaPromises: { icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; body: string }[] = [
   {
     icon: HandCoins,
-    title: 'No credit card, no billing code',
+    title: 'Free beta, no card at sign-up',
     body: 'There is nothing to cancel and no trial clock. Sign up, write, publish — the beta is simply free.',
   },
   {
     icon: Scale,
-    title: 'Fair use, not hard limits',
-    body: 'No page caps or seat counts. If a workspace is unusually heavy on resources, we reach out before anything changes.',
+    title: 'Fair use with feature safeguards',
+    body: 'No page or seat plan cap is published for the beta. AI request/token budgets, import/export limits, and operator quotas still apply.',
   },
   {
     icon: ShieldCheck,
-    title: 'Generous notice before paid plans',
-    body: 'When paid cloud plans arrive, beta workspaces get advance notice and preferential treatment. The AGPL-3.0 self-hosted release remains separate.',
+    title: 'No paid cloud plan today',
+    body: 'Future prices, launch dates, and beta discounts are not specified here. Self-hosted software is available under AGPL-3.0; you cover infrastructure and external services.',
   },
 ];
 
@@ -90,8 +98,8 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
           </div>
           <h1 className="mt-4 text-balance font-semibold text-4xl tracking-tight sm:text-5xl">Free while in beta. Self-host when you prefer.</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground leading-relaxed">
-            Nibleaf Cloud is available now with no credit card. The public AGPL-3.0 release includes a pinned container and guided Docker Compose
-            installer for teams that operate their own infrastructure.
+            Nibleaf Cloud is free during the beta with no card at sign-up. The AGPL-3.0 self-hosted release provides source and Docker Compose
+            deployment configuration. Check release assets and prerequisites before installing.
           </p>
         </div>
       </section>
@@ -113,7 +121,7 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
               'Managed database, queues, and storage',
               'Automatic deploys and upgrades',
               'Custom domains and analytics',
-              'Priority treatment when paid plans arrive',
+              'No paid cloud plan offered today',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
                 <Check className="mt-0.5 size-4 shrink-0 text-primary" />
@@ -131,13 +139,13 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <Server className="size-5 text-primary" /> Self-hosted
           </h2>
           <p className="mt-4 font-semibold text-4xl tracking-tight">$0</p>
-          <p className="mt-1 text-muted-foreground text-sm">AGPL-3.0 source and public container release</p>
+          <p className="mt-1 text-muted-foreground text-sm">AGPL-3.0 software; infrastructure costs are yours</p>
           <ul className="mt-6 space-y-3 text-sm">
             {[
               'Guided Docker Compose installer',
               'PostgreSQL and S3-compatible storage',
               'Docker Compose and Coolify configurations',
-              'Pinned GHCR release and public source',
+              'Public source and release deployment configuration',
               'You manage DNS, TLS, backups, and upgrades',
             ].map((item) => (
               <li key={item} className="flex items-start gap-2.5">
@@ -159,8 +167,12 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <Eyebrow>What's included</Eyebrow>
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-              Writing, publishing, search, custom domains, and Arabic/RTL work in Cloud and self-hosted. Newer capabilities such as hybrid search,
-              grounded answers, usage history, and MCP depend on the release in use and on which optional services are configured.
+              Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities. Ask AI reader chat, workspace
+              OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls
+              out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Insights need
+              optional ClickHouse when self-hosting. MCP is off by default for self-hosters and can draft, edit, move, translate, set visibility, and
+              publish only after a confirmed preview, using Read only / Support writer / Full admin presets and OAuth sign-in or expiring personal
+              keys. The editor writing assistant uses the instance key.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

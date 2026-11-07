@@ -47,6 +47,8 @@ function getPlatforms(t: T): Platform[] {
       sources: [
         { href: 'https://www.mintlify.com/docs/guides/internationalization', label: t('marketing.arabicSeo.source.languages') },
         { href: 'https://www.mintlify.com/pricing', label: t('marketing.arabicSeo.source.pricing') },
+        { href: 'https://www.mintlify.com/docs/guides/custom-frontend', label: t('marketing.arabicSeo.source.officialDocs') },
+        { href: 'https://www.mintlify.com/docs/api/static-export/overview', label: t('marketing.arabicSeo.source.officialDocs') },
       ],
       summary: t('marketing.arabicSeo.platform.mintlify.summary'),
       bestFor: t('marketing.arabicSeo.platform.mintlify.bestFor'),
@@ -58,11 +60,11 @@ function getPlatforms(t: T): Platform[] {
       name: 'GitBook',
       sources: [
         {
-          href: 'https://gitbook.com/docs/publishing-documentation/customization/extra-configuration',
+          href: 'https://gitbook.com/docs/manage-your-site/customization/extra-configuration',
           label: t('marketing.arabicSeo.source.interfaceLocale'),
         },
         {
-          href: 'https://gitbook.com/docs/publishing-documentation/site-structure/variants',
+          href: 'https://gitbook.com/docs/manage-your-site/site-structure/variants',
           label: t('marketing.arabicSeo.source.languagesVersions'),
         },
         { href: 'https://www.gitbook.com/pricing', label: t('marketing.arabicSeo.source.pricing') },
@@ -95,7 +97,7 @@ function getPlatforms(t: T): Platform[] {
     },
     {
       name: 'Apidog',
-      sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools-ar/', label: t('marketing.arabicSeo.source.official') }],
+      sources: [{ href: 'https://apidog.com/ar/blog/documentation-tools/', label: t('marketing.arabicSeo.source.official') }],
       summary: t('marketing.arabicSeo.platform.apidog.summary'),
       bestFor: t('marketing.arabicSeo.platform.apidog.bestFor'),
       arabic: t('marketing.arabicSeo.platform.apidog.arabic'),

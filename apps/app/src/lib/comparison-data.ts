@@ -11,7 +11,7 @@ import { ENTITY_SENTENCE } from '@/lib/marketing-seo';
  */
 
 /** Date the competitor pricing pages were last checked. */
-export const AS_OF = 'November 2, 2026';
+export const AS_OF = 'November 7, 2026';
 
 export type FeatureValue = 'yes' | 'no' | 'partial' | 'planned' | 'unknown';
 
@@ -108,24 +108,18 @@ export const nibleafPricing: PricingTable = {
     {
       plan: 'Cloud',
       price: 'Free while in beta',
-      includes: 'Hosted dashboard and docs sites, managed database and storage, custom domains, analytics, search. Fair-use limits, no credit card.',
+      includes:
+        'Hosted dashboard and docs sites, managed database and storage, custom domains, basic analytics, and built-in search. Free during beta; no card at sign-up. Feature safeguards and operator quotas apply.',
     },
     {
       plan: 'Self-hosted',
       price: 'Free under AGPL-3.0',
-      includes: 'Public source, pinned GHCR release, guided Docker Compose installer, PostgreSQL, cache, workers, and S3-compatible storage.',
+      includes:
+        'Public source and self-hosted deployment configuration for the app, API, worker, PostgreSQL, cache, and operator-configured S3-compatible storage. Check release assets and installation requirements before deploying.',
     },
   ],
   note: 'No paid cloud plan is currently offered. Self-hosting requires your own DNS, TLS, backups, monitoring, and upgrades.',
 };
-
-/** Product gaps that must stay consistent across comparison and machine-readable marketing surfaces. */
-export const nibleafProductLimitations = [
-  'Live multi-user co-editing is not currently available.',
-  'SAML/SCIM is not currently available.',
-  'Adaptive content is not currently available.',
-  'Grounded answers require an operator-configured AI provider key and explicit project opt-in; self-hosted releases include them from v0.2.0.',
-] as const;
 
 const mintlifyPricing: PricingTable = {
   productName: 'Mintlify',
@@ -136,21 +130,21 @@ const mintlifyPricing: PricingTable = {
     {
       plan: 'Starter',
       price: 'Free',
-      includes: 'Full platform, custom domain, web editor, authentication, MCP server, API playground.',
+      includes: 'Five editor seats, custom domain, web editor, authentication, MCP server, API playground.',
     },
     {
       plan: 'Pro',
-      price: '$450/month billed annually',
-      includes: 'Everything in Starter, plus agent, assistant, automations, preview deployments, and admin APIs.',
+      price: '$450/month billed annually ($540/month billed monthly)',
+      includes: 'Everything in Starter, unlimited editor seats, agent, assistant, Autopilot, preview deployments, and admin APIs.',
     },
     {
       plan: 'Enterprise',
       price: 'Custom',
       includes:
-        'SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration, support, and a self-hosted custom frontend option.',
+        'Automations, SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration and support. Static export is available by request on Enterprise.',
     },
   ],
-  note: 'Mintlify meters AI features with credits — its pricing page lists 10,000 credits/month included and $0.01 per credit for overages. Its Enterprise self-hosting option covers a custom frontend; Mintlify still operates the content engine, editor, search, and AI services.',
+  note: 'Mintlify meters AI features with credits — its pricing page lists 10,000 credits/month included and $0.01 per credit for overages. Enterprise static export produces independent HTML/CSS/JS output by request. A headless custom frontend is a separate option that can use managed content, search, and AI services.',
 };
 
 const gitbookPricing: PricingTable = {
@@ -205,13 +199,13 @@ const readmePricing: PricingTable = {
       includes: 'SSO/OAuth, audit logs, user roles and access control, no ReadMe branding, and dedicated support.',
     },
   ],
-  note: '“Ask AI” is a separate add-on at $150/month.',
+  note: 'Ask AI Lite is included on Pro/Enterprise with the default model and without customization, model selection, analytics, or API access. Full Ask AI is a $150/month add-on; its API requires Enterprise. See https://docs.readme.com/main/docs/ask-ai (checked November 7, 2026).',
 };
 
 const docusaurusPricing: PricingTable = {
   productName: 'Docusaurus',
-  sourceUrl: 'https://docusaurus.io',
-  sourceLabel: 'docusaurus.io',
+  sourceUrl: 'https://github.com/facebook/docusaurus/blob/main/LICENSE',
+  sourceLabel: 'Docusaurus MIT license',
   asOf: AS_OF,
   rows: [
     {
@@ -234,15 +228,15 @@ export const nibleafVsMintlify: Comparison = {
   heading: 'Nibleaf vs Mintlify',
   breadcrumbName: 'Nibleaf vs Mintlify',
   directAnswer: [
-    'Mintlify is a polished managed platform with strong API tooling and an Enterprise option for a self-hosted custom frontend. Nibleaf offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
+    'Mintlify is a polished managed platform with API tooling, a headless frontend option, and Enterprise static export available by request. Nibleaf offers a visual editor over Markdown, a free cloud beta, Arabic/RTL support, and a public AGPL-3.0 full-stack self-hosted release.',
     ENTITY_SENTENCE,
   ],
   competitorPricing: mintlifyPricing,
   features: [
     {
       feature: 'Public self-hosting',
-      nibleaf: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
-      competitor: partial('Enterprise custom frontend; content engine, editor, search, and AI remain managed services'),
+      nibleaf: yes('AGPL-3.0 source and Docker Compose deployment configuration'),
+      competitor: partial('Enterprise static export by request; headless frontends can use managed services'),
     },
     {
       feature: 'WYSIWYG editor over plain Markdown',
@@ -262,12 +256,16 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       feature: 'Built-in privacy-friendly analytics',
-      nibleaf: yes('Product analytics; Cloudflare also processes hosted traffic'),
-      competitor: partial('“Advanced insights” is listed under Enterprise'),
+      nibleaf: yes(
+        'First-party analytics; owner insights cover search gaps, feedback, AI crawler activity, and vitals with ClickHouse. New insights are available when you self-host today, and on Nibleaf Cloud as it rolls out.',
+      ),
+      competitor: partial(
+        'Analytics on Pro/Enterprise, including traffic, search, assistant, and feedback; Advanced insights is a separate Enterprise item',
+      ),
     },
     {
       feature: 'Markdown export & portability',
-      nibleaf: yes('Plain Markdown, take it anywhere'),
+      nibleaf: yes('Markdown/MDX export; check component and asset compatibility at the destination'),
       competitor: yes('Content lives as MDX files'),
     },
     { feature: 'llms.txt for AI assistants', nibleaf: yes('Generated per published site'), competitor: yes() },
@@ -284,9 +282,9 @@ export const nibleafVsMintlify: Comparison = {
       competitor: yes('Real-time collaboration in the web editor'),
     },
     {
-      feature: 'Git providers and multi-repository projects',
+      feature: 'Git providers',
       nibleaf: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
-      competitor: yes('GitHub, GitLab, Bitbucket, and Enterprise multi-repo workflows'),
+      competitor: yes('GitHub and GitLab; Bitbucket Cloud is Enterprise-only'),
     },
     {
       feature: 'Custom components, CSS, and JavaScript',
@@ -301,20 +299,22 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'Third-party integrations and platform webhooks',
       nibleaf: partial('GA4, Plausible, Git webhooks, and API access'),
-      competitor: yes('Broad analytics, support, webhook, and websocket integrations'),
+      competitor: yes('Lists integrations, webhooks, and websockets; confirm the required integration and plan'),
     },
     {
       feature: 'AI assistant & agent',
-      nibleaf: partial('Self-hosted v0.2.0 includes grounded answers, which need an AI provider key, and read-only MCP, which is off by default'),
+      nibleaf: partial(
+        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
+      ),
       competitor: yes('Pro plan, metered by credits'),
     },
-    { feature: 'SSO / SCIM / organization audit logs', nibleaf: planned(), competitor: yes('Enterprise plan') },
+    { feature: 'SSO / SCIM', nibleaf: planned(), competitor: yes('Enterprise plan') },
   ],
   pickCompetitor: {
     title: 'When to pick Mintlify instead',
     reasons: [
-      'You want an AI assistant and agent built into your docs (metered by credits on their side).',
-      'You need real-time co-editing, GitLab or Bitbucket two-way workflows, or a multi-repository documentation project.',
+      'You want a managed AI assistant and agent on Pro, with credit-based usage. Nibleaf Ask AI requires a configured provider and site opt-in.',
+      'You need real-time co-editing or GitLab/Bitbucket workflows; confirm provider availability for your plan.',
       'You need arbitrary custom components and runtime CSS or JavaScript, adaptive content, or a broad catalog of managed integrations.',
       'You need SSO, SCIM, and enterprise compliance guarantees today.',
     ],
@@ -326,11 +326,11 @@ export const nibleafVsMintlify: Comparison = {
       'Your writers prefer a Notion-style WYSIWYG editor over editing MDX files — while the content stays plain Markdown.',
       'You want an RTL-aware editor and dedicated Arabic search behavior in addition to localized navigation and reader layout.',
       'You want built-in reader analytics and accept Cloudflare processing on the managed service.',
-      'You want plain-Markdown export and the option to run the full stack from public source and container artifacts.',
+      'You want plain-Markdown export and the option to run the full stack from public source and self-hosted deployment configuration.',
     ],
   },
   verdict: [
-    'Mintlify is the more mature product today. Its free Starter plan is generous — custom domain, web editor, and an API playground — and its AI tooling is ahead of most of the market. It documents Arabic localization and offers Enterprise teams a self-hosted custom frontend while retaining its managed content and AI services. Validate the RTL editing and reader layouts your team needs in a trial.',
+    'Mintlify is the more mature product today. Its free Starter plan includes a custom domain, web editor, MCP server, and API playground; Pro adds its assistant and agent. It documents Arabic localization, headless frontends using managed services, and Enterprise static export by request. Validate the RTL editing and reader layouts your team needs in a trial.',
     'Nibleaf is strongest on full-stack self-hosting, browser-based Markdown editing, multilingual and RTL authoring, a focused bidirectional GitHub workflow, and self-hostable OpenAPI references powered by Scalar. Mintlify remains ahead on real-time collaboration, provider breadth, custom runtime components, integrations, personalization, and enterprise identity governance.',
   ],
   faqs: [
@@ -340,11 +340,11 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'Is Mintlify open source?',
-      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. Nibleaf’s public repository and container release are licensed under AGPL-3.0 and can be installed with Docker Compose.',
+      a: 'The Mintlify platform is a closed-source hosted product, although some components are open source. Nibleaf’s public source repository are licensed under AGPL-3.0 and can be installed with Docker Compose.',
     },
     {
       q: 'How much does Mintlify cost?',
-      a: 'As of November 2, 2026, Mintlify has a free Starter plan, Pro at $450/month billed annually, and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
+      a: 'As of November 7, 2026, Mintlify has a free Starter plan, Pro at $450/month billed annually ($540/month billed monthly), and custom-priced Enterprise. AI features are metered with credits — 10,000/month included, then $0.01 per credit. See mintlify.com/pricing for current numbers.',
     },
     {
       q: 'Can I migrate docs from Mintlify to Nibleaf?',
@@ -352,7 +352,7 @@ export const nibleafVsMintlify: Comparison = {
     },
     {
       q: 'What does Nibleaf not have yet compared to Mintlify?',
-      a: 'Excluding AI, Nibleaf does not yet provide live multi-user co-editing, two-way GitLab or Bitbucket and multi-repository workflows, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
+      a: 'Nibleaf does not currently provide live multi-user co-editing, two-way GitLab or Bitbucket authoring, arbitrary runtime components or JavaScript, adaptive content, Mintlify’s breadth of integrations, or Enterprise SAML SSO and SCIM. Nibleaf does provide audiences, JWT reader handoff, GitHub draft-PR previews, exports, and changelog RSS.',
     },
   ],
 };
@@ -375,7 +375,7 @@ export const nibleafVsGitbook: Comparison = {
   features: [
     {
       feature: 'Public self-hosting',
-      nibleaf: yes('AGPL-3.0 repository, pinned GHCR image, and Docker Compose installer'),
+      nibleaf: yes('AGPL-3.0 source and Docker Compose deployment configuration'),
       competitor: partial('GPLv3 published-site renderer; not the full workspace'),
     },
     {
@@ -408,7 +408,7 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       feature: 'Markdown export & portability',
-      nibleaf: yes('Plain Markdown, take it anywhere'),
+      nibleaf: yes('Markdown/MDX export; check component and asset compatibility at the destination'),
       competitor: yes('Via GitHub/GitLab sync'),
     },
     {
@@ -430,7 +430,9 @@ export const nibleafVsGitbook: Comparison = {
     },
     {
       feature: 'AI search & assistant',
-      nibleaf: partial('Optional hybrid retrieval and grounded answers ship in v0.2.0; they need Qdrant, an AI provider key, and project opt-in'),
+      nibleaf: partial(
+        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key.',
+      ),
       competitor: yes('AI search from Essential; chat assistant from Ultimate'),
     },
     { feature: 'SAML SSO', nibleaf: planned(), competitor: yes('Enterprise plan') },
@@ -447,28 +449,28 @@ export const nibleafVsGitbook: Comparison = {
   pickNibleaf: {
     title: 'When to pick Nibleaf',
     reasons: [
-      'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Essential pricing, billed annually, as of November 2, 2026).',
+      'You want a custom domain without paying $65 per site/month plus $12 per user/month (GitBook Essential pricing, billed annually, as of November 7, 2026).',
       'You need the full editor, publishing pipeline, and reader to be deployable together. GitBook self-hosts only its published-site renderer.',
       'You want RTL-aware authoring, language-specific page trees, and Arabic search; verify the equivalent GitBook workflow with representative content.',
       'You want your content to stay plain Markdown you can export and move any time.',
     ],
   },
   verdict: [
-    'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook says that path is not recommended or supported and it does not include the hosted workspace and editor.',
-    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Self-hosted v0.2.0 also includes optional hybrid retrieval, which needs Qdrant, grounded answers, which need an AI provider key, and read-only MCP, which is off by default. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
+    'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook discourages that path and cannot guarantee support, maintenance, or updates and it does not include the hosted workspace and editor.',
+    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
   ],
   faqs: [
     {
       q: 'Is Nibleaf a good alternative to GitBook?',
-      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Essential at $65 per site/month plus $12 per user/month, billed annually, as of November 2, 2026. GitBook is ahead on GitLab sync, adaptive content, AI features, and enterprise SSO.',
+      a: 'It can be for teams that want a block-style editor over Markdown, Arabic/RTL support, full-stack self-hosting, GitHub pull-request previews, and private readers. Nibleaf includes custom domains and analytics in its free cloud beta, while GitBook gates custom domains behind Essential at $65 per site/month plus $12 per user/month, billed annually, as of November 7, 2026. GitBook offers two-way GitLab sync, adaptive content, managed Ask/Chat, and enterprise SSO; Nibleaf also has Ask AI with provider and opt-in prerequisites.',
     },
     {
       q: 'How much does GitBook cost?',
-      a: 'As of November 2, 2026: Free ($0, 1 user, no custom domain), Essential at $65 per site/month plus $12 per user/month, Ultimate at $249 per site/month plus $12 per user/month, and custom-priced Enterprise with SAML SSO. Amounts are monthly costs under annual billing, which is advertised as two months free. See gitbook.com/pricing for current numbers.',
+      a: 'As of November 7, 2026: Free ($0, 1 user, no custom domain), Essential at $65 per site/month plus $12 per user/month, Ultimate at $249 per site/month plus $12 per user/month, and custom-priced Enterprise with SAML SSO. Amounts are monthly costs under annual billing, which is advertised as two months free. See gitbook.com/pricing for current numbers.',
     },
     {
       q: 'Can I self-host GitBook?',
-      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook says this is not its recommended or supported path. The hosted workspace and editor are not included. Nibleaf publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer for self-hosting.',
+      a: 'GitBook’s GPLv3 published-site renderer can be self-hosted, but GitBook discourages this path and cannot guarantee support, maintenance, or updates. The hosted workspace and editor are not included. Nibleaf publishes its full AGPL-3.0 stack, Docker Compose deployment configuration for self-hosting.',
     },
     {
       q: 'Does Nibleaf have git sync like GitBook?',
@@ -511,12 +513,12 @@ export const nibleafVsDocusaurus: Comparison = {
     {
       feature: 'Publish without a build pipeline',
       nibleaf: yes('Publish straight from the editor'),
-      competitor: no('Node.js build on every deploy'),
+      competitor: no('Build static output, then deploy or redeploy that output'),
     },
     {
       feature: 'Built-in search',
       nibleaf: partial(
-        'Built-in Orama path; optional self-hosted hybrid path from v0.2.0 that needs Qdrant, an AI provider key, and an evaluated cutover',
+        'Built-in Orama full-text/fuzzy search with section links, recent queries, cross-language results, and retry states; optional Qdrant retrieval needs an AI embedding connection and evaluated cutover',
       ),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
@@ -531,7 +533,13 @@ export const nibleafVsDocusaurus: Comparison = {
       competitor: yes('Docs versioning built in'),
     },
     { feature: 'Custom domains', nibleaf: yes(), competitor: yes('Via whatever host you deploy to') },
-    { feature: 'Built-in reader analytics', nibleaf: yes('Privacy-friendly, no tracker'), competitor: no('Bring your own') },
+    {
+      feature: 'Built-in reader analytics',
+      nibleaf: yes(
+        'First-party event analytics with consent and search-text controls; advanced owner insights require optional ClickHouse when self-hosting and are available when you self-host today, and on Nibleaf Cloud as it rolls out.',
+      ),
+      competitor: no('Bring your own'),
+    },
     {
       feature: 'Full code-level theme control (React)',
       nibleaf: partial('Theming, branding, and MDX components — not arbitrary code'),
@@ -561,7 +569,7 @@ export const nibleafVsDocusaurus: Comparison = {
     title: 'When to pick Nibleaf',
     reasons: [
       'Non-developers write your docs: Nibleaf gives them a Notion-style WYSIWYG editor, no git or Node.js required.',
-      'You want instant publishing with versioned snapshots instead of a build-and-deploy pipeline.',
+      'You want browser publishing with preflight, confirmation, immutable snapshots, and monitored deployment status.',
       'You want search and reader analytics built in, without wiring up Algolia or an analytics service.',
       'You want a managed option in free beta with custom domains and do not require immediate self-hosting.',
       'You need Arabic/RTL editing in the authoring UI itself, not just in the rendered output.',
@@ -569,12 +577,12 @@ export const nibleafVsDocusaurus: Comparison = {
   },
   verdict: [
     'Docusaurus is excellent at what it does. If engineers are happy in Git and want control of a React codebase, it costs nothing and has a mature public distribution.',
-    'Nibleaf trades some of that code-level control for a platform normal humans can operate: a real editor, one-click publishing, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
+    'Nibleaf trades some of that code-level control for a platform normal humans can operate: a real editor, browser publishing with confirmation and queued deployment, built-in search and analytics, and a hosted option. Teams often outgrow docs-as-code in the other direction — when product managers, support, and technical writers need to contribute without a pull request. That is the case Nibleaf is built for.',
   ],
   faqs: [
     {
       q: 'Is Docusaurus free?',
-      a: 'Yes. Docusaurus is open source under the MIT license (its documentation is CC-BY-4.0). You pay only for hosting the static output, which can be free on services like GitHub Pages.',
+      a: 'Yes. Docusaurus is open source under the MIT license. You pay only for hosting the static output, which can be free on services like GitHub Pages.',
     },
     {
       q: 'What is the difference between Nibleaf and Docusaurus?',
@@ -586,7 +594,7 @@ export const nibleafVsDocusaurus: Comparison = {
     },
     {
       q: 'Can I self-host Nibleaf and Docusaurus?',
-      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full-stack application with public source, a pinned container release, and a guided Docker Compose installer.',
+      a: 'A Docusaurus site is static files you can serve from any web server or CDN. Nibleaf is a full-stack application with public source, Docker Compose deployment configuration.',
     },
     {
       q: 'Which is better for non-developers?',
@@ -600,7 +608,7 @@ const nibleafAlternativeEntry = (_vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. v0.2.0 includes two-way GitHub authoring, pull-request previews, private reader access, Scalar-powered OpenAPI references, optional hybrid retrieval and grounded answers, and read-only MCP, which is off by default. It still lacks SAML/SCIM and adaptive content.`,
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. The product includes two-way GitHub authoring, pull-request previews, private reader access, and Scalar-powered OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. It still lacks SAML/SCIM and adaptive content.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -632,7 +640,7 @@ const gitbookEntry: AlternativeEntry = {
   name: 'GitBook',
   url: 'https://www.gitbook.com',
   description:
-    'Polished hosted docs platform with a block-based editor and GitHub/GitLab sync. Free for one user without a custom domain; custom domains from $65 per site/month plus $12 per user/month, billed annually, as of November 2, 2026.',
+    'Polished hosted docs platform with a block-based editor and GitHub/GitLab sync. Free for one user without a custom domain; custom domains from $65 per site/month plus $12 per user/month, billed annually, as of November 7, 2026.',
   bestFor: 'Teams that want a managed, all-in-one docs tool and are happy with SaaS pricing.',
 };
 
@@ -640,7 +648,7 @@ const mintlifyEntry: AlternativeEntry = {
   name: 'Mintlify',
   url: 'https://www.mintlify.com',
   description:
-    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground) and paid Pro/Enterprise plans that add AI features, previews, SSO, and an Enterprise self-hosted custom frontend option, as of November 2, 2026.',
+    'Managed documentation platform with a generous free Starter plan (custom domain, web editor, API playground) and Pro with an assistant, agent and previews, and Enterprise with SSO and request-only static export; headless frontends can use managed services, as of November 7, 2026.',
   bestFor: 'API-heavy startup docs where AI tooling and an API playground matter most.',
 };
 
@@ -662,7 +670,7 @@ export const mintlifyAlternatives: AlternativesRoundup = {
   faqs: [
     {
       q: 'What is the best open-source alternative to Mintlify?',
-      a: 'Docusaurus or Starlight are strong open-source choices if you prefer a static generator and docs-as-code. Nibleaf is the full-stack option: its public AGPL-3.0 repository and pinned container release install with Docker Compose.',
+      a: 'Docusaurus or Starlight are strong open-source choices if you prefer a static generator and docs-as-code. Nibleaf is the full-stack option: its public AGPL-3.0 repository includes Docker Compose deployment configuration.',
     },
     {
       q: 'What is the best free alternative to Mintlify?',
@@ -701,15 +709,15 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What is the cheapest GitBook alternative with a custom domain?',
-      a: 'GitBook gates custom domains behind Essential at $65 per site/month plus $12 per user/month, billed annually, as of November 2, 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
+      a: 'GitBook gates custom domains behind Essential at $65 per site/month plus $12 per user/month, billed annually, as of November 7, 2026. Nibleaf includes custom domains in its free cloud beta, and Mintlify’s free Starter plan includes one. Static generators support custom domains through the host you choose.',
     },
     {
       q: 'Can I self-host a GitBook alternative?',
-      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf publishes its full AGPL-3.0 stack, a pinned GHCR image, and a Docker Compose installer.',
+      a: 'Yes. Docusaurus and Starlight produce static files you can host anywhere. GitBook’s GPLv3 renderer can publish a self-hosted reader, but not the complete hosted workspace. Nibleaf publishes its full AGPL-3.0 stack, Docker Compose deployment configuration.',
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'For self-hosted v0.2.0, Nibleaf’s remaining gaps include two-way GitLab authoring, adaptive content, and SAML SSO. Self-hosted v0.2.0 includes optional hybrid retrieval and grounded answers plus read-only MCP; Qdrant, an AI provider key, and project opt-in remain explicit, and MCP is off by default.',
+      a: 'Nibleaf’s gaps include two-way GitLab authoring, adaptive content, and SAML SSO. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
     },
   ],
 };
@@ -736,7 +744,7 @@ export const readmeAlternatives: AlternativesRoundup = {
     },
     {
       q: 'How much does ReadMe cost?',
-      a: 'As of November 2, 2026: a free Starter plan (1 project, API reference, custom domain), Pro at $250/month billed annually for 1 project, and custom-priced Enterprise. The “Ask AI” add-on is $150/month. See readme.com/pricing for current numbers.',
+      a: 'As of November 7, 2026: a free Starter plan (1 project, API reference, custom domain), Pro at $250/month billed annually for 1 project, and custom-priced Enterprise. Ask AI Lite is included on Pro/Enterprise with the default model and without customization, model selection, analytics, or API access. Full Ask AI is a $150/month add-on; its API requires Enterprise. See https://docs.readme.com/main/docs/ask-ai (checked November 7, 2026). See readme.com/pricing for current numbers.',
     },
     {
       q: 'Does Nibleaf have an interactive API reference like ReadMe?',
