@@ -26,23 +26,24 @@ cp .env.example .env
 pnpm install
 pnpm db:generate
 
-# Bring up the datastores (Postgres, Dragonfly, maxio):
+# Bring up development datastores and Mailpit (local email capture):
 docker compose -f docker-compose.dev.yml up -d
 
 # Apply migrations and seed a local demo account (demo@nibleaf.test):
 pnpm db:deploy
 pnpm db:seed
 
-# Run the app, API, and worker in watch mode:
-pnpm dev
+# Load root .env and run the app, API, and worker in watch mode:
+node scripts/dev.mjs  # append full to include admin
 ```
 
 - Dashboard: http://localhost:4310
 - API + OpenAPI docs: http://localhost:4311/docs
 
-The demo account uses the same email-code sign-in as the product. With no email
-provider configured, open the local worker's job dashboard at
-http://localhost:4312/jobs and read the code in the latest email job's data.
+The demo account uses the same email-code sign-in as the product. Keep the example
+`SMTP_URL=smtp://127.0.0.1:1025` in the root `.env`; the development stack captures
+mail in Mailpit at http://localhost:8025. Read the sign-in code there after
+starting the worker. No external email provider is needed.
 The seed creates the workspace and published starter idempotently.
 
 For a production-style installation, use the pinned-image path in the

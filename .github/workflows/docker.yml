@@ -202,9 +202,6 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             REVISION=${{ steps.source.outputs.sha }}
-            VITE_API_URL=http://server:4311
-            VITE_APP_URL=https://nibleaf.com
-            VITE_SITE_BASE_DOMAIN=nibleaf.com
           pull: true
           # Query current stable OS packages on every manual build without
           # disabling the build/runtime-deps stages or pnpm store caches.
