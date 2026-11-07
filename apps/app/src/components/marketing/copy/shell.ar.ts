@@ -10,17 +10,16 @@ function arabicStars(count: number): string {
   return `${n} نجمة`;
 }
 
-// Every link target below exists today. Use-case pages are not linked until
-// their routes ship.
+// Every link target below exists today.
 export const shellAr: ShellCopy = {
   skipToContent: 'انتقل إلى المحتوى',
   homeLabel: 'الصفحة الرئيسية لـ Nibleaf',
   primaryNavLabel: 'التنقل الرئيسي',
   nav: [
     { label: 'المزايا', href: '/ar#features' },
+    { label: 'حالات الاستخدام', href: '/ar#use-cases' },
     { label: 'الأسعار', href: '/pricing' },
     { label: 'الوثائق', href: 'https://docs.nibleaf.com?lang=ar', external: true },
-    { label: 'المدونة', href: '/blog' },
     { label: 'الاستضافة الذاتية', href: '/self-hosting' },
   ],
   login: { label: 'تسجيل الدخول', href: '/sign-in' },
@@ -48,6 +47,14 @@ export const shellAr: ShellCopy = {
           { label: 'الأسعار', href: '/pricing' },
           { label: 'الاستضافة الذاتية', href: '/self-hosting' },
           { label: 'الإصدارات', href: 'https://github.com/lord007tn/nibleaf/releases', external: true },
+        ],
+      },
+      {
+        title: 'حالات الاستخدام',
+        links: [
+          { label: 'فرق الدعم', href: '/ar/use-cases/support-teams' },
+          { label: 'فرق المنتج', href: '/ar/use-cases/product-docs' },
+          { label: 'المطورون', href: '/ar/use-cases/api-docs' },
         ],
       },
       {

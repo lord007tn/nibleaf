@@ -30,6 +30,7 @@ import { HeroMedia, MarketingMedia } from '../media/marketing-media';
 import { GitHubStarLink } from '../site/github-star-link';
 import { MarketingLink } from '../site/marketing-link';
 import { Eyebrow, iconTile, outlineButton, primaryButton } from '../site/primitives';
+import { UseCasesTeaser } from '../use-cases/use-cases-teaser';
 
 const icons = {
   ai: Sparkles,
@@ -204,6 +205,8 @@ export function LandingView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
           </section>
         ))}
       </div>
+
+      <UseCasesTeaser lang={lang} />
 
       <section className={section}>
         <Heading copy={copy.more} />
