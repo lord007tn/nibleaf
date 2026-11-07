@@ -348,6 +348,49 @@ describe('searchSite multilingual scope', () => {
     expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en']))).toBe(true);
   });
 
+  it('never widens a page-scoped reader on a three-language site, with or without prefer', async () => {
+    const trilingual: SiteSnapshot = {
+      ...multilingualSnapshot,
+      project: {
+        ...multilingualSnapshot.project,
+        languages: [...multilingualSnapshot.project.languages, { code: 'fr', label: 'Français', direction: 'LTR', isDefault: false, config: null }],
+      },
+      pages: [
+        ...multilingualSnapshot.pages,
+        page({ id: 'page-fr', path: 'authentication', position: 0, languageCode: 'fr', title: 'Authentification' }),
+      ],
+    };
+    mocks.deploymentFindUnique.mockResolvedValue({ snapshot: trilingual });
+    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: ['page-en', 'page-fr'] } as never);
+    onTestFinished(() => {
+      vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'public', allowedPageIds: null } as never);
+    });
+    const scopes = async (prefer?: string) => {
+      vi.clearAllMocks();
+      mocks.deploymentFindFirst.mockResolvedValue({ id: `deployment-trilingual-${prefer ?? 'none'}`, version: 1 });
+      await searchSite('project-1', 'token', undefined, 10, undefined, {}, prefer);
+      return {
+        scopes: mocks.runPublishedSearch.mock.calls.map(([scope]) => scope),
+        indexes: mocks.getCachedIndex.mock.calls.map(([, , language, pages, allowed]) => ({
+          language,
+          pages: (pages as Array<{ id: string }>).map((item) => item.id).sort(),
+          allowed,
+        })),
+      };
+    };
+    const without = await scopes();
+    expect(without.indexes.map((index) => index.language)).toEqual(['en', 'ar', 'fr']);
+    for (const prefer of ['fr', 'ar']) {
+      const withPrefer = await scopes(prefer);
+      expect(withPrefer.indexes).toEqual(without.indexes);
+      expect(withPrefer.scopes.map((scope) => ({ ...(scope as object), deploymentId: undefined }))).toEqual(
+        without.scopes.map((scope) => ({ ...(scope as object), deploymentId: undefined })),
+      );
+    }
+    expect(without.indexes.every((index) => index.pages.join() === 'page-en,page-fr')).toBe(true);
+    expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en', 'page-fr']))).toBe(true);
+  });
+
   it('points a hit at the section that matched, with a preview from that section', async () => {
     const result = await searchSite('project-1', 'token');
     expect(result.hits.find((hit) => hit.id === 'page-en')).toMatchObject({

@@ -83,4 +83,40 @@ describe('merging multilingual search results', () => {
     );
     expect(merged.map((item) => item.id)).toEqual(['en-1', 'en-2', 'ar-1']);
   });
+
+  describe('the reader’s language fills first, with a small reserve for the others', () => {
+    const hit = (id: string, score: number) => ({ id, title: id, path: id, description: '', snippet: '', score });
+    const results = (language: string, count: number, score: number) => ({
+      language,
+      result: { hits: Array.from({ length: count }, (_, index) => hit(`${language}-${index + 1}`, score - index)) },
+    });
+
+    it('keeps 9 of 12 slots for English on a four-language site and shows each other language once', () => {
+      const merged = mergeLanguageSearchHits([results('en', 12, 10), results('ar', 5, 90), results('fr', 5, 80), results('de', 5, 70)], 12, 'en');
+      expect(merged.filter((item) => item.language === 'en')).toHaveLength(9);
+      expect(merged.slice(0, 9).every((item) => item.language === 'en')).toBe(true);
+      expect(merged.slice(9).map((item) => item.id)).toEqual(['ar-1', 'de-1', 'fr-1']);
+    });
+
+    it('gives the others what the preferred language cannot fill', () => {
+      const merged = mergeLanguageSearchHits([results('en', 2, 10), results('ar', 5, 90), results('fr', 5, 80)], 6, 'en');
+      expect(merged.map((item) => item.id)).toEqual(['en-1', 'en-2', 'ar-1', 'ar-2', 'fr-1', 'fr-2']);
+    });
+
+    it('keeps the only slot for the reader’s language', () => {
+      const merged = mergeLanguageSearchHits([results('en', 3, 10), results('ar', 3, 90), results('fr', 3, 80)], 1, 'ar');
+      expect(merged.map((item) => item.id)).toEqual(['ar-1']);
+    });
+
+    it('matches the preferred code exactly: pt-PT is not preferred for a pt-BR reader', () => {
+      const merged = mergeLanguageSearchHits([results('pt-PT', 4, 90), results('pt-BR', 4, 10), results('en', 4, 50)], 4, 'pt-BR');
+      // pt-BR fills the preferred slots; pt-PT only takes the one reserved for other languages.
+      expect(merged.map((item) => item.language)).toEqual(['pt-BR', 'pt-BR', 'pt-BR', 'pt-PT']);
+    });
+
+    it('shares the list fairly by rank when the reader’s language has no hits', () => {
+      const merged = mergeLanguageSearchHits([results('ar', 3, 90), results('fr', 3, 80), results('de', 3, 70)], 3, 'en');
+      expect(merged.map((item) => item.id)).toEqual(['ar-1', 'de-1', 'fr-1']);
+    });
+  });
 });
