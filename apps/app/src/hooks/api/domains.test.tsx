@@ -54,6 +54,27 @@ describe('domain status helpers', () => {
 
   it('words server failures from their code, never the raw message', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const translate = (key: string, variables?: Record<string, string | number>) => (variables ? `${key}:${variables.site}` : key);
+    expect(
+      domainErrorMessage(
+        translate,
+        new ApiResponseError('x', 409, 'domain:already_connected', undefined, undefined, undefined, undefined, {
+          scope: 'same_workspace',
+          siteName: 'Docs',
+        }),
+        'settings.domain.toast.addError',
+      ),
+    ).toBe('settings.domain.error.connectedToSite:\u2068Docs\u2069');
+    expect(
+      domainErrorMessage(
+        translate,
+        new ApiResponseError('x', 409, 'domain:already_connected', undefined, undefined, undefined, undefined, {
+          scope: 'other_workspace',
+          siteName: 'Leaked',
+        }),
+        'settings.domain.toast.addError',
+      ),
+    ).toBe('settings.domain.error.connectedElsewhere');
     expect(domainErrorMessage(t, new ApiResponseError('x', 409, 'domain:already_added'), 'settings.domain.toast.addError')).toBe(
       'settings.domain.error.alreadyAdded',
     );

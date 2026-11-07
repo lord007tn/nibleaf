@@ -123,6 +123,8 @@ export function DomainSection({ project }: { project: Project }) {
         if (result.demoted) return demotedToast(name);
         const { key, kind } = CHECK_RESULT[domainStage(result)];
         toast[kind](t(key));
+        // Still live without it, but later checks can't re-confirm ownership: suggest adding it back.
+        if (result.ownershipRecordMissing) toast.info(t('settings.domain.toast.txtMissing', { domain: isolate(name) }));
       },
       onError: (error) => {
         if (demotedByError(error)) demotedToast(name);

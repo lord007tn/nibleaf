@@ -22,7 +22,6 @@ export { pickLiveDomain };
 const DOMAIN_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
   'validation:failed': 'settings.domain.error.invalid',
   'domain:already_added': 'settings.domain.error.alreadyAdded',
-  'domain:taken': 'settings.domain.error.taken',
   'domain:provider_failed': 'settings.domain.error.providerFailed',
   'domain:ownership_missing': 'settings.domain.error.ownershipMissing',
   'domain:not_pointed': 'settings.domain.error.notPointed',
@@ -30,8 +29,19 @@ const DOMAIN_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
   'domain:check_inconclusive': 'settings.domain.error.checkInconclusive',
 };
 
+/** Keep a site or domain name in one reading direction inside Arabic sentences. */
+const isolate = (value: string) => `\u2068${value}\u2069`;
+
 /** A domain request's failure in plain words: what went wrong and what to do next. */
 export function domainErrorMessage(t: Translate, error: unknown, fallbackKey: MessageKey): string {
+  // Connected elsewhere: the server names the site only when it is one of the person's own.
+  if (error instanceof ApiResponseError && error.code === 'domain:already_connected') {
+    console.error(error);
+    const siteName = error.details?.scope === 'same_workspace' ? error.details.siteName : undefined;
+    return typeof siteName === 'string' && siteName.trim()
+      ? t('settings.domain.error.connectedToSite', { site: isolate(siteName) })
+      : t('settings.domain.error.connectedElsewhere');
+  }
   const specific = error instanceof ApiResponseError && error.code ? DOMAIN_ERROR_KEYS[error.code] : undefined;
   if (specific) {
     console.error(error);

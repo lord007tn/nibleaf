@@ -23,7 +23,8 @@ export const useVerifyDomain = (projectId: string) => {
   return useMutation({
     mutationFn: async (id: string) =>
       // `demoted`: the check confirmed a problem and the domain is no longer the main address.
-      mutateData<Domain & { demoted?: boolean }>(
+      // `ownershipRecordMissing`: still verified and serving, but its TXT record was removed.
+      mutateData<Domain & { demoted?: boolean; ownershipRecordMissing?: boolean }>(
         await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }),
         'Could not verify.',
       ),

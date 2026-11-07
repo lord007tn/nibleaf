@@ -191,6 +191,14 @@ describe('a check that demotes the main address says so', () => {
     return mocks.verify.mutate.mock.calls[0] as [string, { onSuccess: (domain: unknown) => void; onError: (error: unknown) => void }];
   };
 
+  it('suggests adding back a removed TXT record when the domain still works', async () => {
+    const [, options] = await clickCheck();
+    options.onSuccess({ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE', demoted: false, ownershipRecordMissing: true });
+    expect(mocks.toast.success).toHaveBeenCalledWith('settings.domain.toast.live');
+    expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringContaining('settings.domain.toast.txtMissing'));
+    expect(mocks.toast.warning).not.toHaveBeenCalled();
+  });
+
   it('when the check finds HTTPS broken', async () => {
     const [, options] = await clickCheck();
     options.onSuccess({ dnsStatus: 'VERIFIED', sslStatus: 'ERROR', demoted: true });
@@ -230,14 +238,44 @@ describe('adding a domain', () => {
     expect(container.querySelector('#custom-domain')?.getAttribute('aria-invalid')).toBe('true');
   });
 
-  it("shows the server's reason under the field in plain words", async () => {
+  const failAdd = async (error: unknown) => {
     await render();
     await typeDomain('docs.example.com');
     await submit();
     const [, options] = mocks.add.mutate.mock.calls[0] as [unknown, { onError: (error: unknown) => void }];
-    await act(async () => options.onError(new ApiResponseError('That domain is already connected to another site.', 409, 'domain:taken')));
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe('settings.domain.error.taken');
+    await act(async () => options.onError(error));
+    return container.querySelector('[role="alert"]')?.textContent;
+  };
+
+  it("names the person's own site that already has the domain, under the field", async () => {
+    const message = await failAdd(
+      new ApiResponseError('x', 409, 'domain:already_connected', undefined, undefined, undefined, undefined, {
+        scope: 'same_workspace',
+        siteName: 'Partner Docs',
+      }),
+    );
+    expect(message).toContain('settings.domain.error.connectedToSite');
+    expect(message).toContain('Partner Docs');
     expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+
+  it('says only "another workspace" when the domain belongs to someone else', async () => {
+    const message = await failAdd(
+      new ApiResponseError('x', 409, 'domain:already_connected', undefined, undefined, undefined, undefined, { scope: 'other_workspace' }),
+    );
+    expect(message).toBe('settings.domain.error.connectedElsewhere');
+  });
+
+  it('falls back to "another workspace" if a same-workspace answer has no name', async () => {
+    expect(
+      await failAdd(
+        new ApiResponseError('x', 409, 'domain:already_connected', undefined, undefined, undefined, undefined, { scope: 'same_workspace' }),
+      ),
+    ).toBe('settings.domain.error.connectedElsewhere');
+  });
+
+  it('says the domain is already on this site', async () => {
+    expect(await failAdd(new ApiResponseError('x', 409, 'domain:already_added'))).toBe('settings.domain.error.alreadyAdded');
   });
 
   it('warns that a root domain may not accept a CNAME record', async () => {

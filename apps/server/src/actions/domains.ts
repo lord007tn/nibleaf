@@ -28,7 +28,7 @@ import { invalidatePublishedSiteConfig } from './sites';
 const domainError = (
   code:
     | 'domain:already_added'
-    | 'domain:taken'
+    | 'domain:already_connected'
     | 'domain:provider_failed'
     | 'domain:ownership_missing'
     | 'domain:not_pointed'
@@ -67,15 +67,37 @@ export const listDomains = async (projectId: string) => {
   return domains.map((domain) => ({ ...domain, records: dnsRecords(domain) }));
 };
 
-export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody) => {
+/**
+ * Why `domain` can't be added: it is on this site already, or on another one.
+ * Each site is its own workspace (organization), so "same workspace" means a site
+ * the person adding the domain is a member of: one they can already open, so its
+ * name tells them nothing new. For any other site, neither its name nor its
+ * workspace is revealed.
+ */
+const alreadyConnected = async (domain: string, projectId: string, userId: string) => {
+  const holder = await prisma.domain.findUnique({
+    where: { domain },
+    select: { projectId: true, project: { select: { name: true, organizationId: true } } },
+  });
+  if (holder?.projectId === projectId) return domainError('domain:already_added', 'That domain is already connected to this site.', { domain });
+  const member = holder
+    ? await prisma.member.findFirst({ where: { organizationId: holder.project.organizationId, userId }, select: { id: true } })
+    : null;
+  return holder && member
+    ? domainError('domain:already_connected', 'That domain is already connected to another of your sites.', {
+        domain,
+        scope: 'same_workspace',
+        siteName: holder.project.name,
+      })
+    : domainError('domain:already_connected', 'That domain is already connected to another workspace.', { domain, scope: 'other_workspace' });
+};
+
+export const addDomain = async (organizationId: string, projectId: string, body: AddDomainBody, userId: string) => {
   await assertProjectInOrg(organizationId, projectId);
   const domain = body.domain.toLowerCase();
-  const existing = await prisma.domain.findUnique({ where: { domain }, select: { projectId: true } });
+  const existing = await prisma.domain.findUnique({ where: { domain }, select: { id: true } });
   if (existing) {
-    // Never say which other site holds it; only whether it is this one.
-    throw existing.projectId === projectId
-      ? domainError('domain:already_added', 'That domain is already connected to this site.', { domain })
-      : domainError('domain:taken', 'That domain is already connected to another site.', { domain });
+    throw await alreadyConnected(domain, projectId, userId);
   }
   if (cloudflareSaasEnabled()) {
     let provisioned: CloudflareCustomHostname | null = null;
@@ -113,7 +135,7 @@ export const addDomain = async (organizationId: string, projectId: string, body:
     } catch (error) {
       if (routeId) await deleteCustomHostnameRoute(routeId).catch(() => undefined);
       await deleteCustomHostname(provisioned.id).catch(() => undefined);
-      if (isUniqueViolation(error)) throw domainError('domain:taken', 'That domain was just connected to another site.', { domain });
+      if (isUniqueViolation(error)) throw await alreadyConnected(domain, projectId, userId);
       throw error;
     }
   }
@@ -123,7 +145,7 @@ export const addDomain = async (organizationId: string, projectId: string, body:
     return { ...created, records: dnsRecords(created) };
   } catch (error) {
     // Two sites adding the same address at once: the unique index decides.
-    if (isUniqueViolation(error)) throw domainError('domain:taken', 'That domain was just connected to another site.', { domain });
+    if (isUniqueViolation(error)) throw await alreadyConnected(domain, projectId, userId);
     throw error;
   }
 };
@@ -277,6 +299,11 @@ const probeRoute = async (domain: string, addresses: string[], projectId: string
  * carry `demoted: true`. A check that could not reach DNS or the site (resolver
  * timeout or failure, TLS timeout, refused connection) proves nothing: it changes
  * no status and never demotes, and answers `domain:check_inconclusive`.
+ *
+ * The TXT record proves ownership once. Many owners delete verification records
+ * after setup, so for a domain verified before, a missing TXT record is not a
+ * failure: routing and HTTPS decide, and the result says
+ * `ownershipRecordMissing: true` so the dashboard can suggest adding it back.
  */
 export const verifyDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
@@ -355,7 +382,8 @@ const checkDomain = async (projectId: string, id: string) => {
   };
 
   const { snapshot, ownershipInconclusive, routingInconclusive } = await inspectDns(domain.domain);
-  if (!hasOwnershipRecord(snapshot.txt, domain.verificationToken)) {
+  const ownershipRecordMissing = !hasOwnershipRecord(snapshot.txt, domain.verificationToken);
+  if (ownershipRecordMissing && !domain.verified) {
     if (ownershipInconclusive) return inconclusive('ownership', `DNS did not answer for _nibleaf.${domain.domain}. Retry in a few minutes.`);
     const message = `Ownership TXT record is missing. Add the exact _nibleaf.${domain.domain} record shown below, then retry.`;
     await prisma.domain.update({
@@ -405,7 +433,8 @@ const checkDomain = async (projectId: string, id: string) => {
       lastError: tls.error,
     },
   });
-  return { ...updated, demoted: demote && wasPrimary };
+  // Only a confirmed absence: a TXT lookup that got no answer says nothing about the record.
+  return { ...updated, demoted: demote && wasPrimary, ownershipRecordMissing: ownershipRecordMissing && !ownershipInconclusive };
 };
 
 export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string) => {

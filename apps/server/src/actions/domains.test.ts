@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   domain: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), delete: vi.fn() },
+  member: { findFirst: vi.fn() },
   transaction: vi.fn(),
   invalidate: vi.fn(),
   dns: { resolveTxt: vi.fn(), resolveCname: vi.fn(), resolve4: vi.fn(), resolve6: vi.fn() },
@@ -11,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   tls: { outcome: 'ok' as 'ok' | 'timeout' | 'refused' | 'badCert' },
 }));
 
-vi.mock('@nibleaf/database', () => ({ prisma: { domain: mocks.domain, $transaction: mocks.transaction } }));
+vi.mock('@nibleaf/database', () => ({ prisma: { domain: mocks.domain, member: mocks.member, $transaction: mocks.transaction } }));
 vi.mock('@/env', () => ({ env: { NODE_ENV: 'production', CUSTOM_DOMAIN_CNAME_TARGET: 'cname.nibleaf.test', APP_URL: 'https://app.nibleaf.test' } }));
 vi.mock('node:dns/promises', () => mocks.dns);
 vi.mock('node:tls', () => ({
@@ -76,36 +77,67 @@ beforeEach(() => {
   mocks.tls.outcome = 'ok';
 });
 
-describe('addDomain', () => {
-  it('says the domain is already on this site, not that it is taken', async () => {
-    mocks.domain.findUnique.mockResolvedValue({ projectId: 'site-1' });
-    await expect(addDomain('org-1', 'site-1', { domain: 'docs.example.com' })).rejects.toMatchObject({ code: 'domain:already_added', status: 409 });
+describe('addDomain: a domain that is already connected', () => {
+  const add = () => addDomain('org-1', 'site-1', { domain: 'docs.example.com' }, 'user-1').catch((caught: unknown) => caught);
+  const heldBy = (projectId: string, name: string, organizationId: string) =>
+    mocks.domain.findUnique.mockResolvedValue({ id: 'domain-9', projectId, project: { name, organizationId } });
+
+  it('says it is already on this site', async () => {
+    heldBy('site-1', 'Help Center', 'org-1');
+    await expect(add()).resolves.toMatchObject({ code: 'domain:already_added', status: 409 });
   });
 
-  it('reports a domain connected to another site without naming that site', async () => {
-    mocks.domain.findUnique.mockResolvedValue({ projectId: 'site-2' });
-    const error = await addDomain('org-1', 'site-1', { domain: 'docs.example.com' }).catch((caught: unknown) => caught);
-    expect(error).toMatchObject({ code: 'domain:taken', status: 409 });
-    expect(JSON.stringify(error)).not.toContain('site-2');
+  it('names the other site when the person adding it is a member of that site', async () => {
+    heldBy('site-2', 'Partner Docs', 'org-2');
+    mocks.member.findFirst.mockResolvedValue({ id: 'member-1' });
+    const error = await add();
+    expect(error).toMatchObject({
+      code: 'domain:already_connected',
+      status: 409,
+      details: { domain: 'docs.example.com', scope: 'same_workspace', siteName: 'Partner Docs' },
+    });
+    expect(mocks.member.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: 'org-2', userId: 'user-1' } }));
   });
 
-  it('turns a lost race on the unique index into the same "taken" answer', async () => {
-    mocks.domain.findUnique.mockResolvedValue(null);
+  it("never reveals another workspace's site or workspace", async () => {
+    heldBy('site-3', 'Competitor Secret Docs', 'org-3');
+    mocks.member.findFirst.mockResolvedValue(null);
+    const error = await add();
+    expect(error).toMatchObject({ code: 'domain:already_connected', details: { scope: 'other_workspace' } });
+    const sent = JSON.stringify((error as { toJSON: () => unknown }).toJSON());
+    expect(sent).not.toContain('Competitor Secret Docs');
+    expect(sent).not.toContain('org-3');
+    expect(sent).not.toContain('site-3');
+  });
+
+  it('gives the same answer when another site wins a race on the unique index', async () => {
+    mocks.domain.findUnique.mockResolvedValueOnce(null);
+    heldBy('site-3', 'Competitor Secret Docs', 'org-3');
+    mocks.member.findFirst.mockResolvedValue(null);
     mocks.domain.create.mockRejectedValue(Object.assign(new Error('Unique constraint failed'), { code: 'P2002' }));
-    await expect(addDomain('org-1', 'site-1', { domain: 'docs.example.com' })).rejects.toMatchObject({ code: 'domain:taken' });
+    const error = await add();
+    expect(error).toMatchObject({ code: 'domain:already_connected', details: { scope: 'other_workspace' } });
+    expect(JSON.stringify(error)).not.toContain('Competitor Secret Docs');
   });
 });
 
 describe('verifyDomain keeps readers off a primary domain that stopped working', () => {
-  it('demotes the primary when the ownership record is gone, and says so', async () => {
+  it('asks for the TXT record while a new domain is being set up', async () => {
+    mocks.domain.findFirst.mockResolvedValue({
+      ...row,
+      verified: false,
+      verifiedAt: null,
+      isPrimary: false,
+      dnsStatus: 'PENDING',
+      sslStatus: 'PENDING',
+    });
     mocks.dns.resolveTxt.mockRejectedValue(dnsError('ENODATA'));
     await expect(verifyDomain('org-1', 'site-1', 'domain-1')).rejects.toMatchObject({
       code: 'domain:ownership_missing',
       status: 422,
-      details: expect.objectContaining({ demoted: true }),
+      details: expect.objectContaining({ demoted: false }),
     });
-    expect(updates()).toContainEqual(expect.objectContaining({ dnsStatus: 'ERROR', isPrimary: false }));
-    expect(mocks.invalidate).toHaveBeenCalledWith('site-1');
+    expect(updates()).toContainEqual(expect.objectContaining({ dnsStatus: 'ERROR' }));
   });
 
   it('demotes the primary when the domain no longer points here', async () => {
@@ -127,13 +159,46 @@ describe('verifyDomain keeps readers off a primary domain that stopped working',
   });
 });
 
+describe('a verified domain whose TXT record was removed after setup', () => {
+  it('stays live and main while routing and HTTPS still work, with a gentle flag', async () => {
+    mocks.dns.resolveTxt.mockRejectedValue(dnsError('ENODATA'));
+    routed();
+    const result = await verifyDomain('org-1', 'site-1', 'domain-1');
+    expect(result).toMatchObject({ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE', isPrimary: true, demoted: false, ownershipRecordMissing: true });
+    expect(updates()).not.toContainEqual(expect.objectContaining({ isPrimary: false }));
+    expect(updates()).not.toContainEqual(expect.objectContaining({ dnsStatus: 'ERROR' }));
+  });
+
+  it('is still demoted when the domain stopped pointing here too', async () => {
+    mocks.dns.resolveTxt.mockResolvedValue([]);
+    await expect(verifyDomain('org-1', 'site-1', 'domain-1')).rejects.toMatchObject({
+      code: 'domain:not_pointed',
+      details: expect.objectContaining({ demoted: true }),
+    });
+  });
+
+  it('does not report the record missing when the TXT lookup simply got no answer', async () => {
+    mocks.dns.resolveTxt.mockRejectedValue(dnsError('ETIMEOUT'));
+    routed();
+    await expect(verifyDomain('org-1', 'site-1', 'domain-1')).resolves.toMatchObject({ isPrimary: true, ownershipRecordMissing: false });
+  });
+});
+
 describe('verifyDomain never demotes on a check that could not reach DNS or the site', () => {
   const expectUntouched = () => {
     // Only the check time is written: no status, and the main address stays.
     for (const data of updates()) expect(Object.keys(data)).toEqual(['lastCheckedAt']);
   };
 
-  it.each(['ETIMEOUT', 'ESERVFAIL', 'ECONNREFUSED'])('a TXT lookup failing with %s', async (code) => {
+  it.each(['ETIMEOUT', 'ESERVFAIL', 'ECONNREFUSED'])('a TXT lookup failing with %s during setup', async (code) => {
+    mocks.domain.findFirst.mockResolvedValue({
+      ...row,
+      verified: false,
+      verifiedAt: null,
+      isPrimary: false,
+      dnsStatus: 'PENDING',
+      sslStatus: 'PENDING',
+    });
     mocks.dns.resolveTxt.mockRejectedValue(dnsError(code));
     await expect(verifyDomain('org-1', 'site-1', 'domain-1')).rejects.toMatchObject({ code: 'domain:check_inconclusive', status: 503 });
     expectUntouched();

@@ -34,7 +34,7 @@ export type ErrorCode =
   | 'database:conflict'
   | 'storage:error'
   | 'domain:already_added'
-  | 'domain:taken'
+  | 'domain:already_connected'
   | 'domain:provider_failed'
   | 'domain:ownership_missing'
   | 'domain:not_pointed'
@@ -113,7 +113,7 @@ const ERROR_STATUS = {
   'database:conflict': 409,
   'storage:error': 502,
   'domain:already_added': 409,
-  'domain:taken': 409,
+  'domain:already_connected': 409,
   'domain:provider_failed': 502,
   'domain:ownership_missing': 422,
   'domain:not_pointed': 422,
