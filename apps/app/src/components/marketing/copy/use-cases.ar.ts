@@ -1,4 +1,4 @@
-import { availabilityNote } from './availability';
+import { availabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
 // Written as Arabic, not translated line by line. Facts match use-cases.en.ts;
@@ -55,6 +55,7 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
       title: 'دع مركز المساعدة يُجيب أولًا.',
       subtitle:
         'يسأل العميل بكلماته، فتأتيه الإجابة من وثائقك مع الأقسام التي اعتمدت عليها. وترى أنت عمليات البحث التي تعثّرت فتكمل النقص، بالعربية أو الإنجليزية أو بكلتيهما.',
+      availabilityNote: heroAvailabilityNote('ar'),
       primaryCta: startFree,
       secondaryCta: selfHost,
       media: media.heroChat,
@@ -143,11 +144,11 @@ export const useCasesAr: Record<UseCaseSlug, UseCaseCopy> = {
         },
         {
           q: 'هل نرى ما سأله العملاء؟',
-          a: 'نعم. تعرض تقارير المساعد المحادثات وتقييماتها والأسئلة التي لم تُجب عنها وثائقك، مع الاستهلاك والكلفة كما يبلّغ عنها المزوّد. يحتاج أصحاب الاستضافة الذاتية إلى ClickHouse لهذه التقارير، ويمكنك إيقاف حفظ المحادثات.',
+          a: `نعم. تعرض تقارير المساعد المحادثات وتقييماتها والأسئلة التي لم تُجب عنها وثائقك، مع الاستهلاك والكلفة كما يبلّغ عنها المزوّد. يحتاج أصحاب الاستضافة الذاتية إلى ClickHouse لهذه التقارير، ويمكنك إيقاف حفظ المحادثات. ${availabilityNote('docsInsights', 'ar')}`,
         },
         {
           q: 'من يدفع كلفة الذكاء الاصطناعي؟',
-          a: 'إن استخدمت مفتاح OpenAI أو OpenRouter الخاص بمساحة عملك، فمزوّدك يحاسبك مباشرة. وتضبط حدود يومية عدد الإجابات والرموز المستهلكة. ويمكن لمشغّل الخادم أن يوفّر مفتاحه أيضًا.',
+          a: `إن استخدمت مفتاح OpenAI أو OpenRouter الخاص بمساحة عملك، فمزوّدك يحاسبك مباشرة. وتضبط حدود يومية عدد الإجابات والرموز المستهلكة. ويمكن لمشغّل الخادم أن يوفّر مفتاحه أيضًا. ${availabilityNote('askAi', 'ar')}`,
         },
         {
           q: 'هل يجيب بالعربية؟',

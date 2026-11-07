@@ -156,7 +156,16 @@ export interface UseCaseCopy {
   navLabel: string;
   /** One-sentence card summary used on the landing page and in menus. */
   cardSummary: string;
-  hero: { eyebrow: string; title: string; subtitle: string; primaryCta: Cta; secondaryCta: Cta; media: MediaRef };
+  hero: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    primaryCta: Cta;
+    secondaryCta: Cta;
+    media: MediaRef;
+    /** Rollout caption under the calls to action, from heroAvailabilityNote(). */
+    availabilityNote?: string;
+  };
   /** The reader's situation today, in their words. */
   problems: { title: string; items: { title: string; body: string }[] };
   /** How Nibleaf helps, each backed by a real capability and real media where useful. */

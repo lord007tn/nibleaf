@@ -68,6 +68,7 @@ export function UseCaseView({ lang, copy, stars = 0 }: { lang: MarketingLang; co
               </MarketingLink>
               <MarketingLink cta={copy.hero.secondaryCta} lang={lang} placement="hero" className={outlineButton} />
             </div>
+            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-muted-foreground text-xs leading-6">{copy.hero.availabilityNote}</p>}
           </div>
           <HeroMedia lang={lang} media={copy.hero.media} />
         </div>

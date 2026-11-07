@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { MARKETING_SITEMAP } from '@/lib/marketing-sitemap';
+import { availabilityNote, heroAvailabilityNote } from '../copy/availability';
 import type { UseCaseSlug } from '../copy/types';
 import { USE_CASE_SLUGS } from '../copy/use-case-meta';
 import { useCasesAr, useCasesTeaserAr } from '../copy/use-cases.ar';
@@ -126,5 +127,18 @@ describe('use-cases teaser', () => {
     );
     expect(root.querySelector('h2')?.textContent).toBe('T');
     expect(root.querySelectorAll('h3 a')).toHaveLength(1);
+  });
+});
+
+describe('use-case availability honesty', () => {
+  it.each(pages)('captions the %s support hero and AI answers while those capabilities roll out', (lang, Page, copies) => {
+    const copy = copies['support-teams'];
+    expect(copy.hero.availabilityNote).toBe(heroAvailabilityNote(lang));
+    const root = markup(renderToStaticMarkup(<Page slug="support-teams" stars={0} />));
+    const hero = root.querySelector('h1')?.closest('div');
+    expect(hero?.textContent).toContain(copy.hero.availabilityNote);
+    const answers = copy.faq.items.map((item) => item.a).join('\n');
+    expect(answers).toContain(availabilityNote('askAi', lang));
+    expect(answers).toContain(availabilityNote('docsInsights', lang));
   });
 });

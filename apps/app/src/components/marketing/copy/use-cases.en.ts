@@ -1,4 +1,4 @@
-import { availabilityNote } from './availability';
+import { availabilityNote, heroAvailabilityNote } from './availability';
 import type { MediaRef, UseCaseCopy, UseCaseSlug, UseCasesTeaserCopy } from './types';
 
 // Evidence for every claim is in dogfood-output/marketing/copy-notes.md.
@@ -54,6 +54,7 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
       title: 'Let your help center answer first.',
       subtitle:
         'Customers ask in their own words and get answers from your docs, with the sections cited. You see which searches failed and fill the gaps, in English, Arabic or both.',
+      availabilityNote: heroAvailabilityNote('en'),
       primaryCta: startFree,
       secondaryCta: selfHost,
       media: media.heroChat,
@@ -151,11 +152,11 @@ export const useCasesEn: Record<UseCaseSlug, UseCaseCopy> = {
         },
         {
           q: 'Can we see what customers asked?',
-          a: 'Yes. The Ask AI reports list conversations, ratings and questions your docs couldn’t answer, plus usage and the cost your provider reports. Self-hosters need ClickHouse for these reports, and you can turn off saving conversations.',
+          a: `Yes. The Ask AI reports list conversations, ratings and questions your docs couldn’t answer, plus usage and the cost your provider reports. Self-hosters need ClickHouse for these reports, and you can turn off saving conversations. ${availabilityNote('docsInsights', 'en')}`,
         },
         {
           q: 'Who pays for the AI?',
-          a: 'With your workspace’s own OpenAI or OpenRouter key, your provider bills you directly. Daily limits on answers and tokens keep usage in check. An instance can also provide a key of its own.',
+          a: `With your workspace’s own OpenAI or OpenRouter key, your provider bills you directly. Daily limits on answers and tokens keep usage in check. An instance can also provide a key of its own. ${availabilityNote('askAi', 'en')}`,
         },
         {
           q: 'Can it answer in Arabic?',
