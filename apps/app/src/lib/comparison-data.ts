@@ -141,7 +141,7 @@ const mintlifyPricing: PricingTable = {
       plan: 'Enterprise',
       price: 'Custom',
       includes:
-        'Automations, SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration and support. The pricing page lists self-hosting on Enterprise only; multi-repository projects and Bitbucket Cloud also need Enterprise. Static export is available by request on Enterprise.',
+        'Automations, SSO, SCIM & RBAC, performance SLA, advanced insights, enterprise security, migration and support. The pricing page lists self-hosting on Enterprise only; native multi-repository projects and Bitbucket Cloud also need Enterprise. Static export is available by request on Enterprise.',
     },
   ],
   note: 'Mintlify meters AI features with credits — its pricing page lists 10,000 credits/month included and $0.01 per credit for overages. Enterprise static export produces independent HTML/CSS/JS output by request. A headless custom frontend is a separate option that can use managed content, search, and AI services.',
@@ -286,7 +286,7 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'Git providers',
       nibleaf: partial('Two-way GitHub workflow; public GitLab and generic Git imports are one-way'),
-      competitor: yes('GitHub and GitLab; Bitbucket Cloud and multi-repository projects are Enterprise-only'),
+      competitor: yes('GitHub and GitLab; Bitbucket Cloud and native multi-repository projects are Enterprise-only'),
     },
     {
       feature: 'Custom components, CSS, and JavaScript',
@@ -306,7 +306,7 @@ export const nibleafVsMintlify: Comparison = {
     {
       feature: 'AI assistant & agent',
       nibleaf: partial(
-        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
+        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
       ),
       competitor: yes('Pro plan, metered by credits'),
     },
@@ -433,7 +433,7 @@ export const nibleafVsGitbook: Comparison = {
     {
       feature: 'AI search & assistant',
       nibleaf: partial(
-        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key.',
+        'Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key.',
       ),
       competitor: yes('AI search from Essential; chat assistant from Ultimate'),
     },
@@ -459,7 +459,7 @@ export const nibleafVsGitbook: Comparison = {
   },
   verdict: [
     'GitBook is a capable hosted product with git sync, API playgrounds, and preview deployments on the free plan, plus reader authentication and AI features on higher tiers. Its published-site renderer is open source and can be self-hosted, but GitBook discourages that path and cannot guarantee support, maintenance, or updates and it does not include the hosted workspace and editor.',
-    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
+    'Nibleaf Cloud covers WYSIWYG editing over Markdown, versioned publishing, search, custom domains, analytics, Arabic/RTL, GitHub pull-request previews, private readers, and Scalar OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. If you need two-way GitLab sync, adaptive content, a fully operated hosted assistant, or SAML today, GitBook is the safer fit.',
   ],
   faqs: [
     {
@@ -520,7 +520,7 @@ export const nibleafVsDocusaurus: Comparison = {
     {
       feature: 'Built-in search',
       nibleaf: partial(
-        'Built-in Orama full-text/fuzzy search with section links, recent queries, cross-language results, and retry states; optional Qdrant retrieval needs an AI embedding connection and evaluated cutover',
+        'Built-in Orama full-text/fuzzy search. Section links, recent queries, cross-language results, retry states, and optional Qdrant retrieval are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out',
       ),
       competitor: partial('Typically the Algolia integration or community plugins'),
     },
@@ -610,7 +610,7 @@ const nibleafAlternativeEntry = (_vs: string): AlternativeEntry => ({
   name: 'Nibleaf',
   url: '/',
   isNibleaf: true,
-  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. The product includes two-way GitHub authoring, pull-request previews, private reader access, and Scalar-powered OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. It still lacks SAML/SCIM and adaptive content.`,
+  description: `${ENTITY_SENTENCE} Full disclosure: Nibleaf is our product. The product includes two-way GitHub authoring, pull-request previews, private reader access, and Scalar-powered OpenAPI references. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters. It still lacks SAML/SCIM and adaptive content.`,
   bestFor: 'Teams that want a managed browser editor, Markdown export, and first-class Arabic/RTL during the free cloud beta.',
 });
 
@@ -719,7 +719,7 @@ export const gitbookAlternatives: AlternativesRoundup = {
     },
     {
       q: 'What does Nibleaf lack compared to GitBook?',
-      a: 'Nibleaf’s gaps include two-way GitLab authoring, adaptive content, and SAML SSO. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
+      a: 'Nibleaf’s gaps include two-way GitLab authoring, adaptive content, and SAML SSO. Ask AI reader chat with section citations and follow-ups, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and the Qdrant service when self-hosting. Owner insights need optional ClickHouse when self-hosting. The editor writing assistant uses the instance key. The support MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview. It offers Read only / Support writer / Full admin presets, OAuth sign-in or expiring personal keys, and is off by default for self-hosters.',
     },
   ],
 };

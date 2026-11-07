@@ -6,7 +6,7 @@ describe('marketing sitemap', () => {
     const lastmodByPath = Object.fromEntries(MARKETING_SITEMAP.map((entry) => [entry.path, entry.lastmod]));
 
     expect(lastmodByPath).toEqual({
-      '/': '2026-11-02',
+      '/': '2026-11-07',
       '/ar': '2026-08-22',
       '/documentation-platforms': '2026-11-07',
       '/ar/documentation-platforms': '2026-11-07',
@@ -14,9 +14,9 @@ describe('marketing sitemap', () => {
       '/cloud': '2026-07-13',
       '/pricing': '2026-11-07',
       '/self-hosting': '2026-08-15',
-      '/about': '2026-10-31',
+      '/about': '2026-11-07',
       '/contact': '2026-08-15',
-      '/developers': '2026-10-31',
+      '/developers': '2026-11-07',
       '/guides': '2026-11-02',
       '/tools/rtl-documentation-readiness': '2026-08-19',
       '/compare/nibleaf-vs-mintlify': '2026-11-07',

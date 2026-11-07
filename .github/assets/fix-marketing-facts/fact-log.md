@@ -233,3 +233,18 @@ Task-owned files:
 | Grammar | "repository are licensed" → "is licensed"; "stack, Docker Compose deployment configuration" → "stack and …" (×2); "public source, Docker Compose …" → "public source and …" | nit | — |
 | Sitemap `lastmod` | `/pricing`, `/compare/*`, `/alternatives/*`, `/documentation-platforms`, `/ar/documentation-platforms` → 2026-11-07 | freshness | `apps/app/src/lib/marketing-sitemap.ts` |
 | Test guard | `round-trip losslessly` → `round-trips? losslessly\|queues a new publish` | test | `apps/app/src/lib/marketing-llms.test.ts` |
+
+## Round-2 scoring fixes — 2026-11-07
+
+| Change | Old text → new text | Verdict | Evidence |
+| --- | --- | --- | --- |
+| `/pricing` search row | "Built-in full-text/fuzzy search with section links and cross-language results" ✓ self-hosted → "Built-in full-text and fuzzy search" ✓, plus a new row "Section links, recent searches, and cross-language results": Cloud "Rolling out", self-hosted "Next release" | overclaim (fixed) | v0.1.2 (2026-08-22) is the latest release, and the installer pins it (`scripts/install.sh`). v0.1.2's `site-search.tsx` has no recent-query, retry or section-anchor code. |
+| Search in `llms.txt`, the marketing FAQ and the Docusaurus comparison row | Section links, recent queries, cross-language results, retry states and hybrid retrieval now carry the release wording | overclaim (fixed) | Same. `git grep -il qdrant v0.1.2 -- apps packages` finds nothing. |
+| Themes in `llms.txt`, and the `/pricing` paragraph | Harbor, Manuscript and Signal carry the release wording | overclaim (fixed) | `git grep -il harbor v0.1.2` finds nothing (#96, #101, #104). |
+| Ask AI on `/pricing` and in the comparisons | "optional Qdrant" → "the Qdrant service" (it's an optional service, but Ask AI requires it) | misleading (fixed) | `apps/server/src/lib/ai-search/runtime.ts:60`: `if (!qdrant) return false;` |
+| `/pricing` analytics row | "Product analytics; Cloudflare also processes hosted traffic" ✓/✓ → "Product analytics": Cloud "Included; Cloudflare also processes hosted traffic", self-hosted ✓ | precision | Cloudflare sits only in front of Nibleaf Cloud. v0.1.2 already has `apps/server/src/modules/app/analytics`. |
+| Mintlify Git providers | "multi-repository projects" → "native multi-repository projects" are Enterprise-only | precision | https://www.mintlify.com/docs/deploy/multi-repo, checked 2026-11-07: Enterprise plan, with a GitHub Action alternative for combining repositories. |
+| Arabic name of Ask AI in the platform caveat and the AI recommendation | "Ask AI" → «اسأل المساعد» (Ask AI) | natural Arabic | Product label `site_ai_title` in `packages/i18n/messages/ar.json` |
+| Sitemap `lastmod` for `/`, `/about`, `/developers` | → 2026-11-07 | freshness | They render values changed here: the FAQ and `marketing.release.*` |
+| `/pricing` FAQ in the eager route chunk | The route's `head` imported `marketingFaqs` statically, so the FAQ copy shipped to every page. It now loads in the route loader. | bundle | public-docs 344.30 → **343.40 KiB** gzip, below `main` (344.15) |
+| Claim checked and kept: "12 interface locales" | unchanged | true in v0.1.2 | v0.1.2 has `en` and `ar` inline in `apps/app/src/lib/i18n/messages.ts` and 10 catalogs, and `locales.ts` lists 12 codes. |

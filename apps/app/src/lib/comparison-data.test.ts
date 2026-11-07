@@ -22,7 +22,7 @@ describe('competitor facts', () => {
   it('describes vendor capabilities without stale feature gaps', () => {
     expect(serialized).toContain('Analytics on Pro/Enterprise');
     expect(serialized).toContain('Enterprise static export by request');
-    expect(serialized).toContain('Bitbucket Cloud and multi-repository projects are Enterprise-only');
+    expect(serialized).toContain('Bitbucket Cloud and native multi-repository projects are Enterprise-only');
     expect(serialized).toContain('Self-hosting is listed on Enterprise only');
     expect(serialized).not.toContain('not recommended or supported');
   });
@@ -31,7 +31,7 @@ describe('competitor facts', () => {
     expect(serialized).not.toMatch(/v0\.2|read-only MCP|no tracker|instant publishing/i);
     expect(serialized).toContain('in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.');
     expect(serialized).toContain('workspace or instance AI provider key');
-    expect(serialized).toContain('optional Qdrant when self-hosting');
+    expect(serialized).toContain('the Qdrant service when self-hosting');
     expect(serialized).toContain('optional ClickHouse when self-hosting');
     expect(serialized).toContain('publish only after a confirmed preview');
     expect(serialized).toContain('The editor writing assistant uses the instance key.');

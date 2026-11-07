@@ -10,7 +10,7 @@ export interface MarketingSitemapEntry {
  * (rolled forward only when that page materially changes). Blog URLs are
  * appended from the article frontmatter registry. */
 export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
-  { path: '/', lastmod: '2026-11-02' },
+  { path: '/', lastmod: '2026-11-07' },
   { path: '/ar', lastmod: '2026-08-22' },
   { path: '/documentation-platforms', lastmod: '2026-11-07' },
   { path: '/ar/documentation-platforms', lastmod: '2026-11-07' },
@@ -19,9 +19,9 @@ export const MARKETING_SITEMAP: MarketingSitemapEntry[] = [
   { path: '/cloud', lastmod: '2026-07-13' },
   { path: '/pricing', lastmod: '2026-11-07' },
   { path: '/self-hosting', lastmod: '2026-08-15' },
-  { path: '/about', lastmod: '2026-10-31' },
+  { path: '/about', lastmod: '2026-11-07' },
   { path: '/contact', lastmod: '2026-08-15' },
-  { path: '/developers', lastmod: '2026-10-31' },
+  { path: '/developers', lastmod: '2026-11-07' },
   { path: '/tools/rtl-documentation-readiness', lastmod: '2026-08-19' },
   { path: '/compare/nibleaf-vs-mintlify', lastmod: '2026-11-07' },
   { path: '/compare/nibleaf-vs-gitbook', lastmod: '2026-11-07' },
