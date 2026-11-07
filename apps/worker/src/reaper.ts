@@ -21,35 +21,7 @@ export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promis
   if (count > 0) {
     log.warn({ count }, 'reaped stale deployments');
   }
-  const abandoned = await prisma.deployment.findMany({
-    where: { status: 'FAILED', completedAt: null, createdAt: { lt: cutoff } },
-    select: { id: true, projectId: true, version: true, error: true, project: { select: { name: true } } },
-    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    take: 50,
-  });
-  let finalized = 0;
-  for (const deployment of abandoned) {
-    // Compete with the worker's retry claim and other reapers. A completed
-    // failure cannot be claimed by a delayed job that resurfaces later.
-    const result = await prisma.deployment.updateMany({
-      where: { id: deployment.id, status: 'FAILED', completedAt: null, createdAt: { lt: cutoff } },
-      data: { completedAt: new Date() },
-    });
-    if (!result.count) continue;
-    finalized += result.count;
-    try {
-      await notifyDeployment({
-        deploymentId: deployment.id,
-        projectId: deployment.projectId,
-        projectName: deployment.project.name,
-        version: deployment.version,
-        outcome: 'failed',
-        error: deployment.error ?? undefined,
-      });
-    } catch (error) {
-      log.warn({ deploymentId: deployment.id, error }, 'abandoned retry finalized but failure notification failed');
-    }
-  }
+  const finalized = await finalizeAbandonedRetries(prisma, staleMinutes);
   // The canonical publish receipt is written only after indexing is enqueued.
   // READY without that receipt is a durable recovery marker, including after
   // every BullMQ attempt is exhausted. Give normal delivery a minute to finish.
@@ -76,6 +48,45 @@ export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promis
     }
   }
   return count + finalized;
+}
+
+/** Bound failure notices to recent retries; pre-receipt history must stay silent. */
+export async function finalizeAbandonedRetries(
+  db: Pick<Prisma.TransactionClient, 'deployment'> = prisma,
+  staleMinutes = STALE_MINUTES,
+  now = new Date(),
+) {
+  const createdAt = { gt: new Date(now.getTime() - 24 * 60 * 60_000), lt: new Date(now.getTime() - staleMinutes * 60_000) };
+  const abandoned = await db.deployment.findMany({
+    where: { status: 'FAILED', completedAt: null, createdAt },
+    select: { id: true, projectId: true, version: true, error: true, project: { select: { name: true } } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    take: 50,
+  });
+  let finalized = 0;
+  for (const deployment of abandoned) {
+    // Compete with the worker's retry claim and other reapers. A completed
+    // failure cannot be claimed by a delayed job that resurfaces later.
+    const result = await db.deployment.updateMany({
+      where: { id: deployment.id, status: 'FAILED', completedAt: null, createdAt },
+      data: { completedAt: now },
+    });
+    if (!result.count) continue;
+    finalized += result.count;
+    try {
+      await notifyDeployment({
+        deploymentId: deployment.id,
+        projectId: deployment.projectId,
+        projectName: deployment.project.name,
+        version: deployment.version,
+        outcome: 'failed',
+        error: deployment.error ?? undefined,
+      });
+    } catch (error) {
+      log.warn({ deploymentId: deployment.id, error }, 'abandoned retry finalized but failure notification failed');
+    }
+  }
+  return finalized;
 }
 
 /** Only recover recent, undelivered snapshots that are still the live version. */

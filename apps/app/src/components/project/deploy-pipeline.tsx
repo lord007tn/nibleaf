@@ -108,6 +108,9 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
   const failed = status === 'FAILED' && !retrying;
+  const superseded = Boolean(
+    restoration && done && deployment && deployments.data?.some((item) => item.status === 'READY' && item.version > deployment.version),
+  );
   const failureDetails = failed ? publishFailureDetails(deployment) : [];
   const active = activeStep(retrying ? 'PENDING' : status);
 
@@ -127,23 +130,28 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     }
   }, [deployment, done, trackedAttribution, trackedDeploymentId]);
 
-  // Fire the "published" toast exactly once, on transition into READY while the dialog is open.
+  // Announce each tracked outcome once, including after the dialog closes.
   const announced = useRef(new Set<string>());
   useEffect(() => {
-    if (done && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:ready`)) {
-      announced.current.add(`${deployment.id}:ready`);
-      toast.success(restoration ? t('deploy.rollback.success', { version: restoration.version }) : t('deploy.published'), {
-        action: {
-          label: t('deploy.viewSiteArrow'),
-          onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
-        },
-      });
+    const outcome = superseded ? 'superseded' : 'ready';
+    if (done && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:${outcome}`)) {
+      announced.current.add(`${deployment.id}:${outcome}`);
+      if (superseded) {
+        toast.info(t('deploy.rollback.superseded'));
+      } else {
+        toast.success(restoration ? t('deploy.rollback.success', { version: restoration.version }) : t('deploy.published'), {
+          action: {
+            label: t('deploy.viewSiteArrow'),
+            onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
+          },
+        });
+      }
     }
     if (failed && restoration && deployment?.id === restoration.id && !announced.current.has(`${deployment.id}:failed`)) {
       announced.current.add(`${deployment.id}:failed`);
       toast.error(t('deploy.rollback.error'));
     }
-  }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration]);
+  }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration, superseded]);
 
   const viewSite = () => window.open(siteUrl, '_blank', 'noopener,noreferrer');
 
@@ -178,7 +186,11 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
       <DialogContent className="gap-0 p-0 sm:max-w-[420px]" showCloseButton={true}>
         <div className="flex flex-col gap-5 px-6 pt-6 pb-2">
           <div className="flex items-center gap-3">
-            {done ? (
+            {superseded ? (
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+                <TriangleAlert className="size-4" />
+              </span>
+            ) : done ? (
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Check className="size-4" />
               </span>
@@ -193,14 +205,17 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             )}
             <div className="min-w-0 leading-snug">
               <DialogTitle className="font-semibold text-base tracking-tight">
-                {done
-                  ? t('deploy.deployed')
-                  : failed
-                    ? t('deploy.failed')
-                    : restoration
-                      ? t('deploy.rollback.restoring', { version: restoration.version })
-                      : t('deploy.deploying')}
+                {superseded
+                  ? t('deploy.rollback')
+                  : done
+                    ? t('deploy.deployed')
+                    : failed
+                      ? t('deploy.failed')
+                      : restoration
+                        ? t('deploy.rollback.restoring', { version: restoration.version })
+                        : t('deploy.deploying')}
               </DialogTitle>
+              {superseded ? <p className="mt-1 text-muted-foreground text-sm">{t('deploy.rollback.superseded')}</p> : null}
               <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
                 {siteUrl}
               </div>

@@ -26,6 +26,7 @@ export function friendlyErrorMessage(
 ): string {
   console.error(error);
   if (error instanceof ApiResponseError) {
+    // Shared code/reason messages take precedence over the caller's statusKeys.
     const messageKey = (error.reason ? API_ERROR_MESSAGE_KEYS.get(error.reason) : undefined) ?? API_ERROR_MESSAGE_KEYS.get(error.code ?? '');
     if (messageKey) return t(messageKey);
     const specific = statusKeys?.[error.status];

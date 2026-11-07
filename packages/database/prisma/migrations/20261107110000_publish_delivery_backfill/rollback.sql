@@ -1,6 +1,3 @@
--- Stop delivery-recovery workers before removing these fences. Do not restart
--- an unbounded recovery worker against the unfenced history. Keep genuine
--- publication and announcement receipts intact.
-DELETE FROM "platform_event"
-WHERE "type" = 'publish_delivery_backfilled'
-  AND "metadata"->>'backfillMigration' = '20261107110000_publish_delivery_backfill';
+-- Intentionally a no-op: backfilled completion times cannot be distinguished
+-- from genuine terminal failures after deployment. Clearing them or removing
+-- historical delivery fences could replay old notifications and indexing.

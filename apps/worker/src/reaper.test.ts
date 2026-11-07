@@ -30,11 +30,11 @@ describe('publish recovery boundary', () => {
     expect(completedAt).toBeInstanceOf(Date);
     expect(mocks.find).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: 'FAILED', completedAt: null, createdAt: { lt: expect.any(Date) } },
+        where: { status: 'FAILED', completedAt: null, createdAt: { gt: expect.any(Date), lt: expect.any(Date) } },
       }),
     );
     expect(mocks.update).toHaveBeenCalledWith({
-      where: { id: stranded.id, status: 'FAILED', completedAt: null, createdAt: { lt: expect.any(Date) } },
+      where: { id: stranded.id, status: 'FAILED', completedAt: null, createdAt: { gt: expect.any(Date), lt: expect.any(Date) } },
       data: { completedAt: expect.any(Date) },
     });
     await reapStaleDeployments();
@@ -47,6 +47,23 @@ describe('publish recovery boundary', () => {
       outcome: 'failed',
       error: 'Build failed',
     });
+  });
+
+  it('does not finalize or notify a legacy FAILED row outside the recovery window', async () => {
+    const legacy = {
+      id: 'legacy',
+      projectId: 'project',
+      version: 1,
+      error: 'Old failure',
+      project: { name: 'Synthetic' },
+      createdAt: new Date(Date.now() - 2 * 86_400_000),
+    };
+    mocks.find.mockImplementation(async ({ where }) =>
+      (!where.createdAt.gt || legacy.createdAt > where.createdAt.gt) && legacy.createdAt < where.createdAt.lt ? [legacy] : [],
+    );
+    await reapStaleDeployments();
+    expect(mocks.update.mock.calls.some(([query]) => query.where.id === legacy.id)).toBe(false);
+    expect(mocks.notify).not.toHaveBeenCalled();
   });
 
   it('does not announce a stale failure when the worker has already reclaimed it', async () => {
@@ -72,7 +89,7 @@ describe('publish recovery boundary', () => {
     expect(mocks.enqueue).not.toHaveBeenCalled();
   });
 
-  it('backfills administrative receipts and rolls back only the markers owned by this migration', () => {
+  it('backfills historical completion times and receipts without a destructive rollback', () => {
     const root = new URL('../../../packages/database/prisma/migrations/20261107110000_publish_delivery_backfill/', import.meta.url);
     const migration = readFileSync(new URL('migration.sql', root), 'utf8');
     const rollback = readFileSync(new URL('rollback.sql', root), 'utf8');
@@ -82,7 +99,8 @@ describe('publish recovery boundary', () => {
     expect(migration).not.toContain("'auto'");
     expect(migration).toContain('d."completedAt"');
     expect(migration).not.toContain('now()');
-    expect(rollback).toContain('"type" = \'publish_delivery_backfilled\'');
-    expect(rollback).toContain("\"metadata\"->>'backfillMigration' = '20261107110000_publish_delivery_backfill'");
+    expect(migration).toContain('SET "completedAt" = "createdAt"');
+    expect(migration).toContain('"status" = \'FAILED\' AND "completedAt" IS NULL');
+    expect(rollback.replace(/--[^\n]*/g, '').trim()).toBe('');
   });
 });

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { translateFn } from '@nibleaf/i18n';
 import type { ReactNode } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
+  info: vi.fn(),
   query: vi.fn(),
   deployments: { data: [] as Deployment[] },
 }));
@@ -23,7 +25,7 @@ vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, variables?: { version?: number }) => `${key}${variables?.version ? `:${variables.version}` : ''}`,
 }));
-vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
+vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error, info: mocks.info } }));
 vi.mock('@/hooks/api', () => ({
   useDomains: () => ({ data: [] }),
   useRollback: () => ({ mutate: mocks.mutate, isPending: false }),
@@ -47,6 +49,12 @@ const deployment = (id: string, version: number, status: Deployment['status']): 
 const project = { id: 'project', name: 'Synthetic docs', slug: 'docs' } as Project;
 
 describe('rollback progress', () => {
+  it.each([
+    ['en', 'A newer publish went live after this rollback, so readers see that version.'],
+    ['ar', 'نُشرت نسخة أحدث بعد طلب الاستعادة، وهي النسخة التي يراها القرّاء الآن.'],
+  ] as const)('explains the superseded outcome in %s', (locale, message) => {
+    expect(translateFn('deploy.rollback.superseded', undefined, locale)).toBe(message);
+  });
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
   const close = vi.fn();
@@ -81,7 +89,7 @@ describe('rollback progress', () => {
     if (!button) throw new Error('Rollback button missing');
     await act(async () => button.click());
   };
-  it('tracks the returned deployment and announces restoration only after that deployment is READY', async () => {
+  it('reports a superseded restoration instead of claiming that readers see the historical version', async () => {
     await queueRollback();
     expect(container.textContent).toContain('deploy.rollback.restoring:2');
     expect(mocks.success).not.toHaveBeenCalled();
@@ -91,9 +99,13 @@ describe('rollback progress', () => {
     expect(container.textContent).toContain('deploy.rollback.restoring:2');
     expect(mocks.success).not.toHaveBeenCalled();
     mocks.deployments.data = mocks.deployments.data.map((item) => (item.id === 'restore-4' ? { ...item, status: 'READY' } : item));
+    await render(false);
+    expect(mocks.success).not.toHaveBeenCalled();
+    expect(mocks.info).toHaveBeenCalledWith('deploy.rollback.superseded');
     await render();
-    expect(mocks.success).toHaveBeenCalledOnce();
-    expect(mocks.success).toHaveBeenCalledWith('deploy.rollback.success:2', expect.any(Object));
+    expect(mocks.info).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain('deploy.rollback.superseded');
+    expect(container.textContent).not.toContain('deploy.deployed');
   });
   it('keeps polling after close and reports an eventual restoration failure', async () => {
     await queueRollback();

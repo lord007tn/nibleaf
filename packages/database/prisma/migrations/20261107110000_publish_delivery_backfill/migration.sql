@@ -11,3 +11,8 @@ SELECT 'publish-ready:' || d."id", 'publish_delivery_backfilled', d."projectId",
 FROM "deployment" d
 WHERE d."status" = 'READY'
 ON CONFLICT ("id") DO NOTHING;
+
+-- Legacy failures were terminal without a completion time. Fence them before
+-- the reaper starts, so even recent historical failures are never announced again.
+UPDATE "deployment" SET "completedAt" = "createdAt"
+WHERE "status" = 'FAILED' AND "completedAt" IS NULL;
