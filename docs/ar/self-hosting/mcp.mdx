@@ -364,7 +364,7 @@ MCP_ENABLED=true
 | `<APP_URL>/.well-known/oauth-authorization-server/api/auth` | بيانات خادم التفويض وفق RFC 8414 للمُصدِر `<APP_URL>/api/auth` (وتُخدَم أيضًا من المسار الجذر). |
 | `<APP_URL>/api/auth/.well-known/openid-configuration` | بيانات OpenID (وتُخدَم أيضًا من `/.well-known/openid-configuration` وصيغتها مع `/api/auth`). |
 | `<APP_URL>/api/auth/oauth2/register` | تسجيل العملاء الديناميكي (RFC 7591) للعملاء العامّين. |
-| `<APP_URL>/api/auth/oauth2/authorize`، `/oauth2/token`، `/oauth2/revoke` | نقاط رمز التفويض مع PKCE ‏(S256) والرموز والإلغاء. |
+| `<APP_URL>/api/auth/oauth2/authorize`، `<APP_URL>/api/auth/oauth2/token`، `<APP_URL>/api/auth/oauth2/revoke` | نقاط رمز التفويض مع PKCE ‏(S256) والرموز والإلغاء. |
 
 تحمل كل استجابة `401` من `/api/mcp` تحديًا وفق RFC 6750 مع المؤشر
 `resource_metadata` وفق RFC 9728، وبه يجد العميل مسار تسجيل الدخول. تحقّق من نسخة

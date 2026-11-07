@@ -75,8 +75,40 @@ Content-Type: application/json
 {"token":"eyJ...","redirect":"/guides/getting-started"}
 ```
 
-يسجّل Nibleaf دخول القارئ ويرسله إلى مسار `redirect` في الموقع نفسه. ويجب أن يكون
-الرمز:
+يتحقق Nibleaf من الرمز، ويسجّل دخول القارئ بضبط ملف تعريف ارتباط للجلسة على نطاق
+الوثائق، ثم يرد بالرمز `200` وبيانات JSON. ولا ينقل المتصفح بنفسه: يحتوي الرد على
+المسار الذي أرسلته في `data.redirect`، ويجب أن تفتح بوابتك تلك الصفحة بنفسها بعد نجاح
+الطلب.
+
+ليبقى ملف تعريف الارتباط محفوظًا، يجب أن يرسل متصفح القارئ الطلب:
+
+- إلى نطاق وثائقك، أي العنوان نفسه الذي يفتح منه القرّاء الوثائق؛
+- مع تضمين بيانات الاعتماد (credentials)، ليحتفظ المتصفح بملف تعريف الارتباط؛
+- من صفحة على الموقع نفسه الذي تتبعه وثائقك، مثل `app.example.com` لوثائق على
+  `docs.example.com`. فالمتصفحات لا تحتفظ بملف تعريف الارتباط هذا من طلب يرسله
+  موقع غير مرتبط.
+
+ويجب أيضًا السماح لعنوان بوابتك باستدعاء Nibleaf من المتصفح؛ ففي الاستضافة الذاتية
+يضيفه المشغّل إلى `CORS_ALLOWED_ORIGINS`. مثال:
+
+```js
+const response = await fetch(
+  'https://docs.example.com/api/public/reader-access/jwt/PROJECT_ID',
+  {
+    method: 'POST',
+    credentials: 'include', // keep the reader cookie Nibleaf sets
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, redirect: '/guides/getting-started' }),
+  },
+);
+if (response.ok) {
+  const { data } = await response.json();
+  window.location.assign(`https://docs.example.com${data.redirect}`);
+}
+```
+
+يجب أن يكون `redirect` مسارًا في الموقع نفسه يبدأ بشرطة مائلة واحدة `/`. ويجب أن
+يكون الرمز:
 
 - موقّعًا بـ `RS256` أو `PS256` أو `ES256` أو `EdDSA`؛
 - متضمنًا قيمة `iss` المطابقة تمامًا، وقيمة `aud` مطابقة، وقيمة `sub` ثابتة للقارئ؛

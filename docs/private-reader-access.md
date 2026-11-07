@@ -80,8 +80,41 @@ Content-Type: application/json
 {"token":"eyJ...","redirect":"/guides/getting-started"}
 ```
 
-Nibleaf signs the reader in and sends them to the `redirect` path on the same
-site. The token must:
+Nibleaf checks the token, signs the reader in by setting a session cookie on the
+docs domain, and replies with `200` and JSON. It does not move the browser:
+the reply contains the path you sent as `data.redirect`, and your portal must
+open that page itself after a successful reply.
+
+For the cookie to stick, the reader's browser must send the request:
+
+- to your docs domain, the same address readers use to open the docs;
+- with credentials included, so the browser keeps the cookie;
+- from a page on the same site as your docs, such as `app.example.com` for docs
+  at `docs.example.com`. Browsers don't keep this cookie from a request made by
+  an unrelated site.
+
+Your portal's address must also be allowed to call Nibleaf from a browser. On a
+self-hosted instance, the operator adds it to `CORS_ALLOWED_ORIGINS`. For
+example:
+
+```js
+const response = await fetch(
+  'https://docs.example.com/api/public/reader-access/jwt/PROJECT_ID',
+  {
+    method: 'POST',
+    credentials: 'include', // keep the reader cookie Nibleaf sets
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, redirect: '/guides/getting-started' }),
+  },
+);
+if (response.ok) {
+  const { data } = await response.json();
+  window.location.assign(`https://docs.example.com${data.redirect}`);
+}
+```
+
+The `redirect` must be a path on the same site, starting with a single `/`.
+The token must:
 
 - be signed with `RS256`, `PS256`, `ES256`, or `EdDSA`;
 - contain the exact `iss`, a matching `aud`, and a stable `sub` for the reader;

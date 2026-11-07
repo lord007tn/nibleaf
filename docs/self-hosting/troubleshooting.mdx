@@ -4,7 +4,7 @@ description: 'Diagnose startup, migration, storage, email, publishing, domain, p
 audience: 'self-hosted operators responding to a failed workflow'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'docker-compose.prod.yml, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
+verified_against: 'docker-compose.prod.yml, docker-compose.yml, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/troubleshooting'
@@ -29,6 +29,57 @@ docker compose -f docker-compose.prod.yml config --services
 Do not post `docker compose config` or `.env`; rendered configuration can contain
 secrets. When asking for help, include the Nibleaf tag and digest, Compose
 version, affected service, redacted error, expected behavior, and exact time.
+
+## Health probes and private diagnostics
+
+The following health contract applies to images containing the updated health
+routes; older pinned releases may have a different response or lack the detailed
+route. Check the deployed image revision before configuring monitoring.
+
+- **API readiness:** use `http://127.0.0.1:4311/health` inside the `server`
+  container. Compose and Coolify use the HTTP status: `200` after API/queue
+  initialization, `503` while starting or shutting down. The public JSON contains
+  only `status` and the existing `revision`; it exposes no storage or provider detail.
+- **Process liveness:** if your platform separates liveness from readiness, use
+  a TCP check on the API listener. Do not restart a live API just because an
+  explicitly required storage check is temporarily unavailable.
+- **Other services:** retain `/health` on app port `4310`, admin port `4315`,
+  and the private worker operations port `4312`. The app wrapper and release
+  verifier still use `/api/app/health` and the app's `/health` revision contract.
+  Keep the worker port private: its existing body contains queue/email diagnostics.
+  Source Compose binds it to loopback; production/Coolify keep it on their internal network.
+
+For API storage and analytics diagnostics, set `INTERNAL_API_SECRET` in the API
+container environment and request `/health/details` with the
+`x-nibleaf-internal` header. Reuse the existing internal secret where configured;
+do not replace an existing key to diagnose health. Source, production, and
+Coolify templates forward this secret. Missing, wrong, or unset secrets return
+`401`; detailed responses use `Cache-Control: private, no-store`.
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T server sh -c \
+  'curl -sS -H "x-nibleaf-internal: $INTERNAL_API_SECRET" http://127.0.0.1:4311/health/details'
+```
+
+The detailed route uses the same readiness HTTP status, so the example omits
+`curl -f` to show diagnostics during `503` responses. Never place the secret in a
+URL, browser code, public probe, or support transcript. Keep this endpoint and
+the worker operations listener off public ingress.
+
+`STORAGE_REQUIRED_FOR_HEALTH=false` is the default: failed bucket checks are
+diagnostic and do not block an initialized API. With `true`, a successful bucket
+check is also required for `200`; object-only credentials may lack the necessary
+bucket-level permission. CORS never gates readiness. Set the option in the
+container environment; an older pinned Compose file may need a reviewed override
+to forward it without editing its checksummed release asset.
+
+Network and provider `5xx` failures retry with backoff capped at 30 seconds,
+including outages longer than the initial startup window. Rejected credentials
+or permissions stop the affected bootstrap operation with a warning: fix the
+credentials/permissions and restart the API, or provision CORS externally and set
+`STORAGE_AUTO_CORS=false`. Detailed health exposes `storage.ready`, `storage.cors`,
+and `storage.requiredForHealth`; `cors: null` means automatic CORS is disabled.
+These checks do not prove that browser uploads work through the public storage endpoint.
 
 ## The stack does not start
 
@@ -203,9 +254,29 @@ have changed. A publish preview is project-wide.
 
 1. Generate a secret, for example with `openssl rand -hex 32`.
 2. Set `INTERNAL_API_SECRET` to that same value for the app and API services, then recreate them.
-3. If Nibleaf runs behind a reverse proxy, set `TRUSTED_PROXY_HOPS` to the number of proxies in front of it so the API reads the right client address.
+3. Set `TRUSTED_PROXY_HOPS` to the number of trusted **public proxy-address hops** appended to `X-Forwarded-For` in front of the API by your CDN/edge and load balancer. Do not count private nginx/Traefik hops or the app-to-API proxy. Set the **same value on the app and API services**; the default is `0`. Inspect the actual forwarding chain and configure your ingress to remove untrusted forwarding headers before choosing the value.
 4. Raise `RATE_LIMIT_PUBLIC_PER_MIN` only if real readers still hit the limit.
 
-The shared Compose `service-env` block shares this value across services.
+The shared Compose `service-env` block passes both settings to the services.
 
-**Verify:** open a few pages from two different networks. Neither should see `429`.
+**Worked examples:** the addresses below are illustrative. `9.9.9.9` is a
+client-supplied forged entry and `203.0.113.7` is the real client. A private
+nginx that appends the client's address produces `9.9.9.9, 203.0.113.7`;
+nginx itself adds no public proxy-address hop to count, so use `0`.
+
+| Header received | Trusted public proxy hops | `TRUSTED_PROXY_HOPS` | Selected client address |
+| --- | --- | --- | --- |
+| `9.9.9.9, 203.0.113.7` | None; private nginx only | `0` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7` | Incorrectly counted private nginx | `1` | `9.9.9.9` — forged |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9` | One public CDN/edge address | `1` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9, 198.51.100.10` | Public CDN/edge and load-balancer addresses | `2` | `203.0.113.7` |
+
+Both parsers first remove the configured number of trailing header entries,
+then scan right to left past private addresses. Verify the headers actually
+received by each service; a diagram's proxy count alone is insufficient. A
+value that is too high can discard the real client and select an attacker’s
+forged entry, letting them change their rate-limit identity. Do not tune this value merely to make `429` disappear.
+
+**Verify:** confirm the selected address with the actual header chain, including
+a deliberately forged leftmost entry, then open a few pages from two different
+networks. Neither should see `429`.
