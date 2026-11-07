@@ -209,6 +209,17 @@ describe('published Markdown edge routing', () => {
     expect(response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER)).toBeNull();
   });
 
+  it.each(['/sites/project-1/v1.0', '/sites/project-1/sdk/node.js'])('never leaks the internal Markdown flag on dotted path %s', async (path) => {
+    mocks.startHandler.mockResolvedValueOnce(
+      new Response('<!doctype html>', { headers: { 'content-type': 'text/html', [SITE_MARKDOWN_ALTERNATE_HEADER]: '1' } }),
+    );
+
+    const response = await server.fetch(new Request(`http://localhost:4310${path}`, { headers: { accept: 'text/html' } }));
+
+    expect(mocks.startHandler).toHaveBeenCalledOnce();
+    expect(response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER)).toBeNull();
+  });
+
   it('fails closed for a malformed escape without calling the Markdown endpoint', async () => {
     const response = await server.fetch(new Request('http://localhost:4310/sites/project-1/%E0%A4%A', { headers: { accept: 'text/markdown' } }));
 

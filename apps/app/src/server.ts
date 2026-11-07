@@ -1199,7 +1199,16 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   }
   const nonce = randomBytes(18).toString('base64');
   return ssrNonce.run(nonce, () =>
-    withSecurityHeaders(observeCrawlerResponse(request, handleRequestInner(request, ...rest), crawlerProjectForRequest), nonce),
+    withSecurityHeaders(
+      observeCrawlerResponse(
+        request,
+        // The page route's internal Markdown flag never leaves the server,
+        // whichever path rendered the page (cloud origin, dotted paths, …).
+        handleRequestInner(request, ...rest).then((response) => withoutMarkdownAlternateFlag(response).response),
+        crawlerProjectForRequest,
+      ),
+      nonce,
+    ),
   );
 };
 
