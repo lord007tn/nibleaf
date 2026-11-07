@@ -4,7 +4,7 @@ Captured on 2026-11-07 with headless Chrome (Playwright) against local productio
 builds served by `node .output/server/index.mjs`:
 
 - `before-*`: `origin/main` at `cfee7a37`.
-- `after-*`: this branch with the round-1 scoring fixes applied on top of `d0bf0021`.
+- `after-*`: this branch with the round-2 scoring fixes (`95e7c324`).
 
 Pages: `/pricing`, `/compare/nibleaf-vs-mintlify` (English) and
 `/ar/documentation-platforms` (Arabic, right to left).
@@ -16,5 +16,5 @@ Pages: `/pricing`, `/compare/nibleaf-vs-mintlify` (English) and
 | `{before,after}-<page>-{desktop,mobile390}-light-full.jpg` | The whole page, scaled down, to read the changed copy in context. |
 | `after-<page>-desktop-light-scroll.gif`, `after-<page>-mobile390-dark-scroll.gif` | A scroll through the whole page. |
 
-Layouts are unchanged apart from a new "AI and support (rolling out)" group in the pricing table. The other differences are the corrected facts, sources and dates.
+Layouts are unchanged apart from a new "AI and support (rolling out)" group and a second search row in the pricing table. The other differences are the corrected facts, sources and dates.
 No personal data appears in any file.
