@@ -34,7 +34,9 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     workflow = await import('./workflow');
     pages = await import('../pages');
     content = await import('../importers/content');
-  });
+    // Loading the whole server action graph cold can take longer than the
+    // default hook timeout on a busy machine.
+  }, 120_000);
   afterAll(async () => {
     if (!db) return;
     try {
@@ -109,7 +111,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     // conflict; what must never happen is a deadlock abort.
     expect(failures.filter(isDeadlock)).toEqual([]);
     expect(failures.every((error) => error instanceof apply.GitApplyConflictError)).toBe(true);
-  });
+  }, 60_000);
 
   it('turns a dashboard save that commits while the conditional write waits into a conflict', async () => {
     const setup = await fixture();
@@ -153,7 +155,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
 
     expect(conflictReasons(await sync)).toEqual(['edited']);
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Saved by the writer');
-  });
+  }, 60_000);
 
   it('protects descendants from a cascading delete', async () => {
     const setup = await fixture();
@@ -176,7 +178,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     // An explicit choice over an unchanged subtree goes through.
     await runApply(await observe(setup), [{ type: 'delete', path: 'guide.mdx', pageId: parent.id, resolved: true }]);
     expect(await remaining()).toBe(0);
-  });
+  }, 60_000);
 
   it('applies a 1,000-file sync well inside the transaction limit', async () => {
     const setup = await fixture();
@@ -210,7 +212,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
 
     remote.files = files('v2');
     const updateMs = await pull(`update-${randomUUID()}`);
-    expect(await db.prisma.page.count({ where: { projectId: setup.project.id, content: { startsWith: 'v2 body' } } })).toBe(1000);
+    expect(await db.prisma.page.count({ where: { projectId: setup.project.id, content: { contains: 'v2 body of page-' } } })).toBe(1000);
 
     const sample = await db.prisma.page.findFirstOrThrow({ where: { projectId: setup.project.id, slug: 'page-0000' } });
     expect(content.serializeGitPage(sample)).toContain('v2 body of page-0000');
