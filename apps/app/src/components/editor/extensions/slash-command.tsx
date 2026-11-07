@@ -47,7 +47,7 @@ import {
 } from 'lucide-react';
 import type { ComponentType, Ref } from 'react';
 import { Fragment, useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react';
-import { uploadEditorImage } from './image-upload';
+import { type ImageUploader, uploadEditorImage } from './image-upload';
 
 interface SlashCommandProps {
   editor: Editor;
@@ -65,9 +65,6 @@ export interface SlashItem {
   keywords?: string[];
   command: (props: SlashCommandProps) => void;
 }
-
-/** Uploads a picked image and returns its hosted URL (or null on failure). */
-type UploadFn = (file: File) => Promise<string | null>;
 
 /** Default text for an inserted block, written in the page language (an Arabic
  *  page gets Arabic placeholders whatever the dashboard locale is). */
@@ -102,7 +99,7 @@ const columnContent = (count: number, locale: Locale) =>
 
 /** Open a native file picker, upload the chosen image, and insert it. Falls back
  *  to a URL prompt when no uploader is wired. */
-function insertImage(editor: Editor, onUpload?: UploadFn) {
+function insertImage(editor: Editor, onUpload?: ImageUploader) {
   if (!onUpload) {
     const url = window.prompt(translateFn('editor.slash.imageUrlPrompt'));
     if (url) {
@@ -127,7 +124,7 @@ function insertImage(editor: Editor, onUpload?: UploadFn) {
   input.click();
 }
 
-const unsortedSlashItems = (onUpload?: UploadFn): SlashItem[] => [
+const unsortedSlashItems = (onUpload?: ImageUploader): SlashItem[] => [
   {
     titleKey: 'editor.slash.text.title',
     descKey: 'editor.slash.text.desc',
@@ -744,7 +741,7 @@ const unsortedSlashItems = (onUpload?: UploadFn): SlashItem[] => [
   },
 ];
 
-export const createSlashItems = (onUpload?: UploadFn): SlashItem[] => unsortedSlashItems(onUpload).sort((a, b) => slashOrder(a) - slashOrder(b));
+export const createSlashItems = (onUpload?: ImageUploader): SlashItem[] => unsortedSlashItems(onUpload).sort((a, b) => slashOrder(a) - slashOrder(b));
 
 // Sections stay contiguous in the menu: the everyday writing blocks first, then
 // images/tables, then notes & warnings; everything else (to-dos, quotes, code,
@@ -952,7 +949,7 @@ const SlashList = ({ items, command, ref }: SlashListProps) => {
   );
 };
 
-const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
+const createSuggestion = (onUpload?: ImageUploader, locale?: Locale): Omit<SuggestionOptions<SlashItem>, 'editor'> => {
   const items = createSlashItems(onUpload);
   return {
     pluginKey: slashSuggestionKey,
@@ -1074,7 +1071,7 @@ export const isSlashMenuOpen = (state: EditorState): boolean => Boolean(slashSug
 /** Slash-command extension: type `/` to open the Basic blocks menu. `locale` is
  *  the page language for inserted scaffold text; when omitted it is derived from
  *  the host's `dir` wrapper (see `slashPageLocale`). */
-export const SlashCommand = Extension.create<{ onUpload?: UploadFn; locale?: Locale }>({
+export const SlashCommand = Extension.create<{ onUpload?: ImageUploader; locale?: Locale }>({
   name: 'slashCommand',
   addOptions() {
     return { onUpload: undefined, locale: undefined };

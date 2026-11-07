@@ -359,7 +359,7 @@ export function buildEditorExtensions({
     ...opaqueMdxNodes,
     SlashCommand.configure({
       locale,
-      onUpload: (file: File, onProgress?: (percent: number) => void) => onUpload?.(file, onProgress) ?? Promise.resolve(null),
+      onUpload: (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)?.(...args) ?? Promise.resolve(null),
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
@@ -725,13 +725,13 @@ export function TiptapEditor({
   }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload, value]);
 
   // Upload an image file and insert it at the current selection.
-  const insertUploadedImage = (file: File, position?: number, autoPrompt = true) => {
+  const insertUploadedImage = (file: File, position?: number) => {
     const upload = onUploadRef.current;
     const ed = editorRef.current;
     if (!upload || !ed) {
       return;
     }
-    void uploadEditorImage(ed, file, upload, position, {}, autoPrompt);
+    void uploadEditorImage(ed, file, upload, position);
   };
 
   const editor = useEditor(
@@ -789,7 +789,7 @@ export function TiptapEditor({
           }
           event.preventDefault();
           for (const file of files) {
-            insertUploadedImage(file, undefined, files.length === 1);
+            insertUploadedImage(file);
           }
           return true;
         },
@@ -802,7 +802,7 @@ export function TiptapEditor({
           event.preventDefault();
           for (const file of files) {
             const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
-            insertUploadedImage(file, position, files.length === 1);
+            insertUploadedImage(file, position);
           }
           return true;
         },

@@ -1,13 +1,27 @@
 import { Extension } from '@tiptap/core';
 import { DOMParser, DOMSerializer, Fragment, type Node as PMNode, Slice } from '@tiptap/pm/model';
-import { Plugin, TextSelection } from '@tiptap/pm/state';
-import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
-import { type ImageUploader, uploadEditorImage } from './image-upload';
-import { encodeMdxSource } from './mdx-roundtrip';
+import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state';
+import { dropPoint } from '@tiptap/pm/transform';
+import type { EditorView } from '@tiptap/pm/view';
+import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, normalizedURL } from './html-safety';
+import { imageAttributeNames } from './image-source';
+import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
 import { fileFromPastedImage } from './pasted-image';
 
-// A ProseMirror marker alone is public and can occur in untrusted web HTML.
-const clipboardToken = crypto.randomUUID();
+// Clipboard HTML is public. A nonce only identifies a candidate: the matching
+// plain text and this in-memory Slice are the authority, never returned HTML.
+let lastCopy: { nonce: string; slice: Slice; text: string } | null = null;
+
+function unsafeSourceOpener(opening: string): boolean {
+  if (!opening) return false;
+  const root = document.implementation.createHTMLDocument('').createElement('div');
+  root.innerHTML = opening;
+  return Array.from(root.firstElementChild?.attributes ?? []).some(
+    (attribute) =>
+      /^(?:on.*|style|srcdoc|formaction|srcset|dangerouslysetinnerhtml|xmlns(?::.*)?|xlink:href)$/i.test(attribute.name) ||
+      (['href', 'src'].includes(attribute.name) && !safePasteHref(attribute.value)),
+  );
+}
 
 const semanticTags = new Set(
   'p h1 h2 h3 h4 h5 h6 strong b em i u s strike del sup sub mark a ul ol li blockquote pre code table thead tbody tfoot tr th td img hr br'.split(
@@ -83,7 +97,7 @@ function wordLists(root: HTMLElement) {
         !current ||
         current.level !== level ||
         current.list.localName !== kind ||
-        (ordinal !== undefined && current.ordinal !== undefined && ordinal <= current.ordinal)
+        (ordinal !== undefined && current.ordinal !== undefined && ordinal !== current.ordinal + 1)
       ) {
         if (current?.level === level) {
           stack.pop();
@@ -174,9 +188,9 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
         element.replaceWith(doc.createTextNode(element.getAttribute('alt') ?? ''));
         continue;
       }
-      for (const key of ['src', 'alt', 'title', 'width']) {
+      for (const key of ['src', 'alt', 'title', 'width', 'height']) {
         const value = element.getAttribute(key);
-        if (value !== null && (key !== 'width' || imageDimension(value) !== null)) attributes[key] = value;
+        if (value !== null && (!['width', 'height'].includes(key) || imageDimension(value) !== null)) attributes[key] = value;
       }
       for (const key of ['class', 'className']) {
         const value = imageClasses(element.getAttribute(key));
@@ -240,7 +254,6 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
   addProseMirrorPlugins() {
     const editor = this.editor;
     const getUpload = this.options.getUpload;
-    let internal = false;
     const base = DOMSerializer.fromSchema(editor.schema);
     const serializer = new DOMSerializer(
       Object.fromEntries(
@@ -250,16 +263,7 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
             const spec = DOMSerializer.renderSpec(document, render(node));
             if (spec.dom instanceof Element) {
               spec.dom.querySelector('.pl-callout-icon')?.remove();
-              if (node.type.name === 'legacyImage') spec.dom.setAttribute('data-nibleaf-legacy', 'true');
-              spec.dom.setAttribute('data-nibleaf-clipboard', clipboardToken);
-              for (const key of ['Open', 'Close', 'Original'])
-                if (node.attrs[`source${key}`])
-                  spec.dom.setAttribute(`data-mdx-source-${key.toLowerCase()}`, encodeMdxSource(node.attrs[`source${key}`]));
-              for (const key of ['Open', 'Close', 'Language'])
-                if (node.attrs[`sourceFence${key}`])
-                  spec.dom
-                    .querySelector('code')
-                    ?.setAttribute(`data-mdx-fence-${key.toLowerCase()}`, encodeMdxSource(node.attrs[`sourceFence${key}`]));
+              if (lastCopy) spec.dom.setAttribute('data-nibleaf-clipboard', lastCopy.nonce);
             }
             return spec;
           },
@@ -283,13 +287,14 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           image.replaceWith(root.ownerDocument.createTextNode(image.getAttribute('alt') ?? ''));
           continue;
         }
-        const marker = `/__nibleaf-paste-upload-${crypto.randomUUID()}`;
+        const marker = `${IMAGE_UPLOAD_PLACEHOLDER_PREFIX}${crypto.randomUUID()}`;
         uploads.set(marker, {
           file,
           attributes: {
             alt: image.getAttribute('alt'),
             title: image.getAttribute('title'),
             width: imageDimension(image.getAttribute('width')),
+            height: imageDimension(image.getAttribute('height')),
             class: imageClasses(image.getAttribute('class')),
             className: imageClasses(image.getAttribute('className')),
           },
@@ -298,8 +303,16 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       }
       return cleanPasteDOM(root);
     };
-    const sanitize = (node: PMNode): PMNode[] => {
-      if (internal) return [node];
+    const sanitize = (node: PMNode, internal = false): PMNode[] => {
+      // Even a genuine internal copy must upload an existing inline raster image.
+      if (node.type.name === 'legacyImage') {
+        const attributes = imageAttributeNames
+          .filter((key) => node.attrs[key] != null)
+          .map((key) => `${key}="${escapeImageAttribute(node.attrs[key])}"`)
+          .join(' ');
+        return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(rootFor(`<img ${attributes} />`)).content.content);
+      }
+      if (internal && ['mdxOpaqueBlock', 'mdxOpaqueInline'].includes(node.type.name)) return [node];
       if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') {
         const clean = DOMParser.fromSchema(editor.schema).parseSlice(rootFor(String(node.attrs.source ?? '')));
         if (node.isInline)
@@ -311,8 +324,9 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       const attrs = { ...node.attrs };
       if (typeof attrs.href === 'string' && !safePasteHref(attrs.href)) attrs.href = '';
       // Clipboard nodes cannot carry a raw-source cache around the allow list.
-      for (const key of ['sourceOpen', 'sourceClose', 'sourceOriginal']) if (key in attrs) attrs[key] = '';
-      if (['image', 'legacyImage'].includes(node.type.name)) {
+      if (!internal || unsafeSourceOpener(String(attrs.sourceOpen ?? '')))
+        for (const key of ['sourceOpen', 'sourceClose', 'sourceOriginal']) if (key in attrs) attrs[key] = '';
+      if (node.type.name === 'image') {
         if (
           normalizedURL(String(attrs.src ?? '').split(',', 1)[0] ?? '')
             ?.toLowerCase()
@@ -321,7 +335,10 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           const root = rootFor(`<img src="${escapeImageAttribute(attrs.src)}" alt="${escapeImageAttribute(attrs.alt)}" />`);
           return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(root).content.content);
         }
-        if (!allowedURL(String(attrs.src ?? ''), ['http', 'https']))
+        if (
+          (String(attrs.src).startsWith(IMAGE_UPLOAD_PLACEHOLDER_PREFIX) && !uploads.has(String(attrs.src))) ||
+          !allowedURL(String(attrs.src ?? ''), ['http', 'https'])
+        )
           return [editor.schema.node('paragraph', null, attrs.alt ? editor.schema.text(String(attrs.alt)) : undefined)];
         attrs.width = imageDimension(attrs.width);
         attrs.height = imageDimension(attrs.height);
@@ -330,60 +347,99 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       }
       const content: PMNode[] = [];
       node.forEach((child) => {
-        content.push(...sanitize(child));
+        content.push(...sanitize(child, internal));
       });
       return [node.type.create(attrs, content, marks)];
+    };
+    const sanitizedSlice = (slice: Slice, internal = false) => {
+      const content: PMNode[] = [];
+      slice.content.forEach((node) => {
+        content.push(...sanitize(node, internal));
+      });
+      return new Slice(Fragment.fromArray(content), slice.openStart, slice.openEnd);
+    };
+    const hasQueuedImages = (slice: Slice) => {
+      let pending = false;
+      slice.content.descendants((node) => {
+        if (node.type.name === 'image' && uploads.has(node.attrs.src)) pending = true;
+      });
+      return pending;
+    };
+    // Both paste and HTML drop remove temporary images in the insertion transaction.
+    // Only mapped widget anchors, never temporary URLs, reach document consumers.
+    const insertWithUploads = (view: EditorView, tr: Transaction) => {
+      const points: { pos: number; size: number; marker: string }[] = [];
+      tr.doc.descendants((node, pos) => {
+        if (node.type.name === 'image' && uploads.has(node.attrs.src)) points.push({ pos, size: node.nodeSize, marker: node.attrs.src });
+      });
+      const mappingStart = tr.mapping.maps.length;
+      for (const point of [...points].reverse()) tr.delete(point.pos, point.pos + point.size);
+      const jobs = points.map((point) => ({ pos: tr.mapping.slice(mappingStart).map(point.pos, -1), job: uploads.get(point.marker) }));
+      uploads.clear();
+      view.dispatch(tr);
+      const upload = getUpload();
+      for (const { pos, job } of jobs) if (job && upload) void uploadEditorImage(editor, job.file, upload, pos, job.attributes);
     };
     return [
       new Plugin({
         props: {
+          transformCopied: (slice) => {
+            lastCopy = { nonce: crypto.randomUUID(), slice, text: '' };
+            return slice;
+          },
           clipboardSerializer: serializer,
+          clipboardTextSerializer: (slice) => {
+            // tiptap-markdown exposes this serializer at runtime but omits it
+            // from its declarations. Use the same serializer as its clipboard plugin.
+            const storage = editor.storage as typeof editor.storage & { markdown: { serializer: { serialize(content: Fragment): string } } };
+            const text = storage.markdown.serializer.serialize(slice.content);
+            if (lastCopy) lastCopy = { ...lastCopy, slice, text };
+            return text;
+          },
+          handleDOMEvents: {
+            paste(view, event) {
+              if (!canEditImages(editor)) {
+                event.preventDefault();
+                return true;
+              }
+              const record = lastCopy;
+              const html = event.clipboardData?.getData('text/html') ?? '';
+              if (!record || event.clipboardData?.getData('text/plain') !== record.text || !html.includes(record.nonce)) return false;
+              const root = document.implementation.createHTMLDocument('').createElement('div');
+              root.innerHTML = html;
+              if (!root.querySelector(`[data-nibleaf-clipboard="${record.nonce}"]`)) return false;
+              // Rehydrate trusted nodes into this editor's schema, rather than parsing
+              // clipboard HTML (which a different page may have changed).
+              uploads.clear();
+              const slice = sanitizedSlice(Slice.fromJSON(editor.schema, record.slice.toJSON()), true);
+              event.preventDefault();
+              insertWithUploads(view, view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste'));
+              return true;
+            },
+          },
           transformPastedHTML: (html) => {
             uploads.clear();
-            internal = false;
-            // Ordinary web pastes need only one inert DOM parse. Never attach
-            // untrusted image handlers or iframe content to the active document.
-            if (html.includes(clipboardToken) && html.includes('data-pm-slice')) {
-              const probe = document.implementation.createHTMLDocument('').createElement('div');
-              probe.innerHTML = html;
-              internal = !!probe.querySelector(
-                `[data-pm-slice][data-nibleaf-clipboard="${clipboardToken}"], [data-pm-slice] [data-nibleaf-clipboard="${clipboardToken}"]`,
-              );
-            }
-            if (internal) return html;
-            return rootFor(html).innerHTML;
+            // DOM serialization leaves raw attribute line breaks intact. Encode
+            // them before ProseMirror parses HTML again (and normalizes CR to LF).
+            return rootFor(html).innerHTML.replace(/<img(?=[\s/>])(?:[^<>"']|"[^"]*"|'[^']*')*\/?>/gi, (tag) =>
+              tag.replace(/\n/g, '&#10;').replace(/\r/g, '&#13;'),
+            );
           },
-          transformPasted: (slice) => {
-            const content: PMNode[] = [];
-            slice.content.forEach((node) => {
-              content.push(...sanitize(node));
-            });
-            internal = false;
-            return new Slice(Fragment.fromArray(content), slice.openStart, slice.openEnd);
+          transformPasted: (slice) => sanitizedSlice(slice),
+          handleDrop(view, event, slice, moved) {
+            if (!hasQueuedImages(slice)) return false;
+            if (!canEditImages(editor)) return true;
+            const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from;
+            const tr = view.state.tr;
+            const target = dropPoint(tr.doc, position, slice) ?? position;
+            if (moved) tr.deleteSelection();
+            const mapped = tr.mapping.map(target);
+            insertWithUploads(view, tr.replaceRange(mapped, mapped, slice).setMeta('uiEvent', 'drop'));
+            return true;
           },
           handlePaste(view, event, slice) {
-            const pending: { pos: number; size: number; marker: string }[] = [];
-            slice.content.descendants((node) => {
-              if (node.type.name === 'image' && uploads.has(node.attrs.src)) pending.push({ pos: 0, size: 0, marker: node.attrs.src });
-            });
-            if (pending.length) {
-              const tr = view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste');
-              const points: typeof pending = [];
-              tr.doc.descendants((node, pos) => {
-                if (node.type.name === 'image' && uploads.has(node.attrs.src)) points.push({ pos, size: node.nodeSize, marker: node.attrs.src });
-              });
-              const mappingStart = tr.mapping.maps.length;
-              for (const point of [...points].reverse()) tr.delete(point.pos, point.pos + point.size);
-              const jobs = points.map((point) => ({
-                ...point,
-                pos: tr.mapping.slice(mappingStart).map(point.pos, -1),
-                job: uploads.get(point.marker),
-              }));
-              uploads.clear();
-              view.dispatch(tr);
-              const upload = getUpload();
-              for (const { pos, job } of jobs)
-                if (job && upload) void uploadEditorImage(editor, job.file, upload, pos, job.attributes, jobs.length === 1);
+            if (hasQueuedImages(slice)) {
+              insertWithUploads(view, view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste'));
               return true;
             }
             const url = event.clipboardData?.getData('text/plain').trim() ?? '';

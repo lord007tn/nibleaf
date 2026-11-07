@@ -83,12 +83,23 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
     if (!state.prompt || !canEditImages(editor) || !editor.isActive('image')) return;
     dismissed.current = false;
     editor.commands.setMeta('image-description', 'show');
-    // BubbleMenu mounts its portal in the same commit; focus after it is visible.
-    const frame = requestAnimationFrame(() => {
-      if (!editor.isDestroyed && !dismissed.current && editor.isActive('image')) input.current?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
   }, [editor, state.prompt]);
+  useEffect(() => {
+    let frame: number | undefined;
+    const focusRequested = ({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) => {
+      if (!transaction.getMeta(imagePromptKey)?.focus) return;
+      // Only explicit activation of Describe image requests keyboard focus.
+      frame = requestAnimationFrame(() => {
+        if (!editor.isDestroyed && canEditImages(editor) && !dismissed.current && editor.isActive('image')) input.current?.focus();
+      });
+    };
+    editor.on('transaction', focusRequested);
+    return () => {
+      if (frame !== undefined) cancelAnimationFrame(frame);
+      editor.off('transaction', focusRequested);
+    };
+  }, [editor]);
+
   const dismiss = () => {
     const { selection, doc } = editor.state;
     if (selection instanceof NodeSelection) {
@@ -133,7 +144,7 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
             dir="auto"
             value={state.alt}
             onChange={(event) => {
-              if (canEditImages(editor)) editor.commands.updateAttributes('image', { alt: event.target.value });
+              if (canEditImages(editor)) editor.commands.updateAttributes('image', { alt: event.target.value, descriptionPending: false });
             }}
           />
         </label>

@@ -52,13 +52,13 @@ describe('editable images', () => {
     editor.commands.setContent(output, { emitUpdate: false });
     expect(getMarkdown(editor)).toBe(output);
   });
-  it('selects completed uploads for the description prompt', async () => {
+  it('leaves selection unchanged on upload completion and offers a passive prompt', async () => {
     const editor = makeEditor();
     editor.isFocused = true;
     await uploadEditorImage(editor, new File(['image'], 'diagram.png', { type: 'image/png' }), async () => 'https://example.com/upload.png');
-    expect(editor.state.selection).toBeInstanceOf(NodeSelection);
-    expect(editor.getAttributes('image').src).toBe('https://example.com/upload.png');
-    expect(imagePromptKey.getState(editor.state)).toBe(1);
+    expect(editor.state.selection).not.toBeInstanceOf(NodeSelection);
+    expect(getMarkdown(editor)).toContain('https://example.com/upload.png');
+    expect(imagePromptKey.getState(editor.state)).toBe(0);
   });
   it('round-trips full width independently of the original image size', () => {
     const editor = makeEditor();

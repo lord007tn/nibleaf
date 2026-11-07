@@ -71,7 +71,14 @@ describe('review content regressions', () => {
     const clipboard = from.view.serializeForClipboard(from.state.selection.content());
     expect(clipboard.dom.innerHTML).toContain('data-pm-slice');
     const to = make();
-    to.view.pasteHTML(clipboard.dom.innerHTML);
+    to.view.dom.dispatchEvent(
+      Object.assign(new Event('paste', { bubbles: true, cancelable: true }), {
+        clipboardData: {
+          files: [],
+          getData: (type: string) => (type === 'text/html' ? clipboard.dom.innerHTML : type === 'text/plain' ? clipboard.text : ''),
+        },
+      }),
+    );
     expect(getMarkdown(to)).toBe(expected);
   });
   it('does not trust a forged data-pm-slice marker (1)', () => {
@@ -382,6 +389,9 @@ describe('review image and upload regressions', () => {
     const frameBody = sized?.closest('figure > div');
     expect(frameBody?.className).toContain('[&>img:not([width])]:w-full');
     expect(frameBody?.className).not.toMatch(/\[&>img\]:w-full|\[&>\.reader-image>img\]:w-full/);
+    // Display is left to the image's own classes, so a sized light/dark pair
+    // still shows only the image for the current theme.
+    expect(frameBody?.className).not.toMatch(/\]:(?:block|inline|flex|hidden|mx-auto)\b/);
     editor.commands.setContent(saved, { emitUpdate: false });
     const image = editor.view.dom.querySelector<HTMLElement>('.editor-image');
     expect(image?.style.width).toBe('480px');

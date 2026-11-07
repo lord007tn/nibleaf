@@ -6,6 +6,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { ReactRenderer } from '@tiptap/react';
 import { toast } from 'sonner';
+import { announce } from '../../site/reader-content-controls';
 import { ImageUploadCard, type ImageUploadCardProps } from './image-upload-card';
 
 export type ImageUploader = (
@@ -85,7 +86,6 @@ export async function uploadEditorImage(
   upload: ImageUploader,
   position = editor.state.selection.from,
   attributes: Record<string, unknown> = {},
-  autoPrompt = true,
 ) {
   if (!canEditImages(editor)) return;
   if (!presignAssetBody.safeParse({ filename: file.name, contentType: file.type, size: file.size }).success) {
@@ -96,13 +96,6 @@ export async function uploadEditorImage(
   const job: { renderer?: ReactRenderer<unknown, ImageUploadCardProps>; renderers: Map<Node, ReactRenderer<unknown, ImageUploadCardProps>> } = {
     renderers: new Map(),
   };
-  const initialSelection = editor.state.selection;
-  const initiallyFocused = editor.isFocused;
-  let changed = false;
-  const onTransaction = ({ transaction }: { transaction: import('@tiptap/pm/state').Transaction }) => {
-    if (transaction.docChanged || transaction.selectionSet) changed = true;
-  };
-  editor.on('transaction', onTransaction);
   let controller: AbortController | undefined;
   let timedOut = false;
   const anchor = () =>
@@ -142,7 +135,6 @@ export async function uploadEditorImage(
   jobs.add(tracked);
   const cleanup = () => {
     jobs.delete(tracked);
-    editor.off('transaction', onTransaction);
   };
   let running = false;
   const run = async () => {
@@ -194,10 +186,11 @@ export async function uploadEditorImage(
       if (!url || !image) throw new Error('Upload did not return an image URL');
       editor.view.dispatch(
         closeHistory(editor.state.tr)
-          .insert(point.from, image.create({ ...attributes, src: url }))
-          .setMeta('image-auto-prompt', autoPrompt && !changed && initiallyFocused && editor.isFocused && editor.state.selection.eq(initialSelection))
+          .insert(point.from, image.create({ ...attributes, src: url, descriptionPending: true }))
+          .setMeta('image-auto-prompt', false)
           .setMeta(uploadKey, { remove: true, id }),
       );
+      announce(`${file.name}. ${translateFn('editor.image.descriptionHint')}`);
       cleanup();
     } catch {
       if (anchor()) {

@@ -1,22 +1,28 @@
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
-import { encodeMdxSource } from './mdx-roundtrip';
+import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, isLegacyRasterImageSource, normalizedURL } from './html-safety';
+import { decodeMdxSource, encodeMdxSource } from './mdx-roundtrip';
 
 export const imageAttributeNames = ['src', 'alt', 'title', 'width', 'height', 'class', 'className'] as const;
 const imageParsers = new WeakSet<object>();
 // loading/decoding are browser delivery hints, never styling or executable content.
 const sourceAttributes = new Set<string>([...imageAttributeNames.map((name) => name.toLowerCase()), 'loading', 'decoding']);
 
+export function sourceImageAttribute(element: HTMLElement, name: string): string | null {
+  const source = decodeMdxSource(element.getAttribute('data-mdx-source-open'));
+  // tiptap-markdown serializes its intermediate DOM back to HTML. That turns
+  // encoded CR into a literal CR, which the next HTML parse normalizes to LF.
+  // Recover CR-bearing values from the preserved, safely escaped opening tag.
+  if (!/&#(?:0*13|x0*d);/i.test(source)) return element.getAttribute(name);
+  const root = document.implementation.createHTMLDocument('').createElement('div');
+  root.innerHTML = source;
+  return root.querySelector('img')?.getAttribute(name) ?? element.getAttribute(name);
+}
+
 function imageValue(name: string, value: unknown, preserveData = false): string | number | null {
   if (value === null || value === undefined) return null;
   if (name === 'width' || name === 'height') return imageDimension(value);
   if (name === 'class' || name === 'classname') return imageClasses(value);
-  if (
-    name === 'src' &&
-    !(preserveData && /^data:image\//i.test(normalizedURL(String(value).split(',', 1)[0] ?? '') ?? '')) &&
-    !allowedURL(String(value), ['http', 'https'])
-  )
-    return null;
+  if (name === 'src' && !(preserveData && isLegacyRasterImageSource(String(value))) && !allowedURL(String(value), ['http', 'https'])) return null;
   return String(value);
 }
 
@@ -40,7 +46,7 @@ export function safeImageTag(raw: string, overrides: Record<string, unknown> = {
     const value = imageValue(name, Object.hasOwn(overrides, key) ? overrides[key] : original, preserveData);
     if (sourceAttributes.has(name) && !seen.has(name) && value !== null) {
       const encoded = match[2] ?? match[3] ?? match[4] ?? '';
-      const unsafeEncoding = /["<>]/.test(encoded) || /&(?!(?:[a-z][a-z\d]*|#\d+|#x[\da-f]+);)/i.test(encoded);
+      const unsafeEncoding = /[\r\n"<>]/.test(encoded) || /&(?!(?:[a-z][a-z\d]*|#\d+|#x[\da-f]+);)/i.test(encoded);
       const unchanged = name === 'width' || name === 'height' ? imageDimension(original) === value : String(value) === original;
       result += unchanged && !unsafeEncoding ? match[0] : `${/^\s+/.exec(match[0])?.[0] ?? ' '}${spelling}="${escapeImageAttribute(value)}"`;
     }
@@ -62,7 +68,8 @@ export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] =
   const validateLink = markdownit.validateLink.bind(markdownit);
   // Existing inline images have a separate preservation node. New clipboard
   // images still pass through the upload policy, never this source-only path.
-  markdownit.validateLink = (url) => /^data:image\//i.test(normalizedURL(url.split(',', 1)[0] ?? '') ?? '') || validateLink(url);
+  markdownit.validateLink = (url) =>
+    /^data:/i.test(normalizedURL(url.split(',', 1)[0] ?? '') ?? '') ? isLegacyRasterImageSource(url) : validateLink(url);
   for (const rule of ['html_block', 'html_inline', 'image']) {
     const render = markdownit.renderer.rules[rule];
     if (!render) continue;
@@ -74,7 +81,7 @@ export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] =
         const src = image?.getAttribute('src') ?? '';
         // Only the saved-source parser creates this compatibility node. Clipboard slices
         // are scrubbed separately, and regular image nodes never accept base64.
-        if (/^data:image\//i.test(normalizedURL(src.split(',', 1)[0] ?? '') ?? ''))
+        if (isLegacyRasterImageSource(src))
           return safeImageTag(raw, {}, true).replace(
             /\s*\/?>$/,
             (ending) => ` data-nibleaf-legacy="true" data-mdx-source-open="${encodeMdxSource(safeImageTag(raw, {}, true))}"${ending}`,
@@ -90,8 +97,8 @@ export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] =
 
 /** The snapshot uses parsed values, so equivalent spellings such as width='0480' remain untouched. */
 export function snapshotImageSource(element: HTMLElement) {
-  for (const image of element.querySelectorAll('img[data-mdx-source-open]')) {
-    const original = Object.fromEntries(imageAttributeNames.map((name) => [name, imageValue(name.toLowerCase(), image.getAttribute(name))]));
+  for (const image of element.querySelectorAll<HTMLImageElement>('img[data-mdx-source-open]')) {
+    const original = Object.fromEntries(imageAttributeNames.map((name) => [name, imageValue(name.toLowerCase(), sourceImageAttribute(image, name))]));
     image.setAttribute('data-mdx-source-original', encodeMdxSource(JSON.stringify(original)));
   }
 }

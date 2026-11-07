@@ -43,4 +43,12 @@ export const escapeImageAttribute = (value: unknown): string =>
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '&#10;')
+    .replace(/\r/g, '&#13;');
+
+export const IMAGE_UPLOAD_PLACEHOLDER_PREFIX = '/__nibleaf-paste-upload-';
+
+/** Only existing raster content can use the source-only compatibility node. */
+export const isLegacyRasterImageSource = (source: string): boolean =>
+  /^data:image\/(?:png|jpeg|gif|webp|avif)(?:;|$)/i.test(normalizedURL(source.split(',', 1)[0] ?? '') ?? '');

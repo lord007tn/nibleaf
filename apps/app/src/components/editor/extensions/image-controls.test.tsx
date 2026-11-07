@@ -90,7 +90,7 @@ describe('image description controls', () => {
       for (const frame of frames) frame(0);
     }).not.toThrow();
   });
-  it('focuses a labelled description after insertion, and Escape returns to writing', async () => {
+  it('keeps a description passive until Describe image is activated, and Escape returns to writing', async () => {
     await mount();
     await act(async () => {
       editor.commands.setImage({ src: '/image.png' });
@@ -100,6 +100,13 @@ describe('image description controls', () => {
     });
     const input = container.querySelector<HTMLInputElement>('input');
     expect(input).not.toBeNull();
+    expect(document.activeElement).not.toBe(input);
+    await act(async () => {
+      editor.view.dom.querySelector<HTMLButtonElement>('.editor-image button')?.click();
+    });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
     expect(document.activeElement).toBe(input);
     expect(input?.getAttribute('aria-describedby')).toBeTruthy();
     expect(container.textContent).toContain("Describe what this image shows for people who can't see it");
@@ -185,7 +192,7 @@ describe('image description controls', () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
     expect(container.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(document.activeElement).toBe(container.querySelector('input'));
+    expect(document.activeElement).toBe(outside);
     await act(async () => {
       outside.dispatchEvent(new Event('pointerdown', { bubbles: true }));
     });

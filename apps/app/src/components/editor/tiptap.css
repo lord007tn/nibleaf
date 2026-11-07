@@ -772,6 +772,12 @@
   .editor-image-handle {
   display: block;
 }
+.pl-editor.is-comment-mode
+  .ProseMirror
+  .editor-image.ProseMirror-selectednode
+  .editor-image-handle {
+  display: none;
+}
 /* Bubble menus attach inside this editor only while open. Keep the count's
    space, but hide its pill so floating controls cannot cover it on phones. */
 .pl-editor:has([data-editor-bubble-menu]) .pl-editor-word-count {

@@ -3,8 +3,15 @@ import Image from '@tiptap/extension-image';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, normalizedURL } from './html-safety';
-import { imageAttributeNames, safeImageTag, setupImageSource, snapshotImageSource } from './image-source';
+import {
+  allowedURL,
+  escapeImageAttribute,
+  IMAGE_UPLOAD_PLACEHOLDER_PREFIX,
+  imageClasses,
+  imageDimension,
+  isLegacyRasterImageSource,
+} from './html-safety';
+import { imageAttributeNames, safeImageTag, setupImageSource, snapshotImageSource, sourceImageAttribute } from './image-source';
 import { canEditImages } from './image-upload';
 import { sourceMetadataAttributes } from './mdx-roundtrip';
 
@@ -33,9 +40,13 @@ export const BlockImage = Image.extend({
       describe.onclick = () => {
         const pos = getPos();
         if (pos === undefined || !canEditImages(editor)) return;
-        editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)).setMeta(imagePromptKey, true));
+        const tr = editor.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, descriptionPending: false });
+        editor.view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, pos)).setMeta(imagePromptKey, { focus: true }));
       };
       dom.append(describe);
+      const hint = document.createElement('span');
+      hint.className = 'image-description-hint block text-xs text-muted-foreground';
+      dom.append(hint);
       const sync = () => {
         for (const key of ['src', 'alt', 'title']) {
           if (key === 'alt' || current.attrs[key] != null) image.setAttribute(key, String(current.attrs[key] ?? ''));
@@ -55,7 +66,9 @@ export const BlockImage = Image.extend({
           : classes.includes('dark:block') || classes.includes('dark:inline') || classes.includes('dark:inline-block')
             ? translateFn('editor.image.darkVersion')
             : '';
-        describe.hidden = current.type.name !== 'image' || !!current.attrs.alt || !canEditImages(editor);
+        describe.hidden = current.type.name !== 'image' || (!!current.attrs.alt && !current.attrs.descriptionPending) || !canEditImages(editor);
+        hint.textContent = current.attrs.descriptionPending ? translateFn('editor.image.descriptionHint') : '';
+        hint.hidden = !current.attrs.descriptionPending || !canEditImages(editor);
       };
       sync();
       let cancelDrag: (() => void) | undefined;
@@ -131,6 +144,16 @@ export const BlockImage = Image.extend({
     return {
       ...this.parent?.(),
       ...sourceMetadataAttributes(),
+      ...Object.fromEntries(
+        ['src', 'alt', 'title'].map((key) => [
+          key,
+          {
+            default: null,
+            parseHTML: (element: HTMLElement) => sourceImageAttribute(element, key),
+          },
+        ]),
+      ),
+      descriptionPending: { default: false, rendered: false },
       class: {
         default: null,
         parseHTML: (element: HTMLElement) => imageClasses(element.getAttribute('class')),
@@ -159,6 +182,11 @@ export const BlockImage = Image.extend({
       markdown: {
         serialize(state, node) {
           const legacy = node.type.name === 'legacyImage';
+          if (String(node.attrs.src).startsWith(IMAGE_UPLOAD_PLACEHOLDER_PREFIX)) {
+            state.write(escapeImageAttribute(state.esc(String(node.attrs.alt ?? '').replace(/[\r\n]+/g, ' '))));
+            state.closeBlock(node);
+            return;
+          }
           if (!legacy && !allowedURL(String(node.attrs.src ?? ''), ['http', 'https'])) {
             state.write(escapeImageAttribute(state.esc(String(node.attrs.alt ?? ''))));
             state.closeBlock(node);
@@ -173,8 +201,12 @@ export const BlockImage = Image.extend({
             state.write(safeImageTag(`<img ${attributes.join(' ')} />`));
           } else {
             const src = String(node.attrs.src ?? '').replace(/[\\()]/g, '\\$&');
-            const title = node.attrs.title ? ` "${String(node.attrs.title).replace(/[\\"]/g, '\\$&')}"` : '';
-            state.write(`![${state.esc(String(node.attrs.alt ?? ''))}](${src}${title})`);
+            const title = node.attrs.title
+              ? ` "${String(node.attrs.title)
+                  .replace(/[\r\n]+/g, ' ')
+                  .replace(/[\\"]/g, '\\$&')}"`
+              : '';
+            state.write(`![${state.esc(String(node.attrs.alt ?? '').replace(/[\r\n]+/g, ' '))}](${src}${title})`);
           }
           state.closeBlock(node);
         },
@@ -240,8 +272,7 @@ export const LegacyImage = BlockImage.extend({
     return [
       {
         tag: 'img[data-nibleaf-legacy="true"]',
-        getAttrs: (element) =>
-          /^data:image\//i.test(normalizedURL((element.getAttribute('src') ?? '').split(',', 1)[0] ?? '') ?? '') ? null : false,
+        getAttrs: (element) => (isLegacyRasterImageSource(element.getAttribute('src') ?? '') ? null : false),
       },
     ];
   },
