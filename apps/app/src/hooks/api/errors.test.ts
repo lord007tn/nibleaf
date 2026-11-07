@@ -23,6 +23,13 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, new ApiResponseError('Slow down', 429), 'editor.deleteFailed')).toBe('t:error.rateLimited');
   });
 
+  it('explains a promote blocked by changes on main instead of asking for a refresh', () => {
+    const blocked = new ApiResponseError('Pages on main changed since this version was created.', 409, 'branch:main_changed');
+    expect(friendlyErrorMessage(t, blocked, 'editor.branch.mergeError')).toBe('t:error.branchMainChanged');
+    // A plain 409 keeps the concurrent-edit wording.
+    expect(friendlyErrorMessage(t, new ApiResponseError('Conflict', 409, 'database:conflict'), 'editor.branch.mergeError')).toBe('t:error.conflict');
+  });
+
   it('recognises a request that never reached the server', () => {
     expect(friendlyErrorMessage(t, new TypeError('fetch failed'), 'editor.createFailed')).toBe('t:error.network');
   });

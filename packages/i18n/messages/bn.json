@@ -1829,6 +1829,7 @@
   "error_signedout": "আপনার সেশন শেষ হয়ে গেছে। চালিয়ে যেতে আবার সাইন ইন করুন।",
   "error_notfound": "এটি আর নেই — হয়তো কেউ মুছে ফেলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
   "error_conflict": "একই সময়ে অন্য কেউ এটি বদলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
+  "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
   "error_toolarge": "এটি খুব বড়। একটি ছোট ফাইল চেষ্টা করুন।",
   "error_ratelimited": "অনেকবার চেষ্টা করা হয়েছে। একটু অপেক্ষা করে আবার চেষ্টা করুন।",
   "notfound_badge": "404",

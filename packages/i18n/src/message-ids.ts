@@ -2195,6 +2195,7 @@ export const MESSAGE_IDS = {
   'error.signedOut': 'error_signedout',
   'error.notFound': 'error_notfound',
   'error.conflict': 'error_conflict',
+  'error.branchMainChanged': 'error_branchmainchanged',
   'error.tooLarge': 'error_toolarge',
   'error.rateLimited': 'error_ratelimited',
   'notFound.badge': 'notfound_badge',

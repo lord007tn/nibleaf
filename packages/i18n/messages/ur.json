@@ -1829,6 +1829,7 @@
   "error_signedout": "آپ کا سیشن ختم ہو گیا ہے۔ جاری رکھنے کے لیے دوبارہ سائن ان کریں۔",
   "error_notfound": "یہ اب موجود نہیں — شاید کسی نے اسے حذف کر دیا ہے۔ صفحہ ریفریش کریں اور دوبارہ کوشش کریں۔",
   "error_conflict": "کسی اور نے اسی وقت اسے تبدیل کر دیا۔ صفحہ ریفریش کریں اور دوبارہ کوشش کریں۔",
+  "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
   "error_toolarge": "یہ بہت بڑی ہے۔ کوئی چھوٹی فائل آزمائیں۔",
   "error_ratelimited": "بہت زیادہ کوششیں۔ تھوڑا انتظار کریں اور دوبارہ کوشش کریں۔",
   "notfound_badge": "404",

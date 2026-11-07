@@ -166,7 +166,13 @@ interface BranchChangedOnMainPage {
   title: string;
   path: string;
   languageCode: string;
-  change: 'modified' | 'added' | 'deleted';
+  /** `conflict`: a page from the version would land at this page's address. */
+  change: 'modified' | 'added' | 'deleted' | 'conflict';
+  /** What promote does with it: keep main's page, replace it with the
+   *  version's, remove it, bring the version's copy back, or (conflict) move
+   *  the version's page to `newPath`. */
+  onPromote: 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed';
+  newPath?: string;
   updatedAt: string;
 }
 

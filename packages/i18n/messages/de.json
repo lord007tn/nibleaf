@@ -1829,6 +1829,7 @@
   "error_signedout": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
   "error_notfound": "Das gibt es nicht mehr – vielleicht wurde es gelöscht. Laden Sie die Seite neu und versuchen Sie es erneut.",
   "error_conflict": "Jemand anderes hat das gleichzeitig geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
   "error_toolarge": "Das ist zu groß. Versuchen Sie es mit einer kleineren Datei.",
   "error_ratelimited": "Zu viele Versuche. Warten Sie einen Moment und versuchen Sie es erneut.",
   "notfound_badge": "404",
