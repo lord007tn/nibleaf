@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, it, vi } from 'vitest';
 import { marketingMedia } from './manifest';
-import { MarketingMedia } from './marketing-media';
+import { HeroMedia, MarketingMedia } from './marketing-media';
 
 vi.mock('./manifest', () => ({ marketingMedia: vi.fn() }));
 const wide = { width: 1280, height: 800, avif: '/wide.avif 1280w', webp: '/wide.webp 1280w', fallback: '/wide.webp' };
@@ -45,15 +47,50 @@ it('keeps theme-hidden pictures lazy so they do not eagerly fetch', () => {
   for (const image of root.querySelectorAll('img')) expect(image.getAttribute('loading')).toBe('lazy');
 });
 
-it('offers a still for reduced motion before the animated WebP source', () => {
-  vi.mocked(marketingMedia).mockReturnValue({ wide, loop: { src: '/flow.webp', width: 960, height: 600 } });
+it('loads a recording only on request: lazy still and a play button, no video until clicked', async () => {
+  vi.mocked(marketingMedia).mockReturnValue({ wide, video: { src: '/journey.webm', width: 1280, height: 720 } });
   const root = render();
-  const sources = [...root.querySelectorAll('source')];
-  expect(sources[0]?.getAttribute('media')).toBe('(prefers-reduced-motion: reduce)');
-  expect(sources[0]?.getAttribute('srcset')).toBe(wide.avif);
-  expect(sources[1]?.getAttribute('srcset')).toBe(wide.webp);
-  expect(sources[2]?.getAttribute('srcset')).toBe('/flow.webp');
+  expect(root.querySelector('video')).toBeNull();
   expect(root.querySelector('img')?.getAttribute('loading')).toBe('lazy');
+  expect(root.querySelector('img')?.getAttribute('alt')).toBe(media.alt);
+  expect(root.querySelector('button')?.textContent).toBe('Play the recording');
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  const client = createRoot(container);
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  try {
+    await act(async () => client.render(<MarketingMedia lang="ar" media={media} />));
+    expect(container.querySelector('button')?.textContent).toBe('شغّل التسجيل');
+    await act(async () => container.querySelector('button')?.click());
+    const video = container.querySelector('video');
+    expect(video?.getAttribute('src')).toBe('/journey.webm');
+    expect(video?.hasAttribute('controls')).toBe(true);
+    expect(video?.getAttribute('aria-label')).toBe(media.alt);
+  } finally {
+    await act(async () => client.unmount());
+    container.remove();
+  }
+});
+
+it('composes the hero: desktop capture never downloads on phones and follows the dark colour scheme', () => {
+  const wideDark = { ...wide, avif: '/dark.avif 1280w', webp: '/dark.webp 1280w', fallback: '/dark.webp' };
+  vi.mocked(marketingMedia).mockReturnValue({ wide, wideDark, phone });
+  const root = document.createElement('div');
+  root.innerHTML = renderToStaticMarkup(<HeroMedia lang="en" media={media} />);
+  const [desktop, overlay] = root.querySelectorAll('picture');
+  const desktopSources = [...(desktop?.querySelectorAll('source') ?? [])];
+  expect(desktop?.closest('[aria-hidden="true"]')).not.toBeNull();
+  expect(desktopSources[0]?.getAttribute('media')).toBe('(max-width: 639px)');
+  expect(desktopSources[0]?.getAttribute('srcset')).toMatch(/^data:image\/gif;base64,/);
+  expect(desktopSources[1]?.getAttribute('media')).toBe('(prefers-color-scheme: dark)');
+  expect(desktopSources[1]?.getAttribute('srcset')).toBe(wideDark.avif);
+  expect(desktop?.querySelector('img')?.getAttribute('loading')).toBe('eager');
+  expect(root.querySelectorAll('picture')).toHaveLength(2);
+  const overlayImage = overlay?.querySelector('img');
+  expect(overlayImage?.getAttribute('alt')).toBe(media.alt);
+  expect(overlayImage?.getAttribute('loading')).toBe('lazy');
+  expect(overlayImage?.hasAttribute('fetchpriority')).toBe(false);
 });
 
 it('makes a missing capture explicit instead of inventing a product mock', () => {

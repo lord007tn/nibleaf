@@ -1,5 +1,6 @@
 import { ArrowRight, Check } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { isRollingOut } from './marketing/copy/availability';
 import { landingEn } from './marketing/copy/landing.en';
 import { shellEn } from './marketing/copy/shell.en';
 import { LandingView } from './marketing/landing/landing-view';
@@ -20,7 +21,7 @@ export function MarketingShell({ children, stars = 0 }: { children: ReactNode; s
 export function LandingPage({ stars = 0 }: { stars?: number }) {
   return (
     <MarketingShell stars={stars}>
-      <LandingView lang="en" copy={landingEn} stars={stars} />
+      <LandingView lang="en" copy={landingEn} stars={stars} starsLabel={shellEn.github.starsLabel} />
     </MarketingShell>
   );
 }
@@ -49,18 +50,21 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
         </div>
       </section>
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-6 sm:py-24">
-        <Eyebrow>{landingEn.more.eyebrow}</Eyebrow>
-        <h2 className="mt-3 font-semibold text-3xl leading-snug">{landingEn.more.title}</h2>
+        <Eyebrow>Included</Eyebrow>
+        <h2 className="mt-3 font-semibold text-3xl leading-snug">What you get on Nibleaf Cloud</h2>
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {landingEn.more.items.map((item) => (
-            <div key={item.title}>
-              <h3 className="flex items-center gap-2 font-semibold">
-                <Check aria-hidden="true" className="size-4 text-primary" />
-                {item.title}
-              </h3>
-              <p className="mt-3 text-muted-foreground text-sm leading-7">{item.body}</p>
-            </div>
-          ))}
+          {landingEn.more.items
+            // Capabilities still rolling out stay off this Cloud page until they are live there.
+            .filter((item) => !item.availability || !isRollingOut(item.availability))
+            .map((item) => (
+              <div key={item.title}>
+                <h3 className="flex items-center gap-2 font-semibold">
+                  <Check aria-hidden="true" className="size-4 text-primary" />
+                  {item.title}
+                </h3>
+                <p className="mt-3 text-muted-foreground text-sm leading-7">{item.body}</p>
+              </div>
+            ))}
         </div>
         <div className="mt-12 rounded-xl border border-border bg-card p-6">
           <h2 className="font-semibold text-2xl">{landingEn.paths.title}</h2>

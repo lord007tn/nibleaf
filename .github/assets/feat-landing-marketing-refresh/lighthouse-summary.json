@@ -1,0 +1,127 @@
+{
+  "tool": "Lighthouse 12.8.2 (Node API), Chrome 156, 5 runs per page and form factor, median by metric",
+  "command": "node lh.mjs <outDir> http://127.0.0.1:4614 \"/,/ar\" --runs=5  (mobile = Lighthouse default config; desktop = lighthouse/core/config/desktop-config.js)",
+  "server": "node apps/app/.output/server/index.mjs behind a local brotli proxy on 127.0.0.1:4614 (production serves brotli through Cloudflare)",
+  "before": {
+    "ref": "origin/main c6ae297f",
+    "results": [
+      {
+        "path": "/",
+        "formFactor": "mobile",
+        "performance": 81,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 4967,
+        "fcpMs": 1510,
+        "cls": 0,
+        "tbtMs": 13,
+        "siMs": 1510,
+        "transferKiB": 480
+      },
+      {
+        "path": "/",
+        "formFactor": "desktop",
+        "performance": 98,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 1163,
+        "fcpMs": 410,
+        "cls": 0.038,
+        "tbtMs": 0,
+        "siMs": 410,
+        "transferKiB": 480
+      },
+      {
+        "path": "/ar",
+        "formFactor": "mobile",
+        "performance": 77,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 4414,
+        "fcpMs": 1381,
+        "cls": 0.177,
+        "tbtMs": 96,
+        "siMs": 1381,
+        "transferKiB": 1117
+      },
+      {
+        "path": "/ar",
+        "formFactor": "desktop",
+        "performance": 95,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 1338,
+        "fcpMs": 529,
+        "cls": 0.052,
+        "tbtMs": 86,
+        "siMs": 529,
+        "transferKiB": 1117
+      }
+    ]
+  },
+  "after": {
+    "ref": "feat/landing-marketing-refresh 92f60b96",
+    "results": [
+      {
+        "path": "/",
+        "formFactor": "mobile",
+        "performance": 84,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 4514,
+        "fcpMs": 1510,
+        "cls": 0,
+        "tbtMs": 20,
+        "siMs": 1510,
+        "transferKiB": 541
+      },
+      {
+        "path": "/",
+        "formFactor": "desktop",
+        "performance": 96,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 1376,
+        "fcpMs": 570,
+        "cls": 0.003,
+        "tbtMs": 69,
+        "siMs": 570,
+        "transferKiB": 761
+      },
+      {
+        "path": "/ar",
+        "formFactor": "mobile",
+        "performance": 80,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 5271,
+        "fcpMs": 1664,
+        "cls": 0.009,
+        "tbtMs": 62,
+        "siMs": 1664,
+        "transferKiB": 751
+      },
+      {
+        "path": "/ar",
+        "formFactor": "desktop",
+        "performance": 96,
+        "accessibility": 100,
+        "bestPractices": 93,
+        "seo": 100,
+        "lcpMs": 1380,
+        "fcpMs": 609,
+        "cls": 0.044,
+        "tbtMs": 0,
+        "siMs": 609,
+        "transferKiB": 775
+      }
+    ]
+  }
+}

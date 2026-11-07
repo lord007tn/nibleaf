@@ -1,3 +1,5 @@
+import { Play } from 'lucide-react';
+import { useState } from 'react';
 import type { MarketingLang, MediaRef } from '../copy/types';
 import { type ImageVariant, type MediaEntry, marketingMedia } from './manifest';
 
@@ -9,7 +11,7 @@ const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAI
 function Capture({
   wide,
   phone,
-  loop,
+  darkWide,
   alt,
   priority,
   className,
@@ -18,7 +20,8 @@ function Capture({
 }: {
   wide: ImageVariant;
   phone?: ImageVariant;
-  loop?: MediaEntry['loop'];
+  /** Dark capture picked by the system colour scheme, so one eager image serves both themes. */
+  darkWide?: ImageVariant;
   alt: string;
   priority: boolean;
   className?: string;
@@ -37,32 +40,28 @@ function Capture({
           <source media="(max-width: 639px)" type="image/webp" srcSet={phone.webp} sizes={sizes} width={phone.width} height={phone.height} />
         </>
       )}
-      {loop ? (
+      {darkWide && (
         <>
           <source
-            media="(prefers-reduced-motion: reduce)"
+            media="(prefers-color-scheme: dark)"
             type="image/avif"
-            srcSet={wide.avif}
+            srcSet={darkWide.avif}
             sizes={sizes}
-            width={wide.width}
-            height={wide.height}
+            width={darkWide.width}
+            height={darkWide.height}
           />
           <source
-            media="(prefers-reduced-motion: reduce)"
+            media="(prefers-color-scheme: dark)"
             type="image/webp"
-            srcSet={wide.webp}
+            srcSet={darkWide.webp}
             sizes={sizes}
-            width={wide.width}
-            height={wide.height}
+            width={darkWide.width}
+            height={darkWide.height}
           />
-          <source type="image/webp" srcSet={loop.src} width={loop.width} height={loop.height} />
-        </>
-      ) : (
-        <>
-          <source type="image/avif" srcSet={wide.avif} sizes={sizes} width={wide.width} height={wide.height} />
-          <source type="image/webp" srcSet={wide.webp} sizes={sizes} width={wide.width} height={wide.height} />
         </>
       )}
+      <source type="image/avif" srcSet={wide.avif} sizes={sizes} width={wide.width} height={wide.height} />
+      <source type="image/webp" srcSet={wide.webp} sizes={sizes} width={wide.width} height={wide.height} />
       <img
         src={wide.fallback}
         alt={alt}
@@ -79,26 +78,53 @@ function Capture({
 }
 
 /**
- * A real screen recording, shown as its still frame until the visitor presses
- * play: `preload="none"` keeps the recording off the page's initial load and
- * nothing autoplays.
+ * A real screen recording, loaded only when the visitor asks for it. Until then
+ * the page shows a lazy still frame with a play button; a `<video poster>` would
+ * fetch the poster with the page and compete with first paint.
  */
-function RecordingMedia({ poster, video, media }: { poster: ImageVariant; video: NonNullable<MediaEntry['video']>; media: MediaRef }) {
+function RecordingMedia({
+  lang,
+  poster,
+  video,
+  media,
+}: {
+  lang: MarketingLang;
+  poster: ImageVariant;
+  video: NonNullable<MediaEntry['video']>;
+  media: MediaRef;
+}) {
+  const [playing, setPlaying] = useState(false);
+  const playLabel = lang === 'ar' ? 'شغّل التسجيل' : 'Play the recording';
   return (
     <figure className="min-w-0">
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-foreground/5">
-        <video
-          aria-label={media.alt}
-          className="block h-auto w-full bg-black"
-          controls
-          height={video.height}
-          muted
-          playsInline
-          poster={poster.fallback}
-          preload="none"
-          src={video.src}
-          width={video.width}
-        />
+      <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-foreground/5 shadow-xl">
+        {playing ? (
+          <video
+            aria-label={media.alt}
+            autoPlay
+            className="block h-auto w-full bg-black"
+            controls
+            height={video.height}
+            muted
+            playsInline
+            src={video.src}
+            width={video.width}
+          />
+        ) : (
+          <>
+            <Capture wide={poster} alt={media.alt} priority={false} />
+            <button
+              type="button"
+              onClick={() => setPlaying(true)}
+              className="absolute inset-0 grid place-items-center bg-foreground/10 transition-colors hover:bg-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-[-4px]"
+            >
+              <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-background px-5 font-medium text-foreground text-sm shadow-lg">
+                <Play aria-hidden="true" className="size-4 fill-current rtl:rotate-180" />
+                {playLabel}
+              </span>
+            </button>
+          </>
+        )}
       </div>
       {media.caption && <figcaption className="mt-3 text-muted-foreground text-xs leading-6">{media.caption}</figcaption>}
     </figure>
@@ -122,11 +148,11 @@ export function HeroMedia({ lang, media }: { lang: MarketingLang; media: MediaRe
             <span className="size-2 rounded-full bg-muted-foreground/30" />
             <span className="size-2 rounded-full bg-muted-foreground/30" />
           </div>
-          <Capture wide={entry.wide} alt="" priority hideBelowSm className={entry.wideDark ? 'block dark:hidden' : 'block'} />
-          {entry.wideDark && <Capture wide={entry.wideDark} alt="" priority={false} hideBelowSm className="hidden dark:block" />}
+          <Capture wide={entry.wide} darkWide={entry.wideDark} alt="" priority hideBelowSm className="block" />
         </div>
         <div className="mx-auto w-[min(17rem,78%)] overflow-hidden rounded-[2rem] border-[6px] border-foreground/85 bg-card shadow-2xl sm:absolute sm:end-0 sm:bottom-0 sm:mx-0 sm:w-[38%] sm:max-w-[15rem]">
-          <Capture wide={entry.phone} alt={media.alt} priority className="block" phoneSizes />
+          {/* Lazy: below `sm` the phone sits under the hero copy, past the first screen. */}
+          <Capture wide={entry.phone} alt={media.alt} priority={false} className="block" phoneSizes />
         </div>
       </div>
       {media.caption && <figcaption className="mt-1 text-muted-foreground text-xs leading-6">{media.caption}</figcaption>}
@@ -146,7 +172,7 @@ export function MarketingMedia({
   framed?: 'browser' | 'phone' | 'none';
 }) {
   const entry = marketingMedia(lang, media.key);
-  if (entry?.video) return <RecordingMedia poster={entry.wide} video={entry.video} media={media} />;
+  if (entry?.video) return <RecordingMedia lang={lang} poster={entry.wide} video={entry.video} media={media} />;
   const dark = Boolean(entry?.wideDark || entry?.phoneDark);
   const frame =
     framed === 'phone'
@@ -166,14 +192,7 @@ export function MarketingMedia({
         )}
         {entry ? (
           <>
-            <Capture
-              wide={entry.wide}
-              phone={entry.phone}
-              loop={entry.loop}
-              alt={media.alt}
-              priority={priority}
-              className={dark ? 'block dark:hidden' : 'block'}
-            />
+            <Capture wide={entry.wide} phone={entry.phone} alt={media.alt} priority={priority} className={dark ? 'block dark:hidden' : 'block'} />
             {dark && (
               <Capture
                 wide={entry.wideDark ?? entry.wide}

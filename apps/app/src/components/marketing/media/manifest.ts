@@ -9,13 +9,14 @@ import arabicArPhoneLight780_avif from './assets/arabic-ar-phone-light-780.avif?
 import arabicArPhoneLight780_webp from './assets/arabic-ar-phone-light-780.webp?url';
 import chatArPhone390_avif from './assets/chat-ar-phone-390.avif?url';
 import chatArPhone390_webp from './assets/chat-ar-phone-390.webp?url';
+import chatArPhone560_avif from './assets/chat-ar-phone-560.avif?url';
+import chatArPhone560_webp from './assets/chat-ar-phone-560.webp?url';
 import chatArPhone780_avif from './assets/chat-ar-phone-780.avif?url';
 import chatArPhone780_webp from './assets/chat-ar-phone-780.webp?url';
 import chatArWide640_avif from './assets/chat-ar-wide-640.avif?url';
 import chatArWide640_webp from './assets/chat-ar-wide-640.webp?url';
 import chatArWide1280_avif from './assets/chat-ar-wide-1280.avif?url';
 import chatArWide1280_webp from './assets/chat-ar-wide-1280.webp?url';
-import chatEnLoop960_webp from './assets/chat-en-loop-960.webp?url';
 import chatEnPanel440_avif from './assets/chat-en-panel-440.avif?url';
 import chatEnPanel440_webp from './assets/chat-en-panel-440.webp?url';
 import chatEnWide640_avif from './assets/chat-en-wide-640.avif?url';
@@ -64,6 +65,8 @@ import heroArWideLight1280_avif from './assets/hero-ar-wide-light-1280.avif?url'
 import heroArWideLight1280_webp from './assets/hero-ar-wide-light-1280.webp?url';
 import heroEnPhone390_avif from './assets/hero-en-phone-390.avif?url';
 import heroEnPhone390_webp from './assets/hero-en-phone-390.webp?url';
+import heroEnPhone560_avif from './assets/hero-en-phone-560.avif?url';
+import heroEnPhone560_webp from './assets/hero-en-phone-560.webp?url';
 import heroEnPhone780_avif from './assets/hero-en-phone-780.avif?url';
 import heroEnPhone780_webp from './assets/hero-en-phone-780.webp?url';
 import heroEnWideDark640_avif from './assets/hero-en-wide-dark-640.avif?url';
@@ -163,8 +166,6 @@ export interface MediaEntry {
   /** Optional dark-theme captures. */
   wideDark?: ImageVariant;
   phoneDark?: ImageVariant;
-  /** Optional short animated WebP loop of the same flow; the still is used when reduced motion is requested. */
-  loop?: { src: string; width: number; height: number };
   /** Optional screen recording, played only when the visitor presses play (`preload="none"`). */
   video?: { src: string; width: number; height: number };
 }
@@ -190,6 +191,7 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       ]),
       phone: variant(780, 1688, [
         [390, heroEnPhone390_avif, heroEnPhone390_webp],
+        [560, heroEnPhone560_avif, heroEnPhone560_webp],
         [780, heroEnPhone780_avif, heroEnPhone780_webp],
       ]),
     },
@@ -270,7 +272,6 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
         [1280, chatEnWide1280_avif, chatEnWide1280_webp],
       ]),
       phone: variant(440, 800, [[440, chatEnPanel440_avif, chatEnPanel440_webp]]),
-      loop: { src: chatEnLoop960_webp, width: 960, height: 600 },
     },
   },
   ar: {
@@ -285,6 +286,7 @@ const MARKETING_MEDIA: Record<MarketingLang, Partial<Record<MarketingMediaKey, M
       ]),
       phone: variant(780, 1688, [
         [390, chatArPhone390_avif, chatArPhone390_webp],
+        [560, chatArPhone560_avif, chatArPhone560_webp],
         [780, chatArPhone780_avif, chatArPhone780_webp],
       ]),
     },

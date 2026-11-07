@@ -1,4 +1,5 @@
-import { availabilityNote } from './availability';
+import { availabilityNote, heroAvailabilityNote } from './availability';
+import { LANDING_META } from './landing-meta';
 import type { LandingCopy } from './types';
 
 // Every factual sentence here is traced to evidence in
@@ -6,12 +7,7 @@ import type { LandingCopy } from './types';
 // support MCP, docs insights and bring-your-own key is worded only through
 // availabilityNote().
 export const landingEn: LandingCopy = {
-  meta: {
-    title: 'Nibleaf: open-source docs with AI answers, English & Arabic',
-    description:
-      'Open-source documentation platform and help center: AI answers that cite your docs, search insights, English and Arabic. Free cloud beta or self-host it.',
-    ogImageAlt: 'A Nibleaf docs site with the Ask AI panel open. The answer lists numbered sources, each naming the exact section it came from.',
-  },
+  meta: LANDING_META.en,
   hero: {
     eyebrow: 'Open-source documentation platform',
     title: 'Docs that answer your customers.',
@@ -21,6 +17,7 @@ export const landingEn: LandingCopy = {
     secondaryCta: { label: 'Self-host Nibleaf', href: '/self-hosting' },
     tertiaryLink: { label: 'See our own docs, published with Nibleaf', href: 'https://docs.nibleaf.com' },
     assurances: ['Free cloud beta, no credit card', 'Open source under AGPL-3.0', 'English and Arabic, right to left'],
+    availabilityNote: heroAvailabilityNote('en'),
     media: {
       key: 'hero-chat',
       alt: 'A published docs page for a fictional notes app, with Ask AI open on a phone. The answer explains why sync stopped and cites two numbered sections of “Fix sync problems”.',
@@ -39,7 +36,7 @@ export const landingEn: LandingCopy = {
       {
         icon: 'server',
         title: 'Runs on your servers',
-        body: 'A guided Docker Compose installer sets up the full stack on your own machine.',
+        body: 'A guided Docker Compose installer sets up the full stack on your own server.',
         href: '/self-hosting',
       },
       {
@@ -66,6 +63,7 @@ export const landingEn: LandingCopy = {
         'Says when it can’t answer, and suggests articles or your support link instead of guessing',
         'Offers related questions, and readers can rate every answer',
       ],
+      noteLabel: 'Requirements and availability',
       note: `Needs an AI provider key: your workspace’s own OpenAI or OpenRouter key, or one your instance provides. You turn it on per site, and self-hosters also run the optional Qdrant search service. ${availabilityNote('askAi', 'en')}`,
       media: {
         key: 'chat',
@@ -83,6 +81,7 @@ export const landingEn: LandingCopy = {
         'Finds Arabic words with or without diacritics and across spelling variants',
         'Turns a search into an Ask AI question in one step when Ask AI is on',
       ],
+      noteLabel: 'Availability',
       note: availabilityNote('readerSearch', 'en'),
       media: {
         key: 'search',
@@ -100,6 +99,7 @@ export const landingEn: LandingCopy = {
         'Helpful and not-helpful votes by page, so you know what to fix first',
         'AI crawler visits, kept apart from people who arrive from AI assistants',
       ],
+      noteLabel: 'Requirements and availability',
       note: `Self-hosters need the optional ClickHouse analytics service for these reports. Search terms are kept only if you turn that on. ${availabilityNote('docsInsights', 'en')}`,
       media: {
         key: 'insights',
@@ -117,6 +117,7 @@ export const landingEn: LandingCopy = {
         'Three permission presets: Read only, Support writer and Full admin',
         'Changes save as drafts; there is no tool to delete pages or change general settings',
       ],
+      noteLabel: 'Requirements and availability',
       note: `Self-hosters turn it on first; it is off by default. ${availabilityNote('supportMcp', 'en')}`,
       media: {
         key: 'mcp',
@@ -137,7 +138,7 @@ export const landingEn: LandingCopy = {
       ],
       media: {
         key: 'editor',
-        alt: 'The Nibleaf editor with the slash menu open, listing blocks such as callouts, steps, tabs and code.',
+        alt: 'The Nibleaf editor with the slash menu open over an article, listing basic blocks such as text, headings and lists.',
       },
     },
     {
@@ -147,7 +148,7 @@ export const landingEn: LandingCopy = {
       body: 'Write in Arabic and English with right-to-left layout in the editor, dashboard and docs site, a separate page tree for each language, and search tuned for Arabic.',
       bullets: [
         'All three reader themes mirror for right to left, in light and dark',
-        'Ask AI answers Arabic questions in Arabic, with Arabic sources',
+        'Ask AI answers Arabic questions in Arabic, citing your Arabic pages',
         'Linked translations tell search engines which language each page is in',
       ],
       media: {
@@ -177,8 +178,13 @@ export const landingEn: LandingCopy = {
       { icon: 'exports', title: 'Exports', body: 'Markdown, HTML or PDF, on demand or on a daily, weekly or monthly schedule.' },
       { icon: 'api', title: 'API reference', body: 'Import an OpenAPI file and get endpoint pages readers can try in the browser.' },
       { icon: 'private', title: 'Private docs', body: 'Share docs, or single pages, only with readers you invite.' },
-      { icon: 'llms', title: 'Ready for AI tools', body: 'Every site gets llms.txt and a Markdown version of each page.' },
-      { icon: 'key', title: 'Your own AI key', body: 'Connect your workspace’s OpenAI or OpenRouter key. It is stored encrypted.' },
+      { icon: 'llms', title: 'Ready for AI tools', body: 'Public pages are listed in llms.txt and each has a Markdown version.' },
+      {
+        icon: 'key',
+        title: 'Your own AI key',
+        body: 'Connect your workspace’s OpenAI or OpenRouter key. It is stored encrypted.',
+        availability: 'bringYourOwnKey',
+      },
     ],
   },
   howItWorks: {
@@ -210,7 +216,7 @@ export const landingEn: LandingCopy = {
       priceNote: 'Open source under AGPL-3.0',
       points: [
         'Guided Docker Compose installer',
-        'PostgreSQL, a Redis-compatible cache and S3-compatible storage (bundled or your own)',
+        'PostgreSQL and a Redis-compatible cache, plus S3-compatible storage: the bundled one or your own',
         'Optional services: Qdrant for Ask AI, ClickHouse for insights',
       ],
       cta: { label: 'Read the self-hosting guide', href: '/self-hosting' },
@@ -278,7 +284,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'What happens to my readers’ data?',
-        a: 'Reader analytics store no IP addresses, and visits are only linked when the reader consents. Search terms are kept only if you turn that on, and a term appears only after two different visits searched for it. Ask AI sends questions and matching passages to the AI provider you choose, under that provider’s terms. You can turn off saving Ask AI conversations.',
+        a: 'Reader analytics store no IP addresses. If your site asks readers for consent, their visits are linked only after they agree. Search terms are kept only if you turn that on, and a term appears only after two different visits searched for it. Ask AI sends questions and matching passages to the AI provider you choose, under that provider’s terms. You can turn off saving Ask AI conversations.',
       },
     ],
   },

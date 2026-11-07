@@ -300,6 +300,3 @@ export function ArabicDocumentationPlatformsPage() {
     </ArabicShell>
   );
 }
-
-// Route modules import the Arabic landing from here today; it lives in arabic-landing.tsx.
-export { ArabicLandingPage } from './arabic-landing';

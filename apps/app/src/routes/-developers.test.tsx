@@ -2,7 +2,7 @@
 
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
-import { DeveloperResourcesPage } from './developers';
+import { DeveloperResourcesPage } from '@/components/marketing/developer-resources-page';
 
 it('publishes named Nibleaf developer and agent entry points with an explicit auth boundary', () => {
   const html = renderToStaticMarkup(<DeveloperResourcesPage />);

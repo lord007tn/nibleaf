@@ -19,6 +19,8 @@ it('tracks allowed CTA destinations and placements without classifying arbitrary
           <MarketingLink cta={{ href: '/sign-up', label: 'Start' }} lang="ar" placement="hero" />
           <MarketingLink cta={{ href: '/self-hosting', label: 'Install' }} lang="en" placement="final" />
           <MarketingLink cta={{ href: '/blog', label: 'Articles' }} lang="en" placement="resource_bridge" />
+          <MarketingLink cta={{ href: 'https://docs.nibleaf.com?lang=ar', label: 'الوثائق' }} lang="ar" placement="hero" />
+          <MarketingLink cta={{ href: 'https://example.com/sign-up', label: 'Elsewhere' }} lang="en" placement="hero" />
         </>,
       ),
     );
@@ -26,9 +28,11 @@ it('tracks allowed CTA destinations and placements without classifying arbitrary
       link.addEventListener('click', (event) => event.preventDefault());
       await act(async () => link.click());
     }
+    await vi.waitFor(() => expect(sendMarketingCtaEvent).toHaveBeenCalledTimes(3));
     expect(sendMarketingCtaEvent).toHaveBeenNthCalledWith(1, { destination: 'signup', language: 'ar', placement: 'hero' });
     expect(sendMarketingCtaEvent).toHaveBeenNthCalledWith(2, { destination: 'self_hosting', language: 'en', placement: 'final' });
-    expect(sendMarketingCtaEvent).toHaveBeenCalledTimes(2);
+    expect(sendMarketingCtaEvent).toHaveBeenNthCalledWith(3, { destination: 'docs', language: 'ar', placement: 'hero' });
+    expect(sendMarketingCtaEvent).toHaveBeenCalledTimes(3);
   } finally {
     await act(async () => root.unmount());
     container.remove();
