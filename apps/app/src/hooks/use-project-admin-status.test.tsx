@@ -28,7 +28,7 @@ const team = (role: string) => loaded([{ user: { id: 'user-1' }, role }]);
 const loading = { data: undefined, isPending: true, isError: false, isFetching: true, refetch };
 const failed = { data: undefined, isPending: false, isError: true, isFetching: false, refetch };
 
-const read = async (projectId: string | undefined = 'site-1'): Promise<AdminStatus | undefined> => {
+const read = async (projectId: string | undefined): Promise<AdminStatus | undefined> => {
   let result: AdminStatus | undefined;
   const Probe = () => {
     result = useProjectAdminStatus(projectId);
@@ -53,7 +53,7 @@ describe('useProjectAdminStatus', () => {
     ['member', 'notAdmin'],
   ])('a %s is %s', async (role, expected) => {
     Object.assign(state, { session: signedIn, members: team(role) });
-    expect((await read())?.status).toBe(expected);
+    expect((await read('site-1'))?.status).toBe(expected);
   });
 
   // The server only lets members of the site's own team at or above Admin
@@ -61,14 +61,14 @@ describe('useProjectAdminStatus', () => {
   // never a loading state that never ends.
   it('is notAdmin, not pending, for someone signed in but missing from the loaded team', async () => {
     Object.assign(state, { session: signedIn, members: loaded([{ user: { id: 'someone-else' }, role: 'owner' }]) });
-    const result = await read();
+    const result = await read('site-1');
     expect(result?.status).toBe('notAdmin');
     expect(result?.isError).toBe(false);
   });
 
   it('is notAdmin for an empty loaded team', async () => {
     Object.assign(state, { session: signedIn, members: loaded([]) });
-    expect((await read())?.status).toBe('notAdmin');
+    expect((await read('site-1'))?.status).toBe('notAdmin');
   });
 
   it.each([
@@ -77,14 +77,14 @@ describe('useProjectAdminStatus', () => {
     ['the team is loading', signedIn, loading],
   ])('is pending, never notAdmin, while %s', async (_label, session, members) => {
     Object.assign(state, { session, members });
-    const result = await read();
+    const result = await read('site-1');
     expect(result?.status).toBe('pending');
     expect(result?.isError).toBe(false);
   });
 
   it('is pending with isError when the team failed to load and nothing is cached, and retries the members query', async () => {
     Object.assign(state, { session: signedIn, members: failed });
-    const result = await read();
+    const result = await read('site-1');
     expect(result?.status).toBe('pending');
     expect(result?.isError).toBe(true);
     result?.retry();
@@ -99,7 +99,7 @@ describe('useProjectAdminStatus', () => {
       session: signedIn,
       members: loaded([{ user: { id: 'user-1' }, role }], { isError: true, isFetching: false }),
     });
-    const result = await read();
+    const result = await read('site-1');
     expect(result?.status).toBe(expected);
     expect(result?.isError).toBe(false);
   });
@@ -107,11 +107,13 @@ describe('useProjectAdminStatus', () => {
   it('reports retrying while the members query refetches', async () => {
     Object.assign(state, { session: signedIn, members: team('admin') });
     state.members = { ...(state.members as object), isFetching: true };
-    expect((await read())?.retrying).toBe(true);
+    expect((await read('site-1'))?.retrying).toBe(true);
   });
 
-  it('is pending without a site', async () => {
-    Object.assign(state, { session: signedIn, members: { ...loading, isFetching: false } });
+  it('is pending without a site, even with an admin membership cached', async () => {
+    // Only the missing-site guard can make this pending: the session is signed in
+    // and the cached team says Admin.
+    Object.assign(state, { session: signedIn, members: team('admin') });
     expect((await read(undefined))?.status).toBe('pending');
   });
 });
