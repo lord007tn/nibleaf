@@ -41,7 +41,8 @@ export const isSafeLinkDestination = (href: string): boolean => {
 const safeHref = (value?: string): string | undefined => {
   const href = value?.trim();
   if (!href || !isSafeLinkDestination(href)) return undefined;
-  return href.replace(/[\s()]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`);
+  // UTF-8 bytes, as a browser would send them: U+2003 is `%E2%80%83`, not `%2003`.
+  return href.replace(/[\s()]/g, (character) => (character === '(' ? '%28' : character === ')' ? '%29' : encodeURIComponent(character)));
 };
 
 const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {

@@ -86,11 +86,11 @@ const boolAttr = (name: string): Attributes => ({
     parseHTML: (element) => {
       const dataValue = element.getAttribute(`data-${name}`);
       if (dataValue != null) {
-        const normalized = dataValue.trim().toLowerCase();
-        if (normalized === 'false') return false;
-        // Any other non-boolean value (an expression such as `{open}`) is
-        // kept verbatim so the author's source round-trips.
-        return normalized === '' || normalized === 'true' ? true : dataValue;
+        if (dataValue === 'false') return false;
+        // Only the exact spellings the reader reads as true become `true`. Any
+        // other value (`{open}`, `TRUE`, ` true `) is kept verbatim, so it
+        // matches the authored source and an unrelated edit never rewrites it.
+        return dataValue === '' || dataValue === 'true' ? true : dataValue;
       }
       const value = element.getAttribute(name);
       return value != null && value.trim().toLowerCase() !== 'false';

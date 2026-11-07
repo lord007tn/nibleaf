@@ -42,7 +42,7 @@ Exported theme repositories ship their own, simpler reader. In them:
 
 Your Nibleaf site renders all of them.
 
-Public Markdown (each page's `.md` and the llms files) and the HTML and PDF exports use a simpler projection of components than the site. Today, in them, a component that wraps a code block can show as source in `.md`, an attribute value containing `>` is cut short, tooltips keep only their text, and subscript, superscript and underline show as tags. A follow-up covers this projection work (#341).
+Public Markdown (each page's `.md` and the llms files) and the HTML and PDF exports use a simpler projection of components than the site. Today, in them, a component that wraps a code block can show as source in `.md`, an attribute value containing `>` ends the tag early, so the rest of the tag shows as text, tooltips keep only their text, and subscript, superscript and underline show as tags. A follow-up covers this projection work (#341).
 
 ## Callouts
 

@@ -268,8 +268,12 @@ export const Callout = Node.create({
                 const lead = firstParagraph.firstChild;
                 if (lead?.nodeType === 1 && (lead as Element).tagName === 'BR') lead.remove();
                 else if (lead?.nodeType === 3 && !lead.textContent && lead.nextSibling?.nodeName === 'BR') lead.nextSibling.remove();
+                if (firstText && !firstText.data.trim() && firstText.parentNode === firstParagraph) firstText.remove();
                 if (!firstParagraph.textContent?.trim() && !firstParagraph.querySelector('img, code, a')) {
                   firstParagraph.remove();
+                } else if (!firstParagraph.textContent?.trim() && [...firstParagraph.childNodes].every((child) => child.nodeName === 'IMG')) {
+                  // A paragraph left holding only an image would save as an extra empty line.
+                  firstParagraph.replaceWith(...firstParagraph.childNodes);
                 }
               }
               const div = element.ownerDocument.createElement('div');

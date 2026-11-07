@@ -85,4 +85,9 @@ describe('projected link destinations', () => {
   it('percent-encodes spaces and parentheses in a projected destination', () => {
     expect(portablePublicMdxMarkdown('<Button href="/a b(c)">Go</Button>')).toBe('[Go](/a%20b%28c%29)');
   });
+
+  it('percent-encodes Unicode spaces as UTF-8 bytes', () => {
+    expect(portablePublicMdxMarkdown('<Button href="/a b">Go</Button>')).toBe('[Go](/a%E2%80%83b)');
+    expect(portablePublicMdxMarkdown('<Button href="/a b">Go</Button>')).toBe('[Go](/a%C2%A0b)');
+  });
 });

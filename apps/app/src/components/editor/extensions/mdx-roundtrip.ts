@@ -107,8 +107,18 @@ const NAMED_REFERENCES: Record<string, string> = { amp: '&', lt: '<', gt: '>', q
  *  HTML read it: `title="R&amp;D"` is "R&D" in the editor, and saving after an
  *  edit writes `&amp;` once, not again on top. */
 const decodeAttributeValue = (value: string): string =>
-  value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|(amp|lt|gt|quot|apos));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
-    if (name) return NAMED_REFERENCES[name.toLowerCase()] ?? reference;
+  value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|([a-z][a-z\d]{1,31}));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
+    if (name) {
+      const known = NAMED_REFERENCES[name.toLowerCase()];
+      if (known) return known;
+      // Any other named reference (`&mdash;`, `&nbsp;`) is decoded by the DOM the
+      // editor runs in. Only complete references ending in `;` get here, so a URL
+      // query such as `?a=1&copy=2` is never touched; unknown names stay as written.
+      if (typeof document === 'undefined') return reference;
+      const area = document.createElement('textarea');
+      area.innerHTML = reference;
+      return area.value;
+    }
     const code = decimal ? Number(decimal) : Number.parseInt(hex ?? '', 16);
     return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
   });
@@ -466,12 +476,16 @@ function replaceOpeningAttribute(raw: string, componentName: string, name: strin
   const remove = value == null || value === '' || value === false;
   if (existing) {
     if (remove) return `${raw.slice(0, existing.start)}${raw.slice(existing.end)}`;
-    const rendered = value === true ? existing.name : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+    const rendered =
+      value === true
+        ? existing.name
+        : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
     return `${raw.slice(0, existing.start)}${rendered}${raw.slice(existing.end)}`;
   }
   if (remove) return raw;
   const insertAt = raw.search(/\/?>\s*$/);
-  const rendered = value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+  const rendered =
+    value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
   return insertAt < 0 ? raw : `${raw.slice(0, insertAt)} ${rendered}${raw.slice(insertAt)}`;
 }
 
@@ -483,7 +497,9 @@ export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: s
       .map((key) => {
         const value = node.attrs[key];
         if (value == null || value === '' || value === false) return '';
-        return value === true ? ` ${key}` : ` ${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+        return value === true
+          ? ` ${key}`
+          : ` ${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
       })
       .join('');
     return `<${canonical}${attrs}${selfClosing ? ' /' : ''}>`;

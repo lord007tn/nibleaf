@@ -178,6 +178,46 @@ describe('MDX round trips', () => {
     if (source.includes('`rm -rf`')) expect(saved).toContain('`rm -rf`');
   });
 
+  it('saves a GitHub alert that starts with an image unchanged', () => {
+    const source = '> [!NOTE]\n> ![Diagram](/a.png)';
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).toBe(source);
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it.each(['TRUE', ' true ', 'False', '{open}'])('keeps an authored defaultOpen="%s" as written when another block is edited', (value) => {
+    const source = `Intro.\n\n<Accordion title="FAQ" defaultOpen="${value}">\n\nBody\n\n</Accordion>\n`;
+    const editor = createEditor(source);
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    expect(getMarkdown(editor)).toContain(`<Accordion title="FAQ" defaultOpen="${value}">`);
+  });
+
+  it('decodes every named character reference in an attribute once, and leaves bare ampersands alone', () => {
+    const source = 'Intro.\n\n<Card title="A &mdash; B&nbsp;C &copy; &unknownref;" href="/x?a=1&copy=2">\n\nBody\n\n</Card>\n';
+    const editor = createEditor(source);
+    let card: { attrs: Record<string, unknown> } | undefined;
+    let position = -1;
+    editor.state.doc.descendants((node, at) => {
+      if (node.type.name === 'mdxCard') {
+        card = node;
+        position = at;
+      }
+    });
+    expect(card?.attrs.title).toBe('A — B C © &unknownref;');
+    // A reference without its `;` (a URL query) isn't a reference.
+    expect(card?.attrs.href).toBe('/x?a=1&copy=2');
+    editor.commands.command(({ tr }) => {
+      tr.setNodeAttribute(position, 'title', 'A — B > C!');
+      return true;
+    });
+    const saved = getMarkdown(editor);
+    // Written back escaped once, `>` included, and reloads the same.
+    expect(saved).toContain('title="A — B &gt; C!"');
+    expect(saved).not.toContain('&amp;mdash;');
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
   it('keeps components after an unmatched backtick, across a heading', () => {
     // A backtick that isn't closed on its line must not hide the blocks after it.
     const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';
