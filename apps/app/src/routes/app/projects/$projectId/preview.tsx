@@ -17,11 +17,10 @@ import { useBranches, useLanguages, usePage, usePages, useProject, useProjectMem
 import { pageQueryOptions } from '@/hooks/api/query-options';
 import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import type { PageNode } from '@/hooks/api/types';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
-import { resolveProjectSettingsAccess } from '@/lib/project-settings-access';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
-import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   validateSearch: (search) =>
@@ -59,11 +58,7 @@ function ProjectPreview() {
   const { data: project } = projectQuery;
   const membersQuery = useProjectMembers(projectId);
   const { data: members } = membersQuery;
-  const { data: session, isPending: sessionPending } = useSession();
-  const previewAccess = resolveProjectSettingsAccess(
-    members?.members.find((member) => member.user.id === session?.user.id)?.role,
-    membersQuery.isPending || sessionPending || !members || !session,
-  );
+  const { status: previewAccess } = useProjectAdminStatus(projectId);
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
   const activeLanguageId = search.languageId ?? defaultScopeId(languages);
