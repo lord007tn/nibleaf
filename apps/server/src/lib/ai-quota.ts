@@ -25,7 +25,7 @@ const getRedis = (): Redis => {
       maxRetriesPerRequest: 1,
       retryStrategy: (times) => Math.min(times * 100, 2000),
     });
-    // Swallow connection errors — the quota check degrades to fail-open below.
+    // Command failures are handled by the quota check below.
     client.on('error', () => undefined);
   }
   return client;
@@ -35,9 +35,7 @@ const DAY_SECONDS = 24 * 60 * 60;
 
 /**
  * Count one AI request against the workspace's daily budget and throw a 429
- * once it is exhausted. Redis being unreachable fails OPEN (the request is
- * allowed): the quota is spend protection, not a security boundary, and AI
- * drafting must not hard-depend on redis for self-hosters.
+ * once it is exhausted. Drafting requires an available quota counter.
  */
 export const assertAiQuota = async (organizationId: string): Promise<void> => {
   const limit = envExtras.AI_DAILY_LIMIT;
@@ -52,7 +50,7 @@ export const assertAiQuota = async (organizationId: string): Promise<void> => {
       await redis.expire(key, DAY_SECONDS);
     }
   } catch {
-    return;
+    throw new AppError({ code: 'http:internal', message: 'AI drafting is temporarily unavailable. Try again later.' });
   }
 
   if (used > limit) {
