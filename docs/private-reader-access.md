@@ -93,9 +93,23 @@ For the cookie to stick, the reader's browser must send the request:
   at `docs.example.com`. Browsers don't keep this cookie from a request made by
   an unrelated site.
 
-Your portal's address must also be allowed to call Nibleaf from a browser. On a
-self-hosted instance, the operator adds it to `CORS_ALLOWED_ORIGINS`. For
-example:
+This means your docs must be on a [custom domain](/product/custom-domains) under
+your portal's own domain. The free address Nibleaf gives your site is never on
+the same site as your portal, so the handoff can't work there.
+
+Your portal's address must also be allowed to call Nibleaf from a browser:
+
+- **Self-hosted:** the operator adds your portal's address to
+  `CORS_ALLOWED_ORIGINS`, keeping the values already there and separating
+  entries with commas, for example
+  `CORS_ALLOWED_ORIGINS=https://nibleaf.example.com,https://app.example.com`, where
+  the first entry is your existing `APP_URL`.
+  Replacing the existing values breaks the dashboard's own requests.
+- **Nibleaf Cloud:** there is no setting for this in the dashboard. Contact
+  Nibleaf support at support@nibleaf.com with your site and your portal's
+  address.
+
+For example:
 
 ```js
 const response = await fetch(

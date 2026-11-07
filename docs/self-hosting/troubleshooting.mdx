@@ -203,10 +203,26 @@ have changed. A publish preview is project-wide.
 
 1. Generate a secret, for example with `openssl rand -hex 32`.
 2. Set `INTERNAL_API_SECRET` to that same value for the app and API services, then recreate them.
-3. Set `TRUSTED_PROXY_HOPS` to the number of trusted **public proxy-address hops** appended to `X-Forwarded-For` in front of the API by your CDN/edge and load balancer. Do not count private nginx/Traefik hops or the app-to-API proxy. Set the **same value on the app and API services**; the default is `0`. Inspect the actual forwarding chain and configure your ingress to remove untrusted forwarding headers before choosing the value.
+3. Set `TRUSTED_PROXY_HOPS` to the number of trusted **public proxy addresses that appear after the client's address** in `X-Forwarded-For` (each hop records the address it received the request from, so your CDN/edge and load-balancer addresses are recorded by the next hop). Do not count private nginx/Traefik hops or the app-to-API proxy. Set the **same value on the app and API services**; the default is `0`. Inspect the actual forwarding chain and configure your ingress to remove untrusted forwarding headers before choosing the value.
 4. Raise `RATE_LIMIT_PUBLIC_PER_MIN` only if real readers still hit the limit.
 
-The shared Compose `service-env` block passes both settings to the services.
+The production and Coolify Compose files (`docker-compose.prod.yml` and
+`docker-compose.coolify.yml`) pass both settings to the app and API services.
+The source `docker-compose.yml` doesn't pass both, so add an override file next
+to it; `docker compose` reads `docker-compose.override.yml` automatically:
+
+```yaml
+# docker-compose.override.yml, next to the source docker-compose.yml
+services:
+  server:
+    environment:
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+  app:
+    environment:
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+```
 
 **Worked examples:** the addresses below are illustrative. `9.9.9.9` is a
 client-supplied forged entry and `203.0.113.7` is the real client. A private
