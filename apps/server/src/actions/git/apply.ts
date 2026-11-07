@@ -262,7 +262,7 @@ export const applyGitContentChanges = async (
     (
       await tx.page.findMany({
         where: { id: { in: [...new Set(touched)] }, projectId },
-        select: { id: true, kind: true, config: true, ...revisionFields },
+        select: { id: true, kind: true, config: true, branchId: true, languageId: true, ...revisionFields },
       })
     ).map((row) => [row.id, row]),
   );
@@ -331,13 +331,16 @@ export const applyGitContentChanges = async (
       pageIds.set(change.path, change.pageId);
       continue;
     }
-    if (change.pageId && current.has(change.pageId)) {
-      // A ledger-linked page the merge did not read (it is outside the current
-      // export map). Its row is locked, so the update cannot race a save.
-      await tx.page.update({ where: { id: change.pageId }, data: pageData(change.content) });
-      pageIds.set(change.path, change.pageId);
+    const unseen = change.pageId ? current.get(change.pageId) : undefined;
+    if (unseen && unseen.branchId === context.branch.id && unseen.languageId === context.language.id) {
+      // A page of this branch and language the merge never read: it was
+      // created after that read (a writer's new page whose path Git also
+      // added). Never write it blind; re-reconciling reads its content.
+      conflicts.push(change.path);
       continue;
     }
+    // A stale link to a page outside this sync's branch and language is left
+    // untouched; the file gets its own page here instead.
     pageIds.set(change.path, await creator.create(change.path, change.content));
   }
   if (conflicts.length > 0) throw new GitApplyConflictError(conflicts);

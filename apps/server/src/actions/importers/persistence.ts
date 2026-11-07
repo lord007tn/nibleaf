@@ -4,6 +4,7 @@ import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
 import { createPage } from '../pages';
+import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './cleanup-locks';
 
 /**
  * Idempotent page-upsert machinery shared by every importer (Git, Mintlify,
@@ -67,9 +68,6 @@ export const isPristineStarterPage = (page: StarterCandidate): boolean => {
   );
 };
 
-/** Cleanup waits on the project lock, which a Git sync may hold for a while. */
-const CLEANUP_TRANSACTION = { timeout: 30_000, maxWait: 10_000 } as const;
-
 /**
  * Remove only untouched starter pages before a real import, so the promise
  * that nothing a writer edited is deleted holds.
@@ -90,6 +88,7 @@ export const removeImportPlaceholders = async (target: ImportTarget): Promise<nu
   const ids = [...candidates].sort();
   try {
     return await prisma.$transaction(async (tx) => {
+      await limitCleanupLockWait(tx);
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${target.projectId} FOR NO KEY UPDATE`;
       await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" IN (${Prisma.join(ids)}) ORDER BY "id" FOR UPDATE`;
       // Comments and audience grants cascade with their page: a page that
@@ -108,9 +107,9 @@ export const removeImportPlaceholders = async (target: ImportTarget): Promise<nu
       return (await tx.page.deleteMany({ where: { id: { in: deletable } } })).count;
     }, CLEANUP_TRANSACTION);
   } catch (error) {
-    // The locks stayed busy past the timeout (a long Git sync holds the
-    // project lock): keep the starter page rather than fail the import.
-    if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2028') return 0;
+    // A lock stayed busy for 10 s (a long Git sync holds the project lock):
+    // keep the starter page rather than fail the import.
+    if (isCleanupLockTimeout(error)) return 0;
     throw error;
   }
 };

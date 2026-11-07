@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
   rows: [] as Row[],
   /** Runs when the cleanup takes each lock, to simulate a writer that commits just before. */
   onLock: [] as Array<(sql: string) => void>,
-  prisma: { page: { findMany: vi.fn(), deleteMany: vi.fn() }, $queryRaw: vi.fn(), $transaction: vi.fn() },
+  prisma: { page: { findMany: vi.fn(), deleteMany: vi.fn() }, $queryRaw: vi.fn(), $executeRaw: vi.fn(), $transaction: vi.fn() },
 }));
 
 vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma, Prisma: { join: (values: unknown[]) => values } }));
@@ -93,6 +93,8 @@ describe('removeImportPlaceholders', () => {
     expect(locks()[0]).toContain('FROM "project"');
     expect(locks()[0]).toContain('FOR NO KEY UPDATE');
     expect(locks()[1]).toContain('ORDER BY "id" FOR UPDATE');
+    // Every lock wait is capped first.
+    expect(String(mocks.prisma.$executeRaw.mock.calls[0]?.[0])).toContain("SET LOCAL lock_timeout = '10s'");
     expect(mocks.prisma.$queryRaw.mock.calls[1]?.[1]).toEqual(['starter']);
   });
 
@@ -175,10 +177,13 @@ describe('removeImportPlaceholders', () => {
     expect(mocks.rows.map((row) => row.id)).toEqual(['starter', 'child']);
   });
 
-  it('keeps the starter page when the cleanup cannot get the locks in time', async () => {
+  it.each([
+    ['the transaction times out', { code: 'P2028' }],
+    ['a lock wait hits lock_timeout', { code: 'P2010', meta: { code: '55P03' } }],
+  ])('keeps the starter page when %s', async (_what, failure) => {
     mocks.rows.push(starter());
     mocks.prisma.$transaction.mockImplementationOnce(async () => {
-      throw Object.assign(new Error('Transaction already closed'), { code: 'P2028' });
+      throw Object.assign(new Error('Cleanup gave up'), failure);
     });
 
     await expect(removeImportPlaceholders(target)).resolves.toBe(0);

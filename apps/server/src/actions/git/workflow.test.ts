@@ -868,6 +868,41 @@ describe('Git apply safety', () => {
     observed: new Map(observed.map((page) => [page.id, page])),
   });
 
+  it('never overwrites a page a writer created between the page read and the snapshot read', async () => {
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('intro.mdx', '---\ntitle: "Intro"\n---\n\nFrom Git')]);
+    // The writer's page commits after the merge's page read, before its snapshot read.
+    mocks.getCurrentSnapshot.mockImplementation(async () => {
+      if (!pageStore.rows.some((page) => page.id === 'page-intro')) {
+        seedPage({ id: 'page-intro', title: 'Intro', slug: 'intro', content: 'Written by a writer' });
+      }
+      return { ...currentSnapshot, pages: pageStore.rows.map(snapshotPage) };
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.find((page) => page.id === 'page-intro')?.content).toBe('Written by a writer');
+    expect(mocks.prisma.gitConflict.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ path: 'intro.mdx', oursContent: expect.stringContaining('Written by a writer') }),
+      }),
+    );
+    expect(statuses()).toContain('CONFLICT');
+  });
+
+  it('leaves a stale link to a page outside the synced language alone and gives the file its own page', async () => {
+    seedPage({ id: 'page-other', title: 'Intro', slug: 'intro', content: 'Another language' });
+    Object.assign(pageStore.rows[0] as PageRow, { languageId: 'language-2' });
+
+    const pageIds = await applyGitContentChanges(mocks.prisma as never, applyContext([]), [
+      { type: 'write', path: 'intro.mdx', pageId: 'page-other', content: '---\ntitle: "Intro"\n---\n\nFrom Git' },
+    ]);
+
+    expect(pageStore.rows.find((page) => page.id === 'page-other')?.content).toBe('Another language');
+    expect(pageIds.get('intro.mdx')).not.toBe('page-other');
+    expect(pageStore.rows.find((page) => page.id === pageIds.get('intro.mdx'))?.content).toContain('From Git');
+  });
+
   it('never deletes a page the merge did not read, and takes the project lock before page rows', async () => {
     seedPage({ id: 'page-elsewhere', title: 'Elsewhere', slug: 'elsewhere', content: 'Keep me' });
 

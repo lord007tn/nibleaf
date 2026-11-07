@@ -235,6 +235,67 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     expect(await db.prisma.pageGitImportSource.count({ where: { pageId: page.id } })).toBe(0);
   }, 60_000);
 
+  it('never writes a page of the synced language that the merge did not read', async () => {
+    const setup = await fixture();
+    const context = await observe(setup);
+    // A writer creates the page after the merge read the tree.
+    const page = await setup.createPage({ title: 'Intro', slug: 'intro', content: 'Written by a writer' });
+
+    const failure = await runApply(context, [
+      { type: 'write', path: 'intro.mdx', pageId: page.id, content: '---\ntitle: "Intro"\n---\n\nFrom Git' },
+    ]).catch((error: unknown) => error);
+
+    expect(conflictPaths(failure)).toEqual(['intro.mdx']);
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Written by a writer');
+  }, 60_000);
+
+  it('gives up the starter cleanup after the lock timeout and keeps the page', async () => {
+    const setup = await fixture();
+    const page = await db.prisma.page.create({
+      data: {
+        projectId: setup.project.id,
+        branchId: setup.branch.id,
+        languageId: setup.language.id,
+        title: starterContent.STARTER_GETTING_STARTED_TITLE,
+        icon: starterContent.STARTER_GETTING_STARTED_ICON,
+        slug: 'getting-started',
+        path: 'getting-started',
+        content: starterContent.STARTER_GETTING_STARTED_CONTENT,
+      },
+    });
+    let release: () => void = () => undefined;
+    let held: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const locked = new Promise<void>((resolve) => {
+      held = resolve;
+    });
+    // A long structural write (a Git sync) holds the project lock.
+    const holder = db.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${setup.project.id} FOR NO KEY UPDATE`;
+        held();
+        await gate;
+      },
+      { timeout: 45_000 },
+    );
+    await locked;
+    const started = performance.now();
+    try {
+      await expect(
+        persistence.removeImportPlaceholders({ projectId: setup.project.id, branchId: setup.branch.id, languageId: setup.language.id }),
+      ).resolves.toBe(0);
+    } finally {
+      release();
+      await holder;
+    }
+    const waited = performance.now() - started;
+    expect(waited).toBeGreaterThan(9000);
+    expect(waited).toBeLessThan(20_000);
+    expect(await db.prisma.page.count({ where: { id: page.id } })).toBe(1);
+  }, 60_000);
+
   it('copies one import identity per path when the source branch also holds a stale row for it', async () => {
     const setup = await fixture();
     const current = await setup.createPage({ title: 'Intro', slug: 'intro' });

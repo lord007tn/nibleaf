@@ -134,12 +134,15 @@ beforeEach(() => {
         return value instanceof Date ? stored instanceof Date && stored.getTime() === value.getTime() : stored === value;
       });
       const childless = !mocks.rows.some((candidate) => candidate.parentId === where.id);
-      const unclaimed = !mocks.sources.some((source) => source.pageId === where.id);
+      // Only a query that asks for "no identity row" excludes a claimed page.
+      const unclaimed =
+        (where.gitImportSource as { is?: unknown } | undefined)?.is !== null || !mocks.sources.some((source) => source.pageId === where.id);
       return fieldsMatch && childless && unclaimed ? { id: where.id } : null;
     }),
   });
   Object.assign(mocks.prisma, {
     $queryRaw: vi.fn(async () => []),
+    $executeRaw: vi.fn(async () => 0),
     $transaction: vi.fn(async (run: (tx: typeof mocks.prisma) => Promise<unknown>) => run(mocks.prisma)),
   });
   // Same constraints as the table: pageId is the key, (scope, path) is unique.
@@ -412,16 +415,48 @@ describe('importFromGitProvider', () => {
     expect(mocks.sources).toEqual([expect.objectContaining({ pageId: page?.id, path: 'docs/intro.md' })]);
   });
 
-  it('leaves its duplicate page unlinked when the cleanup cannot get the locks in time', async () => {
+  it.each([
+    ['the transaction times out', { code: 'P2028' }],
+    ['a lock wait hits lock_timeout', { code: 'P2010', meta: { code: '55P03', message: 'canceling statement due to lock timeout' } }],
+    ['the driver adapter reports lock_timeout', { code: 'P2010', meta: { driverAdapterError: { cause: { originalCode: '55P03' } } } }],
+  ])('leaves its duplicate page unlinked when %s', async (_what, failure) => {
     loseIdentityRace();
     const transaction = (mocks.prisma as unknown as { $transaction: ReturnType<typeof vi.fn> }).$transaction;
     transaction.mockImplementationOnce(async () => {
-      throw Object.assign(new Error('Transaction already closed'), { code: 'P2028' });
+      throw Object.assign(new Error('Cleanup gave up'), failure);
     });
 
     await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
     expect(duplicatePage()).toBeDefined();
     expect(transaction).toHaveBeenCalledWith(expect.any(Function), { timeout: 30_000, maxWait: 10_000 });
+  });
+
+  it('caps every lock wait of the duplicate cleanup before taking the locks', async () => {
+    loseIdentityRace();
+
+    await runImport();
+
+    const executeRaw = (mocks.prisma as unknown as { $executeRaw: ReturnType<typeof vi.fn> }).$executeRaw;
+    expect(String(executeRaw.mock.calls[0]?.[0])).toContain("SET LOCAL lock_timeout = '10s'");
+  });
+
+  it.each([
+    ['its claim hits a page another import just removed (P2003)', 'claim'],
+    ['the page is deleted before its update (P2025)', 'update'],
+  ])('skips an older page the file was adopting when %s', async (_what, step) => {
+    mocks.rows.push({ id: 'page-legacy', parentId: null, kind: 'PAGE', slug: 'intro', title: 'Intro', content: 'old', config: null });
+    mocks.files.set('docs/intro.md', 'new');
+    if (step === 'claim') {
+      mocks.prisma.pageGitImportSource.create.mockImplementationOnce(async () => {
+        throw Object.assign(new Error('Foreign key constraint failed'), { code: 'P2003' });
+      });
+    } else {
+      mocks.prisma.page.update.mockImplementationOnce(async () => {
+        throw Object.assign(new Error('Record to update not found.'), { code: 'P2025' });
+      });
+    }
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 0, skipped: 1 });
   });
 
   it('drops a stale row whose path another page already holds here, and never adopts its page', async () => {

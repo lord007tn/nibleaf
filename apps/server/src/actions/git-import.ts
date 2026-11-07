@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
+import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './importers/cleanup-locks';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
 import { getGitHubTextFile, listGitHubFiles } from './importers/github';
 import { ensureGroupPage, type ImportTarget } from './importers/persistence';
@@ -271,11 +272,8 @@ const legacyImportedPage = (
   return null;
 };
 
-/** Cleanup waits on the project lock, which a Git sync may hold for a while. */
-const CLEANUP_TRANSACTION = { timeout: 30_000, maxWait: 10_000 } as const;
-const isTransactionTimeout = (error: unknown) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2028';
-
-const isUniqueViolation = (error: unknown) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
+const hasPrismaCode = (error: unknown, code: string) => typeof error === 'object' && error !== null && (error as { code?: unknown }).code === code;
+const isUniqueViolation = (error: unknown) => hasPrismaCode(error, 'P2002');
 
 /**
  * One-way import: pull Markdown/MDX files from a PUBLIC Git source (the configured
@@ -471,16 +469,24 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     if (plan.pageId) {
       if (plan.adopted) {
         // Claim the page before writing to it: if a concurrent import claimed
-        // this path or page first, leave the page to that import.
+        // this path or page first (P2002), or removed the page as its own
+        // duplicate (P2003, the page is gone), leave the file to that import.
         try {
           await prisma.pageGitImportSource.create({ data: { ...scope, pageId: plan.pageId, path: plan.file.source } });
         } catch (error) {
-          if (!isUniqueViolation(error)) throw error;
+          if (!(isUniqueViolation(error) || hasPrismaCode(error, 'P2003'))) throw error;
           summary.skipped++;
           continue;
         }
       }
-      await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
+      try {
+        await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
+      } catch (error) {
+        // The page was deleted after it was read: nothing left to update.
+        if (!hasPrismaCode(error, 'P2025')) throw error;
+        summary.skipped++;
+        continue;
+      }
       summary.updated++;
       continue;
     }
@@ -503,11 +509,12 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
       // saved it or added a page, comment or grant under it (all of which a
       // delete would take with it); then it stays, simply unlinked. A deletion
       // is a structural write: project lock first, then the page row, as the
-      // page-write protocol requires. If those locks stay busy past the
-      // timeout (a long Git sync holds the project lock), the page is simply
-      // left unlinked rather than failing the import.
+      // page-write protocol requires. If a lock stays busy for 10 s (a long Git
+      // sync holds the project lock), the page is simply left unlinked rather
+      // than failing the import.
       try {
         await prisma.$transaction(async (tx) => {
+          await limitCleanupLockWait(tx);
           await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
           await tx.$queryRaw`SELECT "id" FROM "page" WHERE "id" = ${created.id} FOR UPDATE`;
           const untouched = await tx.page.findFirst({
@@ -531,7 +538,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
           if (untouched) await tx.page.deleteMany({ where: { id: created.id, projectId } });
         }, CLEANUP_TRANSACTION);
       } catch (error) {
-        if (!isTransactionTimeout(error)) throw error;
+        if (!isCleanupLockTimeout(error)) throw error;
       }
       summary.skipped++;
       continue;
