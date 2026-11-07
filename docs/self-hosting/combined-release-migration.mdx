@@ -3,7 +3,7 @@ title: 'Migrate and roll back the combined capability release'
 description: 'Apply the search, usage, add-on, integration, and MCP migrations in dependency order, verify degraded states, and reverse them safely.'
 audience: 'self-hosted Nibleaf operators running a reviewed source build of the combined capability set'
 content_type: 'how-to'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: 'packages/database/prisma/migrations/20260823180000 through 20260823240000, packages/clickhouse/src/migrations.ts, and the feature operator guides'
 lang: 'en'
 dir: 'ltr'
@@ -39,7 +39,8 @@ zero and not successful.
 
 Install the exact application revision and generate the Prisma client before
 typechecking or starting services. The normal deployment command applies pending
-Postgres migrations in filename order. A v0.1.2 database has eight pending: first
+Postgres migrations in filename order. For the v0.2.0 release baseline, a
+v0.1.2 database had eight pending migrations: first
 `20260823120000_add_git_file_ownership` and `20260823143000_native_better_auth_admin`,
 then these five capability migrations, and last
 `20261030120000_invitation_created_at`:
@@ -142,3 +143,20 @@ Keep the exact image or commit, migration output, feature flags, provider health
 smoke results, and restore evidence in the private operational system. Do not
 place customer data, credentials, internal hosts, usage exports, or private
 provider responses in this public repository.
+
+## Later source migrations
+
+The eight-migration inventory above belongs to the v0.2.0 baseline. Current
+source adds `20261106090000_mcp_write_audit_idempotency`,
+`20261106120000_mcp_oauth`, `20261106130000_mcp_audit_actor_index`, and
+`20261106130100_mcp_audit_oauth_grant_index`. `pnpm db:deploy` applies every
+pending migration in the installed revision, not just the historical list.
+Keep MCP disabled until they finish; the two audit indexes use concurrent DDL
+and need failed-index inspection if interrupted. See the [MCP migration guide](/self-hosting/mcp).
+
+Current ClickHouse migrations also include `2026110601` through `2026110608`,
+including insights, AI conversations and utility-model usage. Run the migration
+CLI with `POSTGRES_URL`, ClickHouse writer settings and the intended retention
+settings exported in its process environment. It does not load the root `.env`
+automatically. A migration success is schema evidence, not provider or restore
+acceptance. Preserve existing salts and encryption keys.

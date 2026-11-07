@@ -1,0 +1,71 @@
+---
+title: 'Invite your team'
+description: 'Invite teammates to a site, choose the right role for each person, transfer ownership, and remove access when someone leaves.'
+audience: 'site owners and admins'
+content_type: 'how-to'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/members-section.tsx, apps/app/src/routes/app/projects/$projectId/settings.tsx, apps/server/src/actions/members.ts, apps/server/src/modules/app/project-members/routes.ts, packages/shared/src/rbac.ts, and packages/i18n/messages'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'product/team'
+---
+
+Each site has its own team. Inviting someone to one site does not give them
+access to your other sites. You manage the team in **Settings → Members**.
+
+## Choose a role
+
+| Role | What they can do |
+| --- | --- |
+| **Owner** | Everything an Admin can do, plus transfer ownership. Each site has exactly one Owner. |
+| **Admin** | Manage site settings and the team: invite and remove people, change roles, connect domains, and set up AI, add-ons, and integrations. Also writes and publishes. |
+| **Editor** | Write, comment, preview, and publish pages. Editors can also see the team, manage languages, check usage, create one-time exports, and create their own AI assistant keys. |
+
+Give people the smallest role that lets them do their job. Most writers only need
+**Editor**.
+
+If an Editor opens a settings section reserved for Admins, Nibleaf shows
+**Administrator access required** and suggests asking an Owner or Admin.
+
+## Invite a teammate
+
+You need to be an Owner or Admin.
+
+1. Open **Settings → Members**.
+2. Under **Invite by email**, enter the person's email address and choose a role:
+   **Admin** or **Editor**.
+3. Select **Invite**.
+
+Nibleaf creates the invitation and emails it to the person, unless member
+invitation emails are turned off in **Settings → Notifications**. You can also
+select **Copy invite link** and send the link yourself.
+
+The person opens the link and signs in, or creates an account with the invited
+email address. An invitation expires after 7 days.
+
+To check who hasn't joined yet, look under **Pending invitations**. Select
+**Revoke invitation** to stop an invitation link from working.
+
+## Change a role or remove someone
+
+- To change a role, choose a new one in the person's **Role** menu.
+- To remove someone, select **Remove member**. They lose access to the site's
+  docs and settings straight away.
+
+You can't give someone a role higher than your own, and you can't change or
+remove someone who ranks above you.
+
+## Transfer ownership
+
+Only the Owner can do this, and the new Owner must already be an Admin.
+
+1. If needed, change the person's role to **Admin** first.
+2. Select **Transfer ownership** next to their name and confirm.
+
+You become an Admin, and they become the Owner.
+
+## When someone leaves
+
+Remove the person from every site they worked on. Their personal AI assistant
+keys and connected apps stop working on their next request; see
+[Work on your docs with an AI assistant](/product/ai-assistants).
