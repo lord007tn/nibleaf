@@ -24,6 +24,8 @@ process.on('uncaughtException', (error) => {
 let server: ServerType | null = null;
 let shuttingDown = false;
 let ready = false;
+let storageReady = false;
+let storageRetry: NodeJS.Timeout | undefined;
 
 app.get(
   '/openapi.json',
@@ -41,12 +43,30 @@ app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', ti
 
 app.get('/health', async (ctx) => {
   const analytics = await getAnalyticsHealth();
-  const status = shuttingDown ? 'shutting_down' : ready ? 'ok' : 'starting';
+  const healthy = ready && storageReady && !shuttingDown;
+  const status = shuttingDown ? 'shutting_down' : healthy ? 'ok' : 'starting';
   return ctx.json(
-    { status, service: env.SERVICE_NAME, revision: process.env.NIBLEAF_REVISION ?? 'development', analytics },
-    ready && !shuttingDown ? 200 : 503,
+    { status, service: env.SERVICE_NAME, revision: process.env.NIBLEAF_REVISION ?? 'development', analytics, storage: { ready: storageReady } },
+    healthy ? 200 : 503,
   );
 });
+
+async function bootstrapStorage(delayMs = 1000): Promise<void> {
+  try {
+    await ensureBucket();
+    if (env.STORAGE_AUTO_CORS) {
+      await configureUploadCors(env.STORAGE_CORS_ALLOWED_ORIGINS);
+    }
+    storageReady = true;
+    logger.info('Storage ready');
+  } catch (error) {
+    logger.warn({ error, retryMs: delayMs }, 'Storage bootstrap failed; retrying');
+    if (!shuttingDown) {
+      storageRetry = setTimeout(() => void bootstrapStorage(Math.min(delayMs * 2, 30_000)), delayMs);
+      storageRetry.unref();
+    }
+  }
+}
 
 async function main() {
   void initializeClickHouseFn({ roles: ['reader'] });
@@ -56,13 +76,9 @@ async function main() {
     logger.info(`  health → http://localhost:${info.port}/health`);
   });
 
-  // Best-effort storage bootstrap: create the bucket + allow browser uploads.
-  await ensureBucket().catch((error) => logger.warn({ error }, 'ensureBucket failed (continuing)'));
-  if (env.STORAGE_AUTO_CORS) {
-    await configureUploadCors(env.STORAGE_CORS_ALLOWED_ORIGINS)
-      .then(() => logger.info({ origins: env.STORAGE_CORS_ALLOWED_ORIGINS }, 'bucket CORS applied for direct uploads'))
-      .catch((error) => logger.warn({ error }, 'bucket CORS apply failed (browser uploads may be blocked)'));
-  }
+  // Storage may start later than the API. Keep health unavailable until both
+  // bucket access and optional browser-upload CORS have been reconciled.
+  void bootstrapStorage();
 
   // Redis is a required deployment dependency. Scheduling is idempotent and
   // doubles as the producer readiness gate; do not route traffic to an API
@@ -73,7 +89,7 @@ async function main() {
     logger.warn(chatBudget, 'AI chat token budgets are below the most room one question can need; such questions will be refused');
   else if (chatBudget) logger.warn(chatBudget, 'AI chat token budgets leave room for only a few questions; consider raising them');
   ready = true;
-  logger.info({ revision: process.env.NIBLEAF_REVISION ?? 'development' }, 'API ready');
+  logger.info({ revision: process.env.NIBLEAF_REVISION ?? 'development' }, 'API initialized; see /health for readiness');
 }
 
 async function shutdown(signal: string) {
@@ -81,6 +97,7 @@ async function shutdown(signal: string) {
     return;
   }
   shuttingDown = true;
+  clearTimeout(storageRetry);
   ready = false;
   logger.info({ signal }, 'shutting down API');
 

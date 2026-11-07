@@ -1,0 +1,28 @@
+import { spawn } from 'node:child_process';
+import { loadEnvFile } from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+loadEnvFile(new URL('../.env', import.meta.url));
+const mode = process.argv[2] ?? 'app';
+const filters = {
+  app: ['-F', '@nibleaf/server', '-F', '@nibleaf/worker', '-F', '@nibleaf/app'],
+  full: [],
+};
+if (!Object.hasOwn(filters, mode)) throw new Error('Usage: node scripts/dev.mjs [app|full]');
+const child = spawn(
+  process.execPath,
+  [fileURLToPath(new URL('../node_modules/turbo/bin/turbo', import.meta.url)), 'watch', 'dev', ...filters[mode]],
+  {
+    cwd: root,
+    env: process.env,
+    stdio: 'inherit',
+  },
+);
+child.once('error', (error) => {
+  console.error(error.message);
+  process.exitCode = 1;
+});
+child.once('exit', (code) => {
+  process.exitCode = code ?? 1;
+});

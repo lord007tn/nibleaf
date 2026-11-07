@@ -18,12 +18,8 @@ x-build: &build
   context: .
   dockerfile: Dockerfile
   target: runner
-  args:
-    VITE_API_URL: http://server:4311
-    VITE_APP_URL: ${APP_URL:-http://localhost:4310}
-    VITE_SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-docs.nibleaf.com}
 
-# Interpolation reads the canonical .env names used by `pnpm dev` and
+# Interpolation reads the canonical .env names used by `node scripts/dev.mjs` and
 # .env.production.example.
 x-service-env: &service-env
   NODE_ENV: production
@@ -67,6 +63,7 @@ x-service-env: &service-env
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
   BETTER_AUTH_URL: ${APP_URL:-http://localhost:4310}
+  DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
   TRUSTED_ORIGINS: ${APP_URL:-http://localhost:4310}
   CORS_ALLOWED_ORIGINS: ${APP_URL:-http://localhost:4310}
   MCP_ENABLED: ${MCP_ENABLED:-false}
@@ -80,7 +77,7 @@ x-service-env: &service-env
   MARKETING_GTM_ID: ${MARKETING_GTM_ID:-}
   MARKETING_GA4_ID: ${MARKETING_GA4_ID:-}
   SITE_BASE_DOMAIN: ${SITE_BASE_DOMAIN:-}
-  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-cname.docs.nibleaf.com}
+  CUSTOM_DOMAIN_CNAME_TARGET: ${CUSTOM_DOMAIN_CNAME_TARGET:-}
   CUSTOM_DOMAIN_PROVIDER: ${CUSTOM_DOMAIN_PROVIDER:-ingress}
   CLOUDFLARE_SAAS_ZONE_ID: ${CLOUDFLARE_SAAS_ZONE_ID:-}
   CLOUDFLARE_SAAS_API_TOKEN: ${CLOUDFLARE_SAAS_API_TOKEN:-}
@@ -88,7 +85,8 @@ x-service-env: &service-env
   CUSTOM_DOMAIN_EDGE_SECRET: ${CUSTOM_DOMAIN_EDGE_SECRET:-}
   WORKER_PORT: "4312"
   # Email delivery (optional). Postmark is preferred when POSTMARK_API_KEY is set;
-  # SMTP_URL remains a fallback. This local quick-start keeps delivery optional.
+  # SMTP_URL remains a fallback. Sign-in requires successful delivery; use a
+  # container-reachable SMTP endpoint (the dev example's loopback URL is host-only).
   EMAIL_FROM: ${EMAIL_FROM:-nibleaf@localhost}
   POSTMARK_API_KEY: ${POSTMARK_API_KEY:-}
   POSTMARK_MESSAGE_STREAM: ${POSTMARK_MESSAGE_STREAM:-}
@@ -193,8 +191,8 @@ services:
       MAXIO_ACCESS_KEY: ${STORAGE_ACCESS_KEY_ID:-nibleafadmin}
       MAXIO_SECRET_KEY: ${STORAGE_SECRET_ACCESS_KEY:-nibleafadmin123}
       MAXIO_REGION: auto
-      MAXIO_DEFAULT_BUCKETS: nibleaf
-      MAXIO_PUBLIC_BUCKETS: nibleaf
+      MAXIO_DEFAULT_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
+      MAXIO_PUBLIC_BUCKETS: ${STORAGE_BUCKET:-nibleaf}
       MAXIO_ALLOW_INSECURE_DEV: "true"
     volumes:
       - nibleaf-maxio:/data
@@ -278,6 +276,7 @@ services:
     image: nibleaf:latest
     command: ["app"]
     init: true
+    stop_grace_period: ${NIBLEAF_SHUTDOWN_GRACE:-45s}
     environment:
       <<: *service-env
       PORT: "4310"

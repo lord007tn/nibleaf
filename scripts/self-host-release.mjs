@@ -39,7 +39,12 @@ export async function buildSelfHostRelease() {
   const command = verifiedInstallCommand(manifest.version, installerDigest);
   if (!compose.includes(`NIBLEAF_VERSION:-${manifest.version}`))
     throw new Error('docker-compose.prod.yml does not default to the release manifest version');
-  if (!readme.includes(command)) throw new Error('README.md does not contain the verified install command generated from release/self-host.json');
+  // Source pins can describe a release still being prepared. The README may
+  // direct readers to published release instructions instead of advertising
+  // that unpublished installer. Generated asset hashes remain mandatory below.
+  if (!readme.includes(command) && !readme.includes('https://github.com/lord007tn/nibleaf/releases/latest')) {
+    throw new Error('README.md must link to the latest release or contain the verified install command generated from release/self-host.json');
+  }
 
   return {
     actualManifest: { version: manifest.version, installerSha256: installerDigest, composeSha256: composeDigest },

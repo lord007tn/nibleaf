@@ -49,7 +49,11 @@ export const ensureBucket = async (target?: StorageTarget): Promise<void> => {
       await client.send(new CreateBucketCommand({ Bucket: bucket }));
       logger.info({ bucket }, 'created storage bucket');
     } catch (error) {
-      logger.warn({ error, bucket }, 'could not ensure storage bucket (may already exist or be managed externally)');
+      // Another API may have created it concurrently. Confirm access before
+      // treating a failed create as success; bootstrap readiness relies on this.
+      await client.send(new HeadBucketCommand({ Bucket: bucket })).catch(() => {
+        throw error;
+      });
     }
   }
 };
