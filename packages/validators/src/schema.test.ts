@@ -328,6 +328,11 @@ describe('addDomainBody', () => {
       expect(addDomainBody.safeParse({ domain }).success, JSON.stringify(domain)).toBe(false);
       expect(normalizeDomainInput(domain)).not.toBe('docsexample.com');
     }
+    // Whitespace before a path or query belongs to neither the host nor the words around it.
+    for (const domain of ['docs.example.com /', 'docs.example.com\t/help', 'https://docs.example.com ?ref=nav', 'docs.example.com\n#top']) {
+      expect(normalizeDomainInput(domain), JSON.stringify(domain)).toBe('docs.example.com');
+    }
+    expect(addDomainBody.safeParse({ domain: 'docs example.com /' }).success).toBe(false);
     // A stray newline at the end of a paste is still fine.
     expect(normalizeDomainInput('docs.example.com\r\n')).toBe('docs.example.com');
     expect(addDomainBody.safeParse({ domain: 'docs.\texample.com' }).success).toBe(true);

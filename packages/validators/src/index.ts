@@ -710,7 +710,8 @@ export const normalizeDomainInput = (raw: string): string => {
     .replace(/\s*\.\s*/g, '.')
     .toLowerCase();
   value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
-  value = value.split(/[/?#\\]/, 1)[0] ?? '';
+  // Trim again: a space before the path (`docs.example.com /help`) is not part of the host.
+  value = (value.split(/[/?#\\]/, 1)[0] ?? '').trim();
   // `new URL()` below would drop a tab, CR or LF and join the words.
   if (/\s/.test(value)) return value;
   value = value.slice(value.lastIndexOf('@') + 1);
