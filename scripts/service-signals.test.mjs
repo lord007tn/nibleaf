@@ -10,6 +10,55 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const modules = process.env.NIBLEAF_SIGNAL_TEST_MODULES ?? join(root, 'node_modules');
 
+test('web wrapper marks draining before forwarding SIGTERM', { skip: process.platform === 'win32', timeout: 8000 }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'nibleaf-web-signal-'));
+  const entrypoint = join(directory, 'web.mjs');
+  const drainFile = join(directory, 'draining');
+  const receipt = join(directory, 'shutdown.json');
+  await writeFile(
+    entrypoint,
+    `import { existsSync, writeFileSync } from 'node:fs';
+process.on('SIGTERM', () => {
+  writeFileSync(${JSON.stringify(receipt)}, JSON.stringify({ draining: existsSync(process.env.NIBLEAF_DRAIN_FILE), at: Date.now() }));
+  process.exit(0);
+});
+console.log('FIXTURE_READY');
+setInterval(() => {}, 1000);
+`,
+  );
+  const child = spawn(process.execPath, [join(root, 'scripts/graceful-web-service.mjs'), entrypoint], {
+    detached: true,
+    env: { ...process.env, NIBLEAF_DRAIN_FILE: drainFile, NIBLEAF_DRAIN_DELAY_MS: '1000', NIBLEAF_WEB_FORCE_EXIT_MS: '1000' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const exited = once(child, 'exit');
+  try {
+    await Promise.race([
+      new Promise((resolve) =>
+        child.stdout.on('data', (data) => {
+          if (data.toString().includes('FIXTURE_READY')) resolve();
+        }),
+      ),
+      exited.then(() => {
+        throw new Error('Web fixture exited before readiness');
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Web fixture readiness timed out')), 3000).unref()),
+    ]);
+    const signalledAt = Date.now();
+    child.kill('SIGTERM');
+    const [code, signal] = await exited;
+    assert.equal(code, 0);
+    assert.equal(signal, null);
+    const shutdown = JSON.parse(await readFile(receipt, 'utf8'));
+    assert.equal(shutdown.draining, true);
+    assert.ok(shutdown.at - signalledAt >= 950, 'the web child must receive its drain window before SIGTERM');
+    assert.equal(await readFile(drainFile, 'utf8'), 'SIGTERM\n');
+  } finally {
+    stopFixture(child.pid);
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 function stopFixture(pid) {
   try {
     process.kill(-pid, 'SIGKILL');
