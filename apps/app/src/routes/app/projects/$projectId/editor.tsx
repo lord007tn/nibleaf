@@ -140,7 +140,17 @@ function EditorPage() {
   // refused. Only a site with no way to draft hides it. While the capability
   // loads, the tab keeps its place as a placeholder: unknown is not "no".
   const aiCapability = useAiDraftCapability(projectId);
-  const aiAssist = aiCapability.isPending ? 'loading' : aiCapability.data && aiCapability.data.reason !== 'not_configured' ? 'shown' : 'hidden';
+  // A failed capability request is unknown, not "no": keep AI assist reachable
+  // so the panel can report the failure, instead of hiding it for the session.
+  const aiAssist = aiCapability.isPending
+    ? 'loading'
+    : aiCapability.data
+      ? aiCapability.data.reason !== 'not_configured'
+        ? 'shown'
+        : 'hidden'
+      : aiCapability.isError
+        ? 'shown'
+        : 'hidden';
   const aiDraft = aiAssist === 'shown';
   const aiTabs = aiAssist !== 'hidden';
 

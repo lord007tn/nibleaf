@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   prefetch: vi.fn(),
   pages: [] as Array<Record<string, unknown>>,
   page: undefined as Record<string, unknown> | undefined,
-  capability: { isPending: false, data: undefined } as { isPending: boolean; data?: { available: boolean; reason: string | null } },
+  capability: { isPending: false, data: undefined } as { isPending: boolean; isError?: boolean; data?: { available: boolean; reason: string | null } },
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: mocks.locale }) }));
 vi.mock('@tanstack/react-router', () => ({
@@ -244,6 +244,12 @@ describe('editor AI assist availability', () => {
     expect(aiTab()).toBeUndefined();
     expect(container.querySelector('[role="tablist"]')).toBeNull();
     expect(railToggle()?.title).toBe('editor.hideComments');
+  });
+
+  it('keeps AI assist reachable when the capability request fails, since unknown is not "no"', async () => {
+    mocks.capability = { isPending: false, isError: true, data: undefined };
+    await render();
+    expect(aiTab()).toBeDefined();
   });
 
   it('holds the AI tab place while the capability loads, without offering or removing it', async () => {
