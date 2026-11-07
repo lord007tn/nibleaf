@@ -1708,6 +1708,8 @@ model Notification {
   type      String
   title     String
   body      String?
+  /// Structured event parameters for localized clients; old rows retain text.
+  params    Json?
   /// Dashboard-relative link opened when the notification is clicked.
   href      String?
   readAt    DateTime?

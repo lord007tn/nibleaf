@@ -24,6 +24,44 @@ afterEach(async () => {
   for (const root of roots.splice(0)) await act(async () => root.unmount());
   document.body.replaceChildren();
   window.history.replaceState(null, '', '/');
+  vi.restoreAllMocks();
+});
+
+describe('OAuth action progress', () => {
+  it.each([
+    ['project', 'oauth.project.continue', 'oauth.project.cancel', 'oauth.project.error'],
+    ['project', 'oauth.project.cancel', 'oauth.project.continue', 'oauth.consent.error'],
+    ['consent', 'oauth.consent.allow', 'oauth.consent.deny', 'oauth.consent.error'],
+    ['consent', 'oauth.consent.deny', 'oauth.consent.allow', 'oauth.consent.error'],
+  ])('shows loading for %s / %s and disables the other action', async (step, action, other, error) => {
+    hooks.authorization.mockReturnValue(
+      authorization({
+        selection: { id: 'g1', preset: 'read_only', scopes: ['mcp:connect', 'pages:read'], project: { id: 'p1', name: 'Docs' } },
+      }),
+    );
+    hooks.create.mutateAsync.mockResolvedValue(undefined);
+    let fail!: (error: Error) => void;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      () =>
+        new Promise<Response>((_resolve, reject) => {
+          fail = reject;
+        }),
+    );
+    const container = await render(step === 'project' ? <McpOAuthProjectStep /> : <McpOAuthConsentStep />);
+    const buttons = [...container.querySelectorAll('button')];
+    const clicked = buttons.find((button) => button.textContent?.startsWith(action));
+    const alternative = buttons.find((button) => button.textContent?.startsWith(other));
+    expect(clicked).toBeDefined();
+    expect(alternative).toBeDefined();
+    await act(async () => clicked?.click());
+    expect(clicked?.getAttribute('aria-busy')).toBe('true');
+    expect(clicked?.hasAttribute('data-loading')).toBe(true);
+    expect(alternative?.disabled).toBe(true);
+    await act(async () => fail(new Error('offline')));
+    expect(container.textContent).toContain(error);
+    expect(clicked?.hasAttribute('data-loading')).toBe(false);
+    expect(alternative?.disabled).toBe(false);
+  });
 });
 
 const signed = Buffer.from('client_id=c1&ba_param=client_id&sig=abc').toString('base64url');
