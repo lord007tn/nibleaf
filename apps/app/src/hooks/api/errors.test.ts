@@ -31,7 +31,7 @@ describe('friendlyErrorMessage', () => {
     ],
     [
       'ar',
-      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أنشئ إصدارًا جديدًا من main، وانقل إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
+      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانسخ إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
     ],
   ] as const)('gives the editor’s promote error its own %s text for branch:main_changed, not "refresh and try again"', async (locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
@@ -97,7 +97,7 @@ describe('friendlyErrorMessage', () => {
     ],
     [
       'ar',
-      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فهو أقدم من هذا التحقق، أو مستورد، أو منسوخ من إصدار كهذا. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا، أو استُبدلت صفحات main منذ ذلك الحين. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
     ],
   ] as const)('explains, in %s, that a version without a baseline cannot be promoted', async (locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
