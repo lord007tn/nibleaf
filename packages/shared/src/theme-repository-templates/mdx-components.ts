@@ -48,13 +48,23 @@ export const calloutOf = (kind: CalloutType) =>
 export const Banner = ({ children }: MdxProps) => <aside className="mdx-banner">{children}</aside>;
 `;
 
-export const mdxCardsTemplate = (): string => `import { type MdxProps, safeHref, stringAttr } from './shared';
+export const mdxCardsTemplate = (): string => `import type { CSSProperties } from 'react';
+import { type MdxProps, safeHref, stringAttr } from './shared';
 
-export const CardGroup = ({ children, cols }: MdxProps) => (
-  <section className="mdx-card-grid" data-cols={stringAttr(cols)}>
-    {children}
-  </section>
-);
+/** One to four columns, two by default. HTML parses "cols" as a number. */
+const columnCount = (value: unknown): number => {
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 1 && count <= 4 ? count : 2;
+};
+
+export const CardGroup = ({ children, cols }: MdxProps) => {
+  const count = columnCount(cols);
+  return (
+    <section className="mdx-card-grid" data-cols={count} style={{ '--mdx-cols': count } as CSSProperties}>
+      {children}
+    </section>
+  );
+};
 
 export const Card = ({ children, href, title }: MdxProps) => {
   const content = (

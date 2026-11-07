@@ -83,6 +83,37 @@ describe('interactive MDX components', () => {
     expect(two?.getAttribute('aria-describedby')).toBe(tipId);
   });
 
+  it('describes a link React replaced without changing its URL, keeping its own descriptions', async () => {
+    await act(async () =>
+      root.render(
+        <Tooltip tip="Hint">
+          <a href="/one">One</a>
+        </Tooltip>,
+      ),
+    );
+    const tipId = container.querySelector('[role="tooltip"]')?.id ?? '';
+    const before = container.querySelector('a');
+    expect(before?.getAttribute('aria-describedby')).toBe(tipId);
+    // Same URL, new structure: the anchor element is replaced.
+    await act(async () =>
+      root.render(
+        <Tooltip tip="Hint">
+          <strong>
+            <a href="/one" aria-describedby="own-one">
+              One
+            </a>
+          </strong>
+        </Tooltip>,
+      ),
+    );
+    const after = container.querySelector('a');
+    expect(after).not.toBe(before);
+    expect(after?.getAttribute('aria-describedby')?.split(' ')).toEqual(['own-one', tipId]);
+    expect(before?.hasAttribute('aria-describedby')).toBe(false);
+    await act(async () => root.render(<span />));
+    expect(after?.getAttribute('aria-describedby')).toBe('own-one');
+  });
+
   it('supports roving keyboard focus for LTR tabs', async () => {
     await act(async () =>
       root.render(

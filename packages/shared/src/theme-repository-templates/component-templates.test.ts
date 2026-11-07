@@ -31,6 +31,9 @@ describe('theme repository component templates', () => {
   //   has `dataDisplayName` and `Field` reads it through `authoredName`.
   // - src/lib/markdown.tsx: `u` joins the allowed tags, like the reader, so the
   //   editor's underlines render in exported repositories.
+  // - src/components/mdx/cards.tsx: `CardGroup` read `cols` as a string, but
+  //   HTML parses it as a number, so every group had two columns. It now
+  //   accepts one to four and sets the column count the stylesheet reads.
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -53,7 +56,7 @@ describe('theme repository component templates', () => {
       'src/lib/markdown.test.tsx': '83c141811932',
       'src/components/mdx/shared.ts': 'b00369d3fd11',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',
-      'src/components/mdx/cards.tsx': '90012875f3fe',
+      'src/components/mdx/cards.tsx': 'f8064f401309',
       'src/components/mdx/tabs.tsx': '613800c9ea94',
       'src/components/mdx/disclosure.tsx': '289e2634932f',
       'src/components/mdx/steps.tsx': 'd43dcdc5f286',

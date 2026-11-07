@@ -54,6 +54,22 @@ describe('exported theme repository Markdown', () => {
     );
   });
 
+  it.each([
+    ['3', 3],
+    ['4', 4],
+    ['1', 1],
+    ['9', 2],
+    ['', 2],
+  ])('lays a CardGroup with cols="%s" out in %i columns', (cols, count) => {
+    const html = render(`<CardGroup cols="${cols}">\n<Card title="One">First</Card>\n</CardGroup>`);
+    expect(html).toContain(`data-cols="${count}"`);
+    expect(html).toContain(`--mdx-cols:${count}`);
+  });
+
+  it('defaults a CardGroup without cols to two columns', () => {
+    expect(render('<CardGroup>\n<Card title="One">First</Card>\n</CardGroup>')).toContain('data-cols="2"');
+  });
+
   it('keeps underline, subscript and superscript like the reader', () => {
     const html = render('A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.');
     expect(html).toContain('<u>underlined</u>');

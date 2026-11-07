@@ -3,30 +3,39 @@ import { linkKey } from './utils';
 
 // ─── Tooltip ────────────────────────────────────────────────────────────────
 
+const descriptionIds = (link: HTMLElement) => (link.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+
+function removeDescription(link: HTMLElement, id: string) {
+  const remaining = descriptionIds(link).filter((token) => token !== id);
+  if (remaining.length > 0) link.setAttribute('aria-describedby', remaining.join(' '));
+  else link.removeAttribute('aria-describedby');
+}
+
 export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const pointerOpen = useRef(false);
   const wrapper = useRef<HTMLSpanElement>(null);
-  const links = linkKey(children);
-  const linked = links !== '';
+  const linked = linkKey(children) !== '';
+  const described = useRef<HTMLElement[]>([]);
   // A tooltip around links has no button of its own, so every link carries the
-  // description, added to any it already has. It re-runs when the links change
-  // (so a link added later is described too), and cleanup removes only the
-  // tooltip's own id, so descriptions changed meanwhile by anything else stay.
+  // description, added to any it already has. The links are re-read after every
+  // update: React can replace a link without changing its URL (wrapping it in
+  // bold, say), and the replacement must be described too. Only the tooltip's
+  // own id is ever removed, so descriptions changed by anything else stay.
   useEffect(() => {
-    if (!tip || links === '') return;
-    const tokens = (link: HTMLElement) => (link.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
-    const described = [...(wrapper.current?.querySelectorAll<HTMLElement>('a[href], [href]') ?? [])];
-    for (const link of described) link.setAttribute('aria-describedby', [...new Set([...tokens(link), id])].join(' '));
-    return () => {
-      for (const link of described) {
-        const remaining = tokens(link).filter((token) => token !== id);
-        if (remaining.length > 0) link.setAttribute('aria-describedby', remaining.join(' '));
-        else link.removeAttribute('aria-describedby');
-      }
-    };
-  }, [tip, links, id]);
+    const current = tip && linked ? [...(wrapper.current?.querySelectorAll<HTMLElement>('[href]') ?? [])] : [];
+    for (const link of described.current) if (!current.includes(link)) removeDescription(link, id);
+    for (const link of current) link.setAttribute('aria-describedby', [...new Set([...descriptionIds(link), id])].join(' '));
+    described.current = current;
+  });
+  useEffect(
+    () => () => {
+      for (const link of described.current) removeDescription(link, id);
+      described.current = [];
+    },
+    [id],
+  );
   if (!tip) return <>{children}</>;
   return (
     // Hover, focus and Escape are handled on the wrapper so the pointer can move
