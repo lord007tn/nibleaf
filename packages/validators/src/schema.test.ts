@@ -14,6 +14,7 @@ import {
   inviteReaderBody,
   jwtAccessConfigBody,
   languageConfigSchema,
+  normalizeDomainInput,
   pageConfigSchema,
   paginationQuery,
   presignAssetBody,
@@ -295,7 +296,28 @@ describe('addDomainBody', () => {
     expect(parsed.success && parsed.data.domain).toBe('docs.example.com');
   });
 
+  it.each([
+    'https://docs.example.com/',
+    'HTTPS://DOCS.EXAMPLE.COM',
+    'http://docs.example.com/help/getting-started?ref=nav#top',
+    'docs.example.com/',
+    'docs.example.com.',
+    'docs.example.com:443',
+    ' docs . example.com ',
+    '//docs.example.com',
+    'https://user:pass@docs.example.com',
+  ])('accepts the address copied from a browser or a colleague: %s', (domain) => {
+    const parsed = addDomainBody.safeParse({ domain });
+    expect(parsed.success && parsed.data.domain).toBe('docs.example.com');
+  });
+
+  it('punycodes internationalized domain names', () => {
+    expect(normalizeDomainInput('Docs.Bücher.de')).toBe('docs.xn--bcher-kva.de');
+  });
+
   it('rejects non-domains', () => {
+    expect(addDomainBody.safeParse({ domain: 'https://' }).success).toBe(false);
+    expect(addDomainBody.safeParse({ domain: 'docs example' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'localhost' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: '-bad.com' }).success).toBe(false);
     expect(addDomainBody.safeParse({ domain: 'bad-.example.com' }).success).toBe(false);

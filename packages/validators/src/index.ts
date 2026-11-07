@@ -690,19 +690,38 @@ export type CreateDeploymentBody = z.infer<typeof createDeploymentBody>;
 
 // ─── Domain ──────────────────────────────────────────────────────────────—
 
+/** A hostname of dot-separated DNS labels (`docs.example.com`), lower case and punycoded. */
+export const DOMAIN_NAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/**
+ * Reduce what someone pastes into a "custom domain" field to the bare hostname:
+ * `  HTTPS://Docs.Example.com:443/help?x#y ` → `docs.example.com`. Strips spaces,
+ * the scheme, credentials, port, path, query, fragment and trailing dots, and
+ * punycodes internationalized names. The result may still be invalid (check it
+ * with `DOMAIN_NAME_PATTERN`); the dashboard and the API share this, so what the
+ * form shows is exactly what the server stores.
+ */
+export const normalizeDomainInput = (raw: string): string => {
+  let value = raw.replace(/\s+/g, '').toLowerCase();
+  value = value.replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^\/\//, '');
+  value = value.split(/[/?#\\]/, 1)[0] ?? '';
+  value = value.slice(value.lastIndexOf('@') + 1);
+  value = value.replace(/:\d*$/, '').replace(/\.+$/, '');
+  if (value && /[^a-z0-9.-]/.test(value)) {
+    try {
+      value = new URL(`http://${value}`).hostname.replace(/\.+$/, '');
+    } catch {
+      // Not a hostname at all; the pattern check reports it.
+    }
+  }
+  return value;
+};
+
 export const addDomainBody = z.object({
   domain: z
     .string()
-    .trim()
-    .toLowerCase()
-    .transform((value) => value.replace(/\.$/, ''))
-    .pipe(
-      z
-        .string()
-        .min(3)
-        .max(253)
-        .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Enter a valid domain like docs.example.com'),
-    ),
+    .transform(normalizeDomainInput)
+    .pipe(z.string().min(3).max(253).regex(DOMAIN_NAME_PATTERN, 'Enter a valid domain like docs.example.com')),
 });
 export type AddDomainBody = z.infer<typeof addDomainBody>;
 
