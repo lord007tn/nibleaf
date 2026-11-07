@@ -54,7 +54,7 @@ const rename = (p: PromotePageRow, from: string, to: string) =>
   withHash({ ...p, id: p.id.replace(`${from}-`, `${to}-`), parentId: p.parentId?.replace(`${from}-`, `${to}-`) ?? null });
 
 const parse = (forkBaseline: unknown): Baseline => {
-  const baseline = baselineOf({ forkedAt: FORK, forkBaseline: forkBaseline as never });
+  const baseline = baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: forkBaseline as never });
   if (!baseline) throw new Error('baseline did not parse');
   return baseline;
 };
@@ -183,10 +183,22 @@ describe('analyzePromote: preview', () => {
     expect(analyzePromote([], untouchedVersion, forkOf(atFork), codes)).not.toBeNull();
   });
 
+  it("refuses a baseline #334 inherited from another version, but keeps #334's fresh forks of main", () => {
+    // #334's shape: no fields, aka, origin or reachedMain anywhere.
+    const legacy = withoutFields(forkOf(atFork));
+    const later = new Date(FORK.getTime() + 60_000);
+    // Fresh fork of main: forkedAt is the version's own creation time.
+    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: legacy as never })).not.toBeNull();
+    // Inherited: forkedAt is the source's, well before this version existed.
+    expect(baselineOf({ createdAt: later, forkedAt: FORK, forkBaseline: legacy as never })).toBeNull();
+    // The same inheritance recorded by #326 carries its metadata, and is trusted.
+    expect(baselineOf({ createdAt: later, forkedAt: FORK, forkBaseline: forkOf(atFork) as never })).not.toBeNull();
+  });
+
   it('treats a malformed or unreleased v1 baseline, or none, as no baseline', () => {
-    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } })).toBeNull();
-    expect(baselineOf({ forkedAt: FORK, forkBaseline: { version: 1, pages: {} } })).toBeNull();
-    expect(baselineOf({ forkedAt: null, forkBaseline: null })).toBeNull();
+    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } })).toBeNull();
+    expect(baselineOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 1, pages: {} } })).toBeNull();
+    expect(baselineOf({ createdAt: FORK, forkedAt: null, forkBaseline: null })).toBeNull();
   });
 });
 

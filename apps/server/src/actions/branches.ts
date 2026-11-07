@@ -109,6 +109,8 @@ export const promoteImportReplacementBranch = async (
   const main = await getDefaultBranch(projectId);
   await prisma
     .$transaction(async (tx) => {
+      // Replacing main's pages is a structural page write: project lock first.
+      await lockProject(tx, projectId);
       if (expectedDraft !== undefined && (await draftFingerprint(tx, projectId, main.id)) !== expectedDraft) {
         throw conflict('The draft changed during import. Your edits were preserved; retry the import.');
       }
@@ -478,7 +480,7 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
         if (plan.landed.length > 0) {
           const others = await tx.branch.findMany({
             where: { projectId, isDefault: false },
-            select: { id: true, forkedAt: true, forkBaseline: true },
+            select: { id: true, createdAt: true, forkedAt: true, forkBaseline: true },
           });
           for (const other of others) {
             const otherBaseline = baselineOf(other);

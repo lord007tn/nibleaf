@@ -153,7 +153,8 @@ type ChangedOnMainPage = {
   path: string;
   languageCode: string;
   change: 'modified' | 'added' | 'deleted' | 'conflict';
-  /** What promote will do with it. */
+  /** What promote will do with it. `removed`: the page is not on main
+   *  afterwards, and its comments and reader grants go with it. */
   onPromote: OnPromote;
   /** `renamed` only: the page's new address. */
   newPath?: string;
@@ -335,8 +336,27 @@ const parseForkBaseline = (value: Prisma.JsonValue | null): ForkBaseline | null 
   return Object.values(pages).every(isEntry) ? (value as ForkBaseline) : null;
 };
 
-export const baselineOf = (branch: { forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkBaseline | null =>
-  branch.forkedAt ? parseForkBaseline(branch.forkBaseline) : null;
+/** How far a fresh fork's `forkedAt` may sit before its `createdAt` (the two
+ *  come from different clocks). An inherited fork point is the source's, made
+ *  long before the version itself. */
+const INHERITED_FORK_GAP_MS = 5000;
+
+/** #334 recorded none of the keys #326 adds. Inheriting a baseline, it copied
+ *  the entries without `origin: 'version'` entries for the source's own pages,
+ *  mirror entries or landing records, so pages the source created can't be
+ *  told from new ones: promoting could duplicate them, or bring back one main
+ *  deleted. Such a baseline is not trusted (the version is refused, and a
+ *  version forked from it gets no baseline either). A fresh #334 fork of main
+ *  is fine: every page in it came from main. */
+const isUntrackedInheritance = (branch: { createdAt: Date; forkedAt: Date }, baseline: ForkBaseline) =>
+  branch.forkedAt.getTime() < branch.createdAt.getTime() - INHERITED_FORK_GAP_MS &&
+  !Object.values(baseline.pages).some((e) => e.fields || e.aka || e.origin || e.reachedMain);
+
+export const baselineOf = (branch: { createdAt: Date; forkedAt: Date | null; forkBaseline: Prisma.JsonValue | null }): ForkBaseline | null => {
+  if (!branch.forkedAt) return null;
+  const baseline = parseForkBaseline(branch.forkBaseline);
+  return baseline && !isUntrackedInheritance({ createdAt: branch.createdAt, forkedAt: branch.forkedAt }, baseline) ? baseline : null;
+};
 
 /** The source version's baseline after forking it: for each page the source
  *  created, an `origin: 'version'` entry keyed by the new copy's id (whose
@@ -480,7 +500,10 @@ export const analyzePromote = (
   const onMainOf = (key: string, e: ForkBaselineEntry) => (mainById.has(key) ? key : e.aka?.find((id) => mainById.has(id)));
   const allEntries = Object.entries(baseline.pages).sort(([a], [b]) => a.localeCompare(b, 'en'));
   // Main was replaced since the fork (an import gives every page a new id):
-  // nothing here can be matched, so nothing can be merged safely.
+  // nothing here can be matched, so nothing can be merged safely. Imports
+  // already clear other versions' fork points; this is the backstop. It also
+  // refuses, more cautiously than needed, a version whose fork-time pages were
+  // all deleted on main by hand and replaced with new ones.
   const mainEntries = allEntries.filter(([, e]) => e.origin !== 'version');
   if (mainPages.length > 0 && mainEntries.length > 0 && !mainEntries.some(([key, e]) => onMainOf(key, e))) return null;
   // One entry per copy. A source page forked into several versions has an
