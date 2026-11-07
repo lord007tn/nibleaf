@@ -1,106 +1,83 @@
 ---
-title: 'Configure project add-ons and consent controls'
-description: 'Enable reader actions, consent controls, preview access, and local publishing checks while preserving entitlement and audit boundaries.'
-audience: 'documentation owners, project administrators, and self-hosted operators'
+title: 'Turn on add-ons'
+description: 'Add a feedback button, edit and issue links, a consent banner, and publishing checks to your site, and choose how each one looks.'
+audience: 'documentation owners and site admins'
 content_type: 'how-to'
-last_reviewed: '2026-08-24'
-verified_against: 'packages/shared/src/addons.ts, apps/server/src/actions/addons.ts, apps/worker/src/processors/publish.ts, and apps/app/src/components/site/site-page-view.tsx'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/components/project-settings/addons-section.tsx, packages/shared/src/addons.ts, apps/server/src/actions/addons.ts, apps/worker/src/processors/publish.ts, apps/app/src/routes/app/projects/$projectId/index.tsx, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/add-ons'
 ---
 
-Nibleaf add-ons are project-scoped product capabilities, not external-provider
-connections. Open **Project settings → Add-ons** to inspect availability, save
-configuration, activate or deactivate a capability, and review its bounded audit
-history. The server derives the project and organization from the authenticated
-session or project-bound API key on every action.
+Add-ons are optional features you can turn on for your site, such as a
+"Was this page helpful?" button or checks that run before you publish. Open
+**Settings → Add-ons**. You need to be the site's Owner or an Admin.
 
-## Understand the catalog
+Each add-on shows its status: **Active**, **Inactive**, **Needs configuration**,
+or **Unavailable**. Unavailable means your plan does not include it. Add-ons
+marked **Preview** are still being tested. Use the switch on each
+add-on to switch it on or off. Changes apply to your published site straight
+away, without a new publish.
 
-| Group | Add-on | Current behavior |
-| --- | --- | --- |
-| Reader engagement | Feedback | Shows a localized helpful/not-helpful control and records a consent-aware analytics event without storing free-text feedback. |
-| Reader engagement | Edit suggestions | Opens a configured HTTP(S) edit URL after replacing the supported page-path placeholder. |
-| Reader engagement | Issue links | Opens a configured HTTP(S) issue URL with the current page URL or path. |
-| Privacy | Consent banner | Blocks optional analytics until the reader accepts; declining remains a valid persisted choice. |
-| Publishing | CI checks | Enables the local publish-check umbrella. Turning it off skips the broken-link and grammar gates. |
-| Publishing | Broken links | Blocks a publish when an enabled internal link does not resolve inside the same language and branch. |
-| Publishing | Grammar linter | Preview capability. When enabled, grammar-only findings can be explicitly bypassed; broken links cannot. |
-| Publishing | Preview deployments | Controls access to unpublished project preview routes. |
+Connections to outside services, such as Google Analytics or Slack, are not
+add-ons. You'll find them in **Settings → Integrations**.
 
-The catalog state `available` means the implementation can be used when the
-project's entitlement permits it. `preview` identifies behavior that is still
-being evaluated. An unavailable or unknown entitlement must remain unavailable
-in the interface; it is not equivalent to a zero limit or a disabled choice.
+## Reader engagement
 
-## Configure reader actions safely
+| Add-on | What readers see |
+| --- | --- |
+| **Feedback widget** | "Was this page helpful?" with **Yes** and **No**. Results appear in **Analytics → Feedback**. |
+| **Edit suggestions** | A link that opens the page's source in a tool such as GitHub, so readers can suggest a change. |
+| **Raise issues** | A link that opens a new issue form, for example on GitHub, with the page already filled in. |
 
-Feedback can appear after page content or after previous/next navigation, using
-a compact row or card presentation. The action records only the page target and
-helpful/not-helpful choice through the existing analytics boundary. It does not
-collect a comment, prompt, search query, or arbitrary reader text.
+The feedback widget records only Yes or No for the page. Readers can't type a
+comment. Choose its **Placement** (**After page content** or **After previous and
+next links**) and **Presentation** (**Compact row** or **Card**).
 
-Edit and issue links remain inactive until their URL templates validate. Use
-`{path}` or `{encodedPath}` for edit links. Issue links may also use `{url}`.
-Templates must be HTTP(S), cannot contain embedded credentials, are capped in
-length, and reject unknown placeholders. Open a representative nested page in
-preview and confirm the final external URL before publishing.
+Edit and issue links need a web address template before they work. Use
+`{path}` where the page's path should go. Issue links can also use `{url}` for
+the page's full address. For example:
 
-## Preserve the consent boundary
+- Edit URL template: `https://github.com/acme/docs/edit/main/{path}.mdx`
+- Issue URL template: `https://github.com/acme/docs/issues/new?body={url}`
 
-The consent add-on manages optional published-site analytics. When it is
-disabled, optional scripts remain blocked rather than loading without a banner.
-When enabled, the reader can accept or decline, and the choice is kept in local
-browser storage for that project. Necessary application behavior does not depend
-on analytics consent.
+Templates must start with `https://` or `http://` and can't contain a password.
+Open a page inside a group in **Preview** and select the link to check that it
+opens the right place.
 
-Changing card placement, density, or button layout changes presentation only.
-It does not broaden which scripts are permitted. Verify the signed-out public
-site in English and Arabic at desktop and mobile widths, including accept,
-decline, and reopening the consent control.
+## Privacy and consent
 
-## Operate publishing checks
+The **Consent banner** asks readers before optional analytics load. Readers can
+accept or decline, and can change their choice later. Their choice is saved in
+their browser.
 
-CI checks run inside the existing publish worker and do not call a hosted linting
-service. Broken-link validation is language- and branch-scoped. The grammar
-linter is deliberately bounded and marked preview; treat its findings as review
-assistance rather than a general writing-quality claim.
+You can choose **Card placement**, **Card density**, and **Action layout**. These
+change only how the banner looks; they don't change what it allows.
 
-Keep the umbrella enabled in production unless an incident requires a temporary
-bypass. If a grammar-only publish is intentionally allowed, record the decision
-and correct the copy afterward. Do not bypass a broken-link failure; repair the
-target or remove the stale link.
+If you turn the consent banner off, optional analytics stay blocked. They never
+load without asking. Check the banner on a phone-sized window, in each of your
+site's languages.
 
-## Respect authorization, revisions, and audit history
+## Publishing checks
 
-API keys need the exact `addons:read` or `addons:write` scope and must be bound to
-the same project. The legacy wildcard scope grants no add-on access. Every
-mutation uses an expected revision so concurrent saves fail with
-`addon:revision_conflict` instead of silently overwriting a newer decision.
+| Add-on | What it does |
+| --- | --- |
+| **CI checks** | Turns on the checks below. If it is off, none of them run. |
+| **Broken link checks** | Stops a publish when a link points to a page that doesn't exist in the same language and version. |
+| **Grammar linter** | Flags grammar and wording issues during publishing. This add-on is in preview. |
+| **Preview deployments** | Lets your team preview unpublished changes before release. |
 
-Activation also verifies configuration and entitlement state. Clients can
-branch on `addon:not_found`, `addon:unavailable`,
-`addon:configuration_required`, and `addon:revision_conflict` without exposing
-an internal database or policy error. Audit rows contain the actor, action,
-before/after enabled state, redacted configuration, and resulting revision.
+When a check stops a publish, the site overview shows the failed publish and a
+list of issues. Fix broken links, then publish again. If only grammar
+suggestions remain, you can select **Publish anyway**. Keep **CI checks** on
+unless you need a temporary exception, and fix the copy afterwards.
 
-MCP can list add-ons, read one add-on, and inspect audit history with
-`addons:read`. It cannot configure, activate, or deactivate an add-on. See
-[Connect MCP clients securely](/self-hosting/mcp) for the complete capability
-boundary.
+## For developers and self-hosters
 
-## Migrate and roll back
-
-The add-on migration backfills durable rows and initial audit events for existing
-projects. Recognized legacy consent state is preserved, while malformed state
-falls back to the privacy-preserving default. Durable add-on rows become
-authoritative; the published project configuration remains a compatibility
-projection for readers and workers.
-
-For an application rollback, first deploy code that no longer writes or expects
-the durable add-on tables. Preserve required audit evidence, stop add-on
-mutations, then follow the reverse order in the
+Add-ons can also be read and changed through the API with an API key that has
+the `addons:read` or `addons:write` permission. AI assistants connected through
+MCP can read add-ons but can't change them. See the [API reference](/reference/api)
+and [Connect MCP clients securely](/self-hosting/mcp). Self-hosters upgrading
+from an older release should follow the
 [combined release migration guide](/self-hosting/combined-release-migration).
-The reviewed add-on `rollback.sql` removes add-on state and audit history, so it
-is a destructive schema rollback rather than a feature toggle.

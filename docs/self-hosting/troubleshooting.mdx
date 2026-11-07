@@ -4,7 +4,7 @@ description: 'Diagnose startup, migration, storage, email, publishing, domain, p
 audience: 'self-hosted operators responding to a failed workflow'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'docker-compose.prod.yml, docker-compose.yml, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
+verified_against: 'docker-compose.prod.yml, docker-compose.yml, docker-compose.coolify.yml, apps/server/src/lib/client-ip.ts, apps/app/src/server.ts, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/troubleshooting'
@@ -92,7 +92,7 @@ These checks do not prove that browser uploads work through the public storage e
 | --- | --- | --- |
 | Compose exits before creating services | A required environment value is empty. | Read the interpolation error and compare `.env` with the template from the same release. |
 | App waits for the server | Server health is failing or `migrate` did not complete. | Read `migrate`, then the first server error. |
-| Production refuses authentication secret | The value is empty, weak, or a known demo default. | Generate a fresh independent value and restart only after updating `.env`. |
+| Production refuses authentication secret | The value is empty, weak, or a known demo default. | For a new install, generate an independent value. For an existing install, restore the correct existing secret; do not overwrite keys to repair an env-loading problem. |
 | Image pull is denied or missing | The tag does not exist or registry access failed. | Confirm the tag on the release page and run `docker compose pull` directly. |
 | Pull reports no matching manifest, or a container exits with `exec format error` | The host is not `linux/amd64`. The published image supports only that architecture. | Run `uname -m`. Anything other than `x86_64` needs an amd64 host. |
 | The installer stops with `Unsupported architecture` | The host is not `linux/amd64`. | Use an amd64 host. Do not work around the check. |
@@ -161,10 +161,7 @@ customer hosts with its internal upstream name prevents project resolution.
 
 ## Every visitor shares one rate-limit bucket
 
-Capture the forwarding chain at the ingress. Configure the proxy to discard
-untrusted forwarded headers, then set `TRUSTED_PROXY_HOPS` to the number of
-public proxies that actually append addresses. Do not increase the value until
-requests stop failing; an excessive value weakens address attribution.
+See [Readers see “Too many requests”](#readers-see-too-many-requests) for how to set `INTERNAL_API_SECRET` and count `TRUSTED_PROXY_HOPS`.
 
 ## Search misses a recent edit
 
@@ -208,3 +205,104 @@ network debugging. With ClickHouse analytics enabled and no salt, events are
 dropped even though schema health is healthy. Restore the existing deployment
 secret; never replace it to fix a missing environment variable. Schema health
 results can be up to ten seconds old; the worker migration flag is immediate.
+
+## A setting in .env has no effect
+
+Check the exact Compose file list and deployed image. `.env` supplies Compose
+interpolation; it is not automatically the container environment. The pinned
+v0.2.0 production file passes no ClickHouse/search controls, queue allowlist,
+export tuning, or later MCP write limits. Use a reviewed override and a matching
+image, then recreate the affected service. Do not print the full environment
+or rendered configuration into a support ticket. See the
+[release wiring reference](/reference/environment-variables).
+
+## Ask AI is missing, unavailable, or stops early
+
+Check the site’s AI opt-in, provider selection, encryption-key availability
+on API and worker, Qdrant connectivity, and the READY index for the current
+publication. Saving a workspace connection does not select it. A selected
+workspace provider never falls back to the instance key. OpenAI/ChatGPT OAuth
+for model credentials is unavailable; MCP OAuth is a different connection.
+
+A catalog verification does not check provider credit or run inference. Use a
+fictional question after enabling the connection. Do not replace an encryption
+key to fix an unreadable credential; restore the existing keyring.
+
+Chat reports stable in-stream codes: `conversation_limit` means start a new
+chat; `quota_exhausted` is the daily answer quota; `budget_exhausted` is the
+project token budget; `rate_limited` is the caller’s short-term limit.
+`unavailable` can mean provider/index configuration or unavailable quota storage.
+Check the safe API request ID and startup budget warning. The current search
+overlay’s 60000-token cap differs from the schema default of 150000 and can
+refuse a large turn before a provider call.
+
+If history is empty while chat works, check analytics mode, the `analytics`
+worker queue, ClickHouse schema/health, `ANALYTICS_HASH_SALT`, the transcript
+setting and consent. API and worker must resolve the same conversation transport
+key. Do not change that key while sealed queue jobs are pending. A healthy
+ClickHouse schema does not prove a turn was captured.
+
+For MCP failures, use the [MCP error guide](/self-hosting/mcp). If an audit-settle
+error follows a write, re-read the target before retrying; the draft may already
+have changed. A publish preview is project-wide.
+
+## Readers see “Too many requests”
+
+**Symptom:** readers, link checkers or search engines get `429 Too Many Requests`, even though each person reads only a few pages.
+
+**Cause:** the API limits public requests per visitor address (`RATE_LIMIT_PUBLIC_PER_MIN`, 300 a minute by default). A published page is rendered by the app container, which calls the API on the reader's behalf. The API trusts the reader's address that the app forwards only when `INTERNAL_API_SECRET` is set to the same value on the app and API services. Without it, every reader shares the app container's address and one 300-a-minute allowance.
+
+**Fix:**
+
+1. Generate a secret, for example with `openssl rand -hex 32`.
+2. Set `INTERNAL_API_SECRET` to that same value for the app and API services, then recreate them.
+3. Set `TRUSTED_PROXY_HOPS` to the number of **addresses that appear after the client's address** in `X-Forwarded-For` on a normal request, **private addresses included**. Each proxy records the address it received the request from, so your CDN/edge, load-balancer and reverse-proxy addresses show up one hop later. Set the **same value on the app and API services**; the default is `0`. Configure your ingress to remove untrusted forwarding headers, and inspect the actual chain each service receives before choosing the value.
+4. Raise `RATE_LIMIT_PUBLIC_PER_MIN` only if real readers still hit the limit.
+
+The production and Coolify Compose files (`docker-compose.prod.yml` and
+`docker-compose.coolify.yml`) pass both settings to the app and API services.
+The source `docker-compose.yml` passes `INTERNAL_API_SECRET` but not
+`TRUSTED_PROXY_HOPS`, so add an override file next to it. `docker compose` reads `docker-compose.override.yml` automatically; if you
+run with `-f docker-compose.yml`, also add `-f docker-compose.override.yml`:
+
+```yaml
+# docker-compose.override.yml, next to the source docker-compose.yml
+services:
+  server:
+    environment:
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+  app:
+    environment:
+      TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
+```
+
+**Worked examples:** the addresses below are illustrative. `9.9.9.9` is a
+client-supplied forged entry, `203.0.113.7` is the real client, `198.51.100.x`
+are public CDN or load-balancer addresses, and `172.17.0.1` is a private
+reverse proxy. A private nginx in front of Nibleaf records the client's address,
+so with nginx alone the header is `9.9.9.9, 203.0.113.7` and nothing follows the
+client: use `0`.
+
+| Header received | Addresses after the client | `TRUSTED_PROXY_HOPS` | Selected client address |
+| --- | --- | --- | --- |
+| `9.9.9.9, 203.0.113.7` | None; private nginx only | `0` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7` | None, but the value is set too high | `1` | `9.9.9.9` — forged |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9` | One: the CDN/edge | `1` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9, 198.51.100.10` | Two: the CDN/edge and the load balancer | `2` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9, 172.17.0.1` | Two: Cloudflare, then host nginx (private), behind Traefik | `2` | `203.0.113.7` |
+| `9.9.9.9, 203.0.113.7, 198.51.100.9, 172.17.0.1` | Two, but only the public one counted | `1` | `198.51.100.9` — every reader shares Cloudflare's address |
+
+Both parsers first remove the configured number of trailing header entries,
+always keeping at least one, then scan right to left past private addresses and
+take the first public one. That is why private addresses must be counted when a
+public address comes before them. If every address after the client is private
+and the reader's own address is public, counting them or not gives the same
+result. When readers have private addresses (an internal network or VPN),
+count the private addresses after the client too. Verify the headers actually
+received by each service; a diagram's proxy count alone is insufficient. A
+value that is too high can discard the real client and select an attacker’s
+forged entry, letting them change their rate-limit identity. Do not tune this value merely to make `429` disappear.
+
+**Verify:** confirm the selected address with the actual header chain, including
+a deliberately forged leftmost entry, then open a few pages from two different
+networks. Neither should see `429`.

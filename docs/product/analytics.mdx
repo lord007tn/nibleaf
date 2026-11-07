@@ -1,57 +1,98 @@
 ---
 title: 'Understand your documentation analytics'
-description: 'Find popular pages, search gaps, reader feedback, AI visibility, and slow pages.'
-audience: 'documentation owners and self-hosted operators'
+description: 'Find popular pages, searches that found nothing, reader feedback, AI crawler visits, and slow pages, and learn what each number can and cannot tell you.'
+audience: 'documentation owners and site admins'
 content_type: 'how-to'
-last_reviewed: '2026-11-06'
-verified_against: 'packages/clickhouse/src/initialization.ts and analytics insights contract'
+last_reviewed: '2026-11-07'
+verified_against: 'apps/app/src/routes/app/projects/$projectId/analytics*.tsx, apps/app/src/components/analytics/insights, packages/clickhouse/src/insights, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/analytics'
 ---
 
-Open **Analytics** in your project. Choose a date range and time zone; enable
-comparison to see the equally long preceding period. Human metrics exclude
-classified bots. A visit is a session in one browser tab, not a unique person.
-Visit counts include only readers whose consent is `granted` or `not_required`.
-With `denied` or `unknown` consent, content-free page views and search counts
-still count, but session and anonymous identifiers are neither created nor
-accepted. Page-view totals can therefore include traffic absent from visit totals.
+Analytics answers four questions: what people read, what they can't find, which
+articles need work, and how AI tools use your docs. Open your site and select
+**Analytics** in the sidebar. For a quick view across all your sites, select
+**Analytics** in the main dashboard sidebar.
+
+## Choose a time period
+
+Pick **Last 24 hours**, **Last 7 days**, **Last 30 days**, **Last 90 days**, or a
+**Custom range** of up to one year. Turn on **Compare with previous period** to
+compare with the same length of time just before it. Times are shown in your
+browser's time zone.
+
+## What each section shows
 
 | Section | What it answers |
 | --- | --- |
-| Overview | What are people reading, where do they arrive from, and what needs attention? |
-| Pages | Which articles attract visits, hold attention, or frequently end a visit? Open a page for paths before and after it. |
-| Search | What cannot readers find? Compare zero-result searches, result clicks and refinements. Typeahead keystrokes are collapsed into settled searches. |
-| Feedback | Which pages receive helpful or not-helpful votes? Low sample counts need care. |
-| AI visibility | Which crawlers fetch documentation, and which assistants send human visitors? |
-| Performance | Are real readers seeing slow or unstable pages? Headlines use the 75th percentile, not an average. |
+| **Overview** | What are people reading, where do they come from, and what needs attention? |
+| **Pages** | Which articles get visits, hold attention, or often end a visit? Open a page to see where readers came from and went next. |
+| **Search** | What do readers search for, and which searches found nothing or led nowhere? |
+| **Feedback** | Which pages readers marked helpful or not helpful. |
+| **AI visibility** | Which AI tools read your docs, and how many people arrive from AI assistants. |
+| **Performance** | Whether real readers see slow or jumpy pages. |
 
-An exit is not automatically a failure: a reader may have found the answer.
-Engaged time and scroll depth describe observed browser activity, not comprehension.
-Performance samples depend on browser support; missing samples are unknown.
+To see what readers ask **Ask AI**, open **AI assistant** in the site sidebar
+instead; see [Answer reader questions with Ask AI](/product/ai-assistant).
 
-## Read AI traffic correctly
+## Read the numbers carefully
 
-`ai_training` collects content for model training; `ai_search` indexes content for
-AI answers; `ai_assistant` fetches content live for a user request. `search_engine`
-is traditional search, while `seo`, `social`, `monitor` and `other` classify other
-bots. Crawler categories describe their claimed User-Agent; **claimed** does not
-mean verified identity. Requests are not proof of citations, rankings or training.
-Assistant referrals count people following links from assistants, separately
-from automated fetches. Markdown, llms.txt, sitemaps and pages are different
-resources a crawler may request. Requests served entirely by a CDN or edge cache
-never reach Nibleaf origin-side capture and are absent from these crawler counts.
+- **Visits** count a reading session in one browser tab, not a unique person.
+- **Bots are left out** of reader numbers.
+- **Consent matters.** If your site asks for consent and a reader declines or
+  doesn't answer, their page views still count, but they don't count as a visit.
+  So page views can be higher than visits.
+- **An exit is not a failure.** A reader may leave because they found the answer.
+- **Time on page and scroll depth** show activity, not understanding.
+- **A dash (—) means unknown, not zero.**
+- **Feedback with few votes** can change a lot from one vote. Wait for more votes
+  before you rewrite a page.
 
-## Why search terms can be hidden
+## See what readers search for
 
-Text is off by default. Only public sites with the project opt-in and eligible
-reader consent can retain redacted terms. A term needs at least **2 distinct
-visits** before its text appears; others remain in hidden-term totals. Private
-sites never show retained raw terms. Sensitive text expires sooner than most
-analytics, so counts can remain after text disappears.
+By default, Nibleaf counts searches but doesn't store what readers type. To see
+the actual words:
 
-**Analytics unavailable** means metrics cannot currently be loaded; your docs
-site continues working. Missing values are unknown, not zero. A partial result
-has incomplete metrics. If analytics is not configured, ask your operator to
-check the [analytics mode](/self-hosting/clickhouse-analytics).
+1. Open **Analytics → Search**.
+2. Select **Turn on search terms**, then **Turn on**. Only Admins and Owners can
+   do this.
+
+New searches appear as readers make them. Even then:
+
+- a search term appears only after at least 2 different visits searched for it;
+  rarer terms are counted as hidden terms;
+- private sites never store search terms;
+- terms are stored only for readers whose consent allows it;
+- Nibleaf removes email addresses, links, and long numbers before storing a term,
+  and deletes stored terms sooner than other analytics.
+
+Look for searches that found nothing, and searches where readers searched again.
+These often point to a missing article or a word your docs don't use.
+
+## Understand AI visibility
+
+AI tools visit your docs in different ways:
+
+- **AI training** tools collect pages to train AI models.
+- **AI search** tools index pages so AI can answer questions later.
+- **AI assistants** fetch a page live because a person asked about it.
+- **Search engines** are traditional search, such as Google.
+
+Nibleaf identifies these tools by the name they send, which they could fake, so
+treat the labels as claims. A visit is not proof that your docs were quoted or
+used for training. Separately, **AI assistant** referrals count real people who
+followed a link from an assistant such as ChatGPT. Visits answered entirely by a
+caching service in front of your site never reach Nibleaf and are not counted.
+
+## When numbers are missing
+
+- **Analytics is taking a break:** figures can't be loaded right now. Your site
+  works normally, and the numbers come back on their own. Select **Try again**.
+- **Some figures are incomplete:** some numbers couldn't be calculated and show
+  as —.
+- **No new visits in the last 24 hours:** check that your site is published and
+  reachable. New visits usually appear within a minute.
+- **Detailed analytics isn't set up on this server:** these insights need
+  ClickHouse, a separate analytics database. On a self-hosted instance, ask your
+  operator to follow [Operate ClickHouse analytics](/self-hosting/clickhouse-analytics).
