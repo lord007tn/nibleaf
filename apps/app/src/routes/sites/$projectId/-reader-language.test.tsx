@@ -107,7 +107,9 @@ describe('reader language and access', () => {
   it('reads the changelog in the site’s default Arabic, with UTC dates and Arabic counts', async () => {
     // CI runs in UTC; a Riyadh clock (UTC+3) is where a local-time month moves on.
     vi.stubEnv('TZ', 'Asia/Riyadh');
-    onTestFinished(() => vi.unstubAllEnvs());
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+    });
     mocks.getSite.mockResolvedValue({
       ...shell,
       languages: [

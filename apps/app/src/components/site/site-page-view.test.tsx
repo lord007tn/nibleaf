@@ -100,7 +100,9 @@ describe('published page presentation', () => {
   it('reads Arabic article details grammatically, with a UTC date and a breadcrumb landmark', () => {
     // CI runs in UTC; a Riyadh clock (UTC+3) is where a local-time date shows the next day.
     vi.stubEnv('TZ', 'Asia/Riyadh');
-    onTestFinished(() => vi.unstubAllEnvs());
+    onTestFinished(() => {
+      vi.unstubAllEnvs();
+    });
     const words = Array.from({ length: 5 * 220 }, () => 'كلمة').join(' ');
     const fixture = data({
       activeLanguage: 'ar',
