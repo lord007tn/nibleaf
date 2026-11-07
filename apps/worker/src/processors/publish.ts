@@ -324,7 +324,7 @@ async function completePublish(
     QueueNames.SEARCH,
     { name: 'index-deployment', data: { projectId: job.projectId, deploymentId: job.deploymentId } },
     { jobId: `search-${job.deploymentId}` },
-  ).catch((error) => log.warn({ projectId: job.projectId, deploymentId: job.deploymentId, error }, 'could not enqueue hybrid search indexing'));
+  );
   await recordPublishReady(job, ready);
   await notifyDeployment({
     deploymentId: job.deploymentId,
@@ -355,7 +355,17 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (!project) throw new Error('Published project no longer exists');
     return completePublish(job.data, deployment, project, lifecycleOccurredAt);
   }
-  await prisma.deployment.update({ where: { id: deploymentId, projectId }, data: { status: 'BUILDING' } });
+  const claimed = await prisma.deployment.updateMany({
+    where: {
+      id: deploymentId,
+      projectId,
+      OR: [{ status: { in: ['PENDING', 'BUILDING'] } }, { status: 'FAILED', completedAt: null }],
+    },
+    data: { status: 'BUILDING' },
+  });
+  // A queue ACK can fail after accepting the job. If the API settled PENDING as
+  // a completed failure first, this late job must leave the live site alone.
+  if (claimed.count === 0) return { pages: 0 };
   let snapshotReady = false;
   try {
     const project = await prisma.project.findUnique({
@@ -399,6 +409,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     if (project.takedownAt) {
       throw new Error('This site has been taken down by the platform moderators and cannot be published.');
     }
+    if (deployment.snapshot) {
+      // Rollbacks already carry a reviewed immutable snapshot. Activate it via
+      // the same retryable indexing and notification pipeline as a new publish.
+      const ready = await prisma.deployment.update({
+        where: { id: deploymentId, projectId },
+        data: { status: 'READY', snapshot: deployment.snapshot, error: null, errorDetails: Prisma.DbNull, completedAt: new Date() },
+      });
+      snapshotReady = true;
+      return await completePublish(job.data, ready, project, lifecycleOccurredAt);
+    }
     // Publish every branch as an addressable docs version. This keeps v1 live
     // while v2 is being authored, and visitors can switch versions on the site.
     const branchIds = project.branches.map((branch) => branch.id);
@@ -431,7 +451,14 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
 
     const ready = await prisma.deployment.update({
       where: { id: deploymentId, projectId },
-      data: { status: 'READY', snapshot: snapshot as unknown as object, pagesCount: pageCount, errorDetails: Prisma.DbNull, completedAt: new Date() },
+      data: {
+        status: 'READY',
+        snapshot: snapshot as unknown as object,
+        pagesCount: pageCount,
+        error: null,
+        errorDetails: Prisma.DbNull,
+        completedAt: new Date(),
+      },
     });
     snapshotReady = true;
     log.info({ deploymentId, pageCount }, 'deployment ready');
