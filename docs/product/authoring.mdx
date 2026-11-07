@@ -57,6 +57,18 @@ Review the branch as a reader:
 6. Merge the reviewed branch into the default draft, publish once, and verify
    the public deployment.
 
+**Promote into main** makes the branch's pages main's pages, then removes the
+branch. If someone changed pages on main after the branch was created, you see
+a list of those pages first, and nothing changes until you confirm:
+
+- **Edited on main:** the branch's copy replaces it. Copy any edit you want to
+  keep into the branch before you confirm.
+- **Added on main:** the page stays.
+- **Deleted on main:** the page stays deleted, unless the branch changed it.
+
+Branches created before this check can't show pages deleted on main. Look over
+main yourself before you promote an older branch.
+
 ## Recover from a bad draft
 
 If the public version is still correct, stop before publishing. Compare the
