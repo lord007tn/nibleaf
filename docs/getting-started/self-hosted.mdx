@@ -3,39 +3,33 @@ title: 'Install Nibleaf on one Linux server'
 description: 'Install the pinned Nibleaf release with the guided installer or Docker Compose, then verify migrations, sign-up, storage, and publishing.'
 audience: 'operators evaluating or installing self-hosted Nibleaf'
 content_type: 'tutorial'
-last_reviewed: '2026-10-30'
+last_reviewed: '2026-11-07'
 verified_against: 'scripts/install.sh, docker-compose.prod.yml, and .env.production.example'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'getting-started/self-hosted'
 ---
 
-The recommended production path pulls the pinned `linux/amd64` image from GHCR. It
-does not compile the monorepo on the server. Complete this tutorial on a disposable
-host before moving real content.
+The guided installer pulls the pinned v0.2.0 `linux/amd64` image. It does not
+compile Nibleaf on your server. Use a disposable host for the first installation.
+The production Compose file has no Qdrant or ClickHouse service; ordinary
+published search works without them. Newer source features such as workspace AI
+keys, Ask AI chat and MCP OAuth need a compatible reviewed image and configuration.
 
-The installer deploys the release pinned in the published self-host manifest. Use
-this tutorial for the pinned artifact it downloads; do not substitute a `main`
-commit into production.
-
-This tutorial is for new installations. To upgrade an existing installation, do not
-re-run the installer. Follow [back up, restore, and upgrade](/self-hosting/backups-upgrades),
-or the [v0.2.0 upgrade guide](/self-hosting/upgrade-v0-2) if you run v0.1.2.
+This tutorial creates a new installation. Preserve existing secrets and data:
+use [backups and upgrades](/self-hosting/backups-upgrades), or the
+[v0.1.2 to v0.2.0 guide](/self-hosting/upgrade-v0-2), for an existing stack.
 
 ## Prerequisites
 
-Prepare:
+Prepare a Linux `amd64` (`x86_64`) server with Docker Engine, Docker Compose v2,
+`curl`, `sed`, and OpenSSL. You need an interactive SSH terminal and permission
+to use Docker. The published release supports `linux/amd64` only.
 
-- a Linux `amd64` host (`x86_64`) with Docker Engine and Docker Compose v2
-  (`docker compose`);
-- `curl`, `sed`, and OpenSSL;
-- a dashboard hostname and a separate browser-reachable storage hostname;
-- a TLS reverse proxy;
-- outbound email through Postmark or SMTP. Sign-in uses email codes, so the first
-  owner can't sign in without it unless Google sign-in is configured;
-- enough separate capacity for Postgres and object-storage backups.
-
-Confirm the required tools and architecture:
+Prepare a dashboard hostname, a separate browser-reachable storage hostname,
+and a TLS reverse proxy. For email-code sign-in, configure Postmark or SMTP;
+Google sign-in is the alternative when both Google credentials are configured.
+Keep space and an off-host destination for database and storage backups.
 
 ```bash
 uname -m
@@ -45,77 +39,101 @@ curl --version
 openssl version
 ```
 
-`uname -m` must print `x86_64`. The published image does not run on other
-architectures.
+Expect `x86_64` from `uname -m`. Stop if the Docker daemon is on an unsupported
+architecture or required tools are missing.
 
-## Run the guided installer
+## Install with the guided installer
 
-For the shortest path, run the official interactive installer from an SSH
-terminal:
+The following command downloads the versioned installer and verifies its SHA-256
+hash from `release/self-host.json` before execution. If the hash differs, the
+shell stops; do not bypass it:
 
 ```bash
-curl -fsSL https://nibleaf.com/install.sh | sh
+set -eu
+d=$(mktemp -d)
+curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh
+actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh")
+actual=${actual##* }
+[ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ]
+sh "$d/nibleaf-install.sh"
 ```
 
-If your security policy requires inspection before execution, download and
-review the same script first:
+The installer asks for public origins and mail settings, generates fresh secrets,
+writes a mode-600 `.env`, verifies the Compose download, and starts the services.
+Leave the image tag at v0.2.0 for the pinned release. It refuses an existing
+installation or existing Compose volumes. Do not delete those volumes to get past
+the check; use the upgrade guide.
+
+The default directory is `$PWD/nibleaf`. After the installer completes, enter
+that directory (use the selected directory if you changed it):
 
 ```bash
-curl -fsSLo nibleaf-install.sh https://nibleaf.com/install.sh
-less nibleaf-install.sh
-sh nibleaf-install.sh
+cd nibleaf
 ```
 
-The installer validates its local tools, asks for public origins, generates
-fresh secrets, writes a mode-600 `.env`, downloads the production Compose file,
-pulls the pinned image, and starts the stack. Its default install directory is
-`$PWD/nibleaf`. That directory contains only `docker-compose.yml` and `.env`; run
-later Compose commands from it and omit `-f docker-compose.prod.yml`.
+It contains `docker-compose.yml` and `.env`; subsequent `docker compose` commands
+find the file automatically. Go to verification below.
 
-## Install manually
+## Install manually instead
 
-Use this path when configuration management owns the environment file:
+Use this alternative when you want to edit the environment yourself. Git is
+required for this path. Check out the release tag so a moving `main` does not
+supply a different template:
 
 ```bash
-git clone https://github.com/lord007tn/nibleaf.git
+git clone --branch v0.2.0 --depth 1 https://github.com/lord007tn/nibleaf.git
 cd nibleaf
 cp .env.production.example .env
+chmod 600 .env
+export COMPOSE_FILE=docker-compose.prod.yml
 ```
 
-Set every required value in `.env`. Generate independent secrets; never reuse
-example, development, or cross-environment values:
+Edit `.env` before starting services. Set `APP_URL`, `BETTER_AUTH_SECRET`,
+`POSTGRES_PASSWORD`, `STORAGE_PUBLIC_ENDPOINT`, `STORAGE_ACCESS_KEY_ID`, and
+`STORAGE_SECRET_ACCESS_KEY`. Set `STORAGE_PUBLIC_URL` to your public bucket or
+asset URL, configure mail, and set an independent `INTERNAL_API_SECRET` for
+trusted client-address forwarding. Replace all example domains. The
+[configuration guide](/self-hosting/configuration) explains the public/internal
+storage distinction and optional settings.
+
+Generate independent secrets on the server; do not reuse example values:
 
 ```bash
 openssl rand -hex 32
 openssl rand -base64 24
 ```
 
-Then pull and start the pinned release:
+Then pull and start the release. `COMPOSE_FILE` above ensures these commands use
+the production stack. The one-shot `migrate` service applies Postgres migrations
+before API and worker start:
 
 ```bash
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+docker compose pull
+docker compose up -d
 ```
 
-The one-shot `migrate` service applies Prisma migrations before the application
-services start.
+## Verify the installation
 
-## Verify the first result
-
-Run:
+Run from the deployment directory, in the same shell:
 
 ```bash
-docker compose -f docker-compose.prod.yml ps
-docker compose -f docker-compose.prod.yml logs migrate
-docker compose -f docker-compose.prod.yml logs --tail=100 server worker app
+docker compose ps
+docker compose logs migrate
+docker compose logs --tail=100 server worker app
 ```
 
-All long-running services should be healthy and `migrate` should exit
-successfully. Open `$APP_URL/sign-up`, create the first owner, upload one image,
-and publish a two-page project. Verify the image URL and search while signed out.
+Expect `migrate` to finish successfully and long-running services to become
+healthy. The worker is unhealthy when mail is required but no mail provider is
+configured. API and worker health checks alone do not prove delivery.
 
-If a service is unhealthy, do not repeatedly recreate the stack. Read the
-first error for that service and use [troubleshooting](/self-hosting/troubleshooting).
-Before inviting writers, complete [production configuration](/self-hosting/configuration),
-the [production checklist](/self-hosting/production), and a tested
-[backup and restore](/self-hosting/backups-upgrades).
+Open `/sign-up` on the `APP_URL` you configured. Create the first owner, receive
+a real sign-in code (or use configured Google sign-in), upload an image, and
+publish two pages. Open both pages while signed out, search for the second
+page, and verify the image URL. Configure routing to maxio port 9000 for the
+storage hostname; only app port 4310 is published by default.
+
+If a service fails, keep `.env` and volumes intact, read its first error, and use
+[troubleshooting](/self-hosting/troubleshooting). Do not rerun the installer to
+repair an existing deployment. Before inviting writers, finish the
+[production checklist](/self-hosting/production) and an isolated
+[backup restore](/self-hosting/backups-upgrades).
