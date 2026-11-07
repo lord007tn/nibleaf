@@ -24,6 +24,7 @@ export const queryKeys = {
   },
   branches: {
     all: (projectId: string) => ['branches', projectId] as const,
+    mergePreview: (projectId: string, branchId: string) => ['branches', projectId, branchId, 'merge-preview'] as const,
   },
   deployments: {
     all: (projectId: string) => ['deployments', projectId] as const,

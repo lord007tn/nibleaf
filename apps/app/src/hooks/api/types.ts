@@ -154,8 +154,28 @@ export interface Branch {
   projectId: string;
   name: string;
   isDefault: boolean;
+  /** When the version was copied from main; null on older versions. */
+  forkedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** A page on main that changed since a version was created. */
+interface BranchChangedOnMainPage {
+  pageId: string;
+  title: string;
+  path: string;
+  languageCode: string;
+  change: 'modified' | 'added' | 'deleted';
+  updatedAt: string;
+}
+
+/** GET …/branches/:id/merge-preview, and the `details` of a 409
+ *  `branch:main_changed` from promote. `baselineComplete` is false for versions
+ *  created before fork tracking: deletions on main can't be listed for them. */
+export interface BranchMergePreview {
+  changedOnMainSinceFork: BranchChangedOnMainPage[];
+  baselineComplete: boolean;
 }
 
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';
