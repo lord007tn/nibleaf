@@ -103,8 +103,8 @@ export const queryKeys = {
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
     page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,
-    search: (id: string, q: string, lang?: string, version?: string, limit?: number) =>
-      ['site', id, 'search', q, lang ?? null, version ?? null, limit ?? null] as const,
+    search: (id: string, q: string, lang?: string, version?: string, limit?: number, prefer?: string) =>
+      ['site', id, 'search', q, lang ?? null, version ?? null, limit ?? null, prefer ?? null] as const,
     /** Prefix of every reader search for one site, for invalidation. */
     allSearch: (id: string) => ['site', id, 'search'] as const,
     changelog: (id: string) => ['site', id, 'changelog'] as const,

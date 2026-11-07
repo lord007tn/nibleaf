@@ -1936,18 +1936,44 @@
   "site_previous": "আগের",
   "site_next": "পরবর্তী",
   "site_onthispage": "এই পৃষ্ঠায়",
-  "site_minread": "মিনিট পড়া",
-  "site_screenshot": "স্ক্রিনশট",
-  "site_screenshots": "স্ক্রিনশট",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} মিনিট পড়া"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি স্ক্রিনশট"
+      }
+    }
+  ],
   "site_updated": "আপডেট করা হয়েছে",
   "site_notpublishedtitle": "এখনো প্রকাশিত হয়নি",
   "site_notpublishedbody": "এই ডকুমেন্টেশন সাইট প্রকাশ করা হয়নি. এটি লাইভ দেখতে সম্পাদক থেকে এটি প্রকাশ করুন৷",
+  "site_privatetitle": "এই ডকুমেন্টেশন ব্যক্তিগত",
+  "site_privatebody": "এটি পড়তে, ইমেলে পাওয়া আমন্ত্রণ লিংকটি খুলুন।",
+  "site_privatemembers": "এই ওয়ার্কস্পেসের সদস্যরা সাইন ইন করে এটি দেখতে পারেন।",
+  "site_privatesignin": "সাইন ইন করুন",
   "site_pageunavailable": "এই পৃষ্ঠাটি উপলব্ধ নয়।",
   "site_changelogsubtitle": "প্রতিটি আপডেট এই ডক্সে পাঠানো হয়।",
   "site_changelogempty": "এখনও কোন রিলিজ.",
   "site_changelogrelease": "মুক্তি",
-  "site_changelogpage": "পৃষ্ঠা",
-  "site_changelogpages": "পৃষ্ঠাগুলি",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count}টি পৃষ্ঠা"
+      }
+    }
+  ],
   "site_feedbackquestion": "এই পৃষ্ঠাটি কি সহায়ক ছিল?",
   "site_feedbackyes": "হ্যাঁ",
   "site_feedbackno": "না",
@@ -1958,7 +1984,8 @@
   "site_analyticsconsentaccept": "গ্রহণ করুন",
   "site_analyticsconsentdecline": "প্রত্যাখ্যান",
   "site_changelanguage": "ভাষা পরিবর্তন করুন",
-  "site_toggletheme": "থিম টগল করুন",
+  "site_darkmode": "ডার্ক মোড",
+  "site_breadcrumb": "ব্রেডক্রাম্ব",
   "site_togglesubpages": "উপপৃষ্ঠা টগল করুন",
   "site_articledetails": "নিবন্ধ বিবরণ",
   "site_copycode": "কোড কপি করুন",

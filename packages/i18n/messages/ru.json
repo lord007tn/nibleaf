@@ -1936,18 +1936,53 @@
   "site_previous": "Предыдущий",
   "site_next": "Далее",
   "site_onthispage": "На этой странице",
-  "site_minread": "минута чтения",
-  "site_screenshot": "скриншот",
-  "site_screenshots": "скриншоты",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} минута чтения",
+        "form=few": "{count} минуты чтения",
+        "form=many": "{count} минут чтения",
+        "form=*": "{count} минуты чтения"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} скриншот",
+        "form=few": "{count} скриншота",
+        "form=many": "{count} скриншотов",
+        "form=*": "{count} скриншота"
+      }
+    }
+  ],
   "site_updated": "Обновлено",
   "site_notpublishedtitle": "Еще не опубликовано",
   "site_notpublishedbody": "Этот сайт документации не был опубликован. Опубликуйте его из редактора, чтобы увидеть вживую.",
+  "site_privatetitle": "Эта документация закрыта",
+  "site_privatebody": "Чтобы прочитать её, откройте ссылку-приглашение из письма.",
+  "site_privatemembers": "Участники этого рабочего пространства могут войти, чтобы просмотреть её.",
+  "site_privatesignin": "Войти",
   "site_pageunavailable": "Эта страница недоступна.",
   "site_changelogsubtitle": "Каждое обновление отправляется в эту документацию.",
   "site_changelogempty": "Релизов пока нет.",
   "site_changelogrelease": "Релиз",
-  "site_changelogpage": "страница",
-  "site_changelogpages": "страницы",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница",
+        "form=few": "{count} страницы",
+        "form=many": "{count} страниц",
+        "form=*": "{count} страницы"
+      }
+    }
+  ],
   "site_feedbackquestion": "Была ли эта страница полезной?",
   "site_feedbackyes": "Да",
   "site_feedbackno": "Нет",
@@ -1958,7 +1993,8 @@
   "site_analyticsconsentaccept": "Принять",
   "site_analyticsconsentdecline": "Отклонить",
   "site_changelanguage": "Изменить язык",
-  "site_toggletheme": "Переключить тему",
+  "site_darkmode": "Тёмная тема",
+  "site_breadcrumb": "Навигационная цепочка",
   "site_togglesubpages": "Показать или скрыть подстраницы",
   "site_articledetails": "Подробности статьи",
   "site_copycode": "Скопировать код",

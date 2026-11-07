@@ -1936,18 +1936,46 @@
   "site_previous": "Zurück",
   "site_next": "Als nächstes",
   "site_onthispage": "Auf dieser Seite",
-  "site_minread": "Min. gelesen",
-  "site_screenshot": "Screenshot",
-  "site_screenshots": "Screenshots",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} Min. Lesezeit"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Screenshot",
+        "form=*": "{count} Screenshots"
+      }
+    }
+  ],
   "site_updated": "Aktualisiert",
   "site_notpublishedtitle": "Noch nicht veröffentlicht",
   "site_notpublishedbody": "Diese Dokumentationsseite wurde nicht veröffentlicht. Veröffentlichen Sie es im Editor, um es live zu sehen.",
+  "site_privatetitle": "Diese Dokumentation ist privat",
+  "site_privatebody": "Öffnen Sie zum Lesen den Einladungslink, den Sie per E-Mail erhalten haben.",
+  "site_privatemembers": "Mitglieder dieses Arbeitsbereichs können sich anmelden, um sie anzusehen.",
+  "site_privatesignin": "Anmelden",
   "site_pageunavailable": "Diese Seite ist nicht verfügbar.",
   "site_changelogsubtitle": "Jedes an diese Dokumente gelieferte Update.",
   "site_changelogempty": "Noch keine Veröffentlichungen.",
   "site_changelogrelease": "Veröffentlichung",
-  "site_changelogpage": "Seite",
-  "site_changelogpages": "Seiten",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite",
+        "form=*": "{count} Seiten"
+      }
+    }
+  ],
   "site_feedbackquestion": "War diese Seite hilfreich?",
   "site_feedbackyes": "Ja",
   "site_feedbackno": "Nein",
@@ -1958,7 +1986,8 @@
   "site_analyticsconsentaccept": "Akzeptiere",
   "site_analyticsconsentdecline": "Ablehnen",
   "site_changelanguage": "Sprache ändern",
-  "site_toggletheme": "Thema umschalten",
+  "site_darkmode": "Dunkelmodus",
+  "site_breadcrumb": "Brotkrümelnavigation",
   "site_togglesubpages": "Unterseiten ein- oder ausblenden",
   "site_articledetails": "Artikeldetails",
   "site_copycode": "Code kopieren",
