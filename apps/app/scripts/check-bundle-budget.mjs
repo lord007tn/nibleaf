@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { forbiddenModuleIds, nonReaderRouteBytes } from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
 const publicRoot = join(appRoot, '.output', 'public');
@@ -29,9 +30,13 @@ const profiles = {
 // that. The margin is ~4 KiB over the measured size. See BUNDLE_BUDGET.md.
 // 365_000 → 356_000 (#291): dashboard loaders load with their routes, and the
 // settings and auth routes' search checks no longer pull in icons or MCP code.
+// 356_000 → 349_700 (#345): marketing routes build their head in the loader
+// from a lazy import, and every non-reader route's loader loads with its route,
+// about 7.1 KiB less. The margin is ~2 KiB over the 347,620 bytes measured
+// after #336's use-case routes.
 const gzipBudgets = {
-  'public-docs': 356_000,
-  'public-docs-index': 356_000,
+  'public-docs': 349_700,
+  'public-docs-index': 349_700,
 };
 
 // A size budget catches overall growth; these signatures make accidental
@@ -39,27 +44,9 @@ const gzipBudgets = {
 const forbiddenPublicAssetPatterns = [/\/assets\/(?:app|auth-providers|localized-product-providers|queries|mutations|auth-client)-/];
 const forbiddenPublicSourceTokens = ['settings.workspace.dangerDescription', 'editor.pageSettings.translationKey'];
 
-// Marketing pages, the blog and their copy, and dashboard data code must never
-// reach a published docs page. Route files are the usual leak: anything a route
-// file exports, and its non-split options (head, validateSearch, beforeLoad, and
-// loaders outside the dashboard), stay in the router's eager chunk, which every
-// page loads. Checked against the module report that `BUNDLE_ANALYZE=true`
-// builds write (CI always does); every profile includes the `__root__` route,
-// so root preloads are covered too.
-const forbiddenPublicModules = [
-  /\/apps\/app\/src\/components\/(?:cloud-marketing\.tsx|marketing\/)/,
-  /\/apps\/app\/src\/lib\/blog-manifest\.ts$/,
-  /\/packages\/i18n\/src\/paraglide\/messages\/(?:marketing|blog)_/,
-  // Dashboard loaders are split (vite.config.ts), so their query factories and
-  // prefetch helpers stay out. Analytics and AI search validators are allowed:
-  // validateSearch can't be split.
-  /\/apps\/app\/src\/hooks\/api\/(?:index|query-options|mutations|route-prefetch|deployment-cache|analytics\/)/,
-  /\/apps\/app\/src\/components\/(?:app|project|project-settings|settings|editor|oauth)\//,
-  /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
-  /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
-  /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
-  /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
-];
+// Forbidden modules (marketing, blog, dashboard data code) live in
+// `bundle-boundaries.mjs`, checked against the module report that
+// `BUNDLE_ANALYZE=true` builds write (CI always does).
 
 // The same boundary without the module report: marketing and blog copy from the
 // English and Arabic catalogs must not appear in public assets. Read from the
@@ -81,7 +68,7 @@ const moduleReport = existsSync(analysisFile)
   ? new Map(
       JSON.parse(readFileSync(analysisFile, 'utf8')).chunks.map((chunk) => [
         chunk.fileName,
-        chunk.modules.map((module) => module.id.replaceAll('\\', '/')),
+        chunk.modules.map((module) => ({ id: module.id.replaceAll('\\', '/'), renderedLength: module.renderedLength })),
       ]),
     )
   : null;
@@ -179,6 +166,15 @@ for (const [profile, report] of Object.entries(reports)) {
   for (const asset of report.assets.slice(0, 8)) {
     console.log(`  ${formatBytes(asset.gzip).padStart(11)} gzip  ${formatBytes(asset.raw).padStart(11)} raw  ${asset.url}`);
   }
+  if (budget && moduleReport) {
+    // Every route's definition ships in the router's eager chunk (#345). This is
+    // what the routes a docs reader never visits add to each published page.
+    const modules = new Map(
+      report.assets.flatMap((asset) => moduleReport.get(asset.url.replace(/^\//, '')) ?? []).map((module) => [module.id, module]),
+    );
+    const routes = nonReaderRouteBytes([...modules.values()]);
+    console.log(`  non-reader route modules: ${routes.count}, ${formatBytes(routes.bytes)} rendered`);
+  }
 }
 
 const shared = Object.values(reports)
@@ -226,8 +222,8 @@ if (process.argv.includes('--check')) {
   if (reportIsCurrent) {
     for (const profile of Object.keys(gzipBudgets)) {
       for (const asset of reports[profile]?.assets ?? []) {
-        for (const moduleId of moduleReport.get(asset.url.replace(/^\//, ''))) {
-          if (!forbiddenPublicModules.some((pattern) => pattern.test(moduleId))) continue;
+        const moduleIds = moduleReport.get(asset.url.replace(/^\//, '')).map((module) => module.id);
+        for (const moduleId of forbiddenModuleIds(moduleIds)) {
           console.error(
             `\nBUNDLE BOUNDARY FAILED: ${profile} includes forbidden module ${moduleId.replace(/^.*?\/(apps|packages)\//, '$1/')} in ${asset.url}.`,
           );

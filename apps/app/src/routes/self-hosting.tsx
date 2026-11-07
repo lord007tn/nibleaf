@@ -1,24 +1,30 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
 import { Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
+
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
+  meta: pageMeta({
+    title: 'Nibleaf self-hosting status and deployment architecture',
+    description: 'Install Nibleaf with the public Docker Compose release, then configure DNS, TLS, backups, and monitoring for your environment.',
+    path: '/self-hosting',
+  }),
+  links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }],
+  scripts: [
+    breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: 'Self-hosting', path: '/self-hosting' },
+    ]),
+  ],
+});
 
 export const Route = createFileRoute('/self-hosting')({
-  loader: async () => ({ stars: await getGithubStarsFn() }),
-  head: () => ({
-    meta: pageMeta({
-      title: 'Nibleaf self-hosting status and deployment architecture',
-      description: 'Install Nibleaf with the public Docker Compose release, then configure DNS, TLS, backups, and monitoring for your environment.',
-      path: '/self-hosting',
-    }),
-    links: [{ rel: 'canonical', href: canonicalHref('/self-hosting') }],
-    scripts: [
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'Self-hosting', path: '/self-hosting' },
-      ]),
-    ],
-  }),
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const seo = await import('@/lib/marketing-seo');
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: SelfHostingPage,
 });
 
