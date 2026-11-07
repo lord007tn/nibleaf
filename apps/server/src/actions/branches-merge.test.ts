@@ -74,6 +74,12 @@ describe('createBranch', () => {
     });
     expect(copies.every((c) => (c.updatedAt as Date).getTime() === FORK.getTime())).toBe(true);
   });
+
+  it('takes the shared project lock (FOR NO KEY UPDATE) before copying pages', async () => {
+    await forkMain();
+    expect(state.sql).toEqual(['SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE']);
+    expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.page.findMany.mock.invocationCallOrder[0] ?? 0);
+  });
 });
 
 describe('mergeBranch', () => {
@@ -85,12 +91,17 @@ describe('mergeBranch', () => {
     expect(db.branch.delete).toHaveBeenCalledWith({ where: { id: 'v2' } });
   });
 
-  it('locks the project, then the version, then main pages, before reading', async () => {
+  it('locks the project, then the version, then main pages in id order, all FOR NO KEY UPDATE, before reading', async () => {
     await forkMain();
+    state.sql = [];
+    const firstLock = db.$queryRaw.mock.calls.length;
     await mergeBranch('project', 'v2');
     expect(state.sql.map((s) => s.match(/FROM "(\w+)"/)?.[1])).toEqual(['project', 'branch', 'page']);
-    expect(state.sql.every((s) => s.includes('FOR UPDATE'))).toBe(true);
-    expect(db.$queryRaw.mock.invocationCallOrder[2]).toBeLessThan(db.page.findMany.mock.invocationCallOrder.at(-2) ?? 0);
+    expect(state.sql.every((s) => s.endsWith('FOR NO KEY UPDATE'))).toBe(true);
+    expect(state.sql.some((s) => /FOR UPDATE/.test(s))).toBe(false);
+    expect(state.sql[2]).toContain('ORDER BY "id" ASC');
+    const lastLock = db.$queryRaw.mock.invocationCallOrder[firstLock + 2] ?? Number.POSITIVE_INFINITY;
+    expect(lastLock).toBeLessThan(db.page.findMany.mock.invocationCallOrder.at(-2) ?? 0);
   });
 
   it('refuses an unconfirmed promote after an edit on main, listing it, and changes nothing', async () => {

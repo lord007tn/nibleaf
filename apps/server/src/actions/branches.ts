@@ -113,6 +113,9 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await getDefaultBranch(projectId);
 
   return prisma.$transaction(async (tx) => {
+    // Creating the copies is a structural page write: project lock first. It
+    // also keeps the baseline consistent with structural changes on main.
+    await lockProject(tx, projectId);
     const forkedAt = new Date();
     const sourcePages = await tx.page.findMany({ where: { projectId, branchId: source.id }, orderBy: { position: 'asc' } });
     // old page id → new page id, so parentId links can be remapped onto the copies.
@@ -154,19 +157,30 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
 const mainPageSelect = { id: true, parentId: true, kind: true, title: true, path: true, languageId: true, createdAt: true, updatedAt: true } as const;
 const versionPageSelect = { id: true, parentId: true, languageId: true, path: true, updatedAt: true } as const;
 
+/** The shared page-write project lock (see the page-write lock protocol): a
+ *  structural page change takes it first, before any page row lock. NO KEY
+ *  UPDATE, never FOR UPDATE, so inserts that reference the project (analytics,
+ *  sessions, comments, deployments) are not blocked. */
+const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
+  tx.$queryRaw(Prisma.sql`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`);
+
 /** Read the version, main and the fork point for a promote. With `lock`, it
- *  first locks the project row, then the version row, then main's page rows
- *  (the order other page writes use: project first), so no save on main can
- *  land between this check and the promote that follows in the same
- *  transaction. Pages created on main meanwhile are kept by promote anyway. */
+ *  follows the page-write lock protocol: the project row first, then the
+ *  version row, then main's page rows in ascending id order, all FOR NO KEY
+ *  UPDATE. A save on main therefore can't land between this check and the
+ *  promote that follows in the same transaction; a save already in flight is
+ *  waited for and then seen. Pages created on main meanwhile are kept by
+ *  promote anyway (it deletes by id). */
 const readPromoteState = async (tx: Prisma.TransactionClient, projectId: string, branchId: string, mainId: string, lock: boolean) => {
   if (lock) {
-    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR UPDATE`);
+    await lockProject(tx, projectId);
     const locked = await tx.$queryRaw<{ id: string }[]>(
-      Prisma.sql`SELECT "id" FROM "branch" WHERE "id" = ${branchId} AND "projectId" = ${projectId} FOR UPDATE`,
+      Prisma.sql`SELECT "id" FROM "branch" WHERE "id" = ${branchId} AND "projectId" = ${projectId} FOR NO KEY UPDATE`,
     );
     if (locked.length === 0) throw notFound('branch', { id: branchId });
-    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${mainId} ORDER BY "id" FOR UPDATE`);
+    await tx.$queryRaw(
+      Prisma.sql`SELECT "id" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${mainId} ORDER BY "id" ASC FOR NO KEY UPDATE`,
+    );
   }
   const branch = await tx.branch.findFirst({ where: { id: branchId, projectId }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
   if (!branch) throw notFound('branch', { id: branchId });
