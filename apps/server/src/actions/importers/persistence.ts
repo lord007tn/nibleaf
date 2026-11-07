@@ -1,3 +1,4 @@
+import { STARTER_GETTING_STARTED_CONTENT } from '@nibleaf/auth/starter-content';
 import { prisma } from '@nibleaf/database';
 import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
@@ -22,8 +23,22 @@ export const defaultImportTarget = async (projectId: string): Promise<ImportTarg
   return { projectId, branchId: branch.id, languageId: language.id };
 };
 
-/** Remove only untouched product/Ghost placeholder pages before a real import.
- * The content signatures keep a customized page with the same title safe. */
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+const PRISTINE_GETTING_STARTED = normalizeWhitespace(STARTER_GETTING_STARTED_CONTENT);
+
+/** Whether a root starter page is exactly as Nibleaf created it: the sign-up
+ * Getting started page with its template text, or a blank Welcome page.
+ * Whitespace differences are ignored; any other edit makes it the writer's. */
+export const isPristineStarterPage = (page: { slug: string; content: string }): boolean => {
+  const content = normalizeWhitespace(page.content);
+  if (page.slug === 'getting-started') return content === PRISTINE_GETTING_STARTED;
+  return page.slug === 'welcome' && content === '';
+};
+
+/** Remove only untouched starter pages before a real import, so the promise
+ * that nothing a writer edited is deleted holds: a page counts only while its
+ * text is still the template's and nothing was added under it (deleting it
+ * would cascade to those pages). */
 export const removeImportPlaceholders = async (target: ImportTarget): Promise<number> => {
   const rows = await prisma.page.findMany({
     where: {
@@ -32,18 +47,16 @@ export const removeImportPlaceholders = async (target: ImportTarget): Promise<nu
       languageId: target.languageId,
       parentId: null,
       kind: 'PAGE',
-      slug: { in: ['welcome', 'getting-started', 'coming-soon'] },
+      slug: { in: ['welcome', 'getting-started'] },
     },
     select: { id: true, slug: true, content: true },
   });
-  const ids = rows
-    .filter((page) => {
-      const content = page.content.toLowerCase();
-      if (page.slug === 'getting-started') return content.includes('welcome to your new documentation site');
-      if (page.slug === 'coming-soon') return content.includes('brand new site') || content.includes('up and running here shortly');
-      return page.slug === 'welcome' && (!content.trim() || content.includes('welcome to your new documentation'));
-    })
-    .map((page) => page.id);
+  const pristine = rows.filter(isPristineStarterPage).map((page) => page.id);
+  if (pristine.length === 0) return 0;
+  const parents = new Set(
+    (await prisma.page.findMany({ where: { parentId: { in: pristine } }, select: { parentId: true } })).map((child) => child.parentId),
+  );
+  const ids = pristine.filter((id) => !parents.has(id));
   if (ids.length === 0) return 0;
   const result = await prisma.page.deleteMany({ where: { id: { in: ids } } });
   return result.count;

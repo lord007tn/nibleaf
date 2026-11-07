@@ -494,8 +494,12 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       // A concurrent import created this file's page first: drop the duplicate
-      // instead of leaving a page no import will ever update.
-      await prisma.page.delete({ where: { id: created.id } });
+      // instead of leaving a page no import will ever update. A deletion is a
+      // structural write: project lock first, as the page-write protocol requires.
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+        await tx.page.deleteMany({ where: { id: created.id, projectId } });
+      });
       summary.skipped++;
       continue;
     }

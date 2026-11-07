@@ -231,6 +231,38 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     expect(await db.prisma.pageGitImportSource.count({ where: { pageId: page.id } })).toBe(0);
   }, 60_000);
 
+  it('keeps a renamed imported page linked after a preserving import replaces the draft', async () => {
+    const setup = await fixture();
+    await db.prisma.organization.update({
+      where: { id: setup.project.organizationId },
+      data: { metadata: JSON.stringify({ git: { provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' } }) },
+    });
+    publicRepo.files = new Map([['docs/intro.md', '# Intro\n\nfirst text']]);
+    await expect(gitImport.importFromGitProvider(setup.project.organizationId, setup.project.id)).resolves.toMatchObject({ imported: 1 });
+    const imported = await db.prisma.page.findFirstOrThrow({ where: { projectId: setup.project.id, kind: 'PAGE', slug: 'intro' } });
+    await db.prisma.page.update({ where: { id: imported.id }, data: { title: 'Overview', slug: 'overview', path: 'overview' } });
+
+    // A default (preserving) GitBook-style import: copy the draft, then promote the copy.
+    const replacement = await branches.createImportReplacementBranch(setup.project.id, 'gitbook', true);
+    const copied = await db.prisma.page.findFirstOrThrow({ where: { projectId: setup.project.id, branchId: replacement.id, slug: 'overview' } });
+    expect(await db.prisma.pageGitImportSource.findUnique({ where: { pageId: copied.id } })).toMatchObject({
+      branchId: replacement.id,
+      path: 'docs/intro.md',
+    });
+    await branches.promoteImportReplacementBranch(setup.project.id, replacement.id);
+
+    publicRepo.files = new Map([['docs/intro.md', '# Intro\n\nsecond text']]);
+    await expect(gitImport.importFromGitProvider(setup.project.organizationId, setup.project.id)).resolves.toMatchObject({
+      imported: 0,
+      updated: 1,
+      skipped: 0,
+    });
+    const pagesAfter = await db.prisma.page.findMany({ where: { projectId: setup.project.id, kind: 'PAGE' } });
+    expect(pagesAfter.map((page) => [page.id, page.slug])).toEqual([[copied.id, 'overview']]);
+    expect(pagesAfter[0]?.content).toContain('second text');
+    expect(await db.prisma.pageGitImportSource.findUniqueOrThrow({ where: { pageId: copied.id } })).toMatchObject({ branchId: setup.branch.id });
+  }, 60_000);
+
   it('keeps an imported page linked to its file after its branch is merged into main', async () => {
     const setup = await fixture();
     const draft = await db.prisma.branch.create({ data: { projectId: setup.project.id, name: `draft-${randomUUID()}`, isDefault: false } });

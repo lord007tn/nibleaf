@@ -1556,7 +1556,7 @@
   "settings_import_summary_source": "Quelle",
   "settings_import_summary_branch": "Zweig",
   "settings_import_summary_defaultbranch": "Standardzweig",
-  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address, and nothing you’ve edited is deleted. Where “Replace the current draft with this repository” is offered and turned on, your draft is made to match the source, and pages that aren’t in it are deleted. Download your drafts first (an export contains only the published version): Settings → Exports → One-time export → Download the original Markdown ZIP.",
+  "settings_import_summaryhint": "By default, importing adds new pages and overwrites pages that have the same address, and nothing you’ve edited is deleted. Where “Replace the current draft with this repository” is offered and turned on, your draft is made to match the source, and pages that aren’t in it are deleted. Download your drafts first (Settings → Exports → One-time export → Download the original Markdown ZIP; the usual export contains only the published version).",
   "settings_import_run": "Importieren",
   "settings_import_running": "Importieren…",
   "settings_import_success": "Import abgeschlossen",

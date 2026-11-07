@@ -128,6 +128,24 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
           hidden: p.hidden,
         })),
       });
+      // Git import identities follow the copies, so a copy that is later
+      // promoted keeps updating from the same repository files.
+      const languageByPage = new Map(sourcePages.map((p) => [p.id, p.languageId]));
+      const sources = await tx.pageGitImportSource.findMany({
+        where: { pageId: { in: sourcePages.map((p) => p.id) } },
+        select: { pageId: true, path: true },
+      });
+      if (sources.length > 0) {
+        await tx.pageGitImportSource.createMany({
+          data: sources.map((s) => ({
+            pageId: idMap.get(s.pageId) as string,
+            projectId,
+            branchId: branch.id,
+            languageId: languageByPage.get(s.pageId) as string,
+            path: s.path,
+          })),
+        });
+      }
     }
     return branch;
   });

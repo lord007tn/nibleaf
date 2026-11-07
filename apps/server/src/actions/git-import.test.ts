@@ -101,6 +101,11 @@ beforeEach(() => {
   mocks.prisma.pageGitImportSource.update.mockImplementation(async ({ where, data }: { where: { pageId: string }; data: Partial<Source> }) => {
     const row = mocks.sources.find((candidate) => candidate.pageId === where.pageId);
     if (!row) throw new Error('Record to update not found.');
+    const next = { ...row, ...data };
+    const clash = mocks.sources.some(
+      (other) => other !== row && other.path === next.path && other.branchId === next.branchId && other.languageId === next.languageId,
+    );
+    if (clash) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' });
     Object.assign(row, data);
     return row;
   });
@@ -108,7 +113,11 @@ beforeEach(() => {
     mocks.sources = mocks.sources.filter((row) => row.pageId !== where.pageId);
   });
   Object.assign(mocks.prisma.page, {
-    delete: vi.fn(async ({ where }: { where: { id: string } }) => deletePage(where.id)),
+    deleteMany: vi.fn(async ({ where }: { where: { id: string } }) => deletePage(where.id)),
+  });
+  Object.assign(mocks.prisma, {
+    $queryRaw: vi.fn(async () => []),
+    $transaction: vi.fn(async (run: (tx: typeof mocks.prisma) => Promise<unknown>) => run(mocks.prisma)),
   });
   // Same constraints as the table: pageId is the key, (scope, path) is unique.
   mocks.prisma.pageGitImportSource.create.mockImplementation(async ({ data }: { data: Source }) => {
@@ -312,6 +321,22 @@ describe('importFromGitProvider', () => {
 
     await expect(runImport()).resolves.toMatchObject({ imported: 0, skipped: 1 });
     expect(mocks.rows).toEqual([]);
+    const [lock] = (mocks.prisma as unknown as { $queryRaw: { mock: { calls: Array<[string[]]> } } }).$queryRaw.mock.calls[0] ?? [[]];
+    expect(lock.join('?')).toContain('FOR NO KEY UPDATE');
+  });
+
+  it('drops a stale row whose path another page already holds here, and never adopts its page', async () => {
+    mocks.rows.push({ id: 'page-stale', parentId: null, kind: 'PAGE', slug: 'intro', title: 'Intro', content: 'merged copy', config: null });
+    mocks.rows.push({ id: 'page-current', parentId: null, kind: 'PAGE', slug: 'intro-2', title: 'Intro', content: 'old', config: null });
+    mocks.sources.push({ pageId: 'page-stale', projectId: 'project-1', branchId: 'branch-merged', languageId: 'language-1', path: 'docs/intro.md' });
+    mocks.sources.push({ pageId: 'page-current', projectId: 'project-1', branchId: 'branch-1', languageId: 'language-1', path: 'docs/intro.md' });
+    mocks.files.set('docs/intro.md', 'new');
+
+    await expect(runImport()).resolves.toMatchObject({ imported: 0, updated: 1, skipped: 0 });
+    expect(mocks.sources).toEqual([expect.objectContaining({ pageId: 'page-current', branchId: 'branch-1', path: 'docs/intro.md' })]);
+    expect(mocks.rows.find((row) => row.id === 'page-current')?.content).toBe('new');
+    expect(mocks.rows.find((row) => row.id === 'page-stale')?.content).toBe('merged copy');
+    expect(mocks.prisma.pageGitImportSource.create).not.toHaveBeenCalled();
   });
 
   it('writes nothing when a file cannot be downloaded part-way through', async () => {
