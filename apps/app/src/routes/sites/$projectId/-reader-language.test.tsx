@@ -153,7 +153,7 @@ describe('reader language and access', () => {
 
   it('tells a visitor to a private site how to get in, in the requested language', async () => {
     mocks.getSite.mockRejectedValue(
-      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, 'private'),
+      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, { reason: 'private' }),
     );
     const container = await renderReader('/sites/docs/guide?lang=ar', 'h1');
     expect(container.querySelector('h1')?.textContent).toBe('هذا التوثيق خاص');
@@ -168,7 +168,7 @@ describe('reader language and access', () => {
 
   it('keeps the not-published screen for a site that is not published', async () => {
     mocks.getSite.mockRejectedValue(
-      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, 'not_published'),
+      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, { reason: 'not_published' }),
     );
     const container = await renderReader('/sites/docs/guide', 'h1');
     expect(container.querySelector('h1')?.textContent).toBe('Not published yet');
