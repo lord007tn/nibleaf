@@ -241,7 +241,7 @@ const cases: Intent[] = [
     question: 'كيف أراجع الصفحة في Preview قبل ما أنشرها؟',
     doc: 'ar/product/authoring',
     heading: 'راجع التغيير مع فريقك',
-    claims: ['Preview'],
+    claims: ['معاينة'],
   },
   {
     id: 'mixed-translation-follow',

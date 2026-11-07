@@ -100,16 +100,20 @@ An import can change or remove pages in your draft:
 - **An ordinary import overwrites matching pages.** When an imported page has the
   same address and place in the navigation as an existing page, Nibleaf replaces
   that page's title and text with the source version. Edits you made to it in
-  Nibleaf are lost. Pages that aren't in the source are kept.
+  Nibleaf are lost. Pages that aren't in the source are kept, except untouched
+  starter placeholder pages, such as an unedited welcome page, which the import
+  removes.
 - **An import with Replace the current draft with this repository turned on**
   (Mintlify and GitBook) replaces your whole draft with the repository. Pages
   that aren't in the repository are deleted.
 
-Before you import again, [export a copy](/product/exports), or download every
-draft page with **Download the original Markdown ZIP** under
-**Settings → Exports → One-time export**. That way you can bring back any edits
-an import overwrites or deletes. Your published site doesn't change until you
-publish.
+Before you import again, download your drafts: open
+**Settings → Exports → One-time export** and select
+**Download the original Markdown ZIP**. It contains every page as it is now,
+including changes you haven't published, so you can bring back any edits an
+import overwrites or deletes. A regular export is not enough here, because it
+contains only your latest published version. Your published site doesn't change
+until you publish.
 
 ## Check that nothing was lost
 
@@ -130,7 +134,8 @@ Connect your domain only when everything above works. See
 you can point your domain back to the old site, and don't delete the old site
 until the new one has run without problems for a while.
 
-[Export a Markdown copy](/product/exports) before a large migration and after the
-final switch. If you will keep using GitHub, set up
+Before a large migration, download your drafts with
+**Download the original Markdown ZIP**. After the final switch and publish,
+[export a copy](/product/exports) of the published site. If you will keep using GitHub, set up
 [two-way Git editing](/git-authoring) in a test repository first. Check the
 [known limitations](/reference/known-limitations) too.

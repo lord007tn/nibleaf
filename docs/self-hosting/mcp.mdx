@@ -69,8 +69,8 @@ They pick a preset (or individual scopes under
 
 | Preset | Offered to | Scopes |
 | --- | --- | --- |
-| Read only | Members and above | `mcp:connect`, `projects:read`, `pages:read`, `languages:read`, `versions:read`, `analytics:read`, `search:read`, `deployments:read` |
-| Support writer | Members and above | Read only plus `analytics:search_terms`, `pages:write`, `deployments:publish` |
+| Read only | Editors and above | `mcp:connect`, `projects:read`, `pages:read`, `languages:read`, `versions:read`, `analytics:read`, `search:read`, `deployments:read` |
+| Support writer | Editors and above | Read only plus `analytics:search_terms`, `pages:write`, `deployments:publish` |
 | Full admin | Admins and owners | Every MCP scope |
 
 Presets are a dashboard convenience; the security boundary is the scope set plus
@@ -81,7 +81,7 @@ suspending a member, or deleting their account, stops their keys on the next
 request with `401 auth:invalid_api_key`. Scopes only narrow what the owner's
 role already allows.
 
-Members see and revoke only their own keys. Admins and owners see every key in
+Editors see and revoke only their own keys. Admins and owners see every key in
 the project, with its owner, and can revoke any of them, but only a key's owner
 can rotate it; rotation re-issues the key as the person rotating. Each key shows
 its preset, last use, and latest activity, and **Test connection** checks the
@@ -468,7 +468,7 @@ token works once. Every refresh re-checks that the connection is still live.
 
 **Settings → AI assistants (MCP) → Connected apps** lists live connections with
 the app, the preset, who connected it, the last use, and the latest activity.
-Members see and disconnect their own; admins and owners see and disconnect
+Editors see and disconnect their own; admins and owners see and disconnect
 everyone's. Disconnecting revokes the grant, its refresh tokens, and its consent
 at once. Connecting the same app to the same project again replaces the
 person's earlier connection.
