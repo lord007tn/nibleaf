@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, expect, it, vi } from 'vitest';
 import { marketingMedia } from './manifest';
@@ -45,16 +47,30 @@ it('keeps theme-hidden pictures lazy so they do not eagerly fetch', () => {
   for (const image of root.querySelectorAll('img')) expect(image.getAttribute('loading')).toBe('lazy');
 });
 
-it('shows a recording only on request: still poster, no preload, no autoplay', () => {
+it('loads a recording only on request: lazy still and a play button, no video until clicked', async () => {
   vi.mocked(marketingMedia).mockReturnValue({ wide, video: { src: '/journey.webm', width: 1280, height: 720 } });
   const root = render();
-  const video = root.querySelector('video');
-  expect(video?.getAttribute('preload')).toBe('none');
-  expect(video?.getAttribute('poster')).toBe(wide.fallback);
-  expect(video?.hasAttribute('controls')).toBe(true);
-  expect(video?.hasAttribute('autoplay')).toBe(false);
-  expect(video?.getAttribute('aria-label')).toBe(media.alt);
-  expect(root.querySelector('img')).toBeNull();
+  expect(root.querySelector('video')).toBeNull();
+  expect(root.querySelector('img')?.getAttribute('loading')).toBe('lazy');
+  expect(root.querySelector('img')?.getAttribute('alt')).toBe(media.alt);
+  expect(root.querySelector('button')?.textContent).toBe('Play the recording');
+
+  const container = document.createElement('div');
+  document.body.append(container);
+  const client = createRoot(container);
+  Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+  try {
+    await act(async () => client.render(<MarketingMedia lang="ar" media={media} />));
+    expect(container.querySelector('button')?.textContent).toBe('شغّل التسجيل');
+    await act(async () => container.querySelector('button')?.click());
+    const video = container.querySelector('video');
+    expect(video?.getAttribute('src')).toBe('/journey.webm');
+    expect(video?.hasAttribute('controls')).toBe(true);
+    expect(video?.getAttribute('aria-label')).toBe(media.alt);
+  } finally {
+    await act(async () => client.unmount());
+    container.remove();
+  }
 });
 
 it('composes the hero: desktop capture never downloads on phones and follows the dark colour scheme', () => {
@@ -73,7 +89,8 @@ it('composes the hero: desktop capture never downloads on phones and follows the
   expect(root.querySelectorAll('picture')).toHaveLength(2);
   const overlayImage = overlay?.querySelector('img');
   expect(overlayImage?.getAttribute('alt')).toBe(media.alt);
-  expect(overlayImage?.getAttribute('fetchpriority')).toBe('high');
+  expect(overlayImage?.getAttribute('loading')).toBe('lazy');
+  expect(overlayImage?.hasAttribute('fetchpriority')).toBe(false);
 });
 
 it('makes a missing capture explicit instead of inventing a product mock', () => {
