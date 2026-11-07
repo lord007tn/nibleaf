@@ -21,9 +21,11 @@ export function RedirectIssue({ issue }: { issue: RedirectValidationIssue }) {
   return (
     <li>
       <p>{t(issueKeys[issue.code] ?? 'publish.redirectIssue.unknown')}</p>
-      <p className="mt-1 break-words font-mono text-muted-foreground [overflow-wrap:anywhere]">
-        <bdi dir="ltr">{issue.sequence.join(' → ')}</bdi>
-      </p>
+      {issue.sequence.length > 0 ? (
+        <p className="mt-1 break-words font-mono text-muted-foreground [overflow-wrap:anywhere]">
+          <bdi dir="ltr">{issue.sequence.join(' → ')}</bdi>
+        </p>
+      ) : null}
     </li>
   );
 }

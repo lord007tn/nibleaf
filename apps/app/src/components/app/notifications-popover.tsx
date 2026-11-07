@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
@@ -17,8 +17,8 @@ const NOTIFICATION_SKELETON_ROWS = ['a', 'b', 'c'];
 /** One inbox row: unread dot, title/body, relative time. Clicking marks it read
  *  and follows its dashboard link (when it has one). */
 function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (item: NotificationItem) => void }) {
-  const t = useT();
-  const text = notificationText(t, item);
+  const { t, locale } = useLocale();
+  const text = notificationText(t, item, locale);
   const { relativeTime } = useFormatters();
   const unread = item.readAt === null;
   return (
@@ -34,7 +34,7 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (it
             {text.title}
           </span>
           {text.body ? (
-            <span className="mt-0.5 block text-muted-foreground text-xs" dir="auto">
+            <span className="mt-0.5 block break-words text-muted-foreground text-xs [overflow-wrap:anywhere]" dir="auto">
               {text.body}
             </span>
           ) : null}

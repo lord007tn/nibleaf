@@ -1,11 +1,17 @@
 import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
 import type { NotificationItem } from '@/hooks/api/types';
+import { localeTag } from '@/lib/format';
 import { failureMessageKey } from '../failure-message';
 
 type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 const isolate = (value: string) => `\u2068${value}\u2069`;
 
-export function notificationText(t: Translate, item: NotificationItem) {
+function importCount(t: Translate, locale: string, count: number, kind: 'imported' | 'updated') {
+  const category = new Intl.PluralRules(locale === 'ar' ? 'ar' : 'en').select(count);
+  return t(`notifications.importReady.${kind}.${category}`, { count: new Intl.NumberFormat(localeTag(locale)).format(count) });
+}
+
+export function notificationText(t: Translate, item: NotificationItem, locale = 'en') {
   const params = item.params && typeof item.params === 'object' && !Array.isArray(item.params) ? (item.params as Record<string, unknown>) : null;
   const failure = item.type === 'deploy_failed' || item.type === 'export_failed';
   if (failure) {
@@ -14,7 +20,9 @@ export function notificationText(t: Translate, item: NotificationItem) {
       title:
         item.type === 'deploy_failed' && typeof params?.projectName === 'string'
           ? t('notifications.deployFailed.namedTitle', { project: isolate(params.projectName) })
-          : t(item.type === 'deploy_failed' ? 'notifications.deployFailed.title' : 'notifications.exportFailed.title'),
+          : item.type === 'deploy_failed' && !params
+            ? item.title
+            : t(item.type === 'deploy_failed' ? 'notifications.deployFailed.title' : 'notifications.exportFailed.title'),
       body: t(failureMessageKey(detail ?? '', item.type === 'deploy_failed' ? 'publish' : 'export')),
       details: detail,
     };
@@ -29,10 +37,30 @@ export function notificationText(t: Translate, item: NotificationItem) {
     return { title: t('notifications.exportReady.title'), body: t('notifications.exportReady.body') };
   }
   if (item.type === 'import_completed' && typeof params?.imported === 'number' && typeof params.updated === 'number') {
-    return { title: t('notifications.importReady.title'), body: t('notifications.importReady.body') };
+    const source =
+      params.source === 'git'
+        ? t('notifications.importReady.gitSource')
+        : typeof params.source === 'string'
+          ? params.source
+          : t('notifications.importReady.unknownSource');
+    return {
+      title: t('notifications.importReady.title'),
+      body: t('notifications.importReady.summary', {
+        imported: importCount(t, locale, params.imported, 'imported'),
+        updated: importCount(t, locale, params.updated, 'updated'),
+        source: isolate(source),
+      }),
+    };
   }
   if (item.type === 'feedback' && params) {
-    return { title: t('notifications.feedback.title'), body: t('notifications.feedback.body') };
+    const page = typeof params.path === 'string' && params.path ? params.path : t('notifications.feedback.unknownPage');
+    const key =
+      params.sentiment === 'helpful'
+        ? 'notifications.feedback.helpful'
+        : params.sentiment === 'not helpful'
+          ? 'notifications.feedback.notHelpful'
+          : 'notifications.feedback.onPage';
+    return { title: t('notifications.feedback.title'), body: t(key, { page: isolate(page) }) };
   }
   // Old rows and unknown event types remain readable after an additive upgrade.
   return { title: item.title, body: item.body };

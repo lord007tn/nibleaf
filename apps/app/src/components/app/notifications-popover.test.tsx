@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ markRead: vi.fn(), navigate: vi.fn() }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ t: (key: string) => key, locale: 'en' }) }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('@/lib/format', () => ({ useFormatters: () => ({ relativeTime: () => 'recently' }) }));
 vi.mock('@/components/query-error-state', () => ({ QueryErrorState: () => null }));
