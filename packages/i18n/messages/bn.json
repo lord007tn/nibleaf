@@ -337,6 +337,8 @@
   "editor_pages": "পাতা",
   "editor_backtodashboard": "ড্যাশবোর্ডে ফিরে যান",
   "editor_config_heading": "সাইট সেটিংস",
+  "editor_config_adminonly": "শুধু প্রশাসকরাই সাইটের সেটিংস পরিবর্তন করতে পারেন। কিছু পরিবর্তন করার প্রয়োজন হলে এই সাইটের একজন প্রশাসককে বলুন।",
+  "editor_config_backtowriting": "লেখায় ফিরে যান",
   "editor_viewonsite": "সাইটে দেখুন",
   "editor_ai_title": "এআই সহায়তা",
   "editor_ai_intro": "লেখা চালিয়ে যান, স্পষ্টতার জন্য রিফ্রেজ করুন, অথবা প্রম্পট থেকে তৈরি করুন — এই ডকটিতে ভিত্তি করে।",
