@@ -51,7 +51,10 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
   async () => {
     const run = randomUUID();
     const userId = `notification-qa-${run}`;
-    const project = vi.spyOn(prisma.project, 'findUnique').mockResolvedValue({ organizationId: run } as never);
+    const fixture = await prisma.organization.create({
+      data: { name: 'Synthetic notification QA', projects: { create: { id: run, name: 'Synthetic', slug: run } } },
+    });
+    const project = vi.spyOn(prisma.project, 'findUnique').mockResolvedValue({ organizationId: fixture.id } as never);
     const org = vi.spyOn(prisma.organization, 'findUnique').mockResolvedValue({ metadata: null } as never);
     const members = vi.spyOn(prisma.member, 'findMany').mockResolvedValue([{ userId, user: { email: 'synthetic@example.invalid' } }] as never);
     const opts = { deploymentId: run, projectId: run, projectName: 'Synthetic', version: 1, outcome: 'ready' } as const;
@@ -74,12 +77,23 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
       // Another deployment is never swallowed by an earlier one's identity.
       await notifyDeployment({ ...opts, deploymentId: `other-${run}` });
       expect(await count()).toBe(5);
+
+      // The guard must find a real newer READY row, rather than pass because
+      // all deployment ids in the concurrency checks are synthetic/unmatched.
+      await prisma.deployment.create({ data: { projectId: run, version: 2, status: 'READY', completedAt: new Date() } });
+      const { createJob } = await import('@nibleaf/bullmq');
+      vi.mocked(createJob).mockClear();
+      await notifyDeployment({ ...opts, deploymentId: `superseded-${run}` });
+      expect(await count()).toBe(5);
+      expect(createJob).not.toHaveBeenCalled();
+      expect(await prisma.platformEvent.findUnique({ where: { id: `publish-announced:superseded-${run}` } })).toBeNull();
     } finally {
       project.mockRestore();
       org.mockRestore();
       members.mockRestore();
       await prisma.notification.deleteMany({ where: { userId } });
       await prisma.platformEvent.deleteMany({ where: { projectId: run, type: 'publish_announced' } });
+      await prisma.organization.delete({ where: { id: fixture.id } });
       await prisma.$disconnect();
     }
   },

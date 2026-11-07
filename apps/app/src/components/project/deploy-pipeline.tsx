@@ -87,9 +87,13 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const confirm = useConfirm();
   const t = useT();
 
-  const [restoreRequest, setRestoration] = useState<{ id: string; version: number; projectId: string; sourceId: string | null | undefined } | null>(
-    null,
-  );
+  const [restoreRequest, setRestoration] = useState<{
+    id: string;
+    targetId: string;
+    version: number;
+    projectId: string;
+    sourceId: string | null | undefined;
+  } | null>(null);
   const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
   const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
   const deployments = useDeployments(project.id, {
@@ -143,6 +147,15 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
 
   const viewSite = () => window.open(siteUrl, '_blank', 'noopener,noreferrer');
 
+  const restoreVersion = (targetId: string, version: number) => {
+    rollback.mutate(targetId, {
+      onSuccess: (queued) => {
+        setRestoration({ id: queued.id, targetId, version, projectId: project.id, sourceId: trackedDeploymentId });
+      },
+      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
+    });
+  };
+
   const doRollback = async () => {
     if (!previousReady) {
       toast.error(t('deploy.rollback.none'));
@@ -157,12 +170,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     if (!ok) {
       return;
     }
-    rollback.mutate(previousReady.id, {
-      onSuccess: (queued) => {
-        setRestoration({ id: queued.id, version: previousReady.version, projectId: project.id, sourceId: trackedDeploymentId });
-      },
-      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
-    });
+    restoreVersion(previousReady.id, previousReady.version);
   };
 
   return (
@@ -265,7 +273,13 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
           </div>
         ) : failed ? (
           <div className="flex justify-end gap-2 px-6 pt-3.5 pb-5">
-            {onRetry ? <Button onClick={onRetry}>{t('common.retry')}</Button> : null}
+            {restoration ? (
+              <Button loading={rollback.isPending} onClick={() => restoreVersion(restoration.targetId, restoration.version)}>
+                {t('common.retry')}
+              </Button>
+            ) : onRetry ? (
+              <Button onClick={onRetry}>{t('common.retry')}</Button>
+            ) : null}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('deploy.close')}
             </Button>

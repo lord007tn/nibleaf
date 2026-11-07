@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => {
     platformEventCreate: vi.fn(),
     platformEventFindUnique: vi.fn(),
     deploymentFindFirst: vi.fn(),
+    deploymentFindMany: vi.fn(),
     deploymentUpdate: vi.fn(),
     deploymentUpdateMany: vi.fn(),
     createJob: vi.fn(),
@@ -38,7 +39,12 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     $queryRaw: mocks.queryRaw,
     platformEvent: { create: mocks.platformEventCreate, findUnique: mocks.platformEventFindUnique },
-    deployment: { findFirst: mocks.deploymentFindFirst, update: mocks.deploymentUpdate, updateMany: mocks.deploymentUpdateMany },
+    deployment: {
+      findFirst: mocks.deploymentFindFirst,
+      findMany: mocks.deploymentFindMany,
+      update: mocks.deploymentUpdate,
+      updateMany: mocks.deploymentUpdateMany,
+    },
     project: { findUnique: mocks.projectFindUnique },
     page: { findMany: mocks.pageFindMany },
   },
@@ -105,6 +111,7 @@ describe('publish usage queue isolation', () => {
     mocks.createJob.mockReset().mockResolvedValue(undefined);
     mocks.platformEventFindUnique.mockReset().mockResolvedValue(null);
     mocks.deploymentUpdateMany.mockResolvedValue({ count: 1 });
+    mocks.deploymentFindMany.mockResolvedValue([]);
     mocks.pageFindMany.mockReset().mockRejectedValue(new Error('Unexpected read of the current draft'));
     mocks.buildAnalyticsEvent.mockReturnValue({ eventId: 'event-a', tenantId: 'org-a', projectId: 'project-a' });
     mocks.platformEventCreate.mockResolvedValue({ id: 'event-a' });

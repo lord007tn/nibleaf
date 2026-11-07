@@ -50,10 +50,14 @@ describe('rollback progress', () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
   const close = vi.fn();
+  const retryDraft = vi.fn();
   const render = async (open = true) =>
-    act(async () => root.render(<DeployPipeline project={project} open={open} onOpenChange={close} trackedDeploymentId="live-3" />));
+    act(async () =>
+      root.render(<DeployPipeline project={project} open={open} onOpenChange={close} trackedDeploymentId="live-3" onRetry={retryDraft} />),
+    );
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.mutate.mockReset();
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     mocks.confirm.mockResolvedValue(true);
     mocks.deployments.data = [deployment('live-3', 3, 'READY'), deployment('old-2', 2, 'READY')];
@@ -103,6 +107,30 @@ describe('rollback progress', () => {
     expect(mocks.success).not.toHaveBeenCalled();
     await render(false);
     expect(mocks.error).toHaveBeenCalledOnce();
+  });
+
+  it('retries the chosen historical version after a terminal failure instead of publishing the draft', async () => {
+    await queueRollback();
+    mocks.deployments.data = mocks.deployments.data.map((item) =>
+      item.id === 'restore-4' ? { ...item, status: 'FAILED', completedAt: new Date().toISOString() } : item,
+    );
+    await render();
+    mocks.mutate.mockImplementationOnce((_id, options) => {
+      const queued = deployment('restore-5', 5, 'PENDING');
+      mocks.deployments.data = [queued, ...mocks.deployments.data];
+      options.onSuccess(queued);
+    });
+    const retry = [...container.querySelectorAll('button')].find((item) => item.textContent === 'common.retry');
+    if (!retry) throw new Error('Retry button missing');
+    await act(async () => retry.click());
+    expect(retryDraft).not.toHaveBeenCalled();
+    expect(mocks.mutate).toHaveBeenLastCalledWith('old-2', expect.any(Object));
+    expect(mocks.mutate).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain('deploy.rollback.restoring:2');
+    expect(mocks.query).toHaveBeenLastCalledWith(expect.objectContaining({ retryingDeploymentId: 'restore-5' }));
+    mocks.deployments.data = mocks.deployments.data.map((item) => (item.id === 'restore-5' ? { ...item, status: 'READY' } : item));
+    await render(false);
+    expect(mocks.success).toHaveBeenLastCalledWith('deploy.rollback.success:2', expect.any(Object));
   });
 
   it('keeps a closed rollback observable through FAILED to BUILDING to READY', async () => {
