@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 365,000-byte gzip JavaScript budget. The
+Public documentation pages have a 356,000-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
 measured size. CI also rejects public profiles that contain known
@@ -40,7 +40,9 @@ the transfer cost, and record the new measured route totals in the pull request.
 
 Every route file's non-split parts, `validateSearch`, `beforeLoad`,
 `loader`, `head`, and anything the file exports, sit in the router's eager
-chunk, which every page loads, published docs included. So:
+chunk, which every page loads, published docs included. Dashboard and sign-in
+loaders are the exception: `splitBehavior` in `vite.config.ts` loads them with
+their route, and each route's preloads include that chunk. So:
 
 - Export only `Route` from a route file (a `head` factory is fine). Put page
   components in `src/components/**`: an exported component keeps its whole
@@ -48,9 +50,35 @@ chunk, which every page loads, published docs included. So:
 - Keep heavy or page-specific copy out of `head`. A loader can import it
   lazily and hand it to `head` through `loaderData` (see
   `src/lib/arabic-marketing-copy.ts`).
+- Keep `validateSearch` and `beforeLoad` small: check ids against a plain list,
+  not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
 
 ## Budget history
+
+### 365,000 → 356,000 bytes: dashboard code out of the reader (#291)
+
+| Build | public-docs | public-docs-index |
+| --- | --- | --- |
+| marketing boundary (#295) | 352.57 KiB | 351.76 KiB |
+| this change | 344.13 KiB | 343.33 KiB |
+
+- **Dashboard loaders, ~7.2 KiB.** Their query factories, analytics insight
+  queries, deployment cache helpers and prefetch helpers were eager because
+  loaders aren't split by default. Routes under `/app`, `/(auth)`,
+  `/accept-invite` and `/oauth` now split `loader` into its own chunk.
+- **Settings search checks, ~0.6 KiB.** The two settings routes validated
+  `?section=` and `?tab=` against their nav lists, which carry 21 icons. They
+  now check a plain id list.
+- **MCP OAuth helpers, ~0.6 KiB.** The `/(auth)` layout's `beforeLoad` imports
+  `lib/mcp-oauth.ts` (and the shared MCP scope tables) lazily; the auth pages
+  load it anyway.
+
+The module check now also rejects dashboard query factories, dashboard
+components, `lib/mcp-oauth.ts` and `@nibleaf/shared`'s `mcp`/`rbac` modules.
+Against main@ed15240e it reports 20 forbidden modules. Still eager: the query
+key factory (`hooks/api/query-keys.ts`, shared with the reader's own queries) and
+the analytics and AI search validators.
 
 ### 393,000 → 365,000 bytes: marketing out of the reader (#291)
 

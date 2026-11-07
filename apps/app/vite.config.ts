@@ -45,6 +45,15 @@ const LAZY_SITE_MESSAGES = new RegExp(
     .join('|')})\\.js$`,
 );
 
+/** Routes whose loaders only serve the dashboard and its sign-in pages. */
+const DASHBOARD_ROUTE = /^\/(?:app(?:\/|$)|\(auth\)(?:\/|$)|accept-invite\/|oauth\/)/;
+/** The router's default groupings (component, errorComponent, notFoundComponent;
+ *  pendingComponent stays eager so a pending UI can show at once), plus the
+ *  loader in its own lazy chunk. */
+const DASHBOARD_SPLIT_GROUPINGS = [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
+  Array<'loader' | 'component' | 'errorComponent' | 'notFoundComponent'>
+>;
+
 export default defineConfig(({ mode }) => {
   const configEnv = createEnv({
     server: { VITE_API_URL: z.url().default('http://localhost:4311') },
@@ -149,7 +158,16 @@ export default defineConfig(({ mode }) => {
           ),
         },
       }),
-      tanstackStart(),
+      tanstackStart({
+        router: {
+          codeSplittingOptions: {
+            // A route's loader normally stays in the router's eager chunk, which
+            // published docs pages load too. Dashboard and sign-in loaders only
+            // prefetch dashboard data, so they load with their route instead.
+            splitBehavior: ({ routeId }) => (DASHBOARD_ROUTE.test(routeId) ? DASHBOARD_SPLIT_GROUPINGS : undefined),
+          },
+        },
+      }),
       viteReact({ compiler: true }),
     ],
   };
