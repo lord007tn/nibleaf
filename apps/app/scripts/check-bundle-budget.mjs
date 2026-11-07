@@ -22,24 +22,57 @@ const profiles = {
 // size. Keep enough headroom for normal feature work while preventing a large
 // shared dependency or dashboard catalog from silently returning to docs pages.
 //
-// 390_000 → 393_000 pays for the Ask AI chat assistant (#279), +3.54 KiB on its
-// own: the eager chat context (~0.95 KiB; the panel, launcher, page card and
-// strings all load lazily), the AI dashboard route's search schema in the route
-// tree (~0.77), and Rolldown re-splitting reader modules the lazy chat chunks share
-// (Button/Sheet internals, useMutation, query-core, a thumbs icon: ~1.6). Main
-// itself was 379.97 KiB at e1244b8f (#280 added 1.41), so #279 measures 383.51.
-// This is a ceiling, not a target: #291 brings the public bundle back to
-// ≤ 375 KiB by keeping dashboard-only routes and schemas out of the reader.
-// See BUNDLE_BUDGET.md.
+// 393_000 → 365_000 (#291): marketing pages and their copy no longer reach the
+// reader, about 31 KiB less. Two route files exported their page components and
+// Arabic marketing heads read their copy through the reader's translator, which
+// kept them in the router's eager chunk; the boundary checks below now fail on
+// that. The margin is ~4 KiB over the measured size. See BUNDLE_BUDGET.md.
 const gzipBudgets = {
-  'public-docs': 393_000,
-  'public-docs-index': 393_000,
+  'public-docs': 365_000,
+  'public-docs-index': 365_000,
 };
 
 // A size budget catches overall growth; these signatures make accidental
 // provider-boundary regressions actionable even when another chunk shrinks.
 const forbiddenPublicAssetPatterns = [/\/assets\/(?:app|auth-providers|localized-product-providers|queries|mutations|auth-client)-/];
 const forbiddenPublicSourceTokens = ['settings.workspace.dangerDescription', 'editor.pageSettings.translationKey'];
+
+// Marketing pages, the blog and their copy must never reach a published docs
+// page. Route files are the usual leak: anything a route file exports, and its
+// non-split options (head, loader, validateSearch), stay in the router's eager
+// chunk, which every page loads. Checked against the module report that
+// `BUNDLE_ANALYZE=true` builds write (CI always does); every profile includes
+// the `__root__` route, so root preloads are covered too.
+const forbiddenPublicModules = [
+  /\/apps\/app\/src\/components\/(?:cloud-marketing\.tsx|marketing\/)/,
+  /\/apps\/app\/src\/lib\/blog-manifest\.ts$/,
+  /\/packages\/i18n\/src\/paraglide\/messages\/(?:marketing|blog)_/,
+];
+
+// The same boundary without the module report: marketing and blog copy from the
+// English and Arabic catalogs must not appear in public assets. Read from the
+// catalogs so it follows copy edits; values with quotes, escapes or {variables}
+// aren't matched verbatim in minified output, so they're skipped.
+const catalogRoot = resolve(appRoot, '../../packages/i18n/messages');
+const forbiddenPublicCopy = ['en.json', 'ar.json'].flatMap((file) =>
+  Object.entries(JSON.parse(readFileSync(join(catalogRoot, file), 'utf8')))
+    .filter(([key, value]) => /^(?:marketing|blog)_/.test(key) && typeof value === 'string' && value.length >= 32 && !/["`\\{}$\n]/.test(value))
+    .map(([key, value]) => ({ key, value })),
+);
+if (forbiddenPublicCopy.length < 50) {
+  console.error(`Only ${forbiddenPublicCopy.length} marketing/blog catalog strings found; the catalog layout changed, so update this check.`);
+  process.exit(2);
+}
+
+const analysisFile = join(appRoot, '.bundle-analysis', 'client-modules.json');
+const moduleReport = existsSync(analysisFile)
+  ? new Map(
+      JSON.parse(readFileSync(analysisFile, 'utf8')).chunks.map((chunk) => [
+        chunk.fileName,
+        chunk.modules.map((module) => module.id.replaceAll('\\', '/')),
+      ]),
+    )
+  : null;
 
 const formatBytes = (bytes) => `${(bytes / 1024).toFixed(2)} KiB`;
 
@@ -167,7 +200,34 @@ if (process.argv.includes('--check')) {
         console.error(`\nBUNDLE BOUNDARY FAILED: ${profile} includes dashboard catalog token ${JSON.stringify(token)} in ${asset.url}.`);
         invalid = true;
       }
+      const copy = forbiddenPublicCopy.find((candidate) => source.includes(candidate.value));
+      if (copy) {
+        console.error(`\nBUNDLE BOUNDARY FAILED: ${profile} includes marketing copy (${copy.key}) in ${asset.url}.`);
+        invalid = true;
+      }
     }
+  }
+
+  // A report from an older build would vouch for chunks it never saw.
+  const publicAssets = Object.keys(gzipBudgets).flatMap((profile) => reports[profile]?.assets ?? []);
+  const reportIsCurrent = moduleReport !== null && publicAssets.every((asset) => moduleReport.has(asset.url.replace(/^\//, '')));
+  if (reportIsCurrent) {
+    for (const profile of Object.keys(gzipBudgets)) {
+      for (const asset of reports[profile]?.assets ?? []) {
+        for (const moduleId of moduleReport.get(asset.url.replace(/^\//, ''))) {
+          if (!forbiddenPublicModules.some((pattern) => pattern.test(moduleId))) continue;
+          console.error(
+            `\nBUNDLE BOUNDARY FAILED: ${profile} includes marketing module ${moduleId.replace(/^.*?\/(apps|packages)\//, '$1/')} in ${asset.url}.`,
+          );
+          invalid = true;
+        }
+      }
+    }
+  } else if (process.env.CI) {
+    console.error('\nBUNDLE BOUNDARY FAILED: no module report for this build. Build with BUNDLE_ANALYZE=true before this check.');
+    invalid = true;
+  } else {
+    console.warn('\nSkipped the marketing module check: build with BUNDLE_ANALYZE=true to run it.');
   }
 }
 
