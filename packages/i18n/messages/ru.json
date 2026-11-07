@@ -1832,6 +1832,7 @@
   "error_notfound": "Этого больше нет — возможно, кто-то это удалил. Обновите страницу и попробуйте ещё раз.",
   "error_conflict": "Кто-то другой изменил это одновременно с вами. Обновите страницу и попробуйте ещё раз.",
   "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
+  "error_promoteraced": "Someone saved during the promote. Nothing changed; try again.",
   "error_toolarge": "Слишком большой размер. Попробуйте файл поменьше.",
   "error_ratelimited": "Слишком много попыток. Подождите немного и попробуйте ещё раз.",
   "notfound_badge": "404",

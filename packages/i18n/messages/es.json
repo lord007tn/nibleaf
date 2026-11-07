@@ -1832,6 +1832,7 @@
   "error_notfound": "Esto ya no existe; puede que alguien lo haya eliminado. Actualiza la página e inténtalo de nuevo.",
   "error_conflict": "Otra persona cambió esto al mismo tiempo. Actualiza la página e inténtalo de nuevo.",
   "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
+  "error_promoteraced": "Someone saved during the promote. Nothing changed; try again.",
   "error_toolarge": "Es demasiado grande. Prueba con un archivo más pequeño.",
   "error_ratelimited": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
   "notfound_badge": "404",

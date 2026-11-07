@@ -55,6 +55,19 @@ describe('friendlyErrorMessage', () => {
     );
   });
 
+  it.each([
+    ['en', 'Someone saved during the promote. Nothing changed; try again.'],
+    ['ar', 'حفظ أحدهم تغييرات أثناء الترقية. لم يتغيّر شيء؛ حاول مجددًا.'],
+  ] as const)('tells the writer to retry, in %s, when a save raced the promote (details.reason)', async (locale, expected) => {
+    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
+    const response = Response.json(
+      { error: { code: 'database:conflict', message: 'Pages changed while promoting.', details: { reason: 'promote_raced' } } },
+      { status: 409 },
+    );
+    const raced = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    expect(friendlyErrorMessage(localized, raced, 'editor.branch.mergeError')).toBe(expected);
+  });
+
   it('recognises a request that never reached the server', () => {
     expect(friendlyErrorMessage(t, new TypeError('fetch failed'), 'editor.createFailed')).toBe('t:error.network');
   });
