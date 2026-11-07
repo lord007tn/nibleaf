@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+/** Importing the server actions (Prisma client, i18n catalogs) can take well
+ *  over vitest's 10 s hook default on a cold machine. */
+const IMPORT_TIMEOUT_MS = 120_000;
+const DB_TEST_TIMEOUT_MS = 60_000;
+
 // Explicit opt-in: CI supplies its disposable migrated PostgreSQL service.
 describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a version in PostgreSQL', () => {
   let db: typeof import('@nibleaf/database');
@@ -9,11 +14,11 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     branches = await import('./branches');
-  });
+  }, IMPORT_TIMEOUT_MS);
   afterAll(async () => {
     if (organizations.length > 0) await db?.prisma.organization.deleteMany({ where: { id: { in: organizations } } });
     await db?.prisma.$disconnect();
-  });
+  }, DB_TEST_TIMEOUT_MS);
 
   const fixture = async () => {
     const id = `promote-${randomUUID()}`;
@@ -31,10 +36,30 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     const version = await branches.createBranch(id, { name: 'v2' });
     return { projectId: id, main, version, base, guide, billing, legacy };
   };
+  /** Backends waiting, directly or behind another waiter, on `holder`.
+   *  PostgreSQL queues a second waiter on a row behind the first waiter, so
+   *  `holder = ANY(pg_blocking_pids(pid))` alone undercounts; follow the chain. */
+  const waitersOn = async (holder: number) => {
+    const [row] = await db.prisma.$queryRaw<{ waiters: number }[]>(db.Prisma.sql`
+      WITH RECURSIVE chain(pid) AS (
+        SELECT a.pid FROM pg_stat_activity a WHERE ${holder}::int = ANY(pg_blocking_pids(a.pid))
+        UNION
+        SELECT a.pid FROM pg_stat_activity a JOIN chain c ON c.pid = ANY(pg_blocking_pids(a.pid))
+      )
+      SELECT count(*)::int AS waiters FROM chain`);
+    return row?.waiters ?? 0;
+  };
+  const untilWaiting = async (holder: number, deadlineMs = 20_000) => {
+    const deadline = Date.now() + deadlineMs;
+    while ((await waitersOn(holder)) < 1) {
+      if (Date.now() > deadline) throw new Error('The promote never waited on the save lock.');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  };
   const mainPages = (projectId: string, branchId: string) =>
     db.prisma.page.findMany({ where: { projectId, branchId }, orderBy: { path: 'asc' }, select: { title: true, path: true, content: true } });
 
-  it('keeps added pages, keeps deletions, and lets the version win a confirmed edit', async () => {
+  it('keeps added pages, keeps deletions, and lets the version win a confirmed edit', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, version, base, guide, billing, legacy } = await fixture();
     await db.prisma.page.update({ where: { id: billing.id }, data: { content: 'The price' } });
     await db.prisma.page.create({ data: { ...base, parentId: guide.id, title: 'Refunds', slug: 'refunds', path: 'guide/refunds' } });
@@ -58,38 +83,42 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     ]);
   });
 
-  it('refuses a promote when a save on main commits while the promote waits for its lock', async () => {
+  it('refuses a promote when a save on main commits while the promote waits for its lock', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, version, billing } = await fixture();
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    let saved: () => void = () => undefined;
-    const holding = new Promise<void>((resolve) => {
+    let saved: (pid: number) => void = () => undefined;
+    const holding = new Promise<number>((resolve) => {
       saved = resolve;
     });
     const save = db.prisma.$transaction(
       async (tx) => {
         await tx.page.update({ where: { id: billing.id }, data: { content: 'Saved during promote' } });
-        saved();
+        const [backend] = await tx.$queryRaw<{ pid: number }[]>(db.Prisma.sql`SELECT pg_backend_pid() AS pid`);
+        saved(backend?.pid ?? -1);
         await gate;
       },
       { timeout: 30_000 },
     );
-    await holding;
+    const holder = await holding;
     const promote = branches.mergeBranch(projectId, version.id).then(
       () => null,
       (error: unknown) => error,
     );
-    // Let the promote reach main's row locks, then commit the save it waits on.
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    release();
+    // The promote must be queued on the save's row lock before the save commits.
+    try {
+      await untilWaiting(holder);
+    } finally {
+      release();
+    }
     await save;
     expect(await promote).toMatchObject({ status: 409, code: 'branch:main_changed' });
     expect((await mainPages(projectId, main.id)).find((p) => p.path === 'guide/billing')?.content).toBe('Saved during promote');
   });
 
-  it('promotes an untouched main without confirmation', async () => {
+  it('promotes an untouched main without confirmation', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, version } = await fixture();
     await expect(branches.getMergePreview(projectId, version.id)).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
     await branches.mergeBranch(projectId, version.id);
