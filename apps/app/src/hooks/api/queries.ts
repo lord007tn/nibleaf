@@ -66,11 +66,19 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
 // own instead of appearing stuck until a manual refresh. The factory's fetch
 // also checks whether a publish just went live, so published-state UI never
 // trusts the pre-publish answer (see syncPublishReceipt).
-export const useDeployments = (projectId: string | undefined, options?: { enabled?: boolean; pollIntervalMs?: number }) =>
+export const useDeployments = (
+  projectId: string | undefined,
+  options?: { enabled?: boolean; pollIntervalMs?: number; retryingDeploymentId?: string | null },
+) =>
   useQuery({
     ...deploymentsQueryOptions(projectId),
     enabled: options?.enabled ?? true,
-    refetchInterval: (query) => (query.state.data?.some((d) => isDeploymentInFlight(d.status)) ? (options?.pollIntervalMs ?? 2500) : false),
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (d) => isDeploymentInFlight(d.status) || (d.id === options?.retryingDeploymentId && d.status === 'FAILED' && d.completedAt === null),
+      )
+        ? (options?.pollIntervalMs ?? 2500)
+        : false,
   });
 
 // What the next publish will change vs. the last deploy (Mintlify-style "show

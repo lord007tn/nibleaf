@@ -27,8 +27,8 @@ const app = new Hono<HonoEnv>()
   })
   .patch('/:id/role', ...projectMembersRoutes.updateRole, validator('json', updateMemberRoleBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    const { role } = getContextMembershipOrThrow();
-    return ctx.json({ data: await updateMemberRole(organizationId, ctx.req.param('id'), role, ctx.req.valid('json')) }, 200);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await updateMemberRole(organizationId, ctx.req.param('id'), user.id, ctx.req.valid('json')) }, 200);
   })
   // OWNER-guarded (see routes.transferOwner); the action re-validates and also
   // repairs legacy multi-owner data so the ending state is exactly one owner.
@@ -39,8 +39,8 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/:id', ...projectMembersRoutes.remove, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    const { role } = getContextMembershipOrThrow();
-    return ctx.json({ data: await removeMember(organizationId, ctx.req.param('id'), role) }, 200);
+    const user = getContextUserOrThrow();
+    return ctx.json({ data: await removeMember(organizationId, ctx.req.param('id'), user.id) }, 200);
   })
   .delete('/invitations/:id', ...projectMembersRoutes.cancelInvite, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

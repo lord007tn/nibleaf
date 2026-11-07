@@ -2,7 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm, usePrompt } from '@nibleaf/design-system/components/ui/confirm';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { useT } from '@nibleaf/i18n/react';
-import { useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate } from '@tanstack/react-router';
 import { TriangleAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ export function DangerSection({ project }: { project: Project }) {
   const t = useT();
   const del = useDeleteProject();
   const transfer = useTransferProjectOwnership(project.id);
-  const { data: memberData } = useProjectMembers(project.id);
+  const { data: memberData, isPending: membersPending, isError: membersError } = useProjectMembers(project.id);
   const { data: session } = useSession();
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -28,6 +28,7 @@ export function DangerSection({ project }: { project: Project }) {
   const transferTargets = currentUserId
     ? (memberData?.members ?? []).filter((member) => member.user.id !== currentUserId && member.role === 'admin')
     : [];
+  const noTransferTargets = canTransferOwnership && !membersPending && !membersError && transferTargets.length === 0;
   const [targetMemberId, setTargetMemberId] = useState('');
   const selectedTarget = transferTargets.find((member) => member.id === targetMemberId);
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
@@ -45,11 +46,24 @@ export function DangerSection({ project }: { project: Project }) {
       <SectionHeader icon={<TriangleAlert className="size-4" />} title={t('settings.danger.title')} />
 
       <div className="mb-3.5 flex flex-col items-stretch gap-4 rounded-2xl border border-destructive/30 p-5 sm:flex-row sm:items-center sm:gap-3.5">
-        <p className="flex-1 text-[13.5px] text-muted-foreground leading-relaxed">
+        <div className="flex-1 text-[13.5px] text-muted-foreground leading-relaxed">
           <strong className="text-foreground">{t('settings.danger.transfer.title')}</strong>
           <br />
           {t('settings.danger.transfer.description')}
-        </p>
+          {noTransferTargets ? (
+            <p className="mt-2" id="transfer-ownership-help">
+              {t('settings.danger.transfer.noAdmins')}{' '}
+              <Link
+                className="font-medium text-primary underline"
+                params={{ projectId: project.id }}
+                search={{ section: 'members' }}
+                to="/app/projects/$projectId/settings"
+              >
+                {t('settings.members.title')}
+              </Link>
+            </p>
+          ) : null}
+        </div>
         <div className="flex w-full items-center gap-2 sm:min-w-[250px] sm:w-auto">
           <Select
             disabled={!canTransferOwnership || transferTargets.length === 0 || transfer.isPending}
@@ -57,7 +71,11 @@ export function DangerSection({ project }: { project: Project }) {
             onValueChange={(value) => setTargetMemberId(value ?? '')}
             value={targetMemberId}
           >
-            <SelectTrigger aria-label={t('settings.danger.transfer.title')} className="min-w-0 flex-1">
+            <SelectTrigger
+              aria-describedby={noTransferTargets ? 'transfer-ownership-help' : undefined}
+              aria-label={t('settings.danger.transfer.title')}
+              className="min-w-0 flex-1"
+            >
               <SelectValue placeholder={t('settings.danger.transfer.placeholder')} />
             </SelectTrigger>
             <SelectContent>

@@ -1,3 +1,4 @@
+import type { Prisma } from '@nibleaf/database';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -5,20 +6,29 @@ const database = vi.hoisted(() => ({
   findFirst: vi.fn(),
   findMany: vi.fn(),
   update: vi.fn(),
+  updateMany: vi.fn(),
   transaction: vi.fn(),
+  queryRaw: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
+vi.mock('./branches', () => ({ assertBranchInProject: async () => ({ id: 'branch-1' }), getDefaultBranch: async () => ({ id: 'branch-1' }) }));
 
 vi.mock('@nibleaf/database', () => ({
   Prisma: { JsonNull: null },
   prisma: {
-    page: { findFirst: database.findFirst, findMany: database.findMany, update: database.update },
+    page: {
+      findFirst: database.findFirst,
+      findFirstOrThrow: database.findFirst,
+      findMany: database.findMany,
+      update: database.update,
+      updateMany: database.updateMany,
+    },
     $transaction: database.transaction,
   },
 }));
 
-import { updatePage } from './pages';
+import { reorderPages, updatePage } from './pages';
 
 type Row = {
   id: string;
@@ -54,19 +64,63 @@ const row = (overrides: Partial<Row> = {}): Row => ({
 /** A one-page project: lookups return the page, sibling-slug clash checks find nothing. */
 const seed = (page: Row) => {
   let current = page;
+  database.queryRaw.mockResolvedValue([]);
   database.findFirst.mockImplementation(async ({ where }: { where: Record<string, unknown> }) => ('slug' in where ? null : current));
   database.update.mockImplementation(async ({ data }: { data: Partial<Row> }) => {
     current = { ...current, ...data };
     return current;
   });
   database.findMany.mockImplementation(async () => [current]);
+  database.updateMany.mockResolvedValue({ count: 1 });
   // Interactive transactions run their callback against the same page client;
   // batch transactions resolve their queries.
   database.transaction.mockImplementation(async (work: unknown) =>
     typeof work === 'function'
-      ? (work as (tx: unknown) => Promise<unknown>)({ page: { findFirst: database.findFirst, findMany: database.findMany, update: database.update } })
+      ? (work as (tx: unknown) => Promise<unknown>)({
+          $queryRaw: database.queryRaw,
+          page: {
+            findFirst: database.findFirst,
+            findFirstOrThrow: database.findFirst,
+            findMany: database.findMany,
+            update: database.update,
+            updateMany: database.updateMany,
+          },
+        })
       : Promise.all(work as Promise<unknown>[]),
   );
+};
+
+const seedTree = (initial: Row[]) => {
+  let current = structuredClone(initial);
+  database.queryRaw.mockResolvedValue([]);
+  database.findMany.mockImplementation(async () => structuredClone(current));
+  const update = async ({ where, data }: { where: { id: string }; data: Partial<Row> }) => {
+    const index = current.findIndex((page) => page.id === where.id);
+    const page = current[index];
+    if (!page) throw new Error('Missing page fixture');
+    current[index] = { ...page, ...data };
+    return current[index];
+  };
+  database.update.mockImplementation(update);
+  database.updateMany.mockImplementation(async (args) => {
+    await update(args);
+    return { count: 1 };
+  });
+  database.transaction.mockImplementation(async (work) => {
+    const before = structuredClone(current);
+    try {
+      return typeof work === 'function'
+        ? await work({
+            $queryRaw: database.queryRaw,
+            page: { findMany: database.findMany, update: database.update, updateMany: database.updateMany },
+          })
+        : await Promise.all(work);
+    } catch (error) {
+      current = before;
+      throw error;
+    }
+  });
+  return () => current;
 };
 
 describe('updatePage placeholder slug adoption', () => {
@@ -121,13 +175,149 @@ describe('updatePage placeholder slug adoption', () => {
     const updated = await updatePage('project-1', 'page-1', { title: 'Overview and setup' });
 
     expect(updated.slug).toBe('untitled');
-    expect(database.transaction).not.toHaveBeenCalled();
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: { title: 'Overview and setup' } }));
   });
 });
 
 describe('updatePage structural changes', () => {
   beforeEach(() => {
     for (const mock of Object.values(database)) mock.mockReset();
+  });
+
+  it('keeps branch and language helper reads on the supplied transaction', async () => {
+    const branches = await vi.importActual<typeof import('./branches')>('./branches');
+    const languages = await vi.importActual<typeof import('./languages')>('./languages');
+    const branch = { id: 'branch', projectId: 'project' };
+    const language = { id: 'language', projectId: 'project' };
+    const tx = {
+      branch: { findFirst: vi.fn().mockResolvedValue(branch), findMany: vi.fn().mockResolvedValue([branch]) },
+      language: { findFirst: vi.fn().mockResolvedValue(language), findMany: vi.fn().mockResolvedValue([language]) },
+    };
+    const client = tx as unknown as Prisma.TransactionClient;
+    await expect(branches.getDefaultBranch('project', client)).resolves.toEqual(branch);
+    await expect(branches.assertBranchInProject('project', 'branch', client)).resolves.toEqual(branch);
+    await expect(languages.getDefaultLanguage('project', client)).resolves.toEqual(language);
+    await expect(languages.assertLanguageInProject('project', 'language', client)).resolves.toEqual(language);
+    expect(tx.branch.findFirst).toHaveBeenCalledOnce();
+    expect(tx.language.findFirst).toHaveBeenCalledOnce();
+  });
+
+  it('locks only the page for the real title/content autosave payload', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { title: 'Updated guide', content: 'Autosaved content' });
+    const sql = database.queryRaw.mock.calls.map(([parts]) => parts.join('?'));
+    expect(sql).toHaveLength(1);
+    expect(sql[0]).toContain('FROM "page" WHERE id =');
+    expect(sql[0]).toContain('FOR NO KEY UPDATE');
+  });
+
+  it('keeps legacy custom slugs unchanged during title/content autosave', async () => {
+    seed(row({ title: 'Guide', slug: 'API_v1', path: 'API_v1' }));
+    const updated = await updatePage('project-1', 'page-1', { title: 'Updated guide', content: 'Autosaved content' });
+    expect(updated).toMatchObject({ slug: 'API_v1', path: 'API_v1' });
+    expect(database.queryRaw).toHaveBeenCalledOnce();
+    expect(database.queryRaw.mock.calls[0]?.[0].join('?')).toContain('FROM "page" WHERE id =');
+  });
+
+  it('uses a single page lock for a config merge', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    await updatePage('project-1', 'page-1', { config: { hideToc: true } });
+    expect(database.queryRaw).toHaveBeenCalledOnce();
+    expect(database.queryRaw.mock.calls[0]?.[0].join('?')).toContain('FROM "page" WHERE id =');
+  });
+
+  it('releases a page lock before retrying a newly structural edit in project-first order', async () => {
+    seed(row());
+    database.findFirst.mockResolvedValueOnce(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    const updated = await updatePage('project-1', 'page-1', { title: 'Getting started', content: 'Saved content' });
+    expect(updated.slug).toBe('getting-started');
+    expect(database.transaction).toHaveBeenCalledTimes(2);
+    const sql = database.queryRaw.mock.calls.map(([parts]) => parts.join('?'));
+    expect(sql[0]).toContain('FROM "page" WHERE id =');
+    expect(sql[1]).toContain('FROM "project"');
+    expect(sql[2]).toContain('ORDER BY id FOR NO KEY UPDATE');
+  });
+
+  it('does not let a pre-existing duplicate elsewhere prevent an unrelated move', async () => {
+    const current = seedTree([
+      row({ id: 'legacy-one', slug: 'duplicate', path: 'duplicate' }),
+      row({ id: 'legacy-two', slug: 'duplicate', path: 'duplicate' }),
+      row({ id: 'group', slug: 'guides', path: 'guides' }),
+      row({ id: 'moving', slug: 'intro', path: 'intro' }),
+    ]);
+    await reorderPages('project-1', { items: [{ id: 'moving', parentId: 'group', position: 0 }] });
+    expect(current().find((page) => page.id === 'moving')?.path).toBe('guides/intro');
+    expect(current().filter((page) => page.path === 'duplicate')).toHaveLength(2);
+  });
+
+  it('does not overwrite a concurrent URL change during content autosave', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', path: 'guide' }));
+    const write = database.update.getMockImplementation();
+    database.update.mockImplementationOnce(async (args) => {
+      await write?.({ data: { slug: 'handbook', path: 'handbook' } });
+      return write?.(args);
+    });
+    const updated = await updatePage('project-1', 'page-1', { content: 'Autosaved content' });
+    expect(updated).toMatchObject({ slug: 'handbook', path: 'handbook', content: 'Autosaved content' });
+  });
+
+  it('rejects a reorder that would give two siblings the same URL before writing', async () => {
+    seed(row());
+    database.findMany.mockResolvedValue([
+      row({ id: 'group', kind: 'GROUP', slug: 'guides', path: 'guides' }),
+      row({ id: 'moving', slug: 'intro', path: 'intro' }),
+      row({ id: 'existing', parentId: 'group', slug: 'intro', path: 'guides/intro' }),
+    ]);
+    await expect(reorderPages('project-1', { items: [{ id: 'moving', parentId: 'group', position: 0 }] })).rejects.toMatchObject({
+      code: 'database:conflict',
+    });
+    expect(database.update).not.toHaveBeenCalled();
+  });
+
+  it('checks the complete proposed tree when two pages move into the same group', async () => {
+    seedTree([
+      row({ id: 'left', slug: 'left', path: 'left' }),
+      row({ id: 'right', slug: 'right', path: 'right' }),
+      row({ id: 'one', parentId: 'left', slug: 'intro', path: 'left/intro' }),
+      row({ id: 'two', parentId: 'right', slug: 'intro', path: 'right/intro' }),
+    ]);
+    await expect(
+      reorderPages('project-1', {
+        items: [
+          { id: 'one', parentId: null, position: 0 },
+          { id: 'two', parentId: null, position: 1 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'database:conflict' });
+    expect(database.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('allows a sibling swap and recomputes descendant paths atomically', async () => {
+    const current = seedTree([
+      row({ id: 'left', slug: 'left', path: 'left' }),
+      row({ id: 'right', slug: 'right', path: 'right' }),
+      row({ id: 'one', parentId: 'left', slug: 'intro', path: 'left/intro' }),
+      row({ id: 'two', parentId: 'right', slug: 'intro', path: 'right/intro' }),
+      row({ id: 'child', parentId: 'one', slug: 'child', path: 'left/intro/child' }),
+    ]);
+    await reorderPages('project-1', {
+      items: [
+        { id: 'one', parentId: 'right', position: 0 },
+        { id: 'two', parentId: 'left', position: 0 },
+      ],
+    });
+    expect(current().find((page) => page.id === 'one')?.path).toBe('right/intro');
+    expect(current().find((page) => page.id === 'two')?.path).toBe('left/intro');
+    expect(current().find((page) => page.id === 'child')?.path).toBe('right/intro/child');
+    expect(database.transaction).toHaveBeenCalledOnce();
+  });
+
+  it('rolls back a move when subtree path persistence fails', async () => {
+    const initial = [row({ id: 'group', slug: 'guides', path: 'guides' }), row({ id: 'moving', slug: 'intro', path: 'intro' })];
+    const current = seedTree(initial);
+    database.update.mockRejectedValueOnce(new Error('path write failed'));
+    await expect(reorderPages('project-1', { items: [{ id: 'moving', parentId: 'group', position: 0 }] })).rejects.toThrow('path write failed');
+    expect(current()).toEqual(initial);
   });
 
   it('commits the slug change and the path recomputation in one transaction', async () => {

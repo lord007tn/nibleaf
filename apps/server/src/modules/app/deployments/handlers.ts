@@ -55,7 +55,7 @@ const app = new Hono<HonoEnv>()
   .post('/:id/rollback', ...deploymentsRoutes.rollback, async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
     const user = getContextUserOrThrow();
-    return ctx.json({ data: await rollbackDeployment(organizationId, projectId, ctx.req.param('id'), user.id) }, 201);
+    return ctx.json({ data: await rollbackDeployment(organizationId, projectId, ctx.req.param('id'), user.id, getContextLocale()) }, 201);
   })
   .get('/:id', ...deploymentsRoutes.get, async (ctx) => {
     const { projectId } = await scope(ctx);

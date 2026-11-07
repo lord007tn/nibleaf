@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogTitle } from '@nibleaf/design-system/compo
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useRollback } from '@/hooks/api';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
@@ -87,15 +87,32 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const confirm = useConfirm();
   const t = useT();
 
-  const deployments = useDeployments(project.id, { enabled: open || Boolean(trackedDeploymentId), pollIntervalMs: 1500 });
+  const [restoreRequest, setRestoration] = useState<{
+    id: string;
+    targetId: string;
+    version: number;
+    projectId: string;
+    sourceId: string | null | undefined;
+  } | null>(null);
+  const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
+  const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
+  const deployments = useDeployments(project.id, {
+    enabled: open || Boolean(observedDeploymentId),
+    pollIntervalMs: 1500,
+    retryingDeploymentId: observedDeploymentId,
+  });
 
-  const deployment = trackedDeploymentId ? deployments.data?.find((item) => item.id === trackedDeploymentId) : deployments.data?.[0];
+  const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
-  const running = status === 'PENDING' || status === 'BUILDING';
+  const retrying = Boolean(observedDeploymentId) && status === 'FAILED' && deployment?.completedAt === null;
+  const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
-  const failed = status === 'FAILED';
+  const failed = status === 'FAILED' && !retrying;
+  const superseded = Boolean(
+    restoration && done && deployment && deployments.data?.some((item) => item.status === 'READY' && item.version > deployment.version),
+  );
   const failureDetails = failed ? publishFailureDetails(deployment) : [];
-  const active = activeStep(status);
+  const active = activeStep(retrying ? 'PENDING' : status);
 
   // The previous READY deployment is the rollback target.
   const previousReady = (deployments.data ?? []).find(
@@ -113,21 +130,39 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     }
   }, [deployment, done, trackedAttribution, trackedDeploymentId]);
 
-  // Fire the "published" toast exactly once, on transition into READY while the dialog is open.
-  const announced = useRef<string | null>(null);
+  // Announce each tracked outcome once, including after the dialog closes.
+  const announced = useRef(new Set<string>());
   useEffect(() => {
-    if (done && deployment && (open || deployment.id === trackedDeploymentId) && announced.current !== deployment.id) {
-      announced.current = deployment.id;
-      toast.success(t('deploy.published'), {
-        action: {
-          label: t('deploy.viewSiteArrow'),
-          onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
-        },
-      });
+    const outcome = superseded ? 'superseded' : 'ready';
+    if (done && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:${outcome}`)) {
+      announced.current.add(`${deployment.id}:${outcome}`);
+      if (superseded) {
+        toast.info(t('deploy.rollback.superseded'));
+      } else {
+        toast.success(restoration ? t('deploy.rollback.success', { version: restoration.version }) : t('deploy.published'), {
+          action: {
+            label: t('deploy.viewSiteArrow'),
+            onClick: () => window.open(siteUrl, '_blank', 'noopener,noreferrer'),
+          },
+        });
+      }
     }
-  }, [open, done, deployment, siteUrl, t, trackedDeploymentId]);
+    if (failed && restoration && deployment?.id === restoration.id && !announced.current.has(`${deployment.id}:failed`)) {
+      announced.current.add(`${deployment.id}:failed`);
+      toast.error(t('deploy.rollback.error'));
+    }
+  }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration, superseded]);
 
   const viewSite = () => window.open(siteUrl, '_blank', 'noopener,noreferrer');
+
+  const restoreVersion = (targetId: string, version: number) => {
+    rollback.mutate(targetId, {
+      onSuccess: (queued) => {
+        setRestoration({ id: queued.id, targetId, version, projectId: project.id, sourceId: trackedDeploymentId });
+      },
+      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
+    });
+  };
 
   const doRollback = async () => {
     if (!previousReady) {
@@ -143,13 +178,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
     if (!ok) {
       return;
     }
-    rollback.mutate(previousReady.id, {
-      onSuccess: () => {
-        toast.success(t('deploy.rollback.success', { version: previousReady.version }));
-        onOpenChange(false);
-      },
-      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'deploy.rollback.error')),
-    });
+    restoreVersion(previousReady.id, previousReady.version);
   };
 
   return (
@@ -157,7 +186,11 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
       <DialogContent className="gap-0 p-0 sm:max-w-[420px]" showCloseButton={true}>
         <div className="flex flex-col gap-5 px-6 pt-6 pb-2">
           <div className="flex items-center gap-3">
-            {done ? (
+            {superseded ? (
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground">
+                <TriangleAlert className="size-4" />
+              </span>
+            ) : done ? (
               <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
                 <Check className="size-4" />
               </span>
@@ -172,8 +205,17 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             )}
             <div className="min-w-0 leading-snug">
               <DialogTitle className="font-semibold text-base tracking-tight">
-                {done ? t('deploy.deployed') : failed ? t('deploy.failed') : t('deploy.deploying')}
+                {superseded
+                  ? t('deploy.rollback.supersededTitle')
+                  : done
+                    ? t('deploy.deployed')
+                    : failed
+                      ? t('deploy.failed')
+                      : restoration
+                        ? t('deploy.rollback.restoring', { version: restoration.version })
+                        : t('deploy.deploying')}
               </DialogTitle>
+              {superseded ? <p className="mt-1 text-muted-foreground text-sm">{t('deploy.rollback.superseded')}</p> : null}
               <div className="truncate font-mono text-[12.5px] text-muted-foreground" dir="ltr">
                 {siteUrl}
               </div>
@@ -231,13 +273,15 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
                 {livePage?.title}
               </a>
             ) : null}
-            <details className="w-full text-sm text-muted-foreground">
-              <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
-              <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
-                <RotateCcw className="size-3.5" />
-                {t('deploy.rollback')}
-              </Button>
-            </details>
+            {!superseded ? (
+              <details className="w-full text-sm text-muted-foreground">
+                <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
+                <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
+                  <RotateCcw className="size-3.5" />
+                  {t('deploy.rollback')}
+                </Button>
+              </details>
+            ) : null}
             <span className="flex-1" />
             <Button variant="outline" onClick={viewSite}>
               {t('deploy.viewSite')} <ExternalLink className="size-3.5" />
@@ -246,7 +290,13 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
           </div>
         ) : failed ? (
           <div className="flex justify-end gap-2 px-6 pt-3.5 pb-5">
-            {onRetry ? <Button onClick={onRetry}>{t('common.retry')}</Button> : null}
+            {restoration ? (
+              <Button loading={rollback.isPending} onClick={() => restoreVersion(restoration.targetId, restoration.version)}>
+                {t('common.retry')}
+              </Button>
+            ) : onRetry ? (
+              <Button onClick={onRetry}>{t('common.retry')}</Button>
+            ) : null}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               {t('deploy.close')}
             </Button>
