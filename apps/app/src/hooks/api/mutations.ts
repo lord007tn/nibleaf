@@ -679,7 +679,9 @@ export const useAiDraft = (projectId: string) => {
     mutationFn: async (body: AiDraftBody) =>
       mutateData(await api.app.projects[':projectId'].ai.$post({ param: { projectId }, json: body }), 'Could not draft content.'),
     // 429 is the workspace's daily AI limit.
-    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.ai.draftError', { 429: 'editor.ai.rateLimited' }) },
+    meta: {
+      errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.ai.draftError', { 429: 'editor.ai.rateLimited', 503: 'editor.ai.unavailable' }),
+    },
   });
 };
 
