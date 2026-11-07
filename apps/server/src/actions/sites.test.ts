@@ -304,9 +304,11 @@ describe('searchSite multilingual scope', () => {
   it('searches all published languages and annotates each result for localized routing', async () => {
     const result = await searchSite('project-1', 'token');
     expect(mocks.getCachedIndex.mock.calls.map((call) => call[2])).toEqual(['en', 'ar']);
+    // The default language first, then the other languages; raw scores from
+    // separate indexes are never compared.
     expect(result.hits).toEqual([
-      expect.objectContaining({ id: 'page-ar', language: 'ar' }),
       expect.objectContaining({ id: 'page-en', language: 'en' }),
+      expect.objectContaining({ id: 'page-ar', language: 'ar' }),
     ]);
   });
 
