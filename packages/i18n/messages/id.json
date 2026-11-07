@@ -1833,6 +1833,7 @@
   "error_conflict": "Orang lain mengubah ini pada saat yang sama. Muat ulang halaman dan coba lagi.",
   "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
   "error_promoteraced": "Someone saved during the promote. Nothing changed; try again.",
+  "error_promoteblocked": "Promoting would put pages inside each other, so nothing changed. In the version, move one of those pages out of the other, then promote again.",
   "error_toolarge": "Ukurannya terlalu besar. Coba file yang lebih kecil.",
   "error_ratelimited": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
   "notfound_badge": "404",

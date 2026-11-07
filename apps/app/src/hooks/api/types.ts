@@ -166,13 +166,19 @@ interface BranchChangedOnMainPage {
   title: string;
   path: string;
   languageCode: string;
-  /** `conflict`: a page from the version would land at this page's address. */
+  /** `conflict`: two pages would share an address (`renamed`), or the moves
+   *  on both sides would put pages inside each other (`blocked`). For a
+   *  conflict, `pageId`/`title` are the page concerned, which may be one of
+   *  the version's pages. */
   change: 'modified' | 'added' | 'deleted' | 'conflict';
   /** What promote does with it: keep main's page, replace it with the
-   *  version's, remove it, bring the version's copy back, or (conflict) move
-   *  the version's page to `newPath`. */
-  onPromote: 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed';
+   *  version's, remove it, bring the version's copy back, give it a numbered
+   *  address (`newPath`), move it because its parent goes away
+   *  (`newParentPath`, null for the top level), or refuse (`blocked`: promote
+   *  answers 409 branch:promote_blocked even when confirmed). */
+  onPromote: 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
   newPath?: string;
+  newParentPath?: string | null;
   updatedAt: string;
 }
 

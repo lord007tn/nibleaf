@@ -68,6 +68,28 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(localized, raced, 'editor.branch.mergeError')).toBe(expected);
   });
 
+  it.each([
+    [
+      'en',
+      'Promoting would put pages inside each other, so nothing changed. In the version, move one of those pages out of the other, then promote again.',
+    ],
+    ['ar', 'كانت الترقية ستضع صفحاتٍ داخل بعضها، لذلك لم يتغيّر شيء. في الإصدار، انقل إحدى هذه الصفحات خارج الأخرى، ثم أعد الترقية.'],
+  ] as const)('explains, in %s, a promote refused because pages would end up inside each other', async (locale, expected) => {
+    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
+    const response = Response.json(
+      {
+        error: {
+          code: 'branch:promote_blocked',
+          message: 'Promoting would put pages inside each other.',
+          details: { reason: 'cycle', changedOnMainSinceFork: [] },
+        },
+      },
+      { status: 409 },
+    );
+    const blocked = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    expect(friendlyErrorMessage(localized, blocked, 'editor.branch.mergeError')).toBe(expected);
+  });
+
   it('recognises a request that never reached the server', () => {
     expect(friendlyErrorMessage(t, new TypeError('fetch failed'), 'editor.createFailed')).toBe('t:error.network');
   });

@@ -8,6 +8,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['branch:main_changed', 'error.branchMainChanged'],
   ['promote_raced', 'error.promoteRaced'],
+  ['branch:promote_blocked', 'error.promoteBlocked'],
 ]);
 
 /**

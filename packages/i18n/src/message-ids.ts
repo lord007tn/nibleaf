@@ -2199,6 +2199,7 @@ export const MESSAGE_IDS = {
   'error.conflict': 'error_conflict',
   'error.branchMainChanged': 'error_branchmainchanged',
   'error.promoteRaced': 'error_promoteraced',
+  'error.promoteBlocked': 'error_promoteblocked',
   'error.tooLarge': 'error_toolarge',
   'error.rateLimited': 'error_ratelimited',
   'notFound.badge': 'notfound_badge',

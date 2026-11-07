@@ -1833,6 +1833,7 @@
   "error_conflict": "একই সময়ে অন্য কেউ এটি বদলেছেন। পৃষ্ঠাটি রিফ্রেশ করে আবার চেষ্টা করুন।",
   "error_branchmainchanged": "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
   "error_promoteraced": "Someone saved during the promote. Nothing changed; try again.",
+  "error_promoteblocked": "Promoting would put pages inside each other, so nothing changed. In the version, move one of those pages out of the other, then promote again.",
   "error_toolarge": "এটি খুব বড়। একটি ছোট ফাইল চেষ্টা করুন।",
   "error_ratelimited": "অনেকবার চেষ্টা করা হয়েছে। একটু অপেক্ষা করে আবার চেষ্টা করুন।",
   "notfound_badge": "404",
