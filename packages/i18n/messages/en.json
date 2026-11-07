@@ -371,6 +371,8 @@
   "editor_pages": "Pages",
   "editor_backtodashboard": "Back to dashboard",
   "editor_config_heading": "Site settings",
+  "editor_config_adminonly": "Only admins can change site settings. Ask an admin of this site if something needs to change.",
+  "editor_config_backtowriting": "Back to writing",
   "editor_viewonsite": "View on site",
   "editor_ai_title": "AI assist",
   "editor_ai_intro": "Continue writing, rephrase for clarity, or generate from a prompt — grounded in this doc.",

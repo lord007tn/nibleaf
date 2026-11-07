@@ -337,6 +337,8 @@
   "editor_pages": "صفحات",
   "editor_backtodashboard": "ڈیش بورڈ پر واپس جائیں۔",
   "editor_config_heading": "سائٹ کی ترتیبات",
+  "editor_config_adminonly": "صرف منتظمین ہی سائٹ کی ترتیبات تبدیل کر سکتے ہیں۔ اگر کچھ تبدیل کرنا ہو تو اس سائٹ کے کسی منتظم سے کہیں۔",
+  "editor_config_backtowriting": "لکھنے پر واپس جائیں",
   "editor_viewonsite": "سائٹ پر دیکھیں",
   "editor_ai_title": "AI معاونت",
   "editor_ai_intro": "لکھنا جاری رکھیں، وضاحت کے لیے دوبارہ بیان کریں، یا پرامپٹ سے تخلیق کریں — جو اس دستاویز میں ہے۔",

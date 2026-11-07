@@ -337,6 +337,8 @@
   "editor_pages": "Halaman",
   "editor_backtodashboard": "Kembali ke dasbor",
   "editor_config_heading": "Pengaturan situs",
+  "editor_config_adminonly": "Hanya admin yang dapat mengubah pengaturan situs. Jika ada yang perlu diubah, mintalah bantuan admin situs ini.",
+  "editor_config_backtowriting": "Kembali menulis",
   "editor_viewonsite": "Lihat di situs",
   "editor_ai_title": "bantuan AI",
   "editor_ai_intro": "Lanjutkan menulis, ulangi kalimatnya untuk kejelasan, atau buat dari perintah — berdasarkan dokumen ini.",
