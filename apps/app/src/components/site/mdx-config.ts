@@ -51,10 +51,13 @@ const COMPONENT_PROTOCOLS: Record<string, string[]> = Object.fromEntries(
 export const MDX_BLOCK_TAGS: readonly string[] = CONTRACT.flatMap(([tag, component]) => (component.markdownBody ? [tag] : []));
 const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
 // One piece of a tag's attribute text: a character that isn't `>` or a quote,
-// or a whole quoted value, so `title="a > b"` doesn't end the tag early.
-const ATTRIBUTE_PART = `(?:[^>"']|"[^"]*"|'[^']*')`;
+// or a whole quoted value on one line, so `title="a > b"` doesn't end the tag
+// early. A quote that isn't closed on its line (an apostrophe inside
+// title={`it's`}) is an ordinary character, so it can't run on.
+const LONE_QUOTE = `"(?![^"\\n]*")|'(?![^'\\n]*')`;
+const ATTRIBUTE_PART = `(?:[^>"']|"[^"\\n]*"|'[^'\\n]*'|${LONE_QUOTE})`;
 // Attribute text that doesn't end in `/`, so `<Tag … />` isn't read as an opener.
-const OPENING_ATTRIBUTES = `(?:${ATTRIBUTE_PART}*(?:[^/>"']|"[^"]*"|'[^']*'))?`;
+const OPENING_ATTRIBUTES = `(?:${ATTRIBUTE_PART}*(?:[^/>"']|"[^"\\n]*"|'[^'\\n]*'|${LONE_QUOTE}))?`;
 
 /**
  * Rewrites authored component tags into what the HTML parser must see:

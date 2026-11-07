@@ -23,7 +23,9 @@ import Example from './example'
 
     const normalized = normalizePublicMarkdownContent(source);
 
-    expect(normalized).toContain('&gt; **Portable guidance**');
+    // A callout becomes a real blockquote: its marker isn't escaped.
+    expect(normalized).toContain('> **Portable guidance**');
+    expect(normalized).not.toContain('&gt; **Portable guidance**');
     expect(normalized).toContain('&lt;Unknown onclick=&quot;run()&quot;&gt;Readable&lt;/Unknown&gt;');
     expect(normalized).toContain("```mdx\nimport Example from './example'\n<Callout>Code sample</Callout>\n```");
     expect(normalized).not.toContain('Exploit');
@@ -74,10 +76,58 @@ import Example from './example'
     expect(portablePublicMdxMarkdown('<Tooltip tip="&amp;lt;b&amp;gt;">tag</Tooltip>')).toBe('tag (&lt;b&gt;)');
   });
 
-  it('reads an attribute value containing ">" whole, and escapes it only once', () => {
-    expect(portablePublicMdxMarkdown('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a > b)');
+  it('reads an attribute value containing ">" whole, and escapes it once for each output', () => {
+    // Markdown for exports escapes `<` and `>` in attribute text, so it can't form an autolink or a tag.
+    expect(portablePublicMdxMarkdown('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a \\> b)');
+    expect(portablePublicMdxMarkdown('<Tooltip tip="<javascript:alert(1)>">T</Tooltip>')).toBe('T (\\<javascript:alert(1)\\>)');
+    // `.md` escapes HTML afterwards, so a backslash there would show.
     expect(normalizePublicMarkdownContent('<Tooltip tip="a > b">API</Tooltip>')).toBe('API (a &gt; b)');
-    expect(portablePublicMdxMarkdown('<Frame caption="When x > 1">\n\n![Chart](/c.png)\n\n</Frame>')).toBe('![Chart](/c.png)\n\n_When x > 1_');
+    expect(portablePublicMdxMarkdown('<Frame caption="When x > 1">\n\n![Chart](/c.png)\n\n</Frame>')).toBe('![Chart](/c.png)\n\n_When x \\> 1_');
+  });
+
+  it('projects components around code blocks, and keeps the code literal', () => {
+    expect(normalizePublicMarkdownContent('<CodeGroup>\n\n```js title="a.js"\nconst a = 1 < 2;\n```\n\n</CodeGroup>')).toBe(
+      '```js title="a.js"\nconst a = 1 < 2;\n```',
+    );
+    // Blank-line runs are compared collapsed: a code block keeps its own trailing newline.
+    expect(
+      normalizePublicMarkdownContent('<Card title="T" href="/x">\n\n```sh\nnpm i <pkg>\n```\n\n</Card>\n\nAfter.').replace(/\n{3,}/g, '\n\n'),
+    ).toBe('### [T](/x)\n\n```sh\nnpm i <pkg>\n```\n\nAfter.');
+  });
+
+  it('keeps an unclosed active tag from hiding the prose after the next code block', () => {
+    const output = normalizePublicMarkdownContent('<style>unclosed\n\n```txt\nkept code\n```\n\nKept prose.');
+    expect(output).toContain('kept code');
+    expect(output).toContain('Kept prose.');
+    expect(output).not.toContain('unclosed');
+  });
+
+  it('keeps blockquotes, including the ones callouts become, as Markdown', () => {
+    expect(normalizePublicMarkdownContent('<Note>\n\nhello\n\n</Note>\n\n> quoted & kept\n> > nested')).toBe(
+      '> hello\n\n> quoted &amp; kept\n> > nested',
+    );
+  });
+
+  it('keeps a "}" that closes nothing', () => {
+    expect(normalizePublicMarkdownContent('Literal \\{y} and a} b, while {hidden} goes.')).toBe('Literal \\{y} and a} b, while  goes.');
+  });
+
+  it('reads a quote that is not closed on its line as text, so the tag ends where it should', () => {
+    expect(portablePublicMdxMarkdown("<Card title=don't>\n\nBody\n\n</Card>\n\nIt's after <Badge>B</Badge>.")).toBe("Body\n\nIt's after **B**.");
+  });
+
+  it.each([
+    ['<javascript:alert(1)>', 'angle brackets'],
+    ['/a b', 'a space'],
+    ['/a)x', 'a parenthesis'],
+  ])('handles the destination %j (%s) without breaking or unsafe links', (href, _label) => {
+    const output = portablePublicMdxMarkdown(`<Button href="${href}">Go</Button>`);
+    expect(output).not.toContain('javascript');
+    expect(output).not.toMatch(/\]\([^)]*[\s<>][^)]*\)/);
+  });
+
+  it('percent-encodes spaces and parentheses in a projected destination', () => {
+    expect(portablePublicMdxMarkdown('<Button href="/a b(c)">Go</Button>')).toBe('[Go](/a%20b%28c%29)');
   });
 
   it('projects atoms written as an empty pair like self-closing ones', () => {

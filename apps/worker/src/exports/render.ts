@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
-import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
+import { isSafeLinkDestination, normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
 import {
   defaultLanguage,
   extractHeadings,
@@ -82,21 +82,22 @@ type FormattingHtml = Tokens.HTML & { paired?: boolean };
  *  the same run. Only those render as HTML: an unclosed `<u>` would otherwise
  *  underline the rest of the document, and a PDF joins every page into one. */
 const pairInlineFormatting = (tokens: Token[] | undefined): void => {
-  const open = new Map<string, FormattingHtml[]>();
+  // One stack for all three tags, so only correctly nested pairs count:
+  // `<u>a <sub>b</u> c</sub>` stays escaped.
+  const open: { name: string; token: FormattingHtml }[] = [];
   for (const token of tokens ?? []) {
     if (token.type !== 'html' || token.block) continue;
     const match = INLINE_FORMATTING_TAG.exec(token.text);
     if (!match) continue;
     const name = (match[2] as string).toLowerCase();
-    const openers = open.get(name) ?? [];
     if (!match[1]) {
-      openers.push(token as FormattingHtml);
-      open.set(name, openers);
+      open.push({ name, token: token as FormattingHtml });
       continue;
     }
-    const opener = openers.pop();
+    if (open.at(-1)?.name !== name) continue;
+    const opener = open.pop();
     if (!opener) continue;
-    opener.paired = true;
+    opener.token.paired = true;
     (token as FormattingHtml).paired = true;
   }
 };
@@ -178,7 +179,7 @@ const rewriteUrl = (
 ): string => {
   const url = rawUrl.trim().replaceAll('&amp;', '&');
   if (!url || url.startsWith('#')) return url;
-  if (/^(?:javascript|data:text\/html|vbscript):/i.test(url)) return '#';
+  if (/^(?:javascript|data:text\/html|vbscript):/i.test(url) || (kind === 'link' && !isSafeLinkDestination(url))) return '#';
   const asset = assets.find((candidate) => url === candidate.url || url === `/${candidate.key}` || url.includes(candidate.key));
   if (asset) return path.posix.relative(path.posix.dirname(currentOutput), assetName(asset)) || './';
   if (kind === 'image' || /^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return url;
@@ -714,6 +715,8 @@ export const renderPdfHtml = (
         })
         .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, escapedHref: string, after) => {
           const href = unescapeHtml(escapedHref);
+          // Same rule as the HTML export: unsafe destinations become `#`.
+          if (!isSafeLinkDestination(href)) return `${before}#${after}`;
           const target = resolvePageTarget(snapshot, page, href);
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });

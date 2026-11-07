@@ -50,9 +50,11 @@ export const sanitizeSchema = {
 
 const blockTags =
   'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
-// Attribute text read up to the first ">" outside quotes, so title="a > b" stays whole.
-const attributePart = '(?:[^>"\']|"[^"]*"|\'[^\']*\')';
-const openingAttributes = '(?:' + attributePart + '*(?:[^/>"\']|"[^"]*"|\'[^\']*\'))?';
+// Attribute text read up to the first ">" outside quotes, so title="a > b" stays
+// whole. A quote not closed on its line (an apostrophe in an expression) is text.
+const loneQuote = '"(?![^"\\n]*")|\'(?![^\'\\n]*\')';
+const attributePart = '(?:[^>"\']|"[^"\\n]*"|\'[^\'\\n]*\'|' + loneQuote + ')';
+const openingAttributes = '(?:' + attributePart + '*(?:[^/>"\']|"[^"\\n]*"|\'[^\'\\n]*\'|' + loneQuote + '))?';
 const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b' + openingAttributes + '>\\s*$', 'i');
 const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
 const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b' + attributePart + '*>\\s*$', 'i');

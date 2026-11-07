@@ -124,6 +124,10 @@ describe('normalizeMdxBlocks', () => {
     );
     expect(normalizeMdxBlocks('<Accordion title="a > b">\nBody\n</Accordion>')).toBe('<Accordion title="a > b">\n\nBody\n\n</Accordion>');
     expect(normalizeMdxBlocks("<Callout type='a > b'>One line.</Callout>")).toBe("<Callout type='a > b'>\n\nOne line.\n\n</Callout>");
+    // A quote that isn't closed on its line is text, so the tag still ends at its own ">".
+    expect(normalizeMdxBlocks("<RelatedContent>\n<RelatedCard title=it's />\nInside\n</RelatedContent>\n\nIt's later.")).toContain(
+      "<RelatedCard title=it's ></RelatedCard>",
+    );
     // A quoted "/>" doesn't close the tag either.
     expect(normalizeMdxBlocks('<FileTree>\n<File name="a/>b" />\n</FileTree>')).toContain('<File name="a/>b" ></File>');
   });

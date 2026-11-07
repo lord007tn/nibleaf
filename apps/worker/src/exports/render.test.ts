@@ -282,7 +282,9 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(full).toContain('&lt;svg onload=&quot;run()&quot;&gt;');
     expect(full).toContain('&lt;math href=&quot;javascript:run()&quot;&gt;math link&lt;/math&gt;');
     expect(full).toContain('&amp;lt;scr');
-    expect(full).toContain('&gt; **Portable guidance**');
+    // The callout is a real Markdown blockquote: its marker isn't escaped.
+    expect(full).toContain('> **Portable guidance**');
+    expect(full).not.toContain('&gt; **Portable guidance**');
     expect(full).toContain('## Continue');
     expect(full).toContain('[Setup](/setup)');
     expect(full).toContain('Before expression  after expression.');
@@ -538,6 +540,36 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
       expect(html).not.toContain('<u class=');
       expect(html).toContain('&lt;u class=&quot;x&quot; onclick=&quot;alert(1)&quot;&gt;');
     }
+  });
+
+  it('turns unsafe link destinations into "#" in PDF and HTML exports, wherever they come from', () => {
+    const page = {
+      ...required(snapshot.pages[0]),
+      content: [
+        '[body](javascript:alert(1)) and [entity](&#106;avascript:alert(2))',
+        '',
+        '<Card title="Card" href="<javascript:alert(3)>">',
+        '',
+        'Text',
+        '',
+        '</Card>',
+        '',
+        'A <Tooltip tip="<javascript:alert(4)>">tip</Tooltip>.',
+      ].join('\n'),
+    };
+    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
+      expect(html).not.toMatch(/href="[^"]*(?:javascript|&#106;)/i);
+      expect(html).toContain('body');
+      expect(html).toContain('Card');
+    }
+  });
+
+  it('renders only correctly nested formatting tags', () => {
+    const page = { ...required(snapshot.pages[0]), content: 'Crossed <u>a <sub>b</u> c</sub>, nested <u>d <sub>e</sub></u>.' };
+    const pdf = renderPdfHtml({ ...snapshot, pages: [page] }, assets);
+    expect(pdf).toContain('nested <u>d <sub>e</sub></u>');
+    // Of crossed tags, only the pair that nests renders; the stray one stays text.
+    expect(pdf).toContain('Crossed &lt;u&gt;a <sub>b&lt;/u&gt; c</sub>');
   });
 
   it('escapes PDF link destinations once, so query parameters keep their names', () => {

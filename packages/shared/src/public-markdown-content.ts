@@ -14,19 +14,23 @@ const mdxAttribute = (source: string, name: string): string | undefined => {
 };
 
 /** One piece of a tag's attribute text: a character that isn't `>` or a quote,
- *  or a whole quoted value, so `tip="a > b"` doesn't end the tag early. */
-const ATTRIBUTE_PART = `(?:[^>"']|"[^"]*"|'[^']*')`;
+ *  or a whole quoted value on one line, so `tip="a > b"` doesn't end the tag
+ *  early. A quote that isn't closed on its line (an apostrophe inside
+ *  `` title={`it's`} ``) is an ordinary character, so it can't run on. */
+const ATTRIBUTE_PART = `(?:[^>"']|"[^"\\n]*"|'[^'\\n]*'|"(?![^"\\n]*")|'(?![^'\\n]*'))`;
 const ATTRIBUTES = `(${ATTRIBUTE_PART}*)`;
 /** The end of an opening tag: a `>` not after `/`, so `<Tag … />` isn't read as an opener. */
 const OPENER_END = String.raw`(?<!\/)>`;
 /** An atom, self-closing (`<File … />`) or written as an empty pair (`<File …></File>`). */
 const atomPattern = (tag: string) => new RegExp(String.raw`<${tag}\b${ATTRIBUTES}(?:\/>|>\s*<\/${tag}>)`, 'gi');
 
-/** Attribute text projected into Markdown. `<` and `>` are left to the HTML
- *  escaping that every output applies, so they aren't escaped twice. */
-const markdownText = (value?: string): string =>
+/** Attribute text projected into Markdown, with Markdown syntax escaped.
+ *  `<` and `>` are escaped too, so text can't form an autolink or a tag,
+ *  unless the output escapes HTML itself afterwards (`.md`), where a
+ *  backslash would show. */
+const markdownText = (value: string | undefined, escapeAngles: boolean): string =>
   (value ?? '')
-    .replace(/[\\`*_[\]{}]/g, '\\$&')
+    .replace(escapeAngles ? /[\\`*_[\]{}<>]/g : /[\\`*_[\]{}]/g, '\\$&')
     .replace(/[\r\n]+/g, ' ')
     .trim();
 
@@ -42,12 +46,21 @@ const destinationForScheme = (href: string): string =>
     // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are ignored inside URL schemes
     .replace(/[\u0000- \u007f]/g, '');
 
-/** A projected link destination: relative, `#`, http(s), mailto or tel only. */
+/** True for a link destination that is relative, `#`, http(s), mailto or tel.
+ *  Angle brackets are refused: `<javascript:…>` would hide its scheme. */
+export const isSafeLinkDestination = (href: string): boolean => {
+  const decoded = destinationForScheme(href);
+  if (/[<>]/.test(decoded)) return false;
+  const scheme = /^([a-z][a-z\d+.-]*):/i.exec(decoded)?.[1]?.toLowerCase();
+  return !scheme || ['http', 'https', 'mailto', 'tel'].includes(scheme);
+};
+
+/** A projected link destination, safe and with the characters that would end
+ *  a Markdown destination (spaces, parentheses) percent-encoded. */
 const safeHref = (value?: string): string | undefined => {
   const href = value?.trim();
-  if (!href) return undefined;
-  const scheme = /^([a-z][a-z\d+.-]*):/i.exec(destinationForScheme(href))?.[1]?.toLowerCase();
-  return !scheme || ['http', 'https', 'mailto', 'tel'].includes(scheme) ? href : undefined;
+  if (!href || !isSafeLinkDestination(href)) return undefined;
+  return href.replace(/[\s()]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0')}`);
 };
 
 const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {
@@ -64,9 +77,9 @@ const mdxContainer = (source: string, tag: string, render: (attributes: string, 
 /** How projected attribute text enters the output: as is, or held aside so
  *  later passes over authored markup can't read it as markup. */
 type Projector = { text: (value?: string) => string; link: (value?: string) => string | undefined };
-const projector = (keep: (value: string) => string): Projector => ({
+const projector = (keep: (value: string) => string, escapeAngles: boolean): Projector => ({
   text: (value) => {
-    const text = markdownText(value);
+    const text = markdownText(value, escapeAngles);
     return text ? keep(text) : '';
   },
   link: (value) => {
@@ -74,7 +87,7 @@ const projector = (keep: (value: string) => string): Projector => ({
     return href ? keep(href) : undefined;
   },
 });
-const asIs = projector((value) => value);
+const asIs = projector((value) => value, true);
 
 /** A RelatedCard as a list item: its linked title and its description. */
 const relatedCardItem = (attributes: string, { text, link }: Projector): string => {
@@ -232,12 +245,20 @@ const stripMdxExpressions = (source: string): string => {
       continue;
     }
     if (character === '}') {
+      // A `}` that closes nothing is text, not the end of an expression.
+      if (expressionDepth === 0) output += character;
       expressionDepth = Math.max(0, expressionDepth - 1);
       continue;
     }
     if (expressionDepth === 0) output += character;
   }
   return output;
+};
+
+/** Escape a prose line, keeping its blockquote markers (`> `) as Markdown. */
+const escapeProseLine = (line: string): string => {
+  const marker = /^(?: {0,3}>[ \t]?)+/.exec(line)?.[0] ?? '';
+  return marker + escapeHtml(line.slice(marker.length));
 };
 
 // Formatting the editor saves as inline HTML (Underline, Subscript, Superscript).
@@ -282,34 +303,41 @@ const literalStore = (source: string) => {
   };
 };
 
-const sanitizeAuthoredProse = (source: string): string => {
+/** Sanitize one stretch of prose between code fences: drop active markup and
+ *  MDX expressions, and escape what's left as text. */
+const sanitizeProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);
-  // Projected attribute text (a tip, a title) is plain text: it is held aside
-  // while authored markup is scanned, so `tip="The <style> element"` can't be
-  // read as an active tag, then put back HTML-escaped.
-  const projected = literalStore(protectedCode.content);
-  const withoutActiveBlocks = stripActiveMarkup(projectComponents(protectedCode.content, projector(projected.keep)))
-    .replace(underlineTag, '')
-    .replace(scriptOpenerWithAttributes, '<$1>');
+  const withoutActiveBlocks = stripActiveMarkup(protectedCode.content).replace(underlineTag, '').replace(scriptOpenerWithAttributes, '<$1>');
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
-    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
+    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeProseLine(line)))
     .join('\n')
     .replace(PARAGRAPH, (paragraph) => restoreScriptPairs(paragraph));
-  return protectedCode.restore(projected.restore(sanitized, escapeHtml));
+  return protectedCode.restore(sanitized);
 };
 
+/** Public Markdown for a page (`.md`, llms).
+ *  1. Components are projected over the whole page, with its code held aside,
+ *     so a component around a code block (a CodeGroup, a Card with an example)
+ *     is projected like any other.
+ *  2. Prose between code fences is then sanitized one stretch at a time, so an
+ *     unclosed `<style>` can't hide the rest of the page.
+ *  Projected attribute text (a tip, a title) is plain text: it is held aside
+ *  through both steps, so `tip="The <style> element"` can't be read as markup,
+ *  and put back HTML-escaped at the end. */
 export const normalizePublicMarkdownContent = (markdown: string): string => {
+  const code = protectMarkdownCode(markdown);
+  const projected = literalStore(markdown);
+  const projectedMarkdown = code.restore(projectComponents(code.content, projector(projected.keep, false)));
   const output: string[] = [];
   const prose: string[] = [];
   let fence: MarkdownFence | undefined;
   const flushProse = () => {
     if (prose.length === 0) return;
-    output.push(sanitizeAuthoredProse(prose.join('\n')));
+    output.push(sanitizeProse(prose.join('\n')));
     prose.length = 0;
   };
-
-  for (const line of markdown.split('\n')) {
+  for (const line of projectedMarkdown.split('\n')) {
     if (fence) {
       output.push(line);
       if (closesMarkdownFence(line, fence)) fence = undefined;
@@ -325,5 +353,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
     prose.push(line);
   }
   flushProse();
-  return output.join('\n').trim();
+  return projected.restore(output.join('\n'), escapeHtml).trim();
 };
