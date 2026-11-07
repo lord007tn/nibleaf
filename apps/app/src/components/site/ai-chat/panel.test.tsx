@@ -32,16 +32,14 @@ const desktop = () => ({ matches: false, addEventListener: vi.fn(), removeEventL
 window.matchMedia = vi.fn(desktop);
 /** A phone: touch and narrow media queries match for the rest of the test. */
 const phone = () =>
-  vi
-    .mocked(window.matchMedia)
-    .mockImplementation(
-      (query) =>
-        ({
-          matches: /pointer: coarse|max-width: 767px/.test(query),
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-        }) as unknown as MediaQueryList,
-    );
+  vi.mocked(window.matchMedia).mockImplementation(
+    (query) =>
+      ({
+        matches: /pointer: coarse|max-width: 767px/.test(query),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }) as unknown as MediaQueryList,
+  );
 
 import Panel from './panel';
 
