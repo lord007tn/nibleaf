@@ -210,7 +210,9 @@ describe('analyzePromote: plan', () => {
     ]);
     const topLevel = analyze(now, [], forkOf(atFork));
     expect(topLevel.plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: null } }]);
-    expect(topLevel.preview.changedOnMainSinceFork).toContainEqual(expect.objectContaining({ pageId: 'refunds', onPromote: 'moved', newParentPath: null }));
+    expect(topLevel.preview.changedOnMainSinceFork).toContainEqual(
+      expect.objectContaining({ pageId: 'refunds', onPromote: 'moved', newParentPath: null }),
+    );
   });
 
   it('brings back a page deleted on main only when the version edited it, or keeps a page under it', () => {
@@ -282,7 +284,11 @@ describe('analyzePromote: plan', () => {
   it('renames a clashing folder once: its pages follow it instead of getting their own suffix', () => {
     const atFork = [page('billing')];
     // Main added folder "docs" with "intro"; the version added its own "docs" with "intro".
-    const now = [...atFork, page('docs', { kind: 'GROUP', createdAt: AFTER }), page('intro', { parentId: 'docs', path: 'docs/intro', createdAt: AFTER })];
+    const now = [
+      ...atFork,
+      page('docs', { kind: 'GROUP', createdAt: AFTER }),
+      page('intro', { parentId: 'docs', path: 'docs/intro', createdAt: AFTER }),
+    ];
     const version = [
       copyOf(atFork[0] as PromotePageRow),
       page('v-docs', { kind: 'GROUP', slug: 'docs', path: 'docs', hash: 'h:vdocs' }),
