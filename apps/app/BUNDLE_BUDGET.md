@@ -66,14 +66,21 @@ include that chunk. So:
 
 | Build | public-docs | public-docs-index |
 | --- | --- | --- |
-| main@831657aa | 346.35 KiB | 345.55 KiB |
+| main@afd79476 | 346.32 KiB | 345.51 KiB |
+| this change | 339.26 KiB | 338.46 KiB |
+
+Each step, measured on main@831657aa (346.35 and 345.55 KiB):
+
+| Build | public-docs | public-docs-index |
+| --- | --- | --- |
 | loaders split for non-reader routes only | 346.15 KiB | 345.35 KiB |
 | marketing heads built in loaders only | 341.74 KiB | 340.94 KiB |
-| both (this change) | 339.24 KiB | 338.43 KiB |
+| both | 339.24 KiB | 338.43 KiB |
 
-- **Marketing heads, ~4.6 KiB.** 22 marketing routes called `pageMeta`,
-  `breadcrumbLd`, `faqLd` and `marketingLd` in `head`, and imported
-  `getGithubStarsFn` and `loadComparisonData` for their loaders. That kept
+- **Marketing heads, ~4.6 KiB.** Marketing routes called `pageMeta`,
+  `breadcrumbLd` and `faqLd` in `head`, and imported `getGithubStarsFn` and
+  `loadComparisonData` for their loaders (`/` and `/ar` already built their
+  head in `copy/landing-head.ts`, but imported `getGithubStarsFn`). That kept
   `lib/marketing-seo.ts`, `lib/marketing-organization.ts`,
   `functions/marketing.ts`, `lib/comparison-loader.ts` and `lib/blog-seo.ts`
   in every page. `/contact`'s head also shared its contact list with the page,
@@ -81,14 +88,16 @@ include that chunk. So:
   `triangle-alert`) into the eager chunk. Each route now has a private head
   builder that its loader calls after importing the helpers lazily, and the
   `/compare` and `/alternatives` pages share `lib/comparison-page.ts`. The
-  `<head>` output is unchanged: the meta, links and JSON-LD of all 22 routes
-  matched `main` exactly, and the blog article head still comes from
+  `<head>` output is unchanged: the meta, links and JSON-LD of 22 marketing
+  routes matched `main` exactly, and the blog article head still comes from
   `articleHead`.
 - **Non-reader loaders, ~2.5 KiB more.** `splitBehavior` now splits the loader
   of every route except `__root__` and `/sites/**`, not only the dashboard's.
   On its own this saves only 0.20 KiB, because `head` kept the helpers eager;
   with heads in the loaders, the head strings move out as well. Non-reader
-  route modules in the public profile went from 43.1 KiB to 28.6 KiB rendered.
+  route modules in the public profile went from 40.3 KiB (main@afd79476) to
+  28.6 KiB rendered. What's left is mostly the route tree's lazy-chunk
+  references; taking the routes out of the tree is #345's third option.
 
 Still in the public profile, and needed there:
 
@@ -104,11 +113,11 @@ Still in the public profile, and needed there:
 The module check now also rejects `lib/marketing-*` (except
 `lib/marketing-analytics-route.ts`, which the root route uses to decide whether
 to load marketing analytics), `lib/comparison-*`, `lib/blog-seo.ts` and
-`functions/marketing.ts`. Against main@831657aa it reports five forbidden
+`functions/marketing.ts`. Against main@afd79476 it reports five forbidden
 modules. The patterns live in `scripts/bundle-boundaries.mjs`, and
 `scripts/bundle-boundaries.test.mjs` checks them against a fixture module list.
 
-The budget is the measured 347,382 bytes plus a ~2 KiB margin.
+The budget is the measured 347,402 bytes plus a ~2 KiB margin.
 
 ### 365,000 → 356,000 bytes: dashboard code out of the reader (#291)
 

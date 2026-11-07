@@ -32,7 +32,7 @@ const profiles = {
 // settings and auth routes' search checks no longer pull in icons or MCP code.
 // 356_000 → 349_500 (#345): marketing routes build their head in the loader
 // from a lazy import, and every non-reader route's loader loads with its route,
-// about 7.1 KiB less. The margin is ~2 KiB over the measured 347,382 bytes.
+// about 7.1 KiB less. The margin is ~2 KiB over the measured 347,402 bytes.
 const gzipBudgets = {
   'public-docs': 349_500,
   'public-docs-index': 349_500,
