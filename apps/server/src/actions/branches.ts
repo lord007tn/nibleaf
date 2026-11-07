@@ -70,6 +70,14 @@ const draftFingerprint = async (db: Prisma.TransactionClient, projectId: string,
     .digest('hex');
 };
 
+/** After main's pages are replaced (a promote or a replacing import), every
+ *  other version's baseline names main page ids that no longer exist. Forget
+ *  them in the same transaction, so those versions get `branch:baseline_missing`
+ *  instead of a list of every page as deleted. `exceptId` is the version being
+ *  consumed, which is deleted anyway. */
+const forgetOtherForkPoints = (tx: Prisma.TransactionClient, projectId: string, exceptId: string) =>
+  tx.branch.updateMany({ where: { projectId, isDefault: false, id: { not: exceptId } }, data: { forkedAt: null, forkBaseline: Prisma.DbNull } });
+
 const importTransactionOptions = { isolationLevel: 'Serializable', timeout: 30_000 } as const;
 const importTransactionFailure = (error: unknown): never => {
   if (error && typeof error === 'object' && 'code' in error) {
@@ -78,18 +86,6 @@ const importTransactionFailure = (error: unknown): never => {
   }
   throw error;
 };
-
-/** Main's pages were replaced (they have new ids), so no other version's
- *  fork point matches them any more: clear it, and promoting one of them
- *  answers 409 branch:baseline_missing instead of reading every page as
- *  deleted on main and duplicating the tree. Skips main and the consumed
- *  version; called only once the replacement is written, never on a refusal.
- *  (A promote merges in place and keeps main's page ids, so it doesn't.) */
-const forgetOtherForkPoints = (tx: Prisma.TransactionClient, projectId: string, consumedBranchId: string) =>
-  tx.branch.updateMany({
-    where: { projectId, isDefault: false, id: { not: consumedBranchId } },
-    data: { forkBaseline: Prisma.DbNull, forkedAt: null },
-  });
 
 export const captureImportDraft = async (projectId: string) => {
   const main = await getDefaultBranch(projectId);
@@ -116,9 +112,8 @@ export const promoteImportReplacementBranch = async (
       }
       await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
       await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
-      await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
-      // Main's pages now have new ids: no other version's fork point matches.
       await forgetOtherForkPoints(tx, projectId, branch.id);
+      await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
       if (projectConfig !== undefined) {
         await tx.project.update({ where: { id: projectId }, data: { config: projectConfig } });
       }

@@ -22,7 +22,7 @@ const branchesRoutes = {
   mergePreview: createRouteConfig({
     guard: [...editor],
     tags: ['branches'],
-    description: "List pages changed on the default branch ('main') since this branch was created.",
+    description: "List pages on the default branch ('main') modified, added or deleted since this branch's pages were copied from it.",
     responses: ok,
   }),
   merge: createRouteConfig({

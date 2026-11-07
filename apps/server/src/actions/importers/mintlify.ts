@@ -174,7 +174,7 @@ const ensureVersionTarget = async (
   summary: ImportSummary,
 ): Promise<ImportTarget> => {
   if (version.isDefault) {
-    const branch = await prisma.branch.findUnique({ where: { id: defaultTarget.branchId }, omit: { forkBaseline: true } });
+    const branch = await prisma.branch.findUnique({ where: { id: defaultTarget.branchId }, select: { id: true, name: true } });
     if (!branch) throw badRequest('The project needs a default documentation version before content can be imported.');
     if (branch.name !== version.name) {
       const collision = await prisma.branch.findFirst({ where: { projectId, name: version.name }, select: { id: true } });

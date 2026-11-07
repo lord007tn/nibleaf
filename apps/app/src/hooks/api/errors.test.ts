@@ -26,33 +26,49 @@ describe('friendlyErrorMessage', () => {
 
   it.each([
     [
+      'branch:main_changed',
+      { reason: 'main_changed', changedOnMainSinceFork: [] },
       'en',
       "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
     ],
     [
+      'branch:main_changed',
+      { reason: 'main_changed', changedOnMainSinceFork: [] },
       'ar',
       'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانسخ إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
     ],
-  ] as const)('gives the editor’s promote error its own %s text for branch:main_changed, not "refresh and try again"', async (locale, expected) => {
+    [
+      'branch:baseline_missing',
+      { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
+      'en',
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
+    ],
+    [
+      'branch:baseline_missing',
+      { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
+      'ar',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا، أو استُبدلت صفحات main منذ ذلك الحين. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
+    ],
+  ] as const)('gives the promote refusal %s its own complete %s text, not "refresh and try again"', async (code, details, locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
     // The 409 exactly as the server sends it, through the mutation helper the promote hook uses.
-    const response = Response.json(
-      {
-        error: {
-          code: 'branch:main_changed',
-          message: 'Pages on main changed since this version was created.',
-          details: { changedOnMainSinceFork: [] },
-        },
-      },
-      { status: 409 },
-    );
-    const blocked = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    const response = Response.json({ error: { code, message: 'Not promoted.', details } }, { status: 409 });
+    const refused = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    expect(refused).toMatchObject({ code, details });
     // The editor's existing, generic call (branch-switcher's promote onError).
-    expect(friendlyErrorMessage(localized, blocked, 'editor.branch.mergeError')).toBe(expected);
+    expect(friendlyErrorMessage(localized, refused, 'editor.branch.mergeError')).toBe(expected);
     // Any other 409 keeps the concurrent-edit wording.
     expect(friendlyErrorMessage(localized, new ApiResponseError('Conflict', 409, 'database:conflict'), 'editor.branch.mergeError')).toBe(
       translateFn('error.conflict', undefined, locale),
     );
+  });
+
+  it('exposes details.reason from the server', () => {
+    const error = new ApiResponseError('Conflict', 409, 'database:conflict', undefined, undefined, undefined, undefined, { reason: 'x' });
+    expect(error.reason).toBe('x');
+    expect(
+      new ApiResponseError('Conflict', 409, 'database:conflict', undefined, undefined, undefined, undefined, { reason: 1 }).reason,
+    ).toBeUndefined();
   });
 
   it.each([
@@ -88,31 +104,6 @@ describe('friendlyErrorMessage', () => {
     );
     const blocked = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
     expect(friendlyErrorMessage(localized, blocked, 'editor.branch.mergeError')).toBe(expected);
-  });
-
-  it.each([
-    [
-      'en',
-      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
-    ],
-    [
-      'ar',
-      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا، أو استُبدلت صفحات main منذ ذلك الحين. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
-    ],
-  ] as const)('explains, in %s, that a version without a baseline cannot be promoted', async (locale, expected) => {
-    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
-    const response = Response.json(
-      {
-        error: {
-          code: 'branch:baseline_missing',
-          message: 'No baseline.',
-          details: { since: '2026-01-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
-        },
-      },
-      { status: 409 },
-    );
-    const refused = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
-    expect(friendlyErrorMessage(localized, refused, 'editor.branch.mergeError')).toBe(expected);
   });
 
   it('recognises a request that never reached the server', () => {

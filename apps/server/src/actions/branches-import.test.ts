@@ -39,12 +39,19 @@ it('promotes an unchanged snapshot in a serializable transaction', async () => {
   // Replacing main's pages is structural: the project lock comes first.
   expect(db.$queryRaw.mock.calls[0]?.[0].text).toBe('SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE');
   expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.page.deleteMany.mock.invocationCallOrder[0] ?? 0);
-  // Main's pages get new ids: every other version forgets its fork point.
+  expect(db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 30_000 });
+});
+
+it('forgets every other version’s fork point after replacing main, in the same transaction', async () => {
+  await promoteImportReplacementBranch('project', 'import');
   expect(db.branch.updateMany).toHaveBeenCalledWith({
     where: { projectId: 'project', isDefault: false, id: { not: 'import' } },
-    data: { forkBaseline: 'DbNull', forkedAt: null },
+    data: { forkedAt: null, forkBaseline: 'DbNull' },
   });
-  expect(db.$transaction).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: 'Serializable', timeout: 30_000 });
+  expect(db.branch.updateMany.mock.invocationCallOrder[0]).toBeGreaterThan(
+    db.page.updateMany.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY,
+  );
+  expect(db.branch.updateMany.mock.invocationCallOrder[0]).toBeLessThan(db.branch.delete.mock.invocationCallOrder[0] ?? 0);
 });
 
 it('returns a conflict when promotion encounters a serialization failure', async () => {
