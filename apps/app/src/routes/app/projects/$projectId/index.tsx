@@ -3,7 +3,6 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   ArrowRight,
@@ -45,10 +44,10 @@ import {
 import { useProjectAnalytics } from '@/hooks/api/analytics';
 import { analyticsTimezone, projectAnalyticsQueryOptions } from '@/hooks/api/analytics/query-options';
 import { domainsQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import { useSiteAdminState } from '@/hooks/use-site-admin-state';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
 import { useFormatters, viewsTrend } from '@/lib/format';
-import { useSession } from '@/services/auth-client';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 
@@ -88,10 +87,8 @@ function SiteOverviewPage() {
   // A failed request is unknown, never "no pages" or "0 members": those read as lost content.
   const pagesFailed = pagesQuery.isError && !pages;
   const membersFailed = membersQuery.isError && !members;
-  const { data: session, isPending: sessionPending } = useSession();
-  // Domain settings are for Admins. Unknown (still loading, or the team failed to load) is not "no".
-  const viewerRole = members?.members.find((member) => member.user.id === session?.user.id)?.role;
-  const canManageDomains = sessionPending || !members ? undefined : canAdminister(viewerRole ?? '');
+  // Domain settings are for Admins; while that's unknown, show neither variant.
+  const adminState = useSiteAdminState(projectId);
   const deploymentsFailed = deploymentsQuery.isError && !deployments;
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
@@ -200,7 +197,7 @@ function SiteOverviewPage() {
                   {connectingDomain ? (
                     <p className="mt-1 text-muted-foreground text-xs">
                       {t('overview.live.domainConnecting', { domain: `\u2068${connectingDomain.domain}\u2069` })}
-                      {canManageDomains === true ? (
+                      {adminState === 'admin' ? (
                         <>
                           {' '}
                           <Link
@@ -212,7 +209,7 @@ function SiteOverviewPage() {
                             {t('overview.live.finishSetup')}
                           </Link>
                         </>
-                      ) : canManageDomains === false ? (
+                      ) : adminState === 'notAdmin' ? (
                         ` ${t('overview.live.askAdmin')}`
                       ) : null}
                     </p>
