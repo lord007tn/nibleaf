@@ -171,12 +171,14 @@ interface BranchChangedOnMainPage {
    *  conflict, `pageId`/`title` are the page concerned, which may be one of
    *  the version's pages. */
   change: 'modified' | 'added' | 'deleted' | 'conflict';
-  /** What promote does with it: keep main's page, replace it with the
-   *  version's, remove it, bring the version's copy back, give it a numbered
-   *  address (`newPath`), move it because its parent goes away
-   *  (`newParentPath`, null for the top level), or refuse (`blocked`: promote
-   *  answers 409 branch:promote_blocked even when confirmed). */
-  onPromote: 'kept' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
+  /** What promote does with it: keep main's page as it is (`kept`), keep
+   *  both sides' edits to different fields (`merged`), let the version win a
+   *  field both changed (`replaced`), remove it, bring the version's copy
+   *  back, give it a numbered address (`newPath`), move it because its parent
+   *  goes away (`newParentPath`, null for the top level), or refuse
+   *  (`blocked`: promote answers 409 branch:promote_blocked even when
+   *  confirmed). */
+  onPromote: 'kept' | 'merged' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
   newPath?: string;
   newParentPath?: string | null;
   updatedAt: string;
@@ -188,6 +190,8 @@ interface BranchChangedOnMainPage {
 export interface BranchMergePreview {
   changedOnMainSinceFork: BranchChangedOnMainPage[];
   baselineComplete: boolean;
+  /** Send back as `confirmPreview` to promote exactly this list. */
+  fingerprint: string;
 }
 
 export type DeploymentStatus = 'PENDING' | 'BUILDING' | 'READY' | 'FAILED';

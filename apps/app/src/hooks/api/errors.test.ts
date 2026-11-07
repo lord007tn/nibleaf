@@ -27,11 +27,11 @@ describe('friendlyErrorMessage', () => {
   it.each([
     [
       'en',
-      "Pages on main changed after this version was created, so it wasn't promoted. Soon you'll be able to review those pages and confirm. Until then, your version stays as it is.",
+      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Bring those changes into this version, or undo them on main, then promote again.",
     ],
     [
       'ar',
-      'تغيّرت صفحات في main بعد إنشاء هذا الإصدار، لذلك لم تتم ترقيته. ستتمكن قريبًا من مراجعة هذه الصفحات وتأكيد الترقية. حتى ذلك الحين، يبقى إصدارك كما هو.',
+      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. أدخِل تلك التغييرات في هذا الإصدار، أو تراجع عنها في main، ثم أعد محاولة الترقية.',
     ],
   ] as const)('gives the editor’s promote error its own %s text for branch:main_changed, not "refresh and try again"', async (locale, expected) => {
     const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
@@ -88,6 +88,31 @@ describe('friendlyErrorMessage', () => {
     );
     const blocked = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
     expect(friendlyErrorMessage(localized, blocked, 'editor.branch.mergeError')).toBe(expected);
+  });
+
+  it.each([
+    [
+      'en',
+      'This version was created before Nibleaf could check main for changes, or copied from a version that was. Create a new version from main and move your changes there.',
+    ],
+    [
+      'ar',
+      'أُنشئ هذا الإصدار قبل أن يتمكن Nibleaf من التحقق من تغييرات main، أو نُسخ من إصدار أُنشئ كذلك. أنشئ إصدارًا جديدًا من main وانقل تغييراتك إليه.',
+    ],
+  ] as const)('explains, in %s, that a version without a baseline cannot be promoted', async (locale, expected) => {
+    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
+    const response = Response.json(
+      {
+        error: {
+          code: 'branch:baseline_missing',
+          message: 'No baseline.',
+          details: { since: '2026-01-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
+        },
+      },
+      { status: 409 },
+    );
+    const refused = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    expect(friendlyErrorMessage(localized, refused, 'editor.branch.mergeError')).toBe(expected);
   });
 
   it('recognises a request that never reached the server', () => {

@@ -2198,6 +2198,7 @@ export const MESSAGE_IDS = {
   'error.notFound': 'error_notfound',
   'error.conflict': 'error_conflict',
   'error.branchMainChanged': 'error_branchmainchanged',
+  'error.branchBaselineMissing': 'error_branchbaselinemissing',
   'error.promoteRaced': 'error_promoteraced',
   'error.promoteBlocked': 'error_promoteblocked',
   'error.tooLarge': 'error_toolarge',

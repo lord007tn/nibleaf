@@ -7,6 +7,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // translated in EN/AR and covered through the existing action-specific caller.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['branch:main_changed', 'error.branchMainChanged'],
+  ['branch:baseline_missing', 'error.branchBaselineMissing'],
   ['promote_raced', 'error.promoteRaced'],
   ['branch:promote_blocked', 'error.promoteBlocked'],
 ]);
