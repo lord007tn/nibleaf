@@ -28,7 +28,20 @@ vi.mock('@tanstack/ai-react', () => ({
 vi.mock('@/functions/site-chat', () => ({ chatSiteFn: vi.fn(), trackChatEventsFn: vi.fn(async () => undefined) }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 Element.prototype.scrollIntoView = vi.fn();
-window.matchMedia = vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList);
+const desktop = () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList;
+window.matchMedia = vi.fn(desktop);
+/** A phone: touch and narrow media queries match for the rest of the test. */
+const phone = () =>
+  vi
+    .mocked(window.matchMedia)
+    .mockImplementation(
+      (query) =>
+        ({
+          matches: /pointer: coarse|max-width: 767px/.test(query),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
 
 import Panel from './panel';
 
@@ -42,6 +55,7 @@ afterEach(async () => {
   mocks.chat.isLoading = false;
   siteVersion = undefined;
   vi.clearAllMocks();
+  vi.mocked(window.matchMedia).mockImplementation(desktop);
 });
 const mount = async (request?: { id: number; question?: string; source: 'deep_link' | 'search_handoff' }) => {
   const container = document.createElement('div');
@@ -159,6 +173,25 @@ describe('chat panel', () => {
     await act(async () => button('Send')[0]?.click());
     expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
     expect((mocks.chat.sendMessage.mock.calls as unknown as string[][])[0]?.[0]).toBe('What is the support number?');
+  });
+
+  it('does not open a phone keyboard over a shared question', async () => {
+    mocks.chat.messages = [];
+    phone();
+    await mount({ id: 1, question: 'What is the support number?', source: 'deep_link' });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const field = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]');
+    expect(field?.value).toBe('What is the support number?');
+    expect(document.activeElement).not.toBe(field);
+  });
+
+  it('fills the field from a shared link even while an answer is still being written', async () => {
+    mocks.chat.messages = [text('u1', 'user', 'Earlier question')];
+    mocks.chat.isLoading = true;
+    await mount({ id: 1, question: 'What is the support number?', source: 'deep_link' });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Your question"]')?.value).toBe('What is the support number?');
+    expect(mocks.chat.sendMessage).not.toHaveBeenCalled();
   });
 
   it('still sends a question handed over from search at once', async () => {

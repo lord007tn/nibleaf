@@ -175,7 +175,8 @@ export default function Panel(
   const trackOpen = useEffectEvent((source: ChatOpenRequest['source']) => track({ name: 'chat_opened', source, conversationId }));
   useEffect(() => {
     const request = options.request;
-    if (!request || request.id === lastRequest.current || (request.question && answering)) return;
+    // A deep link only fills the field, so it may arrive mid-answer; a send waits.
+    if (!request || request.id === lastRequest.current || (request.question && answering && request.source !== 'deep_link')) return;
     // A send issued in the panel's first commit (deep link, search hand-off) is
     // cancelled while the chat client finishes attaching. Wait one task, and
     // only mark the request consumed once it is actually sent.
@@ -253,7 +254,10 @@ export default function Panel(
   };
   const prefillRequest = useEffectEvent((question: string) => {
     setTyped(question);
-    field.current?.focus();
+    // On a phone, focusing would open the keyboard over the question before
+    // the reader has read it; they tap the field (or Send) when ready. Same
+    // rule as the sheet's initial focus below.
+    if (!window.matchMedia('(pointer: coarse), (max-width: 767px)').matches) field.current?.focus();
   });
   const starters = page
     ? [t('aiSummary'), t('aiSteps')]
