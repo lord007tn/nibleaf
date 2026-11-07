@@ -2,7 +2,7 @@ import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { createFileRoute } from '@tanstack/react-router';
 import { Eye, FileText, GitPullRequest } from 'lucide-react';
-import { type MouseEvent, useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { getGitPreviewFn } from '@/functions/site';
 import { safeDecode } from '@/lib/site-paths';
@@ -18,6 +18,25 @@ function GitPreviewPage() {
   const pages = useMemo(() => snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden), [snapshot.pages]);
   const [pageId, setPageId] = useState(pages[0]?.id);
   const page = pages.find((item) => item.id === pageId) ?? pages[0];
+  // Where to scroll once the opened page has rendered: a `#fragment` target, or the top.
+  const [scrollTarget, setScrollTarget] = useState<{ fragment: string }>();
+  useEffect(() => {
+    if (!scrollTarget) return;
+    let frame = 0;
+    let attempts = 0;
+    const scroll = () => {
+      const target = scrollTarget.fragment ? document.getElementById(scrollTarget.fragment) : null;
+      if (target) return target.scrollIntoView();
+      // The article may still be rendering its headings; wait a few frames.
+      if (scrollTarget.fragment && attempts++ < 30) {
+        frame = requestAnimationFrame(scroll);
+        return;
+      }
+      window.scrollTo({ top: 0 });
+    };
+    scroll();
+    return () => cancelAnimationFrame(frame);
+  }, [scrollTarget]);
   // Internal links carry the version's URL slug (none for the default
   // version), never its ID, and omit the default language, like the live site.
   const version = snapshot.project.versions.find((item) => item.id === page?.versionId);
@@ -41,7 +60,7 @@ function GitPreviewPage() {
     if (!target) return;
     event.preventDefault();
     setPageId(target.id);
-    window.scrollTo({ top: 0 });
+    setScrollTarget({ fragment: safeDecode(url.hash.slice(1)) });
   };
   return (
     <div className="grid min-h-screen grid-cols-[280px_1fr] bg-background">

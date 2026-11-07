@@ -67,3 +67,33 @@ it('builds preview links with the version slug and opens snapshot pages in place
   expect(container.querySelector('article h1')?.textContent).toBe('Setup');
   await act(async () => root.unmount());
 });
+
+it('keeps a link’s #fragment and scrolls to that heading once the page renders', async () => {
+  window.scrollTo = vi.fn();
+  const scrolled: string[] = [];
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this.id);
+  };
+  window.history.replaceState(null, '', '/git-preview/token');
+  const withFragment = {
+    ...snapshot,
+    pages: [
+      page('Intro', 'intro', 'See [installing](/guides/setup#install).'),
+      page('Setup', 'guides/setup', 'Setup body.\n\n## Install\n\nRun it.'),
+    ],
+  } as SiteSnapshot;
+  vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot: withFragment } as never);
+  const Page = Route.options.component as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Page />));
+  await vi.waitFor(() => expect(container.querySelector('article a')).not.toBeNull());
+
+  const link = container.querySelector<HTMLAnchorElement>('article a');
+  expect(link?.getAttribute('href')).toBe('/sites/docs/next/guides/setup#install');
+  await act(async () => link?.click());
+  await vi.waitFor(() => expect(scrolled).toContain('install'));
+  expect(window.scrollTo).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+});
