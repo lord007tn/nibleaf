@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider } from '@tanstack/react-router';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { SiteShell } from '@/hooks/api/types';
 
@@ -105,6 +105,9 @@ describe('reader language and access', () => {
   });
 
   it('reads the changelog in the site’s default Arabic, with UTC dates and Arabic counts', async () => {
+    // CI runs in UTC; a Riyadh clock (UTC+3) is where a local-time month moves on.
+    vi.stubEnv('TZ', 'Asia/Riyadh');
+    onTestFinished(() => vi.unstubAllEnvs());
     mocks.getSite.mockResolvedValue({
       ...shell,
       languages: [
