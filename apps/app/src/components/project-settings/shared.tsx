@@ -58,7 +58,7 @@ export function useDirtySources() {
   return { sources, report, isDirty };
 }
 
-export function useConfirmSettingsDiscard() {
+function useConfirmSettingsDiscard() {
   const t = useT();
   const confirm = useConfirm();
   return () =>

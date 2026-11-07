@@ -12,11 +12,14 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { ChevronsUpDown, Languages, LogOut, Moon, Sun } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
+import { toast } from 'sonner';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { authClient } from '@/services/auth-client';
+import { signOutDashboard } from '@/services/dashboard-session';
 
 const subscribeToHydration = () => () => undefined;
 
@@ -35,6 +38,7 @@ export function SidebarAccountFooter() {
   const activeLocale = INTERFACE_LOCALES.find((option) => option.code === locale) ?? INTERFACE_LOCALES[0];
   const [languageOpen, setLanguageOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const initials = (visibleSession?.user?.name ?? 'U')
     .split(' ')
@@ -105,8 +109,11 @@ export function SidebarAccountFooter() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={async () => {
-                    await authClient.signOut();
-                    navigate({ to: '/sign-in' });
+                    try {
+                      await signOutDashboard(queryClient, () => navigate({ to: '/sign-in', replace: true }));
+                    } catch {
+                      toast.error(t('account.signOutError'));
+                    }
                   }}
                   variant="destructive"
                 >

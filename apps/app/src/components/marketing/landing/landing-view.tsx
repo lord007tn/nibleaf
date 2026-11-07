@@ -5,20 +5,16 @@ import {
   Check,
   Cloud,
   Code2,
-  Download,
-  GitBranch,
   Globe2,
   History,
   KeyRound,
   Languages,
   LifeBuoy,
   LockKeyhole,
-  MessageSquare,
   Palette,
   PenLine,
   Plus,
   Search,
-  Server,
   ShieldCheck,
   Sparkles,
   Users,
@@ -29,6 +25,12 @@ import { availabilityNote } from '../copy/availability';
 import type { LandingCopy, MarketingIcon, MarketingLang, PathCard } from '../copy/types';
 import { HeroMedia, MarketingMedia } from '../media/marketing-media';
 import { GitHubStarLink } from '../site/github-star-link';
+import {
+  DownloadIcon as Download,
+  GitBranchIcon as GitBranch,
+  MessageSquareIcon as MessageSquare,
+  ServerIcon as Server,
+} from '../site/marketing-icons';
 import { MarketingLink } from '../site/marketing-link';
 import { Eyebrow, iconTile, outlineButton, primaryButton } from '../site/primitives';
 import { UseCasesTeaser } from '../use-cases/use-cases-teaser';
@@ -252,7 +254,7 @@ export function LandingView({
       <section className="border-border border-y bg-muted/20">
         <div className={section}>
           <Heading copy={copy.howItWorks} />
-          <ol className="mt-10 grid gap-8 md:grid-cols-3">
+          <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {copy.howItWorks.steps.map((step, index) => (
               <li key={step.title} className="border-border border-t pt-5">
                 <span aria-hidden="true" className="font-mono text-primary text-sm">
@@ -263,6 +265,7 @@ export function LandingView({
               </li>
             ))}
           </ol>
+          {copy.howItWorks.note && <p className="mt-8 max-w-[72ch] text-muted-foreground text-xs leading-6">{copy.howItWorks.note}</p>}
         </div>
       </section>
 

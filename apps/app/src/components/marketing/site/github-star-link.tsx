@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { Star } from 'lucide-react';
 import { GITHUB_URL } from '@/lib/links';
+import { StarIcon as Star } from './marketing-icons';
 import { outlineButton } from './primitives';
 
 export function GitHubStarLink({

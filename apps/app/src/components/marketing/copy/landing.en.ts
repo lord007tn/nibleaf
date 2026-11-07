@@ -181,7 +181,7 @@ export const landingEn: LandingCopy = {
       { icon: 'exports', title: 'Exports', body: 'Markdown, HTML or PDF, on demand or on a daily, weekly or monthly schedule.' },
       { icon: 'api', title: 'API reference', body: 'Import an OpenAPI file and get endpoint pages readers can try in the browser.' },
       { icon: 'private', title: 'Private docs', body: 'Share docs, or single pages, only with readers you invite.' },
-      { icon: 'llms', title: 'Ready for AI tools', body: 'Indexable public pages are listed in llms.txt, and each has a Markdown version.' },
+      { icon: 'llms', title: 'Ready for AI tools', body: 'Indexable public pages are listed in llms.txt, with their full text in llms-full.txt.' },
       {
         icon: 'key',
         title: 'Your own AI key',
@@ -200,6 +200,7 @@ export const landingEn: LandingCopy = {
       { title: 'Answer', body: 'Readers search, or ask AI and get answers that cite your pages, in their language.' },
       { title: 'Improve', body: 'See what readers couldn’t find, then fix it in the editor or from your AI assistant.' },
     ],
+    note: groupAvailabilityNote('Ask AI, insights and AI-assistant connections', ['askAi', 'docsInsights', 'supportMcp'], 'en'),
   },
   paths: {
     eyebrow: 'Two ways to run it',
@@ -259,7 +260,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'What’s the difference between Cloud and self-hosting?',
-        a: 'It’s the same open-source product. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups. New features reach self-hosters with the next release that includes them.',
+        a: 'It’s one open-source codebase. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups. New features reach self-hosters with the next release that includes them.',
       },
       {
         q: 'What do I need for Ask AI, and who pays for the AI?',
@@ -279,7 +280,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'How good is the Arabic support?',
-        a: 'Arabic is first-class: right-to-left editor, dashboard and docs site, a separate page tree per language, search that handles Arabic spelling and diacritics, and Ask AI replies in Arabic. The dashboard offers 12 interface languages, though some strings are still in English. Your content can be in any language.',
+        a: `Arabic is first-class: right-to-left editor, dashboard and docs site, a separate page tree per language, search that handles Arabic spelling and diacritics, and Ask AI replies in Arabic. The dashboard offers 12 interface languages, though some strings are still in English. Your content can be in any language. ${groupAvailabilityNote('Ask AI', ['askAi'], 'en') ?? ''}`,
       },
       {
         q: 'Which AI assistants can connect?',
