@@ -7,13 +7,18 @@ import { useSession } from '@/services/auth-client';
 export const Route = createFileRoute('/(auth)')({
   beforeLoad: async ({ location }) => {
     // An MCP OAuth request lands here when Better Auth wants a (fresh) sign-in;
-    // Better Auth continues the flow after it, so never redirect to /app.
+    // Better Auth continues the flow after it, so never redirect to /app, and
+    // never wait for the session lookup it doesn't use.
     // Imported lazily: beforeLoad is in the router's eager chunk, which published
     // docs pages load, and the auth pages load this module anyway. The session
-    // check starts at the same time so the import adds no wait.
-    const [oauth, session] = await Promise.all([import('@/lib/mcp-oauth'), getSessionFn()]);
-    if (oauth.isOAuthAuthorizationSearch(location.searchStr)) return;
-    if (session) {
+    // lookup starts at the same time, so on other visits the import adds no wait.
+    const session = getSessionFn();
+    const oauth = await import('@/lib/mcp-oauth');
+    if (oauth.isOAuthAuthorizationSearch(location.searchStr)) {
+      session.catch(() => undefined);
+      return;
+    }
+    if (await session) {
       const firstPublish = location.pathname.endsWith('/sign-up') && new URLSearchParams(location.searchStr).get('intent') === 'first-publish';
       throw redirect({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
     }
