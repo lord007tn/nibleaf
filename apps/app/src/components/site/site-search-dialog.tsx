@@ -14,6 +14,7 @@ import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
+import { readerLanguageFirst } from '@/lib/site-search-rank';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { resolveReaderDirection } from '@/lib/text-direction';
 import { useSiteAnalytics } from '@/providers/site-analytics-provider';
@@ -289,7 +290,8 @@ export default function SiteSearchDialog({
     Boolean(trimmed) &&
     (trimmed !== debouncedQuery.trim() || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
-  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? (hitsQuery.data ?? []) : [];
+  // The reader's own language first; other languages stay available below.
+  const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? readerLanguageFirst(hitsQuery.data ?? [], lang) : [];
   const staleHits = queryPending && hits.length > 0;
   const askInert = staleHits && !QUESTION.test(trimmed);
   const noResults = Boolean(trimmed && !queryPending && !hitsQuery.error && hits.length === 0);
