@@ -1831,6 +1831,8 @@
   "error_signedout": "آپ کا سیشن ختم ہو گیا ہے۔ جاری رکھنے کے لیے دوبارہ سائن ان کریں۔",
   "error_notfound": "یہ اب موجود نہیں — شاید کسی نے اسے حذف کر دیا ہے۔ صفحہ ریفریش کریں اور دوبارہ کوشش کریں۔",
   "error_conflict": "کسی اور نے اسی وقت اسے تبدیل کر دیا۔ صفحہ ریفریش کریں اور دوبارہ کوشش کریں۔",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "یہ بہت بڑی ہے۔ کوئی چھوٹی فائل آزمائیں۔",
   "error_ratelimited": "بہت زیادہ کوششیں۔ تھوڑا انتظار کریں اور دوبارہ کوشش کریں۔",
   "notfound_badge": "404",
@@ -1932,18 +1934,46 @@
   "site_previous": "پچھلا",
   "site_next": "اگلا",
   "site_onthispage": "اس صفحہ پر",
-  "site_minread": "منٹ پڑھیں",
-  "site_screenshot": "اسکرین شاٹ",
-  "site_screenshots": "اسکرین شاٹس",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} منٹ کا مطالعہ"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} اسکرین شاٹ",
+        "form=*": "{count} اسکرین شاٹس"
+      }
+    }
+  ],
   "site_updated": "تازہ کاری",
   "site_notpublishedtitle": "ابھی شائع نہیں ہوا۔",
   "site_notpublishedbody": "اس دستاویزی سائٹ کو شائع نہیں کیا گیا ہے۔ اسے لائیو دیکھنے کے لیے ایڈیٹر سے شائع کریں۔",
+  "site_privatetitle": "یہ دستاویزات نجی ہیں",
+  "site_privatebody": "اسے پڑھنے کے لیے ای میل میں موصول ہونے والا دعوتی لنک کھولیں۔",
+  "site_privatemembers": "اس ورک اسپیس کے اراکین اسے دیکھنے کے لیے سائن ان کر سکتے ہیں۔",
+  "site_privatesignin": "سائن ان کریں",
   "site_pageunavailable": "یہ صفحہ دستیاب نہیں ہے۔",
   "site_changelogsubtitle": "ہر اپ ڈیٹ ان دستاویزات کو بھیج دیا جاتا ہے۔",
   "site_changelogempty": "ابھی تک کوئی ریلیز نہیں ہوئی۔",
   "site_changelogrelease": "ریلیز",
-  "site_changelogpage": "صفحہ",
-  "site_changelogpages": "صفحات",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ",
+        "form=*": "{count} صفحات"
+      }
+    }
+  ],
   "site_feedbackquestion": "کیا یہ صفحہ مددگار تھا؟",
   "site_feedbackyes": "جی ہاں",
   "site_feedbackno": "نہیں",
@@ -1954,7 +1984,8 @@
   "site_analyticsconsentaccept": "قبول کریں۔",
   "site_analyticsconsentdecline": "مسترد کریں",
   "site_changelanguage": "زبان بدلو",
-  "site_toggletheme": "تھیم کو ٹوگل کریں۔",
+  "site_darkmode": "ڈارک موڈ",
+  "site_breadcrumb": "بریڈ کرمب",
   "site_togglesubpages": "ذیلی صفحات ٹوگل کریں",
   "site_articledetails": "مضمون کی تفصیلات",
   "site_copycode": "کوڈ کاپی کریں۔",

@@ -11,7 +11,8 @@ import arabicCatalog from '../../../../packages/i18n/messages/ar.json' with { ty
 import englishCatalog from '../../../../packages/i18n/messages/en.json' with { type: 'json' };
 import { LandingPage } from './cloud-marketing';
 
-const catalogs: Record<'en' | 'ar', Record<string, string>> = { en: englishCatalog, ar: arabicCatalog };
+// Plural (variant) messages are arrays; these tests read only plain marketing strings.
+const catalogs = { en: englishCatalog, ar: arabicCatalog } as unknown as Record<'en' | 'ar', Record<string, string>>;
 
 function MarketingLabels() {
   const t = useMarketingT();

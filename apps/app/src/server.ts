@@ -34,6 +34,7 @@ import {
   preferredRepresentation,
 } from '@/lib/request-negotiation';
 import { renderSelfHostInstaller } from '@/lib/self-host-release';
+import { SITE_MARKDOWN_ALTERNATE_HEADER } from '@/lib/site-seo';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { apiOrigin } from '@/services/api-origin';
 import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
@@ -498,6 +499,16 @@ const addMarkdownDiscovery = (response: Response, canonicalUrl: string, llmsUrl:
     decorated.headers.set('Content-Location', markdownAlternateUrl(canonicalUrl));
   }
   return decorated;
+};
+
+/** Reads and removes the page route's internal Markdown-eligibility flag so it
+ *  never reaches the reader. */
+const withoutMarkdownAlternateFlag = (response: Response): { response: Response; markdownAlternate: boolean } => {
+  const flag = response.headers.get(SITE_MARKDOWN_ALTERNATE_HEADER);
+  if (flag === null) return { response, markdownAlternate: false };
+  const stripped = new Response(response.body, response);
+  stripped.headers.delete(SITE_MARKDOWN_ALTERNATE_HEADER);
+  return { response: stripped, markdownAlternate: flag === '1' };
 };
 
 const llmsUrlForBase = (base: string): string => `${base.replace(/\/+$/u, '')}/llms.txt`;
@@ -1001,10 +1012,15 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         return withoutHeadBody(addMarkdownDiscovery(proxied.response, canonicalUrl, llmsUrlForBase(base)), documentRequest.method);
       }
       if (!acceptsHtml(documentRequest.headers.get('accept'))) return notAcceptableHtmlResponse();
-      const rendered = await startHandler(documentRequest, ...rest);
-      if (rendered.status >= 400 || !siteMatch?.[1]) return rendered;
+      const rendered = withoutMarkdownAlternateFlag(await startHandler(documentRequest, ...rest));
+      if (rendered.response.status >= 400 || !siteMatch?.[1]) return rendered.response;
+      // The page route already loaded the page and applied the shared
+      // eligibility rule (isPublicMarkdownPage); it flags the SSR response, so
+      // the HTML never waits on a second, full Markdown render just to decide
+      // this header.
+      if (!rendered.markdownAlternate) return rendered.response;
       const meta = await resolveSiteMeta(siteMatch[1]);
-      if (!meta || meta.isPrivate) return rendered;
+      if (!meta || meta.isPrivate) return rendered.response;
       const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
       const base = meta.primaryDomain
         ? `https://${meta.primaryDomain}`
@@ -1012,14 +1028,9 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
           ? requestOrigin
           : `${documentUrl.origin}/sites/${siteMatch[1]}`;
       const routedPath = siteMatch[2] || '/';
-      const publicPath = decodePublishedPathname(routedPath);
-      if (publicPath === null) return rendered;
-      // The public Markdown action owns the complete project/language/page
-      // eligibility contract. Only advertise an alternate that it confirms.
-      const markdown = await proxyPublishedMarkdown(siteMatch[1], publicPath, documentUrl.searchParams);
-      if (!markdown?.ok) return rendered;
+      if (decodePublishedPathname(routedPath) === null) return rendered.response;
       const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
-      return addMarkdownDiscovery(rendered, canonicalUrl, llmsUrlForBase(base));
+      return addMarkdownDiscovery(rendered.response, canonicalUrl, llmsUrlForBase(base));
     }
 
     const isMarkdownCandidate = marketingMarkdownPaths.has(documentUrl.pathname);
@@ -1188,7 +1199,16 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   }
   const nonce = randomBytes(18).toString('base64');
   return ssrNonce.run(nonce, () =>
-    withSecurityHeaders(observeCrawlerResponse(request, handleRequestInner(request, ...rest), crawlerProjectForRequest), nonce),
+    withSecurityHeaders(
+      observeCrawlerResponse(
+        request,
+        // The page route's internal Markdown flag never leaves the server,
+        // whichever path rendered the page (cloud origin, dotted paths, …).
+        Promise.resolve(handleRequestInner(request, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
+        crawlerProjectForRequest,
+      ),
+      nonce,
+    ),
   );
 };
 

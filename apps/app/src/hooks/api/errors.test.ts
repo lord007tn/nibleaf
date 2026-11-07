@@ -1,4 +1,4 @@
-import { translateFn } from '@nibleaf/i18n';
+import { type MessageKey, type MessageVariables, translateFn } from '@nibleaf/i18n';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
@@ -22,6 +22,53 @@ describe('friendlyErrorMessage', () => {
     expect(friendlyErrorMessage(t, new ApiResponseError('Not found', 404), 'editor.deleteFailed')).toBe('t:error.notFound');
     expect(friendlyErrorMessage(t, new ApiResponseError('Upload failed.', 413), 'editor.deleteFailed')).toBe('t:error.tooLarge');
     expect(friendlyErrorMessage(t, new ApiResponseError('Slow down', 429), 'editor.deleteFailed')).toBe('t:error.rateLimited');
+  });
+
+  it.each([
+    [
+      'branch:main_changed',
+      { reason: 'main_changed', changedOnMainSinceFork: [] },
+      'en',
+      "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+    ],
+    [
+      'branch:main_changed',
+      { reason: 'main_changed', changedOnMainSinceFork: [] },
+      'ar',
+      'تغيّر main منذ نسخ صفحات هذا الإصدار منه، لذلك لم تتم ترقية الإصدار. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانسخ إليه تعديلات هذا الإصدار، ثم رقِّ الإصدار الجديد.',
+    ],
+    [
+      'branch:baseline_missing',
+      { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
+      'en',
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
+    ],
+    [
+      'branch:baseline_missing',
+      { since: '2026-10-01T00:00:00.000Z', mainPagesEditedOrCreatedSince: 2 },
+      'ar',
+      'لا يستطيع Nibleaf معرفة ما تغيّر في main منذ إنشاء هذا الإصدار: فقد أُنشئ قبل هذا التحديث، أو استُورد، أو نُسخ من إصدار كهذا، أو استُبدلت صفحات main منذ ذلك الحين. انتقل إلى main، وأنشئ إصدارًا جديدًا هناك، وانقل تغييراتك إليه.',
+    ],
+  ] as const)('gives the promote refusal %s its own complete %s text, not "refresh and try again"', async (code, details, locale, expected) => {
+    const localized = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, locale);
+    // The 409 exactly as the server sends it, through the mutation helper the promote hook uses.
+    const response = Response.json({ error: { code, message: 'Not promoted.', details } }, { status: 409 });
+    const refused = await mutateData(response, 'Could not merge the branch.').catch((error: unknown) => error);
+    expect(refused).toMatchObject({ code, details });
+    // The editor's existing, generic call (branch-switcher's promote onError).
+    expect(friendlyErrorMessage(localized, refused, 'editor.branch.mergeError')).toBe(expected);
+    // Any other 409 keeps the concurrent-edit wording.
+    expect(friendlyErrorMessage(localized, new ApiResponseError('Conflict', 409, 'database:conflict'), 'editor.branch.mergeError')).toBe(
+      translateFn('error.conflict', undefined, locale),
+    );
+  });
+
+  it('exposes details.reason from the server', () => {
+    const error = new ApiResponseError('Conflict', 409, 'database:conflict', undefined, undefined, undefined, undefined, { reason: 'x' });
+    expect(error.reason).toBe('x');
+    expect(
+      new ApiResponseError('Conflict', 409, 'database:conflict', undefined, undefined, undefined, undefined, { reason: 1 }).reason,
+    ).toBeUndefined();
   });
 
   it('recognises a request that never reached the server', () => {

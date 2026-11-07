@@ -21,7 +21,7 @@ export function ThemeToggle() {
     <Button
       size="icon-sm"
       variant="outline"
-      aria-label={mounted ? t('admin.theme.switch', { theme: nextLabel }) : t('site.toggleTheme')}
+      aria-label={mounted ? t('admin.theme.switch', { theme: nextLabel }) : t('settings.appearance.theme.title')}
       className="text-muted-foreground"
       onClick={() => setTheme(next)}
       type="button"
