@@ -222,7 +222,7 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
 /** Where one repository file lands: the folder (`dir`, repo-relative) whose
  * page group it joins and the name its slug derives from. `dir/index.md` and
  * `dir/README.md` stand for the folder itself, one level up. */
-export const importFileLocation = (relativePath: string): { dir: string; name: string } => {
+const importFileLocation = (relativePath: string): { dir: string; name: string } => {
   const segments = relativePath.split('/');
   const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
   const relDir = segments.join('/');
@@ -262,7 +262,7 @@ type ScopePage = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; 
  * path, or was claimed earlier in this run, is never taken. Names without any
  * letters or digits once all collapsed onto `page`, so they never adopt.
  */
-export const legacyImportedPage = (siblings: readonly ScopePage[], name: string, isAvailable: (page: ScopePage) => boolean): ScopePage | null => {
+const legacyImportedPage = (siblings: readonly ScopePage[], name: string, isAvailable: (page: ScopePage) => boolean): ScopePage | null => {
   const unicode = slugifyUnicode(name);
   if (!unicode) return null;
   const candidates = [...new Set([unicode, slugify(name)].filter(Boolean))];
