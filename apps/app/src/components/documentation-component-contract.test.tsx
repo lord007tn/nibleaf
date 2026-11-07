@@ -249,14 +249,17 @@ describe('documentation component contract', () => {
       }
     });
 
-    it('lets only a plain color value reach an inline style', () => {
-      for (const attribute of portableAttributes(component).filter((candidate) => candidate.type === 'color')) {
-        const sample = inContainer(component, sampleUsage(component)).markdown;
-        const hostile = sample.replace(`${attribute.name}="#0ea5e9"`, `${attribute.name}="red;position:fixed;inset:0"`);
-        expect(hostile, `${attribute.name} sample`).not.toBe(sample);
-        expect(renderRich(hostile, SITE), attribute.name).not.toMatch(/style="[^"]*(?:position|inset)/);
-      }
-    });
+    const colorAttributes = portableAttributes(component).filter((candidate) => candidate.type === 'color');
+    // Only components with a color prop get this case: for the rest it would assert nothing.
+    if (colorAttributes.length > 0)
+      it('lets only a plain color value reach an inline style', () => {
+        for (const attribute of colorAttributes) {
+          const sample = inContainer(component, sampleUsage(component)).markdown;
+          const hostile = sample.replace(`${attribute.name}="#0ea5e9"`, `${attribute.name}="red;position:fixed;inset:0"`);
+          expect(hostile, `${attribute.name} sample`).not.toBe(sample);
+          expect(renderRich(hostile, SITE), attribute.name).not.toMatch(/style="[^"]*(?:position|inset)/);
+        }
+      });
 
     it('wires every portable prop through to the rendered HTML', () => {
       const hidden = KNOWN_GAPS.hiddenAttributes[component.tag] ?? {};
@@ -268,17 +271,19 @@ describe('documentation component contract', () => {
       }
     });
 
-    it('reads a JSX `{true}` boolean like a bare one and `{false}` like an absent one', () => {
-      const bare = inContainer(component, sampleUsage(component)).markdown;
-      for (const attribute of portableAttributes(component)) {
-        if (attribute.type !== 'boolean') continue;
-        const flag = new RegExp(` ${attribute.name}(?=[\\s/>])`);
-        expect(flag.test(bare), `${attribute.name} sample`).toBe(true);
-        expect(renderRich(bare.replace(flag, ` ${attribute.name}={true}`), SITE), `${attribute.name}={true}`).toBe(renderRich(bare, SITE));
-        const absent = renderRich(inContainer(component, sampleUsage(component, attribute.name)).markdown, SITE);
-        expect(renderRich(bare.replace(flag, ` ${attribute.name}={false}`), SITE), `${attribute.name}={false}`).toBe(absent);
-      }
-    });
+    const booleanAttributes = portableAttributes(component).filter((candidate) => candidate.type === 'boolean');
+    // Only components with a boolean prop get this case: for the rest it would assert nothing.
+    if (booleanAttributes.length > 0)
+      it('reads a JSX `{true}` boolean like a bare one and `{false}` like an absent one', () => {
+        const bare = inContainer(component, sampleUsage(component)).markdown;
+        for (const attribute of booleanAttributes) {
+          const flag = new RegExp(` ${attribute.name}(?=[\\s/>])`);
+          expect(flag.test(bare), `${attribute.name} sample`).toBe(true);
+          expect(renderRich(bare.replace(flag, ` ${attribute.name}={true}`), SITE), `${attribute.name}={true}`).toBe(renderRich(bare, SITE));
+          const absent = renderRich(inContainer(component, sampleUsage(component, attribute.name)).markdown, SITE);
+          expect(renderRich(bare.replace(flag, ` ${attribute.name}={false}`), SITE), `${attribute.name}={false}`).toBe(absent);
+        }
+      });
 
     it('renders its content and props through the rich reader', () => {
       const sample = inContainer(component, sampleUsage(component));
