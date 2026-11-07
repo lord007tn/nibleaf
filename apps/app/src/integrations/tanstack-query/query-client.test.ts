@@ -1,12 +1,19 @@
-import { queryOptions } from '@tanstack/react-query';
+import { CancelledError, queryOptions } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { createQueryClient, isClientError, prefetchRouteData, shouldRetry } from './query-client';
+
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock('sonner', () => ({ toast: { error: toastError } }));
+
+import { syncDashboardSession } from './session-cache';
+import { getSessionGeneration } from './session-generation';
 
 const apiError = (status: number) => new ApiResponseError('failed', status);
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 describe('query client defaults', () => {
@@ -59,5 +66,72 @@ describe('prefetchRouteData', () => {
     prefetchRouteData(client, options(queryFn));
     await Promise.resolve();
     expect(queryFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('global mutation error toasts', () => {
+  it.each([false, true])('continues to show localized current-session failures (stamped: %s)', async (stamped) => {
+    const client = createQueryClient();
+    syncDashboardSession(client, 'alice');
+    const error = new Error('private backend detail');
+    const message = vi.fn(() => 'Could not save. Try again.');
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: async () => {
+        throw error;
+      },
+      meta: { ...(stamped ? { sessionGeneration: getSessionGeneration(client) } : {}), errorMessage: message },
+    });
+    await expect(mutation.execute(undefined)).rejects.toBe(error);
+    await vi.waitFor(() => expect(toastError).toHaveBeenCalledWith('Could not save. Try again.'));
+    expect(message).toHaveBeenCalledExactlyOnceWith(error);
+    client.clear();
+  });
+
+  it.each(['cancelled', 'old-session'])('does not format or toast a %s mutation failure', async (scenario) => {
+    const client = createQueryClient();
+    syncDashboardSession(client, 'alice');
+    const error = scenario === 'cancelled' ? new CancelledError() : new Error('old private error');
+    const message = vi.fn(() => 'Could not revoke.');
+    let fail: () => void = () => undefined;
+    const request = vi.fn(
+      () =>
+        new Promise<never>((_resolve, reject) => {
+          fail = () => reject(error);
+        }),
+    );
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: request,
+      meta: { sessionGeneration: getSessionGeneration(client), errorMessage: message },
+    });
+    const result = mutation.execute(undefined).catch((failure: unknown) => failure);
+    await vi.waitFor(() => expect(request).toHaveBeenCalledOnce());
+    if (scenario === 'old-session') syncDashboardSession(client, 'bob');
+    fail();
+    expect(await result).toBe(error);
+    await import('sonner');
+    expect(message).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+    client.clear();
+  });
+
+  it('rechecks the session before displaying a dynamically loaded toast', async () => {
+    const client = createQueryClient();
+    syncDashboardSession(client, 'alice');
+    const mutation = client.getMutationCache().build(client, {
+      mutationFn: async () => {
+        throw new Error('failed');
+      },
+      meta: {
+        sessionGeneration: getSessionGeneration(client),
+        errorMessage: () => {
+          syncDashboardSession(client, 'bob');
+          return 'Alice failure';
+        },
+      },
+    });
+    await expect(mutation.execute(undefined)).rejects.toThrow('failed');
+    await import('sonner');
+    expect(toastError).not.toHaveBeenCalled();
+    client.clear();
   });
 });

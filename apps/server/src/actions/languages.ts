@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { conflict, notFound } from '@/errors';
 
 /** Throw unless the language exists and belongs to the project. Returns it. */
-export const assertLanguageInProject = async (projectId: string, id: string) => {
-  const language = await prisma.language.findFirst({ where: { id, projectId } });
+export const assertLanguageInProject = async (projectId: string, id: string, db: Prisma.TransactionClient = prisma) => {
+  const language = await db.language.findFirst({ where: { id, projectId } });
   if (!language) {
     throw notFound('language', { id });
   }
@@ -66,8 +66,8 @@ export const listLanguagesWithCoverage = async (projectId: string) => {
 };
 
 /** The project's required default language. Missing data is an invariant error. */
-export const getDefaultLanguage = async (projectId: string) => {
-  const defaults = await prisma.language.findMany({ where: { projectId, isDefault: true }, take: 2 });
+export const getDefaultLanguage = async (projectId: string, db: Prisma.TransactionClient = prisma) => {
+  const defaults = await db.language.findMany({ where: { projectId, isDefault: true }, take: 2 });
   if (defaults.length !== 1 || !defaults[0]) {
     throw new Error(`Project ${projectId} must have exactly one default language.`);
   }
@@ -83,6 +83,7 @@ export const createLanguage = async (projectId: string, body: CreateLanguageBody
   }
   try {
     const created = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
       if (isDefault) {
         await tx.language.updateMany({ where: { projectId, isDefault: true }, data: { isDefault: false } });
       }
@@ -154,24 +155,19 @@ const mergeLanguageConfig = (existing: unknown, patch: UpdateLanguageBody['confi
 };
 
 export const updateLanguage = async (projectId: string, id: string, body: UpdateLanguageBody) => {
-  const language = await assertLanguageInProject(projectId, id);
-  if (language.isDefault && body.isDefault === false) {
-    throw conflict("Can't unset the default language. Make another language default instead.", { id });
-  }
-  // The default language always serves: it can't be disabled, and a language
-  // being promoted to default can't be disabled in the same request.
-  if (body.enabled === false && (body.isDefault === true || (language.isDefault && body.isDefault !== false))) {
-    throw conflict("The default language can't be disabled. Make another language default first.", { id });
-  }
   return prisma.$transaction(async (tx) => {
-    // The config merge must not be a read-modify-write race: re-read the row
-    // INSIDE the transaction so the merge base is fresh, not the pre-transaction
-    // snapshot — two concurrent updates would otherwise resurrect each other's
-    // overwritten sections. (The codebase avoids raw SQL, so this is a fresh
-    // re-read rather than a SELECT … FOR UPDATE row lock.)
+    // Lock the project before reading: config merges and default-language changes
+    // must observe the preceding writer's committed state.
+    await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
     const fresh = await tx.language.findUnique({ where: { id } });
     if (!fresh || fresh.projectId !== projectId) {
       throw notFound('language', { id });
+    }
+    if (fresh.isDefault && body.isDefault === false) {
+      throw conflict("Can't unset the default language. Make another language default instead.", { id });
+    }
+    if (body.enabled === false && (body.isDefault === true || fresh.isDefault)) {
+      throw conflict("The default language can't be disabled. Make another language default first.", { id });
     }
     const nextConfig = mergeLanguageConfig(fresh.config, body.config);
     if (body.isDefault === true) {
@@ -208,15 +204,19 @@ export const updateLanguage = async (projectId: string, id: string, body: Update
   });
 };
 
-export const deleteLanguage = async (projectId: string, id: string) => {
-  const language = await assertLanguageInProject(projectId, id);
-  if (language.isDefault) {
-    throw conflict("Can't delete the default language.", { id });
-  }
-  const count = await prisma.language.count({ where: { projectId } });
-  if (count <= 1) {
-    throw conflict('A project needs at least one language.', { id });
-  }
-  await prisma.language.delete({ where: { id } });
-  return { id };
-};
+export const deleteLanguage = async (projectId: string, id: string) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+    const language = await tx.language.findFirst({ where: { id, projectId } });
+    if (!language) throw notFound('language', { id });
+    if (language.isDefault) {
+      throw conflict("Can't delete the default language.", { id });
+    }
+    const count = await tx.language.count({ where: { projectId } });
+    if (count <= 1) {
+      throw conflict('A project needs at least one language.', { id });
+    }
+    await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+    await tx.language.delete({ where: { id } });
+    return { id };
+  });

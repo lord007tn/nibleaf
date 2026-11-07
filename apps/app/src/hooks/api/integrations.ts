@@ -7,7 +7,8 @@ import type {
   UpdateProjectIntegrationBody,
   VerifyProjectIntegrationBody,
 } from '@nibleaf/validators';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { ApiResponseError, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
