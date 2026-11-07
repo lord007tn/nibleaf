@@ -3532,5 +3532,5 @@
   "dashboard_ai_noTiming": "لا تتوفر بيانات عن الوقت بعد",
   "dashboard_ai_milliseconds": "{value} مللي ثانية",
   "editor_reorderslugtaken": "توجد صفحة بهذا الرابط في هذه المجموعة. غيّر رابطها أولًا.",
-  "deploy_rollback_restoring": "جارٍ استعادة الإصدار {version}…"
+  "deploy_rollback_restoring": "جارٍ استعادة النسخة {version}…"
 }

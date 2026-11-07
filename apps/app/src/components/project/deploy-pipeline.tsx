@@ -92,15 +92,20 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   );
   const restoration = restoreRequest?.projectId === project.id && restoreRequest.sourceId === trackedDeploymentId ? restoreRequest : null;
   const observedDeploymentId = restoration?.id ?? trackedDeploymentId;
-  const deployments = useDeployments(project.id, { enabled: open || Boolean(observedDeploymentId), pollIntervalMs: 1500 });
+  const deployments = useDeployments(project.id, {
+    enabled: open || Boolean(observedDeploymentId),
+    pollIntervalMs: 1500,
+    retryingDeploymentId: observedDeploymentId,
+  });
 
   const deployment = observedDeploymentId ? deployments.data?.find((item) => item.id === observedDeploymentId) : deployments.data?.[0];
   const status = deployment?.status;
-  const running = status === 'PENDING' || status === 'BUILDING';
+  const retrying = Boolean(observedDeploymentId) && status === 'FAILED' && deployment?.completedAt === null;
+  const running = status === 'PENDING' || status === 'BUILDING' || retrying;
   const done = status === 'READY';
-  const failed = status === 'FAILED';
+  const failed = status === 'FAILED' && !retrying;
   const failureDetails = failed ? publishFailureDetails(deployment) : [];
-  const active = activeStep(status);
+  const active = activeStep(retrying ? 'PENDING' : status);
 
   // The previous READY deployment is the rollback target.
   const previousReady = (deployments.data ?? []).find(
@@ -119,10 +124,10 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   }, [deployment, done, trackedAttribution, trackedDeploymentId]);
 
   // Fire the "published" toast exactly once, on transition into READY while the dialog is open.
-  const announced = useRef<string | null>(null);
+  const announced = useRef(new Set<string>());
   useEffect(() => {
-    if (done && deployment && (open || deployment.id === observedDeploymentId) && announced.current !== deployment.id) {
-      announced.current = deployment.id;
+    if (done && deployment && (open || deployment.id === observedDeploymentId) && !announced.current.has(`${deployment.id}:ready`)) {
+      announced.current.add(`${deployment.id}:ready`);
       toast.success(restoration ? t('deploy.rollback.success', { version: restoration.version }) : t('deploy.published'), {
         action: {
           label: t('deploy.viewSiteArrow'),
@@ -130,8 +135,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
         },
       });
     }
-    if (failed && restoration && deployment?.id === restoration.id && announced.current !== deployment.id) {
-      announced.current = deployment.id;
+    if (failed && restoration && deployment?.id === restoration.id && !announced.current.has(`${deployment.id}:failed`)) {
+      announced.current.add(`${deployment.id}:failed`);
       toast.error(t('deploy.rollback.error'));
     }
   }, [open, done, failed, deployment, siteUrl, t, observedDeploymentId, restoration]);

@@ -52,16 +52,18 @@ describe('publish integrity mutations', () => {
     await act(async () => root.render(createElement(QueryClientProvider, { client }, createElement(Probe))));
     return hooks;
   };
-  it('localizes a reorder collision and keeps the previous list', async () => {
+  it('leaves the collision toast to the caller and keeps the previous list', async () => {
     const key = queryKeys.pages.all('project', 'language', 'branch');
     const pages = [{ id: 'page', parentId: null, position: 0 }];
     client.setQueryData(key, pages);
     mocks.reorder.mockResolvedValue(new Response(JSON.stringify({ error: { code: 'database:conflict' } }), { status: 409 }));
     const hooks = await render();
+    const onError = vi.fn();
     await act(async () => {
-      await hooks.reorder?.mutateAsync({ items: [{ id: 'page', parentId: 'group', position: 1 }] }).catch(() => undefined);
+      await hooks.reorder?.mutateAsync({ items: [{ id: 'page', parentId: 'group', position: 1 }] }, { onError }).catch(() => undefined);
     });
-    await vi.waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('editor.reorderSlugTaken'));
+    expect(onError).toHaveBeenCalledOnce();
+    expect(mocks.toast).not.toHaveBeenCalled();
     expect(client.getQueryData(key)).toEqual(pages);
   });
   it('lists the exact queued rollback immediately even without an existing deployment cache', async () => {

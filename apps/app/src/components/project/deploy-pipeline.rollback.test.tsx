@@ -95,11 +95,45 @@ describe('rollback progress', () => {
     await queueRollback();
     await render(false);
     expect(mocks.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true }));
-    mocks.deployments.data = mocks.deployments.data.map((item) => (item.id === 'restore-4' ? { ...item, status: 'FAILED' } : item));
+    mocks.deployments.data = mocks.deployments.data.map((item) =>
+      item.id === 'restore-4' ? { ...item, status: 'FAILED', completedAt: new Date().toISOString() } : item,
+    );
     await render(false);
     expect(mocks.error).toHaveBeenCalledWith('deploy.rollback.error');
     expect(mocks.success).not.toHaveBeenCalled();
     await render(false);
     expect(mocks.error).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a closed rollback observable through FAILED to BUILDING to READY', async () => {
+    await queueRollback();
+    for (const status of ['FAILED', 'BUILDING', 'READY'] as const) {
+      mocks.deployments.data = mocks.deployments.data.map((item) =>
+        item.id === 'restore-4' ? { ...item, status, completedAt: status === 'READY' ? new Date().toISOString() : null } : item,
+      );
+      await render(false);
+      expect(mocks.query).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: true, retryingDeploymentId: 'restore-4' }));
+    }
+    expect(mocks.error).not.toHaveBeenCalled();
+    expect(mocks.success).toHaveBeenCalledWith('deploy.rollback.success:2', expect.any(Object));
+  });
+
+  it('announces READY independently of a previously announced FAILED outcome', async () => {
+    await queueRollback();
+    mocks.deployments.data = mocks.deployments.data.map((item) =>
+      item.id === 'restore-4' ? { ...item, status: 'FAILED', completedAt: new Date().toISOString() } : item,
+    );
+    await render(false);
+    mocks.deployments.data = mocks.deployments.data.map((item) => (item.id === 'restore-4' ? { ...item, status: 'READY' } : item));
+    await render(false);
+    expect(mocks.error).toHaveBeenCalledOnce();
+    expect(mocks.success).toHaveBeenCalledWith('deploy.rollback.success:2', expect.any(Object));
+  });
+
+  it('keeps an untracked legacy failure with no completion time visible as failed', async () => {
+    mocks.deployments.data = [deployment('legacy-failure', 1, 'FAILED')];
+    await act(async () => root.render(<DeployPipeline project={project} open onOpenChange={close} />));
+    expect(container.textContent).toContain('deploy.failed');
+    expect(container.textContent).not.toContain('deploy.deploying');
   });
 });

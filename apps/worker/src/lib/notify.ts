@@ -77,7 +77,20 @@ export async function notifyDeployment(opts: {
   outcome: 'ready' | 'failed';
   error?: string;
   locale?: string;
+  recovery?: boolean;
 }): Promise<void> {
+  if (opts.outcome === 'ready') {
+    const latest = await prisma.deployment.findFirst({
+      where: { projectId: opts.projectId, status: 'READY' },
+      orderBy: { version: 'desc' },
+      select: { id: true },
+    });
+    if (latest?.id !== opts.deploymentId) return;
+    if (opts.recovery) {
+      const announced = await prisma.platformEvent.findUnique({ where: { id: `publish-announced:${opts.deploymentId}` }, select: { id: true } });
+      if (announced) return;
+    }
+  }
   const project = await prisma.project.findUnique({ where: { id: opts.projectId }, select: { organizationId: true } });
   if (!project?.organizationId) {
     return;
@@ -86,6 +99,16 @@ export async function notifyDeployment(opts: {
   const org = await prisma.organization.findUnique({ where: { id: project.organizationId }, select: { metadata: true } });
   if (!notificationEnabled(org?.metadata, notificationId)) {
     return;
+  }
+  if (opts.outcome === 'ready' && opts.recovery) {
+    // A bell announcement may have succeeded before another channel failed.
+    // Do not repeat it after the retained email jobs have been evicted.
+    const members = await prisma.member.findMany({ where: { organizationId: project.organizationId }, select: { userId: true } });
+    const existing = await prisma.notification.findFirst({
+      where: { id: { in: members.map((member) => deploymentNotificationId(opts, member.userId)) } },
+      select: { id: true },
+    });
+    if (existing) return;
   }
   const deliveries: Promise<unknown>[] = [createDeploymentNotifications(project.organizationId, opts)];
   const emailDelivery = async () => {
@@ -119,4 +142,10 @@ export async function notifyDeployment(opts: {
   deliveries.push(emailDelivery());
   const results = await Promise.allSettled(deliveries);
   if (results.some((result) => result.status === 'rejected')) throw new Error('Deployment notification delivery incomplete');
+  if (opts.outcome === 'ready') {
+    await prisma.platformEvent.createMany({
+      data: { id: `publish-announced:${opts.deploymentId}`, type: 'publish_announced', projectId: opts.projectId },
+      skipDuplicates: true,
+    });
+  }
 }

@@ -15,7 +15,7 @@ export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promis
   const cutoff = new Date(Date.now() - staleMinutes * 60_000);
   const { count } = await prisma.deployment.updateMany({
     where: { status: { in: ['PENDING', 'BUILDING'] }, createdAt: { lt: cutoff } },
-    data: { status: 'FAILED', error: `Build did not finish within ${staleMinutes} min (the worker may have restarted).` },
+    data: { status: 'FAILED', completedAt: new Date(), error: `Build did not finish within ${staleMinutes} min (the worker may have restarted).` },
   });
   if (count > 0) {
     log.warn({ count }, 'reaped stale deployments');
@@ -24,9 +24,12 @@ export async function reapStaleDeployments(staleMinutes = STALE_MINUTES): Promis
   // READY without that receipt is a durable recovery marker, including after
   // every BullMQ attempt is exhausted. Give normal delivery a minute to finish.
   const deliveryCutoff = new Date(Date.now() - 60_000);
+  const recoverySince = new Date(Date.now() - 24 * 60 * 60_000);
   const missing = await prisma.$queryRaw<Array<{ id: string; projectId: string }>>`
     SELECT d.id, d."projectId" FROM deployment d
-    WHERE d.status = 'READY' AND d.snapshot IS NOT NULL AND d."completedAt" < ${deliveryCutoff}
+    WHERE d.status = 'READY' AND d.snapshot IS NOT NULL
+      AND d."completedAt" > ${recoverySince} AND d."completedAt" < ${deliveryCutoff}
+      AND NOT EXISTS (SELECT 1 FROM deployment newer WHERE newer."projectId" = d."projectId" AND newer.status = 'READY' AND newer.version > d.version)
       AND NOT EXISTS (SELECT 1 FROM platform_event e WHERE e.id = 'publish-ready:' || d.id)
     ORDER BY d."completedAt", d.id LIMIT 50`;
   for (const deployment of missing) {

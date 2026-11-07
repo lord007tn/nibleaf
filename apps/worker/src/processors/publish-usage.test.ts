@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
     buildAnalyticsEvent: vi.fn(),
     enqueueAnalyticsEvent: vi.fn(),
     platformEventCreate: vi.fn(),
+    platformEventFindUnique: vi.fn(),
     deploymentFindFirst: vi.fn(),
     deploymentUpdate: vi.fn(),
     deploymentUpdateMany: vi.fn(),
@@ -36,7 +37,7 @@ vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: null },
   prisma: {
     $queryRaw: mocks.queryRaw,
-    platformEvent: { create: mocks.platformEventCreate },
+    platformEvent: { create: mocks.platformEventCreate, findUnique: mocks.platformEventFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst, update: mocks.deploymentUpdate, updateMany: mocks.deploymentUpdateMany },
     project: { findUnique: mocks.projectFindUnique },
     page: { findMany: mocks.pageFindMany },
@@ -102,6 +103,7 @@ describe('publish usage queue isolation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.createJob.mockReset().mockResolvedValue(undefined);
+    mocks.platformEventFindUnique.mockReset().mockResolvedValue(null);
     mocks.deploymentUpdateMany.mockResolvedValue({ count: 1 });
     mocks.pageFindMany.mockReset().mockRejectedValue(new Error('Unexpected read of the current draft'));
     mocks.buildAnalyticsEvent.mockReturnValue({ eventId: 'event-a', tenantId: 'org-a', projectId: 'project-a' });
@@ -238,7 +240,14 @@ describe('publish usage queue isolation', () => {
 
   it('recovers missing indexing and activation delivery after both publish attempts are exhausted', async () => {
     const data = { deploymentId: 'rollback-a', projectId: 'project-a', auto: false, locale: 'ar' };
-    const ready = { status: 'READY', pagesCount: 1, version: 3, createdById: 'author-a', completedAt: new Date(Date.now() - 120_000) };
+    const ready = {
+      id: 'rollback-a',
+      status: 'READY',
+      pagesCount: 1,
+      version: 3,
+      createdById: 'author-a',
+      completedAt: new Date(Date.now() - 120_000),
+    };
     mocks.deploymentFindFirst.mockResolvedValue(ready);
     mocks.createJob.mockRejectedValueOnce(new Error('search queue unavailable')).mockRejectedValueOnce(new Error('search queue still unavailable'));
     const job = { data } as Job<PublishDeploymentJobData>;
@@ -261,7 +270,9 @@ describe('publish usage queue isolation', () => {
         jobId: expect.stringMatching(/^publish-recovery-rollback-a-\d+$/),
       },
     );
-    await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 1 });
+    const recovered = { ...job, id: 'publish-recovery-rollback-a-1' } as Job<PublishDeploymentJobData>;
+    mocks.platformEventFindUnique.mockImplementation(async () => (hasReceipt ? { id: 'publish-ready:rollback-a' } : null));
+    await expect(handlePublishJobs(recovered)).resolves.toEqual({ pages: 1 });
     expect(mocks.createJob).toHaveBeenLastCalledWith(
       'search',
       { name: 'index-deployment', data: { projectId: 'project-a', deploymentId: 'rollback-a' } },
@@ -269,8 +280,37 @@ describe('publish usage queue isolation', () => {
     );
     expect(mocks.recordPublishReady).toHaveBeenCalledWith(data, ready);
     expect(mocks.deploymentUpdate).not.toHaveBeenCalled();
+    await handlePublishJobs(recovered);
+    expect(mocks.notifyDeployment).toHaveBeenCalledOnce();
     const delivered = mocks.createJob.mock.calls.length;
     await reapStaleDeployments();
     expect(mocks.createJob).toHaveBeenCalledTimes(delivered);
+  });
+  it('ignores an already queued recovery for a historical READY row without a receipt', async () => {
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'READY', pagesCount: 1, completedAt: new Date(Date.now() - 2 * 86_400_000) });
+    const job = { id: 'publish-recovery-old-1', data: { deploymentId: 'old', projectId: 'project-a' } } as Job<PublishDeploymentJobData>;
+    await handlePublishJobs(job);
+    expect(mocks.createJob).not.toHaveBeenCalled();
+    expect(mocks.buildAnalyticsEvent).not.toHaveBeenCalled();
+    expect(mocks.recordPublishReady).not.toHaveBeenCalled();
+    expect(mocks.notifyDeployment).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [0, null],
+    [1, expect.any(Date)],
+  ] as const)('settles attempt %s with the correct terminal completion marker', async (attemptsMade, completedAt) => {
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'PENDING', snapshot: null });
+    mocks.pageFindMany.mockRejectedValue(new Error('temporary build failure'));
+    const job = {
+      attemptsMade,
+      opts: { attempts: 2 },
+      data: { deploymentId: 'deployment-a', projectId: 'project-a' },
+    } as Job<PublishDeploymentJobData>;
+    await expect(handlePublishJobs(job)).rejects.toThrow();
+    expect(mocks.deploymentUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED', completedAt }) }),
+    );
+    expect(mocks.notifyDeployment).toHaveBeenCalledTimes(attemptsMade === 0 ? 0 : 1);
   });
 });
