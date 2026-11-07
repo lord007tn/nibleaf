@@ -1,7 +1,7 @@
 import { type Job, Worker, type WorkerOptions } from 'bullmq';
 import { QueueNames } from '../constants';
-import { isQueueEnabled, keys } from '../keys';
-import { closeQueueEvents as _closeQueueEvents, closeQueues as _closeQueues, queues } from '../queues/index';
+import { isQueueEnabled } from '../keys';
+import { closeQueueEvents as _closeQueueEvents, closeQueues as _closeQueues } from '../queues/index';
 import { redisConnectionConfig } from '../redis';
 import type { ProcessorRegistry } from '../types';
 import { queueLogger } from '../utils/logger';
@@ -82,22 +82,8 @@ function createWorker(queueName: QueueNames, processor: (job: Job) => Promise<un
   return worker;
 }
 
-async function cleanQueuesOnDevRestart(): Promise<void> {
-  if (keys().NODE_ENV !== 'development') {
-    return;
-  }
-  for (const [name, queue] of Object.entries(queues)) {
-    const [waiting, active, delayed] = await Promise.all([queue.getWaitingCount(), queue.getActiveCount(), queue.getDelayedCount()]);
-    if (waiting + active + delayed > 0) {
-      queueLogger.warn({ queue: name, waiting, active, delayed }, 'Draining stale jobs (dev restart)');
-      await Promise.all([queue.drain(), queue.clean(0, 0, 'active')]);
-    }
-  }
-}
-
 /** Boot a worker for every enabled queue that has a registered processor. */
 export async function bootWorkers(processors: ProcessorRegistry): Promise<Worker[]> {
-  await cleanQueuesOnDevRestart();
   for (const queueName of Object.values(QueueNames)) {
     if (!isQueueEnabled(queueName)) {
       continue;
