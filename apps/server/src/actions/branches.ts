@@ -96,7 +96,7 @@ export const promoteImportReplacementBranch = async (
       }
       await tx.page.deleteMany({ where: { projectId, branchId: main.id } });
       await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
-      await tx.branch.delete({ where: { id: branch.id } });
+      await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
       if (projectConfig !== undefined) {
         await tx.project.update({ where: { id: projectId }, data: { config: projectConfig } });
       }
@@ -380,7 +380,7 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
       // Every version page was moved, folded or dropped; anything left would
       // be lost with the version.
       if ((await tx.page.count({ where: { projectId, branchId: branch.id } })) > 0) throw promoteRaced();
-      await tx.branch.delete({ where: { id: branch.id } });
+      await tx.branch.delete({ where: { id: branch.id }, select: { id: true } });
       await recomputeProjectPaths(projectId, tx);
     },
     { timeout: 60_000 },
@@ -394,6 +394,6 @@ export const deleteBranch = async (projectId: string, id: string) => {
   if (branch.isDefault) {
     throw conflict('You cannot delete the default branch.');
   }
-  await prisma.branch.delete({ where: { id } });
+  await prisma.branch.delete({ where: { id }, select: { id: true } });
   return { id };
 };
