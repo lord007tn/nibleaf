@@ -5,6 +5,10 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 
 // Stable server codes and detail reasons share this map. Keep each entry
 // translated in EN/AR and covered through the existing action-specific caller.
+// The promote refusals are keyed by code (`branch:*`). The `details.reason`
+// lookup below is for errors that share a generic code and name their case in
+// `details.reason` (e.g. a 409 `database:conflict` whose reason is a slug
+// clash); a reason entry wins over its code.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],

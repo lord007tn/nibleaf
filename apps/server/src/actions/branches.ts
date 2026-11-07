@@ -241,7 +241,7 @@ const baselineMissing = (since: Date, mainPagesEditedOrCreatedSince: number) =>
   new AppError({
     code: 'branch:baseline_missing',
     message:
-      "Nibleaf can't tell what changed on main since this version was made: it's older than this check, was imported, or was copied from such a version.",
+      "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, or was copied from such a version.",
     details: { since: since.toISOString(), mainPagesEditedOrCreatedSince },
   });
 
@@ -270,8 +270,12 @@ const DELETE_CHUNK = 1000;
  *  promote upgrades the main pages it deletes to FOR UPDATE (ascending id),
  *  which blocks new children from then on, and then checks, in a fresh
  *  statement, for main pages it did not lock: any such page is listed as
- *  `added` and promote refuses. It deletes only the locked ids. A root page
- *  created on main after that check is not deleted; it stays on main. */
+ *  `added` and promote refuses. It deletes only the locked ids.
+ *
+ *  Known limit: a root page whose insert commits on main after that check is
+ *  not deleted; it stays on main beside the promoted pages and can share a
+ *  path with one of them. The `createPage` project lock from #301 removes this
+ *  window. */
 export const mergeBranch = async (projectId: string, id: string) => {
   const { branch, main } = await assertPromotable(projectId, id);
   await prisma.$transaction(
