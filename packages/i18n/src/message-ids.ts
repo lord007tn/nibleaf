@@ -1,5 +1,9 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'deploy.rollback.supersededTitle': 'deploy_rollback_supersededtitle',
+  'deploy.rollback.superseded': 'deploy_rollback_superseded',
+  'editor.reorderSlugTaken': 'editor_reorderslugtaken',
+  'deploy.rollback.restoring': 'deploy_rollback_restoring',
   'dashboard.ai.engagement': 'dashboard_ai_engagement',
   'dashboard.ai.readerActions': 'dashboard_ai_readerActions',
   'dashboard.ai.opens': 'dashboard_ai_opens',
