@@ -1,6 +1,7 @@
 import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
@@ -160,6 +161,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
   const disconnect = useDisconnectGitWorkflow(projectId);
   const operation = useQueueGitOperation(projectId);
   const rotate = useRotateGitWorkflowWebhookSecret(projectId);
+  const confirm = useConfirm();
   const connectRepository = () =>
     connect.mutate(
       { repository, baseBranch, headBranch, contentPath, token: token || undefined },
@@ -585,12 +587,19 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <Button
               className="mt-3"
               loading={rotate.isPending}
-              onClick={() =>
+              onClick={async () => {
+                const approved = await confirm({
+                  title: t('settings.git.workflow.rotateConfirm.title'),
+                  description: t('settings.git.workflow.rotateConfirm.description'),
+                  confirmLabel: t('settings.git.workflow.rotateSecret'),
+                  destructive: true,
+                });
+                if (!approved) return;
                 rotate.mutate(undefined, {
                   onSuccess: (result) => setWebhookSecret(result.webhookSecret),
                   onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
-                })
-              }
+                });
+              }}
               size="sm"
               variant="outline"
             >
