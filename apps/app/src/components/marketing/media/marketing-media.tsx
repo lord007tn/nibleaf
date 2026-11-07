@@ -1,6 +1,6 @@
-import { Play } from 'lucide-react';
 import { useState } from 'react';
 import type { MarketingLang, MediaRef } from '../copy/types';
+import { PlayIcon as Play } from '../site/marketing-icons';
 import { type ImageVariant, type MediaEntry, marketingMedia } from './manifest';
 
 const wideSizes = '(max-width: 639px) calc(100vw - 40px), (max-width: 1023px) calc(100vw - 48px), (max-width: 1279px) 46vw, 580px';

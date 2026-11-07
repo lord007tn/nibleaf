@@ -4,7 +4,7 @@ import type { MarketingLang } from './types';
  * Head metadata for the landing page in each language: the single source for
  * the page's `<title>`, description and Open Graph card.
  *
- * Route loaders import this module lazily (`import()`), because a route's
+ * `landing-head.ts` builds the head from it; route loaders import that lazily (`import()`), because a route's
  * `head` and `loader` options are part of the router chunk every published docs
  * page loads. Keep it small and free of other imports.
  */

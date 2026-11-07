@@ -5,20 +5,16 @@ import {
   Check,
   Cloud,
   Code2,
-  Download,
-  GitBranch,
   Globe2,
   History,
   KeyRound,
   Languages,
   LifeBuoy,
   LockKeyhole,
-  MessageSquare,
   Palette,
   PenLine,
   Plus,
   Search,
-  Server,
   ShieldCheck,
   Sparkles,
   Users,
@@ -29,6 +25,12 @@ import { availabilityNote } from '../copy/availability';
 import type { LandingCopy, MarketingIcon, MarketingLang, PathCard } from '../copy/types';
 import { HeroMedia, MarketingMedia } from '../media/marketing-media';
 import { GitHubStarLink } from '../site/github-star-link';
+import {
+  DownloadIcon as Download,
+  GitBranchIcon as GitBranch,
+  MessageSquareIcon as MessageSquare,
+  ServerIcon as Server,
+} from '../site/marketing-icons';
 import { MarketingLink } from '../site/marketing-link';
 import { Eyebrow, iconTile, outlineButton, primaryButton } from '../site/primitives';
 
