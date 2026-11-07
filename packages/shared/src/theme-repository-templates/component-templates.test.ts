@@ -41,12 +41,6 @@ describe('theme repository component templates', () => {
   //   color value reach an Icon's inline style.
   // - fields.tsx: a location prop (`path`, `query`, `header`, `body`) names a
   //   ParamField, like the reader.
-  // - src/lib/markdown.tsx: block and self-closing tags are read up to the
-  //   first `>` outside quotes, so `title="a > b"` stays whole.
-  //   A quote that isn't closed on its line is read as text, so an apostrophe
-  //   in an expression can't run the tag on. Fenced and inline code is held
-  //   aside while tags are rewritten, so component examples stay literal.
-  //   Its placeholders use a private random prefix, so authored text never matches one.
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -65,7 +59,7 @@ describe('theme repository component templates', () => {
       'src/components/mdx/index.tsx': sha256Prefix(mdxIndexTemplate()),
     };
     expect(sha256Prefixes).toEqual({
-      'src/lib/markdown.tsx': '5ffba9d7cc41',
+      'src/lib/markdown.tsx': '06c83728de3f',
       'src/lib/markdown.test.tsx': '83c141811932',
       'src/components/mdx/shared.ts': 'a6002c02bb8e',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',

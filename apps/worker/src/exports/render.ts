@@ -22,7 +22,7 @@ import {
   themeTemplateFromConfig,
 } from '@nibleaf/shared/themes';
 import { strToU8, zipSync } from 'fflate';
-import { Marked, type Token, type Tokens } from 'marked';
+import { Marked, type Tokens } from 'marked';
 import { z } from 'zod';
 
 export interface ExportAsset {
@@ -58,9 +58,6 @@ export interface RenderedArtifact {
 const encoder = new TextEncoder();
 const escapeHtml = (value: string): string =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-const HTML_ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
-/** Undo the escaping marked applied to an attribute value, so it can be escaped exactly once again. */
-const unescapeHtml = (value: string): string => value.replace(/&(amp|lt|gt|quot|#39);/g, (entity, name: string) => HTML_ENTITIES[name] ?? entity);
 const safeSegment = (value: string): string =>
   value
     .replace(/[\\/]+/g, '-')
@@ -73,44 +70,12 @@ const safePath = (value: string): string => value.split('/').map(safeSegment).fi
 // The editor saves callouts as GitHub alerts (`> [!TIP]`). Match the reader's
 // remarkCallouts: strip the marker from the first paragraph and tag the quote.
 const CALLOUT_MARKER = /^\[!(\w+)\]\s*/;
-/** Exactly one attribute-free underline, subscript or superscript tag. */
-const INLINE_FORMATTING_TAG = /^<(\/?)(u|sub|sup)>$/i;
 type CalloutBlockquote = Tokens.Blockquote & { callout?: CalloutType };
-type FormattingHtml = Tokens.HTML & { paired?: boolean };
-
-/** Mark the formatting tags in one run of inline tokens that have a partner in
- *  the same run. Only those render as HTML: an unclosed `<u>` would otherwise
- *  underline the rest of the document, and a PDF joins every page into one. */
-const pairInlineFormatting = (tokens: Token[] | undefined): void => {
-  // One stack for all three tags, so only correctly nested pairs count:
-  // `<u>a <sub>b</u> c</sub>` stays escaped.
-  const open: { name: string; token: FormattingHtml }[] = [];
-  for (const token of tokens ?? []) {
-    if (token.type !== 'html' || token.block) continue;
-    const match = INLINE_FORMATTING_TAG.exec(token.text);
-    if (!match) continue;
-    const name = (match[2] as string).toLowerCase();
-    if (!match[1]) {
-      open.push({ name, token: token as FormattingHtml });
-      continue;
-    }
-    if (open.at(-1)?.name !== name) continue;
-    const opener = open.pop();
-    if (!opener) continue;
-    opener.token.paired = true;
-    (token as FormattingHtml).paired = true;
-  }
-};
 
 const marked = new Marked({
   gfm: true,
   breaks: false,
   walkTokens(token) {
-    if (token.type === 'table') {
-      for (const cell of [...token.header, ...token.rows.flat()]) pairInlineFormatting(cell.tokens);
-    } else if ('tokens' in token) {
-      pairInlineFormatting(token.tokens);
-    }
     if (token.type !== 'blockquote' || !token.tokens) return;
     const [paragraph] = token.tokens;
     if (paragraph?.type !== 'paragraph' || !paragraph.tokens) return;
@@ -124,13 +89,9 @@ const marked = new Marked({
   },
   renderer: {
     // Published Markdown may contain MDX/HTML. Static exports display unknown
-    // markup as source instead of executing scripts or event handlers. The
-    // editor's inline formatting (`<u>`, `<sub>`, `<sup>`, attribute-free) is
-    // the one exception, so it renders instead of showing as literal tags.
+    // markup as source instead of executing scripts or event handlers.
     html(token) {
-      return !token.block && (token as FormattingHtml).paired && INLINE_FORMATTING_TAG.test(token.text)
-        ? token.text.toLowerCase()
-        : escapeHtml(token.text);
+      return escapeHtml(token.text);
     },
     blockquote(token) {
       const callout = (token as CalloutBlockquote).callout;
@@ -526,8 +487,6 @@ const plainText = (markdown: string): string =>
   markdown
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/\[!\w+\]/g, ' ')
-    // Subscript and superscript stay part of their word: H<sub>2</sub>O is "H2O".
-    .replace(/<\/?(?:sub|sup)>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[#*_`>[\]()!-]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -713,10 +672,10 @@ export const renderPdfHtml = (
           }
           return `${before}${data}${after}`;
         })
-        .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, escapedHref: string, after) => {
-          const href = unescapeHtml(escapedHref);
-          // Same rule as the HTML export: unsafe destinations become `#`.
-          if (!isSafeLinkDestination(href)) return `${before}#${after}`;
+        .replace(/(<a\b[^>]*\bhref=")([^"]*)(")/gi, (_all, before, href, after) => {
+          // Same rule as the HTML export: unsafe destinations become `#`. marked has
+          // already escaped the value, so `&amp;` is read as `&` for the check only.
+          if (!isSafeLinkDestination(href.replaceAll('&amp;', '&'))) return `${before}#${after}`;
           const target = resolvePageTarget(snapshot, page, href);
           return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
         });

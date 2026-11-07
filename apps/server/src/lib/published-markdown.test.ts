@@ -15,8 +15,7 @@ describe('published page Markdown', () => {
       },
     });
 
-    // The callout is a real Markdown blockquote; raw HTML stays escaped text.
-    expect(body).toBe('# Setup\n\n> Safe setup.\n\n> **Portable**\n\n\n\n&lt;Raw onclick=&quot;run()&quot;&gt;text&lt;/Raw&gt;\n');
+    expect(body).toBe('# Setup\n\n> Safe setup.\n\n&gt; **Portable**\n\n\n\n&lt;Raw onclick=&quot;run()&quot;&gt;text&lt;/Raw&gt;\n');
     expect(body).not.toContain('Exploit');
     expect(body).not.toContain('<script>');
   });

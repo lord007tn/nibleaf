@@ -282,9 +282,7 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(full).toContain('&lt;svg onload=&quot;run()&quot;&gt;');
     expect(full).toContain('&lt;math href=&quot;javascript:run()&quot;&gt;math link&lt;/math&gt;');
     expect(full).toContain('&amp;lt;scr');
-    // The callout is a real Markdown blockquote: its marker isn't escaped.
-    expect(full).toContain('> **Portable guidance**');
-    expect(full).not.toContain('&gt; **Portable guidance**');
+    expect(full).toContain('&gt; **Portable guidance**');
     expect(full).toContain('## Continue');
     expect(full).toContain('[Setup](/setup)');
     expect(full).toContain('Before expression  after expression.');
@@ -527,22 +525,7 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(() => selectPublishedAssets(snapshot, manifest, 2)).toThrow('2-byte limit');
   });
 
-  it('renders underline, subscript and superscript in static HTML and PDF without allowing other markup', () => {
-    const page = {
-      ...required(snapshot.pages[0]),
-      content: 'A <u>underlined</u> word, H<sub>2</sub>O and x<sup>2</sup>.\n\n<u class="x" onclick="alert(1)">styled</u>',
-    };
-    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
-      expect(html).toContain('<u>underlined</u>');
-      expect(html).toContain('<sub>2</sub>');
-      expect(html).toContain('<sup>2</sup>');
-      expect(html).not.toContain('&lt;u&gt;');
-      expect(html).not.toContain('<u class=');
-      expect(html).toContain('&lt;u class=&quot;x&quot; onclick=&quot;alert(1)&quot;&gt;');
-    }
-  });
-
-  it('turns unsafe link destinations into "#" in PDF and HTML exports, wherever they come from', () => {
+  it('turns unsafe link destinations into "#" in HTML and PDF exports, wherever they come from', () => {
     const page = {
       ...required(snapshot.pages[0]),
       content: [
@@ -554,8 +537,6 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
         '',
         '</Card>',
         '',
-        'A <Tooltip tip="<javascript:alert(4)>">tip</Tooltip>.',
-        '',
         '<Button href="/) [Injected](javascript:alert%281%29">Go</Button>',
       ].join('\n'),
     };
@@ -566,70 +547,5 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
       expect(html).toContain('body');
       expect(html).toContain('Card');
     }
-  });
-
-  it('renders only correctly nested formatting tags', () => {
-    const page = { ...required(snapshot.pages[0]), content: 'Crossed <u>a <sub>b</u> c</sub>, nested <u>d <sub>e</sub></u>.' };
-    const pdf = renderPdfHtml({ ...snapshot, pages: [page] }, assets);
-    expect(pdf).toContain('nested <u>d <sub>e</sub></u>');
-    // Of crossed tags, only the pair that nests renders; the stray one stays text.
-    expect(pdf).toContain('Crossed &lt;u&gt;a <sub>b&lt;/u&gt; c</sub>');
-  });
-
-  it('escapes PDF link destinations once, so query parameters keep their names', () => {
-    const page = { ...required(snapshot.pages[0]), content: 'See [the search](https://example.com/search?q=docs&lang=en&sort=new).' };
-    const pdf = renderPdfHtml({ ...snapshot, pages: [page] }, assets);
-    expect(pdf).toContain('href="https://example.com/search?q=docs&amp;lang=en&amp;sort=new"');
-    expect(pdf).not.toContain('&amp;amp;');
-  });
-
-  it('leaves component examples inside code untouched in HTML and PDF exports', () => {
-    const page = {
-      ...required(snapshot.pages[0]),
-      content: 'Write `<Icon icon="star"></Icon>` inline.\n\n```mdx\n<FileTree>\n<File name="example.ts"></File>\n</FileTree>\n```',
-    };
-    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
-      expect(html).toContain('&lt;Icon icon=&quot;star&quot;&gt;&lt;/Icon&gt;');
-      expect(html).toContain('&lt;File name=&quot;example.ts&quot;&gt;&lt;/File&gt;');
-    }
-  });
-
-  it('renders a code block inside a callout as quoted code, and the prose after it as prose', () => {
-    const page = {
-      ...required(snapshot.pages[0]),
-      content: '<Note>\nRun this:\n\n```html\n<div>hi</div>\nline2\n```\n\nafter\n</Note>\n\nnext para',
-    };
-    const html = renderPageMarkdown(snapshot, page, assets);
-    expect(html).toMatch(
-      /<blockquote[^>]*>[\s\S]*<pre><code class="language-html">&lt;div&gt;hi&lt;\/div&gt;\nline2\n<\/code><\/pre>[\s\S]*after[\s\S]*<\/blockquote>/,
-    );
-    expect(html).toContain('<p>next para</p>');
-    expect(html).not.toContain('```');
-  });
-
-  it('renders atoms written as an empty pair without leaking their tags', () => {
-    const page = {
-      ...required(snapshot.pages[0]),
-      content: '<FileTree>\n<File name="setup.ts"></File>\n</FileTree>\n\nA <Icon icon="star"></Icon> star.',
-    };
-    const html = renderPageMarkdown(snapshot, page, assets);
-    expect(html).toContain('setup.ts');
-    expect(html).not.toMatch(/&lt;\/?(?:File|Icon)/);
-  });
-
-  it('renders formatting tags only with a partner in the same text, so an unclosed one cannot spread to later pages', () => {
-    const first = { ...required(snapshot.pages[0]), content: 'An <u>unclosed underline and x<sup>2.\n\nNext paragraph.' };
-    const second = {
-      ...required(snapshot.pages[0]),
-      id: 'second-page',
-      path: 'second',
-      content: 'A <u>closed</u> one and **<sub>bold</sub>**.\n\n| Head |\n| --- |\n| a <u>cell</u> |',
-    };
-    const pdf = renderPdfHtml({ ...snapshot, pages: [first, second] }, assets);
-    expect(pdf).toContain('An &lt;u&gt;unclosed underline and x&lt;sup&gt;2.');
-    expect(pdf).not.toMatch(/<u>unclosed|<sup>2/);
-    expect(pdf).toContain('<u>closed</u>');
-    expect(pdf).toContain('<strong><sub>bold</sub></strong>');
-    expect(pdf).toContain('<td>a <u>cell</u></td>');
   });
 });

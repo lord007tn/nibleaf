@@ -380,7 +380,7 @@ describe('exported theme repository templates', () => {
     expect(renames).toEqual(
       component((candidate) => candidate.reader.tag !== candidate.tag.toLowerCase()).map((candidate) => [candidate.tag, candidate.reader.tag]),
     );
-    const selfClosing = /const selfClosingAtom = new RegExp\('<\(([\w|]+)\)/.exec(markdown)?.[1]?.split('|');
+    const selfClosing = /\.replace\(\/<\(([\w|]+)\)\\b\(\[\^>\]\*\)\\\/>\/gi/.exec(markdown)?.[1]?.split('|');
     expect(sorted(selfClosing ?? [])).toEqual(sorted(component((candidate) => candidate.selfClosing).map((candidate) => candidate.tag)));
   });
 

@@ -62,27 +62,6 @@ describe('exported theme repository Markdown', () => {
     expect(render('<Icon icon="star" color="red;position:fixed;inset:0" />')).not.toMatch(/position|inset/);
   });
 
-  it('reads attribute values containing ">" whole', () => {
-    const tree = render('<FileTree>\n<Folder name="src">\n<File name="a > b.ts" />\n<File name="c.ts" />\n</Folder>\n</FileTree>');
-    expect(tree).toContain('a &gt; b.ts');
-    expect(tree).toContain('c.ts');
-    expect(render('<Accordion title="x > 1" defaultOpen>\n**Bold** body.\n</Accordion>')).toContain('<strong>Bold</strong>');
-  });
-
-  it('leaves component examples in inline and fenced code alone', () => {
-    const html = render('Inline `<Icon icon="star" />` and `<Frame>` code.\n\n```mdx\n<File name="example.ts" />\n<Note>\nNot padded\n</Note>\n```');
-    expect(html).toContain('&lt;Icon icon=&quot;star&quot; /&gt;');
-    expect(html).toContain('&lt;Frame&gt;');
-    expect(html).toContain('&lt;File name=&quot;example.ts&quot; /&gt;\n&lt;Note&gt;\nNot padded\n&lt;/Note&gt;');
-    expect(html).not.toContain('mdxframe');
-  });
-
-  it('keeps authored text that looks like its private code placeholder', () => {
-    const html = render('```txt\nexample\n```\n\nLiteral 0 and 9 text.');
-    expect(html).toContain('Literal 0 and 9 text.');
-    expect(html.match(/example/g)).toHaveLength(1);
-  });
-
   it('still strips script', () => {
     expect(render('<ResponseField name="x" onclick="alert(1)">\n\nText\n\n</ResponseField>\n\n<script>alert(1)</script>')).not.toMatch(
       /onclick|<script/,

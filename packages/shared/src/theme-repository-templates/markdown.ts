@@ -50,52 +50,14 @@ export const sanitizeSchema = {
 
 const blockTags =
   'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
-// Attribute text read up to the first ">" outside quotes, so title="a > b" stays
-// whole. A quote not closed on its line (an apostrophe in an expression) is text.
-const loneQuote = '"(?![^"\\n]*")|\'(?![^\'\\n]*\')';
-const attributePart = '(?:[^>"\']|"[^"\\n]*"|\'[^\'\\n]*\'|' + loneQuote + ')';
-const openingAttributes = '(?:' + attributePart + '*(?:[^/>"\']|"[^"\\n]*"|\'[^\'\\n]*\'|' + loneQuote + '))?';
-const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b' + openingAttributes + '>\\s*$', 'i');
+const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b(?:[^>]*[^/>])?>\\s*$', 'i');
 const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
-const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b' + attributePart + '*>\\s*$', 'i');
-const selfClosingAtom = new RegExp('<(File|RelatedCard|Icon)\\b(' + attributePart + '*?)\\/>', 'gi');
+const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b[^>]*>\\s*$', 'i');
 
 /** Give component tags the blank lines CommonMark needs so their Markdown
  * children still render, and map tags that collide with HTML names. */
-/** Hide fenced and inline code behind placeholders, so component rewrites leave
- * examples alone, and return a function that puts the code back. */
-const protectCode = (source: string): { text: string; restore: (value: string) => string } => {
-  const kept: string[] = [];
-  // A private prefix the page doesn't contain, so authored text never matches it.
-  let tag = '' + Math.random().toString(36).slice(2) + ':';
-  while (source.includes(tag)) tag = '' + Math.random().toString(36).slice(2) + ':';
-  const hide = (code: string) => tag + (kept.push(code) - 1) + '';
-  const output: string[] = [];
-  let fence: string | undefined;
-  let block: string[] = [];
-  for (const line of source.split('\n')) {
-    if (fence) {
-      block.push(line);
-      const close = /^ {0,3}([\x60~]+)\s*$/.exec(line)?.[1];
-      if (close && close[0] === fence[0] && close.length >= fence.length) {
-        output.push(hide(block.join('\n')));
-        block = [];
-        fence = undefined;
-      }
-      continue;
-    }
-    fence = /^ {0,3}(\x60{3,}|~{3,})/.exec(line)?.[1];
-    if (fence) block = [line];
-    else output.push(line.replace(/(\x60+)[^\x60]*?\1/g, (span) => hide(span)));
-  }
-  if (fence) output.push(hide(block.join('\n')));
-  const placeholder = new RegExp(tag + '(\\d+)', 'g');
-  return { text: output.join('\n'), restore: (value) => value.replace(placeholder, (match, index: string) => kept[Number(index)] ?? match) };
-};
-
 export const normalizeMarkdown = (source: string): string => {
-  const code = protectCode(source);
-  const lines = code.text.split('\n');
+  const lines = source.split('\n');
   const output: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
     const authored = lines[index] ?? '';
@@ -110,12 +72,10 @@ export const normalizeMarkdown = (source: string): string => {
       output.push(line);
     }
   }
-  return code.restore(
-    output
-      .join('\n')
-      .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
-      .replace(selfClosingAtom, '<$1$2></$1>'),
-  );
+  return output
+    .join('\n')
+    .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
+    .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
 };
 
 type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };

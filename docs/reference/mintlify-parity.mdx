@@ -42,6 +42,8 @@ Exported theme repositories ship their own, simpler reader. In them:
 
 Your Nibleaf site renders all of them.
 
+Public Markdown (each page's `.md` and the llms files) and the HTML and PDF exports use a simpler projection of components than the site. Today, in them, a component that wraps a code block can show as source in `.md`, an attribute value containing `>` is cut short, tooltips keep only their text, and subscript, superscript and underline show as tags. A follow-up covers this projection work.
+
 ## Callouts
 
 | Mintlify | Nibleaf | Notes | Planned in |
@@ -107,7 +109,7 @@ Your Nibleaf site renders all of them.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| `Tooltip` with `tip` | Partial | Keyboard and screen reader accessible, and public Markdown keeps the tip text in parentheses; the visual editor has no field to change `tip` after inserting it | 3 |
+| `Tooltip` with `tip` | Partial | Keyboard and screen reader accessible; public Markdown keeps only the text, not the tip; the visual editor has no field to change `tip` after inserting it | 3 |
 | `Tooltip` `headline`, `cta`, `href` | Missing | | 3 |
 | `Badge` with `color` | Partial | `color` is kept but not styled on the site, and the visual editor has no field for it | 3 |
 | `Badge` `size`, `shape`, `icon`, `stroke`, `disabled` | Missing | | 3 |
@@ -141,7 +143,8 @@ Your Nibleaf site renders all of them.
 
 | Mintlify | Nibleaf | Notes | Planned in |
 | --- | --- | --- | --- |
-| Headings, emphasis, links, quotes, rules, superscript, subscript | Has | | |
+| Headings, emphasis, links, quotes, rules | Has | | |
+| Superscript, subscript, underline | Partial | Shown on the site; public Markdown and HTML and PDF exports show them as literal tags | |
 | Custom heading IDs (`## Setup {#setup}`) | Missing | | 5 |
 | Ordered, unordered, nested, and task lists | Has | | |
 | Tables | Has | Add and remove rows and columns from the table menu | |
