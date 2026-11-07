@@ -138,6 +138,19 @@ import Example from './example'
     ).toBe('- [A](/a)\n- B — Second\n  Body of B.');
   });
 
+  it('keeps a decoded "<script>" in a title from hiding the rest of the page', () => {
+    const output = normalizePublicMarkdownContent('<Card title="&lt;script&gt;">Body</Card>\n\nEnding text.');
+    expect(output).toContain('&lt;script&gt;');
+    expect(output).toContain('Body');
+    expect(output).toContain('Ending text.');
+  });
+
+  it('keeps a destination that tries to close the link and open another inside one link', () => {
+    const output = portablePublicMdxMarkdown('<Button href="/) [Injected](javascript:alert%281%29">Go</Button>');
+    expect(output).toBe('[Go](/%29%20[Injected]%28javascript:alert%281%29)');
+    expect(output.match(/\]\(/g)).toHaveLength(1);
+  });
+
   it('keeps projected attribute text out of the active-markup scan', () => {
     expect(normalizePublicMarkdownContent('<Tooltip tip="The &lt;style&gt; element">CSS</Tooltip> and more text.\n\nNext paragraph.')).toBe(
       'CSS (The &lt;style&gt; element) and more text.\n\nNext paragraph.',

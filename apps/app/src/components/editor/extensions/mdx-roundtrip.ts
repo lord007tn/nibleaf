@@ -101,6 +101,18 @@ export const decodeMdxSource = (value: string | null | undefined): string => {
   }
 };
 
+const NAMED_REFERENCES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/** An authored attribute value with its character references decoded, as JSX and
+ *  HTML read it: `title="R&amp;D"` is "R&D" in the editor, and saving after an
+ *  edit writes `&amp;` once, not again on top. */
+const decodeAttributeValue = (value: string): string =>
+  value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|(amp|lt|gt|quot|apos));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
+    if (name) return NAMED_REFERENCES[name.toLowerCase()] ?? reference;
+    const code = decimal ? Number(decimal) : Number.parseInt(hex ?? '', 16);
+    return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
+  });
+
 const escapeHtmlAttribute = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -109,21 +121,36 @@ const lineIsFence = (line: string): { marker: string; length: number } | null =>
   return match?.[1] ? { marker: match[1][0] ?? '`', length: match[1].length } : null;
 };
 
-/** True for positions in fenced or inline code, where JSX-looking text is literal. */
+/** Where the paragraph holding `from` ends: at the next blank line, or the end. */
+const paragraphEnd = (source: string, from: number): number => {
+  const blank = /\n[ \t]*\n/g;
+  blank.lastIndex = from;
+  return blank.exec(source)?.index ?? source.length;
+};
+
+/** True for positions in fenced or inline code, where JSX-looking text is literal.
+ *  An inline code span may continue onto the following lines of its paragraph,
+ *  as in CommonMark. */
 function codeMask(source: string): Uint8Array {
   const mask = new Uint8Array(source.length);
   let offset = 0;
   let fence: { marker: string; length: number } | null = null;
+  // The end of a code span that began on an earlier line.
+  let spanEnd = 0;
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
-    const candidate = lineIsFence(line);
+    if (spanEnd >= offset + line.length) {
+      offset += lineWithBreak.length;
+      continue;
+    }
+    const candidate = spanEnd > offset ? null : lineIsFence(line);
     if (fence || candidate) {
       mask.fill(1, offset, offset + lineWithBreak.length);
       if (!fence && candidate) fence = candidate;
       else if (fence && candidate?.marker === fence.marker && candidate.length >= fence.length) fence = null;
     } else {
-      let cursor = 0;
+      let cursor = Math.max(0, spanEnd - offset);
       while (cursor < line.length) {
         if (line[cursor] !== '`') {
           cursor++;
@@ -131,10 +158,19 @@ function codeMask(source: string): Uint8Array {
         }
         let count = 1;
         while (line[cursor + count] === '`') count++;
-        const closer = line.indexOf('`'.repeat(count), cursor + count);
-        if (closer < 0) break;
-        mask.fill(1, offset + cursor, offset + closer + count);
-        cursor = closer + count;
+        const run = '`'.repeat(count);
+        const closer = line.indexOf(run, cursor + count);
+        if (closer >= 0) {
+          mask.fill(1, offset + cursor, offset + closer + count);
+          cursor = closer + count;
+          continue;
+        }
+        const from = offset + cursor + count;
+        const later = source.slice(from, paragraphEnd(source, from)).indexOf(run);
+        if (later < 0) break;
+        spanEnd = from + later + count;
+        mask.fill(1, offset + cursor, spanEnd);
+        break;
       }
     }
     offset += lineWithBreak.length;
@@ -282,7 +318,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     if (quote === '"' || quote === "'") {
       const valueStart = ++cursor;
       while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
-      value = raw.slice(valueStart, cursor);
+      value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
       const end = balancedEnd(raw, cursor, '{', '}') ?? limit;
@@ -291,7 +327,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     } else {
       const valueStart = cursor;
       while (cursor < limit && !/\s/.test(raw[cursor] ?? '')) cursor++;
-      value = raw.slice(valueStart, cursor);
+      value = decodeAttributeValue(raw.slice(valueStart, cursor));
     }
     attrs.push({ name, start, end: cursor, value });
   }

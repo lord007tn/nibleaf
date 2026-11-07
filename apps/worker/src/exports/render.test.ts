@@ -555,10 +555,14 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
         '</Card>',
         '',
         'A <Tooltip tip="<javascript:alert(4)>">tip</Tooltip>.',
+        '',
+        '<Button href="/) [Injected](javascript:alert%281%29">Go</Button>',
       ].join('\n'),
     };
     for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
-      expect(html).not.toMatch(/href="[^"]*(?:javascript|&#106;)/i);
+      // No destination starts with a script scheme, and the Button stays one link.
+      expect(html).not.toMatch(/href="\s*(?:javascript|&#106;)/i);
+      expect(html).not.toMatch(/>Injected</);
       expect(html).toContain('body');
       expect(html).toContain('Card');
     }

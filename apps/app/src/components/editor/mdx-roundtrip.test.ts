@@ -133,6 +133,43 @@ afterEach(() => {
 });
 
 describe('MDX round trips', () => {
+  it('reads character references in attributes once, so editing never escapes them again', () => {
+    const source = 'Intro.\n\n<Card title="R&amp;D &quot;labs&quot;" href="/x?a=1&amp;b=2">\n\nBody\n\n</Card>\n';
+    const editor = createEditor(source);
+    let card: { attrs: Record<string, unknown> } | undefined;
+    editor.state.doc.descendants((node) => {
+      if (node.type.name === 'mdxCard') card = node;
+    });
+    expect(card?.attrs.title).toBe('R&D "labs"');
+    expect(card?.attrs.href).toBe('/x?a=1&b=2');
+    // Untouched, the authored tag is saved byte for byte.
+    editor.commands.setTextSelection(3);
+    editor.commands.insertContent('!');
+    expect(getMarkdown(editor)).toContain('<Card title="R&amp;D &quot;labs&quot;" href="/x?a=1&amp;b=2">');
+    // Edited, the title is escaped exactly once, and reloads the same.
+    let position = -1;
+    editor.state.doc.descendants((node, at) => {
+      if (node.type.name === 'mdxCard') position = at;
+    });
+    editor.commands.command(({ tr }) => {
+      tr.setNodeAttribute(position, 'title', 'R&D!');
+      return true;
+    });
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('title="R&amp;D!"');
+    expect(saved).not.toContain('&amp;amp;');
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it('keeps a component tag inside a code span that runs across two lines as literal code', () => {
+    const source = 'Use `a multi-line\n<Icon icon="star" /> span` here, and <Badge>real</Badge>.\n';
+    const output = getMarkdown(createEditor(source));
+    expect(output).not.toContain('data-mdx');
+    // A line break inside a code span reads as a space (CommonMark), and is saved as one.
+    expect(output).toContain('`a multi-line <Icon icon="star" /> span`');
+    expect(output).toContain('<Badge>real</Badge>');
+  });
+
   it('keeps a self-closing RelatedCard self-closing, and pairs it once it gains a body', () => {
     const source =
       'Intro.\n\n<RelatedContent title="More">\n\n<RelatedCard title="Auth" description="Sign requests" href="/auth" />\n\n</RelatedContent>\n';

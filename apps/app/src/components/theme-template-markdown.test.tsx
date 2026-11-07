@@ -69,6 +69,14 @@ describe('exported theme repository Markdown', () => {
     expect(render('<Accordion title="x > 1" defaultOpen>\n**Bold** body.\n</Accordion>')).toContain('<strong>Bold</strong>');
   });
 
+  it('leaves component examples in inline and fenced code alone', () => {
+    const html = render('Inline `<Icon icon="star" />` and `<Frame>` code.\n\n```mdx\n<File name="example.ts" />\n<Note>\nNot padded\n</Note>\n```');
+    expect(html).toContain('&lt;Icon icon=&quot;star&quot; /&gt;');
+    expect(html).toContain('&lt;Frame&gt;');
+    expect(html).toContain('&lt;File name=&quot;example.ts&quot; /&gt;\n&lt;Note&gt;\nNot padded\n&lt;/Note&gt;');
+    expect(html).not.toContain('mdxframe');
+  });
+
   it('still strips script', () => {
     expect(render('<ResponseField name="x" onclick="alert(1)">\n\nText\n\n</ResponseField>\n\n<script>alert(1)</script>')).not.toMatch(
       /onclick|<script/,
