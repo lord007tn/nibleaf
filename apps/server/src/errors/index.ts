@@ -33,6 +33,12 @@ export type ErrorCode =
   | 'database:not_found'
   | 'database:conflict'
   | 'storage:error'
+  | 'domain:already_added'
+  | 'domain:taken'
+  | 'domain:provider_failed'
+  | 'domain:ownership_missing'
+  | 'domain:not_pointed'
+  | 'domain:not_ready'
   | 'search:unavailable'
   | 'ai:provider_response'
   | 'import:invalid_document'
@@ -105,6 +111,12 @@ const ERROR_STATUS = {
   'database:not_found': 404,
   'database:conflict': 409,
   'storage:error': 502,
+  'domain:already_added': 409,
+  'domain:taken': 409,
+  'domain:provider_failed': 502,
+  'domain:ownership_missing': 422,
+  'domain:not_pointed': 422,
+  'domain:not_ready': 409,
   'search:unavailable': 503,
   'ai:provider_response': 502,
   'import:invalid_document': 422,
