@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
+import { generateSpecs } from 'hono-openapi';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -65,6 +66,14 @@ beforeEach(() => {
   mocks.track.mockResolvedValue(undefined);
 });
 describe('draft and capability access', () => {
+  it('documents capability reads independently from drafting', async () => {
+    const specification = await generateSpecs(appFor());
+    const operation = specification.paths['/api/app/projects/{projectId}/ai/draft-capability']?.get;
+    expect(operation?.description).toBe(
+      'Read editor AI drafting availability, connection source, provider, and quota state without consuming a request.',
+    );
+    expect(operation?.tags).toEqual(['ai']);
+  });
   it.each(['capability', 'draft'])('requires authentication and Editor membership for %s', async (endpoint) => {
     const path = endpoint === 'capability' ? `${base}/draft-capability` : base;
     const init = endpoint === 'draft' ? post() : undefined;
@@ -109,17 +118,20 @@ describe('draft request execution', () => {
     );
     expect(JSON.stringify(mocks.track.mock.calls)).not.toContain('secret');
   });
-  it.each(['not_configured', 'disabled'])('returns a plain 503 code for %s without consuming quota', async (reason) => {
+  it.each([
+    ['not_configured', 503],
+    ['disabled', 403],
+  ] as const)('returns an AI-specific code for %s without consuming quota', async (reason, status) => {
     mocks.resolve.mockResolvedValue({ runtime: null, reason });
     const response = await appFor().request(base, post());
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: { code: 'search:unavailable', message: 'search:unavailable' } });
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ error: { code: `ai:${reason}`, message: `ai:${reason}`, details: { reason } } });
     expect(mocks.quota).not.toHaveBeenCalled();
     expect(mocks.draft).not.toHaveBeenCalled();
   });
   it.each([
     ['http:rate_limited', 429],
-    ['search:unavailable', 503],
+    ['usage:unavailable', 503],
   ] as const)('preserves quota rejection %s and never calls the provider', async (code, status) => {
     mocks.quota.mockRejectedValue(new AppError({ code }));
     expect((await appFor().request(base, post())).status).toBe(status);

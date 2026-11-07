@@ -25,7 +25,7 @@ const getRedis = (): Redis => {
       maxRetriesPerRequest: 1,
       retryStrategy: (times) => Math.min(times * 100, 2000),
     });
-    // Swallow connection errors — the quota check degrades to fail-open below.
+    // Command failures are handled by the quota check below.
     client.on('error', () => undefined);
   }
   return client;
@@ -35,9 +35,7 @@ const DAY_SECONDS = 24 * 60 * 60;
 
 /**
  * Count one AI request against the workspace's daily budget and throw a 429
- * once it is exhausted. Redis being unreachable fails OPEN (the request is
- * allowed): the quota is spend protection, not a security boundary, and AI
- * drafting must not hard-depend on redis for self-hosters.
+ * once it is exhausted. Drafting requires an available quota counter.
  */
 export const assertAiQuota = async (organizationId: string): Promise<void> => {
   const limit = envExtras.AI_DAILY_LIMIT;
@@ -47,12 +45,14 @@ export const assertAiQuota = async (organizationId: string): Promise<void> => {
   let used: number;
   try {
     const redis = getRedis();
-    used = await redis.incr(key);
-    if (used === 1) {
-      await redis.expire(key, DAY_SECONDS);
-    }
-  } catch {
-    return;
+    const results = await redis.multi().incr(key).expire(key, DAY_SECONDS, 'NX').exec();
+    if (results?.length !== 2) throw new Error('Quota transaction did not complete');
+    for (const [error] of results) if (error) throw error;
+    const count = results[0]?.[1];
+    if (typeof count !== 'number') throw new Error('Quota transaction returned an invalid count');
+    used = count;
+  } catch (cause) {
+    throw new AppError({ code: 'usage:unavailable', message: 'AI drafting is temporarily unavailable. Try again in a few minutes.', cause });
   }
 
   if (used > limit) {
@@ -74,6 +74,6 @@ export const isAiQuotaExhausted = async (organizationId: string): Promise<boolea
     if (!Number.isSafeInteger(used) || used < 0) throw new Error('Invalid quota counter.');
     return used >= envExtras.AI_DAILY_LIMIT;
   } catch {
-    throw new AppError({ code: 'search:unavailable' });
+    throw new AppError({ code: 'usage:unavailable' });
   }
 };

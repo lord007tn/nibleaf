@@ -11,7 +11,7 @@ import { validator } from '@/lib/hono/validate';
 import aiRoutes from './routes';
 
 const app = new Hono<HonoEnv>()
-  .get('/draft-capability', ...aiRoutes.draft, async (ctx) => {
+  .get('/draft-capability', ...aiRoutes.draftCapability, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
     const projectId = z.string().parse(ctx.req.param('projectId'));
     await assertProjectInOrg(organizationId, projectId);
@@ -22,8 +22,8 @@ const app = new Hono<HonoEnv>()
     const organizationId = getContextOrganizationIdOrThrow();
     const projectId = z.string().parse(ctx.req.param('projectId'));
     await assertProjectInOrg(organizationId, projectId);
-    const { runtime } = await resolveAiDraft(projectId);
-    if (!runtime) throw new AppError({ code: 'search:unavailable' });
+    const { runtime, reason } = await resolveAiDraft(projectId);
+    if (!runtime) throw new AppError({ code: reason === 'disabled' ? 'ai:disabled' : 'ai:not_configured', details: { reason } });
     // Workspace and instance connections share the same daily drafting budget.
     await assertAiQuota(organizationId);
     await trackProjectEvent(

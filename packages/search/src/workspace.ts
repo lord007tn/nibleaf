@@ -75,14 +75,16 @@ export interface WorkspaceAiRuntime {
   answersEnabled: boolean;
 }
 
-/** Plain Markdown generation with the same provider credentials as search/chat. */
+/** Plain Markdown generation with the same provider credentials as search/chat.
+ * Drafting keeps the SDK timeouts: OpenRouter has no SDK deadline; direct OpenAI
+ * defaults to ten minutes. Search's short answer timeout must not truncate drafts. */
 export const completeWorkspaceText = async (
   runtime: WorkspaceAiRuntime,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   attribution?: { siteUrl: string; title: string },
 ) => {
   if (runtime.providerId === 'openai') {
-    const completion = await new OpenAI({ apiKey: runtime.apiKey, timeout: keys().SEARCH_ANSWER_TIMEOUT_MS, maxRetries: 0 }).chat.completions.create({
+    const completion = await new OpenAI({ apiKey: runtime.apiKey, maxRetries: 0 }).chat.completions.create({
       model: runtime.answerModel,
       messages,
     });
@@ -94,7 +96,6 @@ export const completeWorkspaceText = async (
   }
   const completion = await new OpenRouter({
     apiKey: runtime.apiKey,
-    timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS,
     httpReferer: attribution?.siteUrl,
     appTitle: attribution?.title,
   }).chat.send({

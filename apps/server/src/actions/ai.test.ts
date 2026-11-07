@@ -1,5 +1,6 @@
 import { decodeEncryptionKey, encryptSecret } from '@nibleaf/shared/crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppError } from '@/errors';
 
 const mocks = vi.hoisted(() => ({
   send: vi.fn(),
@@ -105,9 +106,18 @@ describe('project drafting capability', () => {
     mocks.exhausted.mockResolvedValue(true);
     expect(await getAiDraftCapability('site', 'org')).toEqual({ available: false, source: 'workspace', provider: 'openai', reason: 'quota' });
   });
-  it('propagates quota read failures instead of claiming available budget', async () => {
-    mocks.exhausted.mockRejectedValue(new Error('quota unavailable'));
-    await expect(getAiDraftCapability('site', 'org')).rejects.toThrow('quota unavailable');
+  it('reports quota read failures as unavailable while retaining the connection identity', async () => {
+    mocks.exhausted.mockRejectedValue(new AppError({ code: 'usage:unavailable' }));
+    await expect(getAiDraftCapability('site', 'org')).resolves.toEqual({
+      available: false,
+      source: 'workspace',
+      provider: 'openai',
+      reason: 'quota_unavailable',
+    });
+  });
+  it('does not misclassify unexpected quota errors as a known capability state', async () => {
+    mocks.exhausted.mockRejectedValue(new Error('unexpected failure'));
+    await expect(getAiDraftCapability('site', 'org')).rejects.toThrow('unexpected failure');
   });
 });
 
@@ -123,6 +133,16 @@ describe('drafting with the resolved connection', () => {
     expect(provider === 'openai' ? mocks.router : mocks.openai).not.toHaveBeenCalled();
     if (provider === 'openai') expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ model: 'gpt-site' }));
     else expect(mocks.send).toHaveBeenCalledWith({ chatRequest: expect.objectContaining({ model: 'openai/site-model', stream: false }) });
+  });
+  it.each(['openai', 'openrouter'])('keeps the %s SDK timeout independent of the search timeout', async (provider) => {
+    vi.stubEnv('SEARCH_ANSWER_TIMEOUT_MS', '1000');
+    select(provider);
+    const { runtime } = await resolveAiDraft('site');
+    if (!runtime) throw new Error('Expected runtime');
+    await draftContentWithTelemetry({ mode: 'continue', content: 'Long guide' }, runtime);
+    const options = (provider === 'openai' ? mocks.openai : mocks.router).mock.calls[0]?.[0];
+    expect(options).not.toHaveProperty('timeout');
+    expect(options).not.toHaveProperty('timeoutMs');
   });
   it.each(['instance', 'missing-workspace'])('uses the instance key and draft model for %s', async (selection) => {
     if (selection === 'instance') mocks.project.mockResolvedValue({ config: {} });

@@ -1,6 +1,7 @@
 import { completeWorkspaceText, resolveWorkspaceAiConfiguration, type WorkspaceAiRuntime } from '@nibleaf/search/workspace';
 import type { AiDraftBody } from '@nibleaf/validators';
 import { env } from '@/env';
+import { AppError } from '@/errors';
 import { isAiQuotaExhausted } from '@/lib/ai-quota';
 import { envExtras } from '@/lib/env-extras';
 
@@ -53,14 +54,29 @@ export const resolveAiDraft = async (projectId: string) => {
   };
 };
 
-export const getAiDraftCapability = async (projectId: string, organizationId: string) => {
+export interface AiDraftCapability {
+  available: boolean;
+  source: AiDraftRuntime['source'] | null;
+  provider: AiDraftRuntime['providerId'] | null;
+  reason: 'not_configured' | 'disabled' | 'quota' | 'quota_unavailable' | null;
+}
+
+export const getAiDraftCapability = async (projectId: string, organizationId: string): Promise<AiDraftCapability> => {
   const { runtime, reason } = await resolveAiDraft(projectId);
-  const exhausted = runtime ? await isAiQuotaExhausted(organizationId) : false;
+  let quotaReason: AiDraftCapability['reason'] = null;
+  if (runtime) {
+    try {
+      if (await isAiQuotaExhausted(organizationId)) quotaReason = 'quota';
+    } catch (error) {
+      if (!(error instanceof AppError && error.code === 'usage:unavailable')) throw error;
+      quotaReason = 'quota_unavailable';
+    }
+  }
   return {
-    available: Boolean(runtime) && !exhausted,
+    available: Boolean(runtime) && quotaReason === null,
     source: runtime?.source ?? null,
     provider: runtime?.providerId ?? null,
-    reason: exhausted ? ('quota' as const) : reason,
+    reason: quotaReason ?? reason,
   };
 };
 

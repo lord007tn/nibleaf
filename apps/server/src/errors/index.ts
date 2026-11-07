@@ -35,6 +35,8 @@ export type ErrorCode =
   | 'storage:error'
   | 'search:unavailable'
   | 'ai:provider_response'
+  | 'ai:not_configured'
+  | 'ai:disabled'
   | 'import:invalid_document'
   | 'import:not_found'
   | 'import:unsupported'
@@ -107,6 +109,8 @@ const ERROR_STATUS = {
   'storage:error': 502,
   'search:unavailable': 503,
   'ai:provider_response': 502,
+  'ai:not_configured': 503,
+  'ai:disabled': 403,
   'import:invalid_document': 422,
   'import:not_found': 404,
   'import:unsupported': 422,
