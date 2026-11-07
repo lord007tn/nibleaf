@@ -306,6 +306,8 @@ export interface NotificationItem {
   type: string;
   title: string;
   body: string | null;
+  /** Nullable for rows written before localized notification parameters. */
+  params?: unknown;
   /** Dashboard-relative link opened when the notification is clicked. */
   href: string | null;
   readAt: string | null;
