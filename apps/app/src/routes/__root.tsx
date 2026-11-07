@@ -13,22 +13,29 @@ export interface RouterContext {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'Nibleaf Cloud — documentation workspace' },
-      { name: 'application-name', content: 'Nibleaf' },
-      { name: 'theme-color', content: '#181612' },
-    ],
-    links: [
-      { rel: 'stylesheet', href: appCss },
-      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
-      { rel: 'icon', href: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
-      { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
-      { rel: 'manifest', href: '/site.webmanifest' },
-    ],
-  }),
+  head: ({ matches }) => {
+    const document = [{ charSet: 'utf-8' }, { name: 'viewport', content: 'width=device-width, initial-scale=1' }];
+    // A published docs site carries its own name, icon and theme color (see
+    // siteHead): Nibleaf's branding stays on the product and marketing pages.
+    if (matches.some((match) => (match.routeId as string) === '/sites/$projectId')) {
+      return { meta: document, links: [{ rel: 'stylesheet', href: appCss }] };
+    }
+    return {
+      meta: [
+        ...document,
+        { title: 'Nibleaf Cloud — documentation workspace' },
+        { name: 'application-name', content: 'Nibleaf' },
+        { name: 'theme-color', content: '#181612' },
+      ],
+      links: [
+        { rel: 'stylesheet', href: appCss },
+        { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+        { rel: 'icon', href: '/favicon-32x32.png', type: 'image/png', sizes: '32x32' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/site.webmanifest' },
+      ],
+    };
+  },
   component: RootComponent,
 });
 

@@ -1831,6 +1831,8 @@
   "error_signedout": "Votre session a expiré. Reconnectez-vous pour continuer.",
   "error_notfound": "Cet élément n’existe plus : quelqu’un l’a peut-être supprimé. Actualisez la page et réessayez.",
   "error_conflict": "Quelqu’un d’autre a modifié cet élément en même temps. Actualisez la page et réessayez.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "C’est trop volumineux. Essayez un fichier plus petit.",
   "error_ratelimited": "Trop de tentatives. Patientez un instant et réessayez.",
   "notfound_badge": "404",
@@ -1932,18 +1934,46 @@
   "site_previous": "Précédent",
   "site_next": "Suivant",
   "site_onthispage": "Sur cette page",
-  "site_minread": "lecture min.",
-  "site_screenshot": "capture d'écran",
-  "site_screenshots": "captures d'écran",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} min de lecture"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} capture d'écran",
+        "form=*": "{count} captures d'écran"
+      }
+    }
+  ],
   "site_updated": "Mis à jour",
   "site_notpublishedtitle": "Pas encore publié",
   "site_notpublishedbody": "Ce site de documentation n'a pas été publié. Publiez-le depuis l'éditeur pour le voir en direct.",
+  "site_privatetitle": "Cette documentation est privée",
+  "site_privatebody": "Pour la lire, ouvrez le lien d'invitation reçu par e-mail.",
+  "site_privatemembers": "Les membres de cet espace de travail peuvent se connecter pour la consulter.",
+  "site_privatesignin": "Se connecter",
   "site_pageunavailable": "Cette page n'est pas disponible.",
   "site_changelogsubtitle": "Chaque mise à jour envoyée à ces documents.",
   "site_changelogempty": "Aucune version pour le moment.",
   "site_changelogrelease": "Version",
-  "site_changelogpage": "page",
-  "site_changelogpages": "pages",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "site_feedbackquestion": "Cette page a-t-elle été utile ?",
   "site_feedbackyes": "Oui",
   "site_feedbackno": "Non",
@@ -1954,7 +1984,8 @@
   "site_analyticsconsentaccept": "Accepter",
   "site_analyticsconsentdecline": "Refuser",
   "site_changelanguage": "Changer de langue",
-  "site_toggletheme": "Changer de thème",
+  "site_darkmode": "Mode sombre",
+  "site_breadcrumb": "Fil d'Ariane",
   "site_togglesubpages": "Afficher ou masquer les sous-pages",
   "site_articledetails": "Détails de l'article",
   "site_copycode": "Copier le code",
@@ -3610,5 +3641,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

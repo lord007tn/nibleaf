@@ -1,5 +1,5 @@
 import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   projectFindUnique: vi.fn(),
@@ -33,6 +33,7 @@ vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: 
 vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
 vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
 
+import { resolveViewerAccess } from './reader-access';
 import { getSitePage, getSitePageMarkdown, invalidatePublishedSiteConfig, searchSite } from './sites';
 
 const page = (over: Partial<SnapshotPage> & Pick<SnapshotPage, 'id' | 'path' | 'position'>): SnapshotPage => ({
@@ -304,10 +305,90 @@ describe('searchSite multilingual scope', () => {
   it('searches all published languages and annotates each result for localized routing', async () => {
     const result = await searchSite('project-1', 'token');
     expect(mocks.getCachedIndex.mock.calls.map((call) => call[2])).toEqual(['en', 'ar']);
+    // The default language first, then the other languages; raw scores from
+    // separate indexes are never compared.
     expect(result.hits).toEqual([
-      expect.objectContaining({ id: 'page-ar', language: 'ar' }),
       expect.objectContaining({ id: 'page-en', language: 'en' }),
+      expect.objectContaining({ id: 'page-ar', language: 'ar' }),
     ]);
+  });
+
+  it('keeps an Arabic reader’s result at a one-result limit on an English-default site, still searching every language', async () => {
+    const result = await searchSite('project-1', 'token', undefined, 1, undefined, {}, 'ar');
+    expect(mocks.getCachedIndex.mock.calls.map((call) => call[2])).toEqual(['en', 'ar']);
+    expect(result.hits).toEqual([expect.objectContaining({ id: 'page-ar', language: 'ar' })]);
+  });
+
+  it('matches the preferred language by its base and ignores a language the site does not serve', async () => {
+    expect((await searchSite('project-1', 'token', undefined, 1, undefined, {}, 'ar-SA')).hits[0]).toMatchObject({ language: 'ar' });
+    expect((await searchSite('project-1', 'token', undefined, 1, undefined, {}, 'fr')).hits[0]).toMatchObject({ language: 'en' });
+  });
+
+  it('never widens a reader’s page grants: the same scope and pages with and without prefer', async () => {
+    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: ['page-en'] } as never);
+    onTestFinished(() => {
+      vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'public', allowedPageIds: null } as never);
+    });
+    const scopes = async (prefer?: string) => {
+      vi.clearAllMocks();
+      await searchSite('project-1', 'token', undefined, 10, undefined, {}, prefer);
+      return {
+        scopes: mocks.runPublishedSearch.mock.calls.map(([scope]) => scope),
+        indexes: mocks.getCachedIndex.mock.calls.map(([, , language, pages, allowed]) => ({
+          language,
+          pages: (pages as Array<{ id: string }>).map((item) => item.id),
+          allowed,
+        })),
+      };
+    };
+    const without = await scopes();
+    const withPrefer = await scopes('ar');
+    expect(withPrefer).toEqual(without);
+    expect(without.indexes.every((index) => index.pages.join() === 'page-en')).toBe(true);
+    expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en']))).toBe(true);
+  });
+
+  it('never widens a page-scoped reader on a three-language site, with or without prefer', async () => {
+    const trilingual: SiteSnapshot = {
+      ...multilingualSnapshot,
+      project: {
+        ...multilingualSnapshot.project,
+        languages: [...multilingualSnapshot.project.languages, { code: 'fr', label: 'Français', direction: 'LTR', isDefault: false, config: null }],
+      },
+      pages: [
+        ...multilingualSnapshot.pages,
+        page({ id: 'page-fr', path: 'authentication', position: 0, languageCode: 'fr', title: 'Authentification' }),
+      ],
+    };
+    mocks.deploymentFindUnique.mockResolvedValue({ snapshot: trilingual });
+    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: ['page-en', 'page-fr'] } as never);
+    onTestFinished(() => {
+      vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'public', allowedPageIds: null } as never);
+    });
+    const scopes = async (prefer?: string) => {
+      vi.clearAllMocks();
+      mocks.deploymentFindFirst.mockResolvedValue({ id: `deployment-trilingual-${prefer ?? 'none'}`, version: 1 });
+      await searchSite('project-1', 'token', undefined, 10, undefined, {}, prefer);
+      return {
+        scopes: mocks.runPublishedSearch.mock.calls.map(([scope]) => scope),
+        indexes: mocks.getCachedIndex.mock.calls.map(([, , language, pages, allowed]) => ({
+          language,
+          pages: (pages as Array<{ id: string }>).map((item) => item.id).sort(),
+          allowed,
+        })),
+      };
+    };
+    const without = await scopes();
+    expect(without.indexes.map((index) => index.language)).toEqual(['en', 'ar', 'fr']);
+    for (const prefer of ['fr', 'ar']) {
+      const withPrefer = await scopes(prefer);
+      expect(withPrefer.indexes).toEqual(without.indexes);
+      expect(withPrefer.scopes.map((scope) => ({ ...(scope as object), deploymentId: undefined }))).toEqual(
+        without.scopes.map((scope) => ({ ...(scope as object), deploymentId: undefined })),
+      );
+    }
+    expect(without.indexes.every((index) => index.pages.join() === 'page-en,page-fr')).toBe(true);
+    expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en', 'page-fr']))).toBe(true);
   });
 
   it('points a hit at the section that matched, with a preview from that section', async () => {

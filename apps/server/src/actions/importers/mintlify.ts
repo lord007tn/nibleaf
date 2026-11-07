@@ -174,12 +174,12 @@ const ensureVersionTarget = async (
   summary: ImportSummary,
 ): Promise<ImportTarget> => {
   if (version.isDefault) {
-    const branch = await prisma.branch.findUnique({ where: { id: defaultTarget.branchId } });
+    const branch = await prisma.branch.findUnique({ where: { id: defaultTarget.branchId }, select: { id: true, name: true } });
     if (!branch) throw badRequest('The project needs a default documentation version before content can be imported.');
     if (branch.name !== version.name) {
-      const collision = await prisma.branch.findFirst({ where: { projectId, name: version.name } });
+      const collision = await prisma.branch.findFirst({ where: { projectId, name: version.name }, select: { id: true } });
       if (!collision) {
-        await prisma.branch.update({ where: { id: branch.id }, data: { name: version.name } });
+        await prisma.branch.update({ where: { id: branch.id }, data: { name: version.name }, select: { id: true } });
       } else if (collision.id !== branch.id) {
         summary.warnings.push(`Kept the existing default version "${branch.name}" because a separate "${version.name}" version already exists.`);
         return { ...defaultTarget, branchId: collision.id };
@@ -187,8 +187,8 @@ const ensureVersionTarget = async (
     }
     return defaultTarget;
   }
-  const existing = await prisma.branch.findFirst({ where: { projectId, name: version.name } });
-  const branch = existing ?? (await prisma.branch.create({ data: { projectId, name: version.name, isDefault: false } }));
+  const existing = await prisma.branch.findFirst({ where: { projectId, name: version.name }, select: { id: true } });
+  const branch = existing ?? (await prisma.branch.create({ data: { projectId, name: version.name, isDefault: false }, select: { id: true } }));
   return { ...defaultTarget, branchId: branch.id };
 };
 

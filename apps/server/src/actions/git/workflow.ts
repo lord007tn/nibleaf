@@ -133,7 +133,7 @@ type AuthoringPage = {
 const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {
   const [branch, language] = await Promise.all([
     connection.importBranchId
-      ? prisma.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId } })
+      ? prisma.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId }, omit: { forkBaseline: true } })
       : getDefaultBranch(connection.projectId),
     connection.importLanguageId
       ? prisma.language.findFirst({ where: { id: connection.importLanguageId, projectId: connection.projectId } })

@@ -1831,6 +1831,8 @@
   "error_signedout": "你的会话已结束，请重新登录后继续。",
   "error_notfound": "此内容已不存在，可能已被他人删除。请刷新页面后重试。",
   "error_conflict": "其他人同时修改了此内容。请刷新页面后重试。",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "文件过大，请尝试更小的文件。",
   "error_ratelimited": "尝试次数过多，请稍后再试。",
   "notfound_badge": "404",
@@ -1932,18 +1934,44 @@
   "site_previous": "上一页",
   "site_next": "下一页",
   "site_onthispage": "在此页面上",
-  "site_minread": "分钟阅读",
-  "site_screenshot": "截图",
-  "site_screenshots": "截图",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 分钟阅读"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 张截图"
+      }
+    }
+  ],
   "site_updated": "已更新",
   "site_notpublishedtitle": "尚未发布",
   "site_notpublishedbody": "该文档站点尚未发布。从编辑器中发布以实时查看。",
+  "site_privatetitle": "此文档为私有文档",
+  "site_privatebody": "如需阅读，请打开您通过电子邮件收到的邀请链接。",
+  "site_privatemembers": "此工作区的成员可以登录后查看。",
+  "site_privatesignin": "登录",
   "site_pageunavailable": "该页面不可用。",
   "site_changelogsubtitle": "每个更新都会发送到这些文档。",
   "site_changelogempty": "暂无发布记录。",
   "site_changelogrelease": "发布",
-  "site_changelogpage": "页面",
-  "site_changelogpages": "页面",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} 个页面"
+      }
+    }
+  ],
   "site_feedbackquestion": "此页面有帮助吗？",
   "site_feedbackyes": "是的",
   "site_feedbackno": "否",
@@ -1954,7 +1982,8 @@
   "site_analyticsconsentaccept": "接受",
   "site_analyticsconsentdecline": "拒绝",
   "site_changelanguage": "更改语言",
-  "site_toggletheme": "切换主题",
+  "site_darkmode": "深色模式",
+  "site_breadcrumb": "面包屑导航",
   "site_togglesubpages": "展开或收起子页面",
   "site_articledetails": "文章详情",
   "site_copycode": "复制代码",
@@ -3610,5 +3639,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

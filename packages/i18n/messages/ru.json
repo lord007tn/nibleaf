@@ -1831,6 +1831,8 @@
   "error_signedout": "Сеанс завершён. Войдите снова, чтобы продолжить.",
   "error_notfound": "Этого больше нет — возможно, кто-то это удалил. Обновите страницу и попробуйте ещё раз.",
   "error_conflict": "Кто-то другой изменил это одновременно с вами. Обновите страницу и попробуйте ещё раз.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "Слишком большой размер. Попробуйте файл поменьше.",
   "error_ratelimited": "Слишком много попыток. Подождите немного и попробуйте ещё раз.",
   "notfound_badge": "404",
@@ -1932,18 +1934,53 @@
   "site_previous": "Предыдущий",
   "site_next": "Далее",
   "site_onthispage": "На этой странице",
-  "site_minread": "минута чтения",
-  "site_screenshot": "скриншот",
-  "site_screenshots": "скриншоты",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} минута чтения",
+        "form=few": "{count} минуты чтения",
+        "form=many": "{count} минут чтения",
+        "form=*": "{count} минуты чтения"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} скриншот",
+        "form=few": "{count} скриншота",
+        "form=many": "{count} скриншотов",
+        "form=*": "{count} скриншота"
+      }
+    }
+  ],
   "site_updated": "Обновлено",
   "site_notpublishedtitle": "Еще не опубликовано",
   "site_notpublishedbody": "Этот сайт документации не был опубликован. Опубликуйте его из редактора, чтобы увидеть вживую.",
+  "site_privatetitle": "Эта документация закрыта",
+  "site_privatebody": "Чтобы прочитать её, откройте ссылку-приглашение из письма.",
+  "site_privatemembers": "Участники этого рабочего пространства могут войти, чтобы просмотреть её.",
+  "site_privatesignin": "Войти",
   "site_pageunavailable": "Эта страница недоступна.",
   "site_changelogsubtitle": "Каждое обновление отправляется в эту документацию.",
   "site_changelogempty": "Релизов пока нет.",
   "site_changelogrelease": "Релиз",
-  "site_changelogpage": "страница",
-  "site_changelogpages": "страницы",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница",
+        "form=few": "{count} страницы",
+        "form=many": "{count} страниц",
+        "form=*": "{count} страницы"
+      }
+    }
+  ],
   "site_feedbackquestion": "Была ли эта страница полезной?",
   "site_feedbackyes": "Да",
   "site_feedbackno": "Нет",
@@ -1954,7 +1991,8 @@
   "site_analyticsconsentaccept": "Принять",
   "site_analyticsconsentdecline": "Отклонить",
   "site_changelanguage": "Изменить язык",
-  "site_toggletheme": "Переключить тему",
+  "site_darkmode": "Тёмная тема",
+  "site_breadcrumb": "Навигационная цепочка",
   "site_togglesubpages": "Показать или скрыть подстраницы",
   "site_articledetails": "Подробности статьи",
   "site_copycode": "Скопировать код",
@@ -3610,5 +3648,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }

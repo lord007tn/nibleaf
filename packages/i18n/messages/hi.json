@@ -1831,6 +1831,8 @@
   "error_signedout": "आपका सत्र समाप्त हो गया है। जारी रखने के लिए फिर से साइन इन करें।",
   "error_notfound": "यह अब मौजूद नहीं है — शायद किसी ने इसे हटा दिया है। पेज रीफ़्रेश करें और फिर से कोशिश करें।",
   "error_conflict": "किसी और ने इसे उसी समय बदल दिया। पेज रीफ़्रेश करें और फिर से कोशिश करें।",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "यह बहुत बड़ा है। कोई छोटी फ़ाइल आज़माएँ।",
   "error_ratelimited": "बहुत अधिक प्रयास हुए। थोड़ी देर रुककर फिर से कोशिश करें।",
   "notfound_badge": "404",
@@ -1932,18 +1934,44 @@
   "site_previous": "पिछला",
   "site_next": "अगला",
   "site_onthispage": "इस पेज पर",
-  "site_minread": "मिनट पढ़ा",
-  "site_screenshot": "स्क्रीनशॉट",
-  "site_screenshots": "स्क्रीनशॉट",
+  "site_minreadcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "पढ़ने में {count} मिनट"
+      }
+    }
+  ],
+  "site_screenshotcount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} स्क्रीनशॉट"
+      }
+    }
+  ],
   "site_updated": "अद्यतन किया गया",
   "site_notpublishedtitle": "अभी तक प्रकाशित नहीं हुआ",
   "site_notpublishedbody": "यह दस्तावेज़ीकरण साइट प्रकाशित नहीं की गई है. इसे लाइव देखने के लिए इसे संपादक से प्रकाशित करें।",
+  "site_privatetitle": "यह दस्तावेज़ निजी है",
+  "site_privatebody": "इसे पढ़ने के लिए, ईमेल से मिला आमंत्रण लिंक खोलें।",
+  "site_privatemembers": "इस वर्कस्पेस के सदस्य इसे देखने के लिए साइन इन कर सकते हैं।",
+  "site_privatesignin": "साइन इन करें",
   "site_pageunavailable": "यह पेज उपलब्ध नहीं है.",
   "site_changelogsubtitle": "प्रत्येक अद्यतन इन दस्तावेज़ों पर भेजा जाता है।",
   "site_changelogempty": "अभी तक कोई रिलीज़ नहीं.",
   "site_changelogrelease": "रिलीज़",
-  "site_changelogpage": "पेज",
-  "site_changelogpages": "पन्ने",
+  "site_changelogpagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=*": "{count} पेज"
+      }
+    }
+  ],
   "site_feedbackquestion": "क्या यह पेज मददगार था?",
   "site_feedbackyes": "हाँ",
   "site_feedbackno": "नहीं",
@@ -1954,7 +1982,8 @@
   "site_analyticsconsentaccept": "स्वीकार करो",
   "site_analyticsconsentdecline": "अस्वीकार",
   "site_changelanguage": "भाषा बदलें",
-  "site_toggletheme": "थीम टॉगल करें",
+  "site_darkmode": "डार्क मोड",
+  "site_breadcrumb": "ब्रेडक्रंब",
   "site_togglesubpages": "उपपृष्ठ टॉगल करें",
   "site_articledetails": "आलेख विवरण",
   "site_copycode": "कोड कॉपी करें",
@@ -3610,5 +3639,9 @@
   "publish_redirectrolepending": "Checking who can edit redirects…",
   "publish_redirectroleerror": "Could not check who can edit redirects.",
   "failures_redirectsadmin": "Some redirects need attention. In site settings, open Appearance, then Redirects. Fix the issues before publishing again.",
-  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again."
+  "failures_redirectseditor": "Some redirects need attention. Ask a site Admin to review them before publishing again.",
+  "editor_reorderslugtaken": "A page with this address already exists in that group. Change its address first.",
+  "deploy_rollback_restoring": "Restoring version {version}…",
+  "deploy_rollback_superseded": "A newer publish went live after this rollback, so readers see that version.",
+  "deploy_rollback_supersededtitle": "A newer version is live"
 }
