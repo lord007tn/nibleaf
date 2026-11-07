@@ -52,11 +52,17 @@ export class ApiResponseError extends Error {
     readonly path?: string,
     readonly sourceFile?: string,
     readonly limit?: number,
-    /** The error's structured details, as the server sent them (e.g. `{ stage, demoted }`). */
+    /** The error's structured details, as the server sent them (e.g. `{ reason, stage, demoted }`). */
     readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiResponseError';
+  }
+
+  /** `details.reason` from the server, when it names a specific case. */
+  get reason(): string | undefined {
+    const reason = this.details?.reason;
+    return typeof reason === 'string' ? reason : undefined;
   }
 }
 
