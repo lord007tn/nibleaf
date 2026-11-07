@@ -1,7 +1,6 @@
 import { useT } from '@nibleaf/i18n/react';
 import type { ResolvedTheme, ThemeConfigChange, ThemeTemplateV1 } from '@nibleaf/shared/themes';
 import type {
-  AddDomainBody,
   AiDraftBody,
   CreateApiKeyBody,
   CreateBranchBody,
@@ -351,47 +350,6 @@ export const useRollback = (projectId: string) => {
         'Could not roll back.',
       ),
     onSuccess: () => invalidatePublishState(qc, projectId),
-  });
-};
-
-export const useAddDomain = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: AddDomainBody) =>
-      mutateData(await api.app.projects[':projectId'].domains.$post({ param: { projectId }, json: body }), 'Could not add the domain.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
-  });
-};
-
-export const useVerifyDomain = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(await api.app.projects[':projectId'].domains[':id'].verify.$post({ param: { projectId, id } }), 'Could not verify.'),
-    // Failed checks persist their actionable status before returning an error,
-    // so refresh the row on both success and failure.
-    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
-  });
-};
-
-export const useSetPrimaryDomain = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(
-        await api.app.projects[':projectId'].domains[':id'].primary.$post({ param: { projectId, id } }),
-        'Could not set the primary domain.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
-  });
-};
-
-export const useDeleteDomain = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData(await api.app.projects[':projectId'].domains[':id'].$delete({ param: { projectId, id } }), 'Could not remove the domain.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.domains.all(projectId) }),
   });
 };
 

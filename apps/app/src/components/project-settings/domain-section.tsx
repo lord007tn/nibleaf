@@ -5,20 +5,47 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { getLocale } from '@nibleaf/i18n';
+import { getLocale, type MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { DOMAIN_NAME_PATTERN, normalizeDomainInput } from '@nibleaf/validators';
 import { Check, ChevronDown, Copy, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getDomain } from 'tldts';
 import { QueryErrorState } from '@/components/query-error-state';
-import type { Project } from '@/hooks/api';
-import { useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
+import type { DomainStage, Project } from '@/hooks/api';
+import { domainErrorMessage, domainStage, useAddDomain, useDeleteDomain, useDomains, useSetPrimaryDomain, useVerifyDomain } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, FIELD_MONO, SectionHeader } from './shared';
 
 const DOMAIN_SKELETON_CARDS = ['first', 'second'];
+
+type Tone = 'ready' | 'pending' | 'error';
+
+/** One badge and one explanation per setup step, so the card never says DNS is pending once it is not. */
+const STAGES: Record<DomainStage, { badge: MessageKey; tone: Tone; help?: MessageKey }> = {
+  waiting: { badge: 'settings.domain.status.provisioning', tone: 'pending', help: 'settings.domain.state.waiting' },
+  dnsProblem: { badge: 'settings.domain.status.dnsError', tone: 'error', help: 'settings.domain.state.dnsProblem' },
+  securing: { badge: 'settings.domain.status.sslProvisioning', tone: 'pending', help: 'settings.domain.state.securing' },
+  httpsProblem: { badge: 'settings.domain.status.sslError', tone: 'error', help: 'settings.domain.state.httpsProblem' },
+  live: { badge: 'settings.domain.status.verified', tone: 'ready' },
+};
+
+/** What a finished check means for the owner, worded for the state it found. */
+const CHECK_RESULT: Record<DomainStage, { key: MessageKey; kind: 'success' | 'info' | 'error' }> = {
+  live: { key: 'settings.domain.toast.live', kind: 'success' },
+  securing: { key: 'settings.domain.toast.provisioning', kind: 'info' },
+  waiting: { key: 'settings.domain.toast.waiting', kind: 'info' },
+  dnsProblem: { key: 'settings.domain.toast.needsAttention', kind: 'error' },
+  httpsProblem: { key: 'settings.domain.toast.needsAttention', kind: 'error' },
+};
+
+/** Keep a domain name in one reading direction inside Arabic sentences. */
+const isolate = (value: string) => `⁨${value}⁩`;
+
+/** A root domain (`example.com`, `example.co.uk`) often can't take a CNAME record. */
+const isApexDomain = (domain: string) => getDomain(domain) === domain;
 
 /** The section's first load: heading, the three guide steps, the add row and domain cards, so nothing moves on arrival. */
 function DomainSectionSkeleton() {
@@ -69,17 +96,30 @@ export function DomainSection({ project }: { project: Project }) {
   const removeDomain = async (id: string, name: string) => {
     const ok = await confirm({
       title: t('settings.domain.remove'),
-      description: t('settings.domain.removeConfirm', { domain: name }),
+      description: t('settings.domain.removeConfirm', { domain: isolate(name) }),
       confirmLabel: t('settings.domain.remove'),
       destructive: true,
     });
     if (ok) {
-      remove.mutate(id);
+      // Failures are reported by the hook, in words that match the reason.
+      remove.mutate(id, { onSuccess: () => toast.success(t('settings.domain.toast.removed')) });
     }
   };
+  const checkDomain = (id: string) =>
+    verify.mutate(id, {
+      onSuccess: (result) => {
+        const { key, kind } = CHECK_RESULT[domainStage(result)];
+        toast[kind](t(key));
+      },
+    });
   const [domain, setDomain] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
   const [copyingRecord, setCopyingRecord] = useState<string | null>(null);
   const [copiedRecord, setCopiedRecord] = useState<string | null>(null);
+
+  // What was typed or pasted (`https://Docs.Example.com/help`), reduced to what will be connected.
+  const cleaned = normalizeDomainInput(domain);
+  const cleanedValid = DOMAIN_NAME_PATTERN.test(cleaned);
 
   const list = domains ?? [];
   const copyRecord = async (key: string, text: string) => {
@@ -110,19 +150,26 @@ export function DomainSection({ project }: { project: Project }) {
 
       <form
         className="flex flex-wrap gap-2.5"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          if (!domain.trim()) {
+          if (!cleaned) {
             return;
           }
+          if (!cleanedValid) {
+            setFormError(t('settings.domain.error.invalid'));
+            return;
+          }
+          setDomain(cleaned);
           add.mutate(
-            { domain: domain.trim() },
+            { domain: cleaned },
             {
               onSuccess: () => {
                 toast.success(t('settings.domain.toast.added'));
                 setDomain('');
               },
-              onError: (_err) => toast.error(t('settings.domain.toast.addError')),
+              // Shown under the field, where the fix happens, instead of a generic toast.
+              onError: (error) => setFormError(domainErrorMessage(t, error, 'settings.domain.toast.addError')),
             },
           );
         }}
@@ -131,181 +178,211 @@ export function DomainSection({ project }: { project: Project }) {
           {t('settings.domain.title')}
         </Label>
         <Input
+          aria-describedby={formError ? 'custom-domain-error' : cleanedValid && isApexDomain(cleaned) ? 'custom-domain-apex' : undefined}
+          aria-invalid={formError ? true : undefined}
+          autoCapitalize="none"
+          autoComplete="off"
           className={cn(FIELD_MONO, 'min-w-0 flex-1')}
           dir="ltr"
           id="custom-domain"
-          onChange={(e) => setDomain(e.target.value)}
+          inputMode="url"
+          onBlur={() => {
+            if (cleanedValid && cleaned !== domain) setDomain(cleaned);
+          }}
+          onChange={(e) => {
+            setDomain(e.target.value);
+            setFormError(null);
+          }}
           placeholder="docs.yoursite.com"
+          spellCheck={false}
           value={domain}
         />
-        <Button className="cursor-pointer rounded-[10px]" disabled={!domain.trim()} loading={add.isPending} type="submit">
+        <Button className="cursor-pointer rounded-[10px]" disabled={!cleaned} loading={add.isPending} type="submit">
           {t('settings.domain.add')}
         </Button>
+        {formError ? (
+          <p className="w-full text-destructive text-sm" id="custom-domain-error" role="alert">
+            {formError}
+          </p>
+        ) : cleanedValid && isApexDomain(cleaned) ? (
+          <p className="w-full text-muted-foreground text-sm" id="custom-domain-apex">
+            {t('settings.domain.apexHint', { domain: isolate(cleaned) })}
+          </p>
+        ) : null}
       </form>
 
       <div className="mt-4 space-y-3">
-        {list.map((d) => (
-          <Collapsible
-            className="group rounded-xl border border-border p-3.5"
-            defaultOpen={d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE'}
-            key={d.id}
-          >
-            <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-start">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <a
-                    className="inline-flex items-center gap-1.5 break-all font-medium font-mono text-sm hover:text-primary"
-                    dir="ltr"
-                    href={`https://${d.domain}`}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    {d.domain} <ExternalLink className="size-3" />
-                  </a>
-                  {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' ? (
-                    <StatusBadge label={t('settings.domain.status.verified')} tone="ready" />
-                  ) : (
-                    <StatusBadge
-                      label={
-                        d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR'
-                          ? t('settings.domain.status.needsAttention')
-                          : verify.isPending && verify.variables === d.id
-                            ? t('common.loading')
-                            : t('settings.domain.status.provisioning')
-                      }
-                      tone={d.dnsStatus === 'ERROR' || d.sslStatus === 'ERROR' ? 'error' : 'pending'}
-                    />
-                  )}
-                  {d.isPrimary ? (
-                    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
-                      {t('settings.domain.status.primary')}
-                    </span>
+        {list.map((d) => {
+          const stage = domainStage(d);
+          const { badge, tone, help } = STAGES[stage];
+          const checking = verify.isPending && verify.variables === d.id;
+          const zone = getDomain(d.domain);
+          return (
+            <Collapsible className="group rounded-xl border border-border p-3.5" defaultOpen={stage !== 'live'} key={d.id}>
+              <div className="flex flex-col items-stretch justify-between gap-3 sm:flex-row sm:items-start">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <a
+                      className="inline-flex items-center gap-1.5 break-all font-medium font-mono text-sm hover:text-primary"
+                      dir="ltr"
+                      href={`https://${d.domain}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {d.domain} <ExternalLink className="size-3" />
+                    </a>
+                    <StatusBadge label={checking ? t('settings.domain.status.checking') : t(badge)} tone={checking ? 'pending' : tone} />
+                    {d.isPrimary ? (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 font-semibold text-[12px] text-muted-foreground">
+                        {t('settings.domain.status.primary')}
+                      </span>
+                    ) : null}
+                  </div>
+                  {d.lastCheckedAt ? (
+                    <p className="mt-1.5 text-muted-foreground text-xs">
+                      {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString(localeTag(getLocale())) })}
+                    </p>
                   ) : null}
+                  {d.isPrimary ? <p className="mt-1 text-muted-foreground text-xs">{t('settings.domain.primaryHint')}</p> : null}
                 </div>
-                {d.lastCheckedAt ? (
-                  <p className="mt-1.5 text-muted-foreground text-xs">
-                    {t('settings.domain.lastChecked', { date: new Date(d.lastCheckedAt).toLocaleString(localeTag(getLocale())) })}
-                  </p>
-                ) : null}
+                <div className="flex flex-wrap gap-1.5">
+                  {stage !== 'live' ? (
+                    <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
+                      {t('settings.domain.configuration')}
+                      <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
+                    </CollapsibleTrigger>
+                  ) : null}
+                  {stage !== 'live' ? (
+                    <Button
+                      className="cursor-pointer"
+                      loading={checking}
+                      loadingText={t('settings.domain.status.checking')}
+                      onClick={() => checkDomain(d.id)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <RefreshCw className="size-3.5" />
+                      {t('settings.domain.retry')}
+                    </Button>
+                  ) : null}
+                  {stage === 'live' && !d.isPrimary ? (
+                    <Button
+                      className="cursor-pointer"
+                      loading={setPrimary.isPending && setPrimary.variables === d.id}
+                      onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {t('settings.domain.makePrimary')}
+                    </Button>
+                  ) : null}
+                  <Button
+                    className="cursor-pointer"
+                    loading={remove.isPending && remove.variables === d.id}
+                    onClick={() => removeDomain(d.id, d.domain)}
+                    size="sm"
+                    variant="ghost"
+                  >
+                    {t('settings.domain.remove')}
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
-                  <CollapsibleTrigger render={<Button className="text-muted-foreground text-xs" size="sm" variant="ghost" />}>
-                    {t('settings.domain.configuration')}
-                    <ChevronDown className="size-3.5 transition-transform group-data-[panel-open]:rotate-180" />
-                  </CollapsibleTrigger>
-                ) : null}
-                {d.dnsStatus !== 'VERIFIED' || d.sslStatus !== 'ACTIVE' ? (
-                  <Button
-                    className="cursor-pointer"
-                    loading={verify.isPending && verify.variables === d.id}
-                    loadingText={t('common.loading')}
-                    onClick={() =>
-                      verify.mutate(d.id, {
-                        onSuccess: (result) =>
-                          toast.success(result.sslStatus === 'ACTIVE' ? t('settings.domain.toast.live') : t('settings.domain.status.provisioning')),
-                        onError: (_error) => toast.error(t('settings.domain.toast.verifyError')),
-                      })
-                    }
-                    size="sm"
-                    variant="outline"
-                  >
-                    <RefreshCw className="size-3.5" />
-                    {t('settings.domain.retry')}
-                  </Button>
-                ) : null}
-                {d.dnsStatus === 'VERIFIED' && d.sslStatus === 'ACTIVE' && !d.isPrimary ? (
-                  <Button
-                    className="cursor-pointer"
-                    loading={setPrimary.isPending && setPrimary.variables === d.id}
-                    onClick={() => setPrimary.mutate(d.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) })}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {t('settings.domain.makePrimary')}
-                  </Button>
-                ) : null}
-                <Button
-                  className="cursor-pointer"
-                  loading={remove.isPending && remove.variables === d.id}
-                  onClick={() => removeDomain(d.id, d.domain)}
-                  size="sm"
-                  variant="ghost"
+
+              {/* What this step means and what to do next, visible even with the records folded away. */}
+              {help ? (
+                <p
+                  className={cn(
+                    'mt-3 rounded-lg border px-3 py-2 text-sm leading-relaxed',
+                    tone === 'error' ? 'border-destructive/25 bg-destructive/5 text-destructive' : 'border-border bg-muted/40 text-muted-foreground',
+                  )}
                 >
-                  {t('settings.domain.remove')}
-                </Button>
-              </div>
-            </div>
-
-            <CollapsibleContent>
-              {d.lastError ? (
-                <div className="mt-3 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-destructive text-sm" dir="ltr">
-                  {d.lastError}
-                </div>
+                  {t(help)}
+                </p>
               ) : null}
 
-              {d.records?.length ? (
-                <div className="mt-4">
-                  <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
-                    {t('settings.domain.dns.heading')}
-                  </div>
-                  <div className="space-y-3">
-                    {d.records.map((record) => {
-                      const key = `${record.type}:${record.name}:${record.value}`;
-                      const zone = getDomain(d.domain);
-                      const fullName = record.name.replace(/\.$/, '');
-                      const host = zone && fullName.endsWith(`.${zone}`) ? fullName.slice(0, -(zone.length + 1)) : fullName === zone ? '@' : fullName;
-                      return (
-                        <div className="rounded-lg border border-border p-3" key={key}>
-                          {[
-                            { label: t('settings.domain.dns.type'), value: record.type },
-                            { label: t('settings.domain.dns.name'), value: host },
-                            { label: t('settings.domain.dns.value'), value: record.value },
-                          ].map(({ label, value }) => {
-                            const fieldKey = `${key}:${label}`;
-                            return (
-                              <div className="flex items-start gap-2 py-1" key={label}>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-muted-foreground text-xs">{label}</div>
-                                  <code className="block select-all break-all text-sm" dir="ltr">
-                                    {value}
-                                  </code>
+              <CollapsibleContent>
+                {stage !== 'live' && isApexDomain(d.domain) ? (
+                  <p className="mt-3 text-muted-foreground text-sm">{t('settings.domain.apexHint', { domain: isolate(d.domain) })}</p>
+                ) : null}
+                {/* The server's own wording is English and technical: kept for support, folded away. */}
+                {stage !== 'live' && d.lastError ? (
+                  <details className="mt-3 text-muted-foreground text-xs">
+                    <summary className="cursor-pointer select-none">{t('settings.domain.technicalDetails')}</summary>
+                    <code className="mt-1.5 block break-all" dir="ltr">
+                      {d.lastError}
+                    </code>
+                  </details>
+                ) : null}
+
+                {d.records?.length ? (
+                  <div className="mt-4">
+                    <div className="mb-2.5 font-semibold text-[12px] text-muted-foreground uppercase tracking-wide">
+                      {t('settings.domain.dns.heading')}
+                    </div>
+                    <div className="space-y-3">
+                      {d.records.map((record) => {
+                        const key = `${record.type}:${record.name}:${record.value}`;
+                        const fullName = record.name.replace(/\.$/, '');
+                        const host =
+                          zone && fullName.endsWith(`.${zone}`) ? fullName.slice(0, -(zone.length + 1)) : fullName === zone ? '@' : fullName;
+                        // The CNAME on the address itself routes readers; every other record proves control of the domain.
+                        const purpose =
+                          record.type === 'CNAME' && fullName === d.domain ? 'settings.domain.dns.purpose.cname' : 'settings.domain.dns.purpose.txt';
+                        return (
+                          <div className="rounded-lg border border-border p-3" key={key}>
+                            <p className="mb-1 text-muted-foreground text-xs">{t(purpose)}</p>
+                            {[
+                              { label: t('settings.domain.dns.type'), value: record.type },
+                              { label: t('settings.domain.dns.name'), value: host },
+                              { label: t('settings.domain.dns.value'), value: record.value },
+                            ].map(({ label, value }) => {
+                              const fieldKey = `${key}:${label}`;
+                              return (
+                                <div className="flex items-start gap-2 py-1" key={label}>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-muted-foreground text-xs">{label}</div>
+                                    <code className="block select-all break-all text-sm" dir="ltr">
+                                      {value}
+                                    </code>
+                                  </div>
+                                  <Button
+                                    aria-label={`${t('settings.domain.dns.copy')}: ${label}`}
+                                    loading={copyingRecord === fieldKey}
+                                    onClick={() => void copyRecord(fieldKey, value)}
+                                    size="icon-sm"
+                                    type="button"
+                                    variant="ghost"
+                                  >
+                                    {copiedRecord === fieldKey ? <Check /> : <Copy />}
+                                  </Button>
                                 </div>
-                                <Button
-                                  aria-label={`${t('settings.domain.dns.copy')}: ${label}`}
-                                  loading={copyingRecord === fieldKey}
-                                  onClick={() => void copyRecord(fieldKey, value)}
-                                  size="icon-sm"
-                                  type="button"
-                                  variant="ghost"
-                                >
-                                  {copiedRecord === fieldKey ? <Check /> : <Copy />}
-                                </Button>
-                              </div>
-                            );
-                          })}
-                          <code className="mt-2 block select-all break-all text-muted-foreground text-xs" dir="ltr">
-                            {fullName}
-                          </code>
-                        </div>
-                      );
-                    })}
+                              );
+                            })}
+                            {host === fullName ? null : (
+                              <p className="mt-2 text-muted-foreground text-xs">
+                                {t('settings.domain.dns.fullName')}{' '}
+                                <code className="select-all break-all" dir="ltr">
+                                  {fullName}
+                                </code>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <p className="mt-3 text-[13px] text-muted-foreground">
-                    {d.dnsStatus === 'VERIFIED' ? t('settings.domain.dns.configured') : t('settings.domain.status.provisioning')}
-                  </p>
-                </div>
-              ) : null}
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
+                ) : null}
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
         {list.length === 0 ? <p className="text-muted-foreground text-sm">{t('settings.domain.empty')}</p> : null}
       </div>
     </div>
   );
 }
 
-function StatusBadge({ label, tone }: { label: string; tone: 'ready' | 'pending' | 'error' }) {
+function StatusBadge({ label, tone }: { label: string; tone: Tone }) {
   return (
     <span
       className={cn(
