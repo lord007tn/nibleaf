@@ -102,6 +102,37 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     return outcome;
   };
 
+  it('stores the v2 baseline #326 reads, hashed with #326’s expression', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    const { projectId, main, guide, billing } = await fixture();
+    const version = await branches.createBranch(projectId, { name: 'v2' });
+    const { forkedAt, forkBaseline } = await db.prisma.branch.findUniqueOrThrow({ where: { id: version.id } });
+    expect(forkedAt).toBeInstanceOf(Date);
+    const baseline = forkBaseline as { version: number; pages: Record<string, Record<string, unknown>> };
+    expect(baseline.version).toBe(2);
+    expect(Object.keys(baseline.pages).sort()).toEqual((await pagesOn(projectId, main.id)).map((p) => p.id).sort());
+    // #326's expression, written out here rather than imported, for a known page and its copy.
+    const hashOf = async (id: string) => {
+      const [hit] = await db.prisma.$queryRaw<{ hash: string }[]>(db.Prisma.sql`
+        SELECT md5(json_build_array("kind", "title", "slug", "icon", "description", "content", "config", "translationKey", "hidden")::text) AS "hash"
+        FROM "page" WHERE "id" = ${id}`);
+      return hit?.hash;
+    };
+    const copy = await copyIn(version.id, 'guide/billing');
+    expect(baseline.pages[billing.id]).toEqual({
+      copyId: copy.id,
+      hash: await hashOf(billing.id),
+      copyHash: await hashOf(copy.id),
+      parentId: guide.id,
+      position: 1,
+      updatedAt: billing.updatedAt.toISOString(),
+      title: 'Billing',
+      path: 'guide/billing',
+      languageId: billing.languageId,
+      kind: 'PAGE',
+    });
+    expect(baseline.pages[billing.id]?.hash).toBe(baseline.pages[billing.id]?.copyHash);
+  });
+
   it('refuses when main changed, keeping main and the version', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, main, base, billing, legacy } = await fixture();
     const version = await branches.createBranch(projectId, { name: 'v2' });
@@ -236,8 +267,17 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
       const b = await branches.createBranch(projectId, { name: 'b', fromBranchId: a.id });
       const fork = (id: string) => db.prisma.branch.findUniqueOrThrow({ where: { id }, select: { forkedAt: true, forkBaseline: true } });
       const before = await fork(b.id);
-      expect(before).toEqual(await fork(a.id));
-      expect(before.forkBaseline).not.toBeNull();
+      const fromA = await fork(a.id);
+      type Pages = Record<string, { copyId: string; hash: string }>;
+      const pagesOf = (value: unknown) => (value as { pages: Pages }).pages;
+      // Same fork time and main pages; each copy id now names b's own copy.
+      expect(before.forkedAt).toEqual(fromA.forkedAt);
+      expect(Object.keys(pagesOf(before.forkBaseline)).sort()).toEqual(Object.keys(pagesOf(fromA.forkBaseline)).sort());
+      const bIds = new Set((await pagesOn(projectId, b.id)).map((p) => p.id));
+      for (const [mainId, e] of Object.entries(pagesOf(before.forkBaseline))) {
+        expect(bIds.has(e.copyId)).toBe(true);
+        expect(e.hash).toBe(pagesOf(fromA.forkBaseline)[mainId]?.hash);
+      }
       await branches.deleteBranch(projectId, a.id);
       expect(await fork(b.id)).toEqual(before);
       await branches.mergeBranch(projectId, b.id);

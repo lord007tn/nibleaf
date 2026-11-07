@@ -1,29 +1,29 @@
 import { createHash } from 'node:crypto';
-import { type Branch, type PageKind, Prisma, prisma } from '@nibleaf/database';
+import { type Branch, Prisma, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
 import type { CreateBranchBody } from '@nibleaf/validators';
 import { AppError, conflict, notFound } from '@/errors';
 import {
   buildForkBaseline,
-  type ChangedOnMainPage,
   changedOnMainSinceFork,
-  type HashedPageRow,
+  forkPointOf,
+  inheritForkBaseline,
   type MergePreview,
+  type PromotePageRow,
   pageContentHash,
-  parseForkBaseline,
 } from './branch-fork';
 
-/** The fork baseline is promote's bookkeeping and can be large: API responses
- *  and ordinary lookups leave it out. */
-const withoutBaseline = { forkBaseline: true } as const;
+/** The fork baseline is promote's bookkeeping and can be large; API responses
+ *  and ordinary lookups leave it out. Only the promote read loads it. */
+const publicBranch = { forkBaseline: true } as const;
 
 /** Every branch of a project, default ('main') first. */
 export const listBranches = async (projectId: string): Promise<Omit<Branch, 'forkBaseline'>[]> =>
-  await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: withoutBaseline });
+  await prisma.branch.findMany({ where: { projectId }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: publicBranch });
 
 /** The project's required default branch. Missing data is an invariant error. */
 export const getDefaultBranch = async (projectId: string) => {
-  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2, omit: withoutBaseline });
+  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2, omit: publicBranch });
   if (defaults.length !== 1 || !defaults[0]) {
     throw new Error(`Project ${projectId} must have exactly one default branch.`);
   }
@@ -32,7 +32,7 @@ export const getDefaultBranch = async (projectId: string) => {
 
 /** Throw unless the branch exists in the project; returns it. */
 export const assertBranchInProject = async (projectId: string, id: string) => {
-  const branch = await prisma.branch.findFirst({ where: { id, projectId }, omit: withoutBaseline });
+  const branch = await prisma.branch.findFirst({ where: { id, projectId }, omit: publicBranch });
   if (!branch) {
     throw notFound('branch', { id });
   }
@@ -47,7 +47,7 @@ export const createImportReplacementBranch = async (projectId: string, source: s
   const name = `import-${source}-${newId()}`;
   return preserveExisting
     ? createBranch(projectId, { name })
-    : prisma.branch.create({ data: { projectId, name, isDefault: false }, omit: withoutBaseline });
+    : prisma.branch.create({ data: { projectId, name, isDefault: false }, omit: publicBranch });
 };
 
 const draftFingerprint = async (db: Prisma.TransactionClient, projectId: string, branchId: string) => {
@@ -110,45 +110,15 @@ export const promoteImportReplacementBranch = async (
 const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
   tx.$queryRaw(Prisma.sql`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`);
 
-type SourcePageRow = HashedPageRow & {
-  parentId: string | null;
-  kind: PageKind;
-  slug: string;
-  icon: string | null;
-  description: string | null;
-  content: string;
-  config: Prisma.JsonValue | null;
-  translationKey: string | null;
-  position: number;
-  hidden: boolean;
-};
-
-/** Where a new version forks from: main's pages now, or the source version's
- *  own fork (copied as values, never a reference, so deleting or promoting the
- *  source later cannot change it). */
-const forkPointFor = async (
-  tx: Prisma.TransactionClient,
-  projectId: string,
-  source: { id: string; isDefault: boolean },
-  sourcePages: SourcePageRow[],
-): Promise<{ forkedAt: Date | null; forkBaseline: Prisma.InputJsonObject | typeof Prisma.DbNull }> => {
-  if (source.isDefault) return { forkedAt: new Date(), forkBaseline: buildForkBaseline(sourcePages) };
-  // Read under the project lock: promoting or deleting the source holds it too.
-  const from = await tx.branch.findFirst({ where: { id: source.id, projectId }, select: { forkedAt: true, forkBaseline: true } });
-  if (!from) throw notFound('branch', { id: source.id });
-  const baseline = parseForkBaseline(from);
-  return baseline && from.forkedAt ? { forkedAt: from.forkedAt, forkBaseline: baseline } : { forkedAt: null, forkBaseline: Prisma.DbNull };
-};
-
 /** Create a branch by forking another branch's pages (the default by default).
  *  Pages are deep-copied with fresh ids and remapped parent links, so the new
  *  branch is an independent, editable copy across every language.
  *
- *  A copy of main records its fork baseline (see ./branch-fork): main's pages
- *  are read and hashed in the same statement, under the project lock, so a
- *  save cannot land between the read and the hash. A copy of another version
- *  copies that version's fork time and baseline, or gets none when the source
- *  has none. */
+ *  A fork of main records the fork point (`forkedAt` + a baseline of main's
+ *  pages and their copies, see ./branch-fork); main's pages are read and hashed
+ *  in one statement under the project lock. A fork of another version copies
+ *  that version's fork time and baseline, by value, with copy ids remapped onto
+ *  its own copies; a source without a baseline gives none. */
 export const createBranch = async (projectId: string, body: CreateBranchBody) => {
   const name = body.name.trim();
   const clash = await prisma.branch.findFirst({ where: { projectId, name }, select: { id: true } });
@@ -157,47 +127,73 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
   }
   const source = body.fromBranchId ? await assertBranchInProject(projectId, body.fromBranchId) : await getDefaultBranch(projectId);
 
-  return prisma.$transaction(
-    async (tx) => {
-      await lockProject(tx, projectId);
-      const sourcePages = await tx.$queryRaw<SourcePageRow[]>(
-        Prisma.sql`SELECT "id", "languageId", "parentId", "kind"::text AS "kind", "title", "slug", "path", "icon", "description", "content",
-            "config", "translationKey", "position", "hidden", "updatedAt", ${pageContentHash()} AS "hash"
-          FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${source.id} ORDER BY "position" ASC`,
+  return prisma.$transaction(async (tx) => {
+    // Creating the copies is a structural page write: project lock first. It
+    // also keeps the baseline consistent with structural changes on main.
+    await lockProject(tx, projectId);
+    const forkedAt = source.isDefault ? new Date() : (source.forkedAt ?? source.createdAt);
+    // One statement reads the pages AND hashes them, so a save landing between
+    // two reads can't slip into the copies without being in the baseline.
+    const sourcePages = await tx.$queryRaw<SourcePageRow[]>(
+      Prisma.sql`SELECT "id", "parentId", "languageId", "kind"::text AS "kind", "title", "slug", "path", "icon", "description", "content", "config",
+          "translationKey", "position", "hidden", "updatedAt", ${pageContentHash()} AS "hash"
+        FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${source.id} ORDER BY "position" ASC, "id" ASC`,
+    );
+    // old page id → new page id, so parentId links can be remapped onto the copies.
+    const idMap = new Map<string, string>();
+    for (const p of sourcePages) {
+      idMap.set(p.id, newId());
+    }
+    const copyIdOf = (id: string) => idMap.get(id) ?? newId();
+    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, forkedAt }, omit: publicBranch });
+    if (sourcePages.length > 0) {
+      await tx.page.createMany({
+        data: sourcePages.map((p) => ({
+          id: copyIdOf(p.id),
+          projectId,
+          branchId: branch.id,
+          languageId: p.languageId,
+          parentId: p.parentId ? (idMap.get(p.parentId) ?? null) : null,
+          kind: p.kind,
+          title: p.title,
+          slug: p.slug,
+          path: p.path,
+          icon: p.icon,
+          description: p.description,
+          content: p.content,
+          config: p.config === null ? undefined : (p.config as Prisma.InputJsonValue),
+          translationKey: p.translationKey,
+          position: p.position,
+          hidden: p.hidden,
+        })),
+      });
+    }
+    let forkBaseline: Prisma.InputJsonObject | undefined;
+    if (source.isDefault) {
+      // Only the copies are hashed now; main's hashes came with the read.
+      const copies = await tx.$queryRaw<{ id: string; hash: string }[]>(
+        Prisma.sql`SELECT "id", ${pageContentHash()} AS "hash" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${branch.id}`,
       );
-      const fork = await forkPointFor(tx, projectId, source, sourcePages);
-      const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, ...fork }, omit: withoutBaseline });
-      // old page id → new page id, so parentId links can be remapped onto the copies.
-      const idMap = new Map<string, string>();
-      for (const p of sourcePages) {
-        idMap.set(p.id, newId());
-      }
-      if (sourcePages.length > 0) {
-        await tx.page.createMany({
-          data: sourcePages.map((p) => ({
-            id: idMap.get(p.id) ?? newId(),
-            projectId,
-            branchId: branch.id,
-            languageId: p.languageId,
-            parentId: p.parentId ? (idMap.get(p.parentId) ?? null) : null,
-            kind: p.kind,
-            title: p.title,
-            slug: p.slug,
-            path: p.path,
-            icon: p.icon,
-            description: p.description,
-            content: p.content,
-            config: p.config ?? undefined,
-            translationKey: p.translationKey,
-            position: p.position,
-            hidden: p.hidden,
-          })),
-        });
-      }
-      return branch;
-    },
-    { timeout: 30_000 },
-  );
+      const hashById = new Map([...sourcePages.map((p) => [p.id, p.hash] as const), ...copies.map((c) => [c.id, c.hash] as const)]);
+      forkBaseline = buildForkBaseline(sourcePages, copyIdOf, (pageId) => hashById.get(pageId) ?? '');
+    } else {
+      // A fork of a version inherits its baseline, remapped onto these copies.
+      const from = await tx.branch.findUniqueOrThrow({ where: { id: source.id }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
+      const inherited = forkPointOf(from).baseline;
+      if (inherited) forkBaseline = inheritForkBaseline(inherited, (sourcePageId) => idMap.get(sourcePageId));
+    }
+    if (forkBaseline) await tx.branch.update({ where: { id: branch.id }, data: { forkBaseline }, select: { id: true } });
+    return branch;
+  });
+};
+
+type SourcePageRow = Omit<PromotePageRow, 'createdAt'> & {
+  icon: string | null;
+  description: string | null;
+  content: string;
+  config: Prisma.JsonValue | null;
+  translationKey: string | null;
+  hidden: boolean;
 };
 
 const languageCodes = async (db: Prisma.TransactionClient, projectId: string) =>
@@ -216,17 +212,22 @@ const assertPromotable = async (projectId: string, id: string) => {
  *  baseline the list is empty and `baselineComplete` is false. */
 export const getMergePreview = async (projectId: string, id: string): Promise<MergePreview> => {
   const { branch, main } = await assertPromotable(projectId, id);
-  const stored = await prisma.branch.findFirst({ where: { id: branch.id, projectId }, select: { forkedAt: true, forkBaseline: true } });
-  const baseline = stored ? parseForkBaseline(stored) : null;
+  const stored = await prisma.branch.findFirst({
+    where: { id: branch.id, projectId },
+    select: { createdAt: true, forkedAt: true, forkBaseline: true },
+  });
+  const baseline = stored ? forkPointOf(stored).baseline : null;
   if (!baseline) return { changedOnMainSinceFork: [], baselineComplete: false };
-  const mainPages = await prisma.$queryRaw<HashedPageRow[]>(
-    Prisma.sql`SELECT "id", "title", "path", "languageId", "updatedAt", ${pageContentHash()} AS "hash"
+  const mainPages = await prisma.$queryRaw<MainPageRow[]>(
+    Prisma.sql`SELECT "id", "parentId", "title", "path", "languageId", "updatedAt", ${pageContentHash()} AS "hash"
       FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${main.id}`,
   );
   return { changedOnMainSinceFork: changedOnMainSinceFork(mainPages, baseline, await languageCodes(prisma, projectId)), baselineComplete: true };
 };
 
-const mainChanged = (changed: ChangedOnMainPage[]) =>
+type MainPageRow = Pick<PromotePageRow, 'id' | 'parentId' | 'title' | 'path' | 'languageId' | 'updatedAt' | 'hash'>;
+
+const mainChanged = (changed: MergePreview['changedOnMainSinceFork']) =>
   new AppError({
     code: 'branch:main_changed',
     message: "Main has changed since this version's pages were copied from it, so the version wasn't promoted.",
@@ -240,7 +241,7 @@ const baselineMissing = (since: Date, mainPagesEditedOrCreatedSince: number) =>
     details: { since: since.toISOString(), mainPagesEditedOrCreatedSince },
   });
 
-type LockedPageRow = Omit<HashedPageRow, 'hash'> & { branchId: string; hash: string | null };
+type LockedPageRow = Omit<MainPageRow, 'hash'> & { branchId: string; hash: string | null };
 
 /** Promote a version into the default branch ('main'): main adopts this
  *  version's pages, then the consumed version is removed. Main's prior pages
@@ -264,12 +265,12 @@ export const mergeBranch = async (projectId: string, id: string) => {
       );
       if (!version) throw notFound('branch', { id: branch.id });
       const rows = await tx.$queryRaw<LockedPageRow[]>(
-        Prisma.sql`SELECT "id", "branchId", "title", "path", "languageId", "updatedAt",
+        Prisma.sql`SELECT "id", "branchId", "parentId", "title", "path", "languageId", "updatedAt",
             CASE WHEN "branchId" = ${main.id} THEN ${pageContentHash()} END AS "hash"
           FROM "page" WHERE "projectId" = ${projectId} AND "branchId" IN (${main.id}, ${branch.id})
           ORDER BY "id" ASC FOR NO KEY UPDATE`,
       );
-      const baseline = parseForkBaseline(version);
+      const baseline = forkPointOf(version).baseline;
       if (!baseline) {
         // A hint only: it cannot see deletions and never allows the promote.
         const since = await tx.page.count({
