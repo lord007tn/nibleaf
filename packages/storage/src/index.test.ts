@@ -25,6 +25,20 @@ describe('bucket bootstrap failure propagation', () => {
     await ensureBucket();
     expect(mocks.send).toHaveBeenCalledTimes(3);
   });
+  it('preserves the original create error when the follow-up bucket check also fails', async () => {
+    const createError = new Error('bucket creation failed');
+    mocks.send
+      .mockReset()
+      .mockRejectedValueOnce(missingBucket())
+      .mockRejectedValueOnce(createError)
+      .mockRejectedValueOnce(new Error('follow-up bucket check failed'));
+    await expect(ensureBucket()).rejects.toBe(createError);
+    expect(mocks.send.mock.calls.map(([command]) => command.constructor.name)).toEqual([
+      'HeadBucketCommand',
+      'CreateBucketCommand',
+      'HeadBucketCommand',
+    ]);
+  });
   it('rejects unavailable or inaccessible storage instead of reporting success', async () => {
     const failure = new Error('storage unavailable');
     mocks.send.mockReset().mockRejectedValue(failure);

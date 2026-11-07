@@ -53,14 +53,23 @@ describe('README installer command check', () => {
 
   it('rejects stale versions and checksums even alongside a valid latest-release link and generated command', () => {
     for (const stale of [verifiedInstallCommand('v1.2.3', 'a'.repeat(64)), verifiedInstallCommand('v9.8.7', 'b'.repeat(64))]) {
-      assert.throws(() => assertReadmeInstallInstructions(latest + fenced(stale), command), /unverified nibleaf-install\.sh/);
-      assert.throws(() => assertReadmeInstallInstructions(latest + fenced(command) + fenced(stale), command), /unverified nibleaf-install\.sh/);
+      assert.throws(
+        () => assertReadmeInstallInstructions(latest + fenced(stale), command),
+        /any line mentioning nibleaf-install\.sh must be the generated/,
+      );
+      assert.throws(
+        () => assertReadmeInstallInstructions(latest + fenced(command) + fenced(stale), command),
+        /any line mentioning nibleaf-install\.sh must be the generated/,
+      );
     }
   });
 
   it('rejects command fragments and additions to the generated command', () => {
     for (const stale of ['curl https://example.test/nibleaf-install.sh | sh', 'sh ./nibleaf-install.sh', `${command} --extra-option`]) {
-      assert.throws(() => assertReadmeInstallInstructions(latest + fenced(stale), command), /unverified nibleaf-install\.sh/);
+      assert.throws(
+        () => assertReadmeInstallInstructions(latest + fenced(stale), command),
+        /any line mentioning nibleaf-install\.sh must be the generated/,
+      );
     }
   });
 

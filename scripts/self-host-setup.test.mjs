@@ -194,6 +194,8 @@ test('source and Coolify explicitly forward signup, SMTP and Git controls', () =
   assert.match(source, /CUSTOM_DOMAIN_CNAME_TARGET: \$\{CUSTOM_DOMAIN_CNAME_TARGET:-\}/);
   for (const key of ['MAXIO_DEFAULT_BUCKETS', 'MAXIO_PUBLIC_BUCKETS']) assert.ok(source.includes(`${key}: \${STORAGE_BUCKET:-nibleaf}`));
   assert.match(source.split('\n  app:')[1], /stop_grace_period: \$\{NIBLEAF_SHUTDOWN_GRACE:-45s\}/);
+  assert.match(source.split('\n  worker:')[1]?.split('\n  app:')[0], /127\.0\.0\.1:\$\{WORKER_PORT:-4312\}:4312/);
+  assert.match(source, /INTERNAL_API_SECRET: \$\{INTERNAL_API_SECRET:-\}/);
 });
 
 test('development mail capture and every datastore publish on loopback only', () => {

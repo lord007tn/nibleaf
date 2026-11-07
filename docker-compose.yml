@@ -62,6 +62,7 @@ x-service-env: &service-env
   STORAGE_CORS_ALLOWED_ORIGINS: ${STORAGE_CORS_ALLOWED_ORIGINS:-${APP_URL:-http://localhost:4310}}
   STORAGE_AUTO_CORS: ${STORAGE_AUTO_CORS:-true}
   STORAGE_REQUIRED_FOR_HEALTH: ${STORAGE_REQUIRED_FOR_HEALTH:-false}
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me-in-production-32chars-minimum}
   BETTER_AUTH_URL: ${APP_URL:-http://localhost:4310}
   DISABLE_SIGNUP: ${DISABLE_SIGNUP:-false}
@@ -264,7 +265,8 @@ services:
     init: true
     environment: *service-env
     ports:
-      - "${WORKER_PORT:-4312}:4312"
+      # Queue/provider diagnostics are an internal operations surface.
+      - "127.0.0.1:${WORKER_PORT:-4312}:4312"
     depends_on:
       dragonfly:
         condition: service_healthy

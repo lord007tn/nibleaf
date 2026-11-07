@@ -1,5 +1,6 @@
 import './lib/serialize-bigint';
 
+import { timingSafeEqual } from 'node:crypto';
 import { type ServerType, serve } from '@hono/node-server';
 import { closeQueues, scheduleAnalyticsRollup } from '@nibleaf/bullmq';
 import { closeClickHouseClients, getAnalyticsHealth, initializeClickHouseFn } from '@nibleaf/clickhouse';
@@ -29,16 +30,31 @@ let storageCors: boolean | null = env.STORAGE_AUTO_CORS ? false : null;
 let storageRetry: NodeJS.Timeout | undefined;
 let bucketBootstrapStopped = false;
 let corsBootstrapStopped = false;
-const STORAGE_BOOTSTRAP_MAX_ATTEMPTS = 5;
 
-function storagePermissionDenied(error: unknown): boolean {
+function storageCredentialsRejected(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const failure = error as { name?: string; code?: string; $metadata?: { httpStatusCode?: number } };
   return (
+    failure.$metadata?.httpStatusCode === 401 ||
     failure.$metadata?.httpStatusCode === 403 ||
-    ['AccessDenied', 'AccessDeniedException', 'Forbidden'].some((code) => failure.name === code || failure.code === code)
+    ['AccessDenied', 'AccessDeniedException', 'Forbidden', 'InvalidAccessKeyId', 'SignatureDoesNotMatch', 'InvalidToken', 'ExpiredToken'].some(
+      (code) => failure.name === code || failure.code === code,
+    )
   );
 }
+
+function healthStatus() {
+  const healthy = ready && (!env.STORAGE_REQUIRED_FOR_HEALTH || storageReady) && !shuttingDown;
+  return { status: shuttingDown ? 'shutting_down' : healthy ? 'ok' : 'starting', code: healthy ? 200 : 503 } as const;
+}
+
+const storageHealth = () => ({
+  ready: storageReady,
+  cors: storageCors,
+  requiredForHealth: env.STORAGE_REQUIRED_FOR_HEALTH,
+  bucketBootstrapStopped,
+  corsBootstrapStopped,
+});
 
 app.get(
   '/openapi.json',
@@ -54,19 +70,35 @@ app.get(
 
 app.get('/docs', Scalar({ theme: 'default', sources: [{ url: '/openapi.json', title: 'Nibleaf API' }] }));
 
-app.get('/health', async (ctx) => {
+app.get('/health', (ctx) => {
+  const { status, code } = healthStatus();
+  ctx.header('cache-control', 'no-store');
+  return ctx.json({ status, revision: process.env.NIBLEAF_REVISION ?? 'development' }, code);
+});
+
+app.get('/health/details', async (ctx) => {
+  ctx.header('cache-control', 'private, no-store');
+  // Match the existing internal API proof: fail closed when the secret is unset
+  // and compare the x-nibleaf-internal header without a timing-sensitive value check.
+  const secret = process.env.INTERNAL_API_SECRET;
+  const provided = ctx.req.header('x-nibleaf-internal');
+  if (!secret || !provided) return ctx.json({ status: 'unauthorized' }, 401);
+  const expectedBytes = Buffer.from(secret);
+  const providedBytes = Buffer.from(provided);
+  if (expectedBytes.length !== providedBytes.length || !timingSafeEqual(expectedBytes, providedBytes)) {
+    return ctx.json({ status: 'unauthorized' }, 401);
+  }
+  const { status, code } = healthStatus();
   const analytics = await getAnalyticsHealth();
-  const healthy = ready && (!env.STORAGE_REQUIRED_FOR_HEALTH || storageReady) && !shuttingDown;
-  const status = shuttingDown ? 'shutting_down' : healthy ? 'ok' : 'starting';
   return ctx.json(
     {
       status,
       service: env.SERVICE_NAME,
       revision: process.env.NIBLEAF_REVISION ?? 'development',
       analytics,
-      storage: { ready: storageReady, cors: storageCors, requiredForHealth: env.STORAGE_REQUIRED_FOR_HEALTH },
+      storage: storageHealth(),
     },
-    healthy ? 200 : 503,
+    code,
   );
 });
 
@@ -77,10 +109,12 @@ async function bootstrapStorage(attempt = 1, delayMs = 1000): Promise<void> {
       storageReady = true;
       logger.info('Storage bucket check succeeded');
     } catch (error) {
-      bucketBootstrapStopped = storagePermissionDenied(error) || attempt >= STORAGE_BOOTSTRAP_MAX_ATTEMPTS;
-      logger[attempt === 1 ? 'warn' : 'debug'](
+      bucketBootstrapStopped = storageCredentialsRejected(error);
+      logger[bucketBootstrapStopped || attempt === 1 ? 'warn' : 'debug'](
         { error, attempt, stopped: bucketBootstrapStopped, retryMs: bucketBootstrapStopped ? null : delayMs },
-        'Storage bucket check failed; retries stop on denied permissions or after 5 attempts. Restart the API after fixing stopped bootstrap checks',
+        bucketBootstrapStopped
+          ? 'Storage bucket bootstrap stopped: fix rejected storage credentials or bucket permissions, then restart the API'
+          : 'Storage bucket check failed; retrying automatically',
       );
     }
   }
@@ -89,13 +123,16 @@ async function bootstrapStorage(attempt = 1, delayMs = 1000): Promise<void> {
       await configureUploadCors(env.STORAGE_CORS_ALLOWED_ORIGINS);
       storageCors = true;
     } catch (error) {
-      corsBootstrapStopped = storagePermissionDenied(error) || attempt >= STORAGE_BOOTSTRAP_MAX_ATTEMPTS;
-      logger[attempt === 1 ? 'warn' : 'debug'](
+      corsBootstrapStopped = storageCredentialsRejected(error);
+      logger[corsBootstrapStopped || attempt === 1 ? 'warn' : 'debug'](
         { error, attempt, stopped: corsBootstrapStopped, retryMs: corsBootstrapStopped ? null : delayMs },
-        'Storage upload CORS setup failed; retries stop on denied permissions or after 5 attempts. Configure CORS externally or set STORAGE_AUTO_CORS=false. CORS does not gate API health',
+        corsBootstrapStopped
+          ? 'Storage CORS bootstrap stopped: fix credentials or CORS permissions and restart the API, or manage CORS externally with STORAGE_AUTO_CORS=false. CORS does not gate API health'
+          : 'Storage upload CORS setup failed; retrying automatically. CORS does not gate API health',
       );
     }
   }
+  logger.debug({ storage: storageHealth() }, 'Storage bootstrap status');
   if (!shuttingDown && ((!storageReady && !bucketBootstrapStopped) || (env.STORAGE_AUTO_CORS && !storageCors && !corsBootstrapStopped))) {
     storageRetry = setTimeout(() => void bootstrapStorage(attempt + 1, Math.min(delayMs * 2, 30_000)), delayMs);
     storageRetry.unref();

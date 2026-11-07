@@ -50,7 +50,7 @@ export function assertReadmeInstallInstructions(readme, command) {
   // instructions, when present, must be standalone generated command lines.
   const installerLines = readme.split(/\r?\n/).filter((line) => line.includes('nibleaf-install.sh'));
   if (installerLines.some((line) => line.trim() !== command)) {
-    throw new Error('README.md contains an unverified nibleaf-install.sh instruction; use only the generated verified install command');
+    throw new Error('README.md: any line mentioning nibleaf-install.sh must be the generated verified install command');
   }
   if (!readme.includes(command) && !linksToLatestRelease(readme)) {
     throw new Error('README.md must link to the latest release or contain the verified install command generated from release/self-host.json');
