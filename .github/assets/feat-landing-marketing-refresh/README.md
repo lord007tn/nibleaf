@@ -50,11 +50,12 @@ Arabic) and two of the real captures above.
 
 ## Lighthouse
 
-`lighthouse/{before,after}-{home,ar}-{mobile,desktop}.json` are the median-run
-reports from Lighthouse 12.8 (5 runs each) against local production builds behind
-a brotli proxy. Production serves brotli through Cloudflare; the local Nitro
-server doesn't compress. The screenshot audits are stripped to keep the files
-small. Open them in the [Lighthouse viewer](https://googlechrome.github.io/lighthouse/viewer/).
+`lighthouse-summary.json` holds the median scores and metrics (performance,
+accessibility, best practices, SEO, LCP, FCP, CLS, TBT, speed index, transfer)
+from Lighthouse 12.8 (5 runs each) against local production builds behind a
+brotli proxy. Production serves brotli through Cloudflare; the local Nitro server
+doesn't compress. The full reports aren't committed: they are large and change on
+every run.
 
 - `before` is `origin/main` at `c6ae297f`; `after` is this branch at `92f60b96`.
 - The two were measured back to back on the same machine.
