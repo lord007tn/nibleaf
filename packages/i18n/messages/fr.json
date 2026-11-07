@@ -1858,6 +1858,8 @@
   "error_signedout": "Votre session a expiré. Reconnectez-vous pour continuer.",
   "error_notfound": "Cet élément n’existe plus : quelqu’un l’a peut-être supprimé. Actualisez la page et réessayez.",
   "error_conflict": "Quelqu’un d’autre a modifié cet élément en même temps. Actualisez la page et réessayez.",
+  "error_branchmainchanged": "Main has changed since this version's pages were copied from it, so the version wasn't promoted. Switch to main, create a new version there, copy this version's edits into it, then promote the new version.",
+  "error_branchbaselinemissing": "Nibleaf can't tell what changed on main since this version was made: it was created before this update, was imported, was copied from such a version, or main's pages were replaced since. Switch to main, create a new version there, and move your changes into it.",
   "error_toolarge": "C’est trop volumineux. Essayez un fichier plus petit.",
   "error_ratelimited": "Trop de tentatives. Patientez un instant et réessayez.",
   "notfound_badge": "404",

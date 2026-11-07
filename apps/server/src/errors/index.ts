@@ -32,6 +32,8 @@ export type ErrorCode =
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
+  | 'branch:main_changed'
+  | 'branch:baseline_missing'
   | 'storage:error'
   | 'domain:already_added'
   | 'domain:already_connected'
@@ -111,6 +113,8 @@ const ERROR_STATUS = {
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,
+  'branch:main_changed': 409,
+  'branch:baseline_missing': 409,
   'storage:error': 502,
   'domain:already_added': 409,
   'domain:already_connected': 409,
