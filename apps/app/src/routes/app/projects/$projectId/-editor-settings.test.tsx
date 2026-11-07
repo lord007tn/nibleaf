@@ -13,7 +13,11 @@ const mocks = vi.hoisted(() => ({
   prefetch: vi.fn(),
   pages: [] as Array<Record<string, unknown>>,
   page: undefined as Record<string, unknown> | undefined,
-  capability: { isPending: false, data: undefined } as { isPending: boolean; isError?: boolean; data?: { available: boolean; reason: string | null } },
+  capability: { isPending: false, data: undefined } as {
+    isPending: boolean;
+    isError?: boolean;
+    data?: { available: boolean; reason: string | null };
+  },
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: mocks.locale }) }));
 vi.mock('@tanstack/react-router', () => ({
