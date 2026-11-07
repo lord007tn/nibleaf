@@ -97,6 +97,19 @@ describe('reload once after a chunk fails to load', () => {
     expect(third.reload).not.toHaveBeenCalled();
   });
 
+  it('counts one reload per document when several chunks fail before it happens', () => {
+    const storage = memoryStorage();
+    const first = openDocument(storage);
+    expect(() => failChunkLoad(chunkError('editor-OLD.js'))).toThrow();
+    expect(() => failChunkLoad(chunkError('editor-OLD.css'))).toThrow();
+    expect(first.reload).toHaveBeenCalledTimes(1);
+
+    // The second slot is still free for a later failure on the reloaded page.
+    const second = openDocument(storage);
+    expect(() => failChunkLoad(chunkError('settings-OLD.js'))).toThrow();
+    expect(second.reload).toHaveBeenCalledTimes(1);
+  });
+
   it('never reloads when session storage is blocked, so there can be no loop', () => {
     const { target, reload } = fakeWindow(() => {
       throw new DOMException('Session storage access denied', 'SecurityError');

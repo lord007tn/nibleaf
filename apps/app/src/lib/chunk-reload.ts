@@ -15,6 +15,8 @@
 const RELOAD_KEY = 'nibleaf.chunk-reload';
 /** Automatic reloads allowed in one tab session, whatever fails. */
 const MAX_RELOADS_PER_SESSION = 2;
+/** Documents that already started a reload: further failures before it happens don't use another slot. */
+const reloadingDocuments = new WeakSet<object>();
 
 /** The chunk or stylesheet that failed, from the preload error's message, or the page as a fallback. */
 function failedAsset(event: Event): string {
@@ -24,6 +26,7 @@ function failedAsset(event: Event): string {
 }
 
 function reloadOnChunkLoadFailure(event: Event): void {
+  if (reloadingDocuments.has(window)) return;
   const asset = failedAsset(event);
   try {
     const raw = window.sessionStorage.getItem(RELOAD_KEY);
@@ -37,6 +40,7 @@ function reloadOnChunkLoadFailure(event: Event): void {
     // Without storage there's no loop guard, so don't reload automatically.
     return;
   }
+  reloadingDocuments.add(window);
   window.location.reload();
 }
 
