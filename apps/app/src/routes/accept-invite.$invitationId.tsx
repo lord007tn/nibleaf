@@ -90,9 +90,10 @@ function AcceptInviteContent() {
     setError(null);
     setSwitchingAccount(true);
     try {
-      await signOutDashboard(queryClient);
-      setPendingInvitation(invitationId);
-      await navigate({ to: '/sign-in', search: { invite: invitationId, email: info.email } });
+      await signOutDashboard(queryClient, async () => {
+        setPendingInvitation(invitationId);
+        await navigate({ to: '/sign-in', search: { invite: invitationId, email: info.email } });
+      });
     } catch {
       setError(t('auth.invite.switchAccountError'));
     } finally {

@@ -586,7 +586,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
               loading={rotate.isPending}
               onClick={async () => {
                 const approved = await confirm({
-                  title: t('settings.git.workflow.rotateSecret'),
+                  title: t('settings.git.workflow.rotateConfirm.title'),
                   description: t('settings.git.workflow.rotateConfirm.description'),
                   confirmLabel: t('settings.git.workflow.rotateSecret'),
                   destructive: true,

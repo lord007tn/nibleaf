@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => ({ signOut: vi.fn() }));
 vi.mock('./auth-client', () => ({ authClient: { signOut: auth.signOut } }));
 
-import { resetDashboardSession, signOutDashboard, syncDashboardSession, useDashboardSessionBoundary } from './dashboard-session';
+import { resetDashboardSession, syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
+import { signOutDashboard, useDashboardSessionBoundary } from './dashboard-session';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 afterEach(() => {
@@ -34,14 +35,18 @@ describe('dashboard session isolation', () => {
     const queryClient = client();
     for (const key of ['nibleaf.activeProjectId', 'nibleaf.publishNudge.site', 'nibleaf.startHere.dismissed.alice', 'nibleaf.editor.collapsedLangs'])
       localStorage.setItem(key, 'private');
+    localStorage.setItem('nibleaf:site-search:recent:site', 'old search');
     localStorage.setItem('theme', 'dark');
     localStorage.setItem('nibleaf.analytics.consent.site', 'accepted');
+    sessionStorage.setItem('nibleaf.chat.session', 'alice-chat');
     sessionStorage.setItem('unrelated', 'keep');
     resetDashboardSession(queryClient);
     expect(localStorage.getItem('nibleaf.activeProjectId')).toBeNull();
     expect(localStorage.getItem('nibleaf.publishNudge.site')).toBeNull();
     expect(localStorage.getItem('nibleaf.startHere.dismissed.alice')).toBeNull();
-    expect(localStorage.getItem('nibleaf.editor.collapsedLangs')).toBeNull();
+    expect(localStorage.getItem('nibleaf.editor.collapsedLangs')).toBe('private');
+    expect(localStorage.getItem('nibleaf:site-search:recent:site')).toBeNull();
+    expect(sessionStorage.getItem('nibleaf.chat.session')).toBeNull();
     expect(localStorage.getItem('theme')).toBe('dark');
     expect(localStorage.getItem('nibleaf.analytics.consent.site')).toBe('accepted');
     expect(sessionStorage.getItem('unrelated')).toBe('keep');
@@ -71,10 +76,14 @@ describe('dashboard session isolation', () => {
     syncDashboardSession(queryClient, 'alice');
     queryClient.setQueryData(['projects'], ['Alice site']);
     auth.signOut.mockResolvedValueOnce({ error: { message: 'unavailable' } });
-    await expect(signOutDashboard(queryClient)).rejects.toThrow();
+    await expect(signOutDashboard(queryClient, async () => undefined)).rejects.toThrow();
     expect(queryClient.getQueryData(['projects'])).toEqual(['Alice site']);
     auth.signOut.mockResolvedValueOnce({ error: null });
-    await signOutDashboard(queryClient);
+    const leave = vi.fn(async () => {
+      expect(queryClient.getQueryData(['projects'])).toEqual(['Alice site']);
+    });
+    await signOutDashboard(queryClient, leave);
+    expect(leave).toHaveBeenCalledOnce();
     expect(queryClient.getQueryData(['projects'])).toBeUndefined();
   });
 
@@ -117,4 +126,58 @@ describe('dashboard session isolation', () => {
       host.remove();
     }
   });
+});
+
+it('does not clear early when the session hook updates during sign-out navigation', async () => {
+  const queryClient = client();
+  syncDashboardSession(queryClient, 'alice');
+  queryClient.setQueryData(['projects'], ['Alice site']);
+  function Boundary({ userId }: { userId: string | null }) {
+    return <p>{String(useDashboardSessionBoundary(userId))}</p>;
+  }
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  const render = (userId: string | null) =>
+    root.render(
+      <QueryClientProvider client={queryClient}>
+        <Boundary userId={userId} />
+      </QueryClientProvider>,
+    );
+  let finishNavigation: () => void = () => undefined;
+  const navigation = new Promise<void>((resolve) => {
+    finishNavigation = resolve;
+  });
+  try {
+    await act(async () => render('alice'));
+    auth.signOut.mockResolvedValue({ error: null });
+    let signedOut: Promise<void> = Promise.resolve();
+    await act(async () => {
+      signedOut = signOutDashboard(queryClient, () => navigation);
+      await Promise.resolve();
+      render(null);
+    });
+    expect(queryClient.getQueryData(['projects'])).toEqual(['Alice site']);
+    await act(async () => {
+      finishNavigation();
+      await signedOut;
+    });
+    expect(queryClient.getQueryData(['projects'])).toBeUndefined();
+  } finally {
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});
+
+it('clears signed-out data after attempting navigation even if navigation rejects', async () => {
+  const queryClient = client();
+  syncDashboardSession(queryClient, 'alice');
+  queryClient.setQueryData(['projects'], ['Alice site']);
+  auth.signOut.mockResolvedValueOnce({ error: null });
+  const leave = vi.fn(async () => {
+    expect(queryClient.getQueryData(['projects'])).toEqual(['Alice site']);
+    throw new Error('navigation failed');
+  });
+  await expect(signOutDashboard(queryClient, leave)).rejects.toThrow('navigation failed');
+  expect(queryClient.getQueryData(['projects'])).toBeUndefined();
 });

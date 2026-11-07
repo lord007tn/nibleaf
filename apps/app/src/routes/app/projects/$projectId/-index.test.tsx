@@ -89,6 +89,27 @@ describe('site overview first load', () => {
     }
   });
 
+  it('shows neutral placeholders until the role resolves without an Editor explanation', async () => {
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.settings.askAdmin');
+    expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
+    navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] } };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.querySelector('a[href="/settings?section=general"]')).not.toBeNull();
+  });
+  it('offers Retry when permissions fail instead of an Editor explanation or settings link', async () => {
+    const retry = vi.fn();
+    navigation.members = { isError: true, refetch: retry };
+    navigation.deployments = { data: [] };
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.settings.askAdmin');
+    expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert).not.toBeNull();
+    await act(async () => alert?.querySelector('button')?.click());
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it('prefetches the page views the overview opens with, in the loader', async () => {
     const queryClient = {};
     (Route.options.loader as (context: { context: { queryClient: unknown }; params: { projectId: string } }) => void)({

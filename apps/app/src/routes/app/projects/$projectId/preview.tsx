@@ -57,9 +57,15 @@ function ProjectPreview() {
   const t = useT();
   const projectQuery = useProject(projectId);
   const { data: project } = projectQuery;
-  const { data: members } = useProjectMembers(projectId);
-  const { data: session } = useSession();
-  const canManagePreviews = canAdminister(members?.members.find((member) => member.user.id === session?.user.id)?.role ?? '');
+  const membersQuery = useProjectMembers(projectId);
+  const { data: members } = membersQuery;
+  const { data: session, isPending: sessionPending } = useSession();
+  const previewAccess =
+    membersQuery.isPending || sessionPending || !members || !session
+      ? 'pending'
+      : canAdminister(members.members.find((member) => member.user.id === session.user.id)?.role ?? '')
+        ? 'admin'
+        : 'notAdmin';
   const { data: languages } = useLanguages(projectId);
   const { data: branches } = useBranches(projectId);
   const activeLanguageId = search.languageId ?? defaultScopeId(languages);
@@ -126,7 +132,7 @@ function ProjectPreview() {
       </div>
     );
   }
-  if (projectQuery.isError || !project) {
+  if (!project) {
     return (
       <div className="mx-auto max-w-2xl px-8 py-12">
         <QueryErrorState onRetry={() => void projectQuery.refetch()} retrying={projectQuery.isFetching} />
@@ -140,7 +146,13 @@ function ProjectPreview() {
           <Eye className="size-5 text-muted-foreground" /> {t('preview.title')}
         </div>
         <p className="text-muted-foreground text-sm">{t('preview.disabled')}</p>
-        {canManagePreviews ? (
+        {membersQuery.isError ? (
+          <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
+        ) : previewAccess === 'pending' ? (
+          <div aria-busy="true" className="mt-4">
+            <Skeleton aria-hidden className="h-11 w-44" />
+          </div>
+        ) : previewAccess === 'admin' ? (
           <Button
             className="mt-4"
             nativeButton={false}

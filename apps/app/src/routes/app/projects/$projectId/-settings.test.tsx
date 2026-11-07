@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   members: vi.fn(),
   project: vi.fn(),
   prefetch: vi.fn(),
-  section: 'general',
+  section: 'general' as string | undefined,
   navigate: vi.fn(),
   refetch: vi.fn(),
   blocker: vi.fn(),
@@ -139,14 +139,30 @@ describe('site settings permissions', () => {
     ]);
   });
 
-  it.each(['general', 'danger', 'smartAi'])('redirects an editor from %s to the first permitted section with replace', async (section) => {
-    mocks.section = section;
+  it("redirects the default entry to the editor's first permitted section", async () => {
+    mocks.section = undefined;
     await act(async () => root.render(<SettingsPage />));
     expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'languages' }, replace: true });
     expect(container.textContent).not.toContain('settings.permissions.title');
+  });
+
+  it.each(['general', 'danger', 'smartAi'])('explains an explicit restricted %s link without redirecting', async (section) => {
+    mocks.section = section;
+    await act(async () => root.render(<SettingsPage />));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('settings.permissions.title');
+    expect(container.textContent).toContain('settings.permissions.body');
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.languages');
     expect(
       container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="smart-ai-settings"]'),
     ).toBeNull();
+  });
+
+  it('keeps the distinction between absent and explicitly requested sections in search validation', () => {
+    const validate = Route.options.validateSearch as (search: Record<string, unknown>) => { section?: string };
+    expect(validate({})).toEqual({ section: undefined });
+    expect(validate({ section: 'general' })).toEqual({ section: 'general' });
+    expect(validate({ section: 'analytics' })).toEqual({ section: 'integrations' });
   });
 
   it('does not redirect while membership is unknown or its request failed', async () => {

@@ -325,3 +325,19 @@ describe('API-key rotation confirmation', () => {
     expect(hooks.rotate.mutate).toHaveBeenCalledWith(expect.objectContaining({ id: 'key-1' }), expect.any(Object));
   });
 });
+
+it.each([
+  { expiresAt: new Date(0).toISOString(), message: 'settings.apiKeys.rotateConfirm.expiredDescription' },
+  { expiresAt: null, message: 'settings.apiKeys.rotateConfirm.legacyDescription' },
+  { expiresAt: new Date(Date.now() + 86_400_000).toISOString(), message: 'settings.apiKeys.rotateConfirm.description' },
+])('explains the replacement lifetime for expiry $expiresAt', async ({ expiresAt, message }) => {
+  hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true, expiresAt })]));
+  hooks.confirm.mockResolvedValue(true);
+  const host = await renderTab();
+  await act(async () => button(host, 'settings.apiKeys.rotate')?.click());
+  expect(hooks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: message }));
+  expect(hooks.rotate.mutate).toHaveBeenCalledWith(
+    expect.objectContaining({ body: expect.objectContaining({ expiresInDays: 90 }) }),
+    expect.any(Object),
+  );
+});

@@ -74,7 +74,11 @@ it.each([false, true])('confirms webhook secret replacement before sending the r
     expect(button('settings.git.workflow.rotateSecret')).toBeDefined();
     await act(async () => button('settings.git.workflow.rotateSecret')?.click());
     expect(state.confirm).toHaveBeenCalledWith(
-      expect.objectContaining({ description: 'settings.git.workflow.rotateConfirm.description', destructive: true }),
+      expect.objectContaining({
+        title: 'settings.git.workflow.rotateConfirm.title',
+        description: 'settings.git.workflow.rotateConfirm.description',
+        destructive: true,
+      }),
     );
     expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
   } finally {

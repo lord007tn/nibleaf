@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/page-loader';
 import { getSessionFn } from '@/functions/session';
 import { projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useSession } from '@/services/auth-client';
 import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
@@ -15,7 +16,6 @@ export const Route = createFileRoute('/app')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const routeSession = await getSessionFn();
     if (typeof window !== 'undefined') {
-      const { syncDashboardSession } = await import('@/services/dashboard-session');
       syncDashboardSession(queryClient, routeSession?.user.id ?? null);
     }
     if (!routeSession) {

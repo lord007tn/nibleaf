@@ -3539,6 +3539,8 @@ export const MESSAGE_IDS = {
   'preview.enablePreviews': 'preview_enablepreviews',
   'preview.disabledAskAdmin': 'preview_disabledaskadmin',
   'overview.settings.askAdmin': 'overview_settings_askadmin',
+  'settings.apiKeys.rotateConfirm.expiredDescription': 'settings_apikeys_rotateconfirm_expireddescription',
+  'settings.git.workflow.rotateConfirm.title': 'settings_git_workflow_rotateconfirm_title',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

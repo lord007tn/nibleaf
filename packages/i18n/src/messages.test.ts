@@ -261,3 +261,13 @@ describe('dashboard safety copy', () => {
     }
   });
 });
+
+it('keeps the settings arrow and replacement warnings clear in English, Arabic and fallback catalogs', () => {
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+    expect(loadCatalog(code).preview_disabledaskadmin).toContain('Settings → Add-ons');
+  }
+  expect(loadCatalog('en').settings_git_workflow_rotateconfirm_title).toBe('Replace the webhook secret?');
+  expect(loadCatalog('ar').settings_git_workflow_rotateconfirm_title).toBe('هل تريد استبدال سر الإشعارات الواردة؟');
+  expect(loadCatalog('en').settings_apikeys_rotateconfirm_expireddescription).toContain('The new key will expire in 90 days.');
+  expect(loadCatalog('ar').settings_apikeys_rotateconfirm_expireddescription).toContain('90 يومًا');
+});

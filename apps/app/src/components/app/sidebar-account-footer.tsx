@@ -110,8 +110,7 @@ export function SidebarAccountFooter() {
                 <DropdownMenuItem
                   onClick={async () => {
                     try {
-                      await signOutDashboard(queryClient);
-                      await navigate({ to: '/sign-in', replace: true });
+                      await signOutDashboard(queryClient, () => navigate({ to: '/sign-in', replace: true }));
                     } catch {
                       toast.error(t('account.signOutError'));
                     }

@@ -50,16 +50,24 @@ describe('API-key rotation', () => {
     database.create.mockResolvedValue(successor);
   });
 
-  it.each([new Date('2027-02-03T12:34:56.789Z'), new Date('2026-01-01T00:00:00.000Z')])(
-    'preserves the exact original expiry %s regardless of the form expiry',
-    async (expiresAt) => {
-      database.findFirst.mockResolvedValue({ ...current, expiresAt });
-      database.updateMany.mockResolvedValue({ count: 1 });
-      await rotateApiKey('org-1', 'project-1', current.id, member, { ...body, expiresInDays: 365 });
-      expect(database.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expiresAt }) }));
-      expect(database.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ expiresAt: true }) }));
-    },
-  );
+  it("preserves an active key's exact expiry regardless of the form expiry", async () => {
+    const expiresAt = new Date(Date.now() + 12 * 86_400_000 + 123);
+    database.findFirst.mockResolvedValue({ ...current, expiresAt });
+    database.updateMany.mockResolvedValue({ count: 1 });
+    await rotateApiKey('org-1', 'project-1', current.id, member, { ...body, expiresInDays: 365 });
+    expect(database.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ expiresAt }) }));
+    expect(database.findFirst).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ expiresAt: true }) }));
+  });
+
+  it.each([7, 90, 365])('renews an expired key for the requested %s days', async (days) => {
+    database.findFirst.mockResolvedValue({ ...current, expiresAt: new Date(0) });
+    database.updateMany.mockResolvedValue({ count: 1 });
+    const before = Date.now();
+    await rotateApiKey('org-1', 'project-1', current.id, member, { ...body, expiresInDays: days });
+    const expiry = database.create.mock.calls[0]?.[0].data.expiresAt.getTime();
+    expect(expiry).toBeGreaterThanOrEqual(before + days * 86_400_000);
+    expect(expiry).toBeLessThanOrEqual(Date.now() + days * 86_400_000);
+  });
 
   it('gives a legacy key without an expiry the existing bounded lifetime', async () => {
     database.findFirst.mockResolvedValue({ ...current, expiresAt: null });

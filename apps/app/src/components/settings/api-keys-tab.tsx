@@ -120,7 +120,13 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const rotateKey = async (key: ApiKey) => {
     const approved = await confirm({
       title: t('settings.apiKeys.rotateConfirm.title'),
-      description: t(key.expiresAt ? 'settings.apiKeys.rotateConfirm.description' : 'settings.apiKeys.rotateConfirm.legacyDescription'),
+      description: t(
+        !key.expiresAt
+          ? 'settings.apiKeys.rotateConfirm.legacyDescription'
+          : Date.parse(key.expiresAt) > Date.now()
+            ? 'settings.apiKeys.rotateConfirm.description'
+            : 'settings.apiKeys.rotateConfirm.expiredDescription',
+      ),
       confirmLabel: t('settings.apiKeys.rotate'),
       destructive: true,
     });

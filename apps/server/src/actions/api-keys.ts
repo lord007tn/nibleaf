@@ -84,7 +84,8 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
     const current = await tx.apiKey.findFirst({ where: { id, projectId, createdById: actor.id }, select: { id: true, name: true, expiresAt: true } });
     if (!current) throw notFound('api key', { id });
 
-    const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: new Date() } });
+    const now = new Date();
+    const claimed = await tx.apiKey.updateMany({ where: { id, projectId, revokedAt: null }, data: { revokedAt: now } });
     if (claimed.count !== 1) throw conflict('API key has already been rotated or revoked.');
 
     const { secret } = newApiKeySecret('live');
@@ -97,9 +98,8 @@ export const rotateApiKey = async (organizationId: string, projectId: string, id
         hashedSecret: hashApiKeySecret(secret),
         lastFour: secret.slice(-4),
         scopes,
-        // Rotation replaces the credential, not its original lifetime. Legacy
-        // keys without an expiry still receive the existing bounded lifetime.
-        expiresAt: current.expiresAt ?? expiresAt(body.expiresInDays),
+        // Keep an active key's lifetime; expired and legacy keys need a usable replacement.
+        expiresAt: current.expiresAt && current.expiresAt > now ? current.expiresAt : expiresAt(body.expiresInDays),
       },
       select: keySelect,
     });

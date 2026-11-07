@@ -29,6 +29,7 @@ import { z } from 'zod';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
+import { QueryErrorState } from '@/components/query-error-state';
 import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
 import { friendlyErrorMessage, useDeployments, useDomains, usePages, useProject, useProjectMembers, usePublishAnyway } from '@/hooks/api';
@@ -69,15 +70,22 @@ function SiteOverviewPage() {
   const [range, setRange] = useState<AnalyticsRange>(DEFAULT_ANALYTICS_RANGE);
   const { data: project, isPending: projectPending } = useProject(projectId);
   const { data: pages, isPending: pagesPending } = usePages(projectId);
-  const { data: members, isPending: membersPending } = useProjectMembers(projectId);
+  const membersQuery = useProjectMembers(projectId);
+  const { data: members, isPending: membersPending } = membersQuery;
   const { data: deployments, isPending: deploymentsPending } = useDeployments(projectId);
   const { data: domains } = useDomains(projectId);
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
-  const { data: session } = useSession();
-  const canManageSettings = canAdminister(members?.members.find((member) => member.user.id === session?.user.id)?.role ?? '');
+  const { data: session, isPending: sessionPending } = useSession();
+  const settingsAccess =
+    membersPending || sessionPending || !members || !session
+      ? 'pending'
+      : canAdminister(members.members.find((member) => member.user.id === session.user.id)?.role ?? '')
+        ? 'admin'
+        : 'notAdmin';
+  const canManageSettings = settingsAccess === 'admin';
   const memberCount = members?.members.length ?? 0;
   const deployCount = (deployments ?? []).length;
   const latestDeployment = deployments?.[0];
@@ -156,7 +164,9 @@ function SiteOverviewPage() {
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed ? <PublishNudge canManageSettings={canManageSettings} projectId={projectId} /> : null}
+      {deployments && !hasReadyDeployment && !publishFailed && settingsAccess !== 'pending' && !membersQuery.isError ? (
+        <PublishNudge canManageSettings={canManageSettings} projectId={projectId} />
+      ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.4fr]">
         <div className="rounded-xl border border-border bg-card p-5">
@@ -358,45 +368,57 @@ function SiteOverviewPage() {
               to="/app/projects/$projectId/settings"
             />
           </ManageRow>
-          <ManageRow
-            icon={Plug}
-            title={t('overview.link.integrations')}
-            desc={t(canManageSettings ? 'overview.link.integrationsDesc' : 'overview.settings.askAdmin')}
-          >
-            {canManageSettings ? (
-              <Link
-                aria-label={t('overview.link.integrations')}
-                className="absolute inset-0 rounded-xl"
-                params={{ projectId }}
-                search={{ section: 'integrations' }}
-                to="/app/projects/$projectId/settings"
-              />
-            ) : null}
-          </ManageRow>
-          <ManageRow
-            icon={CreditCard}
-            title={t('overview.link.billing')}
-            desc={t(canManageSettings ? 'overview.link.billingDesc' : 'overview.settings.askAdmin')}
-          >
-            {canManageSettings ? (
-              <Link
-                aria-label={t('overview.link.billing')}
-                className="absolute inset-0 rounded-xl"
-                params={{ projectId }}
-                search={{ section: 'plan' }}
-                to="/app/projects/$projectId/settings"
-              />
-            ) : null}
-          </ManageRow>
-          <ManageRow icon={SettingsIcon} title={t('overview.link.settings')} desc={t('overview.link.settingsDesc')}>
-            <Link
-              aria-label={t('overview.link.settings')}
-              className="absolute inset-0 rounded-xl"
-              params={{ projectId }}
-              search={{ section: canManageSettings ? 'general' : 'languages' }}
-              to="/app/projects/$projectId/settings"
-            />
-          </ManageRow>
+          {membersQuery.isError ? (
+            <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
+          ) : settingsAccess === 'pending' ? (
+            <div aria-busy="true" className="space-y-3">
+              <Skeleton aria-hidden className="h-20 w-full rounded-xl" />
+              <Skeleton aria-hidden className="h-20 w-full rounded-xl" />
+              <Skeleton aria-hidden className="h-20 w-full rounded-xl" />
+            </div>
+          ) : (
+            <>
+              <ManageRow
+                icon={Plug}
+                title={t('overview.link.integrations')}
+                desc={t(canManageSettings ? 'overview.link.integrationsDesc' : 'overview.settings.askAdmin')}
+              >
+                {canManageSettings ? (
+                  <Link
+                    aria-label={t('overview.link.integrations')}
+                    className="absolute inset-0 rounded-xl"
+                    params={{ projectId }}
+                    search={{ section: 'integrations' }}
+                    to="/app/projects/$projectId/settings"
+                  />
+                ) : null}
+              </ManageRow>
+              <ManageRow
+                icon={CreditCard}
+                title={t('overview.link.billing')}
+                desc={t(canManageSettings ? 'overview.link.billingDesc' : 'overview.settings.askAdmin')}
+              >
+                {canManageSettings ? (
+                  <Link
+                    aria-label={t('overview.link.billing')}
+                    className="absolute inset-0 rounded-xl"
+                    params={{ projectId }}
+                    search={{ section: 'plan' }}
+                    to="/app/projects/$projectId/settings"
+                  />
+                ) : null}
+              </ManageRow>
+              <ManageRow icon={SettingsIcon} title={t('overview.link.settings')} desc={t('overview.link.settingsDesc')}>
+                <Link
+                  aria-label={t('overview.link.settings')}
+                  className="absolute inset-0 rounded-xl"
+                  params={{ projectId }}
+                  search={{ section: canManageSettings ? 'general' : 'languages' }}
+                  to="/app/projects/$projectId/settings"
+                />
+              </ManageRow>
+            </>
+          )}
         </div>
       </div>
     </div>

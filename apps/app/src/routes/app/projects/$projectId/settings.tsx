@@ -152,15 +152,15 @@ const isSectionId = (value: unknown): value is SectionId => (SECTION_IDS as read
 const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  validateSearch: (search: Record<string, unknown>): { section: SectionId } => ({
+  validateSearch: (search: Record<string, unknown>): { section?: SectionId } => ({
     // Analytics moved under Integrations — keep old ?section=analytics links working.
-    section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : 'general',
+    section: isSectionId(search.section) ? search.section : search.section === 'analytics' ? 'integrations' : undefined,
   }),
   loaderDeps: ({ search }) => ({ section: search.section }),
   loader: ({ context: { queryClient }, params: { projectId }, deps: { section } }) => {
     prefetchRouteData(queryClient, projectQueryOptions(projectId));
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
-    switch (section) {
+    switch (section ?? 'general') {
       case 'general':
       case 'appearance':
       case 'languages':
@@ -230,7 +230,8 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section } = Route.useSearch();
+  const { section: requestedSection } = Route.useSearch();
+  const section = requestedSection ?? 'general';
   const navigate = useNavigate({ from: Route.fullPath });
   const {
     data: project,
@@ -257,14 +258,14 @@ function ProjectSettingsPage() {
   }));
   const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
 
-  // Search validation has no session role. Resolve access here, before any
-  // section mounts, and replace locked/default links with the first usable one.
+  // Only the default entry chooses a section by role. Explicit locked links
+  // retain their permission explanation instead of silently changing destination.
   const redirectSection = availableSections[0]?.id;
   useEffect(() => {
-    if (!membersPending && !membersError && !sessionPending && currentMember && !sectionAllowed && redirectSection) {
+    if (!membersPending && !membersError && !sessionPending && currentMember && !requestedSection && !sectionAllowed && redirectSection) {
       void navigate({ search: { section: redirectSection }, replace: true });
     }
-  }, [membersPending, membersError, sessionPending, currentMember, sectionAllowed, redirectSection, navigate]);
+  }, [membersPending, membersError, sessionPending, currentMember, sectionAllowed, redirectSection, requestedSection, navigate]);
 
   if (membersError) {
     return (
@@ -274,7 +275,7 @@ function ProjectSettingsPage() {
     );
   }
 
-  if (membersPending || sessionPending || (currentMember && !sectionAllowed)) {
+  if (membersPending || sessionPending || (currentMember && !requestedSection && !sectionAllowed)) {
     return (
       <div className="p-6">
         <SettingsFormSkeleton />
@@ -360,8 +361,14 @@ function ProjectSettingsPage() {
                 <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
                 <p className="mt-2 text-muted-foreground text-sm">{t('settings.permissions.body')}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <Button onClick={() => navigate({ search: { section: 'usage' }, replace: true })} type="button" variant="outline">
-                    {t('settings.usage')}
+                  <Button
+                    nativeButton={false}
+                    render={
+                      <Link params={{ projectId }} search={{ section: redirectSection ?? 'languages' }} to="/app/projects/$projectId/settings" />
+                    }
+                    variant="outline"
+                  >
+                    {t(sectionLabelKey(redirectSection ?? 'languages'))}
                   </Button>
                   <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
                     {t('project.editor')}
