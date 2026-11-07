@@ -2,7 +2,7 @@ import { addDomainBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { addDomain, deleteDomain, listDomains, setPrimaryDomain, verifyDomain } from '@/actions/domains';
 import { assertProjectInOrg } from '@/actions/projects';
-import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import domainsRoutes from './routes';
 
@@ -20,7 +20,7 @@ const app = new Hono<HonoEnv>()
   })
   .post('/', ...domainsRoutes.add, validator('json', addDomainBody), async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
-    return ctx.json({ data: await addDomain(organizationId, projectId, ctx.req.valid('json')) }, 201);
+    return ctx.json({ data: await addDomain(organizationId, projectId, ctx.req.valid('json'), getContextUserOrThrow().id) }, 201);
   })
   .post('/:id/verify', ...domainsRoutes.verify, async (ctx) => {
     const { organizationId, projectId } = await scope(ctx);
