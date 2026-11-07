@@ -542,6 +542,21 @@ describe('chained versions, promoted in either order', () => {
     expect(preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v3-faq', change: 'modified', onPromote: 'kept' })]);
   });
 
+  it('lists a page another version put on main as added and removed when this version deleted it, in either order', () => {
+    // V2 then V3, where V3 deleted its copy of the FAQ.
+    const v3 = after(v3Fork, landed(main, v2Pages, v2Fork));
+    const mainAfterV2 = [...main, withHash({ ...at(v2Pages, 2), parentId: 'guide' })];
+    const v3First = analyze(mainAfterV2, v3Pages.slice(0, 2), v3);
+    expect(v3First.plan.deleteMainIds).toEqual(['v2-faq']);
+    expect(v3First.preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v2-faq', change: 'added', onPromote: 'removed' })]);
+    // V3 then V2, where V2 deleted its own FAQ.
+    const v2 = after(v2Fork, landed(main, v3Pages, v3Fork));
+    const mainAfterV3 = [...main, withHash({ ...at(v3Pages, 2), parentId: 'guide' })];
+    const v2Second = analyze(mainAfterV3, v2Pages.slice(0, 2), v2);
+    expect(v2Second.plan.deleteMainIds).toEqual(['v3-faq']);
+    expect(v2Second.preview.changedOnMainSinceFork).toEqual([expect.objectContaining({ pageId: 'v3-faq', change: 'added', onPromote: 'removed' })]);
+  });
+
   it("two versions made from V2: the second folds into the first one's FAQ", () => {
     const v3Landed = landed(main, v3Pages, v3Fork);
     const v4 = after(v4Fork, v3Landed);

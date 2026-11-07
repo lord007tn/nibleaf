@@ -534,7 +534,11 @@ export const analyzePromote = (
       const mainEdited = mainContent || mainParent;
       if (!copy) {
         deleteMain.add(mainId);
-        if (mainEdited) list(m, mainId, 'modified', 'removed', m.updatedAt.toISOString());
+        // A page another version put on main after this version's fork: its
+        // entry's hash is the copy's own, so main never reads as edited.
+        // Removing it always needs the writer's confirmation.
+        if (e.origin === 'version' || e.reachedMain) list(m, mainId, 'added', 'removed', m.updatedAt.toISOString());
+        else if (mainEdited) list(m, mainId, 'modified', 'removed', m.updatedAt.toISOString());
         continue;
       }
       foldedInto.set(copy.id, mainId);

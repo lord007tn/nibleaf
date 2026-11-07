@@ -597,6 +597,33 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     expect(v2Outcome).toMatchObject(refusedForBaseline);
   });
 
+  it('asks before removing a page another version put on main, in either promote order', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
+    /** V2 creates guide/faq; V3 is made from V2. `deleteIn` deletes its FAQ
+     *  copy; the other version is promoted first and lands the FAQ on main. */
+    const scenario = async (deleteIn: 'v2' | 'v3') => {
+      const { projectId, main, version: v2, base } = await fixture();
+      const v2Guide = await copyIn(v2.id, 'guide');
+      await db.prisma.page.create({ data: { ...base, branchId: v2.id, parentId: v2Guide.id, title: 'FAQ', slug: 'faq', path: 'guide/faq' } });
+      const v3 = await branches.createBranch(projectId, { name: 'v3', fromBranchId: v2.id });
+      const [first, last] = deleteIn === 'v3' ? [v2, v3] : [v3, v2];
+      await db.prisma.page.delete({ where: { id: (await copyIn(last.id, 'guide/faq')).id } });
+      await branches.mergeBranch(projectId, first.id);
+      const faqOnMain = () => db.prisma.page.count({ where: { branchId: main.id, path: 'guide/faq' } });
+      expect(await faqOnMain()).toBe(1);
+
+      // Before anything is deleted: the preview lists it, and an unconfirmed promote is refused.
+      const preview = await branches.getMergePreview(projectId, last.id);
+      expect(preview.changedOnMainSinceFork).toContainEqual(expect.objectContaining({ path: 'guide/faq', change: 'added', onPromote: 'removed' }));
+      await expect(branches.mergeBranch(projectId, last.id)).rejects.toMatchObject({ status: 409, code: 'branch:main_changed' });
+      expect(await faqOnMain()).toBe(1);
+      // Confirmed, the version's deletion goes through.
+      await branches.mergeBranch(projectId, last.id, { confirmPreview: preview.fingerprint });
+      expect(await faqOnMain()).toBe(0);
+    };
+    await scenario('v3'); // V2 promoted first, then V3, which deleted the FAQ.
+    await scenario('v2'); // V3 promoted first, then V2, which deleted its own FAQ.
+  });
+
   it('refuses a promote whose moves would put two pages inside each other', { timeout: DB_TEST_TIMEOUT_MS }, async () => {
     const { projectId, version, guide, legacy } = await fixture();
     // Main moves Legacy under Guide; the version moves Guide under Legacy.
