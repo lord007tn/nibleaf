@@ -1,7 +1,7 @@
 import type { QdrantScoredPoint } from '@nibleaf/qdrant';
 import { chunkSearchDocument, type SearchScope } from '@nibleaf/search';
 import { describe, expect, it } from 'vitest';
-import { chunkFromPoint, filterForSearchScope } from './runtime';
+import { chunkFromPoint, filterForSearchScope, pagesToWiden, retrieveChatContext } from './runtime';
 
 const scope = (projectId = 'tenant-a', pages: string[] | null = ['page-a']): SearchScope => ({
   projectId,
@@ -34,6 +34,112 @@ const point = (overrides: Record<string, unknown> = {}): QdrantScoredPoint => ({
     direction: 'rtl',
     ...overrides,
   },
+});
+
+describe('reading the rest of pages that appear only thinly', () => {
+  const hit = (id: string, pageId: string, score = 0.5) => ({ chunk: { id, pageId, title: `Page ${pageId}`, content: id } as never, score });
+  const ids = (pages: { id: string }[]) => pages.map((page) => page.id);
+  it('chooses thin pages among the best results by score, at most two', () => {
+    expect(pagesToWiden([hit('c1', 'export')])).toEqual([{ id: 'export', title: 'Page export', best: 0.5 }]);
+    // The sync page ranked third, behind two pages with several sections each.
+    const third = [
+      hit('e1', 'export', 0.6),
+      hit('e2', 'export', 0.59),
+      hit('e3', 'export', 0.58),
+      hit('t1', 'tour', 0.57),
+      hit('t2', 'tour', 0.56),
+      hit('t3', 'tour', 0.55),
+      hit('s1', 'sync', 0.54),
+    ];
+    expect(ids(pagesToWiden(third))).toEqual(['sync']);
+    expect(ids(pagesToWiden([hit('i1', 'install', 0.2), hit('s1', 'sync', 0.5), hit('x1', 'other', 0.3)]))).toEqual(['sync', 'other']);
+    // A thin page only past the best results is not read.
+    const late = [...Array.from({ length: 8 }, (_, index) => hit(`e${index}`, `page-${index % 3}`, 0.9 - index / 100)), hit('s1', 'sync', 0.4)];
+    expect(ids(pagesToWiden(late))).not.toContain('sync');
+    expect(pagesToWiden([])).toEqual([]);
+  });
+
+  type Search = NonNullable<Parameters<typeof retrieveChatContext>[4]>;
+  const runtime = {} as never;
+  const searchScope = { ...scope('tenant-a', null), visibility: 'public' as const };
+  /** A stub search: the main lane finds `main`; a page lane finds that page's `sections`. */
+  const stub = (main: ReturnType<typeof hit>[], sections: Record<string, ReturnType<typeof hit>[]>, confidence = 0.3) => {
+    const calls: { pages: string[] | null; query: string; limit: number }[] = [];
+    const search: Search = async (target, query, limit) => {
+      const pages = target.allowedPageIds ? [...target.allowedPageIds] : null;
+      calls.push({ pages, query, limit });
+      const chunks = pages ? (sections[pages[0] ?? ''] ?? []) : main;
+      return { cacheHit: false, chunks, confidence: pages ? 0.9 : confidence };
+    };
+    return { search, calls };
+  };
+
+  it('adds a thin page’s other sections without letting them outrank stronger results', async () => {
+    // The Arabic phone question: export ranks first; install and sync each matched once.
+    const { search, calls } = stub(
+      [hit('e1', 'export', 0.3), hit('e2', 'export', 0.29), hit('e3', 'export', 0.28), hit('i1', 'install', 0.167), hit('s1', 'sync', 0.143)],
+      {
+        install: [hit('i-overview', 'install', 1.08), hit('i-steps', 'install', 1.0)],
+        sync: [hit('s-token', 'sync', 0.9), hit('s-doctor', 'sync', 0.8)],
+      },
+    );
+    const result = await retrieveChatContext(searchScope, 'notes missing on my phone', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['install'], ['sync']]);
+    expect(calls[2]).toMatchObject({ query: 'Page sync notes missing on my phone', limit: 6 });
+    const order = result.hits.map((item) => item.chunk.id);
+    // Stronger results stay first; each widened section sits under its page's own best result.
+    expect(order.slice(0, 3)).toEqual(['e1', 'e2', 'e3']);
+    expect(order).toEqual(expect.arrayContaining(['s-token', 's-doctor']));
+    expect(order.indexOf('i-overview')).toBeGreaterThan(order.indexOf('e3'));
+    expect(order.indexOf('s-token')).toBeGreaterThan(order.indexOf('i-steps'));
+    for (const item of result.hits) if (item.chunk.id.startsWith('s-')) expect(item.score).toBeLessThan(0.143);
+    // A widened page is not a page the reader chose: its confidence is not raised.
+    expect(result.confidence).toBe(0.3);
+  });
+
+  it('keeps the best results and each widened page’s share of the answer, whatever a weaker page adds', async () => {
+    // Two thin pages: a weaker one (install) with many sections ranks above sync.
+    const main = [
+      hit('i1', 'install', 0.167),
+      ...['a1', 'a2', 'a3'].map((id, index) => hit(id, 'other-a', 0.166 - index / 1000)),
+      ...['b1', 'b2', 'b3'].map((id, index) => hit(id, 'other-b', 0.163 - index / 1000)),
+      hit('s1', 'sync', 0.143),
+      ...['c1', 'c2', 'c3', 'c4'].map((id) => hit(id, 'other-c', 0.12)),
+    ];
+    const { search, calls } = stub(main, {
+      install: Array.from({ length: 6 }, (_, index) => hit(`i-${index}`, 'install', 0.9 - index / 100)),
+      sync: [hit('s-token', 'sync', 0.9), hit('s-stuck', 'sync', 0.8), hit('s-conflicts', 'sync', 0.7)],
+    });
+    const result = await retrieveChatContext(searchScope, 'notes missing on my phone', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['install'], ['sync']]);
+    const read = result.chunks.map((chunk) => chunk.id);
+    expect(read).toHaveLength(12);
+    // The six best results stay, and the sync page gets its share in.
+    expect(read).toEqual(expect.arrayContaining(['i1', 'a1', 'a2', 'a3', 'b1', 'b2', 's1', 's-token', 's-stuck']));
+    expect(read.filter((id) => id.startsWith('i-')).length).toBeLessThanOrEqual(3);
+    // Still in ranking order: membership changes, the order does not.
+    const rank = result.hits.map((item) => item.chunk.id);
+    expect([...read].sort((left, right) => rank.indexOf(left) - rank.indexOf(right))).toEqual(read);
+  });
+
+  it('reads nothing more for a turn below the answer threshold', async () => {
+    const { search, calls } = stub([hit('s1', 'sync', 0.05)], { sync: [hit('s-token', 'sync', 0.9)] }, 0.05);
+    await retrieveChatContext(searchScope, 'how?', runtime, {}, search);
+    expect(calls.map((call) => call.pages)).toEqual([null]);
+  });
+
+  it('reads the page the reader asked from instead, and only it', async () => {
+    const { search, calls } = stub([hit('s-conflict', 'sync')], { export: [hit('e-steps', 'export')] });
+    const result = await retrieveChatContext(searchScope, 'how?', runtime, { page: { id: 'export', title: 'Export' } }, search);
+    expect(calls.map((call) => call.pages)).toEqual([null, ['export']]);
+    expect(result.confidence).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it('never reads a page outside the reader’s grants', async () => {
+    const { search, calls } = stub([hit('a1', 'page-a')], {});
+    await retrieveChatContext(scope('tenant-a', ['page-a']), 'how?', runtime, { page: { id: 'page-b', title: 'B' } }, search);
+    expect(calls.every((call) => call.pages === null || call.pages.every((page) => page === 'page-a'))).toBe(true);
+  });
 });
 
 describe('server-derived Qdrant scope', () => {

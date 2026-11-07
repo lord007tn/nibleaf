@@ -16,12 +16,19 @@ ClickHouse analytics for Nibleaf: event model, schema migrations, ingestion tran
 
 1. **Migrations are append-only and date-versioned.** Append to `migrations` in `src/migrations.ts` with a new `YYYYMMDDNN` version (for example `2026110605`). Never edit an applied migration. Workstreams may append concurrently, so keep versions unique and resolve ordering conflicts by appending.
 2. **Shape:** `tenant_id LowCardinality(String), project_id String` lead the `ORDER BY`, and the table has a time column with a TTL.
-3. **Retention comes from env.** Register the table in `ANALYTICS_PROJECT_TABLES` (`src/tables.ts`) with `time` and `retention` (`raw` / `rollup` / `sensitive`). Every migration run re-applies `MODIFY TTL` from the current env, with `materialize_ttl_after_modify = 0`.
+3. **Retention comes from env.** Register the table in `ANALYTICS_PROJECT_TABLES` (`src/tables.ts`) with `time` and `retention` (`raw` / `rollup` / `sensitive` / `conversation`, the last from `AI_CONVERSATION_RETENTION_DAYS`). Every migration run re-applies `MODIFY TTL` from the current env, with `materialize_ttl_after_modify = 0`.
 4. **Erasure and rebuild come from the registry.** `deleteProjectAnalytics` deletes from every registered table except `preserve: true` entries: deletion tombstones, permanent freshness, and the views themselves. `rebuildProjectAnalyticsRollups` refills tables that declare `rebuild`. An integration test fails when any table with a `project_id` column is missing from the registry.
    - `usage_*` tables are owned by `deleteProjectUsage`.
-   - `ai_conversation*` tables are currently exempt, pending the AI chat work. Register them here too, or erase them from the same tenant-erasure orchestrator (`packages/auth/src/tenant-erasure.ts`) and keep the test exemption narrow.
+   - AI chat tables are registered like any other: `ai_conversation_turns` and `ai_conversation_feedback` (conversation retention), `ai_usage_daily` (rollup) and the `ai_conversation_deletions` tombstones (preserved). Turn and feedback rows also carry a per-row `expires_at` that reads honour before the TTL runs.
 5. **Export:** `exportProjectAnalytics` is content-free. Every new table is either exported there or explicitly listed as excluded, with the reason.
 6. **Grants:** the reader role needs `SELECT` (including `analytics_deletion_tombstones`). The writer needs `INSERT` plus `SELECT` on tombstones. Erasure needs `ALTER DELETE` on every project table. Prefer database-level grants (see the self-hosting guide).
+
+## AI chat (reader assistant)
+
+- Reader chat events are `chat_*` payloads in `analytics_events` (`aiChatPayload` in `src/events.ts`), built by the server and sent through `trackProjectEvents`, so they get the same actor classification, consent-gated hashes, write fence, micro-batching and outage replay as every other event. They are content-free: ids, enums, counts and timings. `conversation_id`, `turn_id` and `previous_feedback` are the only chat-specific columns.
+- Conversation text (questions, answers, comments) lives only in `ai_conversation_turns` / `ai_conversation_feedback`: redacted before queueing (`redactReaderText` for what people type), stored only with the project setting, an encryption key and the visitor's consent, and kept for `AI_CONVERSATION_RETENTION_DAYS`.
+- Turn rows record `actor_type`; reader metrics and gaps count people only, while `ai_usage_daily` and the usage/cost totals count every turn a provider billed, automated traffic included. A turn's rewrite and suggestion calls on a separate utility model (`SEARCH_CHAT_UTILITY_MODEL`) keep their tokens and cost in `utility_*` columns, so per-model usage attributes them to that model. Each model's figures are known on their own (`tokens_known`/`cost_known` for the answer model, `utility_tokens_known`/`utility_cost_known` for the utility model); a turn's totals are known when both are. Session hashes use the same `ANALYTICS_HASH_SALT` scheme as `analytics_events`.
+- Deleting one conversation writes a tombstone, then removes its turns, feedback and `chat_*` events and rebuilds only that conversation's `ai_usage_daily` days, never a day whose turns may already have expired.
 
 ## Conventions for reads
 

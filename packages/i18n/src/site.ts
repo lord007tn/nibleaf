@@ -83,6 +83,7 @@ import { site_version } from './paraglide/messages/site_version.js';
 import { site_versioncurrent } from './paraglide/messages/site_versioncurrent.js';
 import { site_viewdetails } from './paraglide/messages/site_viewdetails.js';
 import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
+import type { SiteChatMessageKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
 import type { SiteSearchMessageKey } from './site-search';
 
@@ -178,8 +179,11 @@ const siteMessages = {
 
 type SiteContractKey = Extract<MessageKey, `site.${string}`>;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
- * (./site-search) and article renderer (./site-content). */
-export type SiteMessageKey = Exclude<SiteContractKey extends `site.${infer Key}` ? Key : never, SiteSearchMessageKey | SiteContentMessageKey>;
+ * (./site-search), article renderer (./site-content) and AI chat panel (./site-chat). */
+export type SiteMessageKey = Exclude<
+  SiteContractKey extends `site.${infer Key}` ? Key : never,
+  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey
+>;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePlainKey = Exclude<SiteMessageKey, SiteVariableKey>;
 type SiteVariables<Key extends SiteVariableKey> = Parameters<(typeof siteVariableMessages)[Key]>[0];

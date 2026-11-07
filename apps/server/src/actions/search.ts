@@ -115,6 +115,7 @@ export const updateProjectSearchConfiguration = async (ctx: Context<HonoEnv>, pr
       const parsedCurrent = searchConfigurationSchema.safeParse(current);
       const next = { ...(parsedCurrent.success ? parsedCurrent.data : searchConfigurationSchema.parse({})), ...resolvedInput };
       if (next.placeholder === null) delete next.placeholder;
+      if (next.aiSupportUrl === null) delete next.aiSupportUrl;
       return searchConfigurationSchema.parse(next);
     }),
   );

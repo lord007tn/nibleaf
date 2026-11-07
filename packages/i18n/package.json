@@ -11,6 +11,7 @@
     "./standalone": "./src/standalone.ts",
     "./email": "./src/email.ts",
     "./site": "./src/site.ts",
+    "./site-chat": "./src/site-chat.ts",
     "./site-content": "./src/site-content.ts",
     "./site-search": "./src/site-search.ts",
     "./marketing": "./src/marketing.ts",

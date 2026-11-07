@@ -1,17 +1,9 @@
 import { resolveLocale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
-import { site_answer } from './paraglide/messages/site_answer.js';
-import { site_answerfailed } from './paraglide/messages/site_answerfailed.js';
-import { site_askai } from './paraglide/messages/site_askai.js';
-import { site_checking } from './paraglide/messages/site_checking.js';
 import { site_closesearch } from './paraglide/messages/site_closesearch.js';
-import { site_groundedanswerbody } from './paraglide/messages/site_groundedanswerbody.js';
-import { site_groundedanswertitle } from './paraglide/messages/site_groundedanswertitle.js';
-import { site_noanswer } from './paraglide/messages/site_noanswer.js';
 import { site_results } from './paraglide/messages/site_results.js';
 import { site_searchaskaiabout } from './paraglide/messages/site_searchaskaiabout.js';
 import { site_searchaskaihint } from './paraglide/messages/site_searchaskaihint.js';
-import { site_searchbacktoresults } from './paraglide/messages/site_searchbacktoresults.js';
 import { site_searchclearrecent } from './paraglide/messages/site_searchclearrecent.js';
 import { site_searchdescription } from './paraglide/messages/site_searchdescription.js';
 import { site_searchfailed } from './paraglide/messages/site_searchfailed.js';
@@ -45,17 +37,9 @@ const searchVariableMessages = {
 };
 
 const searchMessages = {
-  answer: site_answer,
-  answerFailed: site_answerfailed,
-  askAi: site_askai,
-  checking: site_checking,
   closeSearch: site_closesearch,
-  groundedAnswerBody: site_groundedanswerbody,
-  groundedAnswerTitle: site_groundedanswertitle,
-  noAnswer: site_noanswer,
   results: site_results,
   searchAskAiHint: site_searchaskaihint,
-  searchBackToResults: site_searchbacktoresults,
   searchClearRecent: site_searchclearrecent,
   searchDescription: site_searchdescription,
   searchFailed: site_searchfailed,

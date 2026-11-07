@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { consentStateSchema, publicAnalyticsEventSchema } from '@nibleaf/clickhouse';
-import { searchAnswerBody, searchQuery } from '@nibleaf/validators';
+import { searchAnswerBody, searchQuery, siteChatBody, siteChatEventsBody, siteChatFeedbackBody } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
+import { chatSite, readerDimensions, submitSiteChatFeedback } from '@/actions/site-chat';
+import { recordSiteChatEvents } from '@/actions/site-chat-events';
 import {
   answerSite,
   getSite,
@@ -100,6 +102,10 @@ const app = new Hono<HonoEnv>()
       durationMs: Math.min(3_600_000, Math.round(performance.now() - started)),
     });
   })
+  .post('/:id/chat/events', ...sitesRoutes.chatEvents, validator('json', siteChatEventsBody), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    return ctx.json({ data: await recordSiteChatEvents(ctx.req.param('id'), ctx.req.valid('json'), readerDimensions(ctx.req.raw.headers)) }, 200);
+  })
   .get('/:id', ...sitesRoutes.site, validator('query', siteQuery), async (ctx) => {
     const { lang, version } = ctx.req.valid('query');
     const data = await getSite(ctx.req.param('id'), lang, version);
@@ -138,6 +144,11 @@ const app = new Hono<HonoEnv>()
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('Vary', 'Cookie, Authorization');
     return ctx.json({ data: await answerSite(ctx.req.param('id'), q, lang, version) }, 200);
+  })
+  .post('/:id/chat', ...sitesRoutes.chat, validator('json', siteChatBody), async (ctx) => chatSite(ctx.req.param('id'), ctx.req.valid('json')))
+  .put('/:id/chat/feedback', ...sitesRoutes.chatFeedback, validator('json', siteChatFeedbackBody), async (ctx) => {
+    ctx.header('Cache-Control', 'private, no-store');
+    return ctx.json({ data: await submitSiteChatFeedback(ctx.req.param('id'), ctx.req.valid('json')) }, 200);
   })
   .post('/:id/events', ...sitesRoutes.track, validator('json', publicAnalyticsEventSchema), async (ctx) => {
     ctx.header('Cache-Control', 'private, no-store');

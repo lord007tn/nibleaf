@@ -27,6 +27,7 @@ import {
   updateMemberRoleBody,
   updatePageBody,
   updateProjectBody,
+  updateProjectSearchConfigurationBody,
   upsertOpenApiBody,
 } from './index';
 
@@ -94,6 +95,8 @@ describe('projectConfigSchema', () => {
       versionFilterEnabled: true,
       aiAnswers: false,
       aiProvider: 'instance',
+      aiConversationCapture: true,
+      aiStarterQuestions: [],
       hotkey: 'cmdk',
     });
     expect(searchConfigurationSchema.safeParse({ maxResults: 0 }).success).toBe(false);
@@ -105,6 +108,15 @@ describe('projectConfigSchema', () => {
     expect(searchIndexDiagnosticsQuery.parse({})).toEqual({ limit: 10 });
     expect(searchIndexDiagnosticsQuery.safeParse({ limit: 26 }).success).toBe(false);
     expect(searchIndexDiagnosticsQuery.safeParse({ cursor: 'x'.repeat(501) }).success).toBe(false);
+  });
+  it('changes only the search settings a partial update sends', () => {
+    // Zod 4 applies defaults inside .partial(); a one-field update must not reset the rest.
+    expect(updateProjectSearchConfigurationBody.parse({ aiSupportUrl: 'mailto:help@example.com' })).toEqual({
+      aiSupportUrl: 'mailto:help@example.com',
+    });
+    expect(updateProjectSearchConfigurationBody.parse({ aiAnswers: true, placeholder: null })).toEqual({ aiAnswers: true, placeholder: null });
+    expect(updateProjectSearchConfigurationBody.safeParse({ aiSupportUrl: 'javascript:alert(1)' }).success).toBe(false);
+    expect(updateProjectSearchConfigurationBody.safeParse({ bogus: true }).success).toBe(false);
   });
   it('rejects unknown top-level keys (strict guards against prototype pollution)', () => {
     expect(projectConfigSchema.safeParse({ bogus: true }).success).toBe(false);

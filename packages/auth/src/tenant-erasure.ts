@@ -1,6 +1,12 @@
 import { createJob, getJob, QueueNames, removeJob } from '@nibleaf/bullmq';
 import { ERASE_PROJECT_STORAGE_START_DELAY_MS, eraseProjectStorageJobId } from '@nibleaf/bullmq/jobs/erasure';
-import { keys as clickHouseKeys, clickHouseWritesEnabled, deleteProjectAnalytics, deleteProjectUsage } from '@nibleaf/clickhouse';
+import {
+  keys as clickHouseKeys,
+  clickHouseWritesEnabled,
+  deleteProjectAiConversations,
+  deleteProjectAnalytics,
+  deleteProjectUsage,
+} from '@nibleaf/clickhouse';
 import { beginUsageDeletion, prisma } from '@nibleaf/database';
 
 /** BullMQ ignores a new job whose id it still retains, so a retried deletion must
@@ -44,7 +50,11 @@ export const eraseProjectOrganization = async (organizationId: string, expectedP
   if (deletion.pendingCount > 0) throw new TenantUsageDeletionPendingError(deletion.pendingCount);
 
   if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) || deletion.hadStorageMarker) {
-    await Promise.all([deleteProjectAnalytics(organizationId, project.id), deleteProjectUsage(organizationId, project.id)]);
+    await Promise.all([
+      deleteProjectAiConversations(organizationId, project.id),
+      deleteProjectAnalytics(organizationId, project.id),
+      deleteProjectUsage(organizationId, project.id),
+    ]);
   }
   await enqueueProjectStorageErasure(project.id);
   await createJob(QueueNames.SEARCH, { name: 'delete-project', data: { projectId: project.id } }, { jobId: `search-delete-${project.id}` });

@@ -11,6 +11,9 @@ interface RateLimitOptions {
   windowMs: number;
   /** Maximum number of requests allowed per client within the window. */
   max: number;
+  /** Called on a refusal, at most once per client per window (so a flood can't
+   *  amplify it), before the 429 is sent. Its failures are ignored. */
+  onLimited?: (ctx: Context<HonoEnv>) => Promise<void> | void;
 }
 
 /** Hard bound on distinct client buckets kept in memory per limiter instance —
@@ -74,8 +77,10 @@ const resolveClientKey = (ctx: Context<HonoEnv>): string => {
  * own counters, so the effective limit scales with instance count. Use a
  * Redis-backed limiter for accurate enforcement across a multi-instance deployment.
  */
-export const rateLimit = ({ windowMs, max }: RateLimitOptions): MiddlewareHandler<HonoEnv> => {
+export const rateLimit = ({ windowMs, max, onLimited }: RateLimitOptions): MiddlewareHandler<HonoEnv> => {
   const hits = new Map<string, number[]>();
+  /** When each client's refusal was last reported to `onLimited`. */
+  const reported = new Map<string, number>();
 
   // Periodically drop buckets with no in-window activity so idle clients don't
   // accumulate forever. unref() keeps the timer from holding the process open.
@@ -84,6 +89,11 @@ export const rateLimit = ({ windowMs, max }: RateLimitOptions): MiddlewareHandle
     for (const [key, stamps] of hits) {
       if ((stamps[stamps.length - 1] ?? 0) <= cutoff) {
         hits.delete(key);
+      }
+    }
+    for (const [key, at] of reported) {
+      if (at <= cutoff) {
+        reported.delete(key);
       }
     }
   };
@@ -105,6 +115,18 @@ export const rateLimit = ({ windowMs, max }: RateLimitOptions): MiddlewareHandle
     const recent = (hits.get(key) ?? []).filter((ts) => ts > cutoff);
     if (recent.length >= max) {
       hits.set(key, recent);
+      if (onLimited && (reported.get(key) ?? 0) <= cutoff) {
+        if (!reported.has(key) && reported.size >= MAX_TRACKED_KEYS) {
+          const oldest = reported.keys().next();
+          if (!oldest.done) {
+            reported.delete(oldest.value);
+          }
+        }
+        reported.set(key, now);
+        await Promise.resolve()
+          .then(() => onLimited(ctx))
+          .catch(() => undefined);
+      }
       const retrySeconds = Math.max(1, Math.ceil(((recent[0] ?? now) + windowMs - now) / 1000));
       ctx.header('Retry-After', String(retrySeconds));
       throw new AppError({ code: 'http:rate_limited', message: 'Too many requests, please slow down.' });

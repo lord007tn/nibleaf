@@ -17,6 +17,11 @@ const csv = (value: string): string[] =>
 export const env = createEnv({
   extends: [auth(), bullmq(), database(), qdrant(), search(), storage()],
   server: {
+    AI_CONVERSATION_ENCRYPTION_KEY: z
+      .string()
+      .refine((value) => Buffer.from(value, 'base64').length === 32)
+      .optional(),
+    AI_CONVERSATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(90),
     NODE_ENV: z.enum(Env).default('development'),
     APP_NAME: z.string().default('Nibleaf'),
     API_PORT: z.coerce.number().default(4311),

@@ -4,7 +4,7 @@
 export interface AnalyticsProjectTable {
   name: string;
   time?: string;
-  retention?: 'raw' | 'rollup' | 'sensitive';
+  retention?: 'raw' | 'rollup' | 'sensitive' | 'conversation';
   rebuild?: string;
   preserve?: boolean;
 }
@@ -142,4 +142,11 @@ export const ANALYTICS_PROJECT_TABLES: readonly AnalyticsProjectTable[] = [
   },
   { name: 'analytics_search_hourly_mv', preserve: true },
   ...insightsRollups.map((table) => ({ name: table.name, time: table.time, retention: 'rollup' as const, rebuild: table.select })),
+  // AI chat (#279). Conversation text and facts follow AI_CONVERSATION_RETENTION_DAYS;
+  // the daily usage rollup is rebuilt from turns on every write and deletion.
+  { name: 'ai_conversation_turns', time: 'occurred_at', retention: 'conversation' },
+  { name: 'ai_conversation_feedback', time: 'updated_at', retention: 'conversation' },
+  { name: 'ai_usage_daily', time: 'day', retention: 'rollup' },
+  // Tombstones stop queued writes from resurrecting deleted conversations.
+  { name: 'ai_conversation_deletions', preserve: true },
 ];

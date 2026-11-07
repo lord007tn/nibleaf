@@ -37,6 +37,7 @@ import { DelayedError, type Job } from 'bullmq';
 import { z } from 'zod';
 import { AnalyticsEventBatcher } from '../analytics/event-batcher';
 import { legacyAnalyticsJobToEnvelope } from '../analytics/legacy-job';
+import { handleAiConversationJob } from './ai-conversations';
 
 const log = createLogger({ processor: 'analytics' });
 
@@ -260,6 +261,7 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
 async function processAnalyticsJob(
   job: Job<AnalyticsJobData, unknown, AnalyticsJobName>,
 ): Promise<{ inserted: number } | { pruned: number } | { reconciled: number }> {
+  if (job.name === 'ai-conversation-turn' || job.name === 'ai-conversation-feedback') return handleAiConversationJob(job.data);
   if (job.name === 'ingest-usage') {
     const data = ingestUsageJobDataSchema.safeParse(job.data);
     if (!data.success) throw new Error('Usage ingestion job failed contract validation.');

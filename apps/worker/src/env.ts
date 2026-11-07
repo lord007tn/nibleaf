@@ -9,6 +9,12 @@ import { z } from 'zod';
 const parsedEnv = createEnv({
   extends: [bullmq(), database(), qdrant(), search(), storage()],
   server: {
+    INTEGRATION_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    AI_CONVERSATION_ENCRYPTION_KEY: z
+      .string()
+      .refine((value) => Buffer.from(value, 'base64').length === 32)
+      .optional(),
+    AI_CONVERSATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(90),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     WORKER_PORT: z.coerce.number().default(4312),
     API_URL: z.url().default('http://localhost:4311'),

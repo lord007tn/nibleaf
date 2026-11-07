@@ -3,6 +3,7 @@ import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
 
+import { AI_CHAT_LIMITS } from './ai-chat';
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
 import { themeConfigSchema } from './themes';
 
@@ -97,28 +98,59 @@ const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) })
 
 export const SEARCH_MAX_RESULTS = { default: 12, min: 1, max: 50 } as const;
 
+/** Where readers can get human help when the docs do not answer. */
+export const aiSupportUrlSchema = z
+  .string()
+  .trim()
+  .max(500)
+  .regex(/^(?:https?:\/\/|mailto:)/i, 'Use an https:// link or a mailto: address.');
+
+export const aiStarterQuestionsSchema = z
+  .array(z.string().trim().min(AI_CHAT_LIMITS.starterQuestionMin).max(AI_CHAT_LIMITS.starterQuestionMax))
+  .max(AI_CHAT_LIMITS.starterQuestionsMax);
+
 /** Resolved, provider-neutral controls used by both the dashboard and MCP.
  * `placeholder` deliberately has no default here: the published UI falls back
  * to its active-language Paraglide copy when the project has not authored one. */
+const searchConfigurationFields = {
+  maxResults: z.number().int().min(SEARCH_MAX_RESULTS.min).max(SEARCH_MAX_RESULTS.max),
+  filtersEnabled: z.boolean(),
+  versionFilterEnabled: z.boolean(),
+  aiAnswers: z.boolean(),
+  aiProvider: aiSelectionSchema,
+  /** Save reader questions/answers (redacted, retention-bounded) for the AI
+   * conversations dashboard. Visitor consent still applies per request. */
+  aiConversationCapture: z.boolean(),
+  /** Suggested first questions in the site's default language. */
+  aiStarterQuestions: aiStarterQuestionsSchema,
+  hotkey: z.enum(['cmdk', 'slash']),
+};
+
 export const searchConfigurationSchema = z
   .object({
-    maxResults: z.number().int().min(SEARCH_MAX_RESULTS.min).max(SEARCH_MAX_RESULTS.max).default(SEARCH_MAX_RESULTS.default),
-    filtersEnabled: z.boolean().default(true),
-    versionFilterEnabled: z.boolean().default(true),
-    aiAnswers: z.boolean().default(false),
-    aiProvider: aiSelectionSchema.default('instance'),
-    hotkey: z.enum(['cmdk', 'slash']).default('cmdk'),
+    maxResults: searchConfigurationFields.maxResults.default(SEARCH_MAX_RESULTS.default),
+    filtersEnabled: searchConfigurationFields.filtersEnabled.default(true),
+    versionFilterEnabled: searchConfigurationFields.versionFilterEnabled.default(true),
+    aiAnswers: searchConfigurationFields.aiAnswers.default(false),
+    aiProvider: searchConfigurationFields.aiProvider.default('instance'),
+    aiConversationCapture: searchConfigurationFields.aiConversationCapture.default(true),
+    aiStarterQuestions: searchConfigurationFields.aiStarterQuestions.default([]),
+    aiSupportUrl: aiSupportUrlSchema.optional(),
+    hotkey: searchConfigurationFields.hotkey.default('cmdk'),
     placeholder: z.string().trim().max(80).optional(),
   })
   .strict();
 export type SearchConfiguration = z.infer<typeof searchConfigurationSchema>;
 
-/** A settings mutation is partial. `null` clears authored placeholder copy so
- * each active language returns to the localized Paraglide site default. */
-export const updateProjectSearchConfigurationBody = searchConfigurationSchema
-  .omit({ placeholder: true })
+/** A settings mutation is partial: only the fields sent change. It is built
+ * from the fields without their defaults, because Zod 4 applies `.default()`
+ * inside `.partial()`, which would reset every omitted setting. `null` clears
+ * authored placeholder copy (each language returns to its localized default)
+ * and the support link. */
+export const updateProjectSearchConfigurationBody = z
+  .object(searchConfigurationFields)
   .partial()
-  .extend({ placeholder: z.string().trim().max(80).nullable().optional() })
+  .extend({ placeholder: z.string().trim().max(80).nullable().optional(), aiSupportUrl: aiSupportUrlSchema.nullable().optional() })
   .strict();
 export type UpdateProjectSearchConfigurationBody = z.infer<typeof updateProjectSearchConfigurationBody>;
 
@@ -314,6 +346,9 @@ export const projectConfigSchema = z
         versionFilterEnabled: z.boolean().optional(),
         aiAnswers: z.boolean().optional(),
         aiProvider: aiSelectionSchema.optional(),
+        aiConversationCapture: z.boolean().optional(),
+        aiStarterQuestions: aiStarterQuestionsSchema.optional(),
+        aiSupportUrl: aiSupportUrlSchema.optional(),
       })
       .strict()
       .optional(),
@@ -1257,3 +1292,4 @@ export const gitConflictResolutionBody = z
 export type GitConflictResolutionBody = z.infer<typeof gitConflictResolutionBody>;
 
 export * from './ai';
+export * from './ai-chat';

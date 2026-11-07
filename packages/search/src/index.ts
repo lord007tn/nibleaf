@@ -4,6 +4,8 @@ import { keys } from './keys';
 
 export * from './analytics';
 export * from './answer';
+export * from './answer-chat';
+export * from './answer-validation';
 export { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 export * from './hybrid';
 export * from './providers';

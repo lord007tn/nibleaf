@@ -19,7 +19,6 @@ vi.mock('./site-search-dialog', async (importOriginal) => {
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ navigate: vi.fn() }) }));
 vi.mock('@/hooks/api/site-search', () => ({
   useSiteSearch: () => ({ data: [], isFetching: false, error: null }),
-  useAnswerSite: () => ({ mutate: vi.fn(), variables: undefined, isPending: false, data: null, error: null }),
 }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [value] }));

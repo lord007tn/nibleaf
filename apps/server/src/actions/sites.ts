@@ -656,30 +656,39 @@ export const searchSite = async (
   };
 };
 
+/** Reader-scoped grounded-answer context shared by one-shot answers and chat.
+ * Tenant, deployment, version, language, visibility and page grants all come
+ * from the server-resolved publication; the caller can only choose among the
+ * published languages/versions, never widen the reader's scope. */
+export const resolvePublishedAnswerContext = async (identifier: string, lang?: string, version?: string) => {
+  const { snapshot, deploymentId, viewer } = await getPublished(identifier);
+  const request = resolvePublishedSearchContext(snapshot, { language: lang, version });
+  const available = request.configuration.aiAnswers && (await answerSearchAvailable(snapshot.project.id, deploymentId));
+  const scope: SearchScope = {
+    projectId: snapshot.project.id,
+    deploymentId,
+    versionSlug: request.version.slug,
+    language: request.language,
+    visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
+    allowedPageIds: viewer.allowedPageIds,
+  };
+  // `snapshot.pages` is already filtered to the reader's grants.
+  return { snapshot, deploymentId, request, scope, available, versionPages: pagesForVersion(snapshot, request.version) };
+};
+
 /** Grounded answer mode uses the exact same server-derived publication and
  * reader scope as results mode. The client cannot submit any tenant/page filter. */
 export const answerSite = async (identifier: string, query: string, lang?: string, version?: string) => {
-  const { snapshot, deploymentId, viewer } = await getPublished(identifier);
-  const request = resolvePublishedSearchContext(snapshot, { language: lang, version });
-  if (!request.configuration.aiAnswers || !(await answerSearchAvailable(snapshot.project.id, deploymentId))) {
+  const { snapshot, scope, available } = await resolvePublishedAnswerContext(identifier, lang, version);
+  if (!available) {
     throw new AppError({ code: 'search:unavailable', message: 'AI answers are not ready for this workspace.' });
   }
-  const activeLanguage = request.language;
-  const docsVersion = request.version;
   const quota = await consumeAnswerQuota(snapshot.project.id).catch((cause) => {
     throw new AppError({ code: 'search:unavailable', message: 'AI answer quota service is unavailable.', cause });
   });
   if (!quota.allowed) {
     throw new AppError({ code: 'http:rate_limited', message: 'This site has reached its daily AI answer quota.' });
   }
-  const scope: SearchScope = {
-    projectId: snapshot.project.id,
-    deploymentId,
-    versionSlug: docsVersion.slug,
-    language: activeLanguage,
-    visibility: (snapshot.project as PublicSnapshotProject).accessMode === 'PUBLIC' ? 'public' : 'private',
-    allowedPageIds: viewer.allowedPageIds,
-  };
   const answer = await answerPublishedSearch(scope, query, getContext<HonoEnv>().req.raw.signal).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
@@ -727,7 +736,7 @@ export const getSiteChangelogRss = async (identifier: string): Promise<SiteTextD
 };
 
 /** Classify a User-Agent into a coarse device bucket for the analytics breakdown. */
-const deviceFromUserAgent = (ua: string | null): string => {
+export const deviceFromUserAgent = (ua: string | null): string => {
   if (!ua) {
     return 'unknown';
   }

@@ -7,7 +7,9 @@ import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from 
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
-import { DocumentationReaderLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
+import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
+import { ChatSearchBridge, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
+import { DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
 import { MobileNav, type MobileNavChoice } from '@/components/site/mobile-nav';
@@ -35,7 +37,7 @@ import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
   // The active language lives in the URL so it survives reloads and is shareable.
-  validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined) }).parse(search),
+  validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined), ask: askSearchSchema }).parse(search),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // Version changes explicitly invalidate this shell; ordinary page clicks reuse it.
   shouldReload: false,
@@ -88,7 +90,7 @@ function LinkedinIcon({ className }: { className?: string }) {
 
 function SiteChrome() {
   const { projectId } = Route.useParams();
-  const { lang } = Route.useSearch();
+  const { lang, ask } = Route.useSearch();
   const { site } = Route.useLoaderData();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
@@ -437,7 +439,17 @@ function SiteChrome() {
           {t('skipToContent')}
         </a>
         <SiteReaderContext.Provider value={readerContext}>
-          <DocumentationReaderLayout
+          <SiteChatReaderLayout
+            chat={{
+              projectId,
+              available: site?.capabilities?.answer === true,
+              lang: activeLanguage?.code,
+              defaultLanguage,
+              direction: isRtl ? 'rtl' : 'ltr',
+              version: activeVersionPrefix,
+              config,
+              ask,
+            }}
             banner={<SiteBanner projectId={projectId} banner={config?.banner} lang={activeLanguage?.code} nonce={router.options.ssr?.nonce} />}
             header={
               // Header block (main row + optional tab row) sticks as one unit.
@@ -704,22 +716,26 @@ function SiteChrome() {
             overlays={
               <>
                 {showSearch ? (
-                  <SiteSearch
-                    projectId={projectId}
-                    open={searchOpen}
-                    onOpenChange={setSearchOpen}
-                    lang={activeLanguage?.code}
-                    defaultLanguage={defaultLanguage}
-                    direction={isRtl ? 'rtl' : 'ltr'}
-                    version={activeVersionPrefix}
-                    placeholder={config?.search?.placeholder}
-                    hotkey={searchHotkey}
-                    maxResults={config?.search?.maxResults}
-                    versions={versions}
-                    versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
-                    aiAnswers={site?.capabilities?.answer === true}
-                    suggestions={searchSuggestions}
-                  />
+                  <ChatSearchBridge>
+                    {(onAskAi) => (
+                      <SiteSearch
+                        onAskAi={onAskAi}
+                        projectId={projectId}
+                        open={searchOpen}
+                        onOpenChange={setSearchOpen}
+                        lang={activeLanguage?.code}
+                        defaultLanguage={defaultLanguage}
+                        direction={isRtl ? 'rtl' : 'ltr'}
+                        version={activeVersionPrefix}
+                        placeholder={config?.search?.placeholder}
+                        hotkey={searchHotkey}
+                        maxResults={config?.search?.maxResults}
+                        versions={versions}
+                        versionFilterEnabled={config?.search?.versionFilterEnabled !== false}
+                        suggestions={searchSuggestions}
+                      />
+                    )}
+                  </ChatSearchBridge>
                 ) : null}
                 <SiteAnalyticsConsent projectId={projectId} config={config} lang={activeLanguage?.code} />
               </>

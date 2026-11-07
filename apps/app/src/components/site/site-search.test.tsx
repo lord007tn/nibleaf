@@ -6,14 +6,13 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   navigate: vi.fn(),
-  answer: vi.fn(),
-  mutate: vi.fn(),
+  askAi: vi.fn(),
   refetch: vi.fn(),
   debounced: undefined as string | undefined,
   realLabels: false,
 }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ navigate: mocks.navigate }) }));
-vi.mock('@/hooks/api/site-search', () => ({ useSiteSearch: mocks.search, useAnswerSite: mocks.answer }));
+vi.mock('@/hooks/api/site-search', () => ({ useSiteSearch: mocks.search }));
 vi.mock('@/providers/site-analytics-provider', () => ({ useSiteAnalytics: () => ({ track: vi.fn() }) }));
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [mocks.debounced ?? value] }));
 vi.mock('@nibleaf/i18n/site', async (importOriginal) => {
@@ -51,10 +50,10 @@ const suggestions = [
   { title: 'Installation', path: 'installation' },
 ];
 
-// Load the lazy dialog and answer chunks up front: a cold import under a busy
-// runner can outlast `vi.dynamicImportSettled()` and leave the dialog unrendered.
+// Load the lazy dialog chunk up front: a cold import under a busy runner can
+// outlast `vi.dynamicImportSettled()` and leave the dialog unrendered.
 beforeAll(async () => {
-  await Promise.all([import('./site-search-dialog'), import('./site-search-answer')]);
+  await import('./site-search-dialog');
 });
 
 beforeEach(() => {
@@ -71,7 +70,6 @@ beforeEach(() => {
   mocks.debounced = undefined;
   mocks.realLabels = false;
   mocks.search.mockReturnValue({ data: [], isFetching: false, error: null, refetch: mocks.refetch });
-  mocks.answer.mockReturnValue({ mutate: mocks.mutate, variables: undefined, isPending: false, data: null, error: null });
 });
 
 afterEach(async () => {
@@ -85,7 +83,7 @@ async function render(overrides: Partial<Parameters<typeof SiteSearch>[0]> = {})
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
-  const props = { projectId: 'docs', open: true, onOpenChange: vi.fn(), aiAnswers: true, lang: 'en', ...overrides };
+  const props = { projectId: 'docs', open: true, onOpenChange: vi.fn(), onAskAi: mocks.askAi, lang: 'en', ...overrides };
   const rerender = (next: Partial<Parameters<typeof SiteSearch>[0]> = {}) => act(async () => root.render(<SiteSearch {...props} {...next} />));
   await rerender();
   await act(async () => {
@@ -121,7 +119,7 @@ const select = async (text: string) => {
 };
 
 describe('published reader search', () => {
-  it('opens with the shortcut before loading the dialog and keeps the answer view when reopened', async () => {
+  it('opens with the shortcut before loading the dialog and hands a question to the assistant', async () => {
     const { props, rerender } = await render({ open: false });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     await act(async () => {
@@ -134,9 +132,8 @@ describe('published reader search', () => {
     });
     await typeQuery('How do I start?');
     await select('searchAskAiAbout');
-    await rerender({ open: false });
-    await rerender({ open: true });
-    expect(document.body.textContent).toContain('searchBackToResults');
+    expect(mocks.askAi).toHaveBeenCalledExactlyOnceWith('How do I start?');
+    expect(props.onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
   it.each([
@@ -146,7 +143,7 @@ describe('published reader search', () => {
   ])('names the combobox and controlled result list in %s, independently of a custom placeholder', async (lang, label, results) => {
     mocks.realLabels = true;
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-    await render({ lang, placeholder: 'Custom site prompt', aiAnswers: false });
+    await render({ lang, placeholder: 'Custom site prompt', onAskAi: undefined });
     const field = document.querySelector<HTMLInputElement>('[role="combobox"]');
     const list = document.querySelector('[role="listbox"]');
     expect(document.getElementById(field?.getAttribute('aria-labelledby') ?? '')?.textContent).toBe(label);
@@ -209,36 +206,6 @@ describe('published reader search', () => {
     expect(document.body.textContent).not.toContain('Setup guide');
   });
 
-  it('shows the answer button working while an answer loads', async () => {
-    const { rerender } = await render();
-    await typeQuery('How do I start?');
-    await select('searchAskAiAbout');
-    expect(mocks.mutate).toHaveBeenCalledOnce();
-    // Pressing Answer keeps focus in the dialog, though the button is disabled while it loads.
-    const answerButton = [...document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')].find((button) =>
-      button.textContent?.includes('answer'),
-    );
-    await act(async () => {
-      answerButton?.focus();
-      answerButton?.click();
-    });
-    expect(document.activeElement).toBe(input());
-    expect(mocks.mutate).toHaveBeenCalledTimes(2);
-    mocks.answer.mockReturnValue({
-      mutate: mocks.mutate,
-      variables: { projectId: 'docs', query: 'How do I start?', language: 'en' },
-      isPending: true,
-      data: undefined,
-      error: null,
-    });
-    await rerender();
-    const answer = [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent?.includes('answer'));
-    expect(answer?.getAttribute('aria-busy')).toBe('true');
-    expect(answer?.textContent).toContain('checking');
-    expect(status()).toBe('checking');
-    expect(answer?.parentElement?.closest('[aria-busy="true"]')?.querySelector('[data-slot="skeleton-text"]')).not.toBeNull();
-  });
-
   it('keeps the last results dimmed and inert while the next query loads, and drops them when the input is cleared', async () => {
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
     await render();
@@ -258,7 +225,7 @@ describe('published reader search', () => {
     expect(option('searchAskAiAbout')?.getAttribute('aria-disabled')).toBe('true');
     expect(options().some((item) => item.getAttribute('aria-selected') === 'true')).toBe(false);
     await press('Enter');
-    expect(mocks.mutate).not.toHaveBeenCalled();
+    expect(mocks.askAi).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toContain('searchBackToResults');
     // A question still starts on "Ask AI".
     await typeQuery('How do I bill?');
@@ -435,7 +402,7 @@ describe('published reader search', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
-  it('announces the highlighted row again after reopening search and after leaving the answer view', async () => {
+  it('announces the highlighted row again after reopening search', async () => {
     const first = { ...hit, id: 'first', path: 'first', title: 'First guide' };
     const second = { ...hit, id: 'second', path: 'second', title: 'Second guide' };
     mocks.search.mockReturnValue({ data: [first, second], isFetching: false, error: null });
@@ -450,13 +417,6 @@ describe('published reader search', () => {
     // Reopening starts again on the best match, and that is what is announced.
     expect(selected()?.textContent).toContain('First guide');
     expect(announced()).toBe(selected()?.id);
-    // Back from the answer view: the highlighted row is the announced one.
-    await typeQuery('How do I start?');
-    await select('searchAskAiAbout');
-    const back = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('searchBackToResults'));
-    await act(async () => back?.click());
-    expect(selected()?.textContent).toContain('searchAskAiAbout');
-    expect(announced()).toBe(selected()?.id);
   });
 
   it('offers "Ask AI" above the loading rows while a question\'s first results load', async () => {
@@ -469,7 +429,7 @@ describe('published reader search', () => {
     expect(skeleton).not.toBeNull();
     expect(ask && skeleton ? ask.compareDocumentPosition(skeleton) & Node.DOCUMENT_POSITION_FOLLOWING : 0).toBeTruthy();
     await press('Enter');
-    expect(mocks.mutate).toHaveBeenCalledOnce();
+    expect(mocks.askAi).toHaveBeenCalledExactlyOnceWith('How do I start?');
   });
 
   it('hands the question to an external assistant from results and from an empty result', async () => {
@@ -480,7 +440,6 @@ describe('published reader search', () => {
     await select('searchAskAiAbout');
     expect(onAskAi).toHaveBeenCalledExactlyOnceWith('How do I start?');
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
-    expect(mocks.mutate).not.toHaveBeenCalled();
     mocks.search.mockReturnValue({ data: [], isFetching: false, error: null });
     await rerender();
     expect(document.body.textContent).toContain('searchNoResultsFor');
@@ -488,105 +447,23 @@ describe('published reader search', () => {
     expect(onAskAi).toHaveBeenCalledTimes(2);
   });
 
-  it('offers no AI row when neither built-in answers nor an assistant are available', async () => {
+  it('offers no AI row without an assistant', async () => {
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-    await render({ aiAnswers: false });
+    await render({ onAskAi: undefined });
     await typeQuery('setup');
     expect(option('searchAskAiAbout')).toBeUndefined();
   });
 
-  it('asks the built-in answer view immediately and submits again with Enter', async () => {
-    mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-    await render();
-    await typeQuery('How do I start?');
-    await select('searchAskAiAbout');
-    expect(mocks.mutate).toHaveBeenCalledExactlyOnceWith({ projectId: 'docs', query: 'How do I start?', language: 'en' });
-    await press('Enter');
-    expect(mocks.mutate).toHaveBeenCalledTimes(2);
-    const back = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('searchBackToResults'));
-    await act(async () => back?.click());
-    expect(option('Setup guide')).toBeDefined();
-  });
-
-  it.each(['en', 'ar', 'he', 'fa', 'ur', 'ar-SA', 'he-IL', 'fa-IR', 'ur-PK'])(
-    'lays out the dialog and answer view in the direction of %s',
-    async (lang) => {
-      await render({ lang });
-      await typeQuery('How do I start?');
-      await select('searchAskAiAbout');
-      const expected = lang === 'en' ? 'ltr' : 'rtl';
-      expect(document.querySelector('[role="dialog"]')?.getAttribute('dir')).toBe(expected);
-      expect(document.querySelector('section[aria-labelledby]')?.getAttribute('dir')).toBe(expected);
-    },
-  );
-
-  it('honors the published language direction without changing the requested answer language', async () => {
-    await render({ lang: 'en', direction: 'rtl' });
-    await typeQuery('How do I start?');
-    await select('searchAskAiAbout');
-    expect(document.querySelector('section[aria-labelledby]')?.getAttribute('dir')).toBe('rtl');
-    expect(mocks.mutate).toHaveBeenCalledWith({ projectId: 'docs', query: 'How do I start?', language: 'en' });
-  });
-
-  it('returns to keyword search if AI answers are disabled while the answer view is open', async () => {
-    const { rerender } = await render();
-    await typeQuery('setup');
-    await select('searchAskAiAbout');
-    expect(document.body.textContent).toContain('searchBackToResults');
-    await rerender({ aiAnswers: false });
-    expect(document.body.textContent).not.toContain('searchBackToResults');
-    expect(document.body.textContent).toContain('searchNoResultsFor');
-  });
-
-  it.each(['query', 'language', 'version'])('hides AI answers and citations when their %s scope changes', async (scope) => {
-    mocks.answer.mockReturnValue({
-      mutate: mocks.mutate,
-      variables: { projectId: 'docs', query: 'setup', language: 'en' },
-      isPending: false,
-      data: {
-        answer: 'The saved answer [S1].',
-        citations: [{ id: 'S1', path: 'setup', title: 'Saved source', snippet: 'Evidence', direction: 'ltr' }],
-      },
-      error: null,
-    });
-    const { rerender } = await render();
-    await typeQuery('setup');
-    await select('searchAskAiAbout');
-    expect(document.body.textContent).toContain('The saved answer');
-    expect(document.body.textContent).toContain('Saved source');
-    if (scope === 'query') await typeQuery('billing');
-    else await rerender(scope === 'language' ? { lang: 'ar' } : { version: 'v2' });
-    expect(document.body.textContent).not.toContain('The saved answer');
-    expect(document.body.textContent).not.toContain('Saved source');
-  });
-
-  it('renders answer formatting and code while keeping model HTML and remote links inert', async () => {
-    mocks.answer.mockReturnValue({
-      mutate: mocks.mutate,
-      variables: { projectId: 'docs', query: 'setup', language: 'en' },
-      isPending: false,
-      data: {
-        answer:
-          '**Configure storage** [S1]\n\n```sh\nAPI_URL=http://localhost:4311\n```\n\n[Untrusted link](https://example.invalid/collect) <img src="https://example.invalid/pixel">',
-        citations: [{ id: 'S1', path: 'setup', title: 'Setup', snippet: 'Evidence', direction: 'ltr' }],
-      },
-      error: null,
-    });
-    await render();
-    await typeQuery('setup');
-    await select('searchAskAiAbout');
-    expect(document.querySelector('strong')?.textContent).toBe('Configure storage');
-    expect(document.querySelector('pre code')?.textContent).toContain('API_URL=http://localhost:4311');
-    expect(document.querySelector('pre')?.getAttribute('dir')).toBe('ltr');
-    expect(document.querySelector('img[src*="example.invalid"]')).toBeNull();
-    expect(document.querySelector('a[href*="example.invalid"]')).toBeNull();
-    expect(document.querySelector('a[href*="setup"]')).not.toBeNull();
+  it.each(['en', 'ar', 'he', 'fa', 'ur', 'ar-SA', 'he-IL', 'fa-IR', 'ur-PK'])('lays out the dialog in the direction of %s', async (lang) => {
+    await render({ lang });
+    const expected = lang === 'en' ? 'ltr' : 'rtl';
+    expect(document.querySelector('[role="dialog"]')?.getAttribute('dir')).toBe(expected);
   });
 
   it('shows the matching section under its page and links straight to the heading', async () => {
     window.history.replaceState(null, '', '/sites/docs/start');
     mocks.search.mockReturnValue({ data: [sectionHit], isFetching: false, error: null });
-    await render({ aiAnswers: false, defaultLanguage: 'en' });
+    await render({ onAskAi: undefined, defaultLanguage: 'en' });
     await typeQuery('refund');
     expect(options().map((item) => item.textContent)).toEqual([expect.stringContaining('Billing'), expect.stringContaining('Refunds')]);
     expect(option('Refunds')?.textContent).toContain('We refund it.');
@@ -601,7 +478,7 @@ describe('published reader search', () => {
       isFetching: false,
       error: null,
     });
-    await render({ aiAnswers: false, lang: 'ar' });
+    await render({ onAskAi: undefined, lang: 'ar' });
     await typeQuery('الغاء');
     expect(document.querySelector('[role="option"] mark')?.textContent).toBe('إِلْغَاء');
   });
@@ -659,7 +536,7 @@ describe('published reader search', () => {
 
   it('labels a result from another published language', async () => {
     mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar', title: 'دليل الإعداد' }], isFetching: false, error: null });
-    await render({ aiAnswers: false });
+    await render({ onAskAi: undefined });
     await typeQuery('setup');
     expect(option('دليل الإعداد')?.textContent).toContain('العربية');
   });
@@ -667,7 +544,7 @@ describe('published reader search', () => {
   it('remembers searches that led somewhere and lets the reader reuse or clear them', async () => {
     window.history.replaceState(null, '', '/sites/docs/start');
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-    const { rerender } = await render({ aiAnswers: false, suggestions });
+    const { rerender } = await render({ onAskAi: undefined, suggestions });
     await typeQuery('setup');
     await select('Setup guide');
     await typeQuery('');
@@ -685,7 +562,7 @@ describe('published reader search', () => {
 
   it('keeps current results through a background refetch of the same query', async () => {
     mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-    const { rerender } = await render({ aiAnswers: false });
+    const { rerender } = await render({ onAskAi: undefined });
     await typeQuery('setup');
     mocks.search.mockReturnValue({ data: [hit], isFetching: true, error: null });
     await rerender();
@@ -700,7 +577,7 @@ describe('published reader search', () => {
       { id: 'v1', name: 'v1', slug: 'v1', isDefault: false },
     ];
     await render({
-      aiAnswers: false,
+      onAskAi: undefined,
       lang: 'en',
       defaultLanguage: 'en',
       version: 'v1',
@@ -719,7 +596,7 @@ describe('published reader search', () => {
 
   it('suggests pages before typing and when nothing matches', async () => {
     window.history.replaceState(null, '', '/sites/docs/start');
-    const { rerender } = await render({ aiAnswers: false, suggestions, defaultLanguage: 'en' });
+    const { rerender } = await render({ onAskAi: undefined, suggestions, defaultLanguage: 'en' });
     expect(document.body.textContent).toContain('searchSuggested');
     expect(option('Getting started')?.getAttribute('aria-selected')).toBe('true');
     await typeQuery('kubernetes');
@@ -734,7 +611,7 @@ describe('published reader search', () => {
 it('routes a selected search result with its language and selected version', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [{ ...hit, language: 'ar' }], isFetching: false, error: null });
-  await render({ lang: 'ar', version: 'v2', aiAnswers: false });
+  await render({ lang: 'ar', version: 'v2', onAskAi: undefined });
   await typeQuery('Setup');
   const result = document.querySelector<HTMLElement>('[role="option"]');
   if (!result) throw new Error('Missing search result');
@@ -746,7 +623,7 @@ it('routes a selected search result with its language and selected version', asy
 it('keeps default-language search navigation on the clean URL', async () => {
   window.history.replaceState(null, '', '/sites/docs/start');
   mocks.search.mockReturnValue({ data: [hit], isFetching: false, error: null });
-  await render({ lang: 'en', defaultLanguage: 'en', aiAnswers: false });
+  await render({ lang: 'en', defaultLanguage: 'en', onAskAi: undefined });
   await typeQuery('Setup');
   const result = document.querySelector<HTMLElement>('[role="option"]');
   if (!result) throw new Error('Missing search result');

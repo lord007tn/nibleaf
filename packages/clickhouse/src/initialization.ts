@@ -143,6 +143,7 @@ export async function migrateClickHouseSchema(
     try {
       const retention = {
         rawRetentionDays: config.CLICKHOUSE_RAW_RETENTION_DAYS,
+        conversationRetentionDays: config.AI_CONVERSATION_RETENTION_DAYS,
         rollupRetentionDays: config.CLICKHOUSE_ROLLUP_RETENTION_DAYS,
         sensitiveRetentionDays: config.CLICKHOUSE_SENSITIVE_RETENTION_DAYS,
         crawlerRetentionDays: z.coerce

@@ -1,13 +1,16 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
+import { aiStarterQuestionsSchema, aiSupportUrlSchema } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useGetPublicMeta, useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
@@ -60,18 +63,17 @@ export function SearchSection({ project }: { project: Project }) {
 
 /** Default scope: the project-level search config (unchanged). */
 function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDirtyChange?: (dirty: boolean) => void }) {
+  const t = useT();
   const configuration = useProjectSearchConfiguration(project.id);
-  if (configuration.isPending) {
-    return (
-      <div className="space-y-5">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-28 w-full" />
-      </div>
-    );
-  }
+  if (configuration.isPending) return <SearchSettingsSkeleton />;
   if (configuration.isError || !configuration.data) {
-    return <SearchConfigurationError onRetry={() => void configuration.refetch()} />;
+    return (
+      <QueryErrorState
+        description={t('settings.search.configuration.error')}
+        onRetry={() => void configuration.refetch()}
+        retrying={configuration.isFetching}
+      />
+    );
   }
   return (
     <>
@@ -87,14 +89,40 @@ function ProjectSearchForm({ project, onDirtyChange }: { project: Project; onDir
   );
 }
 
-function SearchConfigurationError({ onRetry }: { onRetry: () => void }) {
+/** The search form's first load, shaped like its fields: two inputs, the
+ *  hotkey switch, the toggles, the starter questions and the support link. */
+function SearchSettingsSkeleton() {
   const t = useT();
+  const field = (control: string) => (
+    <div className="mb-6">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="mt-1 mb-2.5 h-3.5 w-2/3" />
+      <Skeleton className={control} />
+    </div>
+  );
+  const toggle = (
+    <div className="mb-6 flex items-center gap-4 rounded-lg border px-4 py-3.5">
+      <div className="flex-1 space-y-1.5">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-3/4" />
+      </div>
+      <Skeleton className="h-5 w-9 rounded-full" />
+    </div>
+  );
   return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm" role="alert">
-      <p className="font-medium text-destructive">{t('settings.search.configuration.error')}</p>
-      <Button className="mt-2 h-auto p-0 text-xs" onClick={onRetry} size="sm" type="button" variant="link">
-        {t('common.retry')}
-      </Button>
+    <div aria-busy="true">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      <div aria-hidden>
+        {field('h-9 w-full')}
+        {field('h-9 w-full')}
+        {field('h-9 w-[200px]')}
+        {toggle}
+        {toggle}
+        {field('h-20 w-full')}
+        {field('h-9 w-full')}
+      </div>
     </div>
   );
 }
@@ -111,6 +139,9 @@ function ProjectSearchConfigurationForm({
     filtersEnabled: boolean;
     versionFilterEnabled: boolean;
     aiAnswers: boolean;
+    aiConversationCapture: boolean;
+    aiStarterQuestions: string[];
+    aiSupportUrl?: string;
     hotkey: Hotkey;
     placeholder: string | null;
   };
@@ -119,12 +150,24 @@ function ProjectSearchConfigurationForm({
 }) {
   const t = useT();
   const update = useUpdateProjectSearchConfiguration(projectId);
+  const [capture, setCapture] = useState(configuration.aiConversationCapture);
+  const [starters, setStarters] = useState(() => configuration.aiStarterQuestions.join('\n'));
+  const starterQuestions = starters
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const startersValid = aiStarterQuestionsSchema.safeParse(starterQuestions).success;
+  const [support, setSupport] = useState(configuration.aiSupportUrl ?? '');
+  const supportValid = !support.trim() || aiSupportUrlSchema.safeParse(support).success;
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
   const { data: publicMeta } = useGetPublicMeta();
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
+    capture !== configuration.aiConversationCapture ||
+    starters !== configuration.aiStarterQuestions.join('\n') ||
+    support.trim() !== (configuration.aiSupportUrl ?? '') ||
     hotkey !== configuration.hotkey ||
     (aiAnswers === 'enabled') !== configuration.aiAnswers ||
     versionFilterEnabled !== configuration.versionFilterEnabled;
@@ -133,6 +176,14 @@ function ProjectSearchConfigurationForm({
   const form = useForm({
     defaultValues,
     onSubmit: async ({ value }) => {
+      if (!startersValid) {
+        toast.error(t('dashboard.ai.startersError'));
+        return;
+      }
+      if (!supportValid) {
+        toast.error(t('dashboard.ai.supportUrlError'));
+        return;
+      }
       const parsedMaxResults = Number.parseInt(value.maxResults, 10);
       try {
         await update.mutateAsync({
@@ -143,10 +194,13 @@ function ProjectSearchConfigurationForm({
             : maxResultsConstraint.default,
           versionFilterEnabled,
           aiAnswers: aiAnswers === 'enabled',
+          aiConversationCapture: capture,
+          aiStarterQuestions: starterQuestions,
+          aiSupportUrl: support.trim() || null,
         });
         toast.success(t('common.saved'));
       } catch {
-        toast.error(t('settings.search.configuration.error'));
+        // The mutation's `meta.errorMessage` reports the failure in plain words.
       }
     },
   });
@@ -221,6 +275,41 @@ function ProjectSearchConfigurationForm({
         </Field>
       ) : null}
 
+      <div className="mb-6 rounded-lg border px-4">
+        <ToggleRow checked={capture} onCheckedChange={setCapture} title={t('dashboard.ai.capture')} hint={t('dashboard.ai.captureHint')} />
+      </div>
+      <Field label={t('dashboard.ai.starters')} hint={t('dashboard.ai.startersHint')}>
+        <Textarea
+          aria-label={t('dashboard.ai.starters')}
+          aria-invalid={!startersValid}
+          dir="auto"
+          value={starters}
+          onChange={(event) => setStarters(event.target.value)}
+        />
+        {!startersValid && (
+          <p role="alert" className="mt-2 text-destructive text-sm">
+            {t('dashboard.ai.startersError')}
+          </p>
+        )}
+      </Field>
+      <Field label={t('dashboard.ai.supportUrl')} hint={t('dashboard.ai.supportUrlHint')}>
+        <Input
+          className={FIELD_INPUT}
+          aria-label={t('dashboard.ai.supportUrl')}
+          aria-invalid={!supportValid}
+          dir="ltr"
+          inputMode="url"
+          placeholder="https://"
+          value={support}
+          onChange={(event) => setSupport(event.target.value)}
+        />
+        {!supportValid && (
+          <p role="alert" className="mt-2 text-destructive text-sm">
+            {t('dashboard.ai.supportUrlError')}
+          </p>
+        )}
+      </Field>
+
       <form.Subscribe selector={(state) => [!state.isDefaultValue, state.values] as const}>
         {([isDirty, values]) => (
           <DirtyStateReporter
@@ -274,7 +363,8 @@ function LanguageSearchForm({
         await update.mutateAsync({ id: language.id, body: { config: { search: placeholder ? { placeholder } : null } } });
         toast.success(t('common.saved'));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : t('settings.saveError'));
+        // Never the server's own wording: it is English and technical.
+        toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
       }
     },
   });

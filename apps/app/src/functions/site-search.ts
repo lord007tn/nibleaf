@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequest } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { getData } from '@/hooks/api/client-helpers';
-import type { SearchAnswer, SiteSearchHit } from '@/hooks/api/types';
+import type { SiteSearchHit } from '@/hooks/api/types';
 import { getSiteSearchAnalytics } from '@/providers/site-analytics-provider';
 import { api } from '@/services/api';
 
@@ -15,8 +15,6 @@ const searchSiteInput = z.object({
   version: z.string().min(1).optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });
-
-const answerSiteInput = searchSiteInput.omit({ limit: true }).extend({ query: z.string().trim().min(2).max(300) });
 
 /** Public reader search stays behind the Hono endpoint so publication lookup,
  * reader grants, rate limiting, analytics, and request cancellation all share
@@ -50,19 +48,3 @@ const performSearchSiteFn = createServerFn({ method: 'GET' })
 /** The query's abort signal cancels the request once the reader has typed past it. */
 export const searchSiteFn = (input: { data: z.input<typeof searchSiteInput>; signal?: AbortSignal }) =>
   performSearchSiteFn({ data: { ...input.data, ...getSiteSearchAnalytics(input.data.projectId) }, signal: input.signal });
-
-export const answerSiteFn = createServerFn({ method: 'POST' })
-  .validator(answerSiteInput)
-  .handler(async ({ data }) =>
-    getData<SearchAnswer>(
-      await api.public.sites[':id'].answer.$post({
-        param: { id: data.projectId },
-        json: {
-          q: data.query,
-          ...(data.language ? { lang: data.language } : {}),
-          ...(data.version ? { version: data.version } : {}),
-        },
-      }),
-      'answer',
-    ),
-  );

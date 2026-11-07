@@ -224,6 +224,136 @@ export const runPublishedSearch = async (
   }
 };
 
+/** Score bonus for chunks from the page the reader asked about. Small enough
+ * that a clearly better match elsewhere in the docs still wins. */
+const PAGE_CONTEXT_BOOST = 0.12;
+/** The reader explicitly asked about this page, so its own chunks are relevant
+ * even when the question ("summarize this") embeds poorly on its own. */
+const PAGE_CONTEXT_MIN_CONFIDENCE = 0.5;
+
+export interface ChatRetrieval {
+  chunks: SearchChunk[];
+  hits: HybridChunkHit[];
+  confidence: number;
+  /** The main retrieval lane was served from the in-process cache. */
+  cacheHit: boolean;
+}
+
+/** A page with this few sections among the results likely matched on one passage
+ * while its other sections fell under the dense threshold (a different wording,
+ * often in Arabic). */
+const THIN_PAGE_SECTIONS = 2;
+/** At most this many thin pages are read in full, the best-scored first. */
+const WIDENED_PAGES = 2;
+/** Thin pages are chosen among the pages of the best-ranked results. */
+const WIDEN_FROM_TOP = 8;
+/** The sections an answer reads (`selectAnswerChunks`' default). */
+const ANSWER_SECTIONS = 12;
+/** The best main results keep their places in the answer, and each widened page
+ * has at most its share of the others, so a weaker thin page with many sections
+ * cannot crowd out a stronger one or the results the question matched. */
+const KEPT_RESULTS = 6;
+const WIDENED_SECTIONS = (ANSWER_SECTIONS - KEPT_RESULTS) / WIDENED_PAGES;
+/** Thin pages among the best-ranked results, the best-scored first: the answer
+ * also reads their other sections. Each is a page the reader may read, since it
+ * came from their own results; `best` is its best main-search score. */
+export const pagesToWiden = (hits: HybridChunkHit[]): { id: string; title: string; best: number }[] => {
+  const pages = new Map<string, { title: string; sections: Set<string>; best: number }>();
+  for (const { chunk, score } of hits) {
+    const page = pages.get(chunk.pageId) ?? { title: chunk.title, sections: new Set<string>(), best: score };
+    page.sections.add(chunk.id);
+    page.best = Math.max(page.best, score);
+    pages.set(chunk.pageId, page);
+  }
+  const top = new Set(hits.slice(0, WIDEN_FROM_TOP).map((hit) => hit.chunk.pageId));
+  return [...pages]
+    .filter(([id, page]) => top.has(id) && page.sections.size <= THIN_PAGE_SECTIONS)
+    .sort(([, left], [, right]) => right.best - left.best)
+    .slice(0, WIDENED_PAGES)
+    .map(([id, page]) => ({ id, title: page.title, best: page.best }));
+};
+
+/** The sections an answer reads when pages were widened, in ranking order: the
+ * best main results, then each widened page's best sections up to its share,
+ * then the rest by score. */
+const widenedAnswerSections = (hits: HybridChunkHit[], main: HybridChunkHit[], pages: string[]): HybridChunkHit[] => {
+  const chosen = new Set(main.slice(0, KEPT_RESULTS).map((hit) => hit.chunk.id));
+  for (const pageId of pages) {
+    const share = hits.filter((hit) => hit.chunk.pageId === pageId && !chosen.has(hit.chunk.id)).slice(0, WIDENED_SECTIONS);
+    for (const hit of share) chosen.add(hit.chunk.id);
+  }
+  for (const hit of hits) if (chosen.size < ANSWER_SECTIONS) chosen.add(hit.chunk.id);
+  return hits.filter((hit) => chosen.has(hit.chunk.id));
+};
+
+type HybridSearch = (
+  scope: SearchScope,
+  query: string,
+  limit: number,
+  signal?: AbortSignal,
+  runtime?: WorkspaceAiRuntime,
+) => Promise<RetrievalResult>;
+
+/** Retrieval for one chat turn. The optional page lane narrows the same
+ * server-derived scope to a single page — it can never widen the reader's
+ * grants: a page outside `allowedPageIds` is simply not searched. Without page
+ * context, thin pages among the best results are read the same way, ranked no
+ * higher than their own best result: they add context, never reorder it. */
+export const retrieveChatContext = async (
+  scope: SearchScope,
+  query: string,
+  runtime: WorkspaceAiRuntime,
+  options: { page?: { id: string; title: string }; signal?: AbortSignal } = {},
+  search: HybridSearch = retrieveHybrid,
+): Promise<ChatRetrieval> => {
+  const page = options.page && (scope.allowedPageIds === null || scope.allowedPageIds.has(options.page.id)) ? options.page : undefined;
+  const pageSearch = (target: { id: string; title: string }) =>
+    search({ ...scope, allowedPageIds: new Set([target.id]) }, `${target.title} ${query}`, 6, options.signal, runtime);
+  const [main, asked] = await Promise.all([search(scope, query, 12, options.signal, runtime), page ? pageSearch(page) : Promise.resolve(null)]);
+  // A turn the main search is not confident about is refused: it reads nothing more.
+  const widen = page || main.confidence < env.SEARCH_ANSWER_MIN_CONFIDENCE ? [] : pagesToWiden(main.chunks);
+  const widened = await Promise.all(widen.map(async (target) => ({ target, lane: await pageSearch(target) })));
+  if (!asked?.chunks.length && !widened.some(({ lane }) => lane.chunks.length)) {
+    return { chunks: selectAnswerChunks(main.chunks), hits: main.chunks, confidence: main.confidence, cacheHit: main.cacheHit };
+  }
+  const merged = new Map<string, HybridChunkHit>();
+  const add = (hit: HybridChunkHit) => {
+    const current = merged.get(hit.chunk.id);
+    if (!current || hit.score > current.score) merged.set(hit.chunk.id, hit);
+  };
+  for (const hit of main.chunks) add(hit);
+  // The page the reader asked about is relevant by their choice.
+  for (const hit of asked?.chunks ?? []) add({ ...hit, score: hit.score + PAGE_CONTEXT_BOOST });
+  // A widened page's other sections sit just under its own best result, in the
+  // page lane's order: their scores come from a query with the page title added,
+  // so they are not comparable with the main search.
+  for (const { target, lane } of widened)
+    for (const [index, hit] of lane.chunks.entries()) add({ ...hit, score: Math.min(hit.score, target.best) - (index + 1) * 1e-6 });
+  const hits = [...merged.values()].sort((left, right) => right.score - left.score || left.chunk.id.localeCompare(right.chunk.id));
+  const read = widen.length
+    ? widenedAnswerSections(
+        hits,
+        main.chunks,
+        widen.map((target) => target.id),
+      )
+    : hits;
+  return {
+    chunks: selectAnswerChunks(read, ANSWER_SECTIONS),
+    hits,
+    // Asked from the page, its passages are relevant by the reader's choice; a
+    // widened page keeps the confidence of the search that found it.
+    confidence: page ? Math.max(retrievalConfidence(hits), PAGE_CONTEXT_MIN_CONFIDENCE) : main.confidence,
+    cacheHit: main.cacheHit,
+  };
+};
+
+/** The live provider runtime for a chat turn, or null when answers are off. */
+export const resolveChatRuntime = async (projectId: string): Promise<WorkspaceAiRuntime | null> => {
+  if (!qdrant) return null;
+  const runtime = await resolveWorkspaceAi(projectId);
+  return runtime?.answersEnabled ? runtime : null;
+};
+
 export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,

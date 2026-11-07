@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Real TanStack Query, fake transport: these tests pin the library behaviour the
 // search dialog relies on (placeholder results, cancellation, retry states).
 const mocks = vi.hoisted(() => ({ search: vi.fn() }));
-vi.mock('@/functions/site-search', () => ({ searchSiteFn: mocks.search, answerSiteFn: vi.fn() }));
+vi.mock('@/functions/site-search', () => ({ searchSiteFn: mocks.search }));
 
 import { useSiteSearch } from './site-search';
 

@@ -1,5 +1,5 @@
-import { keepPreviousData, queryOptions, skipToken, useMutation, useQuery } from '@tanstack/react-query';
-import { answerSiteFn, searchSiteFn } from '@/functions/site-search';
+import { keepPreviousData, queryOptions, skipToken, useQuery } from '@tanstack/react-query';
+import { searchSiteFn } from '@/functions/site-search';
 import { queryKeys } from './query-keys';
 
 interface SiteSearchInput {
@@ -38,9 +38,4 @@ export const useSiteSearch = (siteId: string | undefined, query: string, languag
     enabled,
     // The last results stay on screen (dimmed) while the next query loads.
     placeholderData: keepPreviousData,
-  });
-
-export const useAnswerSite = () =>
-  useMutation({
-    mutationFn: (input: { projectId: string; query: string; language?: string; version?: string }) => answerSiteFn({ data: input }),
   });

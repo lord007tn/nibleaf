@@ -1,3 +1,4 @@
+export * from './ai-conversations';
 export * from './classifiers';
 export * from './client';
 export * from './events';
