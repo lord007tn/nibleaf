@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ArabicShell } from '@/components/marketing/arabic-landing';
+import { ArabicShell } from '@/components/marketing/arabic-shell';
 import { GuidesHub } from '@/components/marketing/guides';
 
 describe('GuidesHub locale shell', () => {

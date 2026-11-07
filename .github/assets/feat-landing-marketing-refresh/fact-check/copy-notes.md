@@ -160,3 +160,15 @@ Evidence keys: **F1–F12** are sections of `facts.md`. `path:line` items are co
 - An `api-reference` key in `MarketingMediaKey` (a capture of an OpenAPI endpoint page with try-it). The api-docs page currently reuses `themes` and `editor`.
 - An optional `media` on `FeatureSection`, or a `media?: MediaRef | null` escape hatch. Some use-case solutions (Git sync, self-hosting) have no fitting capture, so they reuse `dashboard`/`editor`.
 - Optionally, a `readerSearch` entry in `CLOUD_AVAILABILITY` (see item 1 above).
+
+## Round-2 scoring fixes — 2026-11-07
+
+| Claim | Change | Evidence |
+| --- | --- | --- |
+| Reader themes, GitBook import and the reader-data FAQ were presented as part of the self-hosted product | They now carry the same centralized availability note as Ask AI (`copy/availability.ts`: `readerThemes`, `gitbookImport`, `readerAnalytics`). The how-it-works step names only Mintlify import. | `gh release list`: v0.1.2 (2026-08-22) is the latest release, and the installer pins it (`scripts/install.sh`). `git grep -il harbor v0.1.2` finds nothing (themes are #96, #101 and #104). `importers/gitbook.ts` and the ClickHouse search-term pipeline (`storePublicSearchTerms`) are absent from v0.1.2. |
+| "The same open-source product either way" | "One open-source codebase. New features reach the self-hosted release when a version that includes them ships." The Cloud vs self-host FAQ says the same. | `main` is 172 commits ahead of v0.1.2. |
+| "Public pages are listed in llms.txt" | "Indexable public pages…" in English and Arabic. | Pages that are noindex, have external canonicals, or sit on sites or languages with indexing off are excluded: `packages/shared/src/public-markdown.ts:10`, `apps/server/src/lib/llms-txt.ts:19`, `apps/server/src/actions/sites.ts`. |
+| MCP poster frame showed "Set up SAML 2.0 single sign-on between Okta and Nibleaf" | The poster is now the gap-finding frame (frame 14 of #280's `ai-client-journey.gif`). The caption says the demo's product facts, such as the Okta steps, are made up. | Nibleaf has no SAML code (`git grep -i saml origin/main -- apps packages` finds only marketing and comparison copy). |
+| Final CTA paragraph contrast in the light theme (about 4.2:1) | `text-foreground/80` instead of muted grey on the tinted panel. | `packages/design-system/src/styles/globals.css` tokens. |
+| Recording focus | Pressing play moves focus to the video instead of the page body. | `media/marketing-media.tsx`. |
+| Arabic wording | "يصرّح بذلك حين لا يجد إجابة". Reading time is "مدة القراءة: …" with the nominative count. | Reviewer suggestions. |

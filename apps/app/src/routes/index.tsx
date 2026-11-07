@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { LandingPage } from '@/components/cloud-marketing';
 import type { MarketingPageMeta } from '@/components/marketing/copy/landing-meta';
+import { LandingPage } from '@/components/marketing/landing/landing-page';
 import { canonicalHref, getGithubStarsFn, marketingLd, pageMeta } from '@/lib/marketing-seo';
 
 const landingHead = (meta: MarketingPageMeta) => ({

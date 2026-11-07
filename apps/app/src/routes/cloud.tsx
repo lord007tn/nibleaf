@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { CloudPage } from '@/components/cloud-marketing';
+import { CloudPage } from '@/components/marketing/cloud-page';
 import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/cloud')({

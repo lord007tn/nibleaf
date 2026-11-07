@@ -342,7 +342,8 @@ export function LandingView({
       <section className={`${container} pb-16 sm:pb-24`}>
         <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-12 sm:px-12 sm:py-16">
           <h2 className={`max-w-3xl ${title}`}>{copy.finalCta.title}</h2>
-          <p className={`mt-4 ${body}`}>{copy.finalCta.body}</p>
+          {/* Full-strength text: muted grey on the tinted panel falls below 4.5:1 in the light theme. */}
+          <p className="mt-4 max-w-[72ch] text-foreground/80 leading-7">{copy.finalCta.body}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <MarketingLink cta={copy.finalCta.primary} lang={lang} placement="final" className={primaryButton}>
               <ArrowRight aria-hidden="true" className="size-4 rtl:rotate-180" />

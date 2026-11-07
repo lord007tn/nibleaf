@@ -2,11 +2,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
-import { CloudPage, GitHubStarLink, LandingPage } from './cloud-marketing';
-import { ArabicLandingPage } from './marketing/arabic-landing';
+import { GitHubStarLink } from './cloud-marketing';
+import { CloudPage } from './marketing/cloud-page';
 import { availabilityNote, heroAvailabilityNote, isRollingOut } from './marketing/copy/availability';
 import { landingAr } from './marketing/copy/landing.ar';
 import { landingEn } from './marketing/copy/landing.en';
+import { ArabicLandingPage } from './marketing/landing/arabic-landing-page';
+import { LandingPage } from './marketing/landing/landing-page';
 
 function markup(html: string) {
   const root = document.createElement('div');
@@ -105,6 +107,20 @@ describe('availability honesty', () => {
     const caption = heroAvailabilityNote(lang);
     if (caption) expect(root.textContent).toContain(caption);
     expect(root.textContent).toContain(availabilityNote('bringYourOwnKey', lang));
+  });
+
+  it.each([
+    ['en', landingEn, LandingPage],
+    ['ar', landingAr, ArabicLandingPage],
+  ] as const)('qualifies features merged after the latest self-hosted release (%s)', (lang, copy, Page) => {
+    expect(copy.more.items.find((item) => item.icon === 'themes')?.availability).toBe('readerThemes');
+    expect(copy.features.find((candidate) => candidate.id === 'arabic')?.note).toContain(availabilityNote('readerThemes', lang));
+    expect(copy.faq.items.find((item) => item.q.includes('GitBook'))?.a).toContain(availabilityNote('gitbookImport', lang));
+    expect(copy.faq.items.find((item) => /\bIP\b/.test(item.a))?.a).toContain(availabilityNote('readerAnalytics', lang));
+    expect(copy.howItWorks.steps[0]?.body).not.toContain('GitBook');
+    const text = markup(renderToStaticMarkup(<Page />)).textContent ?? '';
+    expect(text).toContain(availabilityNote('readerThemes', lang));
+    expect(text).not.toContain('undefined');
   });
 
   it('keeps capabilities that are still rolling out off the Cloud page', () => {
