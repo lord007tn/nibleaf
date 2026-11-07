@@ -38,5 +38,8 @@ describe('publish redirect explanations', () => {
       expect(html).toMatch(locale === 'ar' ? /[\u0600-\u06ff]/ : /[a-z]/);
     }
     expect(translateFn('publish.editRedirects', undefined, locale)).not.toBe('publish.editRedirects');
+    const hint = translateFn('publish.redirectsBlockedHint', undefined, locale);
+    expect(hint).toContain(translateFn('settings.tab.appearance', undefined, locale));
+    expect(hint).toContain(translateFn('settings.redirects', undefined, locale));
   });
 });

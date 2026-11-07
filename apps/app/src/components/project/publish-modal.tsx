@@ -15,6 +15,7 @@ import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { Link } from '@tanstack/react-router';
 import { ArrowLeft, FileText, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -394,13 +395,15 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                     <RedirectIssue issue={issue} key={`${issue.code}-${issue.rowIndexes.join('-')}-${issue.sequence.join('-')}`} />
                   ))}
                 </ul>
-                <a
+                <Link
                   className="mt-2 inline-flex min-h-11 items-center text-primary text-sm underline"
-                  href={`/app/projects/${encodeURIComponent(project.id)}/settings?section=redirects`}
+                  to="/app/projects/$projectId/settings"
+                  params={{ projectId: project.id }}
+                  search={{ section: 'appearance' }}
                   onClick={() => onOpenChange(false)}
                 >
                   {t('publish.editRedirects')}
-                </a>
+                </Link>
               </div>
             ) : null}
 

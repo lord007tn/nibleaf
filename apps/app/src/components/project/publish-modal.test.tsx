@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api/types';
@@ -13,6 +13,11 @@ const { mutate, showError, preflight, refreshPreflight } = vi.hoisted(() => ({
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('sonner', () => ({ toast: { error: showError } }));
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ to, params, search, ...props }: { to: string; params: { projectId: string }; search: { section: string }; children: ReactNode }) => (
+    <a {...props} href={`${to.replace('$projectId', encodeURIComponent(params.projectId))}?${new URLSearchParams(search)}`} />
+  ),
+}));
 const pendingChange = {
   id: 'page-a',
   title: 'Getting started',
@@ -88,7 +93,7 @@ describe('publish draft barrier', () => {
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     expect(document.body.textContent).toContain('publish.redirectIssue.cycle');
     expect(document.body.textContent).not.toContain('RAW developer');
-    const link = document.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-a/settings?section=redirects"]');
+    const link = document.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-a/settings?section=appearance"]');
     expect(link?.textContent).toBe('publish.editRedirects');
     const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
     expect(publish?.disabled).toBe(true);
