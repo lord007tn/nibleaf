@@ -117,7 +117,8 @@ import searchEnWideLight1280_webp from './assets/search-en-wide-light-1280.webp?
 
 /**
  * Real product captures used on marketing pages, generated from `./assets`.
- * Every file is a screenshot or screen recording of the running app; see the
+ * Every file is a screenshot of the running app, except the MCP recording, which
+ * is rendered from a real session's transcript; see the
  * PR's `.github/assets/<branch>/README.md` for when and how each was captured.
  * Files are imported with `?url`, so Vite emits them content-hashed under
  * `/assets/` (long-lived caching) and only marketing chunks reference them.

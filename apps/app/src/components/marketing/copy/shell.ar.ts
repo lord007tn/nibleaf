@@ -33,7 +33,7 @@ export const shellAr: ShellCopy = {
     starsLabel: (count) => `${arabicStars(count)} على GitHub`,
   },
   footer: {
-    tagline: 'توثيق مفتوح المصدر، بإجابات ذكية وتحليلات للبحث، والعربية فيه لغة أساسية.',
+    tagline: 'منصة توثيق ومركز مساعدة مفتوحة المصدر، والعربية فيها لغة أساسية.',
     openSource: {
       badge: 'مفتوح المصدر · AGPL-3.0',
       heading: 'وثائق تملكها أنت.',

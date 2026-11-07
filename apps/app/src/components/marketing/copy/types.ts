@@ -136,7 +136,7 @@ export interface LandingCopy {
     title: string;
     body: string;
     /** `availability` marks a capability that is still rolling out; its note renders with the item and Cloud-only lists leave it out. */
-    items: { icon: MarketingIcon; title: string; body: string; availability?: RolloutCapability }[];
+    items: { icon: MarketingIcon; title: string; body: string; availability?: RolloutCapability; deploymentDependent?: true }[];
   };
   howItWorks: {
     eyebrow: string;

@@ -1,5 +1,7 @@
 # Copy notes: landing, shell and use-case pages (2026-11-07)
 
+> **Status.** The sections before "Round-2 scoring fixes" record the first draft, which also covered the use-case pages now in #336. Where a later round changed a claim, the later section wins. The landing title, for example, changed in round 3.
+
 Files written (copy agent):
 
 - `apps/app/src/components/marketing/copy/landing.en.ts`, `landing.ar.ts`
@@ -184,3 +186,14 @@ Evidence keys: **F1–F12** are sections of `facts.md`. `path:line` items are co
 | The Cloud vs self-host FAQ opened "It's the same open-source product" | "It's one open-source codebase." | Matches the paths section |
 | `/cloud` claimed "automatic upgrades, custom domains, analytics", and its code comment said "live on Cloud" | "upgrades handled for you"; custom domains and analytics removed from the hero and the route description. The comment now says it omits capabilities still rolling out. | Cloud is a manual, pinned deploy, and its feature set is unverified (A14 and A15 above) |
 | `/cloud` intro contrast in the light theme (about 4.2:1) | `text-foreground/80` | Same tokens as the final CTA fix |
+
+## Round-4 scoring fixes — 2026-11-07
+
+| Claim | Change | Evidence |
+| --- | --- | --- |
+| `/cloud` listed "Custom domains" and "GitHub two-way sync" under "What you get on Nibleaf Cloud" | Both items are now `deploymentDependent`, so `/cloud` leaves them out; the landing page still lists them, since every install has them. The test rejects either phrase on `/cloud`. | `facts.md` F12: Cloud custom-domain provisioning is deployment-dependent. F9: Git sync needs a configured provider app and webhooks. |
+| Hero subtitle, assurances and caption on the tinted gradient (about 4.2–4.4:1) | `text-foreground/80` for the subtitle and `/70` for the small text | Computed from the tokens: `#737373` on 2–5 % `primary` over `#fafafa` gives 4.23–4.42:1, `foreground/70` gives 7.3:1 |
+| Footer tagline on every page: "AI answers, search insights" | "Open-source documentation and help center, with first-class Arabic." | Same release rule; the footer also renders on `/cloud` |
+| Arabic Full admin preset | «صلاحيات مشرف كاملة», the product label on `main` (#318/#319) | `settings_apikeys_full_admin` |
+| Language switch on English pages without an Arabic twin | The accessible name is «Nibleaf بالعربية» instead of «اقرأ هذه الصفحة بالعربية», because the link goes to `/ar` | `MarketingShell` sets `alternateHref="/ar"` |
+| Manifest comment | It now says the MCP asset is rendered from a session transcript | `media/manifest.ts` |
