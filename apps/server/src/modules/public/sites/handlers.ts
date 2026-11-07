@@ -31,9 +31,9 @@ import sitesRoutes from './routes';
 const siteQuery = z.object({ lang: z.string().optional(), version: z.string().optional() });
 const pageQuery = z.object({ path: z.string().default(''), lang: z.string().optional(), version: z.string().optional() });
 const siteSearchQuery = searchQuery.extend({
-  lang: z.string().optional(),
+  lang: z.string().max(35).optional(),
   // The reader's language: ranks it first without narrowing the search to it.
-  prefer: z.string().optional(),
+  prefer: z.string().max(35).optional(),
   version: z.string().optional(),
   sessionId: z.string().max(128).optional(),
   consentState: consentStateSchema.default('unknown'),

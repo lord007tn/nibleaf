@@ -27,8 +27,6 @@ import { Route as SplatRoute } from './$';
 import { Route as ChangelogRoute } from './changelog';
 import { Route as SiteRoute } from './route';
 
-vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
-
 const shell: SiteShell = {
   project: { id: 'docs', name: 'Acme Docs', slug: 'docs', description: null, config: null, primaryDomain: null },
   nav: [],
@@ -55,6 +53,8 @@ const routeTree = rootRoute.addChildren([siteRoute.addChildren([changelogRoute, 
 let root: Root | undefined;
 
 beforeEach(() => {
+  // Each test re-arms React's act environment: afterEach unstubs every global.
+  vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   Element.prototype.getAnimations = vi.fn(() => []);
   vi.stubGlobal(
     'ResizeObserver',
@@ -157,7 +157,10 @@ describe('reader language and access', () => {
     );
     const container = await renderReader('/sites/docs/guide?lang=ar', 'h1');
     expect(container.querySelector('h1')?.textContent).toBe('هذا التوثيق خاص');
-    // The screen's copy loads on demand.
+    // The screen's copy loads on demand: let the lazy chunk resolve and React commit it.
+    await act(async () => {
+      await vi.dynamicImportSettled();
+    });
     await vi.waitFor(() => expect(container.querySelector('a[href="/sign-in"]')).not.toBeNull());
     expect(container.textContent).toContain('افتح رابط الدعوة');
     expect(container.textContent).not.toContain('المحرر');
