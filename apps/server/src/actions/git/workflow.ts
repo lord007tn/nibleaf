@@ -16,7 +16,7 @@ import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
 import { serializeGitPage } from '../importers/content';
 import { getDefaultLanguage } from '../languages';
-import { applyGitContentChanges, type GitApplyConflict, GitApplyConflictError, type GitContentChange, type ObservedPage } from './apply';
+import { applyGitContentChanges, GitApplyConflictError, type GitContentChange, type ObservedPage } from './apply';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { GitHubProvider } from './github';
 import { conflictSnapshotMatches, reconcileOwnedFile, repositoryOurs } from './reconcile';
@@ -490,10 +490,9 @@ const MAX_EDIT_REQUEUES = 3;
 const EDIT_REQUEUE_BASE_DELAY_MS = 5000;
 
 /**
- * The apply rolled back because pages changed after the merge read them, or
- * because a deletion would also remove pages under it. Re-read those pages and
- * record conflicts for the writer where they now really conflict with Git
- * (always, for a deletion's subtree); otherwise run the operation again, with
+ * The apply rolled back because pages changed after the merge read them.
+ * Re-read those pages and record conflicts for the writer where they now
+ * really conflict with Git; otherwise run the operation again, with
  * backoff and a small cap so a constantly edited page cannot loop it against
  * the provider. A PUSH that already updated the remote branch forgets its
  * commit, so the next run commits only what is still new.
@@ -502,16 +501,16 @@ const surfaceConcurrentEdits = async (
   operation: { id: string; kind: string; requestedById: string | null },
   connection: { id: string; projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
   entries: MergeEntry[],
-  applyConflicts: GitApplyConflict[],
+  paths: string[],
   remoteBranchUpdated: boolean,
 ): Promise<void> => {
   const fresh = await localFiles(connection);
   const entryByPath = new Map(entries.map((entry) => [entry.path, entry]));
-  const conflicted = applyConflicts.flatMap(({ path, reason }) => {
+  const conflicted = paths.flatMap((path) => {
     const entry = entryByPath.get(path);
     if (!entry) return [];
     const current = { ...entry, ours: fresh.files.get(path)?.content ?? null };
-    return reason === 'subtree' || hasConflict(current) ? [current] : [];
+    return hasConflict(current) ? [current] : [];
   });
   const forgetCommit = remoteBranchUpdated ? { remoteSha: null } : {};
   if (conflicted.length === 0) {
@@ -534,7 +533,7 @@ const surfaceConcurrentEdits = async (
     );
     await audit(connection, operation.requestedById, 'operation.requeued_after_edit', {
       operationId: operation.id,
-      files: applyConflicts.length,
+      files: paths.length,
       attempt: requeues + 1,
     });
     return;
@@ -554,7 +553,7 @@ const surfaceConcurrentEdits = async (
   await audit(connection, operation.requestedById, 'operation.conflict_detected', {
     operationId: operation.id,
     files: conflicted.length,
-    reason: applyConflicts.some((conflict) => conflict.reason === 'subtree') ? 'delete_with_subpages' : 'edited_during_sync',
+    reason: 'edited_during_sync',
   });
 };
 
@@ -755,7 +754,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
       const desired = target.get(entry.path) ?? null;
       if (entry.ownership !== 'SHARED' || valueEqual(desired, entry.ours)) return [];
       if (desired === null) {
-        return entry.pageId ? [{ type: 'delete', path: entry.path, pageId: entry.pageId, resolved: resolved.has(entry.path) }] : [];
+        return entry.pageId ? [{ type: 'delete', path: entry.path, pageId: entry.pageId }] : [];
       }
       return [{ type: 'write', path: entry.path, pageId: entry.pageId, content: desired }];
     });
@@ -785,9 +784,15 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
       // (and the project lock it may hold) short.
       const removed: string[] = [];
       const created: Prisma.GitFileStateCreateManyInput[] = [];
+      // A ledger row never keeps a link to a page that no longer exists
+      // (removed with its parent, or deleted in the dashboard since).
+      const linked = [...new Set(entries.flatMap((entry) => (applied.has(entry.path) ? [] : entry.pageId ? [entry.pageId] : [])))];
+      const existing = new Set(
+        linked.length > 0 ? (await tx.page.findMany({ where: { id: { in: linked } }, select: { id: true } })).map((page) => page.id) : [],
+      );
       for (const entry of entries) {
         const content = baseline.get(entry.path) ?? null;
-        const pageId = applied.has(entry.path) ? (applied.get(entry.path) ?? null) : entry.pageId;
+        const pageId = applied.has(entry.path) ? (applied.get(entry.path) ?? null) : entry.pageId && existing.has(entry.pageId) ? entry.pageId : null;
         const state = stateByPath.get(entry.path);
         if (operation.kind === 'PULL' && entry.ownership === 'CUSTOMER' && !state && entry.theirs === null) {
           // A pull before the initial scaffold push must not turn a missing
@@ -826,7 +831,7 @@ export const processGitOperation = async (operationId: string): Promise<void> =>
       await prisma.$transaction(applyAndRecordBaseline, GIT_APPLY_TRANSACTION);
     } catch (error) {
       if (error instanceof GitApplyConflictError) {
-        await surfaceConcurrentEdits(operation, connection, entries, error.conflicts, operation.kind === 'PUSH' && changes.length > 0);
+        await surfaceConcurrentEdits(operation, connection, entries, error.paths, operation.kind === 'PUSH' && changes.length > 0);
         return;
       }
       const detail = error instanceof Error ? error.message : String(error);

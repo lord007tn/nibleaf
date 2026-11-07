@@ -4,9 +4,9 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import { type Prisma, prisma } from '@nibleaf/database';
+import { prisma } from '@nibleaf/database';
 import { slugify, slugifyUnicode } from '@nibleaf/shared/utils';
-import type { CreatePageBody, GitConfig } from '@nibleaf/validators';
+import type { GitConfig } from '@nibleaf/validators';
 import got from 'got';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
@@ -231,36 +231,23 @@ const importFileLocation = (relativePath: string): { dir: string; name: string }
 };
 
 /**
- * Each Git-imported page records the repository file it came from in its
- * config (`gitImport.path`). Re-imports match files to pages by that identity,
- * never by position in a list of look-alike names, so adding, renaming or
- * removing a sibling (`Intro.md` next to `intro.md`) cannot move one file's
- * text onto another file's page. Stored in config so no migration is needed.
+ * Each Git-imported page is linked to the repository file it came from by a
+ * `PageGitImportSource` row (one path ↔ one page per branch/language). Re-imports
+ * match files to pages through that row, never by position in a list of
+ * look-alike names, so adding, renaming or removing a sibling (`Intro.md` next
+ * to `intro.md`) cannot move one file's text onto another file's page. The row
+ * is server-only: page settings, tree edits and published snapshots never see
+ * it, and it is deleted with its page.
  */
-const IMPORT_IDENTITY_KEY = 'gitImport';
-
-export const importedSourcePath = (config: unknown): string | null => {
-  if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
-  const identity = (config as Record<string, unknown>)[IMPORT_IDENTITY_KEY];
-  if (!identity || typeof identity !== 'object' || Array.isArray(identity)) return null;
-  const source = (identity as Record<string, unknown>).path;
-  return typeof source === 'string' ? source : null;
-};
-
-const withImportIdentity = (config: unknown, source: string): Record<string, unknown> => ({
-  ...(config && typeof config === 'object' && !Array.isArray(config) ? (config as Record<string, unknown>) : {}),
-  [IMPORT_IDENTITY_KEY]: { path: source },
-});
-
-type ScopePage = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string; config: unknown };
+type ScopePage = { id: string; parentId: string | null; kind: 'PAGE' | 'GROUP'; slug: string };
 
 /**
- * Pages imported before identities existed carry none. Adopt such a page only
- * when it sits where this file's earlier import put it: its Unicode slug, the
- * older ASCII-only slug (`café.md` → `caf`), or that slug's `-2` when a folder
- * group took the plain slug first. A page that already belongs to another
- * path, or was claimed earlier in this run, is never taken. Names without any
- * letters or digits once all collapsed onto `page`, so they never adopt.
+ * Pages imported before identities existed have no source row. Adopt such a
+ * page only when it sits where this file's earlier import put it: its Unicode
+ * slug, the older ASCII-only slug (`café.md` → `caf`), or that slug's `-2` when
+ * a folder group took the plain slug first. A page that already belongs to
+ * another path is never taken. Names without any letters or digits once all
+ * collapsed onto `page`, so they never adopt.
  */
 const legacyImportedPage = (siblings: readonly ScopePage[], name: string, isAvailable: (page: ScopePage) => boolean): ScopePage | null => {
   const unicode = slugifyUnicode(name);
@@ -280,7 +267,7 @@ const legacyImportedPage = (siblings: readonly ScopePage[], name: string, isAvai
  * One-way import: pull Markdown/MDX files from a PUBLIC Git source (the configured
  * repo/branch/path on the project's org) into a configured or default branch/language,
  * recreating the folder structure as page groups. Idempotent — re-importing updates a
- * page in place (matched by its source file, see importedSourcePath) instead of duplicating it. Public GitHub,
+ * page in place (matched by its source file, see PageGitImportSource) instead of duplicating it. Public GitHub,
  * GitLab, and generic http(s) Git repositories are supported; private/OAuth/webhook/
  * two-way sync is intentionally outside this import path.
  */
@@ -380,61 +367,82 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
     loaded.push({ source: file.path, rel: file.path.slice(prefix.length), text });
   }
 
-  const scopePages: ScopePage[] = await prisma.page.findMany({
-    where: { projectId, branchId: target.branchId, languageId: target.languageId },
-    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-    select: { id: true, parentId: true, kind: true, slug: true, config: true },
-  });
-  const ownerBySource = new Map<string, ScopePage>();
-  const owned = new Set<string>();
-  for (const page of scopePages) {
-    const source = page.kind === 'PAGE' ? importedSourcePath(page.config) : null;
-    if (!source) continue;
-    owned.add(page.id);
-    // A duplicated page copies its config; the oldest one keeps the identity.
-    if (!ownerBySource.has(source)) ownerBySource.set(source, page);
-  }
-  const claimed = new Set<string>();
+  const scope = { projectId, branchId: target.branchId, languageId: target.languageId };
+  const [scopePages, sources] = await Promise.all([
+    prisma.page.findMany({ where: scope, select: { id: true, parentId: true, kind: true, slug: true } }) as Promise<ScopePage[]>,
+    prisma.pageGitImportSource.findMany({ where: scope, select: { pageId: true, path: true } }),
+  ]);
+  const pageIdBySource = new Map(sources.map((source) => [source.path, source.pageId]));
+  const owned = new Set(sources.map((source) => source.pageId));
 
-  for (const file of loaded) {
+  type Plan = {
+    file: (typeof loaded)[number];
+    name: string;
+    body: string;
+    fields: { title: string; content: string; description?: string; icon?: string };
+    parentId: string | null;
+    pageId: string | null;
+    adopted: boolean;
+  };
+  const plans: Plan[] = loaded.map((file) => {
     const { meta, body } = parseFrontmatter(file.text);
-    const { dir: targetDir, name } = importFileLocation(file.rel);
-    const title = deriveTitle(meta, body, name);
-    const fields = {
-      title,
-      content: body,
-      ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
-      ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+    const { name } = importFileLocation(file.rel);
+    return {
+      file,
+      name,
+      body,
+      fields: {
+        title: deriveTitle(meta, body, name),
+        content: body,
+        ...(meta.description ? { description: meta.description.slice(0, 500) } : {}),
+        ...(meta.icon ? { icon: meta.icon.slice(0, 64) } : {}),
+      },
+      parentId: null,
+      pageId: pageIdBySource.get(file.source) ?? null,
+      adopted: false,
     };
+  });
 
-    const owner = ownerBySource.get(file.source);
-    let existing = owner && !claimed.has(owner.id) ? owner : null;
-    let parentId: string | null = null;
-    if (!existing) {
-      parentId = await ensureGroups(targetDir);
-      const siblings = scopePages.filter((page) => page.parentId === parentId);
-      existing = legacyImportedPage(siblings, name, (page) => !owned.has(page.id) && !claimed.has(page.id));
+  // Files without a source row: place them and look for the page an older
+  // import left for them.
+  const contenders = new Map<string, Plan[]>();
+  for (const plan of plans) {
+    if (plan.pageId) continue;
+    plan.parentId = await ensureGroups(importFileLocation(plan.file.rel).dir);
+    const siblings = scopePages.filter((page) => page.parentId === plan.parentId);
+    const legacy = legacyImportedPage(siblings, plan.name, (page) => !owned.has(page.id));
+    if (legacy) contenders.set(legacy.id, [...(contenders.get(legacy.id) ?? []), plan]);
+  }
+  if (contenders.size > 0) {
+    const stored = await prisma.page.findMany({ where: { id: { in: [...contenders.keys()] } }, select: { id: true, content: true } });
+    for (const page of stored) {
+      const rivals = contenders.get(page.id) ?? [];
+      // Look-alike files (`Intro.md`, `intro.md`) once overwrote one shared
+      // page. Keep it with the file whose text it holds, else with the last
+      // file in path order — the older importer's last writer — so the text at
+      // that URL does not switch files. The others get new pages.
+      const keeper = rivals.find((plan) => plan.body === page.content) ?? rivals.at(-1);
+      if (keeper) Object.assign(keeper, { pageId: page.id, adopted: true });
     }
-    if (existing) {
-      claimed.add(existing.id);
-      await prisma.page.update({
-        where: { id: existing.id },
-        data: { ...fields, config: withImportIdentity(existing.config, file.source) as Prisma.InputJsonObject },
-      });
+  }
+
+  for (const plan of plans) {
+    if (plan.pageId) {
+      await prisma.page.update({ where: { id: plan.pageId }, data: plan.fields });
+      if (plan.adopted) await prisma.pageGitImportSource.create({ data: { ...scope, pageId: plan.pageId, path: plan.file.source } });
       summary.updated++;
       continue;
     }
     // A new file always gets a new page; createPage picks a slug no sibling
-    // (page or folder group) uses yet, and the identity keeps it stable.
+    // (page or folder group) uses yet, and the source row keeps it stable.
     const created = await createPage(projectId, {
-      ...fields,
-      slug: slugifyUnicode(name) || 'page',
-      parentId,
+      ...plan.fields,
+      slug: slugifyUnicode(plan.name) || 'page',
+      parentId: plan.parentId,
       branchId: target.branchId,
       languageId: target.languageId,
-      config: withImportIdentity(null, file.source) as CreatePageBody['config'],
     });
-    claimed.add(created.id);
+    await prisma.pageGitImportSource.create({ data: { ...scope, pageId: created.id, path: plan.file.source } });
     summary.imported++;
   }
 

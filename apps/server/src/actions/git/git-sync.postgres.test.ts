@@ -26,6 +26,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
   let workflow: typeof import('./workflow');
   let pages: typeof import('../pages');
   let content: typeof import('../importers/content');
+  let deployments: typeof import('../deployments');
   const organizationIds: string[] = [];
 
   beforeAll(async () => {
@@ -34,6 +35,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     workflow = await import('./workflow');
     pages = await import('../pages');
     content = await import('../importers/content');
+    deployments = await import('../deployments');
     // Loading the whole server action graph cold can take longer than the
     // default hook timeout on a busy machine.
   }, 120_000);
@@ -87,7 +89,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
   };
   const runApply = (context: Awaited<ReturnType<typeof observe>>, changes: import('./apply').GitContentChange[]) =>
     db.prisma.$transaction((tx) => apply.applyGitContentChanges(tx, context, changes), { timeout: 15_000 });
-  const conflictReasons = (error: unknown) => (error instanceof apply.GitApplyConflictError ? error.conflicts.map((c) => c.reason) : error);
+  const conflictPaths = (error: unknown) => (error instanceof apply.GitApplyConflictError ? error.paths : error);
   const isDeadlock = (error: unknown) => /40P01|deadlock/i.test(`${(error as { code?: string })?.code ?? ''} ${String(error)}`);
 
   it('never deadlocks an updates-only sync against a reorder of the same pages', async () => {
@@ -153,31 +155,70 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     release();
     await save;
 
-    expect(conflictReasons(await sync)).toEqual(['edited']);
+    expect(conflictPaths(await sync)).toEqual(['about.mdx']);
     expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).content).toBe('Saved by the writer');
   }, 60_000);
 
-  it('protects descendants from a cascading delete', async () => {
-    const setup = await fixture();
-    const parent = await setup.createPage({ title: 'Guide', slug: 'guide' });
-    const child = await setup.createPage({ title: 'Setup', slug: 'setup', parentId: parent.id, path: 'guide/setup' });
-    const remaining = () => db.prisma.page.count({ where: { id: { in: [parent.id, child.id] } } });
+  it('never deletes sub-pages with their parent unless Git deleted them too, unchanged', async () => {
+    // Git deletes only the parent's file: the parent becomes their folder in place.
+    let setup = await fixture();
+    let parent = await setup.createPage({ title: 'Guide', slug: 'guide' });
+    let child = await setup.createPage({ title: 'Setup', slug: 'setup', parentId: parent.id, path: 'guide/setup' });
+    await runApply(await observe(setup), [{ type: 'delete', path: 'guide.mdx', pageId: parent.id }]);
+    expect(await db.prisma.page.findUniqueOrThrow({ where: { id: parent.id } })).toMatchObject({ kind: 'GROUP', content: '', path: 'guide' });
+    expect(await db.prisma.page.findUniqueOrThrow({ where: { id: child.id } })).toMatchObject({
+      kind: 'PAGE',
+      parentId: parent.id,
+      path: 'guide/setup',
+    });
 
-    // Git deleted only the parent: deleting it would cascade into a child Git still has.
-    let failure = await runApply(await observe(setup), [{ type: 'delete', path: 'guide.mdx', pageId: parent.id, resolved: false }]).catch((e) => e);
-    expect(conflictReasons(failure)).toEqual(['subtree']);
-    expect(await remaining()).toBe(2);
-
-    // The child is saved after the merge read: even an explicitly resolved delete stops.
+    // Git deletes both, but the child was saved after the merge read: nothing changes.
+    setup = await fixture();
+    parent = await setup.createPage({ title: 'Guide', slug: 'guide' });
+    child = await setup.createPage({ title: 'Setup', slug: 'setup', parentId: parent.id, path: 'guide/setup' });
     const stale = await observe(setup);
     await db.prisma.page.update({ where: { id: child.id }, data: { content: 'Saved by the writer' } });
-    failure = await runApply(stale, [{ type: 'delete', path: 'guide.mdx', pageId: parent.id, resolved: true }]).catch((e) => e);
-    expect(conflictReasons(failure)).toEqual(['subtree']);
-    expect(await remaining()).toBe(2);
+    const failure = await runApply(stale, [
+      { type: 'delete', path: 'guide.mdx', pageId: parent.id },
+      { type: 'delete', path: 'guide/setup.mdx', pageId: child.id },
+    ]).catch((error: unknown) => error);
+    expect(conflictPaths(failure)).toEqual(['guide/setup.mdx']);
+    expect(await db.prisma.page.findUniqueOrThrow({ where: { id: parent.id } })).toMatchObject({ kind: 'PAGE', content: 'Guide' });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: child.id } })).content).toBe('Saved by the writer');
 
-    // An explicit choice over an unchanged subtree goes through.
-    await runApply(await observe(setup), [{ type: 'delete', path: 'guide.mdx', pageId: parent.id, resolved: true }]);
-    expect(await remaining()).toBe(0);
+    // Git deletes both and neither changed: the cascade is safe.
+    await runApply(await observe(setup), [
+      { type: 'delete', path: 'guide.mdx', pageId: parent.id },
+      { type: 'delete', path: 'guide/setup.mdx', pageId: child.id },
+    ]);
+    expect(await db.prisma.page.count({ where: { id: { in: [parent.id, child.id] } } })).toBe(0);
+  }, 60_000);
+
+  it('keeps one import source per path, outside page settings, and drops it with its page', async () => {
+    const setup = await fixture();
+    const scope = { projectId: setup.project.id, branchId: setup.branch.id, languageId: setup.language.id };
+    const page = await setup.createPage({ title: 'Intro', slug: 'intro', content: 'Hello' });
+    const other = await setup.createPage({ title: 'Other', slug: 'other' });
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: page.id, path: 'docs/intro.md' } });
+
+    // A path maps to exactly one page per branch/language.
+    await expect(db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: other.id, path: 'docs/intro.md' } })).rejects.toMatchObject({
+      code: 'P2002',
+    });
+
+    // Page settings clearing every override, and a sidebar title plus rename, leave it alone.
+    await pages.updatePage(setup.project.id, page.id, { config: null });
+    await pages.updatePage(setup.project.id, page.id, { config: { sidebarTitle: 'Start' } });
+    await pages.updatePage(setup.project.id, page.id, { title: 'Introduction', config: { sidebarTitle: 'Start' } });
+    expect(await db.prisma.pageGitImportSource.findUnique({ where: { pageId: page.id } })).toMatchObject({ path: 'docs/intro.md' });
+    expect((await db.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).config).toEqual({ sidebarTitle: 'Start' });
+
+    // The published snapshot never carries the repository path.
+    expect(JSON.stringify(await deployments.getCurrentSnapshot(setup.project.id))).not.toContain('docs/intro.md');
+
+    // Deleting the page deletes its source.
+    await db.prisma.page.delete({ where: { id: page.id } });
+    expect(await db.prisma.pageGitImportSource.count({ where: { pageId: page.id } })).toBe(0);
   }, 60_000);
 
   it('applies a 1,000-file sync well inside the transaction limit', async () => {

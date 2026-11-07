@@ -773,17 +773,44 @@ describe('Git apply safety', () => {
     expect(statuses()).toContain('CONFLICT');
   });
 
-  it('does not cascade a remote deletion into a child page Git still has', async () => {
-    const { parent } = seedTree();
-    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('guide/setup.mdx', serializeGitPage(pageStore.rows[1] as PageRow))]);
+  it('keeps a sub-page Git still has when Git deletes its parent page, and the next push leaves it alone', async () => {
+    const { child } = seedTree();
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('guide/setup.mdx', serializeGitPage(child))]);
 
     await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
 
-    expect(pageStore.rows.map((page) => page.id)).toEqual(['page-guide', 'page-setup']);
-    expect(mocks.prisma.gitConflict.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ create: expect.objectContaining({ path: 'guide.mdx', oursContent: serializeGitPage(parent), theirsContent: null }) }),
+    // The parent's own content is gone; it stays as the folder of its sub-page.
+    expect(pageStore.rows.map((page) => [page.id, page.kind, page.path, page.content])).toEqual([
+      ['page-guide', 'GROUP', 'guide', ''],
+      ['page-setup', 'PAGE', 'guide/setup', 'Setup'],
+    ]);
+    expect(statuses()).toContain('SUCCEEDED');
+    expect(mocks.prisma.gitConflict.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ path: { in: ['guide.mdx'] } }) }),
     );
-    expect(statuses()).toContain('CONFLICT');
+    expect(ledgerWrites().find((row) => row.path === 'guide/setup.mdx')?.pageId).toBe('page-setup');
+
+    // Next push, from the ledger the pull left behind.
+    vi.clearAllMocks();
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: pageStore.rows.map(snapshotPage) });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([{ ...ledger('guide/setup.mdx', serializeGitPage(child)), pageId: 'page-setup' }]);
+    mocks.prisma.gitSyncOperation.findUnique.mockResolvedValue({
+      ...operation(),
+      kind: 'PUSH',
+      commitMessage: 'Docs',
+      authorName: 'A',
+      authorEmail: 'a@example.invalid',
+    });
+    mocks.provider.createCommit.mockResolvedValue('commit-sha');
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    const pushed = mocks.provider.createCommit.mock.calls.flatMap(([input]) =>
+      (input as { files: Array<{ path: string }> }).files.map((file) => file.path),
+    );
+    expect(pushed.filter((path) => path.startsWith('guide'))).toEqual([]);
+    expect(pageStore.rows.map((page) => page.id)).toEqual(['page-guide', 'page-setup']);
   });
 
   it('does not delete a subtree whose child was saved after the merge read', async () => {
@@ -825,7 +852,7 @@ describe('Git apply safety', () => {
     seedPage({ id: 'page-elsewhere', title: 'Elsewhere', slug: 'elsewhere', content: 'Keep me' });
 
     const pageIds = await applyGitContentChanges(mocks.prisma as never, applyContext([]), [
-      { type: 'delete', path: 'elsewhere.mdx', pageId: 'page-elsewhere', resolved: false },
+      { type: 'delete', path: 'elsewhere.mdx', pageId: 'page-elsewhere' },
     ]);
 
     expect(pageIds.get('elsewhere.mdx')).toBeNull();

@@ -10,7 +10,12 @@ import { deriveTitle, humanize, parseFrontmatter } from '../importers/content';
  *
  * Locking follows the shared page-write protocol: the project row first
  * (`FOR NO KEY UPDATE`), then every page row the apply touches — including the
- * whole subtree under a deletion — in ascending id order. Page moves and
+ * whole subtree under a deletion — in ascending id order.
+ *
+ * A deletion never takes pages with it that must stay: when Git deletes a
+ * page's own file but keeps files under it (or a page under it changed since
+ * the merge read), the page becomes a folder group in place, so its sub-pages
+ * keep their paths and their own ledger rows. Page moves and
  * creations take the same project lock, so the page tree cannot change under
  * the apply, and the apply cannot deadlock with them.
  *
@@ -33,10 +38,9 @@ export type ObservedPage = {
   icon: string | null;
 };
 
-/** One page change computed by reconciliation. `resolved` marks a deletion a
- * writer explicitly chose while resolving a conflict. */
+/** One page change computed by reconciliation. */
 export type GitContentChange =
-  | { type: 'delete'; path: string; pageId: string; resolved: boolean }
+  | { type: 'delete'; path: string; pageId: string }
   | { type: 'write'; path: string; pageId: string | null; content: string };
 
 export interface GitApplyContext {
@@ -49,18 +53,11 @@ export interface GitApplyContext {
   observed: ReadonlyMap<string, ObservedPage>;
 }
 
-/**
- * Why a path could not be applied. `edited`: the page changed after the merge
- * read it, so re-reconciling decides whether it really conflicts. `subtree`: a
- * deletion would also remove pages under it that changed or that Git still
- * has; the page itself is unchanged, so the writer must choose explicitly.
- */
-export type GitApplyConflict = { path: string; reason: 'edited' | 'subtree' };
-
-/** Raised when the apply cannot proceed without losing an edit. Nothing was written. */
+/** Raised when pages changed after the merge read them; re-reconciling decides
+ * whether each really conflicts. Nothing was written. */
 export class GitApplyConflictError extends Error {
-  constructor(readonly conflicts: GitApplyConflict[]) {
-    super(`These pages changed while Git sync was running: ${conflicts.map((conflict) => conflict.path).join(', ')}. Nothing was applied.`);
+  constructor(readonly paths: string[]) {
+    super(`These pages changed while Git sync was running: ${paths.join(', ')}. Nothing was applied.`);
     this.name = 'GitApplyConflictError';
   }
 }
@@ -247,7 +244,16 @@ export const applyGitContentChanges = async (
   );
   const deleting = new Set(deletions);
   const creator = new PageCreator(tx, context, tree);
-  const conflicts: GitApplyConflict[] = [];
+  const conflicts: string[] = [];
+  /** A descendant that must outlive the deletion of `id`'s page. */
+  const mustStay = (id: string) => {
+    const now = current.get(id);
+    if (!now) return false;
+    const before = observed.get(id);
+    // Git still has this page's file, or someone changed it after the merge
+    // read (its own revision-checked deletion, if any, then reports that).
+    return (now.kind === 'PAGE' && !deleting.has(id)) || !(before && sameRevision(before, now));
+  };
 
   for (const change of changes) {
     if (change.type === 'delete') {
@@ -258,33 +264,25 @@ export const applyGitContentChanges = async (
       if (!seen) continue;
       if (!current.has(change.pageId)) continue; // Already gone (or removed with its parent above).
       const subtree = subtrees.get(change.pageId) ?? [];
-      const subtreeSafe = subtree.every((id) => {
-        const now = current.get(id);
-        if (!now) return true;
-        const before = observed.get(id);
-        if (!(before && sameRevision(before, now))) return false;
-        // Deleting a parent cascades to its children; a child PAGE that Git
-        // still has may only go when a writer chose that explicitly.
-        return change.resolved || now.kind !== 'PAGE' || deleting.has(id);
-      });
-      if (!subtreeSafe) {
-        conflicts.push({ path: change.path, reason: 'subtree' });
+      const where = { id: change.pageId, projectId, kind: 'PAGE' as const, ...revisionWhere(seen) };
+      if (subtree.some(mustStay)) {
+        // Keep the sub-pages where they are: the page's own content goes, and it
+        // stays as their folder. No sub-page moves, so no repository path changes.
+        const kept = await tx.page.updateMany({ where, data: { kind: 'GROUP', content: '', description: null, icon: null } });
+        if (kept.count === 0) conflicts.push(change.path);
         continue;
       }
-      const deleted = await tx.page.deleteMany({ where: { id: change.pageId, projectId, kind: 'PAGE', ...revisionWhere(seen) } });
-      if (deleted.count === 0) {
-        // Rows are locked, so a miss means the page changed after the merge read it.
-        if (current.get(change.pageId)) conflicts.push({ path: change.path, reason: 'edited' });
-        continue;
-      }
-      for (const id of [change.pageId, ...subtree]) current.delete(id);
+      const deleted = await tx.page.deleteMany({ where });
+      // Rows are locked, so a miss means the page changed after the merge read it.
+      if (deleted.count === 0) conflicts.push(change.path);
+      else for (const id of [change.pageId, ...subtree]) current.delete(id);
       continue;
     }
     const seen = change.pageId ? observed.get(change.pageId) : undefined;
     if (change.pageId && seen) {
       const updated = await tx.page.updateMany({ where: { id: change.pageId, projectId, ...revisionWhere(seen) }, data: pageData(change.content) });
       // A miss means the page was saved or deleted after the merge read it.
-      if (updated.count === 0) conflicts.push({ path: change.path, reason: 'edited' });
+      if (updated.count === 0) conflicts.push(change.path);
       pageIds.set(change.path, change.pageId);
       continue;
     }
