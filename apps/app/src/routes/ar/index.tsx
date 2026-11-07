@@ -1,9 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ArabicLandingPage } from '@/components/marketing/arabic-seo';
 import type { ArabicLandingCopy } from '@/lib/arabic-marketing-copy';
-import { canonicalHref, marketingLd, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
 
-const arabicLandingHead = (copy: ArabicLandingCopy) => ({
+const arabicLandingHead = ({ canonicalHref, marketingLd, pageMeta }: MarketingSeo, copy: ArabicLandingCopy) => ({
   meta: pageMeta({
     title: copy.title,
     description: copy.description,
@@ -22,8 +22,11 @@ const arabicLandingHead = (copy: ArabicLandingCopy) => ({
 });
 
 export const Route = createFileRoute('/ar/')({
-  // The Arabic copy loads with this page, not with every page's route tree.
-  loader: () => import('@/lib/arabic-marketing-copy').then((copy) => copy.arabicLandingCopy()),
-  head: ({ loaderData }) => (loaderData ? arabicLandingHead(loaderData) : {}),
+  // The Arabic copy and the SEO helpers load with this page, not with every page's route tree.
+  loader: async () => {
+    const [seo, { arabicLandingCopy }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/arabic-marketing-copy')]);
+    return { head: arabicLandingHead(seo, arabicLandingCopy()) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: ArabicLandingPage,
 });

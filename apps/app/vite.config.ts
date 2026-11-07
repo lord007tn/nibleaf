@@ -45,12 +45,14 @@ const LAZY_SITE_MESSAGES = new RegExp(
     .join('|')})\\.js$`,
 );
 
-/** Routes whose loaders only serve the dashboard and its sign-in pages. */
-const DASHBOARD_ROUTE = /^\/(?:app(?:\/|$)|\(auth\)(?:\/|$)|accept-invite\/|oauth\/)/;
+/** Routes a published docs page renders: the root layout and the reader under
+ *  `/sites/`. Every other route (dashboard, sign-in, marketing, blog, legal,
+ *  tools, invites, previews) loads its loader with its route. */
+const READER_ROUTE = /^(?:__root__$|\/sites(?:\/|$))/;
 /** The router's default groupings (component, errorComponent, notFoundComponent;
  *  pendingComponent stays eager so a pending UI can show at once), plus the
  *  loader in its own lazy chunk. */
-const DASHBOARD_SPLIT_GROUPINGS = [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
+const LAZY_LOADER_GROUPINGS = [['loader'], ['component'], ['errorComponent'], ['notFoundComponent']] satisfies Array<
   Array<'loader' | 'component' | 'errorComponent' | 'notFoundComponent'>
 >;
 
@@ -162,9 +164,9 @@ export default defineConfig(({ mode }) => {
         router: {
           codeSplittingOptions: {
             // A route's loader normally stays in the router's eager chunk, which
-            // published docs pages load too. Dashboard and sign-in loaders only
-            // prefetch dashboard data, so they load with their route instead.
-            splitBehavior: ({ routeId }) => (DASHBOARD_ROUTE.test(routeId) ? DASHBOARD_SPLIT_GROUPINGS : undefined),
+            // published docs pages load too. Only the reader's own loaders need
+            // to be there; every other route's loader loads with its route.
+            splitBehavior: ({ routeId }) => (READER_ROUTE.test(routeId) ? undefined : LAZY_LOADER_GROUPINGS),
           },
         },
       }),

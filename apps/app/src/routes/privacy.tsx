@@ -1,23 +1,29 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { MarketingShell } from '@/components/cloud-marketing';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
+
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
+  meta: pageMeta({
+    title: 'Nibleaf Cloud Privacy Policy and Data Practices',
+    description: 'How Nibleaf Cloud handles account and documentation data, analytics, subprocessors, retention, security, and deletion requests.',
+    path: '/privacy',
+  }),
+  links: [{ rel: 'canonical', href: canonicalHref('/privacy') }],
+  scripts: [
+    breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: 'Privacy Policy', path: '/privacy' },
+    ]),
+  ],
+});
 
 export const Route = createFileRoute('/privacy')({
-  loader: async () => ({ stars: await getGithubStarsFn() }),
-  head: () => ({
-    meta: pageMeta({
-      title: 'Nibleaf Cloud Privacy Policy and Data Practices',
-      description: 'How Nibleaf Cloud handles account and documentation data, analytics, subprocessors, retention, security, and deletion requests.',
-      path: '/privacy',
-    }),
-    links: [{ rel: 'canonical', href: canonicalHref('/privacy') }],
-    scripts: [
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'Privacy Policy', path: '/privacy' },
-      ]),
-    ],
-  }),
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const seo = await import('@/lib/marketing-seo');
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: PrivacyPage,
 });
 

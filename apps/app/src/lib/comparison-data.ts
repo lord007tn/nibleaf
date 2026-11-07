@@ -13,7 +13,7 @@ import { ENTITY_SENTENCE } from '@/lib/marketing-seo';
 /** Date the competitor pricing pages were last checked. */
 export const AS_OF = 'November 7, 2026';
 
-export type FeatureValue = 'yes' | 'no' | 'partial' | 'planned' | 'unknown';
+type FeatureValue = 'yes' | 'no' | 'partial' | 'planned' | 'unknown';
 
 export interface FeatureCell {
   value: FeatureValue;
@@ -26,7 +26,7 @@ export interface FeatureRow {
   competitor: FeatureCell;
 }
 
-export interface PricingRow {
+interface PricingRow {
   plan: string;
   price: string;
   includes: string;
@@ -70,7 +70,7 @@ export interface Comparison {
   faqs: FaqEntry[];
 }
 
-export interface AlternativeEntry {
+interface AlternativeEntry {
   name: string;
   url: string;
   description: string;

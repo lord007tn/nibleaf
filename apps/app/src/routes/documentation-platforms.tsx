@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { DocumentationPlatformsPage } from '@/components/marketing/documentation-platforms';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
 
-export const documentationPlatformsHead = () => ({
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   meta: pageMeta({
     title: 'Documentation platforms for Arabic teams | Nibleaf',
     description: 'Compare six documentation platforms by authoring, ownership, operations, and testable Arabic and RTL requirements.',
@@ -39,12 +39,16 @@ export const documentationPlatformsHead = () => ({
 });
 
 export const Route = createFileRoute('/documentation-platforms')({
-  loader: () => getGithubStarsFn(),
-  head: documentationPlatformsHead,
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const seo = await import('@/lib/marketing-seo');
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: DocumentationPlatformsRoute,
 });
 
 function DocumentationPlatformsRoute() {
-  const stars = Route.useLoaderData();
+  const { stars } = Route.useLoaderData();
   return <DocumentationPlatformsPage stars={stars} />;
 }

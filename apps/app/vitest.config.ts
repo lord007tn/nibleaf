@@ -10,7 +10,7 @@ export default defineConfig({
     environment: 'node',
     // Vitest 5.0.5 caches typed import.meta.glob<T>, hiding added or removed MDX files.
     fsModuleCache: false,
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
   },
   resolve: {
     alias: {

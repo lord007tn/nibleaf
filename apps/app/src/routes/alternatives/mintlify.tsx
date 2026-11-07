@@ -1,18 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AlternativesPage } from '@/components/marketing/comparison-page';
-import { loadComparisonData } from '@/lib/comparison-loader';
-import { breadcrumbLd, canonicalHref, faqLd, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/alternatives/mintlify')({
-  loader: async () => ({ data: await loadComparisonData('mintlifyAlternatives'), stars: await getGithubStarsFn() }),
-  head: ({ loaderData }) => ({
-    meta: loaderData ? pageMeta({ title: loaderData.data.metaTitle, description: loaderData.data.metaDescription, path: loaderData.data.path }) : [],
-    links: loaderData ? [{ rel: 'canonical', href: canonicalHref(loaderData.data.path) }] : [],
-    scripts: [
-      ...(loaderData ? [faqLd(loaderData.data.faqs)] : []),
-      breadcrumbLd([{ name: 'Home', path: '/' }, ...(loaderData ? [{ name: loaderData.data.breadcrumbName, path: loaderData.data.path }] : [])]),
-    ],
-  }),
+  // The comparison and its SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: () => import('@/lib/comparison-page').then(({ loadComparisonPage }) => loadComparisonPage('mintlifyAlternatives')),
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: MintlifyAlternativesRoute,
 });
 
