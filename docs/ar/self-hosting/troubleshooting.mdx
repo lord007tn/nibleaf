@@ -4,7 +4,7 @@ description: 'شخّص أعطال بدء التشغيل والترحيل وال�
 audience: 'المشغّلون المستجيبون لتعطل مسار عمل مستضاف ذاتيًا'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'docker-compose.prod.yml, docker-compose.yml, docker-compose.coolify.yml, apps/server/src/lib/client-ip.ts, apps/app/src/server.ts, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
+verified_against: 'docker-compose.prod.yml, docker-compose.yml, docker-compose.coolify.yml, apps/server/src/lib/client-ip.ts, apps/app/src/server.ts, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/troubleshooting'
@@ -245,7 +245,7 @@ API والعامل مفتاح نقل المحادثة نفسه؛ لا تغيّر
 
 يمرّر ملفا Compose للإنتاج وCoolify (`docker-compose.prod.yml`
 و`docker-compose.coolify.yml`) كلا الإعدادين إلى خدمتي التطبيق وواجهة API. أما
-ملف المصدر `docker-compose.yml` فلا يمرّر أيًّا منهما، لذا أضف ملف تجاوز بجانبه. يقرأ
+ملف المصدر `docker-compose.yml` فيمرّر `INTERNAL_API_SECRET` دون `TRUSTED_PROXY_HOPS`، لذا أضف ملف تجاوز بجانبه. يقرأ
 `docker compose` الملف `docker-compose.override.yml` تلقائيًا؛ وإذا كنت تشغّل الأمر مع
 `-f docker-compose.yml` فأضف أيضًا `-f docker-compose.override.yml`:
 
@@ -254,11 +254,9 @@ API والعامل مفتاح نقل المحادثة نفسه؛ لا تغيّر
 services:
   server:
     environment:
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   app:
     environment:
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
 ```
 
@@ -282,7 +280,7 @@ services:
 ويختاران أول عنوان عام. لهذا يجب احتساب العناوين الخاصة عندما يسبقها عنوان عام. وإذا
 كانت كل العناوين بعد عنوان العميل خاصة وكان عنوان القارئ نفسه عامًا، فاحتسابها
 وعدمه يعطيان النتيجة نفسها. وإذا كانت عناوين القرّاء خاصة (شبكة داخلية أو VPN)
-فاحتسبها أيضًا. تحقق من الترويسات التي تصل
+فاحتسب العناوين الخاصة التي تلي عنوان العميل أيضًا. تحقق من الترويسات التي تصل
 فعليًا إلى كل خدمة؛ لا يكفي عدد الوكلاء في مخطط الشبكة. قد يحذف العدد الأعلى
 من الصحيح عنوان العميل الحقيقي ويختار قيمة زوّرها المهاجم، فيتمكن من تغيير
 هويته المستخدمة لتحديد المعدل. لا تستخدم رفع العدد وسيلة لإخفاء استجابات `429`.

@@ -4,7 +4,7 @@ description: 'Diagnose startup, migration, storage, email, publishing, domain, p
 audience: 'self-hosted operators responding to a failed workflow'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'docker-compose.prod.yml, docker-compose.yml, docker-compose.coolify.yml, apps/server/src/lib/client-ip.ts, apps/app/src/server.ts, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
+verified_against: 'docker-compose.prod.yml, docker-compose.yml, docker-compose.coolify.yml, apps/server/src/lib/client-ip.ts, apps/app/src/server.ts, apps/server/src/index.ts, scripts/coolify-release-probes.mjs, scripts/install.sh, packages/bullmq/src/schedules.ts, and apps/server/src/env.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/troubleshooting'
@@ -261,8 +261,8 @@ have changed. A publish preview is project-wide.
 
 The production and Coolify Compose files (`docker-compose.prod.yml` and
 `docker-compose.coolify.yml`) pass both settings to the app and API services.
-The source `docker-compose.yml` passes neither, so add an override file next to
-it. `docker compose` reads `docker-compose.override.yml` automatically; if you
+The source `docker-compose.yml` passes `INTERNAL_API_SECRET` but not
+`TRUSTED_PROXY_HOPS`, so add an override file next to it. `docker compose` reads `docker-compose.override.yml` automatically; if you
 run with `-f docker-compose.yml`, also add `-f docker-compose.override.yml`:
 
 ```yaml
@@ -270,11 +270,9 @@ run with `-f docker-compose.yml`, also add `-f docker-compose.override.yml`:
 services:
   server:
     environment:
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   app:
     environment:
-      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-}
       TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
 ```
 
@@ -300,7 +298,7 @@ take the first public one. That is why private addresses must be counted when a
 public address comes before them. If every address after the client is private
 and the reader's own address is public, counting them or not gives the same
 result. When readers have private addresses (an internal network or VPN),
-count them too. Verify the headers actually
+count the private addresses after the client too. Verify the headers actually
 received by each service; a diagram's proxy count alone is insufficient. A
 value that is too high can discard the real client and select an attacker’s
 forged entry, letting them change their rate-limit identity. Do not tune this value merely to make `429` disappear.
