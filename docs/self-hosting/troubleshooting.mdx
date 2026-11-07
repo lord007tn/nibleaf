@@ -241,9 +241,8 @@ client: use `0`.
 Both parsers first remove the configured number of trailing header entries,
 always keeping at least one, then scan right to left past private addresses and
 take the first public one. That is why private addresses must be counted when a
-public address comes before them. Private addresses at the very end of the chain
-are harmless either way: counted, they are removed; not counted, they are
-skipped. Verify the headers actually
+public address comes before them. If every address after the client is private
+(no CDN or public load balancer), counting them or not gives the same result. Verify the headers actually
 received by each service; a diagram's proxy count alone is insufficient. A
 value that is too high can discard the real client and select an attacker’s
 forged entry, letting them change their rate-limit identity. Do not tune this value merely to make `429` disappear.

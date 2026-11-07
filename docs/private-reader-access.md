@@ -116,7 +116,7 @@ Your portal's address must also be allowed to call Nibleaf from a browser:
   and the Coolify Compose file defaults it to `https://nibleaf.com`,
   `https://www.nibleaf.com`, and `https://admin.nibleaf.com`; those defaults
   aren't in your `.env`, so include the ones you rely on. The source
-  `docker-compose.yml` always sets the value to `APP_URL` and ignores `.env`,
+  `docker-compose.yml` always sets the value to `APP_URL` and ignores `CORS_ALLOWED_ORIGINS` in `.env`,
   so set it on `server` in `docker-compose.override.yml` (see
   [Readers see “Too many requests”](/self-hosting/troubleshooting#readers-see-too-many-requests)
   for how override files are loaded):
@@ -126,7 +126,7 @@ Your portal's address must also be allowed to call Nibleaf from a browser:
 services:
   server:
     environment:
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?set CORS_ALLOWED_ORIGINS in .env}
 ```
 
 - **Nibleaf Cloud:** there is no setting for this in the dashboard. Contact
