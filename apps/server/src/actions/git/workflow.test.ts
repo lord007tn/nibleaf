@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
   const prisma = {
+    $queryRaw: vi.fn(),
     $transaction: vi.fn(),
     branch: { findFirst: vi.fn() },
     gitAuditEvent: { create: vi.fn() },
-    gitConflict: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    gitConflict: { createMany: vi.fn(), findMany: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     gitConnection: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
     gitFileState: { deleteMany: vi.fn(), findMany: vi.fn(), upsert: vi.fn() },
     gitPreview: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
@@ -13,7 +14,15 @@ const mocks = vi.hoisted(() => {
     gitSyncOperation: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     gitWebhookDelivery: { updateMany: vi.fn() },
     language: { findFirst: vi.fn() },
-    page: { deleteMany: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    page: {
+      aggregate: vi.fn(),
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
     project: { findUnique: vi.fn() },
   };
   const provider = {
@@ -44,21 +53,18 @@ vi.mock('@nibleaf/bullmq', () => ({
   QUEUE_CONFIGS: { git: { operationClaimTimeout: 12 * 60 * 1000 } },
 }));
 vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
-vi.mock('@nibleaf/shared', () => ({ slugify: (value: string) => value.toLowerCase() }));
 // The repository generator derives docs.json navigation with the real buildNavTree.
 vi.mock('@nibleaf/shared/site', async (importOriginal) => ({ ...(await importOriginal<object>()), buildSnapshot: vi.fn() }));
 vi.mock('../branches', () => ({ getDefaultBranch: mocks.getDefaultBranch }));
 vi.mock('../deployments', () => ({
   getCurrentSnapshot: mocks.getCurrentSnapshot,
 }));
-vi.mock('../importers/content', async (importOriginal) => ({
-  // serializeGitPage is the real serializer (shared with the MCP Markdown resource).
-  serializeGitPage: (await importOriginal<typeof import('../importers/content')>()).serializeGitPage,
-  deriveTitle: vi.fn(),
-  humanize: (value: string) => value,
-  parseFrontmatter: mocks.parseFrontmatter,
-}));
-vi.mock('../importers/persistence', () => ({ ensureGroupPage: vi.fn(), upsertLeafPage: vi.fn() }));
+vi.mock('../importers/content', async (importOriginal) => {
+  // The real serializer/parser (shared with the MCP Markdown resource); parsing
+  // stays spy-able per test.
+  const actual = await importOriginal<typeof import('../importers/content')>();
+  return { ...actual, parseFrontmatter: mocks.parseFrontmatter };
+});
 vi.mock('../languages', () => ({ getDefaultLanguage: mocks.getDefaultLanguage }));
 vi.mock('./crypto', () => ({
   decryptGitSecret: () => 'token',
@@ -93,7 +99,125 @@ vi.mock('./reconcile', () => ({
 }));
 
 import { buildThemeRepository, THEME_REPOSITORY_DOCS_CONFIG_PATH, THEME_REPOSITORY_MANIFEST_PATH } from '@nibleaf/shared/theme-repository';
+import { serializeGitPage } from '../importers/content';
 import { connectGitHub, processGitOperation } from './workflow';
+
+const actualContent = await vi.importActual<typeof import('../importers/content')>('../importers/content');
+
+/** A small in-memory `page` table with the Prisma semantics the Git apply
+ * relies on: conditional updateMany/deleteMany, and an interactive transaction
+ * that rolls every page write back when its callback throws. */
+type PageRow = {
+  id: string;
+  projectId: string;
+  branchId: string;
+  languageId: string;
+  parentId: string | null;
+  kind: 'PAGE' | 'GROUP';
+  title: string;
+  slug: string;
+  path: string;
+  content: string;
+  description: string | null;
+  icon: string | null;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+const pageStore = { rows: [] as PageRow[], clock: 1, ids: 0 };
+const tick = () => new Date(Date.UTC(2026, 10, 7, 0, 0, pageStore.clock++));
+const rowMatches = (row: PageRow, where: Record<string, unknown> = {}) =>
+  Object.entries(where).every(([key, expected]) => {
+    if (expected === undefined) return true;
+    const actual = row[key as keyof PageRow];
+    if (expected instanceof Date) return actual instanceof Date && actual.getTime() === expected.getTime();
+    return actual === expected;
+  });
+const installPageStore = () => {
+  pageStore.rows = [];
+  pageStore.clock = 1;
+  pageStore.ids = 0;
+  const page = mocks.prisma.page;
+  page.findMany.mockImplementation(async ({ where }: { where?: Record<string, unknown> } = {}) =>
+    pageStore.rows.filter((row) => rowMatches(row, where)).map((row) => ({ ...row })),
+  );
+  page.findFirst.mockImplementation(async ({ where }: { where?: Record<string, unknown> } = {}) => {
+    const row = pageStore.rows.find((candidate) => rowMatches(candidate, where));
+    return row ? { ...row } : null;
+  });
+  page.update.mockImplementation(async ({ where, data }: { where: { id: string }; data: Partial<PageRow> }) => {
+    const row = pageStore.rows.find((candidate) => candidate.id === where.id);
+    if (!row) throw new Error('Record to update not found.');
+    Object.assign(row, data, { updatedAt: tick() });
+    return { ...row };
+  });
+  page.updateMany.mockImplementation(async ({ where, data }: { where: Record<string, unknown>; data: Partial<PageRow> }) => {
+    const rows = pageStore.rows.filter((row) => rowMatches(row, where));
+    for (const row of rows) Object.assign(row, data, { updatedAt: tick() });
+    return { count: rows.length };
+  });
+  page.deleteMany.mockImplementation(async ({ where }: { where: Record<string, unknown> }) => {
+    const before = pageStore.rows.length;
+    pageStore.rows = pageStore.rows.filter((row) => !rowMatches(row, where));
+    return { count: before - pageStore.rows.length };
+  });
+  page.create.mockImplementation(async ({ data }: { data: Partial<PageRow> }) => {
+    const now = tick();
+    const row = {
+      id: `created-${++pageStore.ids}`,
+      parentId: null,
+      description: null,
+      icon: null,
+      position: 0,
+      createdAt: now,
+      updatedAt: now,
+      ...data,
+    } as PageRow;
+    pageStore.rows.push(row);
+    return { ...row };
+  });
+  page.aggregate.mockImplementation(async ({ where }: { where: Record<string, unknown> }) => {
+    const positions = pageStore.rows.filter((row) => rowMatches(row, where)).map((row) => row.position);
+    return { _max: { position: positions.length ? Math.max(...positions) : null } };
+  });
+};
+const seedPage = (fields: Pick<PageRow, 'id' | 'title' | 'slug' | 'content'>) => {
+  const now = tick();
+  const row: PageRow = {
+    projectId: 'project-1',
+    branchId: 'branch-1',
+    languageId: 'language-1',
+    parentId: null,
+    kind: 'PAGE',
+    path: fields.slug,
+    description: null,
+    icon: null,
+    position: pageStore.rows.length,
+    createdAt: now,
+    updatedAt: now,
+    ...fields,
+  };
+  pageStore.rows.push(row);
+  return row;
+};
+const snapshotPage = (row: PageRow) => ({
+  id: row.id,
+  parentId: row.parentId,
+  versionId: 'branch-1',
+  languageCode: 'en',
+  kind: row.kind,
+  title: row.title,
+  slug: row.slug,
+  path: `/${row.path}`,
+  icon: row.icon,
+  description: row.description,
+  content: row.content,
+  config: null,
+  translationKey: null,
+  position: row.position,
+  hidden: false,
+  updatedAt: row.updatedAt.toISOString(),
+});
 
 const currentSnapshot = {
   project: {
@@ -152,9 +276,17 @@ const operation = (status = 'QUEUED') => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  installPageStore();
+  mocks.parseFrontmatter.mockImplementation(actualContent.parseFrontmatter);
   mocks.prisma.$transaction.mockImplementation(async (input: unknown, _options?: unknown) => {
-    if (typeof input === 'function') return input(mocks.prisma);
-    return Promise.all(input as Promise<unknown>[]);
+    if (typeof input !== 'function') return Promise.all(input as Promise<unknown>[]);
+    const saved = pageStore.rows.map((row) => ({ ...row }));
+    try {
+      return await input(mocks.prisma);
+    } catch (error) {
+      pageStore.rows = saved;
+      throw error;
+    }
   });
   mocks.prisma.gitSyncOperation.findUnique.mockResolvedValue(operation());
   mocks.prisma.gitSyncOperation.findFirst.mockResolvedValue(null);
@@ -166,7 +298,6 @@ beforeEach(() => {
   mocks.prisma.gitFileState.findMany.mockResolvedValue([]);
   mocks.prisma.gitConflict.findMany.mockResolvedValue([]);
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
-  mocks.prisma.page.findMany.mockResolvedValue([]);
   mocks.getDefaultBranch.mockResolvedValue({ id: 'branch-1', name: 'Main' });
   mocks.getDefaultLanguage.mockResolvedValue({ id: 'language-1', code: 'en' });
   mocks.provider.getBranchSha.mockImplementation(async (_repository: string, branch: string) => (branch === 'main' ? 'base-sha' : 'head-sha'));
@@ -339,10 +470,19 @@ describe('processGitOperation', () => {
       updatedAt: '2026-08-23T00:00:00.000Z',
     };
     mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [page] });
+    const observedAt = new Date('2026-08-23T00:00:00.000Z');
     mocks.prisma.page.findMany.mockResolvedValue([
-      { id: page.id, title: page.title, path: page.path, content: page.content, description: page.description, icon: page.icon },
+      {
+        id: page.id,
+        title: page.title,
+        path: page.path,
+        content: page.content,
+        description: page.description,
+        icon: page.icon,
+        updatedAt: observedAt,
+      },
     ]);
-    mocks.prisma.page.findFirst.mockResolvedValue({ id: page.id });
+    mocks.prisma.page.updateMany.mockResolvedValue({ count: 1 });
     mocks.parseFrontmatter.mockReturnValue({ body: 'Updated from Git', meta: {} });
     const baseContent = '---\ntitle: "Welcome"\n---\n\nOriginal';
     const remoteContent = '---\ntitle: "Welcome"\n---\n\nUpdated from Git';
@@ -351,8 +491,11 @@ describe('processGitOperation', () => {
 
     await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
 
-    expect(mocks.prisma.page.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: page.id }, data: expect.objectContaining({ content: 'Updated from Git' }) }),
+    expect(mocks.prisma.page.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: page.id, updatedAt: observedAt }),
+        data: expect.objectContaining({ content: 'Updated from Git' }),
+      }),
     );
     expect(mocks.prisma.gitFileState.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: expect.objectContaining({ pageId: page.id }) }));
   });
@@ -418,5 +561,154 @@ describe('processGitOperation', () => {
     expect(mocks.prisma.gitConnection.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: connection.id }, data: expect.objectContaining({ lastSyncStatus: 'FAILED' }) }),
     );
+  });
+});
+
+describe('processGitOperation applying Git changes to pages', () => {
+  const arabicSnapshot = {
+    ...currentSnapshot,
+    project: {
+      ...currentSnapshot.project,
+      languages: [...currentSnapshot.project.languages, { code: 'ar', label: 'العربية', direction: 'RTL' as const, isDefault: false, config: null }],
+    },
+  };
+  const ledger = (path: string, baseContent: string) => ({ path, baseContent, baseExists: true, pageId: null, ownership: 'SHARED' });
+  const remote = (path: string, content: string) => ({ path, sha: `sha-${path}`, content });
+  const lastOperationStatus = () =>
+    mocks.prisma.gitSyncOperation.update.mock.calls.map(([input]) => (input as { data: { status?: string } }).data.status).filter(Boolean);
+
+  it('does not overwrite a dashboard save made after the merge read, and surfaces it as a conflict', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    const base = serializeGitPage(about);
+    const upstream = '---\ntitle: "About"\n---\n\nUpdated from Git';
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', base)]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('about.mdx', upstream)]);
+    // The writer saves between the merge read and the apply.
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(async () => {
+      const row = pageStore.rows.find((page) => page.id === about.id);
+      if (row) Object.assign(row, { content: 'Saved by the writer', updatedAt: tick() });
+      return [];
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.find((page) => page.id === about.id)?.content).toBe('Saved by the writer');
+    expect(mocks.prisma.gitConflict.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          path: 'about.mdx',
+          baseContent: base,
+          oursContent: expect.stringContaining('Saved by the writer'),
+          theirsContent: upstream,
+        }),
+      }),
+    );
+    expect(lastOperationStatus()).toContain('CONFLICT');
+    expect(lastOperationStatus()).not.toContain('SUCCEEDED');
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+  });
+
+  it('does not delete a page that was edited after the merge read saw it unchanged', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([]);
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(async () => {
+      const row = pageStore.rows.find((page) => page.id === about.id);
+      if (row) Object.assign(row, { content: 'Saved by the writer', updatedAt: tick() });
+      return [];
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(pageStore.rows.find((page) => page.id === about.id)?.content).toBe('Saved by the writer');
+    expect(mocks.prisma.gitConflict.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ create: expect.objectContaining({ path: 'about.mdx', theirsContent: null }) }),
+    );
+    expect(lastOperationStatus()).toContain('CONFLICT');
+  });
+
+  it('runs the sync again instead of reporting a conflict when the concurrent save already matches Git', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([remote('about.mdx', '---\ntitle: "About"\n---\n\nSame text')]);
+    mocks.prisma.gitConflict.findMany.mockImplementationOnce(async () => {
+      const row = pageStore.rows.find((page) => page.id === about.id);
+      if (row) Object.assign(row, { content: 'Same text', updatedAt: tick() });
+      return [];
+    });
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    expect(mocks.prisma.gitConflict.upsert).not.toHaveBeenCalled();
+    expect(lastOperationStatus()).toEqual(['QUEUED']);
+    expect(mocks.createJob).toHaveBeenCalledWith('git', { name: 'process-git-operation', data: { operationId: 'operation-1' } }, expect.anything());
+  });
+
+  it('applies nothing when one file of a multi-file sync fails', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...arabicSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      remote('about.mdx', '---\ntitle: "About"\n---\n\nUpdated from Git'),
+      // A new Arabic page while this connection syncs English only.
+      remote('ar/البدء.mdx', '# البدء'),
+    ]);
+
+    const failure = await processGitOperation('operation-1').then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(pageStore.rows).toHaveLength(1);
+    expect(pageStore.rows[0]?.content).toBe('Original');
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(String(failure)).toMatch(/nothing was changed in Nibleaf.*ar\/البدء\.mdx is outside/);
+    expect(mocks.prisma.gitSyncOperation.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED', error: expect.stringContaining('nothing was changed') }) }),
+    );
+  });
+
+  it('rolls back earlier pages when a database write fails part-way', async () => {
+    const about = seedPage({ id: 'page-about', title: 'About', slug: 'about', content: 'Original' });
+    mocks.getCurrentSnapshot.mockResolvedValue({ ...currentSnapshot, pages: [snapshotPage(about)] });
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([ledger('about.mdx', serializeGitPage(about))]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      remote('about.mdx', '---\ntitle: "About"\n---\n\nUpdated from Git'),
+      remote('guide.mdx', '# Guide'),
+    ]);
+    mocks.prisma.page.create.mockRejectedValueOnce(new Error('Connection terminated unexpectedly'));
+
+    const failure = await processGitOperation('operation-1').then(
+      () => null,
+      (error: unknown) => error,
+    );
+
+    expect(pageStore.rows.map((page) => [page.id, page.content])).toEqual([['page-about', 'Original']]);
+    expect(String(failure)).toMatch(/nothing was changed in Nibleaf/);
+  });
+
+  it('creates distinct pages with Arabic slugs for new Arabic files', async () => {
+    mocks.prisma.gitFileState.findMany.mockResolvedValue([]);
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValue([
+      remote('البدء.mdx', '---\ntitle: "البدء"\n---\n\nمرحبا'),
+      remote('النشر.mdx', '---\ntitle: "النشر"\n---\n\nانشر'),
+    ]);
+
+    await expect(processGitOperation('operation-1')).resolves.toBeUndefined();
+
+    const pages = pageStore.rows.filter((page) => page.kind === 'PAGE');
+    expect(pages.map((page) => [page.slug, page.content.trim()]).sort()).toEqual([
+      ['البدء', 'مرحبا'],
+      ['النشر', 'انشر'],
+    ]);
+    const ledgerPageIds = mocks.prisma.gitFileState.upsert.mock.calls
+      .map(([input]) => input as { create: { path: string; pageId: string | null } })
+      .filter((input) => input.create.path.endsWith('.mdx'))
+      .map((input) => input.create.pageId);
+    expect(new Set(ledgerPageIds).size).toBe(2);
+    expect(ledgerPageIds).not.toContain(null);
   });
 });

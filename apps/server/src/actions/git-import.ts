@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { prisma } from '@nibleaf/database';
-import { slugify } from '@nibleaf/shared';
+import { slugify, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { GitConfig } from '@nibleaf/validators';
 import got from 'got';
 import { z } from 'zod';
@@ -152,6 +152,27 @@ const gitLabRawFileUrl = (repo: string, branch: string, filePath: string, instan
   return url.toString();
 };
 
+/** Imports before slugs kept non-Latin letters stored ASCII-only slugs
+ * (`café.md` → `caf`). Keep updating such a page rather than duplicating it,
+ * unless the legacy slug belongs to another file of this import. The old
+ * `page` placeholder is never adopted: several files collapsed onto it. */
+const resolveImportedSlug = async (
+  target: ImportTarget,
+  parentId: string | null,
+  planned: string,
+  name: string,
+  takenInDir: Set<string>,
+): Promise<string> => {
+  const legacy = slugify(name);
+  if (!legacy || legacy === planned || takenInDir.has(legacy)) return planned;
+  const scope = { projectId: target.projectId, branchId: target.branchId, languageId: target.languageId, parentId, kind: 'PAGE' as const };
+  if (await prisma.page.findFirst({ where: { ...scope, slug: planned }, select: { id: true } })) return planned;
+  if (!(await prisma.page.findFirst({ where: { ...scope, slug: legacy }, select: { id: true } }))) return planned;
+  // Two files can share one legacy slug (`café.md`, `cafè.md`): only the first adopts it.
+  takenInDir.add(legacy);
+  return legacy;
+};
+
 const assertSafeCloneUrl = async (value: string): Promise<string> => {
   const url = await assertPublicRemoteUrl(value, 'Public Git URL');
   url.hash = '';
@@ -216,6 +237,56 @@ const listGenericGitFiles = async (cloneUrl: string, branch: string, basePath: s
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+};
+
+/** Where one repository file lands: the folder (`dir`, repo-relative) whose
+ * page group it joins and the name its slug derives from. `dir/index.md` and
+ * `dir/README.md` stand for the folder itself, one level up. */
+export const importFileLocation = (relativePath: string): { dir: string; name: string } => {
+  const segments = relativePath.split('/');
+  const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
+  const relDir = segments.join('/');
+  if (!/^(index|readme)$/i.test(fileBase)) return { dir: relDir, name: fileBase };
+  return { dir: relDir.split('/').slice(0, -1).join('/'), name: relDir.split('/').filter(Boolean).pop() ?? fileBase };
+};
+
+/**
+ * Give every file of one import a distinct page slug within its folder.
+ * Slugs keep Arabic (and every other script's) letters, exactly like pages
+ * created in the dashboard, so `البدء.md` and `النشر.md` stay two pages instead
+ * of both collapsing to `page`. Files whose names still normalize alike
+ * (`Intro.md` / `intro.md`, `guide.md` / `guide/index.md`) are ordered by path:
+ * the first keeps the plain slug and the rest get `-2`, `-3`…, skipping slugs
+ * another file in that folder derives naturally. The assignment depends only on
+ * the set of paths, so re-importing the same repository maps every file to the
+ * same page again.
+ */
+export const planImportSlugs = (relativePaths: readonly string[]): Map<string, string> => {
+  const byDir = new Map<string, Array<{ path: string; base: string }>>();
+  for (const path of [...new Set(relativePaths)].sort()) {
+    const { dir, name } = importFileLocation(path);
+    const files = byDir.get(dir) ?? [];
+    files.push({ path, base: slugifyUnicode(name) || 'page' });
+    byDir.set(dir, files);
+  }
+  const slugs = new Map<string, string>();
+  for (const files of byDir.values()) {
+    const taken = new Set(files.map((file) => file.base));
+    const claimed = new Set<string>();
+    for (const file of files) {
+      if (!claimed.has(file.base)) {
+        claimed.add(file.base);
+        slugs.set(file.path, file.base);
+        continue;
+      }
+      let suffix = 2;
+      while (taken.has(`${file.base}-${suffix}`) || claimed.has(`${file.base}-${suffix}`)) suffix += 1;
+      const slug = `${file.base}-${suffix}`;
+      claimed.add(slug);
+      slugs.set(file.path, slug);
+    }
+  }
+  return slugs;
 };
 
 /**
@@ -301,7 +372,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
         parentId = cached;
         continue;
       }
-      const groupId = await ensureGroupPage(target, { parentId, title: humanize(part), slug: slugify(part) });
+      const groupId = await ensureGroupPage(target, { parentId, title: humanize(part), slug: slugifyUnicode(part) || 'group' });
       groupCache.set(cumulative, groupId);
       parentId = groupId;
     }
@@ -310,27 +381,30 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
 
   const summary: GitImportSummary = { files: mdFiles.length, imported: 0, updated: 0, skipped: 0 };
 
-  for (const file of mdFiles) {
+  // Download every file before writing anything, so a fetch failure part-way
+  // through cannot leave a half-imported draft behind.
+  const loaded: Array<{ rel: string; text: string }> = [];
+  for (const file of [...mdFiles].sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))) {
     const text = await file.read();
     if (text === null) {
       summary.skipped++;
       continue;
     }
-    const { meta, body } = parseFrontmatter(text);
+    loaded.push({ rel: file.path.slice(prefix.length), text });
+  }
+  const slugs = planImportSlugs(loaded.map((file) => file.rel));
+  const plannedByDir = new Map<string, Set<string>>();
+  for (const file of loaded) {
+    const { dir } = importFileLocation(file.rel);
+    plannedByDir.set(dir, (plannedByDir.get(dir) ?? new Set()).add(slugs.get(file.rel) as string));
+  }
 
-    const rel = file.path.slice(prefix.length);
-    const segments = rel.split('/');
-    const fileBase = (segments.pop() ?? '').replace(/\.(md|mdx)$/i, '');
-    const relDir = segments.join('/');
-    const isFolderIndex = /^(index|readme)$/i.test(fileBase);
-
-    // `dir/index.md` / `dir/README.md` represent the folder itself → live one level up
-    // with the folder's name; everything else is a leaf inside its directory.
-    const folderName = relDir.split('/').filter(Boolean).pop() ?? fileBase;
-    const targetDir = isFolderIndex ? relDir.split('/').slice(0, -1).join('/') : relDir;
-    const nameForSlug = isFolderIndex ? folderName : fileBase;
-    const slug = slugify(nameForSlug) || 'page';
+  for (const file of loaded) {
+    const { meta, body } = parseFrontmatter(file.text);
+    const { dir: targetDir, name: nameForSlug } = importFileLocation(file.rel);
     const parentId = await ensureGroups(targetDir);
+    const takenInDir = plannedByDir.get(targetDir) ?? new Set<string>();
+    const slug = await resolveImportedSlug(target, parentId, slugs.get(file.rel) as string, nameForSlug, takenInDir);
     const title = deriveTitle(meta, body, nameForSlug);
 
     const outcome = await upsertLeafPage(target, {
