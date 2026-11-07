@@ -9,9 +9,22 @@ export interface MdxProps {
 }
 
 export const stringAttr = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
-export const truthy = (value: unknown): boolean => value === true || value === '' || value === 'true';
+/** A boolean prop: present, empty, "true", or the JSX expression {true}. */
+export const truthy = (value: unknown): boolean =>
+  value === true || (typeof value === 'string' && ['', 'true', '{true}'].includes(value.trim()));
 export const authoredName = (props: MdxProps): string | undefined =>
   stringAttr(props['data-display-name']) ?? stringAttr(props.dataDisplayName) ?? stringAttr(props.name);
+/** A number written as 3, "3" or the JSX literal {3}. Expressions are never evaluated. */
+export const numberAttr = (value: unknown): number =>
+  typeof value === 'number' ? value : Number(stringAttr(value)?.trim().replace(/^\{\s*([\d.]+)\s*\}$/, '$1') ?? Number.NaN);
+/** Only a plain color value reaches an inline style: a hex code, a color name,
+ * or a color function with plain arguments. */
+export const safeColor = (value: unknown): string | undefined => {
+  const color = stringAttr(value)?.trim();
+  return color && /^(?:#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})|[a-z]+|(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\([\w\s.,%/+-]*\))$/i.test(color)
+    ? color
+    : undefined;
+};
 /** Only same-site, http(s) and mailto links are rendered as anchors. */
 export const safeHref = (value: unknown): string | undefined => {
   const href = stringAttr(value)?.trim();
@@ -48,13 +61,23 @@ export const calloutOf = (kind: CalloutType) =>
 export const Banner = ({ children }: MdxProps) => <aside className="mdx-banner">{children}</aside>;
 `;
 
-export const mdxCardsTemplate = (): string => `import { type MdxProps, safeHref, stringAttr } from './shared';
+export const mdxCardsTemplate = (): string => `import type { CSSProperties } from 'react';
+import { type MdxProps, numberAttr, safeHref, stringAttr } from './shared';
 
-export const CardGroup = ({ children, cols }: MdxProps) => (
-  <section className="mdx-card-grid" data-cols={stringAttr(cols)}>
-    {children}
-  </section>
-);
+/** One to four columns, two by default. */
+const columnCount = (value: unknown): number => {
+  const count = numberAttr(value);
+  return Number.isInteger(count) && count >= 1 && count <= 4 ? count : 2;
+};
+
+export const CardGroup = ({ children, cols }: MdxProps) => {
+  const count = columnCount(cols);
+  return (
+    <section className="mdx-card-grid" data-cols={count} style={{ '--mdx-cols': count } as CSSProperties}>
+      {children}
+    </section>
+  );
+};
 
 export const Card = ({ children, href, title }: MdxProps) => {
   const content = (
@@ -210,11 +233,14 @@ export const Update = ({ children, label }: MdxProps) => (
 );
 `;
 
-export const mdxFieldsTemplate = (): string => `import { type MdxProps, stringAttr, truthy } from './shared';
+export const mdxFieldsTemplate = (): string => `import { authoredName, type MdxProps, stringAttr, truthy } from './shared';
 
-const Field = ({ children, name, required, type }: MdxProps) => (
+// Like the reader, a location prop (path, query, header, body) names the field.
+const Field = ({ children, required, type, ...props }: MdxProps) => (
   <section className="mdx-field">
-    <code dir="ltr">{stringAttr(name)}</code>
+    <code dir="ltr">
+      {stringAttr(props.path) ?? stringAttr(props.query) ?? stringAttr(props.header) ?? stringAttr(props.body) ?? authoredName(props)}
+    </code>
     <span className="mdx-field-type">
       {stringAttr(type)}
       {truthy(required) ? ' · required' : ''}
@@ -307,11 +333,11 @@ export const Tooltip = ({ children, tip }: MdxProps) => {
 
 export const mdxInlineTemplate = (): string => `import { Code, File, Folder, Info, Link, type LucideIcon, Star, TriangleAlert } from 'lucide-react';
 import type { CSSProperties } from 'react';
-import { authoredName, type MdxProps, safeHref, stringAttr } from './shared';
+import { authoredName, type MdxProps, numberAttr, safeColor, safeHref, stringAttr } from './shared';
 
 const icons: Record<string, LucideIcon> = { info: Info, warning: TriangleAlert, code: Code, file: File, folder: Folder, link: Link, star: Star };
 const iconSize = (value: unknown): number | undefined => {
-  const size = Number(value);
+  const size = numberAttr(value);
   return Number.isInteger(size) && size >= 8 && size <= 96 ? size : undefined;
 };
 
@@ -319,7 +345,7 @@ export const Icon = (props: MdxProps) => {
   const name = stringAttr(props.icon) ?? authoredName(props);
   if (!name) return null;
   const Glyph = icons[name.toLowerCase()];
-  const style: CSSProperties = { color: stringAttr(props.color) };
+  const style: CSSProperties = { color: safeColor(props.color) };
   const size = iconSize(props.size);
   if (size) style.fontSize = size;
   return Glyph ? (

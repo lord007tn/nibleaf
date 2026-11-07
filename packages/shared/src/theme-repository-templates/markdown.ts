@@ -19,7 +19,7 @@ const componentTags = [
 /** Allow-list for authored HTML/MDX. Everything outside it is stripped. */
 export const sanitizeSchema = {
   ...defaultSchema,
-  tagNames: [...(defaultSchema.tagNames ?? []), ...componentTags],
+  tagNames: [...(defaultSchema.tagNames ?? []), 'u', ...componentTags],
   attributes: {
     ...defaultSchema.attributes,
     card: ['title', 'href', 'icon'],
@@ -31,8 +31,8 @@ export const sanitizeSchema = {
     mdxframe: ['caption'],
     tooltip: ['tip'],
     icon: ['icon', 'dataDisplayName', 'color', 'size'],
-    paramfield: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
-    responsefield: ['name', 'type', 'required', 'default', 'deprecated'],
+    paramfield: ['path', 'query', 'header', 'body', 'dataDisplayName', 'type', 'required', 'default', 'deprecated'],
+    responsefield: ['dataDisplayName', 'type', 'required', 'default', 'deprecated'],
     expandable: ['title', 'defaultOpen', 'defaultopen'],
     update: ['label', 'description'],
     banner: ['type'],
