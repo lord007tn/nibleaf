@@ -1139,6 +1139,7 @@ model Page {
 
   comments       Comment[]
   audienceGrants AudienceGrant[]
+  gitImportSource PageGitImportSource?
 
   @@index([projectId, languageId, path])
   @@index([projectId, parentId])
@@ -1146,6 +1147,25 @@ model Page {
   @@index([languageId])
   @@index([branchId])
   @@map("page")
+}
+
+/// Which repository file a one-way Git import created a page from. Re-imports
+/// match files to pages through this row, so a look-alike sibling file can
+/// never take another file's page. Server-only: page settings, tree edits and
+/// published snapshots never read or write it, and it goes with its page.
+model PageGitImportSource {
+  pageId     String   @id
+  page       Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  projectId  String
+  branchId   String
+  languageId String
+  /// Repository-relative source path, e.g. `docs/ar/البدء.md`.
+  path       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([projectId, branchId, languageId, path])
+  @@map("page_git_import_source")
 }
 
 // ─── Private reader access ──────────────────────────────────────────────────

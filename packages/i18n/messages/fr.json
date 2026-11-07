@@ -1583,7 +1583,7 @@
   "settings_import_summary_source": "Source",
   "settings_import_summary_branch": "Branche",
   "settings_import_summary_defaultbranch": "Branche par défaut",
-  "settings_import_summaryhint": "Des pages sont ajoutées ou mises à jour dans ce projet : rien n'est supprimé et la réexécution de l'importation est sécurisée.",
+  "settings_import_summaryhint": "By default, importing adds new pages and updates the pages it matches by source file or address, replacing their title, text and any details the source sets; nothing you’ve edited is deleted. Where “Replace the current draft with this repository” is offered and turned on, your draft is made to match the source, and pages that aren’t in it are deleted. Download your drafts first (Settings → Exports → One-time export → Download the original Markdown ZIP; the usual export contains only the published version).",
   "settings_import_run": "Importer",
   "settings_import_running": "Importation…",
   "settings_import_success": "Importation terminée",
