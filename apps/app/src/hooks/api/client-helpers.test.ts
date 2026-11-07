@@ -30,3 +30,14 @@ it('keeps the server details and reads their reason', async () => {
   expect(error).toMatchObject({ status: 404, reason: 'private', details: { reason: 'private', identifier: 'docs' } });
   expect(new ApiResponseError('x', 404, undefined, undefined, undefined, undefined, undefined, { reason: 7 }).reason).toBeUndefined();
 });
+
+it.each([
+  ['getData', getData],
+  ['mutateData', mutateData],
+] as const)('keeps the details and reason of a validation error (%s)', async (_name, read) => {
+  const details = { reason: 'fixture', errors: [{ path: 'query', message: 'is too long' }] };
+  const response = Response.json({ error: { code: 'validation:failed', message: 'Invalid request', details } }, { status: 422 });
+  const error = await read(response, 'request').catch((caught: unknown) => caught);
+  expect(error).toBeInstanceOf(ApiResponseError);
+  expect(error).toMatchObject({ status: 422, message: 'Invalid request query: is too long', reason: 'fixture', details });
+});

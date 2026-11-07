@@ -11,9 +11,9 @@ const searchSiteInput = z.object({
   sessionId: z.string().max(128).optional(),
   consentState: z.enum(['denied', 'granted', 'not_required', 'unknown']).default('unknown'),
   query: z.string().trim().min(1).max(300),
-  language: z.string().min(1).optional(),
+  language: z.string().min(1).max(35).optional(),
   /** The reader's language: ranked first, while every language is searched. */
-  prefer: z.string().min(1).optional(),
+  prefer: z.string().min(1).max(35).optional(),
   version: z.string().min(1).optional(),
   limit: z.number().int().min(1).max(50).optional(),
 });
