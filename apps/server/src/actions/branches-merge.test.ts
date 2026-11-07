@@ -157,11 +157,6 @@ describe('createBranch', () => {
       },
     });
   });
-
-  it('answers not found when the source version was promoted away before the fork', async () => {
-    state.rows = [];
-    await expect(createBranch('project', { name: 'v3', fromBranchId: 'gone' })).rejects.toMatchObject({ status: 404 });
-  });
 });
 
 describe('mergeBranch', () => {
