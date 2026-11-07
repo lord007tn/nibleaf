@@ -1,6 +1,5 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
-  'editor.ai.unavailable': 'editor_ai_unavailable',
   'dashboard.ai.engagement': 'dashboard_ai_engagement',
   'dashboard.ai.readerActions': 'dashboard_ai_readerActions',
   'dashboard.ai.opens': 'dashboard_ai_opens',
@@ -550,6 +549,7 @@ export const MESSAGE_IDS = {
   'editor.ai.sectionDrafted': 'editor_ai_sectiondrafted',
   'editor.ai.draftError': 'editor_ai_drafterror',
   'editor.ai.rateLimited': 'editor_ai_ratelimited',
+  'editor.ai.unavailable': 'editor_ai_unavailable',
   'editor.ai.summaryLabel': 'editor_ai_summarylabel',
   'editor.ai.suggestionLabel': 'editor_ai_suggestionlabel',
   'editor.ai.replace': 'editor_ai_replace',

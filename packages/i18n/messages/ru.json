@@ -357,6 +357,7 @@
   "editor_ai_sectiondrafted": "Раздел составлен.",
   "editor_ai_drafterror": "Не удалось подготовить контент.",
   "editor_ai_ratelimited": "Достигнут дневной лимит ИИ. Попробуйте завтра.",
+  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_summarylabel": "Резюме",
   "editor_ai_suggestionlabel": "Предложение",
   "editor_ai_replace": "Заменить",
@@ -3530,6 +3531,5 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms",
-  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes."
+  "dashboard_ai_milliseconds": "{value} ms"
 }

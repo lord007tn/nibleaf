@@ -357,6 +357,7 @@
   "editor_ai_sectiondrafted": "খসড়া প্রণীত।",
   "editor_ai_drafterror": "বিষয়বস্তু খসড়া করা যায়নি.",
   "editor_ai_ratelimited": "দৈনিক AI সীমা পূর্ণ হয়েছে। আগামীকাল আবার চেষ্টা করুন।",
+  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes.",
   "editor_ai_summarylabel": "সারাংশ",
   "editor_ai_suggestionlabel": "সাজেশন",
   "editor_ai_replace": "প্রতিস্থাপন করুন",
@@ -3530,6 +3531,5 @@
   "dashboard_ai_medianFirstTokenMs": "Typical wait for the first words",
   "dashboard_ai_medianLatencyMs": "Typical answer time",
   "dashboard_ai_noTiming": "No timing data yet",
-  "dashboard_ai_milliseconds": "{value} ms",
-  "editor_ai_unavailable": "AI drafting is temporarily unavailable. Try again in a few minutes."
+  "dashboard_ai_milliseconds": "{value} ms"
 }
