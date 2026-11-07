@@ -14,7 +14,7 @@ export const shellEn: ShellCopy = {
   ],
   login: { label: 'Log in', href: '/sign-in' },
   start: { label: 'Start free', href: '/sign-up' },
-  languageSwitch: { label: 'العربية', ariaLabel: 'اقرأ هذه الصفحة بالعربية', hrefLang: 'ar' },
+  languageSwitch: { label: 'العربية', ariaLabel: 'Nibleaf بالعربية', hrefLang: 'ar' },
   theme: { toDark: 'Switch to dark mode', toLight: 'Switch to light mode' },
   menu: { open: 'Open menu', close: 'Close menu', title: 'Menu' },
   github: {
@@ -22,7 +22,7 @@ export const shellEn: ShellCopy = {
     starsLabel: (count) => (count === 1 ? '1 star on GitHub' : `${count.toLocaleString('en-US')} stars on GitHub`),
   },
   footer: {
-    tagline: 'Open-source documentation with AI answers, search insights and first-class Arabic.',
+    tagline: 'Open-source documentation and help center, with first-class Arabic.',
     openSource: {
       badge: 'Open source · AGPL-3.0',
       heading: 'Documentation you can own.',

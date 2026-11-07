@@ -19,10 +19,17 @@ const branchesRoutes = {
     description: 'Create a branch by forking another.',
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
+  mergePreview: createRouteConfig({
+    guard: [...editor],
+    tags: ['branches'],
+    description: "List pages on the default branch ('main') modified, added or deleted since this branch's pages were copied from it.",
+    responses: ok,
+  }),
   merge: createRouteConfig({
     guard: [...editor],
     tags: ['branches'],
-    description: "Merge a branch into the default branch ('main').",
+    description:
+      "Merge a branch into the default branch ('main'), replacing main's pages. Answers 409 branch:main_changed (listing the pages) when main changed since the fork, and 409 branch:baseline_missing when the branch has no fork baseline.",
     responses: ok,
   }),
   remove: createRouteConfig({ guard: [...editor], tags: ['branches'], description: 'Delete a non-default branch.', responses: ok }),

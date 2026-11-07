@@ -1,6 +1,11 @@
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { describe, expect, it } from 'vitest';
-import { resolvePublishedSearchContext, resolvePublishedSearchLanguages, resolvePublishedSearchRequest } from './search-configuration';
+import {
+  resolvePreferredSearchLanguage,
+  resolvePublishedSearchContext,
+  resolvePublishedSearchLanguages,
+  resolvePublishedSearchRequest,
+} from './search-configuration';
 
 const snapshot = (search: Record<string, unknown>): SiteSnapshot => ({
   project: {
@@ -64,5 +69,16 @@ describe('published search configuration', () => {
   it('keeps the backwards-compatible single-language API scope when requested', () => {
     expect(resolvePublishedSearchLanguages(snapshot({}), 'ar')).toEqual(['ar']);
     expect(resolvePublishedSearchLanguages(snapshot({}), 'unknown')).toEqual(['en']);
+  });
+
+  it('accepts a preferred language only when the site serves it, matching by base language', () => {
+    expect(resolvePreferredSearchLanguage(snapshot({}), 'ar')).toBe('ar');
+    expect(resolvePreferredSearchLanguage(snapshot({}), 'AR-sa')).toBe('ar');
+    // Unknown, empty or disabled: ignored, never an error.
+    expect(resolvePreferredSearchLanguage(snapshot({}), 'fr')).toBeUndefined();
+    expect(resolvePreferredSearchLanguage(snapshot({}), ' ')).toBeUndefined();
+    const disabled = snapshot({});
+    disabled.project.languages = disabled.project.languages.map((language) => (language.code === 'ar' ? { ...language, enabled: false } : language));
+    expect(resolvePreferredSearchLanguage(disabled, 'ar')).toBeUndefined();
   });
 });

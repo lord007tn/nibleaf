@@ -144,7 +144,7 @@ export function LandingView({
             <h1 className="mt-5 text-balance font-semibold text-[2.5rem] leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem] rtl:text-[2.1rem] rtl:leading-[1.5] rtl:tracking-normal rtl:sm:text-5xl">
               {copy.hero.title}
             </h1>
-            <p className="mt-5 max-w-[60ch] text-lg text-muted-foreground leading-8">{copy.hero.subtitle}</p>
+            <p className="mt-5 max-w-[60ch] text-foreground/80 text-lg leading-8">{copy.hero.subtitle}</p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <MarketingLink cta={copy.hero.primaryCta} lang={lang} placement="hero" className={primaryButton}>
                 <ArrowRight aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
@@ -154,7 +154,7 @@ export function LandingView({
             <MarketingLink cta={copy.hero.tertiaryLink} lang={lang} placement="hero" className={`mt-3 ${textLink}`}>
               <ArrowRight aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
             </MarketingLink>
-            <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-muted-foreground text-xs leading-6">
+            <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-foreground/70 text-xs leading-6">
               {copy.hero.assurances.map((item) => (
                 <li key={item} className="flex items-start gap-1.5">
                   <Check aria-hidden="true" className="mt-1 size-3.5 shrink-0 text-primary" />
@@ -162,7 +162,7 @@ export function LandingView({
                 </li>
               ))}
             </ul>
-            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-muted-foreground text-xs leading-6">{copy.hero.availabilityNote}</p>}
+            {copy.hero.availabilityNote && <p className="mt-4 max-w-[60ch] text-foreground/70 text-xs leading-6">{copy.hero.availabilityNote}</p>}
           </div>
           <HeroMedia lang={lang} media={copy.hero.media} />
         </div>

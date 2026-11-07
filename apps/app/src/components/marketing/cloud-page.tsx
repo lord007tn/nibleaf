@@ -4,7 +4,7 @@ import { isRollingOut } from './copy/availability';
 import { landingEn } from './copy/landing.en';
 import { Eyebrow, outlineButton, primaryButton } from './site/primitives';
 
-/** The Nibleaf Cloud page (`/cloud`). It omits capabilities that are still rolling out. */
+/** The Nibleaf Cloud page (`/cloud`). It omits capabilities that are still rolling out or depend on how a deployment is configured. */
 export function CloudPage({ stars = 0 }: { stars?: number }) {
   return (
     <MarketingShell stars={stars}>
@@ -34,7 +34,7 @@ export function CloudPage({ stars = 0 }: { stars?: number }) {
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {landingEn.more.items
             // Capabilities still rolling out stay off this Cloud page until they are live there.
-            .filter((item) => !item.availability || !isRollingOut(item.availability))
+            .filter((item) => !item.deploymentDependent && (!item.availability || !isRollingOut(item.availability)))
             .map((item) => (
               <div key={item.title}>
                 <h3 className="flex items-center gap-2 font-semibold">

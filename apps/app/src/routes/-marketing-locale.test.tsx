@@ -11,7 +11,8 @@ import englishCatalog from '../../../../packages/i18n/messages/en.json' with { t
 
 let root: Root | undefined;
 let container: HTMLDivElement | undefined;
-const englishCopy: Record<string, string> = englishCatalog;
+// Plural (variant) messages are arrays; this test reads only plain marketing strings.
+const englishCopy = englishCatalog as unknown as Record<string, string>;
 
 afterEach(async () => {
   if (root) await act(async () => root?.unmount());

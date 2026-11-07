@@ -4,7 +4,10 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     deployment: { findMany: vi.fn() },
     domain: { findMany: vi.fn() },
-    exportJob: { findMany: vi.fn() },
+    exportJob: { findMany: vi.fn(), groupBy: vi.fn() },
+    user: { findUnique: vi.fn() },
+    project: { findUnique: vi.fn() },
+    platformEvent: { findMany: vi.fn() },
     gitSyncOperation: { findMany: vi.fn() },
   },
 }));
@@ -16,7 +19,7 @@ vi.mock('./members', () => ({ inviteMember: vi.fn() }));
 vi.mock('./usage', () => ({ getProjectUsage: vi.fn() }));
 vi.mock('./workspace', () => ({ parseWorkspaceMetadata: () => ({ plan: 'free' }) }));
 
-import { getAdminOperations } from './admin';
+import { getAdminOperations, getAdminSite, getAdminUser } from './admin';
 
 describe('admin operations privacy boundary', () => {
   beforeEach(() => {
@@ -63,5 +66,38 @@ describe('admin operations privacy boundary', () => {
     const select = mocks.prisma.domain.findMany.mock.calls[0]?.[0].select;
     expect(select).not.toHaveProperty('providerData');
     expect(select).not.toHaveProperty('verificationToken');
+  });
+});
+
+describe('admin activity delivery markers', () => {
+  const now = new Date();
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.prisma.user.findUnique.mockResolvedValue({ id: 'user', createdAt: now, updatedAt: now, accounts: [], sessions: [], members: [] });
+    mocks.prisma.project.findUnique.mockResolvedValue({
+      id: 'project',
+      createdAt: now,
+      updatedAt: now,
+      organization: { id: 'org', members: [], invitations: [] },
+      languages: [],
+      deployments: [],
+      domains: [],
+      _count: { readers: 0, audiences: 0 },
+    });
+    mocks.prisma.exportJob.groupBy.mockResolvedValue([]);
+    mocks.prisma.platformEvent.findMany.mockResolvedValue([]);
+  });
+
+  it.each(['user', 'site'] as const)('excludes internal receipt events before limiting %s activity', async (scope) => {
+    await (scope === 'user' ? getAdminUser('user') : getAdminSite('project'));
+    expect(mocks.prisma.platformEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          ...(scope === 'user' ? { userId: 'user' } : { projectId: 'project' }),
+          type: { notIn: ['publish_delivery_backfilled', 'publish_announced'] },
+        },
+        take: 30,
+      }),
+    );
   });
 });

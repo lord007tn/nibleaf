@@ -153,7 +153,7 @@ describe('previews and secondary copy stay qualified', () => {
 
   it('keeps unverified Cloud claims off the Cloud page', () => {
     const text = markup(renderToStaticMarkup(<CloudPage />)).textContent ?? '';
-    expect(text).not.toMatch(/automatic upgrades|custom domains, analytics/);
+    expect(text).not.toMatch(/automatic upgrades|custom domain|GitHub two-way sync/i);
     expect(text).not.toContain(landingEn.paths.body);
   });
 });

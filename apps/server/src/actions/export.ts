@@ -56,7 +56,7 @@ export const exportProjectMarkdown = async (projectId: string): Promise<ProjectE
     where: { id: projectId },
     include: {
       languages: { orderBy: { position: 'asc' } },
-      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] },
+      branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
     },
   });
   if (!project) {

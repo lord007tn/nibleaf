@@ -6,15 +6,17 @@ interface SiteSearchInput {
   siteId: string | undefined;
   query: string;
   language?: string;
+  /** The reader's language: ranked first, without narrowing the search. */
+  prefer?: string;
   version?: string;
   limit?: number;
 }
 
 /** Reader search results for one query. Lives with its hook (not in site-query-options.ts)
  * because only the lazily loaded search dialog uses it. */
-const siteSearchQueryOptions = ({ siteId, query, language, version, limit }: SiteSearchInput) =>
+const siteSearchQueryOptions = ({ siteId, query, language, prefer, version, limit }: SiteSearchInput) =>
   queryOptions({
-    queryKey: queryKeys.site.search(siteId ?? '', query, language, version, limit),
+    queryKey: queryKeys.site.search(siteId ?? '', query, language, version, limit, prefer),
     queryFn:
       siteId && query.trim()
         ? // The signal cancels the request once the reader has typed past it.
@@ -24,6 +26,7 @@ const siteSearchQueryOptions = ({ siteId, query, language, version, limit }: Sit
                 projectId: siteId,
                 query,
                 ...(language ? { language } : {}),
+                ...(prefer ? { prefer } : {}),
                 ...(version ? { version } : {}),
                 ...(limit ? { limit } : {}),
               },
@@ -32,9 +35,13 @@ const siteSearchQueryOptions = ({ siteId, query, language, version, limit }: Sit
         : skipToken,
   });
 
-export const useSiteSearch = (siteId: string | undefined, query: string, language?: string, version?: string, limit?: number, enabled = true) =>
+export const useSiteSearch = (
+  siteId: string | undefined,
+  query: string,
+  { language, prefer, version, limit, enabled = true }: Omit<SiteSearchInput, 'siteId' | 'query'> & { enabled?: boolean } = {},
+) =>
   useQuery({
-    ...siteSearchQueryOptions({ siteId, query, language, version, limit }),
+    ...siteSearchQueryOptions({ siteId, query, language, prefer, version, limit }),
     enabled,
     // The last results stay on screen (dimmed) while the next query loads.
     placeholderData: keepPreviousData,
