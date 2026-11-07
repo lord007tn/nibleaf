@@ -1,11 +1,27 @@
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/env', () => ({ env: { BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-32-characters' } }));
-vi.mock('@nibleaf/database', () => ({ prisma: {} }));
+const mocks = vi.hoisted(() => ({
+  env: {
+    BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-32-characters',
+    APP_URL: 'https://app.nibleaf.test/',
+    SITE_BASE_DOMAIN: undefined as string | undefined,
+  },
+  findDomains: vi.fn(),
+}));
+
+vi.mock('@/env', () => ({ env: mocks.env }));
+vi.mock('@nibleaf/database', () => ({ prisma: { domain: { findMany: mocks.findDomains } } }));
 vi.mock('@/actions/deployments', () => ({}));
 
-import { changedSiteSettings, createPublishPreviewToken, PREVIEW_TOKEN_TTL_MS, publishStateDigest, readPublishPreviewToken } from './publish';
+import {
+  changedSiteSettings,
+  createPublishPreviewToken,
+  PREVIEW_TOKEN_TTL_MS,
+  publishedSiteUrl,
+  publishStateDigest,
+  readPublishPreviewToken,
+} from './publish';
 
 const pageEntry = (id: string, content: string, updatedAt = '2026-11-02T00:00:00.000Z') => ({
   id,
@@ -114,5 +130,42 @@ describe('MCP publish state digest', () => {
     expect(publishStateDigest(snapshot([pageEntry('a', 'A'), pageEntry('b', 'B')]), 4, 4)).not.toBe(base);
     expect(publishStateDigest(snapshot([pageEntry('a', 'A'), pageEntry('b', 'B')]), 3, 5)).not.toBe(base);
     expect(publishStateDigest(snapshot([pageEntry('a', 'A')]), 3, 4)).not.toBe(base);
+  });
+});
+
+describe('publishedSiteUrl', () => {
+  const domain = (name: string, patch: Record<string, unknown> = {}) => ({
+    domain: name,
+    verified: true,
+    isPrimary: false,
+    dnsStatus: 'VERIFIED',
+    sslStatus: 'ACTIVE',
+    ...patch,
+  });
+
+  it('links the live primary domain first', async () => {
+    mocks.findDomains.mockResolvedValue([domain('old.example.com'), domain('docs.example.com', { isPrimary: true })]);
+    await expect(publishedSiteUrl('site-1', 'acme')).resolves.toBe('https://docs.example.com');
+    // Creation order, so "oldest live domain" is the fallback when no primary is live.
+    expect(mocks.findDomains).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { projectId: 'site-1', verified: true }, orderBy: { createdAt: 'asc' } }),
+    );
+  });
+
+  it('never links a domain whose ownership is verified but whose DNS or HTTPS does not work yet', async () => {
+    mocks.findDomains.mockResolvedValue([
+      domain('broken.example.com', { isPrimary: true, dnsStatus: 'ERROR' }),
+      domain('securing.example.com', { sslStatus: 'PROVISIONING' }),
+      domain('working.example.com'),
+    ]);
+    await expect(publishedSiteUrl('site-1', 'acme')).resolves.toBe('https://working.example.com');
+  });
+
+  it('falls back to the free subdomain, then to /sites/:id, when no domain is live', async () => {
+    mocks.findDomains.mockResolvedValue([domain('securing.example.com', { isPrimary: true, sslStatus: 'PROVISIONING' })]);
+    mocks.env.SITE_BASE_DOMAIN = '*.docs.nibleaf.test.';
+    await expect(publishedSiteUrl('site-1', 'acme')).resolves.toBe('https://acme.docs.nibleaf.test');
+    mocks.env.SITE_BASE_DOMAIN = undefined;
+    await expect(publishedSiteUrl('site-1', 'acme')).resolves.toBe('https://app.nibleaf.test/sites/site-1');
   });
 });

@@ -1,4 +1,5 @@
 import { translateFn } from '@nibleaf/i18n';
+import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -27,85 +28,43 @@ export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string):
   state.closeBlock(node);
 };
 
-type SupportedDefinition = {
+export type SupportedDefinition = {
   canonical: string;
   attrs: string[];
   defaults?: Record<string, string | boolean>;
   inline?: boolean;
   calloutVariant?: string;
+  /** Boolean attributes (switches and presence flags): an empty authored
+   *  value (`defaultOpen=""`) means present, as it does in HTML. */
+  booleans?: string[];
 };
 
-/** The single capability inventory used by the source adapter and safety UX. */
-const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = {
-  steps: { canonical: 'Steps', attrs: [] },
-  step: { canonical: 'Step', attrs: ['title'], defaults: { title: '' } },
-  cardgroup: { canonical: 'CardGroup', attrs: ['cols'], defaults: { cols: '2' } },
-  card: { canonical: 'Card', attrs: ['title', 'icon', 'href'], defaults: { title: '', icon: '', href: '' } },
-  tabs: { canonical: 'Tabs', attrs: [] },
-  tab: { canonical: 'Tab', attrs: ['title'], defaults: { title: '' } },
-  accordiongroup: { canonical: 'AccordionGroup', attrs: [] },
-  accordion: {
-    canonical: 'Accordion',
-    attrs: ['title', 'defaultOpen'],
-    defaults: { title: '', defaultOpen: false },
-  },
-  frame: { canonical: 'Frame', attrs: ['caption'], defaults: { caption: '' } },
-  expandable: {
-    canonical: 'Expandable',
-    attrs: ['title', 'defaultOpen'],
-    defaults: { title: '', defaultOpen: false },
-  },
-  update: {
-    canonical: 'Update',
-    attrs: ['label', 'description'],
-    defaults: { label: '', description: '' },
-  },
-  filetree: { canonical: 'FileTree', attrs: [] },
-  folder: {
-    canonical: 'Folder',
-    attrs: ['name', 'defaultOpen'],
-    defaults: { name: '', defaultOpen: false },
-  },
-  file: { canonical: 'File', attrs: ['name', 'icon'], defaults: { name: '', icon: '' } },
-  apiexample: { canonical: 'ApiExample', attrs: ['title'], defaults: { title: '' } },
-  requestexample: { canonical: 'RequestExample', attrs: ['title'], defaults: { title: '' } },
-  responseexample: {
-    canonical: 'ResponseExample',
-    attrs: ['title', 'status'],
-    defaults: { title: '', status: '' },
-  },
-  relatedcontent: { canonical: 'RelatedContent', attrs: ['title'], defaults: { title: '' } },
-  relatedcard: {
-    canonical: 'RelatedCard',
-    attrs: ['title', 'description', 'href', 'icon'],
-    defaults: { title: '', description: '', href: '', icon: '' },
-  },
-  paramfield: {
-    canonical: 'ParamField',
-    attrs: ['path', 'query', 'header', 'body', 'name', 'type', 'required', 'default', 'deprecated'],
-  },
-  responsefield: { canonical: 'ResponseField', attrs: ['name', 'type', 'required', 'default', 'deprecated'] },
-  codegroup: { canonical: 'CodeGroup', attrs: [] },
-  columns: { canonical: 'Columns', attrs: [] },
-  column: { canonical: 'Column', attrs: [] },
-  banner: { canonical: 'Banner', attrs: ['type', 'dismissible'] },
-  badge: { canonical: 'Badge', attrs: ['color'], defaults: { color: '' }, inline: true },
-  button: { canonical: 'Button', attrs: ['href', 'variant'], defaults: { href: '', variant: '' }, inline: true },
-  tooltip: { canonical: 'Tooltip', attrs: ['tip'], defaults: { tip: '' }, inline: true },
-  icon: {
-    canonical: 'Icon',
-    attrs: ['icon', 'name', 'color', 'size'],
-    defaults: { icon: '', name: '', color: '', size: '' },
-    inline: true,
-  },
-  callout: { canonical: 'Callout', attrs: ['type'], calloutVariant: 'note' },
-  note: { canonical: 'Note', attrs: [], calloutVariant: 'note' },
-  tip: { canonical: 'Tip', attrs: [], calloutVariant: 'tip' },
-  check: { canonical: 'Check', attrs: [], calloutVariant: 'check' },
-  warning: { canonical: 'Warning', attrs: [], calloutVariant: 'warning' },
-  danger: { canonical: 'Danger', attrs: [], calloutVariant: 'danger' },
-  info: { canonical: 'Info', attrs: [], calloutVariant: 'info' },
+const supportedDefinition = (component: DocumentationComponentDefinition, tag: string): SupportedDefinition => {
+  const defaults = Object.fromEntries(
+    component.attributes.flatMap((attribute) =>
+      attribute.default === undefined
+        ? []
+        : [[attribute.name, typeof attribute.default === 'number' ? String(attribute.default) : attribute.default]],
+    ),
+  );
+  const booleans = component.attributes.filter((attribute) => attribute.type === 'boolean').map((attribute) => attribute.name);
+  return {
+    canonical: tag,
+    attrs: component.attributes.map((attribute) => attribute.name),
+    ...(Object.keys(defaults).length > 0 ? { defaults } : {}),
+    ...(booleans.length > 0 ? { booleans } : {}),
+    ...(component.kind === 'inline' ? { inline: true } : {}),
+    ...(component.reader?.callout ? { calloutVariant: component.reader.callout } : {}),
+  };
 };
+
+/** The single capability inventory used by the source adapter and safety UX,
+ *  keyed by lowercase tag and derived from the documentation component registry. */
+export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefinition>> = Object.fromEntries(
+  DOCUMENTATION_COMPONENTS.flatMap((component) =>
+    component.tag ? [[component.tag.toLowerCase(), supportedDefinition(component, component.tag)]] : [],
+  ),
+);
 
 interface TagToken {
   start: number;
@@ -141,6 +100,28 @@ export const decodeMdxSource = (value: string | null | undefined): string => {
     return value;
   }
 };
+
+const NAMED_REFERENCES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+/** An authored attribute value with its character references decoded, as JSX and
+ *  HTML read it: `title="R&amp;D"` is "R&D" in the editor, and saving after an
+ *  edit writes `&amp;` once, not again on top. */
+const decodeAttributeValue = (value: string): string =>
+  value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|([a-z][a-z\d]{1,31}));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
+    if (name) {
+      const known = NAMED_REFERENCES[name.toLowerCase()];
+      if (known) return known;
+      // Any other named reference (`&mdash;`, `&nbsp;`) is decoded by the DOM the
+      // editor runs in. Only complete references ending in `;` get here, so a URL
+      // query such as `?a=1&copy=2` is never touched; unknown names stay as written.
+      if (typeof document === 'undefined') return reference;
+      const area = document.createElement('textarea');
+      area.innerHTML = reference;
+      return area.value;
+    }
+    const code = decimal ? Number(decimal) : Number.parseInt(hex ?? '', 16);
+    return code > 0 && code <= 0x10_ff_ff ? String.fromCodePoint(code) : reference;
+  });
 
 const escapeHtmlAttribute = (value: string): string =>
   value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -323,7 +304,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     if (quote === '"' || quote === "'") {
       const valueStart = ++cursor;
       while (cursor < limit && raw[cursor] !== quote) cursor += raw[cursor] === '\\' ? 2 : 1;
-      value = raw.slice(valueStart, cursor);
+      value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
       const end = balancedEnd(raw, cursor, '{', '}') ?? limit;
@@ -332,7 +313,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     } else {
       const valueStart = cursor;
       while (cursor < limit && !/\s/.test(raw[cursor] ?? '')) cursor++;
-      value = raw.slice(valueStart, cursor);
+      value = decodeAttributeValue(raw.slice(valueStart, cursor));
     }
     attrs.push({ name, start, end: cursor, value });
   }
@@ -345,7 +326,10 @@ const attributeValue = (attrs: AttributeToken[], name: string): string | boolean
 function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeToken[]): Record<string, string | boolean> {
   const result: Record<string, string | boolean> = {};
   for (const name of definition.attrs) {
-    result[name] = attributeValue(attrs, name) ?? definition.defaults?.[name] ?? '';
+    const authored = attributeValue(attrs, name);
+    // `defaultOpen=""` is present (the reader opens it): treat it as true so
+    // the editor node agrees and the authored spelling is kept on save.
+    result[name] = authored === '' && definition.booleans?.includes(name) ? true : (authored ?? definition.defaults?.[name] ?? '');
   }
   return result;
 }
@@ -492,12 +476,16 @@ function replaceOpeningAttribute(raw: string, componentName: string, name: strin
   const remove = value == null || value === '' || value === false;
   if (existing) {
     if (remove) return `${raw.slice(0, existing.start)}${raw.slice(existing.end)}`;
-    const rendered = value === true ? existing.name : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+    const rendered =
+      value === true
+        ? existing.name
+        : `${existing.name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
     return `${raw.slice(0, existing.start)}${rendered}${raw.slice(existing.end)}`;
   }
   if (remove) return raw;
   const insertAt = raw.search(/\/?>\s*$/);
-  const rendered = value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+  const rendered =
+    value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
   return insertAt < 0 ? raw : `${raw.slice(0, insertAt)} ${rendered}${raw.slice(insertAt)}`;
 }
 
@@ -509,7 +497,9 @@ export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: s
       .map((key) => {
         const value = node.attrs[key];
         if (value == null || value === '' || value === false) return '';
-        return value === true ? ` ${key}` : ` ${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+        return value === true
+          ? ` ${key}`
+          : ` ${key}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
       })
       .join('');
     return `<${canonical}${attrs}${selfClosing ? ' /' : ''}>`;
