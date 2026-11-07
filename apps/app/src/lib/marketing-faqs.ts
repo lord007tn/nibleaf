@@ -22,6 +22,6 @@ export const marketingFaqs: { q: string; a: string }[] = [
   },
   {
     q: 'How does search work?',
-    a: 'Built-in Orama search supports full-text/fuzzy results, section links, recent queries, cross-language results, and retry states without an AI key. Optional hybrid retrieval uses Qdrant and an embedding connection. Ask AI reader chat with citations and follow-ups and workspace OpenAI/OpenRouter keys are available when you self-host today, and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. The editor writing assistant uses the instance key.',
+    a: 'Built-in Orama search supports full-text/fuzzy results, section links, recent queries, cross-language results, and retry states without an AI key. Optional hybrid retrieval uses Qdrant and an embedding connection. Ask AI reader chat with citations and follow-ups and workspace OpenAI/OpenRouter keys are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. The editor writing assistant uses the instance key.',
   },
 ];

@@ -128,8 +128,9 @@ function PageHero({ eyebrow, heading, paragraphs, asOf }: { eyebrow: string; hea
           as of {asOf} and links to its source, and everything Nibleaf doesn’t do yet is disclosed plainly.
         </p>
         <p className="mx-auto mt-4 max-w-2xl text-muted-foreground text-sm leading-relaxed">
-          Nibleaf Cloud remains in active beta. Ask AI, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you
-          self-host today, and on Nibleaf Cloud as it rolls out. Optional services still need operator configuration. Read the{' '}
+          Nibleaf Cloud remains in active beta. Ask AI, workspace OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source
+          code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out. Optional services still need operator
+          configuration. Read the{' '}
           <a className="underline underline-offset-2" href="/blog/nibleaf-august-2026-source-release">
             release boundaries
           </a>{' '}

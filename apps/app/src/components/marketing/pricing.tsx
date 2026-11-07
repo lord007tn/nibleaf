@@ -1,4 +1,4 @@
-import { useT } from '@nibleaf/i18n/react';
+import { 'marketing.release.searchCapability' as releaseSearchCapability } from '@nibleaf/i18n/messages';
 import { ArrowRight, Check, Cloud, HandCoins, Scale, Server, ShieldCheck } from 'lucide-react';
 import type { ComponentType, SVGProps } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
@@ -86,8 +86,7 @@ function CellValue({ value }: { value: Cell }) {
 }
 
 export function PricingPage({ stars = 0 }: { stars?: number }) {
-  const t = useT();
-  const featureGroups = buildFeatureGroups(t('marketing.release.searchCapability'));
+  const featureGroups = buildFeatureGroups(releaseSearchCapability({}, { locale: 'en' }));
   return (
     <MarketingShell stars={stars}>
       {/* Header */}
@@ -168,11 +167,11 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities. Ask AI reader chat, workspace
-              OpenAI/OpenRouter keys, the support MCP, and owner insights are available when you self-host today, and on Nibleaf Cloud as it rolls
-              out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when self-hosting. Insights need
-              optional ClickHouse when self-hosting. MCP is off by default for self-hosters and can draft, edit, move, translate, set visibility, and
-              publish only after a confirmed preview, using Read only / Support writer / Full admin presets and OAuth sign-in or expiring personal
-              keys. The editor writing assistant uses the instance key.
+              OpenAI/OpenRouter keys, the support MCP, and owner insights are in the open-source code now, arriving in the next self-hosted release
+              and on Nibleaf Cloud as it rolls out. Ask AI needs a workspace or instance AI provider key, per-site opt-in, and optional Qdrant when
+              self-hosting. Insights need optional ClickHouse when self-hosting. MCP is off by default for self-hosters and can draft, edit, move,
+              translate, set visibility, and publish only after a confirmed preview, using Read only / Support writer / Full admin presets and OAuth
+              sign-in or expiring personal keys. The editor writing assistant uses the instance key.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

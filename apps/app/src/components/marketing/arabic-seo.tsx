@@ -458,7 +458,9 @@ export function ArabicDocumentationPlatformsPage() {
                   key={platform.name}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <span aria-hidden="true" className="font-mono text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
+                    <span aria-hidden="true" className="font-mono text-muted-foreground">
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
                     <h3 className="font-semibold text-xl">{platform.name}</h3>
                     {platform.nibleaf ? (
                       <span className="rounded-full bg-primary px-2.5 py-1 text-primary-foreground text-xs">

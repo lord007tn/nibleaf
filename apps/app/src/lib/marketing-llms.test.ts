@@ -14,7 +14,7 @@ describe('machine-readable marketing copy', () => {
     expect(text).toContain('Read only / Support writer / Full admin');
     expect(text).toContain('OAuth sign-in or expiring personal keys');
     expect(text).toContain('off by default for self-hosters');
-    expect(text).toContain('available when you self-host today, and on Nibleaf Cloud as it rolls out.');
+    expect(text).toContain('in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.');
     expect(text).toContain('key from the workspace or instance, per-site opt-in');
     expect(text).toContain('optional Qdrant service');
     expect(text).toContain('optional ClickHouse');
