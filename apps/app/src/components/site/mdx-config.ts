@@ -37,12 +37,31 @@ const COMPONENT_ATTRIBUTES: Record<string, string[]> = Object.fromEntries(
 /** Block-level component tags whose inner content should be parsed as Markdown. */
 export const MDX_BLOCK_TAGS: readonly string[] = CONTRACT.flatMap(([tag, component]) => (component.markdownBody ? [tag] : []));
 const BLOCK_TAGS = MDX_BLOCK_TAGS.join('|');
-const SELF_CLOSING_TAGS = CONTRACT.flatMap(([tag, component]) => (component.selfClosing ? [tag] : [])).join('|');
-const SELF_CLOSING_TAG = new RegExp(`<(${SELF_CLOSING_TAGS})\\b([^>]*)\\/>`, 'gi');
-/** Authored tags the HTML parser would mistake for real elements, with the name they are parsed under. */
-const READER_RENAMES = CONTRACT.flatMap(([tag, component]) =>
-  component.readerTag ? [{ pattern: new RegExp(`<(\\/?)${tag}\\b`, 'gi'), replacement: `<$1${component.readerTag}` }] : [],
-);
+
+/**
+ * Rewrites authored component tags into what the HTML parser must see:
+ *  1. Self-closing components are expanded into an explicit pair, because HTML
+ *     parsers do not honor XML self-closing syntax on unknown elements (sibling
+ *     File/RelatedCard nodes would otherwise nest).
+ *  2. Tags whose lowercase name is a real HTML element are renamed
+ *     (`<Frame>` → `<mdxframe>`; the HTML5 parser drops `<frame>` outside a
+ *     frameset). The leading "<" is kept (capture group 1 is only the optional
+ *     closing slash) so the tag stays well-formed.
+ * Expansion runs first so it matches authored names even for a component that
+ * is both self-closing and renamed.
+ */
+export const readerTagRewriter = (contract: ReadonlyArray<readonly [string, DocumentationComponentContract]>): ((text: string) => string) => {
+  const selfClosing = contract.flatMap(([tag, component]) => (component.selfClosing ? [tag] : []));
+  const selfClosingTag = selfClosing.length > 0 ? new RegExp(`<(${selfClosing.join('|')})\\b([^>]*)\\/>`, 'gi') : null;
+  const renames = contract.flatMap(([tag, component]) =>
+    component.readerTag ? [{ pattern: new RegExp(`<(\\/?)${tag}\\b`, 'gi'), replacement: `<$1${component.readerTag}` }] : [],
+  );
+  return (text) => {
+    const expanded = selfClosingTag ? text.replace(selfClosingTag, '<$1$2></$1>') : text;
+    return renames.reduce((renamed, { pattern, replacement }) => renamed.replace(pattern, replacement), expanded);
+  };
+};
+const rewriteReaderTags = readerTagRewriter(CONTRACT);
 // Matches an opening block tag on its own line — with or without attributes —
 // but not a self-closing tag (`<Frame />`).
 const OPEN_TAG = new RegExp(`^\\s*<(?:${BLOCK_TAGS})\\b(?:[^>]*[^/>])?>\\s*$`, 'i');
@@ -107,14 +126,8 @@ export function normalizeMdxBlocks(src: string): string {
       push(line);
     }
   }
-  // Rename <Frame> → <mdxframe> to dodge the real HTML <frame> element, which
-  // the HTML5 parser drops outside a frameset. Keep the leading "<" (capture
-  // group 1 is only the optional closing slash) so the tag stays well-formed.
-  const rename = (text: string) =>
-    READER_RENAMES.reduce((renamed, { pattern, replacement }) => renamed.replace(pattern, replacement), text)
-      // HTML parsers do not honor XML self-closing syntax for unknown elements.
-      // Expand authored atoms so sibling File/RelatedCard nodes cannot nest.
-      .replace(SELF_CLOSING_TAG, '<$1$2></$1>');
+  // Expand self-closing tags and rename HTML-colliding ones (see readerTagRewriter).
+  const rename = rewriteReaderTags;
   // Rename outside inline code spans only, so component reference pages keep their examples.
   const prose = (text: string) => {
     let output = '';

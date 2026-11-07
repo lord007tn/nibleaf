@@ -7,5 +7,4 @@ export const Update = containerNode({
   content: 'block+',
   className: 'pl-update',
   attrs: { ...stringAttr('label'), ...stringAttr('description') },
-  attrKeys: ['label', 'description'],
 });

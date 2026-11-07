@@ -8,9 +8,19 @@ import type { CalloutType } from './callouts';
  * lives in `./documentation-components`, which is type-checked against this
  * contract so the two halves cannot drift.
  *
- * Adding a component starts here. Its contract test
- * (`apps/app/src/components/documentation-component-contract.test.ts`) then
- * names every other surface that still needs it.
+ * Adding a component starts here, plus its entry in `./documentation-components`.
+ * The contract test (`apps/app/src/components/documentation-component-contract.test.tsx`)
+ * then fails for every surface that still needs it:
+ *  - editor node: `apps/app/src/components/editor/extensions/mdx/` (callout
+ *    variants: `extensions/callout.ts`); it must save every registry attribute;
+ *  - reader renderer: `apps/app/src/components/site/mdx/` and
+ *    `site/mdx/component-map.tsx`, which must receive the content and props;
+ *  - reader sanitizer and parsing rules (`site/mdx-config.ts`, derived here);
+ *  - portable public Markdown: `packages/shared/src/public-markdown-content.ts`;
+ *  - exported theme repositories: `theme-repository-templates/markdown.ts` and
+ *    `theme-repository-templates/mdx-components.ts` (their output is pinned).
+ * The editor's MDX inventory and the public catalog are derived automatically;
+ * a slash menu item (`editor/extensions/slash-items/`) is optional.
  */
 
 export type DocumentationComponentAttributeType = 'string' | 'boolean' | 'number' | 'enum' | 'url' | 'icon' | 'color';

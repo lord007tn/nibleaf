@@ -13,12 +13,10 @@ export const CardGroup = containerNode({
       renderHTML: (a) => ({ 'data-cols': String(a.cols ?? '2') }),
     },
   },
-  attrKeys: ['cols'],
 });
 export const Card = titledNode({
   name: 'mdxCard',
   tag: 'Card',
   className: 'pl-card',
   attrs: { ...stringAttr('title'), ...stringAttr('icon'), ...stringAttr('href') },
-  attrKeys: ['title', 'icon', 'href'],
 });

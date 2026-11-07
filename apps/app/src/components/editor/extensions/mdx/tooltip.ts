@@ -2,7 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { preservedClosingTag, preservedOpeningTag, sourceMetadataAttributes } from '../mdx-roundtrip';
-import { type SerializeState, stringAttr } from './factories';
+import { attrKeysOf, type SerializeState, stringAttr } from './factories';
 
 // ─── Inline: Tooltip ──────────────────────────────────────────────────────────
 // `<Tooltip tip="…">text</Tooltip>` — an inline wrapper whose children stay
@@ -19,7 +19,7 @@ export const Tooltip = Node.create({
   addStorage: () => ({
     markdown: {
       serialize: (state: SerializeState, node: PMNode) => {
-        state.write(preservedOpeningTag(node, 'Tooltip', ['tip']));
+        state.write(preservedOpeningTag(node, 'Tooltip', attrKeysOf('Tooltip')));
         state.renderInline(node);
         state.write(preservedClosingTag(node, 'Tooltip'));
       },

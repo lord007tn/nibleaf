@@ -9,19 +9,23 @@ export function Tooltip({ tip, children }: { tip?: string; children?: ReactNode 
   const pointerOpen = useRef(false);
   const wrapper = useRef<HTMLSpanElement>(null);
   const linked = containsLink(children);
-  // A tooltip around a link has no button of its own, so the link carries the
-  // description (added to any it already has).
+  // A tooltip around links has no button of its own, so every link carries the
+  // description (added to any it already has, which cleanup restores).
   useEffect(() => {
     if (!tip || !linked) return;
-    const link = wrapper.current?.querySelector<HTMLElement>('a[href], [href]');
-    if (!link) return;
-    const existing = link.getAttribute('aria-describedby');
-    const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
-    ids.add(id);
-    link.setAttribute('aria-describedby', [...ids].join(' '));
+    const links = [...(wrapper.current?.querySelectorAll<HTMLElement>('a[href], [href]') ?? [])];
+    const previous = links.map((link) => {
+      const existing = link.getAttribute('aria-describedby');
+      const ids = new Set((existing ?? '').split(/\s+/).filter(Boolean));
+      ids.add(id);
+      link.setAttribute('aria-describedby', [...ids].join(' '));
+      return { link, existing };
+    });
     return () => {
-      if (existing) link.setAttribute('aria-describedby', existing);
-      else link.removeAttribute('aria-describedby');
+      for (const { link, existing } of previous) {
+        if (existing) link.setAttribute('aria-describedby', existing);
+        else link.removeAttribute('aria-describedby');
+      }
     };
   }, [tip, linked, id]);
   if (!tip) return <>{children}</>;

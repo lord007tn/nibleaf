@@ -12,5 +12,4 @@ export const Accordion = titledNode({
   tag: 'Accordion',
   className: 'pl-accordion',
   attrs: { ...stringAttr('title'), ...boolAttr('defaultOpen') },
-  attrKeys: ['title', 'defaultOpen'],
 });

@@ -25,6 +25,7 @@
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
     "./theme-repository": "./src/theme-repository.ts",
+    "./theme-repository-templates": "./src/theme-repository-templates/index.ts",
     "./export-schedule": "./src/export-schedule.ts",
     "./utils": "./src/utils.ts"
   },

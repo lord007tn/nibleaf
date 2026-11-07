@@ -7,6 +7,7 @@ import { Accordion } from './mdx/accordion';
 import { CodeGroup } from './mdx/code-group';
 import { Expandable } from './mdx/fields';
 import { Tab, Tabs } from './mdx/tabs';
+import { Tooltip } from './mdx/tooltip';
 
 describe('interactive MDX components', () => {
   let container: HTMLDivElement;
@@ -22,6 +23,27 @@ describe('interactive MDX components', () => {
   afterEach(() => {
     act(() => root.unmount());
     container.remove();
+  });
+
+  it('describes every link inside a tooltip and restores their own descriptions on cleanup', async () => {
+    await act(async () =>
+      root.render(
+        <Tooltip tip="Shared hint">
+          <a href="/one" aria-describedby="own-one">
+            One
+          </a>{' '}
+          and <a href="/two">Two</a>
+        </Tooltip>,
+      ),
+    );
+    const tipId = container.querySelector('[role="tooltip"]')?.id ?? '';
+    const [one, two] = [...container.querySelectorAll('a')];
+    expect(one?.getAttribute('aria-describedby')?.split(' ')).toEqual(['own-one', tipId]);
+    expect(two?.getAttribute('aria-describedby')).toBe(tipId);
+    await act(async () => root.render(<Tooltip tip="">{null}</Tooltip>));
+    await act(async () => root.render(<span />));
+    expect(one?.getAttribute('aria-describedby')).toBe('own-one');
+    expect(two?.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('supports roving keyboard focus for LTR tabs', async () => {

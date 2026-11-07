@@ -12,12 +12,10 @@ export const Folder = titledNode({
   tag: 'Folder',
   className: 'pl-folder',
   attrs: { ...stringAttr('name'), ...boolAttr('defaultOpen') },
-  attrKeys: ['name', 'defaultOpen'],
 });
 export const File = atomNode({
   name: 'mdxFile',
   tag: 'File',
   className: 'pl-file',
   attrs: stringAttrs('name', 'icon'),
-  attrKeys: ['name', 'icon'],
 });

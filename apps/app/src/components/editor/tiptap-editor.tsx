@@ -211,7 +211,8 @@ const CodeBlock = CodeBlockLowlight.extend({
 });
 
 interface BuildExtensionsOptions {
-  /** Upload a picked/pasted image, returning its hosted URL (or null). */
+  /** Upload a picked/pasted image, returning its hosted URL (or null). Without
+   *  one, the image slash command asks for an image URL instead. */
   onUpload?: (file: File) => Promise<string | null>;
   /** Comment markers rendered as highlight decorations. */
   getComments?: () => CommentMarker[];
@@ -375,7 +376,7 @@ export function buildEditorExtensions({
     Callout,
     ...mdxNodes,
     ...opaqueMdxNodes,
-    SlashCommand.configure({ locale, onUpload: (file: File) => onUpload?.(file) ?? Promise.resolve(null) }),
+    SlashCommand.configure({ locale, onUpload }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
   ];
 }
@@ -748,7 +749,9 @@ export function TiptapEditor({
     {
       editable,
       extensions: buildEditorExtensions({
-        onUpload: (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null),
+        // Whether an uploader exists is fixed when the editor is created; the
+        // latest uploader is still read at call time.
+        onUpload: onUpload ? (file: File) => onUploadRef.current?.(file) ?? Promise.resolve(null) : undefined,
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
         dir,

@@ -1,6 +1,6 @@
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { describe, expect, it } from 'vitest';
-import { MDX_BLOCK_TAGS, normalizeMdxBlocks, rehypeAuthoredComponentProps, sanitizeSchema } from './mdx-config';
+import { MDX_BLOCK_TAGS, normalizeMdxBlocks, readerTagRewriter, rehypeAuthoredComponentProps, sanitizeSchema } from './mdx-config';
 
 describe('math sanitization boundary', () => {
   it('preserves only recognized code markers and strips authored styling and handlers', () => {
@@ -268,5 +268,14 @@ describe('reader config derived from the component registry', () => {
     tree.type = 'root';
     rehypeAuthoredComponentProps()(tree as never);
     expect(tree.children.map((child) => child.tagName)).toEqual([...structural, ...containers.map(() => 'p')]);
+  });
+});
+
+describe('reader tag rewriting', () => {
+  it('expands a self-closing component before renaming it, so a renamed atom is still closed', () => {
+    const rewrite = readerTagRewriter([['Widget', { kind: 'block', selfClosing: true, readerTag: 'mdxwidget', attributes: { label: 'string' } }]]);
+    expect(rewrite('<Widget label="a" />\n<Widget label="b"></Widget>')).toBe(
+      '<mdxwidget label="a" ></mdxwidget>\n<mdxwidget label="b"></mdxwidget>',
+    );
   });
 });

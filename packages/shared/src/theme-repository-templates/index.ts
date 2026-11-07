@@ -46,6 +46,9 @@ export {
   THEME_REPOSITORY_TEMPLATE_META,
   type ThemeRepositoryTemplateOptions,
 } from './types';
+// The component lists these two files carry are checked against the reader
+// contract by apps/app/src/components/documentation-component-contract.test.tsx.
+export { markdownTemplate, mdxIndexTemplate };
 
 export interface ThemeRepositoryTemplateFile {
   path: string;

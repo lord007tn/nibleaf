@@ -9,13 +9,11 @@ export const Banner = containerNode({
   content: 'block+',
   className: 'pl-banner',
   attrs: stringAttrs('type', 'dismissible'),
-  attrKeys: ['type', 'dismissible'],
 });
-export const Badge = inlineWrapperNode({ name: 'mdxBadge', tag: 'Badge', className: 'pl-badge', attrs: stringAttr('color'), attrKeys: ['color'] });
+export const Badge = inlineWrapperNode({ name: 'mdxBadge', tag: 'Badge', className: 'pl-badge', attrs: stringAttr('color') });
 export const MdxButton = inlineWrapperNode({
   name: 'mdxButton',
   tag: 'Button',
   className: 'pl-button',
   attrs: stringAttrs('href', 'variant'),
-  attrKeys: ['href', 'variant'],
 });
