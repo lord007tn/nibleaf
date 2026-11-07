@@ -67,7 +67,8 @@ URL, browser code, public probe, or support transcript. A proxy or ingress can
 make the detailed route reachable; it fails closed without the matching secret
 header. The dashboard's standard proxy preserves `/api`: `/api/health/details`
 is forwarded to that same API path, while the detailed handler is registered at
-API-root `/health/details`. Keep the worker operations listener private.
+API-root `/health/details`, so the dashboard doesn't expose it. A custom ingress
+that maps the API root does. Keep the worker operations listener private.
 
 `STORAGE_REQUIRED_FOR_HEALTH=false` is the default: failed bucket checks are
 diagnostic and do not block an initialized API. With `true`, a successful bucket
