@@ -16,7 +16,15 @@ import type { MarketingLang } from './types';
  */
 type Availability = 'in-source' | 'released' | 'live';
 
-export type RolloutCapability = 'askAi' | 'readerSearch' | 'supportMcp' | 'docsInsights' | 'bringYourOwnKey';
+export type RolloutCapability =
+  | 'askAi'
+  | 'readerSearch'
+  | 'supportMcp'
+  | 'docsInsights'
+  | 'bringYourOwnKey'
+  | 'readerThemes'
+  | 'gitbookImport'
+  | 'readerAnalytics';
 
 // Typed as the full union, not narrowed literals, so moving a value forward needs no other change.
 const AVAILABILITY: Record<RolloutCapability, Availability> = {
@@ -26,6 +34,12 @@ const AVAILABILITY: Record<RolloutCapability, Availability> = {
   supportMcp: 'in-source',
   docsInsights: 'in-source',
   bringYourOwnKey: 'in-source',
+  /** Harbor, Manuscript and Signal (#96, #101, #104): merged after the v0.1.2 release. */
+  readerThemes: 'in-source',
+  /** The GitBook Git Sync importer (#235). */
+  gitbookImport: 'in-source',
+  /** The ClickHouse reader-analytics pipeline (#97): consent linking, no IP storage, the two-visit search-term threshold. */
+  readerAnalytics: 'in-source',
 };
 
 const NOTES: Record<Availability, Record<MarketingLang, string>> = {
@@ -46,6 +60,16 @@ const NOTES: Record<Availability, Record<MarketingLang, string>> = {
 /** Short, honest availability sentence for one capability in one language. */
 export function availabilityNote(capability: RolloutCapability, lang: MarketingLang): string {
   return NOTES[AVAILABILITY[capability]][lang];
+}
+
+/**
+ * One sentence for several capabilities named together, using the least advanced
+ * state among them; `undefined` once all of them are live.
+ */
+export function groupAvailabilityNote(names: string, capabilities: RolloutCapability[], lang: MarketingLang): string | undefined {
+  const order: Availability[] = ['in-source', 'released', 'live'];
+  const state = order.find((candidate) => capabilities.some((capability) => AVAILABILITY[capability] === candidate)) ?? 'live';
+  return state === 'live' ? undefined : `${names}: ${NOTES[state][lang]}`;
 }
 
 /** True while a capability is not yet live everywhere, so pages can keep it out of Cloud-only lists. */

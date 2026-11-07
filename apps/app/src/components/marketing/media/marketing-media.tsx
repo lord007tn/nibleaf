@@ -100,6 +100,8 @@ function RecordingMedia({
       <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-foreground/5 shadow-xl">
         {playing ? (
           <video
+            // Pressing play removes the button, so focus moves to the player rather than the page body.
+            ref={(node) => node?.focus()}
             aria-label={media.alt}
             autoPlay
             className="block h-auto w-full bg-black"

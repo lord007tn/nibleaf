@@ -66,6 +66,7 @@ it('loads a recording only on request: lazy still and a play button, no video un
   expect(root.querySelector('img')?.getAttribute('alt')).toBe(media.alt);
   expect(root.querySelector('button')?.textContent).toBe('Play the recording');
 
+  const focus = vi.spyOn(HTMLElement.prototype, 'focus');
   const container = document.createElement('div');
   document.body.append(container);
   const client = createRoot(container);
@@ -78,9 +79,12 @@ it('loads a recording only on request: lazy still and a play button, no video un
     expect(video?.getAttribute('src')).toBe('/journey.webm');
     expect(video?.hasAttribute('controls')).toBe(true);
     expect(video?.getAttribute('aria-label')).toBe(media.alt);
+    // jsdom does not treat <video controls> as focusable, so check the call itself.
+    expect(focus.mock.contexts).toContain(video);
   } finally {
     await act(async () => client.unmount());
     container.remove();
+    focus.mockRestore();
   }
 });
 

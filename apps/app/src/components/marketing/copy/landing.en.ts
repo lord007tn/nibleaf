@@ -1,9 +1,9 @@
-import { availabilityNote, heroAvailabilityNote } from './availability';
+import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
 import { LANDING_META } from './landing-meta';
 import type { LandingCopy } from './types';
 
 // Every factual sentence here is traced to evidence in
-// dogfood-output/marketing/copy-notes.md. Cloud availability of Ask AI, the
+// .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md. Cloud availability of Ask AI, the
 // support MCP, docs insights and bring-your-own key is worded only through
 // availabilityNote().
 export const landingEn: LandingCopy = {
@@ -123,7 +123,7 @@ export const landingEn: LandingCopy = {
         key: 'mcp',
         alt: 'A recorded Claude Code session connected to a Nibleaf project with a Support writer key. It finds searches with no results, drafts the missing article, previews and publishes it after the person confirms, then translates it to Arabic.',
         caption:
-          'Replay of a real Claude Code session, rendered from its transcript. Arabic text shows as [Arabic] in this terminal view. Press play to watch.',
+          'Replay of a real Claude Code session against a demo project, rendered from its transcript. The demo’s product facts, such as the Okta sign-on steps, are made up. Arabic text shows as [Arabic] in this terminal view. Press play to watch.',
       },
     },
     {
@@ -151,6 +151,8 @@ export const landingEn: LandingCopy = {
         'Ask AI answers Arabic questions in Arabic, citing your Arabic pages',
         'Linked translations tell search engines which language each page is in',
       ],
+      noteLabel: 'Availability',
+      note: groupAvailabilityNote('Reader themes and Ask AI', ['readerThemes', 'askAi'], 'en'),
       media: {
         key: 'arabic',
         alt: 'An Arabic docs site in right-to-left layout on a phone.',
@@ -167,6 +169,7 @@ export const landingEn: LandingCopy = {
         icon: 'themes',
         title: 'Three reader themes',
         body: 'Harbor, Manuscript and Signal: three layouts, each in light and dark, left to right or right to left.',
+        availability: 'readerThemes',
       },
       { icon: 'domains', title: 'Custom domains', body: 'Put your docs on your own domain, with guided DNS checks.' },
       { icon: 'versions', title: 'Versions and rollback', body: 'Keep docs for each product version, and roll back to any earlier publish.' },
@@ -178,7 +181,7 @@ export const landingEn: LandingCopy = {
       { icon: 'exports', title: 'Exports', body: 'Markdown, HTML or PDF, on demand or on a daily, weekly or monthly schedule.' },
       { icon: 'api', title: 'API reference', body: 'Import an OpenAPI file and get endpoint pages readers can try in the browser.' },
       { icon: 'private', title: 'Private docs', body: 'Share docs, or single pages, only with readers you invite.' },
-      { icon: 'llms', title: 'Ready for AI tools', body: 'Public pages are listed in llms.txt and each has a Markdown version.' },
+      { icon: 'llms', title: 'Ready for AI tools', body: 'Indexable public pages are listed in llms.txt, and each has a Markdown version.' },
       {
         icon: 'key',
         title: 'Your own AI key',
@@ -192,7 +195,7 @@ export const landingEn: LandingCopy = {
     title: 'Write, publish, answer, improve',
     body: 'A simple loop for support and product teams.',
     steps: [
-      { title: 'Write or import', body: 'Write in the visual editor, or import a public Mintlify or GitBook repository from GitHub.' },
+      { title: 'Write or import', body: 'Write in the visual editor, or import a public Mintlify repository from GitHub.' },
       { title: 'Publish', body: 'Preview your changes, publish, and put the site on your own domain.' },
       { title: 'Answer', body: 'Readers search, or ask AI and get answers that cite your pages, in their language.' },
       { title: 'Improve', body: 'See what readers couldn’t find, then fix it in the editor or from your AI assistant.' },
@@ -201,7 +204,7 @@ export const landingEn: LandingCopy = {
   paths: {
     eyebrow: 'Two ways to run it',
     title: 'Free cloud beta, or your own servers',
-    body: 'The same open-source product either way.',
+    body: 'One open-source codebase. New features reach the self-hosted release when a version that includes them ships.',
     cloud: {
       name: 'Nibleaf Cloud',
       price: 'Free during the beta',
@@ -256,7 +259,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'What’s the difference between Cloud and self-hosting?',
-        a: 'It’s the same open-source product. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups.',
+        a: 'It’s the same open-source product. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups. New features reach self-hosters with the next release that includes them.',
       },
       {
         q: 'What do I need for Ask AI, and who pays for the AI?',
@@ -272,7 +275,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'Can I import from Mintlify or GitBook?',
-        a: 'Yes, from a public GitHub repository: a Mintlify docs repo, or a GitBook repo set up with Git Sync. Pages, navigation and images come across. Check any custom components after the import. Ghost exports can be imported too.',
+        a: `Yes, from a public GitHub repository: a Mintlify docs repo, or a GitBook repo set up with Git Sync. Pages, navigation and images come across. Check any custom components after the import. Ghost exports can be imported too. ${groupAvailabilityNote('GitBook import', ['gitbookImport'], 'en') ?? ''}`,
       },
       {
         q: 'How good is the Arabic support?',
@@ -284,7 +287,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'What happens to my readers’ data?',
-        a: 'Reader analytics store no IP addresses. If your site asks readers for consent, their visits are linked only after they agree. Search terms are kept only if you turn that on, and a term appears only after two different visits searched for it. Ask AI sends questions and matching passages to the AI provider you choose, under that provider’s terms. You can turn off saving Ask AI conversations.',
+        a: `Reader analytics store no IP addresses. If your site asks readers for consent, their visits are linked only after they agree. Search terms are kept only if you turn that on, and a term appears only after two different visits searched for it. Ask AI sends questions and matching passages to the AI provider you choose, under that provider’s terms. You can turn off saving Ask AI conversations. ${groupAvailabilityNote('The analytics pipeline described here', ['readerAnalytics'], 'en') ?? ''}`,
       },
     ],
   },

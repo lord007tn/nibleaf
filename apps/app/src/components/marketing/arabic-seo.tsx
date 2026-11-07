@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 import { primaryButton } from '@/components/cloud-marketing';
 import { sendMarketingCtaEvent } from '@/lib/marketing-analytics';
 
-import { ArabicShell } from './arabic-landing';
+import { ArabicShell } from './arabic-shell';
 
 interface Platform {
   name: string;

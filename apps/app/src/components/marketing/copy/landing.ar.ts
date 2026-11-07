@@ -1,17 +1,17 @@
-import { availabilityNote, heroAvailabilityNote } from './availability';
+import { availabilityNote, groupAvailabilityNote, heroAvailabilityNote } from './availability';
 import { LANDING_META } from './landing-meta';
 import type { LandingCopy } from './types';
 
-/** Arabic count phrase after «في» for reading time: 1 دقيقة، 2 دقيقتين، 3–10 دقائق، 11+ دقيقة. */
+/** Arabic count phrase after «مدة القراءة:» (nominative): 1 دقيقة واحدة، 2 دقيقتان، 3–10 دقائق، 11+ دقيقة. */
 function arabicMinutes(minutes: number): string {
   if (minutes === 1) return 'دقيقة واحدة';
-  if (minutes === 2) return 'دقيقتين';
+  if (minutes === 2) return 'دقيقتان';
   if (minutes >= 3 && minutes <= 10) return `${minutes} دقائق`;
   return `${minutes} دقيقة`;
 }
 
 // Written as Arabic, not translated line by line. Facts match landing.en.ts;
-// evidence is in dogfood-output/marketing/copy-notes.md. Cloud availability is
+// evidence is in .github/assets/feat-landing-marketing-refresh/fact-check/copy-notes.md. Cloud availability is
 // worded only through availabilityNote().
 export const landingAr: LandingCopy = {
   meta: LANDING_META.ar,
@@ -67,7 +67,7 @@ export const landingAr: LandingCopy = {
       body: 'يسأل القارئ بكلماته، فتأتيه إجابة مبنية على وثائقك المنشورة وحدها، مع روابط إلى الأقسام التي اعتمدت عليها بالضبط.',
       bullets: [
         'يردّ بلغة القارئ، بما فيها العربية والأسئلة التي تمزج العربية بالإنجليزية',
-        'يقولها صراحة حين لا يعرف، ويقترح مقالات أو رابط الدعم لديك بدل التخمين',
+        'يصرّح بذلك حين لا يجد إجابة، ويقترح مقالات أو رابط الدعم لديك بدل التخمين',
         'يقترح أسئلة ذات صلة، ويقيّم القارئ كل إجابة بنقرة',
       ],
       noteLabel: 'المتطلبات والتوفر',
@@ -130,7 +130,7 @@ export const landingAr: LandingCopy = {
         key: 'mcp',
         alt: 'تسجيل لجلسة Claude Code متصلة بمشروع في Nibleaf بمفتاح «مساعد كتابة الدعم»: تجد عمليات البحث التي لم تُثمر، وتكتب مسودة المقالة الناقصة، ثم تعاينها وتنشرها بعد موافقة الشخص، وتترجمها إلى العربية.',
         caption:
-          'إعادة عرض لجلسة حقيقية في Claude Code من سجلّها النصي، والواجهة بالإنجليزية ويظهر فيها النص العربي بعبارة [Arabic]. اضغط تشغيل للمشاهدة.',
+          'إعادة عرض لجلسة حقيقية في Claude Code على مشروع تجريبي، من سجلّها النصي. معلومات المنتج في العرض التجريبي، مثل خطوات تسجيل الدخول عبر Okta، مختلَقة. الواجهة بالإنجليزية ويظهر فيها النص العربي بعبارة [Arabic]. اضغط تشغيل للمشاهدة.',
       },
     },
     {
@@ -158,6 +158,8 @@ export const landingAr: LandingCopy = {
         'يجيب «اسأل المساعد» عن الأسئلة العربية بالعربية، ويستشهد بصفحاتك العربية',
         'الترجمات المرتبطة تُخبر محركات البحث بلغة كل صفحة',
       ],
+      noteLabel: 'التوفر',
+      note: groupAvailabilityNote('قوالب القارئ و«اسأل المساعد»', ['readerThemes', 'askAi'], 'ar'),
       media: {
         key: 'arabic',
         alt: 'موقع وثائق عربي من اليمين إلى اليسار على شاشة هاتف.',
@@ -174,6 +176,7 @@ export const landingAr: LandingCopy = {
         icon: 'themes',
         title: 'ثلاثة قوالب للقارئ',
         body: 'Harbor وManuscript وSignal: ثلاثة تخطيطات، لكل منها وضع فاتح وداكن، ومن اليسار إلى اليمين أو العكس.',
+        availability: 'readerThemes',
       },
       { icon: 'domains', title: 'نطاقك الخاص', body: 'انشر وثائقك على نطاقك، مع فحص موجَّه لإعدادات DNS.' },
       { icon: 'versions', title: 'الإصدارات والتراجع', body: 'وثائق لكل إصدار من منتجك، وتراجع إلى أي نشر سابق.' },
@@ -185,7 +188,11 @@ export const landingAr: LandingCopy = {
       { icon: 'exports', title: 'التصدير', body: 'Markdown أو HTML أو PDF، عند الطلب أو بجدول يومي أو أسبوعي أو شهري.' },
       { icon: 'api', title: 'مرجع API', body: 'استورد ملف OpenAPI لتحصل على صفحات للنقاط الطرفية يجرّبها القارئ في المتصفح.' },
       { icon: 'private', title: 'وثائق خاصة', body: 'شارك الوثائق، أو صفحات بعينها، مع القرّاء الذين تدعوهم فقط.' },
-      { icon: 'llms', title: 'جاهزة لأدوات الذكاء الاصطناعي', body: 'تُدرَج الصفحات العامة في ملف llms.txt، ولكل منها نسخة بصيغة Markdown.' },
+      {
+        icon: 'llms',
+        title: 'جاهزة لأدوات الذكاء الاصطناعي',
+        body: 'تُدرَج الصفحات العامة القابلة للفهرسة في ملف llms.txt، ولكل منها نسخة بصيغة Markdown.',
+      },
       {
         icon: 'key',
         title: 'مفتاحك الخاص',
@@ -199,7 +206,7 @@ export const landingAr: LandingCopy = {
     title: 'اكتب، انشر، أجب، حسّن',
     body: 'دورة بسيطة لفرق الدعم والمنتج.',
     steps: [
-      { title: 'اكتب أو استورد', body: 'اكتب في المحرر البصري، أو استورد مستودع Mintlify أو GitBook عامًّا من GitHub.' },
+      { title: 'اكتب أو استورد', body: 'اكتب في المحرر البصري، أو استورد مستودع Mintlify عامًّا من GitHub.' },
       { title: 'انشر', body: 'عاين تغييراتك، ثم انشر، وضع الموقع على نطاقك الخاص.' },
       { title: 'أجب', body: 'يبحث القرّاء أو يسألون المساعد، فتصلهم إجابات تُحيل إلى صفحاتك، بلغتهم.' },
       { title: 'حسّن', body: 'اعرف ما لم يجده القرّاء، ثم أصلحه في المحرر أو من مساعدك الذكي.' },
@@ -208,7 +215,7 @@ export const landingAr: LandingCopy = {
   paths: {
     eyebrow: 'طريقتان للتشغيل',
     title: 'سحابة مجانية تجريبية، أو خوادمك أنت',
-    body: 'المنتج المفتوح المصدر نفسه في الحالتين.',
+    body: 'شيفرة واحدة مفتوحة المصدر. وتصل الميزات الجديدة إلى الاستضافة الذاتية حين يصدر إصدار يتضمنها.',
     cloud: {
       name: 'Nibleaf Cloud',
       price: 'مجاني خلال المرحلة التجريبية',
@@ -268,7 +275,7 @@ export const landingAr: LandingCopy = {
       },
       {
         q: 'ما الفرق بين السحابة والاستضافة الذاتية؟',
-        a: 'المنتج المفتوح المصدر نفسه. على Nibleaf Cloud نتولى تشغيله عنك. أما في الاستضافة الذاتية فتثبّته على خوادمك بـ Docker Compose، وتختار التخزين والخدمات الاختيارية، وتتولى التحديثات والنسخ الاحتياطية.',
+        a: 'المنتج المفتوح المصدر نفسه. على Nibleaf Cloud نتولى تشغيله عنك. أما في الاستضافة الذاتية فتثبّته على خوادمك بـ Docker Compose، وتختار التخزين والخدمات الاختيارية، وتتولى التحديثات والنسخ الاحتياطية. وتصل الميزات الجديدة إلى الاستضافة الذاتية مع أول إصدار يتضمنها.',
       },
       {
         q: 'ماذا يحتاج «اسأل المساعد»، ومن يدفع كلفة الذكاء الاصطناعي؟',
@@ -284,7 +291,7 @@ export const landingAr: LandingCopy = {
       },
       {
         q: 'هل أستطيع الاستيراد من Mintlify أو GitBook؟',
-        a: 'نعم، من مستودع عام على GitHub: مستودع وثائق Mintlify، أو مستودع GitBook مُعدّ بميزة Git Sync. تنتقل الصفحات والتنقل والصور، فراجع المكوّنات المخصّصة بعد الاستيراد. ويمكنك أيضًا استيراد ملفات التصدير من Ghost.',
+        a: `نعم، من مستودع عام على GitHub: مستودع وثائق Mintlify، أو مستودع GitBook مُعدّ بميزة Git Sync. تنتقل الصفحات والتنقل والصور، فراجع المكوّنات المخصّصة بعد الاستيراد. ويمكنك أيضًا استيراد ملفات التصدير من Ghost. ${groupAvailabilityNote('ميزة استيراد GitBook', ['gitbookImport'], 'ar') ?? ''}`,
       },
       {
         q: 'ما مستوى دعم العربية؟',
@@ -296,7 +303,7 @@ export const landingAr: LandingCopy = {
       },
       {
         q: 'ماذا يحدث لبيانات قرّائي؟',
-        a: 'لا تحفظ تحليلات القرّاء عناوين IP. وإذا كان موقعك يطلب موافقة القرّاء، فلا تُربط زياراتهم ببعضها إلا بعد موافقتهم. ولا تُحفظ كلمات البحث إلا إذا فعّلت ذلك، ولا تظهر الكلمة إلا بعد أن تبحث عنها زيارتان مختلفتان على الأقل. ويرسل المساعد الأسئلة والمقاطع المطابقة إلى مزوّد الذكاء الاصطناعي الذي تختاره، وفق شروط ذلك المزوّد. ويمكنك إيقاف حفظ محادثات المساعد.',
+        a: `لا تحفظ تحليلات القرّاء عناوين IP. وإذا كان موقعك يطلب موافقة القرّاء، فلا تُربط زياراتهم ببعضها إلا بعد موافقتهم. ولا تُحفظ كلمات البحث إلا إذا فعّلت ذلك، ولا تظهر الكلمة إلا بعد أن تبحث عنها زيارتان مختلفتان على الأقل. ويرسل المساعد الأسئلة والمقاطع المطابقة إلى مزوّد الذكاء الاصطناعي الذي تختاره، وفق شروط ذلك المزوّد. ويمكنك إيقاف حفظ محادثات المساعد. ${groupAvailabilityNote('منظومة التحليلات الموصوفة هنا', ['readerAnalytics'], 'ar') ?? ''}`,
       },
     ],
   },
@@ -304,7 +311,7 @@ export const landingAr: LandingCopy = {
     eyebrow: 'من المدونة',
     title: 'مقالات عن التوثيق',
     allLink: { label: 'كل المقالات', href: '/blog' },
-    readingTime: (minutes) => `قراءة في ${arabicMinutes(minutes)}`,
+    readingTime: (minutes) => `مدة القراءة: ${arabicMinutes(minutes)}`,
   },
   finalCta: {
     title: 'امنح عملاءك وثائق تُجيبهم.',

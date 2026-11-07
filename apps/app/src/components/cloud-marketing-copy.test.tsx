@@ -3,10 +3,10 @@ import { act } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { expect, it } from 'vitest';
-import { LandingPage } from './cloud-marketing';
-import { ArabicLandingPage } from './marketing/arabic-landing';
 import { landingAr } from './marketing/copy/landing.ar';
 import { landingEn } from './marketing/copy/landing.en';
+import { ArabicLandingPage } from './marketing/landing/arabic-landing-page';
+import { LandingPage } from './marketing/landing/landing-page';
 
 it.each([
   ['en', LandingPage, landingEn, 'ar'],

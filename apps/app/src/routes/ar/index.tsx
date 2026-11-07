@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ArabicLandingPage } from '@/components/marketing/arabic-landing';
 import type { MarketingPageMeta } from '@/components/marketing/copy/landing-meta';
+import { ArabicLandingPage } from '@/components/marketing/landing/arabic-landing-page';
 import { canonicalHref, getGithubStarsFn, marketingLd, pageMeta } from '@/lib/marketing-seo';
 
 const arabicLandingHead = (meta: MarketingPageMeta) => ({
