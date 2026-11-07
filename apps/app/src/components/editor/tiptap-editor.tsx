@@ -330,7 +330,7 @@ export function buildEditorExtensions({
     }),
     AutomaticBlockDirection.configure({ dir }),
     ImageUpload.configure({ canEdit }),
-    CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload) }),
+    CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),

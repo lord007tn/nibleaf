@@ -1,8 +1,8 @@
 import { Extension } from '@tiptap/core';
-import { DOMParser, DOMSerializer, Fragment, type Node as PMNode, Slice } from '@tiptap/pm/model';
+import { DOMParser, DOMSerializer, Fragment, type Node as PMNode, type ResolvedPos, Slice } from '@tiptap/pm/model';
 import { Plugin, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { dropPoint } from '@tiptap/pm/transform';
-import type { EditorView } from '@tiptap/pm/view';
+import type { EditorProps, EditorView } from '@tiptap/pm/view';
 import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, normalizedURL } from './html-safety';
 import { imageAttributeNames } from './image-source';
 import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
@@ -11,6 +11,7 @@ import { fileFromPastedImage } from './pasted-image';
 // Clipboard HTML is public. A nonce only identifies a candidate: the matching
 // plain text and this in-memory Slice are the authority, never returned HTML.
 let lastCopy: { nonce: string; slice: Slice; text: string } | null = null;
+const clipboardLineEndings = (value: string) => value.replace(/\r\n?/g, '\n');
 
 function unsafeSourceOpener(opening: string): boolean {
   if (!opening) return false;
@@ -122,7 +123,7 @@ function wordLists(root: HTMLElement) {
 }
 
 /** Mutates an inert clipboard container. No editor state or document globals required. */
-export function cleanPasteDOM(root: HTMLElement): HTMLElement {
+export function cleanPasteDOM(root: HTMLElement, fallbackDir: 'ltr' | 'rtl' = 'ltr'): HTMLElement {
   const doc = root.ownerDocument;
   root
     .querySelectorAll('script,style,meta,link,button,input:not([type="checkbox"]),select,textarea,option,nav,svg,iframe,object,embed,math,o\\:p')
@@ -192,10 +193,6 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
         const value = element.getAttribute(key);
         if (value !== null && (!['width', 'height'].includes(key) || imageDimension(value) !== null)) attributes[key] = value;
       }
-      for (const key of ['class', 'className']) {
-        const value = imageClasses(element.getAttribute(key));
-        if (value) attributes[key] = value;
-      }
     }
     if (element.localName === 'code') {
       const language = element.className.match(/\blanguage-[\w+-]+\b/);
@@ -206,7 +203,13 @@ export function cleanPasteDOM(root: HTMLElement): HTMLElement {
         const value = element.getAttribute(key);
         if (value && /^\d+$/.test(value)) attributes[key] = value;
       }
-      const align = style.textAlign || element.getAttribute('align');
+      let align = style.textAlign || element.getAttribute('align');
+      if (align === 'start' || align === 'end') {
+        let ancestor: Element | null = element;
+        while (ancestor && !/^(rtl|ltr)$/i.test(ancestor.getAttribute('dir') ?? '')) ancestor = ancestor.parentElement;
+        const direction = ancestor?.getAttribute('dir')?.toLowerCase() ?? fallbackDir;
+        align = (align === 'start') === (direction === 'ltr') ? 'left' : 'right';
+      }
       if (align && /^(left|center|right)$/.test(align)) attributes.align = align;
     }
     const start = element.getAttribute('start');
@@ -246,11 +249,11 @@ export function cleanPastedHTML(html: string): string {
   return cleanPasteDOM(root).innerHTML;
 }
 
-export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | undefined }>({
+export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | undefined; dir: 'ltr' | 'rtl' }>({
   name: 'cleanPaste',
   // Consume URL replacements before Link's linkOnPaste handler links old text.
   priority: 1100,
-  addOptions: () => ({ getUpload: () => undefined }),
+  addOptions: () => ({ getUpload: () => undefined, dir: 'ltr' }),
   addProseMirrorPlugins() {
     const editor = this.editor;
     const getUpload = this.options.getUpload;
@@ -272,7 +275,7 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       base.marks,
     );
     const uploads = new Map<string, { file: File; attributes: Record<string, unknown> }>();
-    const rootFor = (html: string) => {
+    const rootFor = (html: string, internal = false) => {
       const root = document.implementation.createHTMLDocument('').createElement('div');
       root.innerHTML = html;
       for (const image of root.querySelectorAll('img')) {
@@ -295,13 +298,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
             title: image.getAttribute('title'),
             width: imageDimension(image.getAttribute('width')),
             height: imageDimension(image.getAttribute('height')),
-            class: imageClasses(image.getAttribute('class')),
-            className: imageClasses(image.getAttribute('className')),
+            ...(internal ? { class: imageClasses(image.getAttribute('class')), className: imageClasses(image.getAttribute('className')) } : {}),
           },
         });
         image.setAttribute('src', marker);
       }
-      return cleanPasteDOM(root);
+      return cleanPasteDOM(root, this.options.dir);
     };
     const sanitize = (node: PMNode, internal = false): PMNode[] => {
       // Even a genuine internal copy must upload an existing inline raster image.
@@ -310,7 +312,7 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           .filter((key) => node.attrs[key] != null)
           .map((key) => `${key}="${escapeImageAttribute(node.attrs[key])}"`)
           .join(' ');
-        return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(rootFor(`<img ${attributes} />`)).content.content);
+        return Array.from(DOMParser.fromSchema(editor.schema).parseSlice(rootFor(`<img ${attributes} />`, internal)).content.content);
       }
       if (internal && ['mdxOpaqueBlock', 'mdxOpaqueInline'].includes(node.type.name)) return [node];
       if (node.type.name === 'mdxOpaqueBlock' || node.type.name === 'mdxOpaqueInline') {
@@ -342,8 +344,8 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           return [editor.schema.node('paragraph', null, attrs.alt ? editor.schema.text(String(attrs.alt)) : undefined)];
         attrs.width = imageDimension(attrs.width);
         attrs.height = imageDimension(attrs.height);
-        attrs.class = imageClasses(attrs.class);
-        attrs.className = imageClasses(attrs.className);
+        attrs.class = internal ? imageClasses(attrs.class) : null;
+        attrs.className = internal ? imageClasses(attrs.className) : null;
       }
       const content: PMNode[] = [];
       node.forEach((child) => {
@@ -404,7 +406,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
               }
               const record = lastCopy;
               const html = event.clipboardData?.getData('text/html') ?? '';
-              if (!record || event.clipboardData?.getData('text/plain') !== record.text || !html.includes(record.nonce)) return false;
+              if (
+                !record ||
+                clipboardLineEndings(event.clipboardData?.getData('text/plain') ?? '') !== clipboardLineEndings(record.text) ||
+                !html.includes(record.nonce)
+              )
+                return false;
               const root = document.implementation.createHTMLDocument('').createElement('div');
               root.innerHTML = html;
               if (!root.querySelector(`[data-nibleaf-clipboard="${record.nonce}"]`)) return false;
@@ -425,7 +432,33 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
               tag.replace(/\n/g, '&#10;').replace(/\r/g, '&#13;'),
             );
           },
-          transformPasted: (slice) => sanitizedSlice(slice),
+          transformPasted: (slice, view) => (view.dragging?.slice === slice ? slice : sanitizedSlice(slice)),
+          // Like tiptap-markdown's own clipboard parser, null delegates to the
+          // next parser. ProseMirror's runtime supports this, but its type omits null.
+          clipboardTextParser: ((text: string, context: ResolvedPos, plainText: boolean) => {
+            if (plainText || !/!\[/.test(text)) return null;
+            // Saved Markdown keeps markdown-it's normal data-URL policy. During
+            // a new paste, admit data-image tokens only long enough for the
+            // slice sanitizer to upload supported bytes or retain their alt text.
+            const storage = editor.storage as typeof editor.storage & {
+              markdown: {
+                parser: {
+                  md: { validateLink(url: string): boolean };
+                  parse(text: string, options: { inline: boolean }): string;
+                };
+              };
+            };
+            const parser = storage.markdown.parser;
+            const validate = parser.md.validateLink;
+            try {
+              parser.md.validateLink = (url) => /^data:/i.test(normalizedURL(url.split(',', 1)[0] ?? '') ?? '') || validate(url);
+              const root = document.implementation.createHTMLDocument('').createElement('div');
+              root.innerHTML = parser.parse(text, { inline: true });
+              return DOMParser.fromSchema(editor.schema).parseSlice(root, { preserveWhitespace: true, context });
+            } finally {
+              parser.md.validateLink = validate;
+            }
+          }) as NonNullable<EditorProps['clipboardTextParser']>,
           handleDrop(view, event, slice, moved) {
             if (!hasQueuedImages(slice)) return false;
             if (!canEditImages(editor)) return true;

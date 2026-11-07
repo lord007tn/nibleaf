@@ -3,14 +3,7 @@ import Image from '@tiptap/extension-image';
 import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import {
-  allowedURL,
-  escapeImageAttribute,
-  IMAGE_UPLOAD_PLACEHOLDER_PREFIX,
-  imageClasses,
-  imageDimension,
-  isLegacyRasterImageSource,
-} from './html-safety';
+import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, isLegacyImageSource } from './html-safety';
 import { imageAttributeNames, safeImageTag, setupImageSource, snapshotImageSource, sourceImageAttribute } from './image-source';
 import { canEditImages } from './image-upload';
 import { sourceMetadataAttributes } from './mdx-roundtrip';
@@ -98,8 +91,9 @@ export const BlockImage = Image.extend({
           const finish = () => {
             cancelDrag?.();
             const pos = getPos();
-            if (pos !== undefined && !editor.isDestroyed && canEditImages(editor))
+            if (pos !== undefined && !editor.isDestroyed && canEditImages(editor) && width !== initial)
               editor.chain().setNodeSelection(pos).updateAttributes('image', { width, height: null }).run();
+            else sync();
           };
           cancelDrag = () => {
             document.removeEventListener('pointermove', move);
@@ -192,7 +186,7 @@ export const BlockImage = Image.extend({
             state.closeBlock(node);
             return;
           }
-          if (node.attrs.sourceOpen) {
+          if (node.attrs.sourceOpen && !(legacy && node.attrs.markdownSyntax)) {
             state.write(safeImageTag(String(node.attrs.sourceOpen), node.attrs, legacy));
           } else if (node.attrs.width || node.attrs.height || node.attrs.class || node.attrs.className || /[\s"<>]/.test(String(node.attrs.src))) {
             const attributes = imageAttributeNames
@@ -268,11 +262,21 @@ export const LegacyImage = BlockImage.extend({
   addCommands() {
     return {};
   },
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      markdownSyntax: {
+        default: false,
+        rendered: false,
+        parseHTML: (element: HTMLElement) => element.getAttribute('data-nibleaf-markdown-image') === 'true',
+      },
+    };
+  },
   parseHTML() {
     return [
       {
         tag: 'img[data-nibleaf-legacy="true"]',
-        getAttrs: (element) => (isLegacyRasterImageSource(element.getAttribute('src') ?? '') ? null : false),
+        getAttrs: (element) => (isLegacyImageSource(element.getAttribute('src') ?? '') ? null : false),
       },
     ];
   },

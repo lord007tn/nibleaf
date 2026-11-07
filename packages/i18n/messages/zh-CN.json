@@ -400,7 +400,6 @@
   "editor_table_aligncenter": "居中对齐",
   "editor_table_alignend": "末尾对齐",
   "editor_table_aligndefault": "默认对齐",
-  "editor_imageuploadfailed": "无法上传图片。请检查网络连接后重试。",
   "editor_createfailed": "无法创建页面。请检查网络连接后重试。",
   "editor_newgroup": "新组",
   "editor_newpage": "新页面",

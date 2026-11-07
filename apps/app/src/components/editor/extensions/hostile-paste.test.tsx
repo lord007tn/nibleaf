@@ -201,7 +201,7 @@ describe('clipboard attribute allow list and reader output', () => {
     expect(editor.getJSON().content?.[0]?.attrs?.sourceOpen).toBe('');
     const saved = getMarkdown(editor);
     expect(saved).not.toMatch(/onerror|style=|fixed/);
-    expect(saved).toContain('class="block"');
+    expect(saved).not.toContain('class=');
   });
 });
 
@@ -318,16 +318,16 @@ describe('image values from source and paste', () => {
       }
     },
   );
-  it.each(['class', 'className'])('filters %s on load and paste, and escapes malicious alt edits', (name) => {
+  it.each(['class', 'className'])('drops mixed %s attributes on load and paste, and escapes malicious alt edits', (name) => {
     for (const source of [false, true]) {
       const html = `<img src="/safe.png" ${name}="fixed inset-0 z-50 block dark:hidden" width="480" />`;
       const editor = source ? editorFor() : paste(html);
       if (source) editor.commands.setContent(html, { emitUpdate: false });
-      expect(editor.getJSON().content?.[0]?.attrs?.[name]).toBe('block dark:hidden');
+      expect(editor.getJSON().content?.[0]?.attrs?.[name]).toBeNull();
       editor.commands.setNodeSelection(0);
       editor.commands.updateAttributes('image', { alt: '" onerror="x <tag> & more' });
       const saved = getMarkdown(editor);
-      expect(saved).toContain(`${name}="block dark:hidden"`);
+      expect(saved).not.toContain(`${name}=`);
       expect(saved).toContain('alt="&quot; onerror=&quot;x &lt;tag&gt; &amp; more"');
       expectSafeDOM(inert(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))));
     }

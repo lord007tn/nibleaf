@@ -34,8 +34,8 @@ export function imageClasses(value: unknown): string | null {
   // Images support only display tokens used for light/dark alternatives.
   const classes = String(value ?? '')
     .split(/\s+/)
-    .filter((token) => /^(?:dark:)?(?:block|hidden|inline|inline-block)$/.test(token));
-  return classes.length ? classes.join(' ') : null;
+    .filter(Boolean);
+  return classes.length && classes.every((token) => /^(?:dark:)?(?:block|hidden|inline|inline-block)$/.test(token)) ? classes.join(' ') : null;
 }
 
 export const escapeImageAttribute = (value: unknown): string =>
@@ -49,6 +49,6 @@ export const escapeImageAttribute = (value: unknown): string =>
 
 export const IMAGE_UPLOAD_PLACEHOLDER_PREFIX = '/__nibleaf-paste-upload-';
 
-/** Only existing raster content can use the source-only compatibility node. */
-export const isLegacyRasterImageSource = (source: string): boolean =>
-  /^data:image\/(?:png|jpeg|gif|webp|avif)(?:;|$)/i.test(normalizedURL(source.split(',', 1)[0] ?? '') ?? '');
+/** Saved inline images are display-only compatibility content, regardless of MIME.
+ * New pasted/dropped bytes must instead pass the asset upload MIME allow-list. */
+export const isLegacyImageSource = (source: string): boolean => /^data:image\//i.test(normalizedURL(source.split(',', 1)[0] ?? '') ?? '');

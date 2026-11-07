@@ -1,5 +1,5 @@
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, isLegacyRasterImageSource, normalizedURL } from './html-safety';
+import { allowedURL, escapeImageAttribute, imageClasses, imageDimension, isLegacyImageSource } from './html-safety';
 import { decodeMdxSource, encodeMdxSource } from './mdx-roundtrip';
 
 export const imageAttributeNames = ['src', 'alt', 'title', 'width', 'height', 'class', 'className'] as const;
@@ -22,7 +22,7 @@ function imageValue(name: string, value: unknown, preserveData = false): string 
   if (value === null || value === undefined) return null;
   if (name === 'width' || name === 'height') return imageDimension(value);
   if (name === 'class' || name === 'classname') return imageClasses(value);
-  if (name === 'src' && !(preserveData && isLegacyRasterImageSource(String(value))) && !allowedURL(String(value), ['http', 'https'])) return null;
+  if (name === 'src' && !(preserveData && isLegacyImageSource(String(value))) && !allowedURL(String(value), ['http', 'https'])) return null;
   return String(value);
 }
 
@@ -65,11 +65,8 @@ export function safeImageTag(raw: string, overrides: Record<string, unknown> = {
 /** Capture authored HTML before the DOM lowercases className and normalizes quotes/order. */
 export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] = (markdownit) => {
   if (imageParsers.has(markdownit)) return;
-  const validateLink = markdownit.validateLink.bind(markdownit);
   // Existing inline images have a separate preservation node. New clipboard
   // images still pass through the upload policy, never this source-only path.
-  markdownit.validateLink = (url) =>
-    /^data:/i.test(normalizedURL(url.split(',', 1)[0] ?? '') ?? '') ? isLegacyRasterImageSource(url) : validateLink(url);
   for (const rule of ['html_block', 'html_inline', 'image']) {
     const render = markdownit.renderer.rules[rule];
     if (!render) continue;
@@ -81,10 +78,11 @@ export const setupImageSource: NonNullable<MarkdownNodeSpec['parse']>['setup'] =
         const src = image?.getAttribute('src') ?? '';
         // Only the saved-source parser creates this compatibility node. Clipboard slices
         // are scrubbed separately, and regular image nodes never accept base64.
-        if (isLegacyRasterImageSource(src))
+        if (isLegacyImageSource(src))
           return safeImageTag(raw, {}, true).replace(
             /\s*\/?>$/,
-            (ending) => ` data-nibleaf-legacy="true" data-mdx-source-open="${encodeMdxSource(safeImageTag(raw, {}, true))}"${ending}`,
+            (ending) =>
+              ` data-nibleaf-legacy="true"${rule === 'image' ? ' data-nibleaf-markdown-image="true"' : ''} data-mdx-source-open="${encodeMdxSource(safeImageTag(raw, {}, true))}"${ending}`,
           );
         if (!allowedURL(src, ['http', 'https'])) return escapeImageAttribute(image?.getAttribute('alt') ?? '');
         if (rule === 'image') return raw;

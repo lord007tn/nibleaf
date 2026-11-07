@@ -27,6 +27,7 @@ import type {
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import { type QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
@@ -399,9 +400,15 @@ export const useDeleteDomain = (projectId: string) => {
 /** Browsers occasionally omit File.type for valid images; never infer an active type. */
 const uploadContentType = (file: File): string => file.type.trim() || inferSafeInlineAssetContentType(file.name) || 'application/octet-stream';
 
+type AssetUploadAttempt = { key: string; uploadUrl: string; putComplete: boolean };
+
 /** Presign → PUT bytes → confirm. Returns the recorded asset. */
 export const useUploadAsset = (projectId: string) => {
   const qc = useQueryClient();
+  // A Retry uses the same File instance. Retain storage identity per project
+  // for the File's lifetime, including across mutation/hook re-renders. A later
+  // insertion failure must not turn Retry into a second storage upload either.
+  const attempts = useRef(new WeakMap<File, Map<string, AssetUploadAttempt>>());
   return useMutation({
     mutationFn: async (
       input: File | { file: File; onProgress?: (percent: number) => void; signal?: AbortSignal; onFinishing?: () => void },
@@ -410,28 +417,56 @@ export const useUploadAsset = (projectId: string) => {
       const onProgress = input instanceof File ? undefined : input.onProgress;
       const signal = input instanceof File ? undefined : input.signal;
       const contentType = uploadContentType(file);
-      const presign = await mutateData(
-        await api.app.projects[':projectId'].assets.presign.$post(
-          {
-            param: { projectId },
-            json: { filename: file.name, contentType, size: file.size },
-          },
-          { init: { signal } },
-        ),
-        'Could not start the upload.',
-      );
-      await putAsset(presign.uploadUrl, file, contentType, onProgress, signal);
+      const perProject = attempts.current.get(file) ?? new Map<string, AssetUploadAttempt>();
+      let attempt = perProject.get(projectId);
+      if (!attempt) {
+        const presign = await mutateData(
+          await api.app.projects[':projectId'].assets.presign.$post(
+            {
+              param: { projectId },
+              json: { filename: file.name, contentType, size: file.size },
+            },
+            { init: { signal } },
+          ),
+          'Could not start the upload.',
+        );
+        attempt = { ...presign, putComplete: false };
+        perProject.set(projectId, attempt);
+        attempts.current.set(file, perProject);
+      }
+      if (!attempt.putComplete) {
+        await putAsset(attempt.uploadUrl, file, contentType, onProgress, signal);
+        attempt.putComplete = true;
+      }
       if (!(input instanceof File)) input.onFinishing?.();
-      return mutateData(
-        await api.app.projects[':projectId'].assets.confirm.$post(
-          {
-            param: { projectId },
-            json: { key: presign.key, contentType, size: file.size },
-          },
-          { init: { signal } },
-        ),
-        'Could not finalize the upload.',
-      );
+      const key = attempt.key;
+      let asset: Asset;
+      try {
+        asset = await mutateData(
+          await api.app.projects[':projectId'].assets.confirm.$post(
+            {
+              param: { projectId },
+              json: { key, contentType, size: file.size },
+            },
+            { init: { signal } },
+          ),
+          'Could not finalize the upload.',
+        );
+      } catch (confirmationError) {
+        if (signal?.aborted) throw confirmationError;
+        // The server currently exposes duplicate-key P2002 as a generic 500.
+        // Never infer success from that status: verify the exact recorded key.
+        let existing: Asset | undefined;
+        try {
+          const assets = await getData(await api.app.projects[':projectId'].assets.$get({ param: { projectId } }, { init: { signal } }), 'assets');
+          existing = assets.find((item) => item.key === key && item.size === file.size && item.contentType === contentType);
+        } catch {
+          throw confirmationError;
+        }
+        if (!existing) throw confirmationError;
+        asset = existing;
+      }
+      return asset;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.assets.all(projectId) }),
   });

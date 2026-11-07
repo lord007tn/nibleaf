@@ -434,7 +434,6 @@
   "editor_table_aligncenter": "Align to center",
   "editor_table_alignend": "Align to end",
   "editor_table_aligndefault": "Default alignment",
-  "editor_imageuploadfailed": "Could not upload the image. Check your connection and try again.",
   "editor_createfailed": "Couldn't create the page. Check your connection and try again.",
   "editor_newgroup": "New group",
   "editor_newpage": "New page",
