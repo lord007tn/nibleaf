@@ -56,7 +56,7 @@ async function createDeploymentNotifications(
       userId: member.userId,
       projectId: opts.projectId,
       ...payload,
-      params: { projectName: opts.projectName, version: opts.version, ...(opts.error ? { details: opts.error.slice(0, 2000) } : {}) },
+      params: { projectName: opts.projectName, version: opts.version, ...(opts.error ? { details: opts.error.slice(0, 300) } : {}) },
       href: `/app/projects/${opts.projectId}`,
     })),
     skipDuplicates: true,

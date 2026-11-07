@@ -168,7 +168,7 @@ const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: n
             type: 'export_failed',
             title: 'Export failed',
             body: 'The export could not finish. Try creating it again.',
-            params: { details: message },
+            params: { details: message.slice(0, 300) },
             href: `/app/projects/${row.projectId}/settings?section=exports`,
           },
         });

@@ -66,4 +66,12 @@ describe('export notification parameters', () => {
       }),
     });
   });
+
+  it('bounds inbox details to 300 characters while retaining the job error', async () => {
+    const message = `ProviderError: ${'a'.repeat(500)} tail`;
+    mocks.render.mockRejectedValue(new Error(message));
+    await expect(handleExportJobs(job)).rejects.toThrow('ProviderError');
+    expect(mocks.notify).toHaveBeenCalledWith({ data: expect.objectContaining({ params: { details: message.slice(0, 300) } }) });
+    expect(mocks.update).toHaveBeenCalledWith({ where: { id: 'export-1' }, data: expect.objectContaining({ status: 'FAILED', error: message }) });
+  });
 });

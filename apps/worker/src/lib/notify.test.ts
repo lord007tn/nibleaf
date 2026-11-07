@@ -66,6 +66,19 @@ describe('deployment notification retry identity', () => {
     expect(row?.body).toContain('Try publishing again');
   });
 
+  it('keeps only the first 300 characters of deployment details in each member notification', async () => {
+    const error = `ProviderError: ${'a'.repeat(500)} tail`;
+    await notifyDeployment({ ...options, outcome: 'failed', error });
+    expect(mocks.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.arrayContaining([expect.objectContaining({ params: { projectName: 'Fixture', version: 1, details: error.slice(0, 300) } })]),
+      }),
+    );
+    const payload = mocks.insert.mock.calls[0]?.[0] as { data: Array<{ params: { details: string } }> } | undefined;
+    expect(payload?.data).toHaveLength(3);
+    for (const row of payload?.data ?? []) expect(row.params.details).toBe(error.slice(0, 300));
+  });
+
   it('retries a missing recipient without gating on already delivered in-app rows or other email jobs', async () => {
     mocks.enqueue.mockRejectedValueOnce(new Error('queue unavailable'));
     await expect(notifyDeployment(options)).rejects.toThrow('notification delivery incomplete');

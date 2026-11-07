@@ -7,16 +7,25 @@ import { failureMessageKey } from '../failure-message';
 type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 const isolate = (value: string) => `\u2068${value}\u2069`;
 
+const notificationParams = (value: unknown) =>
+  value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+
+/** New rows keep diagnostics in params; legacy rows keep them in the body. */
+export function notificationDetails(item: NotificationItem) {
+  const params = notificationParams(item.params);
+  return typeof params?.details === 'string' ? params.details : params ? null : item.body;
+}
+
 function importCount(t: Translate, locale: string, count: number, kind: 'imported' | 'updated') {
   const category = new Intl.PluralRules(locale === 'ar' ? 'ar' : 'en').select(count);
   return t(`notifications.importReady.${kind}.${category}`, { count: new Intl.NumberFormat(localeTag(locale)).format(count) });
 }
 
 export function notificationText(t: Translate, item: NotificationItem, locale = 'en', role: ProjectAdminStatus = 'pending') {
-  const params = item.params && typeof item.params === 'object' && !Array.isArray(item.params) ? (item.params as Record<string, unknown>) : null;
+  const params = notificationParams(item.params);
   const failure = item.type === 'deploy_failed' || item.type === 'export_failed';
   if (failure) {
-    const detail = typeof params?.details === 'string' ? params.details : params ? null : item.body;
+    const detail = notificationDetails(item);
     return {
       title:
         item.type === 'deploy_failed' && typeof params?.projectName === 'string'

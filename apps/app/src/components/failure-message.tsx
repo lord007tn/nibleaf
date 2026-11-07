@@ -35,6 +35,7 @@ export function FailureMessage({ error, context }: { error: string; context: 'pu
   const t = useT();
   return (
     <div className="mt-2 min-w-0 text-xs">
+      {/* Export and Git failures intentionally use the neutral default role; they do not need a member lookup. */}
       <p className="text-destructive">{t(failureMessageKey(error, context))}</p>
       <FailureDetails detail={error} />
     </div>

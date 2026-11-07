@@ -147,9 +147,9 @@ describe('publish draft barrier', () => {
     expect(document.querySelector('a[href*="section=appearance"]')).toBeNull();
   });
 
-  it.each([false, true])('offers Retry when members fail (cached member: %s) without assuming the Editor role', async (cached) => {
+  it('offers Retry when members fail without cached data, without assuming the Editor role', async () => {
     preflight.membersError = true;
-    preflight.membersMissing = !cached;
+    preflight.membersMissing = true;
     preflight.issues = [{ code: 'cycle', message: 'Redirect loop', sequence: ['/old', '/new'], rowIndexes: [0] }];
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     expect(document.body.textContent).toContain('publish.redirectRoleError');
@@ -160,11 +160,10 @@ describe('publish draft barrier', () => {
     await act(async () => retry?.click());
     expect(retryMembers).toHaveBeenCalledOnce();
     preflight.membersFetching = true;
-    preflight.membersPending = !cached;
-    preflight.membersError = cached;
+    preflight.membersPending = true;
+    preflight.membersError = false;
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
-    if (cached) expect(retry?.getAttribute('aria-busy')).toBe('true');
-    else expect(document.body.textContent).toContain('publish.redirectRolePending');
+    expect(document.body.textContent).toContain('publish.redirectRolePending');
     expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
     preflight.membersFetching = false;
     preflight.membersPending = false;
@@ -172,6 +171,23 @@ describe('publish draft barrier', () => {
     preflight.membersMissing = false;
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+  });
+
+  it.each(['admin', 'owner', 'member'])('retains the cached %s role after a failed background refetch', async (role) => {
+    preflight.role = role;
+    preflight.issues = [{ code: 'cycle', message: 'Redirect loop', sequence: ['/old', '/new'], rowIndexes: [0] }];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    preflight.membersError = true;
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(document.body.textContent).not.toContain('publish.redirectRoleError');
+    expect(document.body.textContent).not.toContain('publish.redirectRolePending');
+    expect([...document.querySelectorAll('button')].some((button) => button.textContent === 'common.retry')).toBe(false);
+    if (role === 'member') {
+      expect(document.body.textContent).toContain('publish.redirectsAskAdmin');
+    } else {
+      expect(document.querySelector('a[href*="appearanceSection=redirects"]')).not.toBeNull();
+      expect(document.body.textContent).not.toContain('publish.redirectsAskAdmin');
+    }
   });
 
   it('keeps publish available for retry without creating a deployment when saving fails', async () => {

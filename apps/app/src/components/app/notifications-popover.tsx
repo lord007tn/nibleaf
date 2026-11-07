@@ -5,13 +5,13 @@ import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
 import { useState } from 'react';
-import { FailureDetails } from '@/components/failure-message';
+import { FailureDetails, failureMessageKey } from '@/components/failure-message';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useMarkNotificationsRead, useNotifications, useUnreadNotificationCount } from '@/hooks/api';
 import type { NotificationItem } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useFormatters } from '@/lib/format';
-import { notificationText } from './notification-text';
+import { notificationDetails, notificationText } from './notification-text';
 
 const NOTIFICATION_SKELETON_ROWS = ['a', 'b', 'c'];
 
@@ -19,7 +19,8 @@ const NOTIFICATION_SKELETON_ROWS = ['a', 'b', 'c'];
  *  and follows its dashboard link (when it has one). */
 function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (item: NotificationItem) => void }) {
   const { t, locale } = useLocale();
-  const role = useProjectAdminStatus(item.type === 'deploy_failed' ? (item.projectId ?? undefined) : undefined);
+  const needsRole = item.type === 'deploy_failed' && failureMessageKey(notificationDetails(item) ?? '', 'publish').startsWith('failures.redirects');
+  const role = useProjectAdminStatus(needsRole ? (item.projectId ?? undefined) : undefined);
   const text = notificationText(t, item, locale, role.status);
   const { relativeTime } = useFormatters();
   const unread = item.readAt === null;
