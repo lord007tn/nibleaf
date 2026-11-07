@@ -3,11 +3,11 @@ import { type Branch, Prisma, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
 import type { CreateBranchBody, MergeBranchBody } from '@nibleaf/validators';
 import { AppError, conflict, notFound } from '@/errors';
-import { buildForkBaseline, diffMainSinceFork, forkPointOf, type MergePreview, planPromote } from './branch-fork';
+import { analyzePromote, buildForkBaseline, forkPointOf, type MergePreview, type PromotePageRow, pageContentHash } from './branch-fork';
 import { recomputeProjectPaths } from './pages';
 
 /** The fork baseline is promote's bookkeeping and can be large; API responses
- *  leave it out. */
+ *  and ordinary lookups leave it out. Only the promote read loads it. */
 const publicBranch = { forkBaseline: true } as const;
 
 /** Every branch of a project, default ('main') first. */
@@ -16,16 +16,17 @@ export const listBranches = async (projectId: string): Promise<Omit<Branch, 'for
 
 /** The project's required default branch. Missing data is an invariant error. */
 export const getDefaultBranch = async (projectId: string) => {
-  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2 });
+  const defaults = await prisma.branch.findMany({ where: { projectId, isDefault: true }, take: 2, omit: publicBranch });
   if (defaults.length !== 1 || !defaults[0]) {
     throw new Error(`Project ${projectId} must have exactly one default branch.`);
   }
   return defaults[0];
 };
 
-/** Throw unless the branch exists in the project; returns it. */
+/** Throw unless the branch exists in the project; returns it (without the
+ *  fork baseline). */
 export const assertBranchInProject = async (projectId: string, id: string) => {
-  const branch = await prisma.branch.findFirst({ where: { id, projectId } });
+  const branch = await prisma.branch.findFirst({ where: { id, projectId }, omit: publicBranch });
   if (!branch) {
     throw notFound('branch', { id });
   }
@@ -38,7 +39,9 @@ export const assertBranchInProject = async (projectId: string, id: string) => {
  * user's current draft. */
 export const createImportReplacementBranch = async (projectId: string, source: string, preserveExisting: boolean) => {
   const name = `import-${source}-${newId()}`;
-  return preserveExisting ? createBranch(projectId, { name }) : prisma.branch.create({ data: { projectId, name, isDefault: false } });
+  return preserveExisting
+    ? createBranch(projectId, { name })
+    : prisma.branch.create({ data: { projectId, name, isDefault: false }, omit: publicBranch });
 };
 
 const draftFingerprint = async (db: Prisma.TransactionClient, projectId: string, branchId: string) => {
@@ -94,16 +97,22 @@ export const promoteImportReplacementBranch = async (
   return main;
 };
 
+/** The shared page-write project lock (see the page-write lock protocol): a
+ *  structural page change takes it first, before any page row lock. NO KEY
+ *  UPDATE, never FOR UPDATE, so inserts that reference the project (analytics,
+ *  sessions, comments, deployments) are not blocked. */
+const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
+  tx.$queryRaw(Prisma.sql`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`);
+
 /** Create a branch by forking another branch's pages (the default by default).
  *  Pages are deep-copied with fresh ids and remapped parent links, so the new
  *  branch is an independent, editable copy across every language.
  *
  *  A fork of main records the fork point (`forkedAt` + a baseline of main's
- *  pages, see ./branch-fork) so a later promote can tell what changed on main.
- *  The copies carry `forkedAt` as their `updatedAt`, which is how promote tells
- *  an edited copy from an untouched one. A fork of another version inherits
- *  that version's fork time without a baseline, so promote compares main from
- *  the earlier fork (never later) and reports the comparison as incomplete. */
+ *  pages and their copies, see ./branch-fork) so a later promote can tell what
+ *  changed on each side. A fork of another version inherits that version's fork
+ *  time without a baseline, so promote compares main from the earlier fork
+ *  (never later) and reports the comparison as incomplete. */
 export const createBranch = async (projectId: string, body: CreateBranchBody) => {
   const name = body.name.trim();
   const clash = await prisma.branch.findFirst({ where: { projectId, name }, select: { id: true } });
@@ -116,7 +125,7 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
     // Creating the copies is a structural page write: project lock first. It
     // also keeps the baseline consistent with structural changes on main.
     await lockProject(tx, projectId);
-    const forkedAt = new Date();
+    const forkedAt = source.isDefault ? new Date() : (source.forkedAt ?? source.createdAt);
     const sourcePages = await tx.page.findMany({ where: { projectId, branchId: source.id }, orderBy: { position: 'asc' } });
     // old page id → new page id, so parentId links can be remapped onto the copies.
     const idMap = new Map<string, string>();
@@ -124,8 +133,7 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
       idMap.set(p.id, newId());
     }
     const copyIdOf = (id: string) => idMap.get(id) ?? newId();
-    const fork = source.isDefault ? { forkedAt, forkBaseline: buildForkBaseline(sourcePages, copyIdOf) } : { forkedAt: forkPointOf(source).forkedAt };
-    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, ...fork }, omit: publicBranch });
+    const branch = await tx.branch.create({ data: { projectId, name, isDefault: false, forkedAt }, omit: publicBranch });
     if (sourcePages.length > 0) {
       await tx.page.createMany({
         data: sourcePages.map((p) => ({
@@ -145,51 +153,50 @@ export const createBranch = async (projectId: string, body: CreateBranchBody) =>
           translationKey: p.translationKey,
           position: p.position,
           hidden: p.hidden,
-          createdAt: forkedAt,
-          updatedAt: forkedAt,
         })),
       });
+    }
+    if (source.isDefault) {
+      // Hash both sides with the same SQL promote uses later.
+      const hashes = await tx.$queryRaw<{ id: string; hash: string }[]>(
+        Prisma.sql`SELECT "id", ${pageContentHash()} AS "hash" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" IN (${source.id}, ${branch.id})`,
+      );
+      const hashById = new Map(hashes.map((h) => [h.id, h.hash]));
+      const forkBaseline = buildForkBaseline(sourcePages, copyIdOf, (pageId) => hashById.get(pageId) ?? '');
+      await tx.branch.update({ where: { id: branch.id }, data: { forkBaseline }, select: { id: true } });
     }
     return branch;
   });
 };
 
-const mainPageSelect = { id: true, parentId: true, kind: true, title: true, path: true, languageId: true, createdAt: true, updatedAt: true } as const;
-const versionPageSelect = { id: true, parentId: true, languageId: true, path: true, updatedAt: true } as const;
+type PromoteRow = PromotePageRow & { branchId: string };
 
-/** The shared page-write project lock (see the page-write lock protocol): a
- *  structural page change takes it first, before any page row lock. NO KEY
- *  UPDATE, never FOR UPDATE, so inserts that reference the project (analytics,
- *  sessions, comments, deployments) are not blocked. */
-const lockProject = (tx: Prisma.TransactionClient, projectId: string) =>
-  tx.$queryRaw(Prisma.sql`SELECT 1 FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`);
-
-/** Read the version, main and the fork point for a promote. With `lock`, it
- *  follows the page-write lock protocol: the project row first, then the
- *  version row, then main's page rows in ascending id order, all FOR NO KEY
- *  UPDATE. A save on main therefore can't land between this check and the
- *  promote that follows in the same transaction; a save already in flight is
- *  waited for and then seen. Pages created on main meanwhile are kept by
- *  promote anyway (it deletes by id). */
-const readPromoteState = async (tx: Prisma.TransactionClient, projectId: string, branchId: string, mainId: string, lock: boolean) => {
+/** Read the version, main and the fork point for a promote, and analyze them.
+ *  With `lock` (inside the promote transaction) it follows the page-write lock
+ *  protocol: the project row, then the version row, then the page rows of BOTH
+ *  branches in one ascending-id pass, all FOR NO KEY UPDATE. That same locking
+ *  query is the read, so no save on either side can land between it and the
+ *  writes that follow; a save already in flight is waited for, then seen.
+ *  Without `lock` it is a plain read (the preview). */
+const readPromoteState = async (db: Prisma.TransactionClient, projectId: string, branchId: string, mainId: string, lock: boolean) => {
   if (lock) {
-    await lockProject(tx, projectId);
-    const locked = await tx.$queryRaw<{ id: string }[]>(
+    await lockProject(db, projectId);
+    const locked = await db.$queryRaw<{ id: string }[]>(
       Prisma.sql`SELECT "id" FROM "branch" WHERE "id" = ${branchId} AND "projectId" = ${projectId} FOR NO KEY UPDATE`,
     );
     if (locked.length === 0) throw notFound('branch', { id: branchId });
-    await tx.$queryRaw(
-      Prisma.sql`SELECT "id" FROM "page" WHERE "projectId" = ${projectId} AND "branchId" = ${mainId} ORDER BY "id" ASC FOR NO KEY UPDATE`,
-    );
   }
-  const branch = await tx.branch.findFirst({ where: { id: branchId, projectId }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
+  const branch = await db.branch.findFirst({ where: { id: branchId, projectId }, select: { createdAt: true, forkedAt: true, forkBaseline: true } });
   if (!branch) throw notFound('branch', { id: branchId });
-  const mainPages = await tx.page.findMany({ where: { projectId, branchId: mainId }, select: mainPageSelect });
-  const versionPages = await tx.page.findMany({ where: { projectId, branchId }, select: versionPageSelect });
-  const languages = await tx.language.findMany({ where: { projectId }, select: { id: true, code: true } });
-  const fork = forkPointOf(branch);
-  const preview = diffMainSinceFork(mainPages, fork, new Map(languages.map((l) => [l.id, l.code])));
-  return { fork, mainPages, versionPages, preview };
+  const rows = await db.$queryRaw<PromoteRow[]>(
+    Prisma.sql`SELECT "id", "branchId", "parentId", "kind"::text AS "kind", "title", "slug", "path", "languageId", "position", "createdAt", "updatedAt", ${pageContentHash()} AS "hash"
+      FROM "page" WHERE "projectId" = ${projectId} AND "branchId" IN (${mainId}, ${branchId})
+      ORDER BY "id" ASC ${lock ? Prisma.sql`FOR NO KEY UPDATE` : Prisma.empty}`,
+  );
+  const languages = await db.language.findMany({ where: { projectId }, select: { id: true, code: true } });
+  const mainPages = rows.filter((r) => r.branchId === mainId);
+  const versionPages = rows.filter((r) => r.branchId === branchId);
+  return { rows, ...analyzePromote(mainPages, versionPages, forkPointOf(branch), new Map(languages.map((l) => [l.id, l.code]))) };
 };
 
 const assertPromotable = async (projectId: string, id: string) => {
@@ -200,46 +207,108 @@ const assertPromotable = async (projectId: string, id: string) => {
   return { branch, main: await getDefaultBranch(projectId) };
 };
 
-/** What changed on main since this version was created (read-only). */
+/** What changed on main since this version was created (a plain read). */
 export const getMergePreview = async (projectId: string, id: string): Promise<MergePreview> => {
   const { branch, main } = await assertPromotable(projectId, id);
-  return prisma.$transaction(async (tx) => (await readPromoteState(tx, projectId, branch.id, main.id, false)).preview);
+  return (await readPromoteState(prisma, projectId, branch.id, main.id, false)).preview;
 };
 
-/** Promote a version into the default branch ('main'): main adopts the
- *  version's pages, then the consumed version is removed. Pages on main that
+/** A conditional write found its row changed or gone. Nothing is committed. */
+const promoteRaced = () => conflict('Pages changed while promoting. Nothing was changed; try again.', { reason: 'promote_raced' });
+
+const contentFields = {
+  kind: true,
+  title: true,
+  slug: true,
+  icon: true,
+  description: true,
+  content: true,
+  config: true,
+  translationKey: true,
+  hidden: true,
+} as const;
+
+/** Conditional bulk delete: every row must still carry the `updatedAt` read. */
+const deleteExactly = async (tx: Prisma.TransactionClient, where: Prisma.PageWhereInput, rows: Array<{ id: string; updatedAt: Date }>) => {
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500);
+    const { count } = await tx.page.deleteMany({ where: { ...where, OR: chunk.map(({ id, updatedAt }) => ({ id, updatedAt })) } });
+    if (count !== chunk.length) throw promoteRaced();
+  }
+};
+
+/** Promote a version into the default branch ('main'). Pages on main that
  *  changed since the fork are checked first: unless the caller confirms with
  *  `confirmChangedOnMain`, promote stops with 409 `branch:main_changed` and
- *  changes nothing. Pages added on main since the fork are kept; see
- *  ./branch-fork for the full keep/replace/drop rules. The check and the
- *  promote share one locked transaction. */
+ *  changes nothing. Then main's pages are updated in place from the version
+ *  (their ids stay stable), new version pages move in, and the version is
+ *  removed; see ./branch-fork for the full rules. The check and every write
+ *  share one locked transaction, and every write is conditional on the row it
+ *  read. */
 export const mergeBranch = async (projectId: string, id: string, body: MergeBranchBody = {}) => {
   const { branch, main } = await assertPromotable(projectId, id);
   await prisma.$transaction(
     async (tx) => {
-      const state = await readPromoteState(tx, projectId, branch.id, main.id, true);
-      if (state.preview.changedOnMainSinceFork.length > 0 && body.confirmChangedOnMain !== true) {
+      const { rows, preview, plan } = await readPromoteState(tx, projectId, branch.id, main.id, true);
+      if (preview.changedOnMainSinceFork.length > 0 && body.confirmChangedOnMain !== true) {
         throw new AppError({
           code: 'branch:main_changed',
           message: 'Pages on main changed since this version was created. Review them before promoting.',
-          details: { ...state.preview },
+          details: { ...preview },
         });
       }
-      const plan = planPromote(state.mainPages, state.versionPages, state.fork);
-      // Re-home kept main pages before their old parents go: page deletes
-      // cascade to children.
-      for (const move of plan.reparent) {
-        await tx.page.update({ where: { id: move.id }, data: { parentId: move.parentId } });
+      const seen = new Map(rows.map((r) => [r.id, r.updatedAt]));
+      const row = (rowId: string) => ({ id: rowId, updatedAt: seen.get(rowId) ?? new Date(0) });
+      const one = (count: number) => {
+        if (count !== 1) throw promoteRaced();
+      };
+
+      const sourceIds = plan.mainUpdates.flatMap((u) => (u.fromCopyId ? [u.fromCopyId] : []));
+      const sourceRows =
+        sourceIds.length > 0
+          ? await tx.page.findMany({ where: { id: { in: sourceIds }, projectId, branchId: branch.id }, select: { id: true, ...contentFields } })
+          : [];
+      const sources = new Map(sourceRows.map((p) => [p.id, p]));
+      for (const update of plan.mainUpdates) {
+        const source = update.fromCopyId ? sources.get(update.fromCopyId) : undefined;
+        if (update.fromCopyId && !source) throw promoteRaced();
+        const content = source
+          ? {
+              kind: source.kind,
+              title: source.title,
+              slug: source.slug,
+              icon: source.icon,
+              description: source.description,
+              content: source.content,
+              config: source.config ?? Prisma.DbNull,
+              translationKey: source.translationKey,
+              hidden: source.hidden,
+            }
+          : {};
+        one((await tx.page.updateMany({ where: { ...row(update.id), projectId, branchId: main.id }, data: { ...content, ...update.data } })).count);
       }
-      if (plan.dropVersionIds.length > 0) {
-        await tx.page.deleteMany({ where: { projectId, branchId: branch.id, id: { in: plan.dropVersionIds } } });
+      for (const move of plan.moves) {
+        one(
+          (await tx.page.updateMany({ where: { ...row(move.id), projectId, branchId: branch.id }, data: { branchId: main.id, ...move.data } })).count,
+        );
       }
-      if (plan.deleteMainIds.length > 0) {
-        await tx.page.deleteMany({ where: { projectId, branchId: main.id, id: { in: plan.deleteMainIds } } });
+      // Comments on a consumed copy follow it to the main page.
+      const consumedIds = plan.consumed.map((c) => c.copyId);
+      if (consumedIds.length > 0) {
+        const mainOf = new Map(plan.consumed.map((c) => [c.copyId, c.mainId]));
+        const commented = await tx.comment.groupBy({ by: ['pageId'], where: { pageId: { in: consumedIds } } });
+        for (const { pageId } of commented) {
+          const target = pageId ? mainOf.get(pageId) : undefined;
+          if (pageId && target) await tx.comment.updateMany({ where: { pageId }, data: { pageId: target } });
+        }
       }
-      await tx.page.updateMany({ where: { projectId, branchId: branch.id }, data: { branchId: main.id } });
+      await deleteExactly(tx, { projectId, branchId: branch.id }, [...consumedIds, ...plan.dropVersionIds].map(row));
+      await deleteExactly(tx, { projectId, branchId: main.id }, plan.deleteMainIds.map(row));
+      // Every version page was moved, folded or dropped; anything left was
+      // created after the read and would be lost with the version.
+      if ((await tx.page.count({ where: { projectId, branchId: branch.id } })) > 0) throw promoteRaced();
       await tx.branch.delete({ where: { id: branch.id } });
-      if (plan.reparent.length > 0) await recomputeProjectPaths(projectId, tx);
+      await recomputeProjectPaths(projectId, tx);
     },
     { timeout: 30_000 },
   );

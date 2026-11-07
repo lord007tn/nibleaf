@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildForkBaseline, diffMainSinceFork, type ForkPoint, forkPointOf, type MainPageRow, planPromote, type VersionPageRow } from './branch-fork';
+import { analyzePromote, buildForkBaseline, type ForkPoint, forkPointOf, type PromotePageRow } from './branch-fork';
 
 const FORK = new Date('2026-11-01T10:00:00.000Z');
 const BEFORE = new Date('2026-10-30T10:00:00.000Z');
@@ -9,125 +9,242 @@ const codes = new Map([
   ['ar', 'ar'],
 ]);
 
-const main = (id: string, overrides: Partial<MainPageRow> = {}): MainPageRow => ({
+/** A page row. `hash` stands for its content; change it to "edit" the page. */
+const page = (id: string, overrides: Partial<PromotePageRow> = {}): PromotePageRow => ({
   id,
   parentId: null,
   kind: 'PAGE',
   title: id,
-  path: id,
+  slug: id.replace(/^v\d?-/, ''),
+  path: id.replace(/^v\d?-/, ''),
   languageId: 'en',
+  position: 0,
   createdAt: BEFORE,
   updatedAt: BEFORE,
+  hash: `h:${id.replace(/^v\d?-/, '')}`,
   ...overrides,
 });
-const copy = (id: string, overrides: Partial<VersionPageRow> = {}): VersionPageRow => ({
-  id,
-  parentId: null,
-  languageId: 'en',
-  path: id.replace(/^v-/, ''),
-  updatedAt: FORK,
-  ...overrides,
-});
-
-/** A fork of `pages` where main page `x` is copied as `v-x`. */
-const forkOf = (pages: MainPageRow[]): ForkPoint =>
-  forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: buildForkBaseline(pages, (id) => `v-${id}`) as never });
-const legacy: ForkPoint = forkPointOf({ createdAt: FORK, forkedAt: null, forkBaseline: null });
-
-describe('diffMainSinceFork', () => {
-  const atFork = [main('billing'), main('guide', { kind: 'GROUP' }), main('intro', { parentId: 'guide', path: 'guide/intro' })];
-
-  it('reports nothing when main is untouched', () => {
-    expect(diffMainSinceFork(atFork, forkOf(atFork), codes)).toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+/** The version's copy of main page `id` (as `v-id`), parent remapped. */
+const copyOf = (p: PromotePageRow, overrides: Partial<PromotePageRow> = {}, prefix = 'v'): PromotePageRow =>
+  page(`${prefix}-${p.id}`, {
+    ...p,
+    id: `${prefix}-${p.id}`,
+    parentId: p.parentId ? `${prefix}-${p.parentId}` : null,
+    updatedAt: FORK,
+    ...overrides,
   });
 
-  it('lists modified, added and deleted pages sorted by path', () => {
-    const fork = forkOf(atFork);
+/** Fork `main`: the baseline maps `x` to `<prefix>-x`; both hash as at the fork. */
+const forkOf = (main: PromotePageRow[], prefix = 'v'): ForkPoint => {
+  const hashes = new Map(main.flatMap((p) => [[p.id, p.hash] as const, [`${prefix}-${p.id}`, p.hash] as const]));
+  const forkBaseline = buildForkBaseline(
+    main,
+    (id) => `${prefix}-${id}`,
+    (id) => hashes.get(id) ?? '',
+  );
+  return forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: forkBaseline as never });
+};
+const legacy: ForkPoint = forkPointOf({ createdAt: FORK, forkedAt: null, forkBaseline: null });
+const analyze = (main: PromotePageRow[], version: PromotePageRow[], fork: ForkPoint) => analyzePromote(main, version, fork, codes);
+
+describe('analyzePromote: preview', () => {
+  const atFork = [page('billing'), page('guide', { kind: 'GROUP' }), page('intro', { parentId: 'guide', path: 'guide/intro' })];
+  const untouchedVersion = atFork.map((p) => copyOf(p));
+
+  it('reports nothing and writes nothing but the fold when neither side changed', () => {
+    const { preview, plan } = analyze(atFork, untouchedVersion, forkOf(atFork));
+    expect(preview).toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    expect(plan).toEqual({
+      mainUpdates: [],
+      moves: [],
+      consumed: atFork.map((p) => ({ copyId: `v-${p.id}`, mainId: p.id })),
+      dropVersionIds: [],
+      deleteMainIds: [],
+    });
+  });
+
+  it('lists modified, added and deleted pages sorted by path, with what promote will do', () => {
     const now = [
-      main('billing', { title: 'Billing fixed', updatedAt: AFTER }),
-      main('guide', { kind: 'GROUP' }),
-      main('refunds', { languageId: 'ar', createdAt: AFTER, updatedAt: AFTER }),
+      page('billing', { title: 'Billing fixed', hash: 'h:billing-2', updatedAt: AFTER }),
+      page('guide', { kind: 'GROUP' }),
+      page('refunds', { languageId: 'ar', createdAt: AFTER, updatedAt: AFTER }),
     ];
-    expect(diffMainSinceFork(now, fork, codes)).toEqual({
+    expect(analyze(now, untouchedVersion, forkOf(atFork)).preview).toEqual({
       baselineComplete: true,
       changedOnMainSinceFork: [
-        { pageId: 'billing', title: 'Billing fixed', path: 'billing', languageCode: 'en', change: 'modified', updatedAt: AFTER.toISOString() },
-        { pageId: 'intro', title: 'intro', path: 'guide/intro', languageCode: 'en', change: 'deleted', updatedAt: BEFORE.toISOString() },
-        { pageId: 'refunds', title: 'refunds', path: 'refunds', languageCode: 'ar', change: 'added', updatedAt: AFTER.toISOString() },
+        {
+          pageId: 'billing',
+          title: 'Billing fixed',
+          path: 'billing',
+          languageCode: 'en',
+          change: 'modified',
+          onPromote: 'kept',
+          updatedAt: AFTER.toISOString(),
+        },
+        {
+          pageId: 'intro',
+          title: 'intro',
+          path: 'guide/intro',
+          languageCode: 'en',
+          change: 'deleted',
+          onPromote: 'removed',
+          updatedAt: BEFORE.toISOString(),
+        },
+        {
+          pageId: 'refunds',
+          title: 'refunds',
+          path: 'refunds',
+          languageCode: 'ar',
+          change: 'added',
+          onPromote: 'kept',
+          updatedAt: AFTER.toISOString(),
+        },
       ],
     });
   });
 
-  it('ignores a group whose title and path are unchanged, but lists a renamed one', () => {
-    const fork = forkOf(atFork);
-    const reordered = atFork.map((p) => (p.id === 'guide' ? { ...p, updatedAt: AFTER } : p));
-    expect(diffMainSinceFork(reordered, fork, codes).changedOnMainSinceFork).toEqual([]);
-    const renamed = atFork.map((p) => (p.id === 'guide' ? { ...p, title: 'Guides', updatedAt: AFTER } : p));
-    expect(diffMainSinceFork(renamed, fork, codes).changedOnMainSinceFork).toMatchObject([{ pageId: 'guide', change: 'modified' }]);
+  it('says the version replaces a page both sides edited, and removes one the version deleted', () => {
+    const now = [
+      page('billing', { hash: 'h:main-edit', updatedAt: AFTER }),
+      ...atFork.slice(1).map((p) => ({ ...p, hash: `${p.hash}!`, updatedAt: AFTER })),
+    ];
+    const version = [copyOf(atFork[0] as PromotePageRow, { hash: 'h:version-edit' }), copyOf(atFork[1] as PromotePageRow)];
+    const changed = analyze(now, version, forkOf(atFork)).preview.changedOnMainSinceFork;
+    expect(changed.map((c) => [c.pageId, c.change, c.onPromote])).toEqual([
+      ['billing', 'modified', 'replaced'],
+      ['guide', 'modified', 'kept'],
+      ['intro', 'modified', 'removed'],
+    ]);
   });
 
-  it('falls back to the version createdAt without a baseline and cannot see deletions', () => {
-    const now = [main('billing', { updatedAt: AFTER }), main('refunds', { createdAt: AFTER, updatedAt: AFTER }), main('old')];
-    expect(diffMainSinceFork(now, legacy, codes)).toEqual({
+  it('ignores a reorder on main: positions alone are not a change', () => {
+    const reordered = atFork.map((p, i) => ({ ...p, position: 10 - i, updatedAt: AFTER }));
+    const { preview, plan } = analyze(reordered, untouchedVersion, forkOf(atFork));
+    expect(preview.changedOnMainSinceFork).toEqual([]);
+    expect(plan.mainUpdates).toEqual([]);
+  });
+
+  it('falls back to the fork time without a baseline and cannot see deletions', () => {
+    const now = [page('billing', { updatedAt: AFTER }), page('refunds', { createdAt: AFTER, updatedAt: AFTER }), page('old')];
+    expect(analyze(now, [], legacy).preview).toEqual({
       baselineComplete: false,
       changedOnMainSinceFork: [
-        expect.objectContaining({ pageId: 'billing', change: 'modified' }),
-        expect.objectContaining({ pageId: 'refunds', change: 'added' }),
+        expect.objectContaining({ pageId: 'billing', change: 'modified', onPromote: 'replaced' }),
+        expect.objectContaining({ pageId: 'refunds', change: 'added', onPromote: 'kept' }),
       ],
     });
   });
 
-  it('treats a malformed baseline as legacy rather than trusting it', () => {
-    const fork = forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 1, pages: { a: { copyId: 1 } } } });
-    expect(fork.baseline).toBeNull();
-    expect(fork.forkedAt).toEqual(FORK);
+  it('treats a malformed or unreleased v1 baseline as no baseline', () => {
+    expect(forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 2, pages: { a: { copyId: 1 } } } }).baseline).toBeNull();
+    expect(forkPointOf({ createdAt: FORK, forkedAt: FORK, forkBaseline: { version: 1, pages: {} } }).baseline).toBeNull();
   });
 });
 
-describe('planPromote', () => {
-  it('replaces every forked main page when nothing changed', () => {
-    const atFork = [main('billing'), main('intro')];
-    expect(planPromote(atFork, [copy('v-billing'), copy('v-intro')], forkOf(atFork))).toEqual({
-      deleteMainIds: ['billing', 'intro'],
-      dropVersionIds: [],
-      reparent: [],
-    });
+describe('analyzePromote: plan', () => {
+  it('updates main pages in place, taking only what the version changed', () => {
+    const atFork = [page('guide', { kind: 'GROUP' }), page('billing', { position: 1 }), page('faq', { position: 2 })];
+    const now = [atFork[0] as PromotePageRow, page('billing', { position: 1, hash: 'h:main-edit', updatedAt: AFTER }), page('faq', { position: 5 })];
+    const version = [
+      copyOf(atFork[0] as PromotePageRow),
+      copyOf(atFork[1] as PromotePageRow, { hash: 'h:version-edit' }),
+      copyOf(atFork[2] as PromotePageRow, { parentId: 'v-guide', position: 0 }),
+    ];
+    const { plan } = analyze(now, version, forkOf(atFork));
+    expect(plan.mainUpdates).toEqual([
+      { id: 'billing', fromCopyId: 'v-billing', data: {} },
+      // Moved under the group in the version: parent and position from the version.
+      { id: 'faq', data: { position: 0, parentId: 'guide' } },
+    ]);
+    expect(plan.moves).toEqual([]);
+    expect(plan.deleteMainIds).toEqual([]);
   });
 
-  it('keeps pages added on main and re-homes them under the version copy of their parent', () => {
-    const atFork = [main('guide', { kind: 'GROUP' }), main('billing')];
-    const now = [...atFork, main('refunds', { parentId: 'guide', path: 'guide/refunds', createdAt: AFTER }), main('faq', { createdAt: AFTER })];
-    const plan = planPromote(now, [copy('v-guide'), copy('v-billing')], forkOf(atFork));
-    expect(plan.deleteMainIds).toEqual(['guide', 'billing']);
-    expect(plan.reparent).toEqual([{ id: 'refunds', parentId: 'v-guide' }]);
+  it("takes the version's order after a drag there, without treating the copies as edited", () => {
+    const atFork = [page('a', { position: 0 }), page('b', { position: 1 }), page('gone', { position: 2 })];
+    const now = [page('a', { position: 0 }), page('b', { position: 1 })];
+    // A drag in the version rewrote every copy's position, nothing else.
+    const version = atFork.map((p, i) => copyOf(p, { position: 2 - i, updatedAt: AFTER }));
+    const { preview, plan } = analyze(now, version, forkOf(atFork));
+    // Only positions that moved are written ("b" stayed at 1).
+    expect(plan.mainUpdates).toEqual([{ id: 'a', data: { position: 2 } }]);
+    // The page deleted on main stays deleted: a drag is not an edit.
+    expect(plan.dropVersionIds).toEqual(['v-gone']);
+    expect(plan.moves).toEqual([]);
+    expect(preview.changedOnMainSinceFork).toMatchObject([{ pageId: 'gone', change: 'deleted', onPromote: 'removed' }]);
   });
 
-  it('moves a kept page up when the version deleted its parent', () => {
-    const atFork = [main('root', { kind: 'GROUP' }), main('guide', { kind: 'GROUP', parentId: 'root' })];
-    const now = [...atFork, main('refunds', { parentId: 'guide', createdAt: AFTER })];
-    // The version kept "root" but deleted "guide".
-    expect(planPromote(now, [copy('v-root')], forkOf(atFork)).reparent).toEqual([{ id: 'refunds', parentId: 'v-root' }]);
-    // The version deleted both: top level.
-    expect(planPromote(now, [], forkOf(atFork)).reparent).toEqual([{ id: 'refunds', parentId: null }]);
+  it('moves new version pages in under the main page their parent folds into', () => {
+    const atFork = [page('guide', { kind: 'GROUP' })];
+    const version = [copyOf(atFork[0] as PromotePageRow), page('v-new', { parentId: 'v-guide', path: 'guide/new', hash: 'h:new' })];
+    expect(analyze(atFork, version, forkOf(atFork)).plan.moves).toEqual([{ id: 'v-new', data: { parentId: 'guide' } }]);
   });
 
-  it('keeps a page deleted on main deleted unless the version edited it', () => {
-    const atFork = [main('old'), main('edited'), main('stays')];
-    const now = [main('stays')];
-    const version = [copy('v-old'), copy('v-edited', { updatedAt: AFTER }), copy('v-stays')];
-    expect(planPromote(now, version, forkOf(atFork))).toEqual({ deleteMainIds: ['stays'], dropVersionIds: ['v-old'], reparent: [] });
+  it('keeps pages added on main, moving them up when the version deleted their parent', () => {
+    const atFork = [page('root', { kind: 'GROUP' }), page('guide', { kind: 'GROUP', parentId: 'root' })];
+    const now = [...atFork, page('refunds', { parentId: 'guide', createdAt: AFTER, updatedAt: AFTER })];
+    const keptRoot = analyze(now, [copyOf(atFork[0] as PromotePageRow)], forkOf(atFork)).plan;
+    expect(keptRoot.deleteMainIds).toEqual(['guide']);
+    expect(keptRoot.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: 'root' } }]);
+    expect(analyze(now, [], forkOf(atFork)).plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: null } }]);
   });
 
-  it('keeps an unedited deleted group when a kept version page still lives under it', () => {
-    const atFork = [main('guide', { kind: 'GROUP' }), main('intro', { parentId: 'guide' })];
-    const version = [copy('v-guide'), copy('v-intro', { parentId: 'v-guide' }), copy('v-new', { parentId: 'v-guide', updatedAt: AFTER })];
-    // Main deleted the whole group; the version added a page inside it.
-    expect(planPromote([], version, forkOf(atFork)).dropVersionIds).toEqual(['v-intro']);
+  it('brings back a page deleted on main only when the version edited it, or keeps a page under it', () => {
+    const atFork = [page('old'), page('edited'), page('guide', { kind: 'GROUP' }), page('intro', { parentId: 'guide' })];
+    const version = [
+      copyOf(atFork[0] as PromotePageRow),
+      copyOf(atFork[1] as PromotePageRow, { hash: 'h:edited-2' }),
+      copyOf(atFork[2] as PromotePageRow),
+      copyOf(atFork[3] as PromotePageRow),
+      page('v-new', { parentId: 'v-guide', hash: 'h:new' }),
+    ];
+    const { plan, preview } = analyze([], version, forkOf(atFork));
+    expect(plan.moves.map((m) => m.id).sort()).toEqual(['v-edited', 'v-guide', 'v-new']);
+    expect(plan.dropVersionIds.sort()).toEqual(['v-intro', 'v-old']);
+    expect(preview.changedOnMainSinceFork.map((c) => [c.pageId, c.onPromote])).toEqual([
+      ['edited', 'restored'],
+      ['guide', 'restored'],
+      ['intro', 'removed'],
+      ['old', 'removed'],
+    ]);
   });
 
-  it('keeps pages created on main after a legacy fork and replaces the rest', () => {
-    const now = [main('guide', { kind: 'GROUP' }), main('refunds', { parentId: 'guide', createdAt: AFTER })];
-    const plan = planPromote(now, [copy('v-guide', { path: 'guide' })], legacy);
-    expect(plan).toEqual({ deleteMainIds: ['guide'], dropVersionIds: [], reparent: [{ id: 'refunds', parentId: 'v-guide' }] });
+  it('keeps page identity across successive promotions (no duplicate pages)', () => {
+    const atFork = [page('intro'), page('billing')];
+    const v2 = forkOf(atFork, 'v2');
+    const v3 = forkOf(atFork, 'v3');
+    // V2 edited intro and was promoted: main's ids stay, intro now has V2's text.
+    const afterV2 = [page('intro', { hash: 'h:intro-v2', updatedAt: AFTER }), page('billing')];
+    expect(
+      analyze(atFork, [copyOf(atFork[0] as PromotePageRow, { hash: 'h:intro-v2' }, 'v2'), copyOf(atFork[1] as PromotePageRow, {}, 'v2')], v2).plan
+        .mainUpdates,
+    ).toEqual([{ id: 'intro', fromCopyId: 'v2-intro', data: {} }]);
+    // V3 also edited intro.
+    const v3Pages = [copyOf(atFork[0] as PromotePageRow, { hash: 'h:intro-v3' }, 'v3'), copyOf(atFork[1] as PromotePageRow, {}, 'v3')];
+    const { preview, plan } = analyze(afterV2, v3Pages, v3);
+    expect(preview.changedOnMainSinceFork).toMatchObject([{ pageId: 'intro', change: 'modified', onPromote: 'replaced' }]);
+    expect(plan.moves).toEqual([]);
+    expect(plan.deleteMainIds).toEqual([]);
+    expect(plan.mainUpdates).toEqual([{ id: 'intro', fromCopyId: 'v3-intro', data: {} }]);
+  });
+
+  it('gives a version page a numbered slug when it would land on the address of a page on main', () => {
+    const atFork = [page('billing')];
+    const now = [...atFork, page('refunds', { createdAt: AFTER, updatedAt: AFTER })];
+    const version = [copyOf(atFork[0] as PromotePageRow), page('v-refunds-new', { slug: 'refunds', path: 'refunds', hash: 'h:x' })];
+    const { preview, plan } = analyze(now, version, forkOf(atFork));
+    expect(preview.changedOnMainSinceFork).toEqual([
+      expect.objectContaining({ pageId: 'refunds', change: 'added', onPromote: 'kept' }),
+      expect.objectContaining({ pageId: 'refunds', path: 'refunds', change: 'conflict', onPromote: 'renamed', newPath: 'refunds-2' }),
+    ]);
+    expect(plan.moves).toEqual([{ id: 'v-refunds-new', data: { parentId: null, slug: 'refunds-2' } }]);
+  });
+
+  it('without a baseline, replaces forked pages and re-homes added ones by address', () => {
+    const now = [page('guide', { kind: 'GROUP' }), page('refunds', { parentId: 'guide', path: 'guide/refunds', createdAt: AFTER })];
+    const { plan } = analyze(now, [page('v-guide', { kind: 'GROUP', path: 'guide' })], legacy);
+    expect(plan.deleteMainIds).toEqual(['guide']);
+    expect(plan.moves).toEqual([{ id: 'v-guide', data: { parentId: null } }]);
+    expect(plan.mainUpdates).toEqual([{ id: 'refunds', data: { parentId: 'v-guide' } }]);
   });
 });

@@ -1,38 +1,63 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Row = Record<string, unknown> & { id: string; branchId: string };
+type Row = {
+  id: string;
+  branchId: string;
+  parentId: string | null;
+  kind: string;
+  title: string;
+  slug: string;
+  path: string;
+  languageId: string;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+  hash: string;
+};
 
-const state = vi.hoisted(() => ({ pages: [] as Row[], branch: {} as Record<string, unknown>, sql: [] as string[] }));
+const state = vi.hoisted(() => ({ rows: [] as Row[], branch: {} as Record<string, unknown>, sql: [] as string[] }));
 const db = vi.hoisted(() => ({
-  branch: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  page: { findMany: vi.fn(), createMany: vi.fn(), update: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
+  branch: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+  page: { findMany: vi.fn(), createMany: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
+  comment: { groupBy: vi.fn(), updateMany: vi.fn() },
   language: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
 }));
 const recompute = vi.hoisted(() => vi.fn());
-vi.mock('@nibleaf/database', () => ({
-  prisma: db,
-  Prisma: { sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ text: strings.join('?'), values }) },
-}));
+vi.mock('@nibleaf/database', () => {
+  type Fragment = { text: string };
+  const sql = (strings: TemplateStringsArray, ...values: unknown[]): Fragment => ({
+    text: strings.reduce((out, part, i) => out + part + (i < values.length ? ((values[i] as Fragment | undefined)?.text ?? '?') : ''), ''),
+  });
+  return { prisma: db, Prisma: { sql, empty: { text: '' }, DbNull: 'DbNull' } };
+});
 vi.mock('./pages', () => ({ recomputeProjectPaths: recompute }));
 
 import { createBranch, getMergePreview, mergeBranch } from './branches';
 
 const FORK = new Date('2026-11-01T10:00:00.000Z');
 const AFTER = new Date('2026-11-02T10:00:00.000Z');
-const page = (id: string, branchId: string, overrides: Partial<Row> = {}): Row => ({
+const row = (id: string, branchId: string, overrides: Partial<Row> = {}): Row => ({
   id,
   branchId,
   parentId: null,
   kind: 'PAGE',
   title: id,
+  slug: id,
   path: id,
   languageId: 'lang-en',
+  position: 0,
   createdAt: FORK,
   updatedAt: FORK,
+  hash: `h:${id}`,
   ...overrides,
 });
+const find = (id: string) => {
+  const found = state.rows.find((r) => r.id === id);
+  if (!found) throw new Error(`no row ${id}`);
+  return found;
+};
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -40,141 +65,147 @@ beforeEach(() => {
   db.branch.findMany.mockResolvedValue([{ id: 'main', isDefault: true, createdAt: FORK, forkedAt: null }]);
   db.branch.findFirst.mockImplementation(async ({ where }) => (where.id === 'v2' ? state.branch : null));
   db.branch.create.mockImplementation(async ({ data }) => ({ id: 'v2', ...data }));
-  db.page.findMany.mockImplementation(async ({ where }) => state.pages.filter((p) => p.branchId === where.branchId));
+  db.page.findMany.mockImplementation(async ({ where }) => state.rows.filter((r) => where.id.in.includes(r.id)));
+  db.page.updateMany.mockResolvedValue({ count: 1 });
+  db.page.deleteMany.mockImplementation(async ({ where }) => ({ count: where.OR.length }));
+  db.page.count.mockResolvedValue(0);
+  db.comment.groupBy.mockResolvedValue([]);
   db.language.findMany.mockResolvedValue([{ id: 'lang-en', code: 'en' }]);
   db.$queryRaw.mockImplementation(async (query: { text: string }) => {
     state.sql.push(query.text);
-    return query.text.includes('"branch"') ? [{ id: 'v2' }] : [];
+    if (query.text.includes('FROM "branch"')) return [{ id: 'v2' }];
+    if (query.text.includes('"position"')) return state.rows;
+    if (query.text.includes('AS "hash"')) return state.rows.map((r) => ({ id: r.id, hash: r.hash }));
+    return [];
   });
   db.$transaction.mockImplementation(async (fn) => fn(db));
 });
 
-/** Fork main (pages `billing`, `intro`) through createBranch, so the baseline
- *  and the copies come from the real fork code. */
+/** Fork main (`billing`, `intro`) through createBranch, so the baseline comes
+ *  from the real fork code. Returns main id → copy id. */
 const forkMain = async () => {
-  vi.useFakeTimers({ now: FORK, toFake: ['Date'] });
-  state.pages = [page('billing', 'main', { updatedAt: new Date('2026-10-01T00:00:00.000Z') }), page('intro', 'main')];
+  state.rows = [row('billing', 'main'), row('intro', 'main')];
+  db.page.findMany.mockResolvedValueOnce([...state.rows]);
+  db.page.createMany.mockImplementationOnce(async ({ data }: { data: Row[] }) => {
+    for (const c of data) state.rows.push(row(c.id, 'v2', { title: c.title, slug: c.slug, path: c.path, hash: `h:${c.title}` }));
+  });
   await createBranch('project', { name: 'v2' });
-  vi.useRealTimers();
   const created = db.branch.create.mock.calls[0]?.[0].data;
-  const copies = db.page.createMany.mock.calls[0]?.[0].data as Row[];
-  state.branch = { id: 'v2', projectId: 'project', isDefault: false, createdAt: FORK, ...created };
-  state.pages.push(...copies.map((c) => page(c.id, 'v2', { title: c.title as string, path: c.path as string, updatedAt: c.updatedAt as Date })));
-  return copies;
+  const forkBaseline = db.branch.update.mock.calls[0]?.[0].data.forkBaseline as { pages: Record<string, { copyId: string }> };
+  state.branch = { id: 'v2', projectId: 'project', isDefault: false, createdAt: FORK, ...created, forkBaseline };
+  state.sql = [];
+  return (mainId: string) => forkBaseline.pages[mainId]?.copyId as string;
 };
 
 describe('createBranch', () => {
-  it('records the fork time and a baseline of main, and stamps copies with the fork time', async () => {
-    const copies = await forkMain();
-    const data = db.branch.create.mock.calls[0]?.[0].data;
-    expect(data.forkedAt).toEqual(FORK);
-    expect(data.forkBaseline).toMatchObject({
-      version: 1,
-      pages: { billing: { copyId: copies[0]?.id, updatedAt: '2026-10-01T00:00:00.000Z', title: 'billing', path: 'billing', kind: 'PAGE' } },
-    });
-    expect(copies.every((c) => (c.updatedAt as Date).getTime() === FORK.getTime())).toBe(true);
-  });
-
-  it('takes the shared project lock (FOR NO KEY UPDATE) before copying pages', async () => {
-    await forkMain();
-    expect(state.sql).toEqual(['SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE']);
+  it('takes the project lock first, then records a baseline hashed with the promote SQL', async () => {
+    const copyOf = await forkMain();
+    expect(db.$queryRaw.mock.calls[0]?.[0].text).toBe('SELECT 1 FROM "project" WHERE "id" = ? FOR NO KEY UPDATE');
     expect(db.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(db.page.findMany.mock.invocationCallOrder[0] ?? 0);
+    expect(db.branch.update.mock.calls[0]?.[0].data.forkBaseline).toMatchObject({
+      version: 2,
+      pages: { billing: { copyId: copyOf('billing'), hash: 'h:billing', copyHash: 'h:billing', parentId: null, position: 0 } },
+    });
   });
 });
 
 describe('mergeBranch', () => {
-  it('promotes with no flag when main is unchanged', async () => {
+  it('locks project, version, then both branches’ pages in one ascending pass, all FOR NO KEY UPDATE', async () => {
     await forkMain();
-    await mergeBranch('project', 'v2');
-    expect(db.page.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'main', id: { in: ['billing', 'intro'] } } });
-    expect(db.page.updateMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'v2' }, data: { branchId: 'main' } });
-    expect(db.branch.delete).toHaveBeenCalledWith({ where: { id: 'v2' } });
-  });
-
-  it('locks the project, then the version, then main pages in id order, all FOR NO KEY UPDATE, before reading', async () => {
-    await forkMain();
-    state.sql = [];
-    const firstLock = db.$queryRaw.mock.calls.length;
     await mergeBranch('project', 'v2');
     expect(state.sql.map((s) => s.match(/FROM "(\w+)"/)?.[1])).toEqual(['project', 'branch', 'page']);
-    expect(state.sql.every((s) => s.endsWith('FOR NO KEY UPDATE'))).toBe(true);
+    expect(state.sql.every((s) => s.trimEnd().endsWith('FOR NO KEY UPDATE'))).toBe(true);
     expect(state.sql.some((s) => /FOR UPDATE/.test(s))).toBe(false);
-    expect(state.sql[2]).toContain('ORDER BY "id" ASC');
-    const lastLock = db.$queryRaw.mock.invocationCallOrder[firstLock + 2] ?? Number.POSITIVE_INFINITY;
-    expect(lastLock).toBeLessThan(db.page.findMany.mock.invocationCallOrder.at(-2) ?? 0);
+    expect(state.sql[2]).toMatch(/"branchId" IN \(\?, \?\)\s+ORDER BY "id" ASC FOR NO KEY UPDATE/);
+  });
+
+  it('promotes an untouched main without a flag: folds the copies, writes no page content', async () => {
+    const copyOf = await forkMain();
+    await mergeBranch('project', 'v2');
+    expect(db.page.updateMany).not.toHaveBeenCalled();
+    expect(db.page.deleteMany).toHaveBeenCalledWith({
+      where: {
+        projectId: 'project',
+        branchId: 'v2',
+        OR: [
+          { id: copyOf('billing'), updatedAt: FORK },
+          { id: copyOf('intro'), updatedAt: FORK },
+        ],
+      },
+    });
+    expect(db.branch.delete).toHaveBeenCalledWith({ where: { id: 'v2' } });
+    expect(recompute).toHaveBeenCalledWith('project', db);
   });
 
   it('refuses an unconfirmed promote after an edit on main, listing it, and changes nothing', async () => {
     await forkMain();
-    const billing = state.pages.find((p) => p.id === 'billing');
-    if (billing) Object.assign(billing, { title: 'Billing (typo fixed)', updatedAt: AFTER });
-
-    const expected = {
-      baselineComplete: true,
-      changedOnMainSinceFork: [
-        { pageId: 'billing', title: 'Billing (typo fixed)', path: 'billing', languageCode: 'en', change: 'modified', updatedAt: AFTER.toISOString() },
-      ],
-    };
-    await expect(getMergePreview('project', 'v2')).resolves.toEqual(expected);
-    const refused = await mergeBranch('project', 'v2', {}).catch((error: unknown) => error);
-    expect(refused).toMatchObject({
+    Object.assign(find('billing'), { title: 'Billing (typo fixed)', hash: 'h:fixed', updatedAt: AFTER });
+    await expect(mergeBranch('project', 'v2', {})).rejects.toMatchObject({
       status: 409,
       code: 'branch:main_changed',
       message: 'Pages on main changed since this version was created. Review them before promoting.',
-      details: expected,
+      details: {
+        baselineComplete: true,
+        changedOnMainSinceFork: [
+          {
+            pageId: 'billing',
+            title: 'Billing (typo fixed)',
+            path: 'billing',
+            languageCode: 'en',
+            change: 'modified',
+            onPromote: 'kept',
+            updatedAt: AFTER.toISOString(),
+          },
+        ],
+      },
     });
     expect(db.page.deleteMany).not.toHaveBeenCalled();
-    expect(db.page.updateMany).not.toHaveBeenCalled();
     expect(db.branch.delete).not.toHaveBeenCalled();
-
-    // Confirmed: the version's copy replaces main's edited page.
-    await mergeBranch('project', 'v2', { confirmChangedOnMain: true });
-    expect(db.page.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'main', id: { in: ['billing', 'intro'] } } });
-    expect(db.page.updateMany).toHaveBeenCalledOnce();
   });
 
-  it('keeps a page added on main after a confirmed promote', async () => {
-    await forkMain();
-    state.pages.push(page('refunds', 'main', { createdAt: AFTER, updatedAt: AFTER }));
+  it('writes the version’s edit into the main row in place on a confirmed promote', async () => {
+    const copyOf = await forkMain();
+    Object.assign(find('billing'), { hash: 'h:main-edit', updatedAt: AFTER });
+    Object.assign(find(copyOf('billing')), { title: 'Billing v2', hash: 'h:version-edit', updatedAt: AFTER });
+    await mergeBranch('project', 'v2', { confirmChangedOnMain: true });
+    expect(db.page.updateMany).toHaveBeenCalledWith({
+      where: { id: 'billing', updatedAt: AFTER, projectId: 'project', branchId: 'main' },
+      data: expect.objectContaining({ title: 'Billing v2' }),
+    });
+  });
+
+  it('rolls back with a retryable conflict when a row changed after the locked read', async () => {
+    const copyOf = await forkMain();
+    Object.assign(find(copyOf('billing')), { hash: 'h:version-edit', updatedAt: AFTER });
+    db.page.updateMany.mockResolvedValueOnce({ count: 0 });
     await expect(mergeBranch('project', 'v2')).rejects.toMatchObject({
-      details: { changedOnMainSinceFork: [expect.objectContaining({ pageId: 'refunds', change: 'added' })] },
+      status: 409,
+      code: 'database:conflict',
+      details: { reason: 'promote_raced' },
     });
-    await mergeBranch('project', 'v2', { confirmChangedOnMain: true });
-    const deleted = db.page.deleteMany.mock.calls.flatMap(([args]) => args.where.id.in as string[]);
-    expect(deleted).not.toContain('refunds');
+    expect(db.branch.delete).not.toHaveBeenCalled();
   });
 
-  it('does not bring back an unedited page deleted on main', async () => {
-    const copies = await forkMain();
-    state.pages = state.pages.filter((p) => p.id !== 'intro');
-    await expect(getMergePreview('project', 'v2')).resolves.toMatchObject({
-      changedOnMainSinceFork: [{ pageId: 'intro', change: 'deleted' }],
-    });
-    await mergeBranch('project', 'v2', { confirmChangedOnMain: true });
-    expect(db.page.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'v2', id: { in: [copies[1]?.id] } } });
-  });
-
-  it('compares a legacy version from its createdAt without a baseline', async () => {
-    state.branch = { id: 'v2', projectId: 'project', isDefault: false, createdAt: FORK, forkedAt: null, forkBaseline: null };
-    state.pages = [
-      page('billing', 'main', { updatedAt: AFTER }),
-      page('refunds', 'main', { createdAt: AFTER, updatedAt: AFTER }),
-      page('v-billing', 'v2'),
-    ];
-    await expect(getMergePreview('project', 'v2')).resolves.toEqual({
-      baselineComplete: false,
-      changedOnMainSinceFork: [
-        expect.objectContaining({ pageId: 'billing', change: 'modified' }),
-        expect.objectContaining({ pageId: 'refunds', change: 'added' }),
-      ],
-    });
-    await mergeBranch('project', 'v2', { confirmChangedOnMain: true });
-    expect(db.page.deleteMany).toHaveBeenCalledWith({ where: { projectId: 'project', branchId: 'main', id: { in: ['billing'] } } });
+  it('refuses to delete a version page it never read', async () => {
+    await forkMain();
+    db.page.count.mockResolvedValueOnce(1);
+    await expect(mergeBranch('project', 'v2')).rejects.toMatchObject({ details: { reason: 'promote_raced' } });
+    expect(db.branch.delete).not.toHaveBeenCalled();
   });
 
   it('answers not found when the version disappears before the lock', async () => {
     await forkMain();
     db.$queryRaw.mockImplementation(async () => []);
     await expect(mergeBranch('project', 'v2')).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe('getMergePreview', () => {
+  it('is a plain read: no transaction, no locks', async () => {
+    await forkMain();
+    db.$transaction.mockClear();
+    await expect(getMergePreview('project', 'v2')).resolves.toEqual({ changedOnMainSinceFork: [], baselineComplete: true });
+    expect(db.$transaction).not.toHaveBeenCalled();
+    expect(state.sql.some((s) => s.includes('FOR NO KEY UPDATE'))).toBe(false);
   });
 });
