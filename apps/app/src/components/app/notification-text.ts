@@ -1,7 +1,7 @@
 import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
 import type { NotificationItem } from '@/hooks/api/types';
-import type { ProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { localeTag } from '@/lib/format';
+import type { SiteAdminState } from '@/lib/project-settings-access';
 import { failureMessageKey } from '../failure-message';
 
 type Translate = (key: MessageKey, variables?: MessageVariables) => string;
@@ -21,7 +21,7 @@ function importCount(t: Translate, locale: string, count: number, kind: 'importe
   return t(`notifications.importReady.${kind}.${category}`, { count: new Intl.NumberFormat(localeTag(locale)).format(count) });
 }
 
-export function notificationText(t: Translate, item: NotificationItem, locale = 'en', role: ProjectAdminStatus = 'pending') {
+export function notificationText(t: Translate, item: NotificationItem, locale = 'en', role: SiteAdminState = 'pending') {
   const params = notificationParams(item.params);
   const failure = item.type === 'deploy_failed' || item.type === 'export_failed';
   if (failure) {

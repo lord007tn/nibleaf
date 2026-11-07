@@ -1,15 +1,15 @@
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import type { ProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import type { SiteAdminState } from '@/lib/project-settings-access';
 
 /** Stored job errors have no stable codes yet. Match known reasons and keep
  * unknown provider wording out of the main message. */
-export function failureMessageKey(error: string, context: 'publish' | 'export' | 'git', role: ProjectAdminStatus = 'pending'): MessageKey {
+export function failureMessageKey(error: string, context: 'publish' | 'export' | 'git', role: SiteAdminState = 'pending'): MessageKey {
   if (context === 'export' && /no published revision/i.test(error)) return 'failures.unpublished';
   if (context === 'export' && /exceed.*(?:limit|bytes)|too large/i.test(error)) return 'failures.tooLarge';
   if (context === 'publish' && /redirect|route collision/i.test(error)) {
     if (role === 'admin') return 'failures.redirectsAdmin';
-    if (role === 'not-admin') return 'failures.redirectsEditor';
+    if (role === 'notAdmin') return 'failures.redirectsEditor';
     return 'failures.redirects';
   }
   if (context === 'git' && /conflict|non.fast.forward/i.test(error)) return 'failures.conflict';
