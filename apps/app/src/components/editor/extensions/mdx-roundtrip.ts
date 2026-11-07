@@ -101,7 +101,14 @@ export const decodeMdxSource = (value: string | null | undefined): string => {
   }
 };
 
-const NAMED_REFERENCES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+// A Map, so a name such as `toString` never resolves through Object.prototype.
+const NAMED_REFERENCES = new Map([
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+]);
 
 /** An authored attribute value with its character references decoded, as JSX and
  *  HTML read it: `title="R&amp;D"` is "R&D" in the editor, and saving after an
@@ -110,7 +117,7 @@ const decodeAttributeValue = (value: string): string =>
   value.replace(/&(?:#(\d{1,7})|#x([\da-f]{1,6})|([a-z][a-z\d]{1,31}));/gi, (reference, decimal?: string, hex?: string, name?: string) => {
     if (name) {
       // Names are case-sensitive: `&Lt;` is "≪", not "<".
-      const known = NAMED_REFERENCES[name];
+      const known = NAMED_REFERENCES.get(name);
       if (known) return known;
       // Any other named reference (`&mdash;`, `&nbsp;`) is decoded by the DOM the
       // editor runs in. Only complete references ending in `;` get here, so a URL

@@ -219,7 +219,7 @@ describe('MDX round trips', () => {
   });
 
   it('decodes references case-sensitively, keeps partial names, and reads invalid code points as U+FFFD', () => {
-    const source = 'Intro.\n\n<Card title="&Lt; &notit; &#xD800; &#0; &AMP;" href="/x">\n\nBody\n\n</Card>\n';
+    const source = 'Intro.\n\n<Card title="&Lt; &notit; &#xD800; &#0; &AMP; &toString; &constructor;" href="/x">\n\nBody\n\n</Card>\n';
     const editor = createEditor(source);
     let card: { attrs: Record<string, unknown> } | undefined;
     let position = -1;
@@ -229,14 +229,15 @@ describe('MDX round trips', () => {
         position = at;
       }
     });
-    // `&Lt;` is "≪", not "<"; `&notit;` isn't a reference (not "¬it;").
-    expect(card?.attrs.title).toBe('≪ &notit; � � &');
+    // `&Lt;` is "≪", not "<"; `&notit;` isn't a reference (not "¬it;"), and
+    // neither is a name that only exists on Object.prototype.
+    expect(card?.attrs.title).toBe('≪ &notit; � � & &toString; &constructor;');
     editor.commands.command(({ tr }) => {
       tr.setNodeAttribute(position, 'title', `${String(card?.attrs.title)}!`);
       return true;
     });
     const saved = getMarkdown(editor);
-    expect(saved).toContain('title="≪ &amp;notit; � � &amp;!"');
+    expect(saved).toContain('title="≪ &amp;notit; � � &amp; &amp;toString; &amp;constructor;!"');
     // No lone surrogate reaches the saved source, so it reloads the same.
     expect(getMarkdown(createEditor(saved))).toBe(saved);
   });
