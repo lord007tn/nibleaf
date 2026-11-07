@@ -20,6 +20,7 @@
     "./public-markdown-content": "./src/public-markdown-content.ts",
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
+    "./domains": "./src/domains.ts",
     "./site": "./src/site.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
