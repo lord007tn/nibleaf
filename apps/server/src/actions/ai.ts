@@ -45,7 +45,7 @@ export interface AiDraftRuntime extends WorkspaceAiRuntime {
 /** Resolve once per request so capability and drafting agree on connection policy. */
 export const resolveAiDraft = async (projectId: string) => {
   if (envExtras.AI_DAILY_LIMIT === 0) return { runtime: null, reason: 'instance_disabled' as const };
-  const resolved = await resolveWorkspaceAiConfiguration(projectId, { instanceFallback: true });
+  const resolved = await resolveWorkspaceAiConfiguration(projectId, { instanceFallback: true, textOnly: true });
   if (!resolved.runtime) return { runtime: null, reason: resolved.reason === 'disabled' ? ('site_disabled' as const) : resolved.reason };
   const source = resolved.runtime.revision === 'instance' ? ('instance' as const) : ('workspace' as const);
   return {
@@ -80,7 +80,9 @@ export const getAiDraftCapability = async (projectId: string, organizationId: st
   };
 };
 
-/** Legacy instance-wide public meta flag; project capability is reported separately. */
+/** Instance-wide flag for public metadata (`publicMeta.ai.draft`): true only with
+ * the instance OpenRouter key. Not the editor gate: a site can draft with its own
+ * Smart AI connection, so the editor reads `getAiDraftCapability` for its project. */
 export const aiDraftAvailable = () => Boolean(env.OPENROUTER_API_KEY) && envExtras.AI_DAILY_LIMIT > 0;
 
 /** Content-free operational metrics identify the actual connection, never its key. */

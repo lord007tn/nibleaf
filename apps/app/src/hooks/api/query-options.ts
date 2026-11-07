@@ -190,6 +190,15 @@ export const workspaceAiQueryOptions = (projectId: string) =>
     queryFn: async () => getData(await api.app.projects[':projectId'].settings.ai.$get({ param: { projectId } }), 'Smart AI'),
   });
 
+/** The site's own drafting capability (its Smart AI connection or the instance
+ *  key), which decides whether the editor offers AI assist. */
+export const aiDraftCapabilityQueryOptions = (projectId: string) =>
+  queryOptions({
+    queryKey: queryKeys.workspaceAi.draftCapability(projectId),
+    queryFn: async () =>
+      getData(await api.app.projects[':projectId'].ai['draft-capability'].$get({ param: { projectId } }), 'AI drafting availability'),
+  });
+
 export const commentsQueryOptions = (projectId: string | undefined, pageId?: string) =>
   queryOptions({
     queryKey: queryKeys.comments.all(projectId ?? '', pageId),

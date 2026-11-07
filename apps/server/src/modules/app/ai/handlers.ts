@@ -1,3 +1,4 @@
+import { ANALYTICS_DIMENSION_MAX_LENGTH } from '@nibleaf/clickhouse';
 import { aiDraftBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { z } from 'zod';
@@ -9,6 +10,10 @@ import { assertAiQuota } from '@/lib/ai-quota';
 import { getContextOrganizationIdOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import aiRoutes from './routes';
+
+/** Workspace model ids may be 180 characters, but an event dimension is bounded
+ * shorter and an over-long one drops the whole event, so the model is truncated. */
+const modelDimension = (model: string) => model.slice(0, ANALYTICS_DIMENSION_MAX_LENGTH);
 
 const app = new Hono<HonoEnv>()
   .get('/draft-capability', ...aiRoutes.draftCapability, async (ctx) => {
@@ -32,7 +37,7 @@ const app = new Hono<HonoEnv>()
     await assertAiQuota(organizationId);
     await trackProjectEvent(
       projectId,
-      { name: 'answer_started', provider: runtime.providerId, model: runtime.answerModel, connectionSource: runtime.source },
+      { name: 'answer_started', provider: runtime.providerId, model: modelDimension(runtime.answerModel), connectionSource: runtime.source },
       { source: 'dashboard' },
     ).catch(() => undefined);
     const started = performance.now();
@@ -45,7 +50,7 @@ const app = new Hono<HonoEnv>()
         {
           name: 'answer_failed',
           provider: runtime.providerId,
-          model: runtime.answerModel,
+          model: modelDimension(runtime.answerModel),
           connectionSource: runtime.source,
           latencyMs: Math.round(performance.now() - started),
           noAnswerReason: 'provider_error',
@@ -60,7 +65,7 @@ const app = new Hono<HonoEnv>()
         name: 'answer_completed',
         provider: result.provider,
         connectionSource: result.source,
-        model: result.model,
+        model: modelDimension(result.model),
         latencyMs: result.latencyMs,
         promptTokens: result.promptTokens,
         completionTokens: result.completionTokens,

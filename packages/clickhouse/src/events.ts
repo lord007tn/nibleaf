@@ -56,7 +56,9 @@ export const analyticsEventNameSchema = z.enum(analyticsEventNames);
 export type AnalyticsEventName = z.infer<typeof analyticsEventNameSchema>;
 
 const path = z.string().trim().max(512);
-const boundedDimension = z.string().trim().max(120);
+/** Longest free-text dimension an event accepts; a longer value rejects the whole event. */
+export const ANALYTICS_DIMENSION_MAX_LENGTH = 120;
+const boundedDimension = z.string().trim().max(ANALYTICS_DIMENSION_MAX_LENGTH);
 const lifecyclePayload = z
   .object({
     name: z.enum([

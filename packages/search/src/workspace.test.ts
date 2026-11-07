@@ -101,6 +101,36 @@ describe('workspace AI credential ownership', () => {
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
   });
 
+  it.each([
+    ['openai', { answerModel: 'gpt-test', embeddingModel: 'other/model' }],
+    ['openai', { answerModel: 'gpt-test', embeddingModel: 'text-embedding-3-small' }],
+    ['openrouter', { answerModel: 'site/model', embeddingModel: 'other/model' }],
+  ] as const)('drafts with a healthy %s connection whose embedding model differs, but never searches with it', async (providerId, config) => {
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    db.project.mockResolvedValue({ config: { search: { aiProvider: providerId, aiAnswers: true } } });
+    db.connection.mockResolvedValue(connection({ config, credentialEncrypted: encrypted('workspace-a', providerId) }));
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true, textOnly: true })).resolves.toEqual({
+      runtime: expect.objectContaining({ providerId, apiKey: 'workspace-owned-secret', answerModel: config.answerModel, revision: 'connection-a:1' }),
+      reason: null,
+    });
+    await expect(resolveWorkspaceAi('workspace-a')).resolves.toBeNull();
+  });
+
+  it.each([
+    connection({ status: 'INACTIVE' }),
+    connection({ lastVerificationStatus: 'UNHEALTHY' }),
+    connection({ credentialEncrypted: encrypted('workspace-b') }),
+    connection({ credentialEncrypted: encrypted('workspace-a', 'openrouter') }),
+    connection({ config: { answerModel: 'gpt-test' } }),
+  ])('keeps status, health, credential and binding checks for text-only drafting', async (row) => {
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    db.connection.mockResolvedValue(row);
+    await expect(resolveWorkspaceAiConfiguration('workspace-a', { instanceFallback: true, textOnly: true })).resolves.toEqual({
+      runtime: null,
+      reason: 'not_configured',
+    });
+  });
+
   it.each([{}, null])('preserves the instance provider for an unmodified workspace with config %j', async (config) => {
     db.project.mockResolvedValue({ config });
     await expect(resolveWorkspaceAi('workspace-a')).resolves.toMatchObject({

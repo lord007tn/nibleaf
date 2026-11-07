@@ -60,6 +60,14 @@ describe('project drafting capability', () => {
     expect(JSON.stringify(capability)).not.toMatch(/secret|apiKey|model|revision|connection/);
     expect(mocks.exhausted).toHaveBeenCalledWith('org');
   });
+  it('drafts with the workspace connection even when the instance embedding model changed', async () => {
+    select();
+    vi.stubEnv('OPENROUTER_API_KEY', '');
+    vi.stubEnv('SEARCH_EMBEDDING_MODEL', 'openai/text-embedding-3-large');
+    expect(await getAiDraftCapability('site', 'org')).toEqual({ available: true, source: 'workspace', provider: 'openai', reason: null });
+    const { runtime } = await resolveAiDraft('site');
+    expect(runtime).toMatchObject({ source: 'workspace', apiKey: 'site-secret', answerModel: 'gpt-site' });
+  });
   it('reports the instance OpenRouter connection', async () => {
     mocks.project.mockResolvedValue({ config: {} });
     expect(await getAiDraftCapability('site', 'org')).toEqual({ available: true, source: 'instance', provider: 'openrouter', reason: null });

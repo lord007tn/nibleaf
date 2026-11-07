@@ -43,7 +43,10 @@ export const useSaveWorkspaceAiConnection = (projectId: string) => {
     gcTime: 0,
     mutationFn: async (json: SaveWorkspaceAiConnectionBody) =>
       mutateData(await api.app.projects[':projectId'].settings.ai.connection.$put({ param: { projectId }, json }), 'Could not save the provider.'),
-    onSuccess: (data) => client.setQueryData(queryKeys.workspaceAi.detail(projectId), data),
+    onSuccess: async (data) => {
+      client.setQueryData(queryKeys.workspaceAi.detail(projectId), data);
+      await client.invalidateQueries({ queryKey: queryKeys.workspaceAi.draftCapability(projectId) });
+    },
     meta: { errorMessage },
   });
 };
@@ -56,7 +59,10 @@ export const useSelectWorkspaceAi = (projectId: string) => {
       mutateData(await api.app.projects[':projectId'].settings.ai.$patch({ param: { projectId }, json }), 'Could not update Smart AI.'),
     onSuccess: async (data) => {
       client.setQueryData(queryKeys.workspaceAi.detail(projectId), data);
-      await client.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) }),
+        client.invalidateQueries({ queryKey: queryKeys.workspaceAi.draftCapability(projectId) }),
+      ]);
     },
     meta: { errorMessage },
   });

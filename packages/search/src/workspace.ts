@@ -13,8 +13,11 @@ const configurationSchema = z.object({
 });
 
 /** Resolve live project state and credential ownership once per operation.
- * Only drafting opts into an instance fallback; explicit disable always wins. */
-export const resolveWorkspaceAiConfiguration = async (projectId: string, options: { instanceFallback?: boolean } = {}) => {
+ * Only drafting opts into an instance fallback; explicit disable always wins.
+ * `textOnly` is for drafting too: it never queries the search index, so only the
+ * embedding-model checks are skipped. Status, health, credential and
+ * project/provider binding are checked for every purpose. */
+export const resolveWorkspaceAiConfiguration = async (projectId: string, options: { instanceFallback?: boolean; textOnly?: boolean } = {}) => {
   const env = keys();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { config: true } });
   if (!project) return { runtime: null, reason: 'not_configured' as const };
@@ -40,13 +43,16 @@ export const resolveWorkspaceAiConfiguration = async (projectId: string, options
     const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId } } });
     if (connection?.status !== 'ACTIVE' || connection.lastVerificationStatus !== 'HEALTHY') return null;
     const config = aiConnectionConfigSchema.safeParse(connection.config);
-    if (!config.success || config.data.embeddingModel !== env.SEARCH_EMBEDDING_MODEL) return null;
+    if (!config.success) return null;
+    // Search and answers query the instance's index, so they need its embedding model.
+    const embeddingCompatible =
+      config.data.embeddingModel === env.SEARCH_EMBEDDING_MODEL && (providerId !== 'openai' || config.data.embeddingModel.startsWith('openai/'));
+    if (!options.textOnly && !embeddingCompatible) return null;
     try {
       if (!env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY) return null;
       const keyring = [env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY, ...env.INTEGRATION_CREDENTIAL_PREVIOUS_KEYS].map(decodeEncryptionKey);
       const credential = aiCredentialSchema.parse(JSON.parse(decryptSecret(connection.credentialEncrypted, keyring)));
       if (credential.projectId !== projectId || credential.providerId !== providerId) return null;
-      if (providerId === 'openai' && !config.data.embeddingModel.startsWith('openai/')) return null;
       return {
         providerId,
         apiKey: credential.apiKey,

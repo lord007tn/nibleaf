@@ -57,6 +57,8 @@ export const queryKeys = {
   /** The workspace's own AI provider, model and search index (settings → Smart AI). */
   workspaceAi: {
     detail: (projectId: string) => ['workspace-ai', projectId] as const,
+    /** Whether the editor can draft with AI for this site, from any connection. */
+    draftCapability: (projectId: string) => ['workspace-ai', projectId, 'draft-capability'] as const,
   },
   projectSearch: {
     configuration: (projectId: string) => ['projects', projectId, 'search', 'configuration'] as const,

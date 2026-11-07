@@ -145,6 +145,22 @@ describe('draft request execution', () => {
     expect(mocks.draft).not.toHaveBeenCalled();
     expect(mocks.track).not.toHaveBeenCalled();
   });
+  it('keeps started, completed and failed events for a 180-character workspace model', async () => {
+    const longModel = `openrouter/${'m'.repeat(169)}`;
+    expect(longModel).toHaveLength(180);
+    const { analyticsPayloadSchema } = await import('@nibleaf/clickhouse');
+    mocks.resolve.mockResolvedValue({ runtime: { ...runtime, answerModel: longModel }, reason: null });
+    mocks.draft.mockResolvedValueOnce({ text: 'Improved.', source: 'workspace', provider: 'openai', model: longModel, latencyMs: 1 });
+    expect((await appFor().request(base, post())).status).toBe(200);
+    mocks.draft.mockRejectedValueOnce(new Error('upstream'));
+    expect((await appFor().request(base, post())).status).toBe(502);
+    const payloads = mocks.track.mock.calls.map(([, payload]) => payload);
+    expect(payloads.map((payload) => payload.name)).toEqual(['answer_started', 'answer_completed', 'answer_started', 'answer_failed']);
+    for (const payload of payloads) {
+      expect(payload.model).toBe(longModel.slice(0, 120));
+      expect(analyticsPayloadSchema.safeParse(payload).success).toBe(true);
+    }
+  });
   it('records failures using the actual provider and connection source', async () => {
     mocks.draft.mockRejectedValue(new Error('upstream site-secret'));
     const response = await appFor().request(base, post());
