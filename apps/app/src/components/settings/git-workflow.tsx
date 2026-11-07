@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { FailureMessage } from '@/components/failure-message';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
@@ -426,7 +427,9 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           <Alert className="mt-4" variant="destructive">
             <AlertTriangle />
             <AlertTitle>{t('settings.git.workflow.lastSyncFailed')}</AlertTitle>
-            <AlertDescription>{connection.lastSyncError}</AlertDescription>
+            <AlertDescription>
+              <FailureMessage context="git" error={connection.lastSyncError} />
+            </AlertDescription>
           </Alert>
         ) : null}
       </section>
@@ -677,7 +680,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
                     ))}
                   </ul>
                 ) : null}
-                {item.error ? <p className="mt-2 text-destructive text-xs">{item.error}</p> : null}
+                {item.error ? <FailureMessage context="git" error={item.error} /> : null}
               </div>
             ))}
           </div>

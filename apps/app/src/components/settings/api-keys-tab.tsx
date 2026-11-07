@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
+import { copyToClipboard } from '@/lib/invitations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -161,11 +162,10 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const snippets: Record<string, string> = setup
     ? { claudeCode: setup.claudeCode, desktop: setup.desktop, cursor: setup.cursor, vscode: setup.vscode }
     : {};
-  const copy = (value: string, copied = t('settings.apiKeys.copied')) =>
-    navigator.clipboard.writeText(value).then(
-      () => toast.success(copied),
-      () => toast.error(t('settings.apiKeys.createError')),
-    );
+  const copy = async (value: string, copied = t('settings.apiKeys.copied')) => {
+    if (await copyToClipboard(value)) toast.success(copied);
+    else toast.error(t('settings.apiKeys.copyFailed'));
+  };
   const testConnection = async () => {
     if (!secret) return;
     const run = ++testRun.current;
@@ -334,7 +334,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       {secret ? (
         <SettingsSection description={t('settings.apiKeys.created.description')} title={t('settings.apiKeys.created.title')}>
           <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2">
-            <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap px-1 text-sm" dir="ltr">
+            <code className="min-w-0 flex-1 select-all overflow-x-auto whitespace-nowrap px-1 text-sm" dir="ltr">
               {secret}
             </code>
             <Button aria-label={t('settings.apiKeys.copy')} onClick={() => void copy(secret)} size="icon" type="button" variant="outline">

@@ -3,14 +3,15 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ confirm: vi.fn(), query: { isPending: true, data: undefined as unknown } }));
-const mutation = { mutate: vi.fn(), isPending: false };
+const state = vi.hoisted(() => ({ confirm: vi.fn() }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
-vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
+const mutation = { mutate: vi.fn(), isPending: false };
+const query = vi.hoisted(() => ({ use: vi.fn() }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('@/env', () => ({ env: { VITE_APP_URL: 'https://app.example.com' } }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useGitWorkflow: () => state.query,
+  useGitWorkflow: query.use,
   useAuthorizeGitWorkflow: () => mutation,
   useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
@@ -24,6 +25,7 @@ import { GitWorkflow } from './git-workflow';
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 it('first loads as the shell both the connect and the connected screens share, not as either one', async () => {
+  query.use.mockReturnValue({ isPending: true, data: undefined });
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
@@ -48,10 +50,55 @@ it('first loads as the shell both the connect and the connected screens share, n
   }
 });
 
+it('localizes both connection and operation failures and keeps details collapsed', async () => {
+  query.use.mockReturnValue({
+    isPending: false,
+    data: {
+      repository: 'fixture/docs',
+      baseBranch: 'main',
+      headBranch: 'docs',
+      contentPath: 'docs',
+      lastSyncStatus: 'FAILED',
+      lastSyncError: 'Bad credentials: provider trace',
+      lastSyncedAt: null,
+      operations: [
+        {
+          id: 'op-1',
+          status: 'FAILED',
+          kind: 'PULL',
+          commitMessage: 'Fixture',
+          createdAt: '2026-11-07',
+          changedFiles: [],
+          conflicts: [],
+          error: 'ProviderError: fetch failed',
+        },
+      ],
+      pullRequests: [],
+    },
+  });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<GitWorkflow projectId="site-1" />));
+    expect(host.textContent).toContain('failures.access');
+    expect(host.textContent).toContain('failures.connection');
+    expect([...host.querySelectorAll('details')].map((details) => details.open)).toEqual([false, false]);
+    expect([...host.querySelectorAll('pre')].map((pre) => pre.textContent)).toEqual([
+      'Bad credentials: provider trace',
+      'ProviderError: fetch failed',
+    ]);
+    expect([...host.querySelectorAll('p')].some((p) => p.textContent?.includes('provider trace'))).toBe(false);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+  }
+});
+
 it.each([false, true])('confirms webhook secret replacement before sending the request (%s)', async (approved) => {
   mutation.mutate.mockClear();
   state.confirm.mockResolvedValue(approved);
-  state.query = {
+  query.use.mockReturnValue({
     isPending: false,
     data: {
       repository: 'team/docs',
@@ -63,7 +110,7 @@ it.each([false, true])('confirms webhook secret replacement before sending the r
       conflicts: [],
       operations: [],
     },
-  };
+  });
   const host = document.createElement('div');
   document.body.append(host);
   const root = createRoot(host);
