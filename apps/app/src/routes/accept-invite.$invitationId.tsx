@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { clearPendingInvitation, readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
+import { signOutDashboard } from '@/services/dashboard-session';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   loader: ({ context: { queryClient }, params: { invitationId } }) => prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId)),
@@ -38,6 +40,7 @@ function AcceptInviteContent() {
   const { invitationId } = Route.useParams();
   const { data: session, isPending } = useSession();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [accepting, setAccepting] = useState(false);
   const [switchingAccount, setSwitchingAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +90,10 @@ function AcceptInviteContent() {
     setError(null);
     setSwitchingAccount(true);
     try {
-      const result = await authClient.signOut();
-      if (result.error) throw new Error(result.error.message);
-      setPendingInvitation(invitationId);
-      await navigate({ to: '/sign-in', search: { invite: invitationId, email: info.email } });
+      await signOutDashboard(queryClient, async () => {
+        setPendingInvitation(invitationId);
+        await navigate({ to: '/sign-in', search: { invite: invitationId, email: info.email } });
+      });
     } catch {
       setError(t('auth.invite.switchAccountError'));
     } finally {
