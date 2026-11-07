@@ -33,6 +33,18 @@ describe('machine-readable marketing copy', () => {
     expect(marketingLlms(origin)).not.toContain(`${origin}/index.md`);
   });
 
+  it('lists the comparison, alternatives and company pages, each with a Markdown alias in the inventory', () => {
+    const text = marketingLlms(origin);
+    const inventory = new Set(marketingMarkdownSourceUrls(origin));
+    const aliases = [...text.matchAll(/\]\((https:\/\/nibleaf\.example\/[^)]+\.md)\)/g)].flatMap((match) => (match[1] ? [match[1]] : []));
+    expect(aliases.length).toBeGreaterThanOrEqual(20);
+    for (const alias of aliases) expect(inventory.has(alias), alias).toBe(true);
+    for (const path of ['/compare/nibleaf-vs-mintlify.md', '/alternatives/readme.md', '/cloud.md', '/blog.md']) {
+      expect(text).toContain(`${origin}${path}`);
+    }
+    expect(text).toContain(`${origin}/.well-known/security.txt`);
+  });
+
   it('links only to product documentation slugs present in the repository', () => {
     const text = [marketingLlms(origin), marketingLlmsFull(origin)].join('\n');
     for (const match of text.matchAll(/https:\/\/docs\.nibleaf\.com\/([^\s)]+)/g)) {
