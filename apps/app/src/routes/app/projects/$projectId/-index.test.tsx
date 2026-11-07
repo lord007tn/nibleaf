@@ -116,6 +116,8 @@ describe('site overview first load', () => {
     expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
     const alert = container.querySelector('[role="alert"]');
     expect(alert).not.toBeNull();
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(alert?.closest('ol')).toBeNull();
     await act(async () => alert?.querySelector('button')?.click());
     expect(retry).toHaveBeenCalledOnce();
   });
@@ -146,12 +148,21 @@ describe('site overview first load', () => {
     expect(checklist?.querySelector('a[aria-label="overview.nudge.step2"]')).not.toBeNull();
     expect(checklist?.querySelector('a[aria-label="overview.nudge.step3"]')).toBeNull();
     const step3 = checklist?.querySelectorAll('li')[2];
-    expect(step3?.querySelector('[role="alert"]')).not.toBeNull();
-    await act(async () => step3?.querySelector('button')?.click());
+    expect(container.querySelectorAll('[role="alert"]')).toHaveLength(1);
+    expect(step3?.querySelector('[role="alert"], [role="status"]')).toBeNull();
+    expect(step3?.textContent).toContain('overview.nudge.step3Desc');
+    expect(step3?.textContent).toContain('overview.nudge.permissionsError');
+    expect(step3?.textContent).not.toContain('error.title');
+    expect(step3?.textContent).not.toContain('error.unexpected');
+    const retryButton = step3?.querySelector('button');
+    expect(retryButton?.classList.contains('text-xs')).toBe(true);
+    expect(retryButton?.classList.contains('px-0')).toBe(true);
+    await act(async () => retryButton?.click());
     expect(retry).toHaveBeenCalledOnce();
     navigation.members = { data: { members: [{ role: 'admin', user: { id: 'viewer' } }] }, isPending: false };
     await act(async () => root.render(<SiteOverviewPage />));
     expect(container.querySelector('ol [role="alert"]')).toBeNull();
+    expect(container.querySelector('ol')?.textContent).not.toContain('overview.nudge.permissionsError');
     expect(container.querySelector('ol a[href="/settings?section=domain"]')).not.toBeNull();
   });
 

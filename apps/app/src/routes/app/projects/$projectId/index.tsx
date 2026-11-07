@@ -168,7 +168,19 @@ function SiteOverviewPage() {
           settingsAccess={settingsAccess}
           permissionError={
             membersQuery.isError && !members ? (
-              <QueryErrorState onRetry={() => void membersQuery.refetch()} retrying={membersQuery.isFetching} />
+              <p className="mt-1 flex flex-wrap items-center gap-x-1 text-xs">
+                <span>{t('overview.nudge.permissionsError')}</span>
+                <Button
+                  className="h-auto px-0 py-0 text-xs underline pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+                  loading={membersQuery.isFetching}
+                  onClick={() => void membersQuery.refetch()}
+                  size="xs"
+                  type="button"
+                  variant="link"
+                >
+                  {t('error.tryAgain')}
+                </Button>
+              </p>
             ) : undefined
           }
         />
@@ -612,7 +624,13 @@ function PublishNudge({
         <NudgeStep
           n={3}
           title={t('overview.nudge.step3')}
-          desc={permissionError ?? t(settingsAccess === 'notAdmin' ? 'overview.settings.askAdmin' : 'overview.nudge.step3Desc')}
+          desc={
+            <>
+              {t('overview.nudge.step3Desc')}
+              {settingsAccess === 'notAdmin' ? <p className="mt-1">{t('overview.settings.askAdmin')}</p> : null}
+              {permissionError}
+            </>
+          }
         >
           {settingsAccess === 'admin' ? (
             <Link

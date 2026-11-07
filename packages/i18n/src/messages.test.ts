@@ -276,3 +276,12 @@ it('uses the glossary Admin role in English settings permission guidance', () =>
   expect(loadCatalog('en').settings_permissions_body).toContain('Admin');
   expect(loadCatalog('en').settings_permissions_body).not.toContain('administrator');
 });
+
+it('localizes the compact checklist permission failure in Arabic and uses English for fallback locales', () => {
+  const english = loadCatalog('en').overview_nudge_permissionserror;
+  expect(english).toBe("Couldn't check your permissions.");
+  expect(loadCatalog('ar').overview_nudge_permissionserror).toBe('تعذّر التحقق من صلاحياتك.');
+  for (const { code } of INTERFACE_LOCALES.filter(({ code }) => code !== 'ar')) {
+    expect(loadCatalog(code).overview_nudge_permissionserror).toBe(english);
+  }
+});

@@ -3548,6 +3548,7 @@ export const MESSAGE_IDS = {
   'overview.settings.askAdmin': 'overview_settings_askadmin',
   'settings.apiKeys.rotateConfirm.expiredDescription': 'settings_apikeys_rotateconfirm_expireddescription',
   'settings.git.workflow.rotateConfirm.title': 'settings_git_workflow_rotateconfirm_title',
+  'overview.nudge.permissionsError': 'overview_nudge_permissionserror',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

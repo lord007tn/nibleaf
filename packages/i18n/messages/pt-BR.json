@@ -3547,5 +3547,6 @@
   "preview_disabledaskadmin": "Ask a site owner or Admin to turn on previews in Settings → Add-ons.",
   "overview_settings_askadmin": "Ask a site owner or Admin to change this setting.",
   "settings_apikeys_rotateconfirm_expireddescription": "The old key stops working immediately. Update every connected app with the new key. The new key will expire in 90 days.",
-  "settings_git_workflow_rotateconfirm_title": "Replace the webhook secret?"
+  "settings_git_workflow_rotateconfirm_title": "Replace the webhook secret?",
+  "overview_nudge_permissionserror": "Couldn't check your permissions."
 }
