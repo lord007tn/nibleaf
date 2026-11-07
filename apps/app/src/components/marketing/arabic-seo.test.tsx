@@ -23,7 +23,7 @@ describe('Arabic marketing pages', () => {
     expect(html).toContain('Docusaurus');
     expect(html).toContain('Material for MkDocs');
     expect(html).toContain('Apidog');
-    expect(html).toContain('22 أغسطس 2026');
+    expect(html).toContain('7 نوفمبر 2026');
     expect(html).toContain('https://www.mintlify.com/pricing');
     expect(html).toContain('https://gitbook.com/docs/publishing-documentation/customization/extra-configuration');
     expect(html).toContain('https://gitbook.com/docs/publishing-documentation/site-structure/variants');
