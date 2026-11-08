@@ -201,7 +201,12 @@ are already set, and nothing changes.
    opens **Site settings → Workspace → Smart AI**, chooses **Verify key and load
    models** and saves the connection, which records the new embedding model.
    Then choose **Reindex** for that site.
-4. When the sites' search settings show the index as READY, switch the alias:
+4. Wait until every site's index is READY **with the new settings**: model
+   `openai/text-embedding-3-large`, 3072 dimensions and collection version `v2`.
+   An index rebuilt by a worker that still had the old settings doesn't count. The
+   worker logs that such a run "was queued with other embedding settings". Choose
+   **Reindex** for that site, or run `search:reindex-all` again. Then switch the
+   alias:
 
    ```bash
    docker compose exec -T \
