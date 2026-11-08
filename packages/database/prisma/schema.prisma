@@ -1362,6 +1362,9 @@ model SiteSignInCode {
   attempts   Int       @default(0)
   expiresAt  DateTime
   consumedAt DateTime?
+  /// Set on the third code in a row that ran out of guesses: the address gets
+  /// no codes until then, however old the earlier codes are.
+  pausedUntil DateTime?
   createdAt  DateTime  @default(now())
 
   @@index([projectId, email, createdAt])

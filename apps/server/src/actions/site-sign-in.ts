@@ -33,9 +33,9 @@ const SIGN_IN_CODES_PER_DAY = 10;
 const SIGN_IN_DAY_MS = 24 * 60 * 60_000;
 /** Consecutive codes that ran out of guesses before an address is paused for a day. */
 const SIGN_IN_BURNED_CODES_LOCKOUT = 3;
-/** How long codes are kept: long enough for the day-long budgets above, and
- *  for a pause that starts from the third burned code, not the first. */
-const SIGN_IN_HISTORY_MS = 2 * SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
+/** How long codes are kept: long enough for the day-long budgets above. A row
+ *  that carries a running pause is kept until the pause ends. */
+const SIGN_IN_HISTORY_MS = SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
 const SITE_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 
 /** The row id salts the hash, so equal codes never share a hash. */
@@ -57,10 +57,12 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
   });
   if (!project || project.accessMode === 'PUBLIC' || project.takedownAt) return null;
   const member = await prisma.member.findFirst({
-    // A suspended account gets no code and no session, as on the dashboard.
-    where: { organizationId: project.organizationId, user: { email, banned: false, suspendedAt: null } },
-    select: { userId: true },
+    where: { organizationId: project.organizationId, user: { email } },
+    select: { userId: true, user: { select: { banned: true, suspendedAt: true } } },
   });
+  // A suspended account gets no code and no session, as on the dashboard, and
+  // doesn't get in as a reader under the same address either.
+  if (member?.user.banned || member?.user.suspendedAt) return null;
   if (member) return { kind: 'member', userId: member.userId };
   if (project.accessMode !== 'READERS') return null;
   const reader = await prisma.reader.findUnique({ where: { projectId_email: { projectId, email } }, select: { id: true, revokedAt: true } });
@@ -73,7 +75,7 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
  * - 5 codes per 15 minutes and 10 per rolling 24 hours, so at most 50 guesses
  *   a day and a bounded number of emails to any one inbox;
  * - after 3 consecutive codes that each ran out of guesses, none for 24 hours
- *   counted from the last of them.
+ *   from the moment the third ran out (`pausedUntil`, set in verifySiteSignIn).
  * Codes are kept for these look-backs (see SIGN_IN_HISTORY_MS).
  */
 const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, email: string, now: number): Promise<boolean> => {
@@ -84,19 +86,22 @@ const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, ema
   });
   if (recent.length >= SIGN_IN_CODES_PER_DAY) return false;
   if (recent.filter((row) => row.createdAt.getTime() > now - SIGN_IN_WINDOW_MS).length >= SIGN_IN_CODES_PER_WINDOW) return false;
-  // The last codes regardless of age: three burned in a row pause the address
-  // until a day after the newest of them could last be used.
-  const latest = await tx.siteSignInCode.findMany({
+  const paused = await tx.siteSignInCode.findFirst({ where: { projectId, email, pausedUntil: { gt: new Date(now) } }, select: { id: true } });
+  return !paused;
+};
+
+/** After a wrong guess: when it used up the third code in a row, pause the
+ *  address for a day, recorded on that code so cleanup can't shorten it. */
+const pauseAfterBurnedCodes = async (projectId: string, email: string, codeId: string) => {
+  const latest = await prisma.siteSignInCode.findMany({
     where: { projectId, email },
     orderBy: { createdAt: 'desc' },
     take: SIGN_IN_BURNED_CODES_LOCKOUT,
-    select: { expiresAt: true, attempts: true },
+    select: { id: true, attempts: true },
   });
-  const paused =
-    latest.length === SIGN_IN_BURNED_CODES_LOCKOUT &&
-    latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS) &&
-    (latest[0]?.expiresAt.getTime() ?? 0) > now - SIGN_IN_DAY_MS;
-  return !paused;
+  if (latest[0]?.id !== codeId || latest.length < SIGN_IN_BURNED_CODES_LOCKOUT) return;
+  if (!latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS)) return;
+  await prisma.siteSignInCode.updateMany({ where: { id: codeId, pausedUntil: null }, data: { pausedUntil: new Date(Date.now() + SIGN_IN_DAY_MS) } });
 };
 
 const issueCode = async (projectId: string, email: string, language?: string) => {
@@ -118,19 +123,26 @@ const issueCode = async (projectId: string, email: string, language?: string) =>
     return created;
   });
   if (!row) return;
+  let message: Awaited<ReturnType<typeof renderSiteSignInCodeEmail>>;
   try {
-    const message = await renderSiteSignInCodeEmail({ code, projectName: row.project.name, language: resolveEmailLanguage(language) });
-    // The worker discards the email once the code has expired.
-    await createJob(QueueNames.EMAIL, {
-      name: 'send-email',
-      data: { to: email, ...message, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } },
-    });
+    message = await renderSiteSignInCodeEmail({ code, projectName: row.project.name, language: resolveEmailLanguage(language) });
   } catch (error) {
-    // A code that was never sent doesn't count against the address's budget.
+    // Nothing was queued, so this code can never arrive: it doesn't count
+    // against the address's budget.
     await prisma.siteSignInCode.deleteMany({ where: { id: row.id, consumedAt: null, attempts: 0 } }).catch(() => undefined);
     throw error;
   }
-  void prisma.siteSignInCode.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) } } }).catch(() => undefined);
+  // An enqueue error is ambiguous (the queue may have accepted the job), so the
+  // code stays usable and counted. The worker discards it once it has expired.
+  await createJob(QueueNames.EMAIL, {
+    name: 'send-email',
+    data: { to: email, ...message, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } },
+  });
+  void prisma.siteSignInCode
+    .deleteMany({
+      where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) }, OR: [{ pausedUntil: null }, { pausedUntil: { lt: new Date() } }] },
+    })
+    .catch(() => undefined);
 };
 
 /** Send a sign-in code when the address may read the site. Always answers the same. */
@@ -159,7 +171,11 @@ export const verifySiteSignIn = async (ctx: Context<HonoEnv>, projectId: string,
     where: { id: latest.id, consumedAt: null, attempts: { lt: SIGN_IN_CODE_MAX_ATTEMPTS } },
     data: { attempts: { increment: 1 } },
   });
-  if (counted.count !== 1 || !sameHash(latest.codeHash, codeHash(latest.id, body.code))) throw invalidCode();
+  if (counted.count !== 1) throw invalidCode();
+  if (!sameHash(latest.codeHash, codeHash(latest.id, body.code))) {
+    await pauseAfterBurnedCodes(projectId, body.email, latest.id);
+    throw invalidCode();
+  }
   const consumed = await prisma.siteSignInCode.updateMany({ where: { id: latest.id, consumedAt: null }, data: { consumedAt: now } });
   if (consumed.count !== 1) throw invalidCode();
   // Eligibility can change between the code and its use (a revocation, a member removed).

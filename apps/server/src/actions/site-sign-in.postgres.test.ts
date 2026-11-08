@@ -237,24 +237,6 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     await nextCode();
   });
 
-  it('pauses an address for a day after three codes in a row ran out of guesses', async () => {
-    const { project, readerEmail } = await site('READERS');
-    await pastCodes(project.id, readerEmail, [
-      { minutesAgo: 60, attempts: 5 },
-      { minutesAgo: 120, attempts: 5 },
-      { minutesAgo: 180, attempts: 5 },
-    ]);
-    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
-    await noCodeSent();
-    // Once the newest of the three was not burned, the address isn't paused.
-    await db.prisma.siteSignInCode.updateMany({
-      where: { projectId: project.id, email: readerEmail, createdAt: { gt: new Date(Date.now() - 90 * 60_000) } },
-      data: { attempts: 2 },
-    });
-    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
-    await nextCode();
-  });
-
   it('never exceeds the budget when many requests arrive at once, without queueing them on a lock', async () => {
     const { project, readerEmail } = await site('READERS');
     const answers = await Promise.all(Array.from({ length: 20 }, () => startAnswer(project.id, readerEmail)));
@@ -267,13 +249,71 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     expect(sent).toHaveLength(issued);
   });
 
-  it('keeps the pause for a day after the third burned code, even when the first is older than a day', async () => {
+  /** Ask for a code and use up its five guesses with wrong answers. */
+  const burnCode = async (projectId: string, email: string) => {
+    await post(`sign-in/${projectId}/start`, { email });
+    const code = await nextCode();
+    const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+    for (let i = 0; i < 5; i++) expect((await post(`sign-in/${projectId}/verify`, { email, code: wrong })).status).toBe(400);
+  };
+
+  it('pauses an address for a day from the moment its third code in a row runs out of guesses', async () => {
     const { project, readerEmail } = await site('READERS');
-    await pastCodes(project.id, readerEmail, [
-      { minutesAgo: 60, attempts: 5 },
-      { minutesAgo: 20 * 60, attempts: 5 },
-      { minutesAgo: 30 * 60, attempts: 5 },
-    ]);
+    await burnCode(project.id, readerEmail);
+    await burnCode(project.id, readerEmail);
+    // Two burned codes don't pause the address.
+    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail, pausedUntil: { not: null } } })).toBe(0);
+    const before = Date.now();
+    await burnCode(project.id, readerEmail);
+    const paused = await db.prisma.siteSignInCode.findFirstOrThrow({
+      where: { projectId: project.id, email: readerEmail, pausedUntil: { not: null } },
+    });
+    expect(paused.pausedUntil?.getTime()).toBeGreaterThanOrEqual(before + 24 * 60 * 60_000);
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+    // The earlier codes leaving the look-back (or being cleaned up) doesn't end it.
+    await db.prisma.siteSignInCode.deleteMany({ where: { projectId: project.id, email: readerEmail, id: { not: paused.id } } });
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+    // Once the pause ends, the address gets a code again.
+    await db.prisma.siteSignInCode.update({ where: { id: paused.id }, data: { pausedUntil: new Date(Date.now() - 1000) } });
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await nextCode();
+  });
+
+  it('keeps a running pause through cleanup of old codes', async () => {
+    const { project, readerEmail, memberEmail } = await site('READERS');
+    const old = new Date(Date.now() - 3 * 24 * 60 * 60_000);
+    const pausedRow = await db.prisma.siteSignInCode.create({
+      data: {
+        projectId: project.id,
+        email: readerEmail,
+        codeHash: 'spent',
+        attempts: 5,
+        createdAt: old,
+        expiresAt: old,
+        pausedUntil: new Date(Date.now() + 60 * 60_000),
+      },
+    });
+    const expiredRow = await db.prisma.siteSignInCode.create({
+      data: {
+        projectId: project.id,
+        email: readerEmail,
+        codeHash: 'spent',
+        attempts: 5,
+        createdAt: old,
+        expiresAt: old,
+        pausedUntil: new Date(Date.now() - 1000),
+      },
+    });
+    // Issuing a code for any address runs the cleanup.
+    await post(`sign-in/${project.id}/start`, { email: memberEmail });
+    await nextCode();
+    for (let i = 0; i < 50 && (await db.prisma.siteSignInCode.count({ where: { id: expiredRow.id } })) > 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    expect(await db.prisma.siteSignInCode.count({ where: { id: expiredRow.id } })).toBe(0);
+    expect(await db.prisma.siteSignInCode.count({ where: { id: pausedRow.id } })).toBe(1);
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await noCodeSent();
   });
@@ -305,6 +345,28 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
       name: 'send-email',
       data: expect.objectContaining({ to: readerEmail, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } }),
     });
+  });
+
+  it('keeps a code counted when queueing its email failed in a way that may still deliver it', async () => {
+    const { project, readerEmail } = await site('READERS');
+    const { createJob } = await import('@nibleaf/bullmq');
+    vi.mocked(createJob).mockRejectedValueOnce(new Error('Redis reply timed out after the job was written'));
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    await nextCode();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } })).toBe(1);
+  });
+
+  it('does not let a suspended team member in as an invited reader under the same address', async () => {
+    const { project, user, memberEmail, audience } = await site('READERS');
+    await db.prisma.reader.create({ data: { projectId: project.id, email: memberEmail, audiences: { create: [{ audienceId: audience.id }] } } });
+    await post(`sign-in/${project.id}/start`, { email: memberEmail });
+    const code = await nextCode();
+    await db.prisma.user.update({ where: { id: user.id }, data: { suspendedAt: new Date() } });
+    expect((await post(`sign-in/${project.id}/verify`, { email: memberEmail, code })).status).toBe(400);
+    expect(await db.prisma.readerSession.count({ where: { projectId: project.id } })).toBe(0);
+    expect(await startAnswer(project.id, memberEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
   });
 
   it('gives a suspended team member no code and ends their existing site session', async () => {
