@@ -100,7 +100,9 @@ export const promoteImportReplacementBranch = async (
   id: string,
   projectConfig?: Prisma.InputJsonValue,
   expectedDraft?: string,
+  preserveExisting = false,
 ) => {
+  if (preserveExisting) return mergeBranch(projectId, id, {}, { expectedDraft, projectConfig });
   const branch = await assertBranchInProject(projectId, id);
   if (branch.isDefault) throw conflict('The default branch cannot be promoted as an import replacement.');
   const main = await getDefaultBranch(projectId);
@@ -419,12 +421,20 @@ const rescopeImportIdentities = async (tx: Prisma.TransactionClient, projectId: 
  *  and every row it deletes is locked FOR UPDATE first. Only rows from the
  *  locked read are ever deleted, so a page created meanwhile is kept (or, if
  *  it would collide with an incoming page, the promote is refused). */
-export const mergeBranch = async (projectId: string, id: string, body: MergeBranchBody = {}) => {
+export const mergeBranch = async (
+  projectId: string,
+  id: string,
+  body: MergeBranchBody = {},
+  importGuard?: { expectedDraft?: string; projectConfig?: Prisma.InputJsonValue },
+) => {
   const { branch, main } = await assertPromotable(projectId, id);
   await prisma
     .$transaction(
       async (tx) => {
         const state = await readPromoteState(tx, projectId, branch.id, main.id, true);
+        if (importGuard?.expectedDraft !== undefined && (await draftFingerprint(tx, projectId, main.id)) !== importGuard.expectedDraft) {
+          throw conflict('The draft changed during import. Your edits were preserved; retry the import.');
+        }
         if (!state.analysis) throw await baselineMissing(tx, projectId, main.id, state.branch.forkedAt ?? state.branch.createdAt);
         const { rows, preview, plan } = state.analysis;
         if (plan.blocked) {
@@ -555,8 +565,11 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
           }
         }
         await recomputeProjectPaths(projectId, tx);
+        if (importGuard?.projectConfig !== undefined) {
+          await tx.project.update({ where: { id: projectId }, data: { config: importGuard.projectConfig } });
+        }
       },
-      { timeout: 60_000 },
+      { timeout: 60_000, ...(importGuard ? { isolationLevel: 'Serializable' as const } : {}) },
     )
     .catch((error: unknown) => {
       // A serialization failure or a deadlock with another write: nothing was
