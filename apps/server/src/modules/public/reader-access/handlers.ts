@@ -1,7 +1,13 @@
-import { readerActivationQuery, readerJwtHandoffBody } from '@nibleaf/validators';
+import {
+  readerActivationQuery,
+  readerInvitationAcceptBody,
+  readerJwtHandoffBody,
+  siteSignInStartBody,
+  siteSignInVerifyBody,
+} from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { activateReaderInvitation, jwtReaderHandoff, logoutReader } from '@/actions/reader-access';
-import { env } from '@/env';
+import { readerInvitationLanding, startSiteSignIn, verifySiteSignIn } from '@/actions/site-sign-in';
 import { badRequest } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -9,17 +15,28 @@ import { validator } from '@/lib/hono/validate';
 const noCache = { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex, nofollow' };
 
 const app = new Hono<HonoEnv>()
-  .get('/activate', validator('query', readerActivationQuery), async (ctx) => {
-    const projectId = await activateReaderInvitation(ctx, ctx.req.valid('query').token);
+  .use('*', async (ctx, next) => {
+    await next();
     for (const [name, value] of Object.entries(noCache)) ctx.header(name, value);
-    const requestHost = new URL(ctx.req.url).host;
-    const appHost = new URL(env.APP_URL).host;
-    return ctx.redirect(requestHost && requestHost !== appHost ? '/' : `/sites/${encodeURIComponent(projectId)}`, 303);
   })
+  // The emailed invitation link. Opening it no longer uses the invitation up:
+  // it opens the site, where the reader accepts it with a click (see /accept).
+  .get('/activate', validator('query', readerActivationQuery), async (ctx) =>
+    ctx.redirect(await readerInvitationLanding(ctx.req.valid('query').token), 303),
+  )
+  .post('/accept', validator('json', readerInvitationAcceptBody), async (ctx) => {
+    await activateReaderInvitation(ctx, ctx.req.valid('json').token);
+    return ctx.json({ data: { ok: true } }, 200);
+  })
+  .post('/sign-in/:projectId/start', validator('json', siteSignInStartBody), async (ctx) =>
+    ctx.json({ data: await startSiteSignIn(ctx.req.param('projectId'), ctx.req.valid('json')) }, 200),
+  )
+  .post('/sign-in/:projectId/verify', validator('json', siteSignInVerifyBody), async (ctx) =>
+    ctx.json({ data: await verifySiteSignIn(ctx, ctx.req.param('projectId'), ctx.req.valid('json')) }, 200),
+  )
   .post('/jwt/:projectId', validator('json', readerJwtHandoffBody), async (ctx) => {
     const body = ctx.req.valid('json');
     const data = await jwtReaderHandoff(ctx, ctx.req.param('projectId'), body.token);
-    for (const [name, value] of Object.entries(noCache)) ctx.header(name, value);
     if (body.redirect) {
       if (!body.redirect.startsWith('/') || body.redirect.startsWith('//')) throw badRequest('Redirect must be a same-origin path.');
       return ctx.json({ data: { ...data, redirect: body.redirect } }, 200);

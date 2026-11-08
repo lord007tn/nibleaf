@@ -42,21 +42,22 @@ import { assertPublicJwksUrl, claimAt, claimStrings, isJwtVerificationError, jwt
  */
 const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
-const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
-const newSecret = (): string => randomBytes(32).toString('base64url');
+export const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
+export const newSecret = (): string => randomBytes(32).toString('base64url');
 /** The stored identity of a JWT reader: its issuer and subject, kept apart so a
  *  subject that contains the issuer text can't collide with another reader.
  *  JSON keeps the pair unambiguous and is valid PostgreSQL text, which can't
  *  contain a NUL byte. */
 export const jwtReaderIdentity = (issuer: string, subject: string): string => JSON.stringify([issuer, subject]);
 
+/** The site session cookie. Readers and team members signed in on the site share it. */
 const cookieName = (projectId: string): string => `nibleaf_reader_${projectId.replace(/[^a-zA-Z0-9_-]/g, '')}`;
-const requestFingerprint = (ctx: Context<HonoEnv>) => ({
+export const requestFingerprint = (ctx: Context<HonoEnv>) => ({
   ipHash: ctx.req.header('x-forwarded-for') ? sha256(ctx.req.header('x-forwarded-for') as string) : null,
   userAgentHash: ctx.req.header('user-agent') ? sha256(ctx.req.header('user-agent') as string) : null,
 });
 
-const logAudit = (data: {
+export const logAudit = (data: {
   projectId: string;
   action: string;
   readerId?: string | null;
@@ -96,7 +97,37 @@ export interface ViewerAccess {
   readerId?: string;
   /** null means every page; a Set means only those snapshot page ids. */
   allowedPageIds: Set<string> | null;
+  /** Signed in on the site itself (its own cookie), so the site can offer Sign out. */
+  siteSession?: boolean;
 }
+
+/** How long a site session may go unused before its last-seen time is refreshed. */
+const SESSION_TOUCH_MS = 5 * 60_000;
+
+/** A team member signed in on the site with an email code, while they are still a member. */
+const siteMemberViewer = async (projectId: string, tokenHash: string): Promise<ViewerAccess | null> => {
+  const session = await prisma.siteMemberSession.findFirst({
+    where: { projectId, tokenHash, revokedAt: null, expiresAt: { gt: new Date() } },
+    select: {
+      id: true,
+      userId: true,
+      lastUsedAt: true,
+      project: { select: { organizationId: true } },
+      user: { select: { banned: true, suspendedAt: true } },
+    },
+  });
+  // A suspended account loses site access with its existing sessions too.
+  if (!session || session.user.banned || session.user.suspendedAt) return null;
+  const member = await prisma.member.findUnique({
+    where: { organizationId_userId: { organizationId: session.project.organizationId, userId: session.userId } },
+    select: { id: true },
+  });
+  if (!member) return null;
+  if (Date.now() - session.lastUsedAt.getTime() > SESSION_TOUCH_MS) {
+    void prisma.siteMemberSession.update({ where: { id: session.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
+  }
+  return { kind: 'workspace', allowedPageIds: null, siteSession: true };
+};
 
 /** Whether the request carries a dashboard session of a member of this site. */
 export const isSiteMemberRequest = async (projectId: string, headers: Headers): Promise<boolean> => {
@@ -121,10 +152,12 @@ export const resolveViewerAccess = async (
   headers: Headers,
 ): Promise<ViewerAccess | null> => {
   if (accessMode === 'PUBLIC') return { kind: 'public', allowedPageIds: null };
-  if (await isSiteMemberRequest(projectId, headers)) return { kind: 'workspace', allowedPageIds: null };
-  if (accessMode === 'WORKSPACE') return null;
-
   const rawCookie = headers.get('cookie') ?? '';
+  const hasSiteCookie = new RegExp(`(?:^|;\\s*)${cookieName(projectId)}=`).test(rawCookie);
+  // A dashboard member who also signed in on the site can still sign out of it there.
+  if (await isSiteMemberRequest(projectId, headers))
+    return { kind: 'workspace', allowedPageIds: null, ...(hasSiteCookie ? { siteSession: true } : {}) };
+
   const match = rawCookie.match(new RegExp(`(?:^|;\\s*)${cookieName(projectId)}=([^;]+)`));
   let token: string | null = null;
   try {
@@ -133,8 +166,15 @@ export const resolveViewerAccess = async (
     return null;
   }
   if (!token) return null;
+  const tokenHash = sha256(token);
+  // A team member signed in on the site itself (a custom domain never sees the
+  // dashboard session) reads in both private modes; readers only in READERS.
+  const member = await siteMemberViewer(projectId, tokenHash);
+  if (member) return member;
+  if (accessMode === 'WORKSPACE') return null;
+
   const session = await prisma.readerSession.findFirst({
-    where: { projectId, tokenHash: sha256(token), revokedAt: null, expiresAt: { gt: new Date() }, reader: { revokedAt: null, status: 'ACTIVE' } },
+    where: { projectId, tokenHash, revokedAt: null, expiresAt: { gt: new Date() }, reader: { revokedAt: null, status: 'ACTIVE' } },
     select: {
       id: true,
       readerId: true,
@@ -144,7 +184,7 @@ export const resolveViewerAccess = async (
   });
   if (!session) return null;
   const grants = session.reader.audiences.flatMap((membership) => membership.audience.grants);
-  if (Date.now() - session.lastUsedAt.getTime() > 5 * 60_000) {
+  if (Date.now() - session.lastUsedAt.getTime() > SESSION_TOUCH_MS) {
     void Promise.all([
       prisma.readerSession.update({ where: { id: session.id }, data: { lastUsedAt: new Date() } }),
       prisma.reader.update({ where: { id: session.readerId }, data: { lastSeenAt: new Date() } }),
@@ -153,11 +193,12 @@ export const resolveViewerAccess = async (
   return {
     kind: 'reader',
     readerId: session.readerId,
+    siteSession: true,
     allowedPageIds: grants.some((grant) => grant.pageId === null) ? null : new Set(grants.flatMap((grant) => (grant.pageId ? [grant.pageId] : []))),
   };
 };
 
-const setSessionCookie = (ctx: Context<HonoEnv>, projectId: string, token: string, expiresAt: Date): void => {
+export const setSessionCookie = (ctx: Context<HonoEnv>, projectId: string, token: string, expiresAt: Date): void => {
   setCookie(ctx, cookieName(projectId), token, {
     httpOnly: true,
     secure: env.APP_URL.startsWith('https://'),
@@ -592,8 +633,14 @@ export const jwtReaderHandoff = async (ctx: Context<HonoEnv>, projectId: string,
 
 export const logoutReader = async (ctx: Context<HonoEnv>, projectId: string) => {
   const token = getCookie(ctx, cookieName(projectId));
-  if (token)
-    await prisma.readerSession.updateMany({ where: { projectId, tokenHash: sha256(token), revokedAt: null }, data: { revokedAt: new Date() } });
+  if (token) {
+    const where = { projectId, tokenHash: sha256(token), revokedAt: null };
+    const revokedAt = new Date();
+    await Promise.all([
+      prisma.readerSession.updateMany({ where, data: { revokedAt } }),
+      prisma.siteMemberSession.updateMany({ where, data: { revokedAt } }),
+    ]);
+  }
   deleteCookie(ctx, cookieName(projectId), { path: '/' });
   ctx.header('Cache-Control', 'private, no-store');
   return { ok: true };

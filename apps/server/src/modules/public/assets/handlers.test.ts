@@ -7,6 +7,7 @@ import type { HonoEnv } from '@/lib/hono/context';
 const mocks = vi.hoisted(() => ({
   getObjectStream: vi.fn(),
   getProjectAssetAccess: vi.fn(),
+  isPrivateSiteBrandingAsset: vi.fn(),
   headObject: vi.fn(),
   isProjectTakenDown: vi.fn(),
   findUnique: vi.fn(),
@@ -14,7 +15,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: mocks.getObjectStream, headObject: mocks.headObject }));
 vi.mock('@nibleaf/database', () => ({ prisma: { asset: { findUnique: mocks.findUnique } } }));
-vi.mock('@/actions/sites', () => ({ getProjectAssetAccess: mocks.getProjectAssetAccess, isProjectTakenDown: mocks.isProjectTakenDown }));
+vi.mock('@/actions/sites', () => ({
+  getProjectAssetAccess: mocks.getProjectAssetAccess,
+  isPrivateSiteBrandingAsset: mocks.isPrivateSiteBrandingAsset,
+  isProjectTakenDown: mocks.isProjectTakenDown,
+}));
 
 import handlers from './handlers';
 
@@ -37,6 +42,7 @@ describe('public asset delivery', () => {
     vi.clearAllMocks();
     mocks.isProjectTakenDown.mockResolvedValue(false);
     mocks.getProjectAssetAccess.mockResolvedValue({ kind: 'public', allowedPageIds: null });
+    mocks.isPrivateSiteBrandingAsset.mockResolvedValue(false);
     mocks.findUnique.mockResolvedValue({ projectId: 'project-a' });
     mocks.headObject.mockResolvedValue({ ContentType: 'image/png' });
     mocks.getObjectStream.mockImplementation(async () => Readable.from([Buffer.from('image-bytes')]));
@@ -74,6 +80,16 @@ describe('public asset delivery', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+  });
+
+  it('shows a private site’s configured logo to visitors who can’t read it yet, kept out of shared caches', async () => {
+    mocks.getProjectAssetAccess.mockResolvedValue(null);
+    mocks.isPrivateSiteBrandingAsset.mockResolvedValue(true);
+    const response = await assetRequest('projects/project-a/assets/logo.png');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+    expect(mocks.isPrivateSiteBrandingAsset).toHaveBeenCalledWith('project-a', 'projects/project-a/assets/logo.png');
   });
 
   it('hides an asset of a private or unknown project from a visitor without access', async () => {
