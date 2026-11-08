@@ -239,11 +239,11 @@ function SignInPage() {
         <>
           <p className="mt-4 text-center text-muted-foreground text-xs leading-relaxed">
             {t('auth.legal.socialNoticePrefix')}
-            <Link className="underline hover:text-primary" to="/terms">
+            <Link className="underline hover:text-primary" to="/$page" params={{ page: 'terms' }}>
               {t('auth.legal.terms')}
             </Link>
             {t('auth.legal.and')}
-            <Link className="underline hover:text-primary" to="/privacy">
+            <Link className="underline hover:text-primary" to="/$page" params={{ page: 'privacy' }}>
               {t('auth.legal.privacy')}
             </Link>
             {t('auth.legal.agreeSuffix')}

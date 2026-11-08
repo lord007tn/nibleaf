@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Boxes, DatabaseBackup, Network, PackageCheck } from 'lucide-react';
 import { Eyebrow, MarketingShell, outlineButton } from '@/components/cloud-marketing';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
@@ -18,18 +18,15 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/self-hosting')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const seo = await import('@/lib/marketing-seo');
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: SelfHostingPage,
-});
+export const load = async () => {
+  const seo = await import('@/lib/marketing-seo');
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = SelfHostingPage;
 
 function SelfHostingPage() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return (
     <MarketingShell stars={stars}>
       <section className="border-border border-b">

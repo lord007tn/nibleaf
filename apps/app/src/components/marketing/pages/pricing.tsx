@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { useMarketingData } from '@/components/marketing/page-data';
 import { PricingPage } from '@/components/marketing/pricing';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
@@ -18,17 +18,14 @@ const pageHead = ({ breadcrumbLd, canonicalHref, faqLd, pageMeta }: MarketingSeo
   ],
 });
 
-export const Route = createFileRoute('/pricing')({
-  // The FAQ copy and the SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const [seo, { marketingFaqs }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/marketing-faqs')]);
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo, marketingFaqs) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: PricingRoute,
-});
+export const load = async () => {
+  const [seo, { marketingFaqs }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/marketing-faqs')]);
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo, marketingFaqs) };
+};
+
+export const Page = PricingRoute;
 
 function PricingRoute() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return <PricingPage stars={stars} />;
 }

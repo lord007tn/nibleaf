@@ -34,9 +34,12 @@ const profiles = {
 // from a lazy import, and every non-reader route's loader loads with its route,
 // about 7.1 KiB less. The margin is ~2 KiB over the 347,620 bytes measured
 // after #336's use-case routes.
+// 349_700 → 348_200 (#345): marketing pages moved to their own route table,
+// dispatched by nine thin router routes, about 2.3 KiB less. The margin is ~2 KiB
+// over the 346,122 bytes measured.
 const gzipBudgets = {
-  'public-docs': 349_700,
-  'public-docs-index': 349_700,
+  'public-docs': 348_200,
+  'public-docs-index': 348_200,
 };
 
 // A size budget catches overall growth; these signatures make accidental

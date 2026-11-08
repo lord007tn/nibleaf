@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { CloudPage } from '@/components/marketing/cloud-page';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
@@ -18,17 +18,14 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/cloud')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const seo = await import('@/lib/marketing-seo');
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: CloudRoute,
-});
+export const load = async () => {
+  const seo = await import('@/lib/marketing-seo');
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = CloudRoute;
 
 function CloudRoute() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return <CloudPage stars={stars} />;
 }

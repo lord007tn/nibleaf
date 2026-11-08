@@ -2,16 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/functions/marketing', () => ({ getGithubStarsFn: vi.fn(async () => 7) }));
 
-import { Route as arabicRoute } from './ar/documentation-platforms';
-import { Route as englishRoute } from './documentation-platforms';
+import { load as loadArabic } from './ar-documentation-platforms';
+import { load as loadEnglish } from './documentation-platforms';
 
 type Head = { links: Record<string, string>[]; scripts: { children: string }[] };
-const headFrom = (route: { options: unknown }) => async () => {
-  const { loader, head } = route.options as { loader: () => Promise<unknown>; head: (input: { loaderData: unknown }) => Head };
-  return head({ loaderData: await loader() });
-};
-const englishHead = headFrom(englishRoute);
-const arabicHead = headFrom(arabicRoute);
+const headFrom = (load: () => Promise<{ head: unknown }>) => async () => (await load()).head as Head;
+const englishHead = headFrom(loadEnglish);
+const arabicHead = headFrom(loadArabic);
 
 describe('documentation platform route language pair', () => {
   it.each([

@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
 // The page lives outside the route file: anything a route file exports stays in
 // the router's eager chunk, which every published docs page also loads.
 import { AboutPage } from '@/components/marketing/about-page';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
@@ -20,17 +20,14 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/about')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const seo = await import('@/lib/marketing-seo');
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: AboutRoute,
-});
+export const load = async () => {
+  const seo = await import('@/lib/marketing-seo');
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = AboutRoute;
 
 function AboutRoute() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return <AboutPage stars={stars} />;
 }

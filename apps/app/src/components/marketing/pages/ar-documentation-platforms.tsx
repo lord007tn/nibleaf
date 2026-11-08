@@ -1,5 +1,4 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { createFileRoute } from '@tanstack/react-router';
 import { ArabicDocumentationPlatformsPage } from '@/components/marketing/arabic-seo';
 import type { ArabicPlatformsCopy } from '@/lib/arabic-marketing-copy';
 import type { MarketingSeo } from '@/lib/marketing-seo';
@@ -48,12 +47,9 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo, copy:
   };
 };
 
-export const Route = createFileRoute('/ar/documentation-platforms')({
-  // The Arabic copy and the SEO helpers load with this page, not with every page's route tree.
-  loader: async () => {
-    const [seo, { arabicPlatformsCopy }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/arabic-marketing-copy')]);
-    return { head: pageHead(seo, arabicPlatformsCopy()) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: ArabicDocumentationPlatformsPage,
-});
+export const load = async () => {
+  const [seo, { arabicPlatformsCopy }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/arabic-marketing-copy')]);
+  return { head: pageHead(seo, arabicPlatformsCopy()) };
+};
+
+export const Page = ArabicDocumentationPlatformsPage;

@@ -47,6 +47,7 @@ const KNOWN_MARKETING_READER_ICONS = new Set([
   'book-open',
   'chart-column',
   'check',
+  'circle-question-mark',
   'clock',
   'cloud',
   'compass',

@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { DocumentationPlatformsPage } from '@/components/marketing/documentation-platforms';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
@@ -38,17 +38,14 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/documentation-platforms')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const seo = await import('@/lib/marketing-seo');
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: DocumentationPlatformsRoute,
-});
+export const load = async () => {
+  const seo = await import('@/lib/marketing-seo');
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = DocumentationPlatformsRoute;
 
 function DocumentationPlatformsRoute() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return <DocumentationPlatformsPage stars={stars} />;
 }

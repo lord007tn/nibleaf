@@ -10,43 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PageRouteImport } from './routes/$page'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as AppRouteRouteImport } from './routes/app/route'
-import { Route as ArRouteRouteImport } from './routes/ar/route'
-import { Route as CloudRouteImport } from './routes/cloud'
-import { Route as ContactRouteImport } from './routes/contact'
-import { Route as DevelopersRouteImport } from './routes/developers'
-import { Route as DocumentationPlatformsRouteImport } from './routes/documentation-platforms'
-import { Route as GuidesRouteImport } from './routes/guides'
-import { Route as PricingRouteImport } from './routes/pricing'
-import { Route as PrivacyRouteImport } from './routes/privacy'
-import { Route as SelfHostingRouteImport } from './routes/self-hosting'
-import { Route as TermsRouteImport } from './routes/terms'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as authResetPasswordRouteImport } from './routes/(auth)/reset-password'
 import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
 import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
-import { Route as AlternativesGitbookRouteImport } from './routes/alternatives/gitbook'
-import { Route as AlternativesMintlifyRouteImport } from './routes/alternatives/mintlify'
-import { Route as AlternativesReadmeRouteImport } from './routes/alternatives/readme'
+import { Route as AlternativesSlugRouteImport } from './routes/alternatives/$slug'
 import { Route as AppdashboardRouteRouteImport } from './routes/app/(dashboard)/route'
-import { Route as ArIndexRouteImport } from './routes/ar/index'
-import { Route as ArDocumentationPlatformsRouteImport } from './routes/ar/documentation-platforms'
-import { Route as ArGuidesRouteImport } from './routes/ar/guides'
-import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as ArPageRouteImport } from './routes/ar/$page'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
-import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare/nibleaf-vs-docusaurus'
-import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
-import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
+import { Route as CompareSlugRouteImport } from './routes/compare/$slug'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
-import { Route as ToolsRtlDocumentationReadinessRouteImport } from './routes/tools/rtl-documentation-readiness'
+import { Route as ToolsSlugRouteImport } from './routes/tools/$slug'
 import { Route as UseCasesSlugRouteImport } from './routes/use-cases/$slug'
 import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
 import { Route as AppdashboardAnalyticsRouteImport } from './routes/app/(dashboard)/analytics'
@@ -77,68 +60,18 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const authRouteRoute = authRouteRouteImport.update({
-  id: '/(auth)',
+const PageRoute = PageRouteImport.update({
+  id: '/$page',
+  path: '/$page',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+const authRouteRoute = authRouteRouteImport.update({
+  id: '/(auth)',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRouteRoute = AppRouteRouteImport.update({
   id: '/app',
   path: '/app',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ArRouteRoute = ArRouteRouteImport.update({
-  id: '/ar',
-  path: '/ar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CloudRoute = CloudRouteImport.update({
-  id: '/cloud',
-  path: '/cloud',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactRoute = ContactRouteImport.update({
-  id: '/contact',
-  path: '/contact',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DevelopersRoute = DevelopersRouteImport.update({
-  id: '/developers',
-  path: '/developers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DocumentationPlatformsRoute = DocumentationPlatformsRouteImport.update({
-  id: '/documentation-platforms',
-  path: '/documentation-platforms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GuidesRoute = GuidesRouteImport.update({
-  id: '/guides',
-  path: '/guides',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PricingRoute = PricingRouteImport.update({
-  id: '/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SelfHostingRoute = SelfHostingRouteImport.update({
-  id: '/self-hosting',
-  path: '/self-hosting',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const authForgotPasswordRoute = authForgotPasswordRouteImport.update({
@@ -172,44 +105,18 @@ const AcceptInviteInvitationIdRoute =
     path: '/accept-invite/$invitationId',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AlternativesGitbookRoute = AlternativesGitbookRouteImport.update({
-  id: '/alternatives/gitbook',
-  path: '/alternatives/gitbook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AlternativesMintlifyRoute = AlternativesMintlifyRouteImport.update({
-  id: '/alternatives/mintlify',
-  path: '/alternatives/mintlify',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AlternativesReadmeRoute = AlternativesReadmeRouteImport.update({
-  id: '/alternatives/readme',
-  path: '/alternatives/readme',
+const AlternativesSlugRoute = AlternativesSlugRouteImport.update({
+  id: '/alternatives/$slug',
+  path: '/alternatives/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppdashboardRouteRoute = AppdashboardRouteRouteImport.update({
   id: '/(dashboard)',
   getParentRoute: () => AppRouteRoute,
 } as any)
-const ArIndexRoute = ArIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ArRouteRoute,
-} as any)
-const ArDocumentationPlatformsRoute =
-  ArDocumentationPlatformsRouteImport.update({
-    id: '/documentation-platforms',
-    path: '/documentation-platforms',
-    getParentRoute: () => ArRouteRoute,
-  } as any)
-const ArGuidesRoute = ArGuidesRouteImport.update({
-  id: '/guides',
-  path: '/guides',
-  getParentRoute: () => ArRouteRoute,
-} as any)
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: '/blog/',
-  path: '/blog/',
+const ArPageRoute = ArPageRouteImport.update({
+  id: '/ar/$page',
+  path: '/ar/$page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -217,23 +124,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareNibleafVsDocusaurusRoute =
-  CompareNibleafVsDocusaurusRouteImport.update({
-    id: '/compare/nibleaf-vs-docusaurus',
-    path: '/compare/nibleaf-vs-docusaurus',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const CompareNibleafVsGitbookRoute = CompareNibleafVsGitbookRouteImport.update({
-  id: '/compare/nibleaf-vs-gitbook',
-  path: '/compare/nibleaf-vs-gitbook',
+const CompareSlugRoute = CompareSlugRouteImport.update({
+  id: '/compare/$slug',
+  path: '/compare/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CompareNibleafVsMintlifyRoute =
-  CompareNibleafVsMintlifyRouteImport.update({
-    id: '/compare/nibleaf-vs-mintlify',
-    path: '/compare/nibleaf-vs-mintlify',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
   id: '/git-preview/$token',
   path: '/git-preview/$token',
@@ -259,12 +154,11 @@ const SitesProjectIdRouteRoute = SitesProjectIdRouteRouteImport.update({
   path: '/sites/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ToolsRtlDocumentationReadinessRoute =
-  ToolsRtlDocumentationReadinessRouteImport.update({
-    id: '/tools/rtl-documentation-readiness',
-    path: '/tools/rtl-documentation-readiness',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ToolsSlugRoute = ToolsSlugRouteImport.update({
+  id: '/tools/$slug',
+  path: '/tools/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UseCasesSlugRoute = UseCasesSlugRouteImport.update({
   id: '/use-cases/$slug',
   path: '/use-cases/$slug',
@@ -307,9 +201,9 @@ const AppProjectsProjectIdRouteRoute =
     getParentRoute: () => AppRouteRoute,
   } as any)
 const ArUseCasesSlugRoute = ArUseCasesSlugRouteImport.update({
-  id: '/use-cases/$slug',
-  path: '/use-cases/$slug',
-  getParentRoute: () => ArRouteRoute,
+  id: '/ar/use-cases/$slug',
+  path: '/ar/use-cases/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SitesProjectIdIndexRoute = SitesProjectIdIndexRouteImport.update({
   id: '/',
@@ -401,17 +295,7 @@ const AppProjectsProjectIdAnalyticsSearchRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardRouteRouteWithChildren
-  '/ar': typeof ArRouteRouteWithChildren
-  '/about': typeof AboutRoute
-  '/cloud': typeof CloudRoute
-  '/contact': typeof ContactRoute
-  '/developers': typeof DevelopersRoute
-  '/documentation-platforms': typeof DocumentationPlatformsRoute
-  '/guides': typeof GuidesRoute
-  '/pricing': typeof PricingRoute
-  '/privacy': typeof PrivacyRoute
-  '/self-hosting': typeof SelfHostingRoute
-  '/terms': typeof TermsRoute
+  '/$page': typeof PageRoute
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
@@ -419,23 +303,16 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof authSignUpRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
-  '/alternatives/gitbook': typeof AlternativesGitbookRoute
-  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
-  '/alternatives/readme': typeof AlternativesReadmeRoute
-  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
-  '/ar/guides': typeof ArGuidesRoute
+  '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
-  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
-  '/ar/': typeof ArIndexRoute
-  '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
@@ -463,39 +340,23 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppdashboardIndexRoute
-  '/about': typeof AboutRoute
-  '/cloud': typeof CloudRoute
-  '/contact': typeof ContactRoute
-  '/developers': typeof DevelopersRoute
-  '/documentation-platforms': typeof DocumentationPlatformsRoute
-  '/guides': typeof GuidesRoute
-  '/pricing': typeof PricingRoute
-  '/privacy': typeof PrivacyRoute
-  '/self-hosting': typeof SelfHostingRoute
-  '/terms': typeof TermsRoute
+  '/$page': typeof PageRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
   '/sign-in': typeof authSignInRoute
   '/sign-up': typeof authSignUpRoute
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
-  '/alternatives/gitbook': typeof AlternativesGitbookRoute
-  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
-  '/alternatives/readme': typeof AlternativesReadmeRoute
-  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
-  '/ar/guides': typeof ArGuidesRoute
+  '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
-  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
-  '/ar': typeof ArIndexRoute
-  '/blog': typeof BlogIndexRoute
   '/app/analytics': typeof AppdashboardAnalyticsRoute
   '/app/members': typeof AppdashboardMembersRoute
   '/app/people': typeof AppdashboardPeopleRoute
@@ -522,17 +383,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(auth)': typeof authRouteRouteWithChildren
   '/app': typeof AppRouteRouteWithChildren
-  '/ar': typeof ArRouteRouteWithChildren
-  '/about': typeof AboutRoute
-  '/cloud': typeof CloudRoute
-  '/contact': typeof ContactRoute
-  '/developers': typeof DevelopersRoute
-  '/documentation-platforms': typeof DocumentationPlatformsRoute
-  '/guides': typeof GuidesRoute
-  '/pricing': typeof PricingRoute
-  '/privacy': typeof PrivacyRoute
-  '/self-hosting': typeof SelfHostingRoute
-  '/terms': typeof TermsRoute
+  '/$page': typeof PageRoute
   '/app/(dashboard)': typeof AppdashboardRouteRouteWithChildren
   '/sites/$projectId': typeof SitesProjectIdRouteRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
@@ -541,23 +392,16 @@ export interface FileRoutesById {
   '/(auth)/sign-up': typeof authSignUpRoute
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
-  '/alternatives/gitbook': typeof AlternativesGitbookRoute
-  '/alternatives/mintlify': typeof AlternativesMintlifyRoute
-  '/alternatives/readme': typeof AlternativesReadmeRoute
-  '/ar/documentation-platforms': typeof ArDocumentationPlatformsRoute
-  '/ar/guides': typeof ArGuidesRoute
+  '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
-  '/compare/nibleaf-vs-docusaurus': typeof CompareNibleafVsDocusaurusRoute
-  '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
-  '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
   '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
-  '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
+  '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
-  '/ar/': typeof ArIndexRoute
-  '/blog/': typeof BlogIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
   '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
   '/app/(dashboard)/members': typeof AppdashboardMembersRoute
@@ -587,17 +431,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
-    | '/ar'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/documentation-platforms'
-    | '/guides'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
+    | '/$page'
     | '/sites/$projectId'
     | '/forgot-password'
     | '/reset-password'
@@ -605,23 +439,16 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/verify-email'
     | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/ar/guides'
+    | '/alternatives/$slug'
+    | '/ar/$page'
     | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
+    | '/compare/$slug'
     | '/git-preview/$token'
     | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
-    | '/tools/rtl-documentation-readiness'
+    | '/tools/$slug'
     | '/use-cases/$slug'
-    | '/ar/'
-    | '/blog/'
     | '/app/projects/$projectId'
     | '/app/analytics'
     | '/app/members'
@@ -649,39 +476,23 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/app'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/documentation-platforms'
-    | '/guides'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
+    | '/$page'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
     | '/sign-up'
     | '/verify-email'
     | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/ar/guides'
+    | '/alternatives/$slug'
+    | '/ar/$page'
     | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
+    | '/compare/$slug'
     | '/git-preview/$token'
     | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
-    | '/tools/rtl-documentation-readiness'
+    | '/tools/$slug'
     | '/use-cases/$slug'
-    | '/ar'
-    | '/blog'
     | '/app/analytics'
     | '/app/members'
     | '/app/people'
@@ -707,17 +518,7 @@ export interface FileRouteTypes {
     | '/'
     | '/(auth)'
     | '/app'
-    | '/ar'
-    | '/about'
-    | '/cloud'
-    | '/contact'
-    | '/developers'
-    | '/documentation-platforms'
-    | '/guides'
-    | '/pricing'
-    | '/privacy'
-    | '/self-hosting'
-    | '/terms'
+    | '/$page'
     | '/app/(dashboard)'
     | '/sites/$projectId'
     | '/(auth)/forgot-password'
@@ -726,23 +527,16 @@ export interface FileRouteTypes {
     | '/(auth)/sign-up'
     | '/(auth)/verify-email'
     | '/accept-invite/$invitationId'
-    | '/alternatives/gitbook'
-    | '/alternatives/mintlify'
-    | '/alternatives/readme'
-    | '/ar/documentation-platforms'
-    | '/ar/guides'
+    | '/alternatives/$slug'
+    | '/ar/$page'
     | '/blog/$slug'
-    | '/compare/nibleaf-vs-docusaurus'
-    | '/compare/nibleaf-vs-gitbook'
-    | '/compare/nibleaf-vs-mintlify'
+    | '/compare/$slug'
     | '/git-preview/$token'
     | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
-    | '/tools/rtl-documentation-readiness'
+    | '/tools/$slug'
     | '/use-cases/$slug'
-    | '/ar/'
-    | '/blog/'
     | '/app/projects/$projectId'
     | '/app/(dashboard)/analytics'
     | '/app/(dashboard)/members'
@@ -772,33 +566,20 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   authRouteRoute: typeof authRouteRouteWithChildren
   AppRouteRoute: typeof AppRouteRouteWithChildren
-  ArRouteRoute: typeof ArRouteRouteWithChildren
-  AboutRoute: typeof AboutRoute
-  CloudRoute: typeof CloudRoute
-  ContactRoute: typeof ContactRoute
-  DevelopersRoute: typeof DevelopersRoute
-  DocumentationPlatformsRoute: typeof DocumentationPlatformsRoute
-  GuidesRoute: typeof GuidesRoute
-  PricingRoute: typeof PricingRoute
-  PrivacyRoute: typeof PrivacyRoute
-  SelfHostingRoute: typeof SelfHostingRoute
-  TermsRoute: typeof TermsRoute
+  PageRoute: typeof PageRoute
   SitesProjectIdRouteRoute: typeof SitesProjectIdRouteRouteWithChildren
   AcceptInviteInvitationIdRoute: typeof AcceptInviteInvitationIdRoute
-  AlternativesGitbookRoute: typeof AlternativesGitbookRoute
-  AlternativesMintlifyRoute: typeof AlternativesMintlifyRoute
-  AlternativesReadmeRoute: typeof AlternativesReadmeRoute
+  AlternativesSlugRoute: typeof AlternativesSlugRoute
+  ArPageRoute: typeof ArPageRoute
   BlogSlugRoute: typeof BlogSlugRoute
-  CompareNibleafVsDocusaurusRoute: typeof CompareNibleafVsDocusaurusRoute
-  CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
-  CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
+  CompareSlugRoute: typeof CompareSlugRoute
   GitPreviewTokenRoute: typeof GitPreviewTokenRoute
   JoinTokenRoute: typeof JoinTokenRoute
   OauthConsentRoute: typeof OauthConsentRoute
   OauthProjectRoute: typeof OauthProjectRoute
-  ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
+  ToolsSlugRoute: typeof ToolsSlugRoute
   UseCasesSlugRoute: typeof UseCasesSlugRoute
-  BlogIndexRoute: typeof BlogIndexRoute
+  ArUseCasesSlugRoute: typeof ArUseCasesSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -810,6 +591,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/$page': {
+      id: '/$page'
+      path: '/$page'
+      fullPath: '/$page'
+      preLoaderRoute: typeof PageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)': {
       id: '/(auth)'
       path: ''
@@ -817,88 +605,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/app': {
       id: '/app'
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ar': {
-      id: '/ar'
-      path: '/ar'
-      fullPath: '/ar'
-      preLoaderRoute: typeof ArRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cloud': {
-      id: '/cloud'
-      path: '/cloud'
-      fullPath: '/cloud'
-      preLoaderRoute: typeof CloudRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contact': {
-      id: '/contact'
-      path: '/contact'
-      fullPath: '/contact'
-      preLoaderRoute: typeof ContactRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/developers': {
-      id: '/developers'
-      path: '/developers'
-      fullPath: '/developers'
-      preLoaderRoute: typeof DevelopersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/documentation-platforms': {
-      id: '/documentation-platforms'
-      path: '/documentation-platforms'
-      fullPath: '/documentation-platforms'
-      preLoaderRoute: typeof DocumentationPlatformsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/guides': {
-      id: '/guides'
-      path: '/guides'
-      fullPath: '/guides'
-      preLoaderRoute: typeof GuidesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pricing': {
-      id: '/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof PricingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/self-hosting': {
-      id: '/self-hosting'
-      path: '/self-hosting'
-      fullPath: '/self-hosting'
-      preLoaderRoute: typeof SelfHostingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(auth)/forgot-password': {
@@ -943,25 +654,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcceptInviteInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/alternatives/gitbook': {
-      id: '/alternatives/gitbook'
-      path: '/alternatives/gitbook'
-      fullPath: '/alternatives/gitbook'
-      preLoaderRoute: typeof AlternativesGitbookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/alternatives/mintlify': {
-      id: '/alternatives/mintlify'
-      path: '/alternatives/mintlify'
-      fullPath: '/alternatives/mintlify'
-      preLoaderRoute: typeof AlternativesMintlifyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/alternatives/readme': {
-      id: '/alternatives/readme'
-      path: '/alternatives/readme'
-      fullPath: '/alternatives/readme'
-      preLoaderRoute: typeof AlternativesReadmeRouteImport
+    '/alternatives/$slug': {
+      id: '/alternatives/$slug'
+      path: '/alternatives/$slug'
+      fullPath: '/alternatives/$slug'
+      preLoaderRoute: typeof AlternativesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/(dashboard)': {
@@ -971,32 +668,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppdashboardRouteRouteImport
       parentRoute: typeof AppRouteRoute
     }
-    '/ar/': {
-      id: '/ar/'
-      path: '/'
-      fullPath: '/ar/'
-      preLoaderRoute: typeof ArIndexRouteImport
-      parentRoute: typeof ArRouteRoute
-    }
-    '/ar/documentation-platforms': {
-      id: '/ar/documentation-platforms'
-      path: '/documentation-platforms'
-      fullPath: '/ar/documentation-platforms'
-      preLoaderRoute: typeof ArDocumentationPlatformsRouteImport
-      parentRoute: typeof ArRouteRoute
-    }
-    '/ar/guides': {
-      id: '/ar/guides'
-      path: '/guides'
-      fullPath: '/ar/guides'
-      preLoaderRoute: typeof ArGuidesRouteImport
-      parentRoute: typeof ArRouteRoute
-    }
-    '/blog/': {
-      id: '/blog/'
-      path: '/blog'
-      fullPath: '/blog/'
-      preLoaderRoute: typeof BlogIndexRouteImport
+    '/ar/$page': {
+      id: '/ar/$page'
+      path: '/ar/$page'
+      fullPath: '/ar/$page'
+      preLoaderRoute: typeof ArPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -1006,25 +682,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/compare/nibleaf-vs-docusaurus': {
-      id: '/compare/nibleaf-vs-docusaurus'
-      path: '/compare/nibleaf-vs-docusaurus'
-      fullPath: '/compare/nibleaf-vs-docusaurus'
-      preLoaderRoute: typeof CompareNibleafVsDocusaurusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compare/nibleaf-vs-gitbook': {
-      id: '/compare/nibleaf-vs-gitbook'
-      path: '/compare/nibleaf-vs-gitbook'
-      fullPath: '/compare/nibleaf-vs-gitbook'
-      preLoaderRoute: typeof CompareNibleafVsGitbookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compare/nibleaf-vs-mintlify': {
-      id: '/compare/nibleaf-vs-mintlify'
-      path: '/compare/nibleaf-vs-mintlify'
-      fullPath: '/compare/nibleaf-vs-mintlify'
-      preLoaderRoute: typeof CompareNibleafVsMintlifyRouteImport
+    '/compare/$slug': {
+      id: '/compare/$slug'
+      path: '/compare/$slug'
+      fullPath: '/compare/$slug'
+      preLoaderRoute: typeof CompareSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/git-preview/$token': {
@@ -1062,11 +724,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitesProjectIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tools/rtl-documentation-readiness': {
-      id: '/tools/rtl-documentation-readiness'
-      path: '/tools/rtl-documentation-readiness'
-      fullPath: '/tools/rtl-documentation-readiness'
-      preLoaderRoute: typeof ToolsRtlDocumentationReadinessRouteImport
+    '/tools/$slug': {
+      id: '/tools/$slug'
+      path: '/tools/$slug'
+      fullPath: '/tools/$slug'
+      preLoaderRoute: typeof ToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/use-cases/$slug': {
@@ -1127,10 +789,10 @@ declare module '@tanstack/react-router' {
     }
     '/ar/use-cases/$slug': {
       id: '/ar/use-cases/$slug'
-      path: '/use-cases/$slug'
+      path: '/ar/use-cases/$slug'
       fullPath: '/ar/use-cases/$slug'
       preLoaderRoute: typeof ArUseCasesSlugRouteImport
-      parentRoute: typeof ArRouteRoute
+      parentRoute: typeof rootRouteImport
     }
     '/sites/$projectId/': {
       id: '/sites/$projectId/'
@@ -1349,23 +1011,6 @@ const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
   AppRouteRouteChildren,
 )
 
-interface ArRouteRouteChildren {
-  ArDocumentationPlatformsRoute: typeof ArDocumentationPlatformsRoute
-  ArGuidesRoute: typeof ArGuidesRoute
-  ArIndexRoute: typeof ArIndexRoute
-  ArUseCasesSlugRoute: typeof ArUseCasesSlugRoute
-}
-
-const ArRouteRouteChildren: ArRouteRouteChildren = {
-  ArDocumentationPlatformsRoute: ArDocumentationPlatformsRoute,
-  ArGuidesRoute: ArGuidesRoute,
-  ArIndexRoute: ArIndexRoute,
-  ArUseCasesSlugRoute: ArUseCasesSlugRoute,
-}
-
-const ArRouteRouteWithChildren =
-  ArRouteRoute._addFileChildren(ArRouteRouteChildren)
-
 interface SitesProjectIdRouteRouteChildren {
   SitesProjectIdSplatRoute: typeof SitesProjectIdSplatRoute
   SitesProjectIdChangelogRoute: typeof SitesProjectIdChangelogRoute
@@ -1385,33 +1030,20 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   authRouteRoute: authRouteRouteWithChildren,
   AppRouteRoute: AppRouteRouteWithChildren,
-  ArRouteRoute: ArRouteRouteWithChildren,
-  AboutRoute: AboutRoute,
-  CloudRoute: CloudRoute,
-  ContactRoute: ContactRoute,
-  DevelopersRoute: DevelopersRoute,
-  DocumentationPlatformsRoute: DocumentationPlatformsRoute,
-  GuidesRoute: GuidesRoute,
-  PricingRoute: PricingRoute,
-  PrivacyRoute: PrivacyRoute,
-  SelfHostingRoute: SelfHostingRoute,
-  TermsRoute: TermsRoute,
+  PageRoute: PageRoute,
   SitesProjectIdRouteRoute: SitesProjectIdRouteRouteWithChildren,
   AcceptInviteInvitationIdRoute: AcceptInviteInvitationIdRoute,
-  AlternativesGitbookRoute: AlternativesGitbookRoute,
-  AlternativesMintlifyRoute: AlternativesMintlifyRoute,
-  AlternativesReadmeRoute: AlternativesReadmeRoute,
+  AlternativesSlugRoute: AlternativesSlugRoute,
+  ArPageRoute: ArPageRoute,
   BlogSlugRoute: BlogSlugRoute,
-  CompareNibleafVsDocusaurusRoute: CompareNibleafVsDocusaurusRoute,
-  CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
-  CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
+  CompareSlugRoute: CompareSlugRoute,
   GitPreviewTokenRoute: GitPreviewTokenRoute,
   JoinTokenRoute: JoinTokenRoute,
   OauthConsentRoute: OauthConsentRoute,
   OauthProjectRoute: OauthProjectRoute,
-  ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,
+  ToolsSlugRoute: ToolsSlugRoute,
   UseCasesSlugRoute: UseCasesSlugRoute,
-  BlogIndexRoute: BlogIndexRoute,
+  ArUseCasesSlugRoute: ArUseCasesSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

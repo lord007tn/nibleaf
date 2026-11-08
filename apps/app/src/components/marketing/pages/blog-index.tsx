@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { BlogIndexPage } from '@/components/marketing/blog';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
@@ -18,17 +18,14 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/blog/')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const [{ BLOG_ENTRIES: entries }, seo] = await Promise.all([import('@/lib/blog'), import('@/lib/marketing-seo')]);
-    return { entries, stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: BlogRoute,
-});
+export const load = async () => {
+  const [{ BLOG_ENTRIES: entries }, seo] = await Promise.all([import('@/lib/blog'), import('@/lib/marketing-seo')]);
+  return { entries, stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = BlogRoute;
 
 function BlogRoute() {
-  const { entries, stars } = Route.useLoaderData();
+  const { entries, stars } = useMarketingData<typeof load>();
   return <BlogIndexPage entries={entries} stars={stars} />;
 }

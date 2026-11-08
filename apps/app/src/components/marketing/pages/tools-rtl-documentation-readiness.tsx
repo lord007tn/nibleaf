@@ -1,9 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
-import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, CheckCircle2, Clipboard, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
+import { useMarketingData } from '@/components/marketing/page-data';
 import { trackFirstPublishCta } from '@/lib/first-publish-activation';
 import { trackMarketingEvent } from '@/lib/marketing-events';
 import type { MarketingSeo } from '@/lib/marketing-seo';
@@ -34,15 +34,12 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
   ],
 });
 
-export const Route = createFileRoute('/tools/rtl-documentation-readiness')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const seo = await import('@/lib/marketing-seo');
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: RtlDocumentationReadinessPage,
-});
+export const load = async () => {
+  const seo = await import('@/lib/marketing-seo');
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+};
+
+export const Page = RtlDocumentationReadinessPage;
 
 const SAMPLE_HTML = `<!doctype html>
 <html lang="ar" dir="rtl">
@@ -75,7 +72,7 @@ const SAMPLE_HTML = `<!doctype html>
 </html>`;
 
 function RtlDocumentationReadinessPage() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   const [html, setHtml] = useState(SAMPLE_HTML);
   const [result, setResult] = useState<RtlReadinessResult | null>(null);
   const [copied, setCopied] = useState(false);

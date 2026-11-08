@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, BookOpenCheck, LifeBuoy, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
+import { useMarketingData } from '@/components/marketing/page-data';
 import type { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
 import type { MarketingSeo } from '@/lib/marketing-seo';
 
@@ -72,18 +72,15 @@ const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo, organ
   ],
 });
 
-export const Route = createFileRoute('/contact')({
-  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
-  loader: async () => {
-    const [seo, { NIBLEAF_ORGANIZATION }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/marketing-organization')]);
-    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo, NIBLEAF_ORGANIZATION) };
-  },
-  head: ({ loaderData }) => loaderData?.head ?? {},
-  component: ContactPage,
-});
+export const load = async () => {
+  const [seo, { NIBLEAF_ORGANIZATION }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/marketing-organization')]);
+  return { stars: await seo.getGithubStarsFn(), head: pageHead(seo, NIBLEAF_ORGANIZATION) };
+};
+
+export const Page = ContactPage;
 
 function ContactPage() {
-  const { stars } = Route.useLoaderData();
+  const { stars } = useMarketingData<typeof load>();
   return (
     <MarketingShell stars={stars}>
       <section className="border-border border-b">

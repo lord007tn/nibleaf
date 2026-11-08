@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { readFirstPublishAttribution, recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { persistMarketingAnalyticsConsent } from '@/lib/marketing-analytics';
 
-vi.mock('@tanstack/react-router', () => ({ createFileRoute: () => (options: unknown) => ({ options, useLoaderData: () => ({ stars: 0 }) }) }));
+vi.mock('@/components/marketing/page-data', () => ({ useMarketingData: () => ({ stars: 0 }) }));
 vi.mock('@/components/cloud-marketing', () => ({
   MarketingShell: ({ children }: { children: React.ReactNode }) => children,
   Eyebrow: ({ children }: { children: React.ReactNode }) => children,
@@ -13,7 +13,7 @@ vi.mock('@/components/cloud-marketing', () => ({
   primaryButton: '',
 }));
 
-import { Route } from './rtl-documentation-readiness';
+import { Page } from './tools-rtl-documentation-readiness';
 
 afterEach(() => {
   window.localStorage.clear();
@@ -31,7 +31,7 @@ it.each(['accepted', 'declined'] as const)(
     const container = document.createElement('div');
     document.body.append(container);
     const root = createRoot(container);
-    const Component = Route.options.component as React.ComponentType;
+    const Component = Page;
     try {
       await act(async () => root.render(<Component />));
       const analyze = [...container.querySelectorAll('button')].find((button) => button.textContent === 'Analyze HTML');

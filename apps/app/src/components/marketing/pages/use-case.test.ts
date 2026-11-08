@@ -5,8 +5,8 @@ import { useCasesEn } from '@/components/marketing/copy/use-cases.en';
 
 vi.mock('@/functions/marketing', () => ({ getGithubStarsFn: vi.fn(async () => 7) }));
 
-import { Route as ArabicRoute } from '../ar/use-cases/$slug';
-import { Route as EnglishRoute } from './$slug';
+import { load as loadArabic } from './ar-use-case';
+import { load as loadEnglish } from './use-case';
 
 type Loader = (input: { params: { slug: string } }) => Promise<{ slug: string; head: unknown; stars: number }>;
 type Head = (input: { loaderData?: unknown }) => {
@@ -16,11 +16,12 @@ type Head = (input: { loaderData?: unknown }) => {
 };
 
 describe.each([
-  ['en', EnglishRoute, useCasesEn, 'en_US'],
-  ['ar', ArabicRoute, useCasesAr, 'ar_AR'],
-] as const)('%s use-case route', (lang, Route, copies, locale) => {
-  const loader = Route.options.loader as unknown as Loader;
-  const head = Route.options.head as unknown as Head;
+  ['en', loadEnglish, useCasesEn, 'en_US'],
+  ['ar', loadArabic, useCasesAr, 'ar_AR'],
+] as const)('%s use-case page', (lang, load, copies, locale) => {
+  const loader = load as unknown as Loader;
+  const head = ({ loaderData }: { loaderData?: unknown }) =>
+    ((loaderData as { head?: ReturnType<Head> } | undefined)?.head ?? {}) as ReturnType<Head>;
 
   it.each(['unknown', 'Support-Teams', 'toString', 'support-teams.md'])('returns not found for slug %s', async (slug) => {
     const error = await loader({ params: { slug } }).catch((caught: unknown) => caught);
