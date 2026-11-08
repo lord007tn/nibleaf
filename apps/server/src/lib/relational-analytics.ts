@@ -47,6 +47,8 @@ export const relationalViewSummary = async (projectIds: string[], interval: Retu
   const counts = new Map(rows.map((row) => [row.date, Number(row.views)]));
   return {
     totalViews: Number(totals?.views ?? 0),
+    // Exact millisecond windows here, so the compared total is the displayed one.
+    comparableTotalViews: Number(totals?.views ?? 0),
     previousTotalViews,
     uniqueVisitors: Number(totals?.visitors ?? 0),
     timeseries: interval.dates.map((date) => ({ date, views: counts.get(date) ?? 0 })),

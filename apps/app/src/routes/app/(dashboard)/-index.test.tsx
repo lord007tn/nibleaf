@@ -353,7 +353,15 @@ describe('dashboard request recovery', () => {
     // Seven flat days used to read "+33%" (days 4-7 vs days 1-3). Same total as before: flat.
     mocks.analytics.mockReturnValue({
       isPending: false,
-      data: { totalViews: 70, previousTotalViews: 70, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+      data: {
+        totalViews: 70,
+        comparableTotalViews: 70,
+        previousTotalViews: 70,
+        uniqueVisitors: 9,
+        timeseries: flatWeek,
+        byProject: [],
+        availability: 'complete',
+      },
     });
     await act(async () => root.render(<DashboardPage />));
     expect(pageViewsCard()?.textContent).toContain('analytics.delta.flatSpoken');
@@ -362,7 +370,15 @@ describe('dashboard request recovery', () => {
     // A real doubling against the previous window.
     mocks.analytics.mockReturnValue({
       isPending: false,
-      data: { totalViews: 140, previousTotalViews: 70, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+      data: {
+        totalViews: 140,
+        comparableTotalViews: 140,
+        previousTotalViews: 70,
+        uniqueVisitors: 9,
+        timeseries: flatWeek,
+        byProject: [],
+        availability: 'complete',
+      },
     });
     await act(async () => root.render(<DashboardPage />));
     expect(pageViewsCard()?.textContent).toContain('analytics.delta.upSpoken');
@@ -372,7 +388,15 @@ describe('dashboard request recovery', () => {
   it('shows no comparison when the previous window is unknown', async () => {
     mocks.analytics.mockReturnValue({
       isPending: false,
-      data: { totalViews: 140, previousTotalViews: null, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+      data: {
+        totalViews: 140,
+        comparableTotalViews: 140,
+        previousTotalViews: null,
+        uniqueVisitors: 9,
+        timeseries: flatWeek,
+        byProject: [],
+        availability: 'complete',
+      },
     });
     await act(async () => root.render(<DashboardPage />));
     expect(pageViewsCard()?.textContent).not.toContain('analytics.vsPrevious');

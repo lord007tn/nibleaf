@@ -5,10 +5,42 @@ export type AnalyticsAvailability = 'complete' | 'partial' | 'unavailable';
 export type AnalyticsRange = '24h' | '7d' | '30d' | '90d';
 
 const RANGE_DAYS: Record<AnalyticsRange, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
-/** The selected rolling window, and the equal window right before it. */
-const CURRENT_WINDOW = "hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))";
-const PREVIOUS_WINDOW =
-  "hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16} * 2)) AND hour < toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))";
+const HOUR_MS = 3_600_000;
+
+/**
+ * Every bound of one request, computed once from a single clock reading so
+ * queries never disagree about "now" across an hour boundary.
+ * - `displayStart`: the hourly bucket containing now - N days. The totals,
+ *   lists and chart cover it through now (both partial edge hours included).
+ * - `comparable`/`previous`: two equal, adjacent windows of completed hours
+ *   ending at the start of the current hour, so "vs previous period" compares
+ *   like with like (constant traffic reads flat).
+ */
+export const analyticsWindows = (days: number, now = new Date()) => {
+  const span = days * 86_400_000;
+  const anchor = Math.floor(now.getTime() / HOUR_MS) * HOUR_MS;
+  return {
+    displayStart: Math.floor((now.getTime() - span) / HOUR_MS) * HOUR_MS,
+    comparable: { start: anchor - span, end: anchor },
+    previous: { start: anchor - 2 * span, end: anchor - span },
+  };
+};
+
+const windowParams = (days: number, now = new Date()) => {
+  const windows = analyticsWindows(days, now);
+  const seconds = (ms: number) => Math.floor(ms / 1000);
+  return {
+    display_start: seconds(windows.displayStart),
+    comparable_start: seconds(windows.comparable.start),
+    comparable_end: seconds(windows.comparable.end),
+    previous_start: seconds(windows.previous.start),
+    previous_end: seconds(windows.previous.end),
+  };
+};
+
+const CURRENT_WINDOW = "hour >= toDateTime({display_start:UInt32}, 'UTC')";
+const COMPARABLE_WINDOW = "hour >= toDateTime({comparable_start:UInt32}, 'UTC') AND hour < toDateTime({comparable_end:UInt32}, 'UTC')";
+const PREVIOUS_WINDOW = "hour >= toDateTime({previous_start:UInt32}, 'UTC') AND hour < toDateTime({previous_end:UInt32}, 'UTC')";
 const safeTimezone = (timezone: string): string => {
   try {
     new Intl.DateTimeFormat('en', { timeZone: timezone }).format();
@@ -49,7 +81,8 @@ export const windowDays = (days: number, timezone: string, now = new Date()): st
   };
   const last = dateAt(now);
   const out: string[] = [];
-  let day = new Date(`${dateAt(new Date(now.getTime() - days * 86_400_000))}T00:00:00Z`);
+  // The same first hour the SQL reads, so a quiet first local day (e.g. 23:30 in Kolkata) still gets its bucket.
+  let day = new Date(`${dateAt(new Date(analyticsWindows(days, now).displayStart))}T00:00:00Z`);
   while (day.toISOString().slice(0, 10) <= last) {
     out.push(day.toISOString().slice(0, 10));
     day = new Date(day.getTime() + 86_400_000);
@@ -73,7 +106,9 @@ export interface ProjectAnalyticsOverview {
   range: AnalyticsRange;
   timezone: string;
   totalViews: number | null;
-  /** Page views in the equal window right before this one (for "vs previous period"). */
+  /** Page views in the completed hours of the selected window, compared with... */
+  comparableTotalViews: number | null;
+  /** ...page views in the equal window right before it (for "vs previous period"). */
   previousTotalViews: number | null;
   uniqueVisitors: number | null;
   timeseries: Array<{ date: string; views: number }>;
@@ -105,6 +140,7 @@ const unavailableProjectOverview = (range: AnalyticsRange, timezone: string): Pr
   range,
   timezone,
   totalViews: null,
+  comparableTotalViews: null,
   previousTotalViews: null,
   uniqueVisitors: null,
   timeseries: [],
@@ -126,66 +162,73 @@ export const queryProjectAnalytics = async (
   client: ClickHouseClient = getClickHouseClient('reader'),
 ): Promise<ProjectAnalyticsOverview> => {
   const tz = safeTimezone(timezone);
-  const params = { tenant_id: tenantId, project_id: projectId, days: RANGE_DAYS[range], timezone: tz };
+  const now = new Date();
+  const params = { tenant_id: tenantId, project_id: projectId, days: RANGE_DAYS[range], timezone: tz, ...windowParams(RANGE_DAYS[range], now) };
   const scope =
     'tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)';
   const common = `${scope} AND ${CURRENT_WINDOW}`;
   try {
-    const [totals, previousTotals, visitors, days, pages, referrers, languages, devices, search, ai, noAnswer, engagement] = await Promise.all([
-      json<CountRow>(
-        client,
-        `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
-        params,
-      ),
-      json<CountRow>(
-        client,
-        `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
-        params,
-      ),
-      json<CountRow>(
-        client,
-        `SELECT uniqCombined64Merge(sessions) AS value FROM analytics_hourly WHERE ${common} AND event_name = 'page_view'`,
-        params,
-      ),
-      json<DayRow>(
-        client,
-        `SELECT date, sum(c) AS views FROM (SELECT formatDateTime(toTimeZone(hour, {timezone:String}), '%F') AS date, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain) GROUP BY date ORDER BY date`,
-        params,
-      ),
-      json<DimensionRow>(
-        client,
-        `SELECT path AS key, sum(c) AS value FROM (SELECT path, hour, language, device, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND path != '' GROUP BY path, hour, language, device, referrer_domain) GROUP BY path ORDER BY value DESC LIMIT 10`,
-        params,
-      ),
-      json<DimensionRow>(
-        client,
-        `SELECT referrer_domain AS key, sum(c) AS value FROM (SELECT referrer_domain, hour, path, language, device, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND referrer_domain != '' GROUP BY referrer_domain, hour, path, language, device) GROUP BY referrer_domain ORDER BY value DESC LIMIT 8`,
-        params,
-      ),
-      json<DimensionRow>(
-        client,
-        `SELECT language AS key, sum(c) AS value FROM (SELECT language, hour, path, device, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND language != '' GROUP BY language, hour, path, device, referrer_domain) GROUP BY language ORDER BY value DESC LIMIT 12`,
-        params,
-      ),
-      json<DimensionRow>(
-        client,
-        `SELECT device AS key, sum(c) AS value FROM (SELECT device, hour, path, language, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND device != '' GROUP BY device, hour, path, language, referrer_domain) GROUP BY device ORDER BY value DESC`,
-        params,
-      ),
-      json<Record<string, string | number>>(
-        client,
-        `SELECT
+    const [totals, comparableTotals, previousTotals, visitors, days, pages, referrers, languages, devices, search, ai, noAnswer, engagement] =
+      await Promise.all([
+        json<CountRow>(
+          client,
+          `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
+          params,
+        ),
+        json<CountRow>(
+          client,
+          `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${COMPARABLE_WINDOW} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
+          params,
+        ),
+        json<CountRow>(
+          client,
+          `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
+          params,
+        ),
+        json<CountRow>(
+          client,
+          `SELECT uniqCombined64Merge(sessions) AS value FROM analytics_hourly WHERE ${common} AND event_name = 'page_view'`,
+          params,
+        ),
+        json<DayRow>(
+          client,
+          `SELECT date, sum(c) AS views FROM (SELECT formatDateTime(toTimeZone(hour, {timezone:String}), '%F') AS date, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain) GROUP BY date ORDER BY date`,
+          params,
+        ),
+        json<DimensionRow>(
+          client,
+          `SELECT path AS key, sum(c) AS value FROM (SELECT path, hour, language, device, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND path != '' GROUP BY path, hour, language, device, referrer_domain) GROUP BY path ORDER BY value DESC LIMIT 10`,
+          params,
+        ),
+        json<DimensionRow>(
+          client,
+          `SELECT referrer_domain AS key, sum(c) AS value FROM (SELECT referrer_domain, hour, path, language, device, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND referrer_domain != '' GROUP BY referrer_domain, hour, path, language, device) GROUP BY referrer_domain ORDER BY value DESC LIMIT 8`,
+          params,
+        ),
+        json<DimensionRow>(
+          client,
+          `SELECT language AS key, sum(c) AS value FROM (SELECT language, hour, path, device, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND language != '' GROUP BY language, hour, path, device, referrer_domain) GROUP BY language ORDER BY value DESC LIMIT 12`,
+          params,
+        ),
+        json<DimensionRow>(
+          client,
+          `SELECT device AS key, sum(c) AS value FROM (SELECT device, hour, path, language, referrer_domain, uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' AND device != '' GROUP BY device, hour, path, language, referrer_domain) GROUP BY device ORDER BY value DESC`,
+          params,
+        ),
+        json<Record<string, string | number>>(
+          client,
+          `SELECT
         uniqExactIf(event_id, event_name = 'search_query_submitted') AS total,
         uniqExactIf(event_id, event_name = 'search_zero_result') AS zero_results,
         uniqExactIf(event_id, event_name = 'search_result_clicked') AS clicked_results,
         sumIf(latency_ms, event_name = 'search_results_returned') AS latency_sum_value,
         countIf(event_name = 'search_results_returned' AND latency_known = 1) AS latency_samples_value
       FROM analytics_search_hourly FINAL WHERE ${common}`,
-        params,
-      ),
-      json<Record<string, string | number>>(
-        client,
-        `SELECT
+          params,
+        ),
+        json<Record<string, string | number>>(
+          client,
+          `SELECT
         uniqExactIf(event_id, event_name = 'answer_completed') AS completed,
         uniqExactIf(event_id, event_name = 'answer_failed') AS failed,
         sumIf(prompt_tokens, event_name = 'answer_completed') AS prompt_tokens,
@@ -197,19 +240,19 @@ export const queryProjectAnalytics = async (
         sumIf(latency_ms, event_name = 'answer_completed') AS latency_sum_value,
         countIf(event_name = 'answer_completed' AND latency_known = 1) AS latency_samples_value
       FROM analytics_search_hourly FINAL WHERE ${common}`,
-        params,
-      ),
-      json<DimensionRow>(
-        client,
-        `SELECT no_answer_reason AS key, uniqExact(event_id) AS value FROM analytics_search_hourly FINAL WHERE ${common} AND no_answer_reason != '' GROUP BY no_answer_reason ORDER BY value DESC LIMIT 12`,
-        params,
-      ),
-      json<Record<string, string | number>>(
-        client,
-        `SELECT uniqCombined64(event_id) AS engaged, avgIf(engagement_ms, engagement_ms > 0) AS average_ms FROM analytics_events FINAL WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND occurred_at >= now() - toIntervalDay({days:UInt16}) AND event_name = 'page_engaged'`,
-        params,
-      ),
-    ]);
+          params,
+        ),
+        json<DimensionRow>(
+          client,
+          `SELECT no_answer_reason AS key, uniqExact(event_id) AS value FROM analytics_search_hourly FINAL WHERE ${common} AND no_answer_reason != '' GROUP BY no_answer_reason ORDER BY value DESC LIMIT 12`,
+          params,
+        ),
+        json<Record<string, string | number>>(
+          client,
+          `SELECT uniqCombined64(event_id) AS engaged, avgIf(engagement_ms, engagement_ms > 0) AS average_ms FROM analytics_events FINAL WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND occurred_at >= now() - toIntervalDay({days:UInt16}) AND event_name = 'page_engaged'`,
+          params,
+        ),
+      ]);
     const searchRow = search[0] ?? {};
     const aiRow = ai[0] ?? {};
     const engagementRow = engagement[0] ?? {};
@@ -227,9 +270,10 @@ export const queryProjectAnalytics = async (
       range,
       timezone: tz,
       totalViews: num(totals[0]?.value),
+      comparableTotalViews: num(comparableTotals[0]?.value),
       previousTotalViews: num(previousTotals[0]?.value),
       uniqueVisitors: num(visitors[0]?.value),
-      timeseries: fillDays(days, RANGE_DAYS[range], tz),
+      timeseries: fillDays(days, RANGE_DAYS[range], tz, now),
       topPages: pages.map((row) => ({ path: row.key, views: num(row.value) })),
       referrers: referrers.map((row) => ({ referrer: row.key, views: num(row.value) })),
       languages: languages.map((row) => ({ language: row.key, views: num(row.value) })),
@@ -280,6 +324,7 @@ export const queryWorkspaceAnalytics = async (
       range,
       timezone: tz,
       totalViews: 0,
+      comparableTotalViews: 0,
       previousTotalViews: 0,
       uniqueVisitors: 0,
       timeseries: fillDays([], RANGE_DAYS[range], tz),
@@ -291,20 +336,27 @@ export const queryWorkspaceAnalytics = async (
       ai: { answersCompleted: 0, answersFailed: 0, promptTokens: 0, completionTokens: 0, costMicros: 0, averageLatencyMs: null },
     };
   }
+  const now = new Date();
   const params = {
     tenant_ids: authorizedProjects.map(({ tenantId }) => tenantId),
     project_ids: authorizedProjects.map(({ projectId }) => projectId),
     days: RANGE_DAYS[range],
     timezone: tz,
+    ...windowParams(RANGE_DAYS[range], now),
   };
   const scope =
     '(tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)}) AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)';
   const common = `${scope} AND ${CURRENT_WINDOW}`;
   try {
-    const [total, previousTotal, visitors, days, byProject, pages, referrers, devices, search, ai] = await Promise.all([
+    const [total, comparableTotal, previousTotal, visitors, days, byProject, pages, referrers, devices, search, ai] = await Promise.all([
       json<CountRow>(
         client,
         `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY project_id, hour, path, language, device, referrer_domain)`,
+        params,
+      ),
+      json<CountRow>(
+        client,
+        `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${COMPARABLE_WINDOW} AND event_name = 'page_view' GROUP BY project_id, hour, path, language, device, referrer_domain)`,
         params,
       ),
       json<CountRow>(
@@ -369,9 +421,10 @@ export const queryWorkspaceAnalytics = async (
       range,
       timezone: tz,
       totalViews: num(total[0]?.value),
+      comparableTotalViews: num(comparableTotal[0]?.value),
       previousTotalViews: num(previousTotal[0]?.value),
       uniqueVisitors: num(visitors[0]?.value),
-      timeseries: fillDays(days, RANGE_DAYS[range], tz),
+      timeseries: fillDays(days, RANGE_DAYS[range], tz, now),
       byProject: byProject.map((row) => ({ projectId: row.key, views: num(row.value) })),
       topPages: pages.map((row) => ({ projectId: String(row.project_id), path: String(row.path), views: num(row.value) })),
       referrers: referrers.map((row) => ({ referrer: row.key, views: num(row.value) })),

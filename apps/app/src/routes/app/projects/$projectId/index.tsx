@@ -119,7 +119,7 @@ function SiteOverviewPage() {
   // Against the equal window right before this one; hidden when either side isn't known.
   const viewsDelta = analyticsUnknown
     ? null
-    : compareDelta({ value: analytics?.totalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
+    : compareDelta({ value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
   const recentPages = useMemo(
     () =>
       (pages ?? [])
@@ -347,7 +347,15 @@ function SiteOverviewPage() {
 
       {/* Traffic chart */}
       <div className="mt-6 flex flex-col gap-4">
-        {analyticsError ? <QueryErrorState onRetry={() => void analyticsQuery.refetch()} retrying={analyticsQuery.isFetching} /> : null}
+        {/* A failed request and an analytics outage (a successful "unavailable" response) both retry in place. */}
+        {analyticsUnknown ? (
+          <QueryErrorState
+            description={analyticsError ? undefined : t('analytics.state.unavailable.body')}
+            onRetry={() => void analyticsQuery.refetch()}
+            retrying={analyticsQuery.isFetching}
+            title={analyticsError ? undefined : t('analytics.state.unavailable.title')}
+          />
+        ) : null}
         <ViewsAreaChart
           title={t('overview.viewsTitle')}
           description={t('overview.viewsDesc')}

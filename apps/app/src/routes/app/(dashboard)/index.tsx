@@ -132,7 +132,7 @@ function ProjectsPage() {
   // Against the equal window right before this one; hidden when either side isn't known.
   const viewsDelta = analyticsUnavailable
     ? null
-    : compareDelta({ value: analytics?.totalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
+    : compareDelta({ value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
   const hasSites = !projectsLoading && siteList.length > 0;
   // A brand-new user gets a "what to do next" path, not a wall of zeros:

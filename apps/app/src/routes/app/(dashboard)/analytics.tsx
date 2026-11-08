@@ -72,7 +72,9 @@ function WorkspaceAnalyticsPage() {
   );
   const sitesWithTraffic = unavailable ? null : byProject.filter((p) => p.views > 0).length;
   // Against the equal window right before this one; hidden when either side isn't known.
-  const viewsDelta = unavailable ? null : compareDelta({ value: data?.totalViews ?? null, previous: data?.previousTotalViews ?? null }, 'count');
+  const viewsDelta = unavailable
+    ? null
+    : compareDelta({ value: data?.comparableTotalViews ?? null, previous: data?.previousTotalViews ?? null }, 'count');
   // The workspace roll-up never lists search terms when they're redacted (each site's Search
   // report applies its own privacy settings), so an empty list with searches isn't "no searches".
   const searchTotal = data?.searches.total ?? 0;
@@ -91,13 +93,15 @@ function WorkspaceAnalyticsPage() {
         <RangeTabs value={range} onValueChange={setRange} />
       </div>
 
+      {/* A failed request and an analytics outage (a successful response saying "unavailable") both retry in place. */}
       {isError ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
       {unavailable && !isError ? (
-        <Alert variant="warning">
-          <AlertTriangle />
-          <AlertTitle>{t('analytics.state.unavailable.title')}</AlertTitle>
-          <AlertDescription>{t('analytics.state.unavailable.body')}</AlertDescription>
-        </Alert>
+        <QueryErrorState
+          description={t('analytics.state.unavailable.body')}
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+          title={t('analytics.state.unavailable.title')}
+        />
       ) : null}
       {partial ? (
         <Alert variant="info">

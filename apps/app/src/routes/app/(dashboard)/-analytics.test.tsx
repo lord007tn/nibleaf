@@ -35,7 +35,9 @@ const AnalyticsPage = Route.options.component as unknown as ComponentType;
 
 const workspace = (overrides: Record<string, unknown> = {}) => ({
   availability: 'complete',
-  totalViews: 1200,
+  totalViews: 1230,
+  // The delta compares completed hours with the equal window before them, not the displayed total.
+  comparableTotalViews: 1200,
   previousTotalViews: 1000,
   uniqueVisitors: 300,
   timeseries: [],
@@ -101,6 +103,20 @@ describe('workspace analytics', () => {
     await act(async () => root.render(<AnalyticsPage />));
     expect(card(container, 'analytics.kpi.sitesWithTraffic')?.querySelector('[data-slot="card-title"]')?.textContent).toBe('1');
     expect(card(container, 'analytics.kpi.pageViews')?.textContent).toContain('+20%');
+  });
+
+  it('retries in place when analytics answers that it is unavailable (an outage, not a failed request)', async () => {
+    mocks.analytics.mockReturnValue({
+      isPending: false,
+      isError: false,
+      isFetching: false,
+      refetch: mocks.refetch,
+      data: workspace({ availability: 'unavailable' }),
+    });
+    await act(async () => root.render(<AnalyticsPage />));
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('analytics.state.unavailable.title');
+    await act(async () => container.querySelector<HTMLButtonElement>('[role="alert"] button')?.click());
+    expect(mocks.refetch).toHaveBeenCalledOnce();
   });
 
   it('retries a failed read in place', async () => {
