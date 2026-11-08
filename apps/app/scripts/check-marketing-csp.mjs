@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { request } from 'node:http';
+import { parseHTML } from 'linkedom';
 
 // Run against the built app in CI after every framework/Router upgrade. No DOM
 // parser shared with the implementation: independently hash the raw script text.
@@ -50,9 +51,10 @@ for (const path of paths) {
     assert.match(privateResponse.headers['content-security-policy'] ?? '', /nonce-/);
     const nonce = /'nonce-([^']+)'/.exec(privateResponse.headers['content-security-policy'] ?? '')?.[1];
     let executable = 0;
-    for (const script of privateResponse.html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
-      if (/\bsrc=|\btype=["']application\/ld\+json/i.test(script[1])) continue;
-      assert.ok(script[1].includes(`nonce="${nonce}"`), `Nonce mismatch at ${path}`);
+    for (const script of parseHTML(privateResponse.html).document.querySelectorAll('script:not([src])')) {
+      const type = script.getAttribute('type');
+      if (type && !['module', 'text/javascript', 'application/javascript'].includes(type)) continue;
+      assert.equal(script.getAttribute('nonce'), nonce, `Nonce mismatch at ${path}`);
       executable++;
     }
     assert.ok(executable > 0 && privateResponse.html.includes('data-tsr-stream-part'), `Missing private hydration at ${path}`);

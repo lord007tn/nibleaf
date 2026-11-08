@@ -50,6 +50,17 @@ test('accepts exact-SHA successful source runs and returns a dry-run receipt', a
   assert.ok(receipts.every((receipt) => receipt.sha === sha && receipt.conclusion === 'success'));
 });
 
+test('queries push runs separately so newer dispatch runs cannot hide them', async () => {
+  const fixture = options([run]);
+  await checkSourceCi({
+    ...fixture,
+    fetchImpl: async (url) => {
+      if (!String(url).includes('/jobs?')) assert.equal(new URL(url).searchParams.get('event'), 'push');
+      return fixture.fetchImpl(url);
+    },
+  });
+});
+
 for (const candidate of [
   { ...run, conclusion: 'failure' },
   { ...run, conclusion: 'cancelled' },

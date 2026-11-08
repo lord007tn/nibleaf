@@ -191,6 +191,8 @@ Allowlisted marketing pages on `nibleaf.com` now use hash-based script CSP and
 Authorization or query string. They contain no nonce metadata. Dashboard,
 authentication, reader, unknown and credential-bearing routes keep request
 nonces and `private, no-store`. Errors and responses setting cookies are private.
+This applies to HTML responses when `Accept` permits HTML; requests preferring
+Markdown receive the Markdown representation and its own cache policy.
 
 Marketing rendering completes Suspense before emitting HTML, normalizes router
 timestamps before dehydration, and computes hashes after the manifest rewrite.
@@ -198,6 +200,8 @@ The footer year is fixed at build time. Set `MARKETING_GITHUB_STARS` to a verifi
 nonnegative integer when building to display a fixed star count; the default 0
 is the unavailable-count fallback. Counts and year refresh on the next build.
 For a Docker source build, pass `--build-arg MARKETING_GITHUB_STARS=<verified-count>`.
+The manual publication workflow reads the repository's verified star count and
+passes that snapshot to the image build automatically.
 The built-app CI guard compares human/bot HTML and checks every inline hash on
 English and Arabic pages after every framework upgrade.
 

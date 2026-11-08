@@ -16,7 +16,7 @@ export async function checkSourceCi({ repository, sha, token, fetchImpl = fetch 
   }
   const receipts = [];
   for (const workflow of requiredWorkflows) {
-    const url = `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/runs?head_sha=${sha}&per_page=100`;
+    const url = `https://api.github.com/repos/${repository}/actions/workflows/${workflow}/runs?head_sha=${sha}&event=push&per_page=100`;
     const response = await fetchImpl(url, {
       headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
       signal: AbortSignal.timeout(30_000),

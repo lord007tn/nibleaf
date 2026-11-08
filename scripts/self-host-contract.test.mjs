@@ -14,6 +14,9 @@ test('Docker builds can supply the fixed marketing star snapshot', async () => {
   assert.match(dockerfile, /FROM base AS build\nARG MARKETING_GITHUB_STARS=0\nENV MARKETING_GITHUB_STARS=\$MARKETING_GITHUB_STARS/);
   const turbo = JSON.parse(await readFile('turbo.json', 'utf8'));
   assert.ok(turbo.tasks.build.env.includes('MARKETING_GITHUB_STARS'));
+  const workflow = await readFile('.github/workflows/docker.yml', 'utf8');
+  assert.match(workflow, /gh api[^\n]*stargazers_count/);
+  assert.match(workflow, /MARKETING_GITHUB_STARS=\$\{\{ steps.marketing.outputs.stars \}\}/);
 });
 
 test('restore advice points to empty-target recovery and cannot revive the unsafe recipe', async () => {
@@ -48,7 +51,7 @@ test('next-release Compose forwards documented export/MCP values and includes bo
   const example = await readFile('.env.production.example', 'utf8');
   const keys = [...example.matchAll(/^(EXPORT_\w+|MCP_WRITE_RATE_LIMIT_PER_MIN|MCP_PUBLISH_RATE_LIMIT_PER_HOUR)=/gm)].map((match) => match[1]);
   const env = {
-    ...process.env,
+    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('COMPOSE_'))),
     POSTGRES_PASSWORD: 'fixture',
     STORAGE_PUBLIC_ENDPOINT: 'https://storage.invalid',
     STORAGE_ACCESS_KEY_ID: 'fixture',
@@ -84,6 +87,8 @@ test('next-release Compose forwards documented export/MCP values and includes bo
         'compose',
         '-p',
         'nibleaf-selfhost',
+        '--env-file',
+        process.platform === 'win32' ? 'NUL' : '/dev/null',
         '-f',
         'docker-compose.prod.yml',
         '--profile',
@@ -120,10 +125,25 @@ test('next-release Compose forwards documented export/MCP values and includes bo
   assert.ok(config.services['analytics-migrate'].depends_on.postgres);
   assert.ok(config.services['analytics-migrate'].depends_on.clickhouse);
   const disabled = JSON.parse(
-    execFileSync('docker', ['compose', '-p', 'nibleaf-selfhost', '-f', 'docker-compose.prod.yml', 'config', '--format', 'json'], {
-      env: { ...env, COMPOSE_PROFILES: '', ANALYTICS_MODE: 'disabled', CLICKHOUSE_PASSWORD: '', CLICKHOUSE_WRITER_PASSWORD: '' },
-      encoding: 'utf8',
-    }),
+    execFileSync(
+      'docker',
+      [
+        'compose',
+        '-p',
+        'nibleaf-selfhost',
+        '--env-file',
+        process.platform === 'win32' ? 'NUL' : '/dev/null',
+        '-f',
+        'docker-compose.prod.yml',
+        'config',
+        '--format',
+        'json',
+      ],
+      {
+        env: { ...env, COMPOSE_PROFILES: '', ANALYTICS_MODE: 'disabled', CLICKHOUSE_PASSWORD: '', CLICKHOUSE_WRITER_PASSWORD: '' },
+        encoding: 'utf8',
+      },
+    ),
   );
   assert.equal(disabled.services.clickhouse, undefined);
 });

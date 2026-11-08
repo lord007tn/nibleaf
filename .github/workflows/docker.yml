@@ -161,6 +161,15 @@ jobs:
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: node scripts/check-source-ci.mjs
 
+      - name: Capture verified marketing star count
+        id: marketing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          stars=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.stargazers_count')
+          if [[ ! "$stars" =~ ^[0-9]+$ ]]; then exit 1; fi
+          echo "stars=$stars" >> "$GITHUB_OUTPUT"
+
       # QEMU emulates arm64 so the published image runs on Graviton/Ampere/
       # Raspberry Pi hosts as well as amd64.
       - name: Set up QEMU
@@ -176,16 +185,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Reject existing immutable image tags
-        if: inputs.publish
-        env:
-          IMAGE: ghcr.io/${{ github.repository }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          TAG: ${{ inputs.image_tag }}
-          GHCR_USERNAME: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/reject-existing-immutable-tags.mjs
 
       - name: Docker metadata
         id: meta
@@ -215,6 +214,7 @@ jobs:
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
             REVISION=${{ steps.source.outputs.sha }}
+            MARKETING_GITHUB_STARS=${{ steps.marketing.outputs.stars }}
           pull: true
           # Query current stable OS packages on every manual build without
           # disabling the build/runtime-deps stages or pnpm store caches.
@@ -225,6 +225,16 @@ jobs:
             type=gha,mode=max,scope=nibleaf-image,ignore-error=true
           provenance: mode=max
           sbom: true
+
+      - name: Reject existing immutable image tags
+        if: inputs.publish
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          TAG: ${{ inputs.image_tag }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/reject-existing-immutable-tags.mjs
 
       - name: Recheck source CI before publication
         if: inputs.publish

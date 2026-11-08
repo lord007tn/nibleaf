@@ -86,9 +86,15 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
     checkResponse('llms', targets.llms, fetchImpl, {}, (response, body) => {
       if (response.status !== 200) return 'llms.txt must return HTTP 200.';
       if (!body.trim()) return 'llms.txt must contain nonempty UTF-8 text.';
+      let leading = body.trimStart();
+      while (leading.startsWith('<!--')) {
+        const end = leading.indexOf('-->');
+        if (end === -1) break;
+        leading = leading.slice(end + 3).trimStart();
+      }
       if (
         /(?:text\/html|application\/xhtml\+xml)/i.test(response.headers.get('content-type') ?? '') ||
-        /^(?:\s|<!--[\s\S]*?-->)*<(?:!doctype\s+html|html|head|body|form|div|main|section|h[1-6]|input)\b/i.test(body)
+        /^<(?:!doctype\s+html|html|head|body|form|div|main|section|h[1-6]|input)\b/i.test(leading)
       ) {
         return 'llms.txt returned HTML, possibly a sign-in page; serve plain text or Markdown.';
       }
