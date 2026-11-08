@@ -1,6 +1,6 @@
 import { randomInt, timingSafeEqual } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
-import { prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import { renderSiteSignInCodeEmail, resolveEmailLanguage } from '@nibleaf/email';
 import { createLogger } from '@nibleaf/logger';
 import type { SiteSignInStartBody, SiteSignInVerifyBody } from '@nibleaf/validators';
@@ -28,6 +28,13 @@ const SIGN_IN_CODE_MAX_ATTEMPTS = 5;
 /** Codes one address can be sent per site and window. */
 const SIGN_IN_CODES_PER_WINDOW = 5;
 const SIGN_IN_WINDOW_MS = 15 * 60_000;
+/** Codes one address can be sent per site in a rolling day. */
+const SIGN_IN_CODES_PER_DAY = 10;
+const SIGN_IN_DAY_MS = 24 * 60 * 60_000;
+/** Consecutive codes that ran out of guesses before an address is paused for a day. */
+const SIGN_IN_BURNED_CODES_LOCKOUT = 3;
+/** How long codes are kept: long enough for the day-long budgets above. */
+const SIGN_IN_HISTORY_MS = SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
 const SITE_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 
 /** The row id salts the hash, so equal codes never share a hash. */
@@ -58,18 +65,44 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
   return reader && !reader.revokedAt ? { kind: 'reader', readerId: reader.id } : null;
 };
 
-const issueCode = async (projectId: string, email: string, language?: string) => {
-  const recent = await prisma.siteSignInCode.count({ where: { projectId, email, createdAt: { gt: new Date(Date.now() - SIGN_IN_WINDOW_MS) } } });
-  if (recent >= SIGN_IN_CODES_PER_WINDOW) return;
-  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-  const row = await prisma.siteSignInCode.create({
-    data: { projectId, email, codeHash: 'pending', expiresAt: new Date(Date.now() + SIGN_IN_CODE_TTL_MS) },
-    select: { id: true, project: { select: { name: true } } },
+/**
+ * Whether this address may be sent another code now. The per-IP limit does not
+ * stop a distributed attacker, so every budget is per (site, address):
+ * - 5 codes per 15 minutes and 10 per rolling 24 hours, so at most 50 guesses
+ *   a day and a bounded number of emails to any one inbox;
+ * - after 3 consecutive codes that each ran out of guesses, none for 24 hours.
+ * Codes are kept for the 24-hour look-back (see SIGN_IN_HISTORY_MS).
+ */
+const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, email: string, now: number): Promise<boolean> => {
+  const recent = await tx.siteSignInCode.findMany({
+    where: { projectId, email, createdAt: { gt: new Date(now - SIGN_IN_DAY_MS) } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true, attempts: true },
   });
-  await prisma.siteSignInCode.update({ where: { id: row.id }, data: { codeHash: codeHash(row.id, code) } });
+  if (recent.length >= SIGN_IN_CODES_PER_DAY) return false;
+  if (recent.filter((row) => row.createdAt.getTime() > now - SIGN_IN_WINDOW_MS).length >= SIGN_IN_CODES_PER_WINDOW) return false;
+  const latest = recent.slice(0, SIGN_IN_BURNED_CODES_LOCKOUT);
+  return !(latest.length === SIGN_IN_BURNED_CODES_LOCKOUT && latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS));
+};
+
+const issueCode = async (projectId: string, email: string, language?: string) => {
+  const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+  // One issuance per (site, address) at a time, so parallel requests can't
+  // all pass the budget check before any of them records a code.
+  const row = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`site-sign-in:${projectId}:${email}`}, 0))`;
+    if (!(await mayIssueCode(tx, projectId, email, Date.now()))) return null;
+    const created = await tx.siteSignInCode.create({
+      data: { projectId, email, codeHash: 'pending', expiresAt: new Date(Date.now() + SIGN_IN_CODE_TTL_MS) },
+      select: { id: true, project: { select: { name: true } } },
+    });
+    await tx.siteSignInCode.update({ where: { id: created.id }, data: { codeHash: codeHash(created.id, code) } });
+    return created;
+  });
+  if (!row) return;
   const message = await renderSiteSignInCodeEmail({ code, projectName: row.project.name, language: resolveEmailLanguage(language) });
   await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: email, ...message } });
-  void prisma.siteSignInCode.deleteMany({ where: { expiresAt: { lt: new Date(Date.now() - SIGN_IN_WINDOW_MS) } } }).catch(() => undefined);
+  void prisma.siteSignInCode.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) } } }).catch(() => undefined);
 };
 
 /** Send a sign-in code when the address may read the site. Always answers the same. */

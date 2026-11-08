@@ -196,6 +196,69 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     await nextCode();
   });
 
+  /** Codes sent earlier, each `minutesAgo` old (all outside the 15-minute window unless set otherwise). */
+  const pastCodes = (projectId: string, email: string, codes: Array<{ minutesAgo: number; attempts?: number }>) =>
+    db.prisma.siteSignInCode.createMany({
+      data: codes.map(({ minutesAgo, attempts = 0 }) => {
+        const createdAt = new Date(Date.now() - minutesAgo * 60_000);
+        return { projectId, email, codeHash: 'spent', attempts, createdAt, expiresAt: new Date(createdAt.getTime() + 10 * 60_000) };
+      }),
+    });
+  const startAnswer = async (projectId: string, email: string) => {
+    const response = await post(`sign-in/${projectId}/start`, { email });
+    return { status: response.status, body: await response.json() };
+  };
+  const noCodeSent = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(sent).toEqual([]);
+  };
+
+  it('sends one address at most 10 codes a day, and answers the same when the cap is reached', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await pastCodes(
+      project.id,
+      readerEmail,
+      Array.from({ length: 10 }, (_, index) => ({ minutesAgo: 30 + index * 150 })),
+    );
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } })).toBe(10);
+    // Once the oldest code is more than a day old, the address gets one again.
+    await db.prisma.siteSignInCode.updateMany({
+      where: { projectId: project.id, email: readerEmail, createdAt: { lt: new Date(Date.now() - 22 * 60 * 60_000) } },
+      data: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) },
+    });
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await nextCode();
+  });
+
+  it('pauses an address for a day after three codes in a row ran out of guesses', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await pastCodes(project.id, readerEmail, [
+      { minutesAgo: 60, attempts: 5 },
+      { minutesAgo: 120, attempts: 5 },
+      { minutesAgo: 180, attempts: 5 },
+    ]);
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+    // Two burned codes, or three spread beyond a day, don't pause the address.
+    await db.prisma.siteSignInCode.updateMany({
+      where: { projectId: project.id, email: readerEmail, createdAt: { lt: new Date(Date.now() - 150 * 60_000) } },
+      data: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) },
+    });
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await nextCode();
+  });
+
+  it('keeps the budget exact when many requests arrive at once', async () => {
+    const { project, readerEmail } = await site('READERS');
+    const answers = await Promise.all(Array.from({ length: 20 }, () => startAnswer(project.id, readerEmail)));
+    for (const answer of answers) expect(answer).toEqual({ status: 200, body: { data: { sent: true } } });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } })).toBe(5);
+    expect(sent).toHaveLength(5);
+  });
+
   it('never sends a code for a public site', async () => {
     const { project, memberEmail } = await site('PUBLIC');
     expect((await post(`sign-in/${project.id}/start`, { email: memberEmail })).status).toBe(200);
