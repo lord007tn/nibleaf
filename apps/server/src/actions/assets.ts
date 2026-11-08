@@ -1,4 +1,5 @@
 import { type Asset, prisma } from '@nibleaf/database';
+import { createLogger } from '@nibleaf/logger';
 import {
   ASSET_UPLOAD_CLOCK_SKEW_MS,
   MAX_ASSET_UPLOAD_BYTES,
@@ -11,8 +12,10 @@ import { newId } from '@nibleaf/shared/ids';
 import { slugify } from '@nibleaf/shared/utils';
 import { deleteObject, headObject, isNotFound, presignPutUrl, putObject, UPLOAD_PRESIGN_EXPIRES_IN_SECONDS } from '@nibleaf/storage';
 import { type ConfirmAssetBody, type PresignAssetBody, safeInlineAssetContentType } from '@nibleaf/validators';
-import { AppError, badRequest, conflict } from '@/errors';
+import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
+
+const log = createLogger({ action: 'assets' });
 
 const assetPrefix = (projectId: string): string => `projects/${projectId}/assets/`;
 
@@ -216,3 +219,70 @@ export const confirmAsset = async (organizationId: string, projectId: string, us
 
 export const listAssets = async (projectId: string): Promise<Asset[]> =>
   await prisma.asset.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 200 });
+
+/** True while anything saved in the project can still point at the stored key:
+ *  any page (every language and version, drafts included), the site, language
+ *  and page settings, or a published, exported or preview snapshot. Snapshots
+ *  taken before the upload cannot hold it, so only later ones are read. */
+const assetInUse = async (tx: Pick<typeof prisma, '$queryRaw'>, projectId: string, key: string, since: Date): Promise<boolean> => {
+  const [row] = await tx.$queryRaw<{ inUse: boolean }[]>`
+    SELECT (
+      EXISTS (SELECT 1 FROM "page" WHERE "projectId" = ${projectId}
+        AND (strpos("content", ${key}) > 0 OR strpos(COALESCE("config"::text, ''), ${key}) > 0))
+      OR EXISTS (SELECT 1 FROM "language" WHERE "projectId" = ${projectId} AND strpos(COALESCE("config"::text, ''), ${key}) > 0)
+      OR EXISTS (SELECT 1 FROM "project" WHERE "id" = ${projectId} AND strpos(COALESCE("config"::text, ''), ${key}) > 0)
+      OR EXISTS (SELECT 1 FROM "deployment" WHERE "projectId" = ${projectId} AND "createdAt" >= ${since}
+        AND strpos(COALESCE("snapshot"::text, ''), ${key}) > 0)
+      OR EXISTS (SELECT 1 FROM "export_snapshot" WHERE "projectId" = ${projectId} AND "createdAt" >= ${since}
+        AND (strpos("snapshot"::text, ${key}) > 0 OR strpos("assets"::text, ${key}) > 0))
+      OR EXISTS (SELECT 1 FROM "git_preview" WHERE "projectId" = ${projectId} AND "createdAt" >= ${since}
+        AND strpos(COALESCE("snapshot"::text, ''), ${key}) > 0)
+      OR EXISTS (SELECT 1 FROM "git_conflict" AS c
+        JOIN "git_sync_operation" AS o ON o."id" = c."operationId"
+        JOIN "git_connection" AS g ON g."id" = o."connectionId"
+        WHERE g."projectId" = ${projectId} AND c."createdAt" >= ${since}
+          AND strpos(concat_ws(' ', c."baseContent", c."oursContent", c."theirsContent", c."resolvedContent"), ${key}) > 0)
+    ) AS "inUse"`;
+  return row?.inUse ?? true;
+};
+
+/** Delete one asset that nothing saved uses any more. The editor calls this when
+ *  a writer removes an upload card whose file was already recorded. Anything
+ *  still referencing the file keeps it: the answer is 409 asset:in_use. */
+export const deleteAsset = async (organizationId: string, projectId: string, assetId: string): Promise<{ id: string }> => {
+  await assertProjectInOrg(organizationId, projectId);
+  const asset = await prisma.$transaction(async (tx) => {
+    // The row lock makes a concurrent delete of the same asset wait, then find nothing.
+    const [locked] = await tx.$queryRaw<{ id: string; key: string; size: number; createdAt: Date }[]>`
+      SELECT "id", "key", "size", "createdAt" FROM "asset" WHERE "id" = ${assetId} AND "projectId" = ${projectId} FOR UPDATE`;
+    if (!locked) throw notFound('asset');
+    if (await assetInUse(tx, projectId, locked.key, locked.createdAt)) {
+      throw new AppError({ code: 'asset:in_use', message: 'This file is still used by saved content, so it was kept.' });
+    }
+    await tx.asset.delete({ where: { id: locked.id } });
+    // The public route serves only recorded assets, so the file is unreachable from here on.
+    // A cleanup record makes the worker retry the storage delete if the one below fails.
+    const now = new Date();
+    await tx.assetUploadTombstone.createMany({
+      data: [
+        {
+          key: locked.key,
+          projectId,
+          size: locked.size,
+          urlExpiresAt: new Date(0),
+          firstRecheckedAt: now,
+          nextCheckAt: new Date(now.getTime() + PENDING_ASSET_UPLOAD_GRACE_MS),
+        },
+      ],
+      skipDuplicates: true,
+    });
+    return locked;
+  });
+  try {
+    await deleteObject(asset.key);
+    await prisma.assetUploadTombstone.deleteMany({ where: { key: asset.key, projectId } });
+  } catch {
+    log.warn('Asset storage delete will be retried by cleanup.');
+  }
+  return { id: asset.id };
+};
