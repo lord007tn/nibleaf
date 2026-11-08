@@ -55,7 +55,7 @@ vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
 vi.mock('@nibleaf/search', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/search')>();
   return {
-    CHAT_PROMPT_VERSION: 'chat-v5',
+    CHAT_PROMPT_VERSION: 'chat-v6',
     CHAT_OUTPUT_TOKEN_LIMITS: actual.CHAT_OUTPUT_TOKEN_LIMITS,
     boundChatHistory: actual.boundChatHistory,
     estimateTokens: actual.estimateTokens,

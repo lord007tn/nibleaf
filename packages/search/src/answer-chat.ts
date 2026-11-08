@@ -4,7 +4,7 @@ import { type CitationPolicy, validateCitedAnswer } from './answer-validation';
 import { type SearchChunk, searchChunkSnippet } from './hybrid';
 import type { ChatUsage } from './providers';
 
-export const CHAT_PROMPT_VERSION = 'chat-v5';
+export const CHAT_PROMPT_VERSION = 'chat-v6';
 export const NO_ANSWER_SENTINEL = '[[NO_ANSWER]]';
 export type ChatHistoryMessage = { role: 'user' | 'assistant'; content: string };
 // Wire-compatible with validators' AiChatSource, without a new dependency edge.

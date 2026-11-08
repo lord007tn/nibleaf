@@ -320,6 +320,13 @@ Current-source Compose files and the production example use the schema default
 explicit override. A lower budget can refuse questions before the provider runs.
 See the [complete settings reference](/reference/environment-variables).
 
+Chat utility calls disable reasoning. Suggestions use an adaptive 4–7 second
+deadline for the usual bounded source context, capped by
+`SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS`. Visible answer output also has a server-side
+1200 UTF-8 byte bound (conservatively no more than the 1200-token output cap),
+even if a provider ignores its token limit or reports no usage. An answer
+cut off at either limit is withdrawn through the existing no-answer path.
+
 ## Keep AI conversation history and feedback
 
 Readers can rate each answer with a thumbs up or down, pick a reason, and add a

@@ -163,8 +163,8 @@ export class OpenAIEmbeddingProvider extends BatchedEmbeddingProvider {
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
 
 /** The product's reasoning effort per kind of call, chosen from the answer and
- * draft benchmarks (packages/search/eval/README.md). Chat rewrites and suggested
- * questions share the answer's effort. */
+ * draft benchmarks (packages/search/eval/README.md). Chat utility calls explicitly
+ * request no reasoning so rewrites and suggestions stay short. */
 export const AI_REASONING_EFFORT = { answer: 'low', draft: 'low' } as const satisfies Record<string, ReasoningEffort>;
 
 /** Direct OpenAI rejects `reasoning_effort` on models without reasoning, so it is
