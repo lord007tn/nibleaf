@@ -363,7 +363,7 @@ function SiteOverviewPage() {
               params={{ projectId }}
               to="/app/projects/$projectId/editor"
             >
-              {t('overview.openEditor')} <ArrowRight className="size-3 rtl:-scale-x-100" />
+              {viewOnly ? t('overview.viewPages') : t('overview.openEditor')} <ArrowRight className="size-3 rtl:-scale-x-100" />
             </Link>
           </div>
           {pagesFailed ? (
