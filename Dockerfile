@@ -80,9 +80,10 @@ COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
 # remove their separate bundled dependency graphs from the shipped image.
 # Refresh every installed stable-branch package, including Chromium's native
 # dependencies. The manual workflow bypasses only this stage's layer cache.
-RUN apk upgrade --no-cache && corepack disable && rm -rf \
-  /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+RUN apk upgrade --no-cache && rm -rf \
+  /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/pnpm \
   /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+  /usr/local/bin/pnpm /usr/local/bin/pnpx /usr/local/bin/yarn /usr/local/bin/yarnpkg \
   /root/.cache/node/corepack /pnpm
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
