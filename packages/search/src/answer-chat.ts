@@ -67,6 +67,7 @@ How to answer:
 - When the question asks for something the sources do not describe (a feature, an option, a setting) but they describe a related way to do it, say first that the documentation does not describe it, then give that way. When they describe nothing that helps, reply with exactly ${NO_ANSWER_SENTINEL}.
 - If the sources only partly answer, answer that part and say plainly what the documentation does not cover.
 - If the sources do not answer at all, reply with exactly ${NO_ANSWER_SENTINEL} and nothing else.
+- Never infer a support response time, guarantee, or service commitment from general help instructions. If the reader asks for a commitment the sources do not state, reply with exactly ${NO_ANSWER_SENTINEL}.
 
 Language: write the whole reply in the language named on the "Reply in" line of the message, even when the sources are in another language. Keep product names, UI labels, commands and code as they appear in the sources. The site's language is ${language}.
 When page context is supplied, the reader is reading that page; prefer it when it is relevant.`;
@@ -594,6 +595,7 @@ export const streamGroundedChat = ({
     let released = false;
     let declined = false;
     let firstTokenMs: number | undefined;
+    let outputBytes = 0;
     const seen: { usage?: ChatUsage; truncated?: true } = {};
     try {
       signal?.throwIfAborted();
@@ -611,6 +613,16 @@ export const streamGroundedChat = ({
         signal?.throwIfAborted();
         if (event.type === 'RUN_ERROR') throw new Error('Chat provider failed.');
         if (event.type !== 'TEXT_MESSAGE_CONTENT' || !event.delta) continue;
+        // A provider may ignore max_tokens or omit usage entirely. One UTF-8
+        // byte per token is the conservative bound already used for admission.
+        // Stop before releasing any over-budget delta; an incomplete answer
+        // follows the existing unverified fallback path.
+        outputBytes += tokenBound(event.delta);
+        if (outputBytes > CHAT_OUTPUT_TOKEN_LIMITS.answer) {
+          seen.truncated = true;
+          controller.abort();
+          break;
+        }
         firstTokenMs ??= performance.now() - started;
         fullText += event.delta;
         if (released) push(event.delta);

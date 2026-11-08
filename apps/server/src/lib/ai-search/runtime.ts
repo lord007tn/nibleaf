@@ -202,7 +202,7 @@ const retrieveHybrid = async (
   const key = searchCacheKey(
     scope,
     query,
-    `chunks-v3-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
+    `chunks-v4-${resolved?.revision}-${env.QDRANT_COLLECTION_VERSION}-${provider.model}-${env.SEARCH_DENSE_MIN_SCORE}-${limit}`,
   );
   const cached = retrievalCache.get(key);
   if (cached) return { cacheHit: true, chunks: cached, confidence: retrievalConfidence(cached) };
@@ -215,7 +215,9 @@ const retrieveHybrid = async (
       // Security takes precedence over a broader statistical population: an
       // unauthorized page cannot influence a reader's BM25 score through IDF.
       idfCorpus: filter,
-      limit,
+      // Rerank the candidate pool before cutting to the reader's limit. Dense
+      // near-misses must not evict strong title matches before reranking runs.
+      limit: Math.max(limit, env.SEARCH_CANDIDATE_LIMIT),
       candidateLimit: env.SEARCH_CANDIDATE_LIMIT,
       denseScoreThreshold: env.SEARCH_DENSE_MIN_SCORE,
     },
@@ -227,7 +229,7 @@ const retrieveHybrid = async (
       const hit = chunkFromPoint(point, scope);
       return hit ? [hit] : [];
     }),
-  );
+  ).slice(0, limit);
   retrievalCache.set(key, chunks);
   return { cacheHit: false, chunks, confidence: retrievalConfidence(chunks) };
 };

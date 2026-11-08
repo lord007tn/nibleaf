@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
+import { version } from '../../package.json';
 import { createNibleafMcpServer, MAX_MCP_TOOL_INPUT_ELEMENTS } from './server';
 import type { McpPrincipal } from './types';
 
@@ -127,11 +128,12 @@ const createProtocolClient = async (currentPrincipal: McpPrincipal = principal) 
     waiting.delete(id);
     return message as JSONRPCMessage & { result?: T; error?: { code: number; message: string; data?: unknown } };
   };
-  await request('initialize', {
+  const initialized = await request<{ serverInfo: { version: string } }>('initialize', {
     protocolVersion: LATEST_PROTOCOL_VERSION,
     capabilities: {},
     clientInfo: { name: 'nibleaf-test', version: '1.0.0' },
   });
+  expect(initialized.result?.serverInfo.version).toBe(version);
   await clientTransport.send({ jsonrpc: '2.0', method: 'notifications/initialized' } as JSONRPCMessage);
   return { server, clientTransport, request };
 };

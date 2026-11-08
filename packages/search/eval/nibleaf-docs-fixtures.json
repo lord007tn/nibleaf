@@ -1292,5 +1292,54 @@
     "requiredClaims": [],
     "expectedNoAnswer": true,
     "expectedSourceHeadings": []
+  },
+  {
+    "id": "response-time-followup",
+    "language": "en",
+    "question": "And what guaranteed support response time do I get?",
+    "sources": [
+      {
+        "title": "Known limitations and product boundaries",
+        "path": "reference/known-limitations",
+        "heading": "Identity and service commitments",
+        "content": "## Identity and service commitments\n\nNibleaf Cloud is a free beta and does not currently promise enterprise uptime\nor public-support response times. Export critical content and keep an operational\nfallback.\n\nPasswordless email one-time codes and Google OAuth are available. Password login\nand password-reset links are intentionally not part of the current identity model.\nSAML and a general enterprise SSO offering are not. Do not infer an identity\ncompliance claim from the presence of OAuth or private-site controls."
+      },
+      {
+        "title": "Export and archive your docs",
+        "path": "product/exports",
+        "heading": "Schedule regular archives",
+        "content": "## Schedule regular archives\n\n1. Open **Schedules** and select **New schedule**.\n2. Enter a **Schedule name**, choose the formats, and choose **Daily**,\n   **Weekly**, or **Monthly**.\n3. Set the **IANA timezone**, such as `Africa/Tunis` or `Asia/Riyadh`, and the\n   **Local run time**. Using a named time zone keeps the run at the same local\n   time when clocks change.\n4. Set **Runs to retain** and **Retention days**. Older copies are deleted after\n   either limit.\n5. Select **Create schedule**.\n\nSelect **Run now** to test a schedule straight away, then check the result in\n**Run history**. Use **Disable** to pause a schedule."
+      },
+      {
+        "title": "Publish your changes",
+        "path": "product/publishing",
+        "heading": "Check your pages first",
+        "content": "## Check your pages first\n\nBefore you publish, read the pages you changed with **Preview** and check that:\n\n- the first paragraph answers the reader's main question;\n- steps are in order, and anything the reader needs comes before the step that\n  uses it;\n- links open the right page;\n- images have a short text description and show no private information;\n- titles and descriptions are correct in every language."
+      },
+      {
+        "title": "Publish Arabic and right-to-left docs",
+        "path": "product/arabic-rtl",
+        "heading": "Check mixed Arabic and English text",
+        "content": "## Check mixed Arabic and English text\n\nPaste a sentence that mixes Arabic with a command, a path, and a version number,\nsuch as:\n\n```text\nشغّل الأمر docker compose up -d، ثم افتح /docs?lang=ar وتأكد من الإصدار v0.2.1.\n```\n\nCheck that line in the editor, in **Preview**, and on the published site. Also\ncheck:\n\n- the order of the sidebar, breadcrumbs, and previous and next arrows;\n- the table of contents and nested groups;\n- long code blocks and tables on a phone-sized window;\n- that copying a command gives the same text you wrote.\n\nIn the editor, put commands, file names, and settings in inline code so they\nkeep their left-to-right order."
+      }
+    ],
+    "requiredClaims": [],
+    "expectedNoAnswer": true,
+    "expectedSourceHeadings": [],
+    "forbiddenClaims": [
+      "within 24 hours",
+      "within one hour",
+      "guaranteed response"
+    ],
+    "history": [
+      {
+        "role": "user",
+        "content": "Can I get help with my documentation site?"
+      },
+      {
+        "role": "assistant",
+        "content": "What would you like to know about that?"
+      }
+    ]
   }
 ]

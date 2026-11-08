@@ -398,6 +398,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
     const utilityAdapter = utilityModel ? workspaceChatAdapter({ ...runtime, answerModel: utilityModel }, utilityCost) : adapter;
     const historyLimits = chatHistoryLimits();
     const modelOptions = workspaceChatModelOptions(runtime);
+    const utilityOptions = workspaceChatModelOptions({ ...runtime, answerModel: utilityModel ?? runtime.answerModel }, 'none');
     const history = boundChatHistory(body.history, historyLimits);
     // A first question is not rewritten, so it makes no call here.
     if (history.length)
@@ -414,7 +415,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       language,
       signal,
       historyLimits,
-      modelOptions,
+      modelOptions: utilityOptions,
     });
     if (condensed.failed) void emit([{ name: 'provider_error', conversationId: threadId, turnId, phase: 'condense' }]);
     if (condensed.usage) outcome.unreported.delete('condense');
@@ -503,11 +504,12 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
         // says. The reader gets the answer first; they arrive after it. Their usage
         // counts as soon as they settle, however the turn ends.
         const answer = result.answer;
-        // Suggestions stay on the pages the answer cited (a related page read
-        // for context does not steer them); every source when it cited none.
+        // Related retrieved pages can answer useful next questions even when
+        // this answer exhausted its cited page. Keep cited sections first and
+        // stay inside the authorized, already-budgeted source context.
         const cited = new Set(result.citations.map((citation) => citation.pageId));
         const onTopic = sources.filter((source) => cited.has(source.pageId));
-        const topics = onTopic.length ? onTopic : sources;
+        const topics = [...onTopic, ...sources.filter((source) => !cited.has(source.pageId))];
         outcome.unreported.set('follow_ups', {
           input: chatCallInputTokens(shape, topics, answer).followUps,
           output: CHAT_OUTPUT_TOKEN_LIMITS.followUps,
@@ -521,8 +523,11 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
           chunks: topics,
           language,
           // A slow suggestions call never holds the reader's run open for long.
-          signal: AbortSignal.any([sideSignal, AbortSignal.timeout(envExtras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS)]),
-          modelOptions,
+          signal: AbortSignal.any([
+            sideSignal,
+            AbortSignal.timeout(Math.min(envExtras.SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS, 4000 + topics.length * 250)),
+          ]),
+          modelOptions: utilityOptions,
           asked: history.filter((message) => message.role === 'user').map((message) => message.content),
         }).then((suggestions) => {
           if (suggestions.usage) outcome.unreported.delete('follow_ups');

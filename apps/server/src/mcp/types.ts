@@ -42,6 +42,8 @@ export interface McpSuccessEnvelope {
     /** Write tools only: the result is the stored outcome of an earlier call
      *  with the same clientRequestId and arguments; nothing ran again. */
     replayed?: boolean;
+    /** The change applied; the started audit row still awaits settlement. */
+    auditPending?: boolean;
   };
 }
 

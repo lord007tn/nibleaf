@@ -229,10 +229,12 @@ describe('reader chat messages', () => {
     await act(async () => button('Incomplete')?.click());
     // The thumbs-down is still saving: details cannot be sent yet.
     expect(button('Send')?.disabled).toBe(true);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('Saving your rating…');
     mocks.feedback.mockResolvedValue({ saved: true });
     await act(async () => finish({ saved: true }));
     await settle();
     expect(button('Send')?.disabled).toBe(false);
+    expect(container.textContent).not.toContain('Saving your rating…');
     await act(async () => button('Send')?.click());
     await settle();
     // One write after the other: the details update the saved rating, never race it.

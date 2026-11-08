@@ -7,8 +7,10 @@ const mocks = vi.hoisted(() => ({
   project: vi.fn(),
   refresh: vi.fn(),
   row: {} as Record<string, unknown>,
+  env: { AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS: undefined as string | undefined },
+  open: vi.fn(),
 }));
-vi.mock('../env', () => ({ env: {} }));
+vi.mock('../env', () => ({ env: mocks.env }));
 vi.mock('@nibleaf/database', () => ({
   prisma: { project: { findFirst: mocks.project } },
   runWithTenantAnalyticsWriteFence: async (_t: unknown, _p: unknown, _c: unknown, run: () => Promise<unknown>) => ({
@@ -20,7 +22,7 @@ vi.mock('@nibleaf/bullmq/jobs/ai-conversations', async (original) => ({
   ...(await original<object>()),
   resolveAiConversationKey: () => Buffer.alloc(32),
   resolveAiConversationTransportKey: () => Buffer.alloc(32),
-  openAiConversation: () => mocks.row,
+  openAiConversation: mocks.open,
 }));
 vi.mock('@nibleaf/clickhouse', async (original) => ({
   ...(await original<object>()),
@@ -38,11 +40,18 @@ import { handleAiConversationJob } from './ai-conversations';
 const job = { kind: 'ai-conversation-turn', tenantId: 'tenant', projectId: 'project', sealed: 'test' };
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.open.mockImplementation(() => mocks.row);
+  mocks.env.AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS = undefined;
   mocks.project.mockResolvedValue({ id: 'project' });
   mocks.row = { tenant_id: 'tenant', project_id: 'project', conversation_id: 'c', expires_at: '2099-01-01T00:00:00.000Z' };
   mocks.deleted.mockResolvedValue(false);
 });
 describe('archive worker', () => {
+  it('passes the previous key to authenticated envelope opening during rotation', async () => {
+    mocks.env.AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS = Buffer.alloc(32).toString('base64');
+    await handleAiConversationJob(job);
+    expect(mocks.open).toHaveBeenCalledWith('test', 'tenant', 'project', Buffer.alloc(32), Buffer.alloc(32));
+  });
   it('drops expired records', async () => {
     mocks.row.expires_at = '2000-01-01T00:00:00.000Z';
     expect(await handleAiConversationJob(job)).toEqual({ inserted: 0 });

@@ -257,6 +257,7 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
     spec.idempotent && typeof raw.clientRequestId === 'string' && CLIENT_REQUEST_ID_PATTERN.test(raw.clientRequestId) ? raw.clientRequestId : null;
   let outcome: 'succeeded' | 'replayed' = 'succeeded';
   let wrote = false;
+  let data: unknown;
   // The audit row a non-replayed write records before it runs.
   let auditId: string | null = null;
   try {
@@ -293,7 +294,6 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
           hashMcpArguments(parsed.data as Record<string, unknown>),
         )
       : null;
-    let data: unknown;
     if (start?.kind === 'replay') {
       outcome = 'replayed';
       const stored = isPlainObject(start.result) ? start.result : {};
@@ -364,11 +364,12 @@ export const runMcpWriteTool = async <Schema extends z.ZodType>(
       // Only settling the audit row can fail after the write ran; the row
       // recorded before the write still shows it was attempted. The change is
       // saved, so say so instead of inviting a blind retry.
-      return toolErrorResult(
-        ctx,
-        appError,
-        'The change was saved but could not be recorded in the audit log. Retry the identical call with the same clientRequestId, or re-read before writing again.',
-      );
+      const envelope: McpSuccessEnvelope = {
+        ok: true,
+        data,
+        meta: { requestId: ctx.get('requestId'), projectId: principal.project.id, capability: spec.capability, auditPending: true },
+      };
+      return { content: toolContent(envelope), structuredContent: envelope };
     }
     try {
       if (auditId)

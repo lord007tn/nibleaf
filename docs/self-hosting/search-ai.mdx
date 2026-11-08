@@ -315,12 +315,10 @@ Budgets use provider-reported token usage. When a provider reports none, Nibleaf
 counts a conservative estimate instead. The site's AI settings can also list up
 to four suggested first questions for the default language.
 
-The search overlay and `.env.production.example` currently set
-`SEARCH_CHAT_MAX_CONVERSATION_TOKENS=60000`, below the schema default of 150000
-and below the largest turn reservation with default history. Set it to 150000
-explicitly on a compatible current-source deployment, or evaluate a different
-budget with its admission rules. A low budget can refuse questions before the
-provider runs. See the [complete settings reference](/reference/environment-variables).
+Current-source Compose files and the production example use the schema default
+`SEARCH_CHAT_MAX_CONVERSATION_TOKENS=150000`. Existing installations keep any
+explicit override. A lower budget can refuse questions before the provider runs.
+See the [complete settings reference](/reference/environment-variables).
 
 ## Keep AI conversation history and feedback
 
@@ -571,3 +569,15 @@ An object written after the final pass stays in storage.
 This applies to deletions made after upgrading. It does not clean up objects
 left by earlier deletions. Bucket versioning, replication, and backups follow
 your own retention policy.
+
+## Rotate the conversation key
+
+Before changing `AI_CONVERSATION_ENCRYPTION_KEY`, set
+`AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS` on the worker to the old resolved
+base64-encoded 32-byte key. Deploy workers with both keys first, then update
+API and worker current keys together. New jobs use only the current key. Keep
+the previous key until waiting, delayed, retrying and failed jobs encrypted
+with it have drained or been replayed. Then remove the previous-key setting.
+If the old key was derived from `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`, use
+that resolved purpose-derived key, not the integration key itself.
+No keys are changed by this procedure automatically.

@@ -14,8 +14,6 @@ import { useT } from '@nibleaf/i18n/react';
 
 import { canAdminister } from '@nibleaf/shared/rbac';
 
-import ReactMarkdown from 'react-markdown';
-
 import { toast } from 'sonner';
 
 import { useProjectMembers } from '@/hooks/api';
@@ -24,10 +22,9 @@ import { useAiConversation, useDeleteAiConversation } from '@/hooks/api/ai-conve
 
 import { useFormatters } from '@/lib/format';
 
-import { siteHref } from '@/lib/site-paths';
-
 import { useSession } from '@/services/auth-client';
 import { aiCost } from './overview';
+import { TranscriptAnswer, transcriptSourceHref } from './transcript';
 
 export function DeleteConversationButton({ allowed, pending, onDelete }: { allowed: boolean; pending: boolean; onDelete: () => void }) {
   const t = useT();
@@ -113,26 +110,27 @@ export function ConversationDetail({ projectId, conversation, onClose }: { proje
                     dir="auto"
                     className="min-w-0 space-y-2 break-words text-sm leading-7 [&_li]:ms-5 [&_ol]:list-decimal [&_pre]:overflow-x-auto [&_ul]:list-disc"
                   >
-                    <ReactMarkdown
-                      skipHtml
-                      unwrapDisallowed
-                      allowedElements={['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'blockquote', 'br']}
-                    >
-                      {turn.answer ?? t('dashboard.ai.answerNotSaved')}
-                    </ReactMarkdown>
+                    <TranscriptAnswer
+                      answer={turn.answer ?? t('dashboard.ai.answerNotSaved')}
+                      citations={turn.citations}
+                      projectId={projectId}
+                      language={turn.language}
+                      version={turn.version}
+                    />
                   </div>
                   {turn.citations.length > 0 && (
                     <div>
                       <h3 className="font-medium text-sm">{t('dashboard.ai.sources')}</h3>
-                      {turn.citations.map((source) => (
+                      {turn.citations.map((source, index) => (
                         <a
                           className="mt-2 block rounded border p-3 text-sm underline"
                           key={source.id}
-                          href={siteHref(projectId, source.path, { lang: turn.language })}
+                          href={transcriptSourceHref(projectId, source, turn.language, turn.version)}
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {source.title}
+                          {index + 1}. {source.title}
+                          {source.heading && ` — ${source.heading}`}
                         </a>
                       ))}
                     </div>

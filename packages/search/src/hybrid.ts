@@ -5,6 +5,7 @@ import type { SearchHit } from './index';
 const TOKEN = /[\p{L}\p{M}\p{N}_+.#@:/\\-]+/gu;
 const ARABIC = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/u;
 const CODE_TOKEN = /[_+.#@:/\\-]|\d/u;
+const VERSION_TOKEN = /^v?\d+(?:\.\d+){1,3}$/u;
 export type SearchTokenAdapter = (token: string) => string[];
 
 const plainText = (value: string): string =>
@@ -386,16 +387,31 @@ export const selectAnswerChunks = (hits: HybridChunkHit[], limit = 12): SearchCh
 export const rerankHybridChunks = (query: string, hits: HybridChunkHit[]): HybridChunkHit[] => {
   const normalizedQuery = normalizeArabicSearchText(query).toLocaleLowerCase().trim();
   const tokens = new Set(hybridTokens(query));
+  const matchesVersion = (token: string, candidate: string) =>
+    VERSION_TOKEN.test(candidate) && (candidate === token || candidate.startsWith(`${token}.`));
   const overlap = (value: string): number => {
     const candidate = new Set(hybridTokens(value));
-    return [...tokens].filter((token) => candidate.has(token)).length / Math.max(1, tokens.size);
+    return (
+      [...tokens].filter((token) => candidate.has(token) || (VERSION_TOKEN.test(token) && [...candidate].some((term) => matchesVersion(token, term))))
+        .length / Math.max(1, tokens.size)
+    );
   };
   return hits
     .map((hit) => {
       const searchable = normalizeArabicSearchText(`${hit.chunk.title} ${hit.chunk.heading} ${hit.chunk.content}`).toLocaleLowerCase();
-      const phraseBoost = normalizedQuery.length >= 3 && searchable.includes(normalizedQuery) ? 0.18 : 0;
+      const candidateTokens = hybridTokens(searchable);
+      const versionsMatch = [...tokens]
+        .filter((token) => VERSION_TOKEN.test(token))
+        .every((token) => candidateTokens.some((term) => matchesVersion(token, term)));
+      const phraseBoost = normalizedQuery.length >= 3 && searchable.includes(normalizedQuery) && versionsMatch ? 0.18 : 0;
       const headingBoost = overlap(`${hit.chunk.title} ${hit.chunk.headingPath.join(' ')}`) * 0.14;
-      const codeBoost = [...tokens].some((token) => CODE_TOKEN.test(token) && searchable.includes(token)) ? 0.08 : 0;
+      const codeBoost = [...tokens].some((token) =>
+        VERSION_TOKEN.test(token)
+          ? candidateTokens.some((term) => matchesVersion(token, term))
+          : CODE_TOKEN.test(token) && searchable.includes(token),
+      )
+        ? 0.08
+        : 0;
       return { ...hit, score: hit.score + phraseBoost + headingBoost + codeBoost };
     })
     .sort((left, right) => right.score - left.score || left.chunk.id.localeCompare(right.chunk.id));

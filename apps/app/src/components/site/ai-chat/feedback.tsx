@@ -119,6 +119,7 @@ export function Feedback({
           <ThumbsDown aria-hidden className="size-4" />
         </Button>
       </div>
+      {mutation.isPending && origin !== 'details' && <p role="status">{t('aiSavingRating')}</p>}
       {details && rating === 'down' && (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">

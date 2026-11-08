@@ -49,7 +49,7 @@ vi.mock('./site-chat-events', () => ({ recordAiChatEvents: mocks.recordEvents })
 vi.mock('@nibleaf/search/workspace', async (importOriginal) => ({
   knownChatCost: (await importOriginal<typeof import('@nibleaf/search/workspace')>()).knownChatCost,
   workspaceChatAdapter: mocks.adapter,
-  workspaceChatModelOptions: () => () => ({}),
+  workspaceChatModelOptions: (await importOriginal<typeof import('@nibleaf/search/workspace')>()).workspaceChatModelOptions,
 }));
 // Provider calls are mocked; turn sizing is the real search package's.
 vi.mock('@nibleaf/search', async (importOriginal) => {
@@ -573,7 +573,14 @@ describe('reader AI chat stream', () => {
     mocks.adapter.mockImplementation((runtime: { answerModel: string }) => ({ kind: runtime.answerModel }));
   });
 
-  it('keeps suggestions on the pages the answer cited', async () => {
+  it('uses no-reasoning utility calls while keeping answer reasoning separate', async () => {
+    await readEvents(await chatSite('project-1', body()));
+    expect(mocks.condense.mock.calls[0]?.[0].modelOptions(120)).toMatchObject({ reasoning: { effort: 'none' } });
+    expect(mocks.suggest.mock.calls[0]?.[0].modelOptions(400)).toMatchObject({ reasoning: { effort: 'none' } });
+    expect(mocks.stream.mock.calls[0]?.[0].modelOptions(1200)).toMatchObject({ reasoning: { effort: 'low' } });
+  });
+
+  it('offers related retrieved sections after cited ones for follow-up questions', async () => {
     const synced = { ...searchChunk(0, 'Sign out and sign back in.'), pageId: 'sync', title: 'Fix sync problems' };
     const install = { ...searchChunk(1, 'Install the CLI with npm.'), pageId: 'install', title: 'Install the CLI' };
     mocks.retrieve.mockResolvedValue({ chunks: [synced, install], hits: [], confidence: 0.8, cacheHit: false });
@@ -591,8 +598,7 @@ describe('reader AI chat stream', () => {
       }),
     });
     await readEvents(await chatSite('project-1', body()));
-    // The install page was read for context, but the answer did not cite it.
-    expect(mocks.suggest.mock.calls[0]?.[0].chunks.map((item: SearchChunk) => item.pageId)).toEqual(['sync']);
+    expect(mocks.suggest.mock.calls[0]?.[0].chunks.map((item: SearchChunk) => item.pageId)).toEqual(['sync', 'install']);
   });
 
   it('answers and suggests from the sources that fit the context budget, and estimates them as sent', async () => {

@@ -69,6 +69,13 @@ describe('capture policy', () => {
     expect(row.cost_known).toBe(0);
     expect(row.expires_at).toBe('2027-01-30T00:00:00.000Z');
   });
+  it('retains section anchors and redacts their display text for saved citations', () => {
+    const citations = [{ id: 'S1', pageId: 'setup', title: 'Setup', path: 'setup', heading: 'Email a@example.com', anchor: 'email' }];
+    const saved = JSON.parse(buildAiTurnRow({ ...capture, citations }).citations);
+    expect(saved).toEqual([expect.objectContaining({ heading: 'Email [REDACTED]', anchor: 'email' })]);
+    const denied = JSON.parse(buildAiTurnRow({ ...capture, citations, consent: 'denied' }).citations);
+    expect(denied).toEqual([expect.objectContaining({ title: '', heading: '', anchor: 'email' })]);
+  });
   it('retains only content-free data without consent', () => {
     const row = buildAiTurnRow({ ...capture, consent: 'denied' });
     expect(row).toMatchObject({
