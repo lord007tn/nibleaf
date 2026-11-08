@@ -22,6 +22,7 @@ import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pi
 import { PublishModal } from '@/components/project/publish-modal';
 import { useDeployments, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
@@ -44,6 +45,10 @@ export function PublishControl({
   const [preparing, setPreparing] = useState(false);
   const t = useT();
   const countId = useId();
+  // Viewers cannot publish: the button stays visible but disabled, with the
+  // reason on hover, and a deep link (?publish=true) never opens the dialog.
+  // While the role is still loading the button stays usable; the server decides.
+  const viewOnly = useProjectAdminStatus(project.id).edit === 'viewOnly';
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
   const pending = usePendingChanges(project.id);
@@ -59,9 +64,9 @@ export function PublishControl({
       <Button
         aria-describedby={countLabel ? countId : undefined}
         aria-label={building ? t('project.publishing') : t('project.publish')}
-        disabled={building}
+        disabled={building || viewOnly}
         loading={preparing}
-        title={countLabel}
+        title={viewOnly ? t('access.viewOnly.publish') : countLabel}
         onClick={async () => {
           setPreparing(true);
           try {
@@ -97,7 +102,7 @@ export function PublishControl({
           setPublishedDeploymentId(deployment.id);
           setDeployOpen(true);
         }}
-        open={publishOpen}
+        open={publishOpen && !viewOnly}
         project={project}
       />
       <DeployPipeline

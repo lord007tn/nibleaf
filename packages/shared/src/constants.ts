@@ -1,11 +1,15 @@
 export const Env = ['development', 'test', 'production'] as const;
 export type Env = (typeof Env)[number];
 
-/** Workspace member roles. Aligned with better-auth's organization plugin. */
+/** Workspace member roles. `owner`/`admin`/`member` are better-auth's
+ *  organization-plugin defaults (`member` is shown as "Editor"). `viewer` is
+ *  Nibleaf's read-only role: better-auth grants an unknown role no
+ *  organization permissions, and every Nibleaf guard ranks it below `member`. */
 export const MemberRole = {
   OWNER: 'owner',
   ADMIN: 'admin',
   MEMBER: 'member',
+  VIEWER: 'viewer',
 } as const;
 export type MemberRole = (typeof MemberRole)[keyof typeof MemberRole];
 

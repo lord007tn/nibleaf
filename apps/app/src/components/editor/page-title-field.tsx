@@ -15,6 +15,7 @@ export function PageTitleField({
   lang,
   textareaRef,
   className,
+  readOnly = false,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -24,6 +25,8 @@ export function PageTitleField({
   lang?: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   className?: string;
+  /** Viewers read the title; they cannot change it. */
+  readOnly?: boolean;
 }) {
   // Grow with the text. `field-sizing: content` does this natively where it is
   // supported; measuring keeps other browsers in step.
@@ -54,6 +57,7 @@ export function PageTitleField({
         }
       }}
       placeholder={label}
+      readOnly={readOnly}
       rows={1}
       value={value}
     />

@@ -116,4 +116,38 @@ describe('useProjectAdminStatus', () => {
     Object.assign(state, { session: signedIn, members: team('admin') });
     expect((await read(undefined))?.status).toBe('pending');
   });
+
+  it.each([
+    ['owner', 'edit'],
+    ['admin', 'edit'],
+    ['member', 'edit'],
+    ['viewer', 'viewOnly'],
+  ])('a %s may %s content', async (role, expected) => {
+    Object.assign(state, { session: signedIn, members: team(role) });
+    const result = await read('site-1');
+    expect(result?.edit).toBe(expected);
+    expect(result?.role).toBe(role);
+  });
+
+  it('a Viewer is never offered administration', async () => {
+    Object.assign(state, { session: signedIn, members: team('viewer') });
+    expect((await read('site-1'))?.status).toBe('notAdmin');
+  });
+
+  it('keeps content locked but unexplained while the team loads', async () => {
+    Object.assign(state, { session: signedIn, members: loading });
+    expect((await read('site-1'))?.edit).toBe('pending');
+  });
+
+  // The server enforces every write, so a failed team read must not lock a
+  // real Editor out of their work.
+  it('falls back to edit when the team failed to load', async () => {
+    Object.assign(state, { session: signedIn, members: failed });
+    expect((await read('site-1'))?.edit).toBe('edit');
+  });
+
+  it('is view-only for someone signed in but missing from the loaded team', async () => {
+    Object.assign(state, { session: signedIn, members: loaded([]) });
+    expect((await read('site-1'))?.edit).toBe('viewOnly');
+  });
 });

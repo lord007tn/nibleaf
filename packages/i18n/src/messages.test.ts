@@ -279,11 +279,10 @@ describe('Paraglide message catalogs', () => {
 describe('dashboard safety copy', () => {
   it('uses consistent Arabic role names', () => {
     const ar = loadCatalog('ar');
-    expect(ar.members_role_admin).toBe('مشرف');
-    expect(ar.settings_members_role_admin).toBe('مشرف');
-    expect(ar.members_role_owner).toBe('المالك');
-    expect(ar.settings_members_role_owner).toBe('المالك');
-    expect(ar.members_role_editor).toBe('محرّر');
+    expect(ar.roles_admin).toBe('مشرف');
+    expect(ar.roles_owner).toBe('المالك');
+    expect(ar.roles_editor).toBe('محرّر');
+    expect(ar.roles_viewer).toBe('مشاهد');
     for (const key of [
       'settings_apikeys_adminonly',
       'settings_members_roleshint',
@@ -291,6 +290,10 @@ describe('dashboard safety copy', () => {
       'settings_danger_transfer_confirm',
       'settings_permissions_title',
       'settings_permissions_body',
+      'settings_permissions_viewerbody',
+      'access_viewonly_body',
+      'access_viewonly_action',
+      'access_viewonly_publish',
     ]) {
       expect(ar[key]).toMatch(/مشرف/);
       expect(ar[key]).not.toMatch(/مسؤول|مدير/);

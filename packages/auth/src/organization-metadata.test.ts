@@ -3,7 +3,9 @@ import {
   organizationMetadataResponseFilter,
   redactOrganizationPayload,
   stripServerOnlyOrganizationMetadata,
+  withoutMemberHiddenMetadata,
   withoutServerOnlyMetadata,
+  withoutUrlCredentials,
 } from './organization-metadata';
 
 describe('organization metadata', () => {
@@ -78,5 +80,48 @@ describe('organization responses', () => {
       expect(matches(path), path).toBe(true);
     }
     expect(matches('/get-session')).toBe(false);
+  });
+});
+
+describe('organization responses hide admin-only and credential-bearing metadata from every member', () => {
+  const metadata = {
+    plan: 'free',
+    integrations: { slack: { webhookUrl: 'https://hooks.slack.com/services/secret' } },
+    git: {
+      repo: 'acme/docs',
+      webhookSecret: 'secret',
+      cloneUrl: 'https://user:token@git.example.com/acme/docs.git?private_token=t#x',
+      instanceUrl: 'https://oauth2:tok@gitlab.example.com/',
+    },
+  };
+
+  it('drops integrations, the webhook secret and URL credentials', () => {
+    expect(withoutMemberHiddenMetadata(metadata)).toEqual({
+      plan: 'free',
+      git: { repo: 'acme/docs', cloneUrl: 'https://git.example.com/acme/docs.git', instanceUrl: 'https://gitlab.example.com/' },
+    });
+    expect(metadata.git.cloneUrl).toContain('token');
+  });
+
+  it('applies to organization endpoint payloads, parsed or stored as text', () => {
+    const parsed = JSON.stringify(redactOrganizationPayload({ id: 'org-1', metadata }));
+    const text = JSON.stringify(redactOrganizationPayload({ id: 'org-1', metadata: JSON.stringify(metadata) }));
+    for (const out of [parsed, text]) {
+      expect(out).not.toContain('hooks.slack.com');
+      expect(out).not.toContain('token');
+      expect(out).not.toContain('secret');
+    }
+  });
+
+  it('drops a Git URL it cannot parse and keeps clean values as they are', () => {
+    expect(withoutUrlCredentials('not a url')).toBeNull();
+    expect(withoutUrlCredentials('ssh://git@example.com/x')).toBeNull();
+    const clean = { git: { cloneUrl: 'https://git.example.com/acme/docs.git' } };
+    expect(withoutMemberHiddenMetadata(clean)).toBe(clean);
+    expect(withoutMemberHiddenMetadata({ git: { cloneUrl: 'nope' } })).toEqual({ git: {} });
+  });
+
+  it('never strips integrations from an organization update', async () => {
+    await expect(stripServerOnlyOrganizationMetadata({ organization: { metadata: { integrations: { a: 1 } } } })).resolves.toBeUndefined();
   });
 });

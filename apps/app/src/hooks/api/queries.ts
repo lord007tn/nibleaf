@@ -106,7 +106,9 @@ export const useMembers = () => useQuery(membersQueryOptions());
 /** Members + pending invitations for a single site (its own organization). */
 export const useProjectMembers = (projectId: string | undefined) => useQuery(projectMembersQueryOptions(projectId));
 
-export const useAiDraftCapability = (projectId: string) => useQuery(aiDraftCapabilityQueryOptions(projectId));
+/** `enabled: false` for Viewers, who cannot draft (the server refuses them). */
+export const useAiDraftCapability = (projectId: string, options?: { enabled?: boolean }) =>
+  useQuery({ ...aiDraftCapabilityQueryOptions(projectId), enabled: options?.enabled ?? true });
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 

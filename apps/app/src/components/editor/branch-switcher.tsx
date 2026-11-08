@@ -44,6 +44,7 @@ export function BranchSwitcher({
   hideTrigger = false,
   createOpen: controlledCreateOpen,
   onCreateOpenChange,
+  readOnly = false,
 }: {
   projectId: string;
   branches: Branch[];
@@ -55,6 +56,8 @@ export function BranchSwitcher({
   /** Control the "New version" dialog from outside (e.g. an overflow menu item). */
   createOpen?: boolean;
   onCreateOpenChange?: (open: boolean) => void;
+  /** Viewers switch between versions to read them; they cannot create or promote one. */
+  readOnly?: boolean;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -222,15 +225,19 @@ export function BranchSwitcher({
                 {b.id === active?.id ? <Check className="size-3.5 text-primary" /> : null}
               </DropdownMenuItem>
             ))}
-            <DropdownMenuSeparator />
-            {active && !active.isDefault ? (
-              <DropdownMenuItem disabled={merge.isPending} onClick={mergeActive}>
-                <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-              <Plus className="size-3.5" /> {t('editor.branch.new')}
-            </DropdownMenuItem>
+            {readOnly ? null : (
+              <>
+                <DropdownMenuSeparator />
+                {active && !active.isDefault ? (
+                  <DropdownMenuItem disabled={merge.isPending} onClick={mergeActive}>
+                    <GitMerge className="size-3.5" /> {t('editor.branch.merge')}
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem onClick={() => setCreateOpen(true)}>
+                  <Plus className="size-3.5" /> {t('editor.branch.new')}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )}

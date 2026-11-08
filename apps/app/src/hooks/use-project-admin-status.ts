@@ -1,9 +1,9 @@
 import { useProjectMembers } from '@/hooks/api';
-import { resolveProjectSettingsAccess, type SiteAdminState } from '@/lib/project-settings-access';
+import { resolveProjectEditAccess, resolveProjectSettingsAccess, type SiteAdminState, type SiteEditState } from '@/lib/project-settings-access';
 import { useSession } from '@/services/auth-client';
 
 /**
- * The signed-in person's {@link SiteAdminState} on a site, plus the members
+ * The signed-in person's {@link SiteAdminState} and {@link SiteEditState} on a site, plus the members
  * query's error and retry so a screen can offer "try again".
  *
  * Someone signed in but missing from the loaded team is `'notAdmin'`: the server
@@ -18,9 +18,9 @@ export function useProjectAdminStatus(projectId: string | undefined) {
   const session = useSession();
   const isError = members.isError && !members.data;
   const role = members.data?.members.find((candidate) => candidate.user.id === session.data?.user.id)?.role;
-  const status: SiteAdminState = resolveProjectSettingsAccess(
-    role,
-    !projectId || members.isPending || !members.data || session.isPending || !session.data,
-  );
-  return { status, isError, retrying: members.isFetching, retry: members.refetch };
+  const pending = !projectId || members.isPending || !members.data || session.isPending || !session.data;
+  const status: SiteAdminState = resolveProjectSettingsAccess(role, pending);
+  // Whether they may change content (Viewers may not); see resolveProjectEditAccess.
+  const edit: SiteEditState = resolveProjectEditAccess(role, pending, Boolean(projectId) && isError);
+  return { status, edit, role, isError, retrying: members.isFetching, retry: members.refetch };
 }

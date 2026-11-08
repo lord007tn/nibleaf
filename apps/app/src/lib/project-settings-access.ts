@@ -1,4 +1,4 @@
-import { canAdminister } from '@nibleaf/shared/rbac';
+import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
 
 /**
  * Whether the signed-in person may manage this site's admin-only settings
@@ -17,4 +17,24 @@ export type SiteAdminState = 'pending' | 'admin' | 'notAdmin';
 export function resolveProjectSettingsAccess(role: string | undefined, pending: boolean): SiteAdminState {
   if (pending) return 'pending';
   return canAdminister(role ?? '') ? 'admin' : 'notAdmin';
+}
+
+/**
+ * Whether the signed-in person may change this site's content (pages, drafts,
+ * publishing):
+ * - `'edit'`: they can (Editor, Admin or Owner).
+ * - `'viewOnly'`: they are a Viewer (or not on the site's team), so the
+ *   editor is read-only and write controls are disabled with an explanation.
+ * - `'pending'`: not known yet. Screens keep write controls locked but say
+ *   nothing, so a Viewer never types into a draft that cannot be saved.
+ *
+ * A team that failed to load resolves to `'edit'`: the server enforces every
+ * write, so a real Editor is never locked out of their work by a failed read.
+ */
+export type SiteEditState = 'pending' | 'edit' | 'viewOnly';
+
+export function resolveProjectEditAccess(role: string | undefined, pending: boolean, failed = false): SiteEditState {
+  if (failed) return 'edit';
+  if (pending) return 'pending';
+  return canEdit(role ?? '') ? 'edit' : 'viewOnly';
 }

@@ -3,15 +3,14 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
-import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
+import { type AssignableMemberRole, canAdminister } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Crown, Link2, Mail, Trash2, Users } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { RoleSelect } from '@/components/members/role-select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +33,7 @@ import {
 } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
+import { DEFAULT_INVITE_ROLE, roleLabelKey } from '@/lib/member-roles';
 import { useSession } from '@/services/auth-client';
 import { DirtyStateReporter, SectionHeader } from './shared';
 
@@ -64,15 +64,7 @@ function CopyLinkButton({ link, label }: { link: string; label: string }) {
   );
 }
 
-/** Grantable roles — `owner` is intentionally absent: there is exactly one
- *  owner, and ownership only moves via the transfer-ownership flow. */
-type AssignableRole = 'admin' | 'member';
 type MemberAction = { kind: 'remove'; id: string; name: string } | { kind: 'revoke'; id: string; email: string };
-const ROLE_LABEL_KEYS: Record<string, MessageKey> = {
-  owner: 'settings.members.role.owner',
-  admin: 'settings.members.role.admin',
-  member: 'settings.members.role.member',
-};
 
 export function MembersSection({ projectId }: { projectId: string }) {
   const t = useT();
@@ -92,7 +84,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const currentMember = members.find((member) => member.user.id === currentUserId);
   const isCurrentOwner = currentMember?.role === 'owner';
   const canManageMembers = canAdminister(currentMember?.role ?? '');
-  const [lastInvite, setLastInvite] = useState<{ email: string; link: string; role: AssignableRole } | null>(null);
+  const [lastInvite, setLastInvite] = useState<{ email: string; link: string; role: AssignableMemberRole } | null>(null);
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
@@ -133,15 +125,9 @@ export function MembersSection({ projectId }: { projectId: string }) {
     if (action.kind === 'remove') remove.mutate(action.id, options);
     else cancelInvite.mutate(action.id, options);
   };
-  // No `owner` option: invitations and role changes can never grant ownership.
-  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
-  const roleOptions = [
-    { value: 'member', label: t('settings.members.role.member') },
-    { value: 'admin', label: t('settings.members.role.admin') },
-  ] as const satisfies ReadonlyArray<{ value: AssignableRole; label: string }>;
-
+  // RoleSelect never offers `owner`: invitations and role changes can never grant ownership.
   const form = useForm({
-    defaultValues: { email: '', role: 'member' as AssignableRole },
+    defaultValues: { email: '', role: DEFAULT_INVITE_ROLE as AssignableMemberRole },
     onSubmit: async ({ value }) => {
       if (!canManageMembers) return;
       const invited = value.email.trim();
@@ -202,18 +188,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
           <div className="flex w-full items-end gap-2.5 sm:w-auto">
             <form.Field name="role">
               {(field) => (
-                <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
-                  <SelectTrigger aria-label={t('settings.members.roleLabel')} className="min-w-0 flex-1 bg-background sm:w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roleOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <RoleSelect
+                  ariaLabel={t('settings.members.roleLabel')}
+                  className="min-w-0 flex-1 bg-background sm:w-32"
+                  onValueChange={field.handleChange}
+                  value={field.state.value}
+                />
               )}
             </form.Field>
             <form.Subscribe selector={(state) => [state.isSubmitting, state.values.email] as const}>
@@ -255,9 +235,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
               <Copy className="size-4" /> {t('settings.members.copyLink')}
             </Button>
           </div>
-          <p className="mt-2 text-[12px] text-muted-foreground">
-            {t('settings.members.invitedAs', { role: t(ROLE_LABEL_KEYS[lastInvite.role] ?? 'settings.members.role.member') })}
-          </p>
+          <p className="mt-2 text-[12px] text-muted-foreground">{t('settings.members.invitedAs', { role: t(roleLabelKey(lastInvite.role)) })}</p>
           <p className="mt-2 text-[12px] text-muted-foreground">{t('settings.members.inviteLinkHint')}</p>
         </div>
       ) : null}
@@ -292,10 +270,10 @@ export function MembersSection({ projectId }: { projectId: string }) {
                   // only moves via the explicit transfer action below.
                   <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-[12px] text-primary">
                     <Crown className="size-3.5" />
-                    {t('settings.members.role.owner')}
+                    {t('roles.owner')}
                   </span>
                 ) : !canManageMembers ? (
-                  <span className="text-muted-foreground text-sm">{t(ROLE_LABEL_KEYS[member.role] ?? 'settings.members.role.member')}</span>
+                  <span className="text-muted-foreground text-sm">{t(roleLabelKey(member.role))}</span>
                 ) : (
                   <>
                     {isCurrentOwner && member.role === 'admin' ? (
@@ -332,12 +310,14 @@ export function MembersSection({ projectId }: { projectId: string }) {
                         <Crown className="size-4" />
                       </Button>
                     ) : null}
-                    <Select
-                      items={roleOptions}
-                      value={member.role}
-                      onValueChange={(v) =>
+                    <RoleSelect
+                      ariaLabel={t('settings.members.roleLabel')}
+                      className="w-28"
+                      size="sm"
+                      value={member.role as AssignableMemberRole}
+                      onValueChange={(role) =>
                         updateRole.mutate(
-                          { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
+                          { id: member.id, body: { role } },
                           {
                             onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
                             onError: (error) =>
@@ -347,18 +327,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                           },
                         )
                       }
-                    >
-                      <SelectTrigger aria-label={t('settings.members.roleLabel')} className="w-28" size="sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roleOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                     <Button
                       size="icon-sm"
                       variant="ghost"
@@ -388,7 +357,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
                     <div className="text-[12px] text-muted-foreground">
                       {t('settings.members.invitedAs', {
-                        role: t(ROLE_LABEL_KEYS[inv.role ?? 'member'] ?? 'settings.members.role.member'),
+                        role: t(roleLabelKey(inv.role)),
                       })}
                     </div>
                   </div>

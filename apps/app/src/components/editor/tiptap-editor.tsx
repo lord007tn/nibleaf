@@ -715,6 +715,7 @@ export function TiptapEditor({
   const commentsRef = useRef<CommentMarker[]>(comments ?? []);
   const activeCommentRef = useRef<string | null>(activeCommentId ?? null);
   const commentModeRef = useRef(commentMode);
+  const editableRef = useRef(editable);
   const onAddCommentRef = useRef(onAddComment);
   useEffect(() => {
     valueRef.current = value;
@@ -723,8 +724,9 @@ export function TiptapEditor({
     commentsRef.current = comments ?? [];
     activeCommentRef.current = activeCommentId ?? null;
     commentModeRef.current = commentMode;
+    editableRef.current = editable;
     onAddCommentRef.current = onAddComment;
-  }, [activeCommentId, commentMode, comments, onAddComment, onChange, onUpload, value]);
+  }, [activeCommentId, commentMode, comments, editable, onAddComment, onChange, onUpload, value]);
 
   // Upload an image file and insert it at the current selection.
   const insertUploadedImage = (file: File, position?: number) => {
@@ -741,7 +743,8 @@ export function TiptapEditor({
       editable,
       extensions: buildEditorExtensions({
         getUpload: () => onUploadRef.current,
-        canEdit: () => !commentModeRef.current,
+        // A read-only editor (Viewers) and review mode both refuse image uploads.
+        canEdit: () => editableRef.current && !commentModeRef.current,
         // Whether an uploader exists is fixed when the editor is created; the
         // latest uploader is still read at call time.
         onUpload: onUpload
@@ -862,6 +865,8 @@ export function TiptapEditor({
     });
   }, [comments, activeCommentId, commentMode, editor]);
 
+  // Formatting menus and block controls only make sense while the page can change.
+  const tools = editable && !commentMode;
   return (
     <div
       className={cn('pl-editor', variant === 'wysiwyg' && 'pl-editor-document', commentMode && 'is-comment-mode', className)}
@@ -870,14 +875,14 @@ export function TiptapEditor({
       lang={lang}
       style={style}
     >
-      {editor && variant === 'wysiwyg' && !commentMode ? <DocumentToolbar editor={editor} /> : null}
-      {editor && !commentMode ? <CalloutMenu editor={editor} /> : null}
-      {editor && !commentMode ? <ImageControls editor={editor} dir={dir} /> : null}
-      {editor && !commentMode ? <EditorBubbleMenu editor={editor} /> : null}
-      {editor && !commentMode ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
-      {editor && !commentMode ? <CodeBlockMenu editor={editor} /> : null}
+      {editor && variant === 'wysiwyg' && tools ? <DocumentToolbar editor={editor} /> : null}
+      {editor && tools ? <CalloutMenu editor={editor} /> : null}
+      {editor && tools ? <ImageControls editor={editor} dir={dir} /> : null}
+      {editor && tools ? <EditorBubbleMenu editor={editor} /> : null}
+      {editor && tools ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
+      {editor && tools ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
-      {editor && !commentMode && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
+      {editor && tools && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       {variant === 'wysiwyg' ? (
         <div className="pl-document-scroll">
           <div className="pl-document-page">
@@ -888,7 +893,7 @@ export function TiptapEditor({
       ) : (
         <EditorContent editor={editor} />
       )}
-      {editor && editable && !commentMode ? <EditorFooter documentMode={variant === 'wysiwyg'} editor={editor} /> : null}
+      {editor && tools ? <EditorFooter documentMode={variant === 'wysiwyg'} editor={editor} /> : null}
     </div>
   );
 }
