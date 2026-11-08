@@ -9,9 +9,12 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { AlertTriangle, BarChart3, BookText, Check, FileText, Plus, Users, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { compareDelta } from '@/components/analytics/insights/metrics';
-import { SectionCard } from '@/components/analytics/section-card';
+import { STAT_GRID, StatCard } from '@/components/analytics/stat-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
+import { EmptyState } from '@/components/app/empty-state';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
+import { PageHeader } from '@/components/app/page-header';
+import { SiteStatusBadge } from '@/components/app/site-status';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useProjectMembers, useProjects, useWorkspaceAnalytics } from '@/hooks/api';
@@ -102,7 +105,6 @@ function ProjectsPage() {
     isFetching: analyticsFetching,
     refetch: retryAnalytics,
   } = useWorkspaceAnalytics(range);
-  const [newProjectOpen, setNewProjectOpen] = useState(Boolean(newSite));
   const { data: session } = useSession();
   const dismissedKey = startHereDismissedKey(session?.user?.id);
   const storedDismissed = useSyncExternalStore(
@@ -114,7 +116,12 @@ function ProjectsPage() {
   const dismissed = storedDismissed || dismissedNow;
   const t = useT();
   const navigate = useNavigate();
-  const { number } = useFormatters();
+  const { number, relativeTime } = useFormatters();
+  // The New site dialog follows the URL (?newSite=true), so the palette and the
+  // site switcher can open it again while this page is already showing.
+  const newProjectOpen = Boolean(newSite);
+  const setNewProjectOpen = (open: boolean) =>
+    void navigate({ to: '.', search: (prev) => ({ ...prev, newSite: open ? true : undefined }), replace: !open });
 
   const siteList = useMemo(() => projects ?? [], [projects]);
   const focusId = useMemo(() => startHereProgress(siteList, undefined).focus?.id, [siteList]);
@@ -166,16 +173,16 @@ function ProjectsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 basis-64">
-          <h1 className="font-semibold text-2xl tracking-tight">{t('dashboard.title')}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{t('dashboard.subtitle')}</p>
-        </div>
-        <Button onClick={() => setNewProjectOpen(true)}>
-          <Plus className="size-4" /> {t('dashboard.newProject')}
-        </Button>
-        <NewProjectDialog open={newProjectOpen} onOpenChange={setNewProjectOpen} />
-      </div>
+      <PageHeader
+        actions={
+          <Button onClick={() => setNewProjectOpen(true)}>
+            <Plus className="size-4" /> {t('dashboard.newProject')}
+          </Button>
+        }
+        description={t('dashboard.overview.subtitle')}
+        title={t('nav.overview')}
+      />
+      <NewProjectDialog open={newProjectOpen} onOpenChange={setNewProjectOpen} />
 
       {projectsError ? <QueryErrorState onRetry={() => void retryProjects()} retrying={projectsFetching} /> : null}
 
@@ -183,8 +190,16 @@ function ProjectsPage() {
 
       {/* Sites come first so they're never pushed below the fold on a phone. */}
       <div className="rounded-xl border border-border bg-card">
-        <div className="flex items-center justify-between border-border border-b px-5 py-3.5">
-          <h2 className="font-semibold text-sm">{t('dashboard.sitesTable')}</h2>
+        <div className="flex items-center justify-between gap-3 border-border border-b px-5 py-3.5">
+          <h2 className="font-semibold text-sm">{t('dashboard.title')}</h2>
+          {hasSites ? (
+            <Link
+              className="rounded-sm text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              to="/app/sites"
+            >
+              {t('dashboard.viewAllSites')}
+            </Link>
+          ) : null}
         </div>
         {projectsLoading ? (
           // Same table as the loaded state (site, pages, publishes), so nothing moves when rows arrive.
@@ -196,8 +211,9 @@ function ProjectsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('dashboard.col.site')}</TableHead>
-                  <TableHead className="text-end">{t('dashboard.col.pages')}</TableHead>
-                  <TableHead className="text-end">{t('dashboard.col.deploys')}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t('dashboard.col.status')}</TableHead>
+                  <TableHead className="hidden text-end md:table-cell">{t('dashboard.col.pages')}</TableHead>
+                  <TableHead className="hidden text-end md:table-cell">{t('dashboard.col.lastPublished')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -213,11 +229,14 @@ function ProjectsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Skeleton className="ms-auto h-4 w-8" />
                     </TableCell>
-                    <TableCell>
-                      <Skeleton className="ms-auto h-4 w-8" />
+                    <TableCell className="hidden md:table-cell">
+                      <Skeleton className="ms-auto h-4 w-16" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -227,21 +246,24 @@ function ProjectsPage() {
         ) : projectsError && !projects ? null : siteList.length === 0 ? (
           // Also the recovery path for a user whose workspace provisioning
           // failed at sign-up: creating a site mints a fresh workspace.
-          <div className="grid place-items-center px-5 py-16 text-center">
-            <BookText className="size-7 text-muted-foreground" />
-            <p className="mt-3 font-medium">{t('dashboard.empty.title')}</p>
-            <p className="mt-1 max-w-sm text-muted-foreground text-sm">{t('dashboard.empty.body')}</p>
-            <Button className="mt-4" onClick={() => setNewProjectOpen(true)}>
-              <Plus className="size-4" /> {t('dashboard.empty.cta')}
-            </Button>
-          </div>
+          <EmptyState
+            action={
+              <Button onClick={() => setNewProjectOpen(true)}>
+                <Plus className="size-4" /> {t('dashboard.empty.cta')}
+              </Button>
+            }
+            description={t('dashboard.empty.body')}
+            icon={<BookText />}
+            title={t('dashboard.empty.title')}
+          />
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>{t('dashboard.col.site')}</TableHead>
-                <TableHead className="text-end">{t('dashboard.col.pages')}</TableHead>
-                <TableHead className="text-end">{t('dashboard.col.deploys')}</TableHead>
+                <TableHead className="hidden sm:table-cell">{t('dashboard.col.status')}</TableHead>
+                <TableHead className="hidden text-end md:table-cell">{t('dashboard.col.pages')}</TableHead>
+                <TableHead className="hidden text-end md:table-cell">{t('dashboard.col.lastPublished')}</TableHead>
                 {showAnalytics ? <TableHead className="text-end">{t('dashboard.col.views')}</TableHead> : null}
               </TableRow>
             </TableHeader>
@@ -264,9 +286,22 @@ function ProjectsPage() {
                         </div>
                       </Link>
                     </div>
+                    {/* Phones drop the status column; the badge sits under the name instead. */}
+                    <SiteStatusBadge className="ms-11 mt-1.5 sm:hidden" site={project} />
                   </TableCell>
-                  <TableCell className="text-end tabular-nums">{number(project._count?.pages ?? 0)}</TableCell>
-                  <TableCell className="text-end tabular-nums">{number(project._count?.deployments ?? 0)}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    <SiteStatusBadge site={project} />
+                  </TableCell>
+                  <TableCell className="hidden text-end tabular-nums md:table-cell">{number(project._count?.pages ?? 0)}</TableCell>
+                  <TableCell className="hidden text-end text-muted-foreground text-sm md:table-cell">
+                    {project.lastPublishedAt ? (
+                      <time dateTime={String(project.lastPublishedAt)} title={String(project.lastPublishedAt)}>
+                        {relativeTime(project.lastPublishedAt)}
+                      </time>
+                    ) : (
+                      '—'
+                    )}
+                  </TableCell>
                   {showAnalytics ? (
                     <TableCell className="text-end tabular-nums">
                       {/* A measured zero only once analytics answered; never while it's still loading. */}
@@ -299,15 +334,15 @@ function ProjectsPage() {
           ) : null}
 
           {/* KPI cards */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <SectionCard
+          <div className={STAT_GRID}>
+            <StatCard
               label={t('dashboard.stats.projects')}
               value={projectsError ? null : (projects?.length ?? null)}
               icon={<BookText className="size-4" />}
               loading={projectsLoading}
             />
-            <SectionCard label={t('dashboard.stats.pages')} value={totalPages} icon={<FileText className="size-4" />} loading={projectsLoading} />
-            <SectionCard
+            <StatCard label={t('dashboard.stats.pages')} value={totalPages} icon={<FileText className="size-4" />} loading={projectsLoading} />
+            <StatCard
               label={t('dashboard.stats.pageViews')}
               value={analyticsUnavailable ? null : (analytics?.totalViews ?? null)}
               icon={<BarChart3 className="size-4" />}
@@ -317,7 +352,7 @@ function ProjectsPage() {
             />
             {/* No visitor-specific timeseries exists yet, so no trend badge here —
                 the page-views trend would be misleading on a visitors metric. */}
-            <SectionCard
+            <StatCard
               label={t('dashboard.stats.visitors')}
               value={analyticsUnavailable ? null : (analytics?.uniqueVisitors ?? null)}
               icon={<Users className="size-4" />}

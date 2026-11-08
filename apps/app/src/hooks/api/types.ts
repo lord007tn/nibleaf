@@ -48,6 +48,10 @@ export interface Project {
   livePublishes?: number;
   /** Sites list only: a publish is queued or being prepared right now. */
   publishing?: boolean;
+  /** Sites list only: readers can open a published version (the starter publish counts). */
+  live?: boolean;
+  /** Sites list only: when the version readers see went live (ISO); null before the first publish. */
+  lastPublishedAt?: string | null;
   /** One site only: a publish went live and kept its site copy (so it can be
    *  exported), however long ago — the sign-up starter's first publish included. */
   hasPublishedVersion?: boolean;

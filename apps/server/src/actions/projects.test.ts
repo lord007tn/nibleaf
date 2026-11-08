@@ -70,14 +70,24 @@ describe('project page counts', () => {
       { id: 'building', _count: { pages: 1, deployments: 1 } },
       { id: 'starter-only', _count: { pages: 6, deployments: 1 } },
     ]);
-    mocks.deploymentGroupBy.mockResolvedValue([
-      { projectId: 'live', status: 'READY', _count: { _all: 2 } },
-      { projectId: 'building', status: 'BUILDING', _count: { _all: 1 } },
-    ]);
+    const starterPublishedAt = new Date('2026-09-01T10:00:00Z');
+    const livePublishedAt = new Date('2026-11-07T08:30:00Z');
+    mocks.deploymentGroupBy.mockImplementation(async ({ by }: { by: string[] }) =>
+      by.includes('status')
+        ? [
+            { projectId: 'live', status: 'READY', _count: { _all: 2 } },
+            { projectId: 'building', status: 'BUILDING', _count: { _all: 1 } },
+          ]
+        : [
+            { projectId: 'live', _max: { completedAt: livePublishedAt, createdAt: livePublishedAt } },
+            // An older row without completedAt falls back to when it was created.
+            { projectId: 'starter-only', _max: { completedAt: null, createdAt: starterPublishedAt } },
+          ],
+    );
 
     const projects = await listProjects('user-1');
 
-    expect(mocks.deploymentGroupBy).toHaveBeenCalledTimes(1);
+    expect(mocks.deploymentGroupBy).toHaveBeenCalledTimes(2);
     expect(mocks.deploymentGroupBy).toHaveBeenCalledWith({
       by: ['projectId', 'status'],
       where: {
@@ -92,6 +102,17 @@ describe('project page counts', () => {
       { id: 'live', livePublishes: 2, publishing: false },
       { id: 'building', livePublishes: 0, publishing: true },
       { id: 'starter-only', livePublishes: 0, publishing: false },
+    ]);
+    // What readers can open now counts the starter publish too.
+    expect(mocks.deploymentGroupBy).toHaveBeenCalledWith({
+      by: ['projectId'],
+      where: { projectId: { in: ['live', 'building', 'starter-only'] }, status: 'READY' },
+      _max: { completedAt: true, createdAt: true },
+    });
+    expect(projects.map(({ id, live, lastPublishedAt }) => ({ id, live, lastPublishedAt }))).toEqual([
+      { id: 'live', live: true, lastPublishedAt: livePublishedAt },
+      { id: 'building', live: false, lastPublishedAt: null },
+      { id: 'starter-only', live: true, lastPublishedAt: starterPublishedAt },
     ]);
   });
 
