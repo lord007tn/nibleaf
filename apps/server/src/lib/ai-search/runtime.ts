@@ -27,7 +27,9 @@ const qdrant = getQdrantClient();
 
 /** How long one reading of the alias's target is trusted. */
 const INDEX_CHECK_MS = 30_000;
-let indexCheck: { at: number; serving: Promise<boolean> } | undefined;
+/** A failed reading is retried sooner, so a brief Qdrant outage pauses AI answers only briefly. */
+const INDEX_RETRY_MS = 5000;
+let indexCheck: { at: number; ttl: number; serving: Promise<boolean> } | undefined;
 let lastServed: string | null | undefined;
 
 /** Whether the read alias serves the collection this instance is configured
@@ -40,8 +42,9 @@ const configuredIndexServing = async (): Promise<boolean> => {
   const client = qdrant;
   if (!client) return false;
   const now = Date.now();
-  if (!indexCheck || now - indexCheck.at >= INDEX_CHECK_MS) {
-    const serving = client.servedCollection().then(
+  if (!indexCheck || now - indexCheck.at >= indexCheck.ttl) {
+    const check: NonNullable<typeof indexCheck> = { at: now, ttl: INDEX_CHECK_MS, serving: Promise.resolve(false) };
+    check.serving = client.servedCollection().then(
       (served) => {
         if (served !== lastServed) {
           lastServed = served;
@@ -56,9 +59,17 @@ const configuredIndexServing = async (): Promise<boolean> => {
         }
         return served === client.collection;
       },
-      () => false,
+      (error: unknown) => {
+        // Fail closed (keyword results, no AI answers), and read again soon.
+        check.ttl = INDEX_RETRY_MS;
+        log.warn(
+          { alias: client.alias, configured: client.collection, error: error instanceof Error ? error.message : 'unknown error' },
+          'Could not read the search alias; hybrid search and AI answers are paused until the next check',
+        );
+        return false;
+      },
     );
-    indexCheck = { at: now, serving };
+    indexCheck = check;
   }
   return indexCheck.serving;
 };

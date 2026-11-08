@@ -111,6 +111,15 @@ describe('hybrid index recovery', () => {
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
   });
 
+  it('reads the alias again a few seconds after a failed reading, not half a minute later', async () => {
+    doubles.servedCollection.mockRejectedValueOnce(new Error('qdrant unavailable'));
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
+    clock += 6000;
+    vi.setSystemTime(clock);
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
+    expect(doubles.servedCollection).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps AI answers on the retained index after rolling back from a newer embedding rebuild', async () => {
     // v1 READY, then a v2 rebuild READY; the instance is back on v1 and the alias serves v1 again.
     doubles.runs = [
