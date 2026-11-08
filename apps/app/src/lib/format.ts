@@ -16,14 +16,20 @@ export function useFormatters() {
     count: (value: number) => countVariables(locale, value),
     /** A currency amount (default USD) with the locale's symbol placement and Western digits. */
     currency: (value: number, currency = 'USD') => formatCurrency(tag, value, currency),
-    date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),
+    /** AI spend in USD. It is often a fraction of a cent, so keep two significant
+     *  digits there instead of rounding a real cost to "$0.00". */
+    usd: (value: number) =>
+      value > 0 && value < 0.01
+        ? new Intl.NumberFormat(tag, { style: 'currency', currency: 'USD', maximumSignificantDigits: 2 }).format(value)
+        : formatCurrency(tag, value, 'USD'),
+    date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(toDate(value)),
     /** A signed percentage like “+12.5%” / “−4%” for trend badges. `value` is
      *  already in percent units (e.g. 12.5 → “+12.5%”). `style:'percent'` lets
      *  Intl supply the locale percent sign + digits (Arabic-Indic ٪). */
     percent: (value: number) =>
       new Intl.NumberFormat(tag, { style: 'percent', signDisplay: 'exceptZero', maximumFractionDigits: 1 }).format(value / 100),
     /** A short axis label (e.g. “Jun 23”) for time-series charts. */
-    shortDate: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric' }).format(new Date(value)),
+    shortDate: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric' }).format(toDate(value)),
     /** Full date + time (e.g. for "last imported"), locale-aware. */
     dateTime: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)),
     /** Locale-aware relative time (e.g. “5m ago” / “قبل 5 دقائق”). Picks the
@@ -53,6 +59,23 @@ export function useFormatters() {
 export function countVariables(locale: string, value: number) {
   return { count: new Intl.NumberFormat(localeTag(locale)).format(value), form: new Intl.PluralRules(locale).select(value) };
 }
+
+const CALENDAR_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * Parse a date for display. A bare calendar day ("YYYY-MM-DD", as analytics
+ * series buckets arrive, already in the viewer's timezone) is read as that
+ * local day: `new Date('2026-08-26')` is UTC midnight, which every formatter
+ * west of UTC renders as the previous day. Anything else (a full timestamp) is
+ * passed through to the Date constructor.
+ */
+export function parseCalendarDate(value: string): Date {
+  const match = CALENDAR_DAY.exec(value);
+  if (!match) return new Date(value);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+const toDate = (value: string | number | Date) => (typeof value === 'string' ? parseCalendarDate(value) : new Date(value));
 
 /** The BCP-47 tag used for UI formatting. Arabic uses Western 0-9 digits. */
 export function localeTag(locale: string) {

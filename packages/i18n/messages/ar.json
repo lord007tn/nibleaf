@@ -3983,5 +3983,7 @@
   "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
   "admin_pagination_first": "الصفحة الأولى",
-  "admin_pagination_next": "الصفحة التالية"
+  "admin_pagination_next": "الصفحة التالية",
+  "dashboard_ai_inputtokens": "وحدات النص في الأسئلة",
+  "dashboard_ai_outputtokens": "وحدات النص في الإجابات"
 }

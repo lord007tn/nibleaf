@@ -1,11 +1,13 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { useT } from '@nibleaf/i18n/react';
+import { useForm } from '@tanstack/react-form';
 import { CalendarRange } from 'lucide-react';
-import { type FormEvent, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { RangeTabs } from '../range-tabs';
 import { customRangeError, type InsightsSearch, localIsoDay } from './filters';
 import { useInsightFormat } from './use-insight-format';
@@ -24,32 +26,31 @@ function CustomRangePicker({ filters, onApply }: { filters: InsightsSearch; onAp
   const t = useT();
   const format = useInsightFormat();
   const id = useId();
+  const errorId = `${id}-error`;
   // Read the clock once per picker, not on every render.
   const [{ today, monthAgo }] = useState(defaultDays);
   const [open, setOpen] = useState(false);
-  const [from, setFrom] = useState(filters.from ?? monthAgo);
-  const [to, setTo] = useState(filters.to ?? today);
-  const [submitted, setSubmitted] = useState(false);
-  const error = customRangeError(from, to);
   const active = filters.range === 'custom' && filters.from && filters.to;
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    setSubmitted(true);
-    if (error) return;
-    onApply(from, to);
-    setOpen(false);
+  const validate = ({ value }: { value: { from: string; to: string } }) => {
+    const error = customRangeError(value.from, value.to);
+    return error ? t(CUSTOM_ERROR_KEYS[error]) : undefined;
   };
+  const form = useForm({
+    defaultValues: { from: filters.from ?? monthAgo, to: filters.to ?? today },
+    // Checked on every change so a corrected date clears the message at once;
+    // shown only after the first Apply, so typing a date never starts with an error.
+    validators: { onChange: validate, onSubmit: validate },
+    onSubmit: ({ value }) => {
+      onApply(value.from, value.to);
+      setOpen(false);
+    },
+  });
 
   return (
     <Popover
       onOpenChange={(next) => {
         setOpen(next);
-        if (next) {
-          setFrom(filters.from ?? monthAgo);
-          setTo(filters.to ?? today);
-          setSubmitted(false);
-        }
+        if (next) form.reset({ from: filters.from ?? monthAgo, to: filters.to ?? today });
       }}
       open={open}
     >
@@ -63,42 +64,69 @@ function CustomRangePicker({ filters, onApply }: { filters: InsightsSearch; onAp
           </Button>
         }
       />
-      <PopoverContent align="end" className="w-80">
-        <form className="flex flex-col gap-3" noValidate onSubmit={submit}>
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)]">
+        <form
+          className="flex flex-col gap-3"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void form.handleSubmit();
+          }}
+        >
           <div>
             <PopoverTitle className="font-medium">{t('analytics.filter.custom.title')}</PopoverTitle>
             <PopoverDescription className="text-muted-foreground text-xs">{t('analytics.filter.custom.description')}</PopoverDescription>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${id}-from`}>{t('analytics.filter.custom.from')}</Label>
-              <Input
-                aria-invalid={submitted && error !== null}
-                id={`${id}-from`}
-                max={to || today}
-                onChange={(event) => setFrom(event.target.value)}
-                type="date"
-                value={from}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor={`${id}-to`}>{t('analytics.filter.custom.to')}</Label>
-              <Input
-                aria-invalid={submitted && error !== null}
-                id={`${id}-to`}
-                max={today}
-                min={from || undefined}
-                onChange={(event) => setTo(event.target.value)}
-                type="date"
-                value={to}
-              />
-            </div>
-          </div>
-          {submitted && error ? (
-            <p className="text-destructive text-xs" role="alert">
-              {t(CUSTOM_ERROR_KEYS[error])}
-            </p>
-          ) : null}
+          <form.Subscribe selector={(state) => ({ errors: state.submissionAttempts > 0 ? state.errors : [], from: state.values.from })}>
+            {({ errors, from }) => {
+              const invalid = errors.length > 0;
+              return (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <form.Field name="from">
+                      {(field) => (
+                        <div className="flex min-w-0 flex-col gap-1.5">
+                          <Label htmlFor={`${id}-from`}>{t('analytics.filter.custom.from')}</Label>
+                          <Input
+                            aria-describedby={invalid ? errorId : undefined}
+                            aria-invalid={invalid}
+                            id={`${id}-from`}
+                            max={today}
+                            name={field.name}
+                            onBlur={field.handleBlur}
+                            onChange={(event) => field.handleChange(event.target.value)}
+                            type="date"
+                            value={field.state.value}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                    <form.Field name="to">
+                      {(field) => (
+                        <div className="flex min-w-0 flex-col gap-1.5">
+                          <Label htmlFor={`${id}-to`}>{t('analytics.filter.custom.to')}</Label>
+                          <Input
+                            aria-describedby={invalid ? errorId : undefined}
+                            aria-invalid={invalid}
+                            id={`${id}-to`}
+                            max={today}
+                            min={from || undefined}
+                            name={field.name}
+                            onBlur={field.handleBlur}
+                            onChange={(event) => field.handleChange(event.target.value)}
+                            type="date"
+                            value={field.state.value}
+                          />
+                        </div>
+                      )}
+                    </form.Field>
+                  </div>
+                  <FieldError errors={errors} id={errorId} role="alert" />
+                </>
+              );
+            }}
+          </form.Subscribe>
           <div className="flex justify-end gap-2">
             <Button onClick={() => setOpen(false)} size="sm" type="button" variant="ghost">
               {t('common.cancel')}

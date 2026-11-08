@@ -67,7 +67,6 @@ function WorkspaceAnalyticsPage() {
     devices.reduce((sum, d) => sum + d.count, 0),
   );
   const projectsWithTraffic = unavailable ? null : byProject.filter((p) => p.views > 0).length;
-  const hasTimeseries = (data?.timeseries ?? []).some((d) => d.views > 0);
   const zeroResults = data?.searches && 'zeroResults' in data.searches ? data.searches.zeroResults : null;
   const clickedResults = data?.searches && 'clickedResults' in data.searches ? data.searches.clickedResults : null;
 
@@ -117,15 +116,7 @@ function WorkspaceAnalyticsPage() {
       {/* Pageviews chart */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-4 font-medium text-sm">{t('analytics.chart.pageviewsAllProjects')}</div>
-        {isPending ? (
-          <Skeleton className="h-[240px] w-full" />
-        ) : unavailable ? (
-          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</div>
-        ) : hasTimeseries ? (
-          <ViewsTimeseriesChart data={data?.timeseries ?? []} />
-        ) : (
-          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{EMPTY}</div>
-        )}
+        <ViewsTimeseriesChart data={data?.timeseries ?? []} loading={isPending} unknown={unavailable} />
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

@@ -1,6 +1,4 @@
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { useT } from '@nibleaf/i18n/react';
 import type { AnalyticsRange } from '@/hooks/api';
 import { RangeTabs } from './range-tabs';
 import { type ViewsPoint, ViewsTimeseriesChart } from './views-timeseries-chart';
@@ -30,9 +28,6 @@ export function ViewsAreaChart({
   /** The views couldn't be loaded or aren't known: say so instead of "no traffic yet". */
   unavailable?: boolean;
 }) {
-  const t = useT();
-  const hasData = data.some((d) => d.views > 0);
-
   return (
     <Card className="@container/chart">
       <CardHeader>
@@ -43,15 +38,7 @@ export function ViewsAreaChart({
         </CardAction>
       </CardHeader>
       <div className="px-2 pb-4 sm:px-6">
-        {loading ? (
-          <Skeleton className="h-[240px] w-full" />
-        ) : unavailable ? (
-          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{t('analytics.state.unknown')}</div>
-        ) : hasData ? (
-          <ViewsTimeseriesChart data={data} />
-        ) : (
-          <div className="grid h-[240px] place-items-center text-center text-muted-foreground text-sm">{t('analytics.empty.traffic')}</div>
-        )}
+        <ViewsTimeseriesChart data={data} loading={loading} unknown={unavailable} />
       </div>
     </Card>
   );

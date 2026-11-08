@@ -3939,5 +3939,7 @@
   "analytics_status_readsdisabled_body": "سرور تجزیاتی ڈیٹا جمع کر رہا ہے۔ منتقلی تیار ہونے پر منتظم ANALYTICS_MODE=clickhouse سے رپورٹس فعال کر سکتا ہے۔",
   "publish_reviewchanged": "جائزے کے بعد آپ کی سائٹ بدل گئی ہے۔ شائع کرنے سے پہلے تبدیلیوں کا دوبارہ جائزہ لیں۔",
   "admin_pagination_first": "پہلا صفحہ",
-  "admin_pagination_next": "اگلا صفحہ"
+  "admin_pagination_next": "اگلا صفحہ",
+  "dashboard_ai_inputtokens": "سوالات میں متن کی اکائیاں",
+  "dashboard_ai_outputtokens": "جوابات میں متن کی اکائیاں"
 }

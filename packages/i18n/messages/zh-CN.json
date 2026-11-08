@@ -3883,5 +3883,7 @@
   "analytics_status_readsdisabled_body": "服务器正在收集分析数据。迁移准备就绪后，管理员可通过 ANALYTICS_MODE=clickhouse 启用报告。",
   "publish_reviewchanged": "网站自审核以来已发生变化。发布前请重新审核更改。",
   "admin_pagination_first": "第一页",
-  "admin_pagination_next": "下一页"
+  "admin_pagination_next": "下一页",
+  "dashboard_ai_inputtokens": "问题中的文本单位",
+  "dashboard_ai_outputtokens": "回答中的文本单位"
 }
