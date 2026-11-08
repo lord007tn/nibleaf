@@ -170,6 +170,8 @@ env_line BETTER_AUTH_SECRET "$(random_hex 32)"
 env_line INTEGRATION_CREDENTIAL_ENCRYPTION_KEY "$(openssl rand -base64 32)"
 env_line INTERNAL_API_SECRET "$(random_hex 32)"
 env_line POSTGRES_PASSWORD "$(random_hex 24)"
+env_line CLICKHOUSE_PASSWORD "$(random_hex 24)"
+env_line ANALYTICS_HASH_SALT "$(random_hex 32)"
 env_line STORAGE_PROVIDER maxio
 env_line STORAGE_ENDPOINT http://maxio:9000
 env_line STORAGE_PUBLIC_ENDPOINT "$STORAGE_PUBLIC_ENDPOINT"

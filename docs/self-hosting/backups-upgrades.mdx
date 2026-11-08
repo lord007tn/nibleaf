@@ -53,16 +53,16 @@ they work with any Compose project name and stop if it cannot be identified. Ext
 R2 or S3 buckets are not in this volume, so skip those lines and use provider versioning,
 replication, or an independent bucket backup.
 
-In a repository checkout, `bash scripts/backup.sh` dumps Postgres, archives a
-named storage volume when it exists, and prunes matching local files after 14
-days. It does not stop writers, back up `.env`, or discover your storage volume.
-Its default `STORAGE_VOLUME` is `nibleaf_nibleaf-maxio`; with a custom project
-name, pass the actual mounted volume or it can skip storage and still succeed.
-Use the inspected `MAXIO_VOLUME` above as `STORAGE_VOLUME`. `COMPOSE_FILE`
-defaults to `docker-compose.prod.yml`, `BACKUP_DIR` to `./backups`,
-`RETENTION_DAYS` to `14`, and `PGUSER` / `PGDATABASE` to `nibleaf`. The script
-accepts one Compose filename; for multiple overlays, use a reviewed wrapper
-with the same file list as the deployment. It is not a release asset.
+In a repository checkout, `bash scripts/backup.sh` discovers the selected
+Compose project's running server and maxio volume, fails if bundled storage is
+missing, and writes a recovery manifest. Set `BACKUP_STORAGE=external` explicitly
+for a database-only backup and back up that bucket separately. `STORAGE_VOLUME`
+is an optional assertion against the inspected mount, not a default volume name.
+The script does not stop writers or copy `.env`; do that separately.
+`COMPOSE_FILE` defaults to `docker-compose.prod.yml`, `BACKUP_DIR` to `./backups`,
+`RETENTION_DAYS` to `14`, and `PGUSER` / `PGDATABASE` to `nibleaf`. It accepts one
+Compose filename; for multiple overlays, use a reviewed wrapper with the same
+file list as the deployment. It is not a release asset.
 
 `.env` holds the secrets that make a restore usable, including the encryption keys
 for Git and integration credentials. Keep a protected copy with its own access
@@ -81,6 +81,8 @@ volume; do not start the migrate service before restoration. The guard below
 refuses a database with public tables. Never point these commands at the live
 Compose project. If any step fails, keep application services stopped:
 
+Restore with the application revision that created the backup. Preserve the previous database and storage volume; do not attach them to this drill. Keep application services stopped until schema and recovered records are verified. On failure, retain the failed target and logs for diagnosis.
+
 ```bash
 set -eu
 docker compose --profile admin stop app admin server worker
@@ -92,8 +94,9 @@ test -n "$MAXIO_VOLUME"
 docker volume inspect "$MAXIO_VOLUME" >/dev/null
 docker compose stop maxio
 docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
-docker compose up -d
 ```
+
+After verifying schema, migration history and recovered records, start only the compatible application revision with `docker compose up -d`.
 
 Then verify projects, memberships, page trees, current drafts, ready deployments,
 uploaded assets, authentication isolation, and public search.

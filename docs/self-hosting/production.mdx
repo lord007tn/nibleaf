@@ -128,3 +128,78 @@ For MCP OAuth, check discovery on the HTTPS dashboard origin, connect one
 least-privilege app, and verify disconnect stops the next request. For MCP
 writes, preview a fictional project with another writer’s pending draft and
 confirm the preview includes the whole project before publishing.
+
+## Next-release packaging and source CI
+
+`release/self-host.json` and `release/published/` describe the published v0.2.1
+assets. `docker-compose.prod.yml` and `scripts/install.sh` now prepare the next
+release; they do not change existing downloads. Do not replace a released
+installation with these templates as an upgrade shortcut.
+
+The next template includes ClickHouse with a 1536 MiB / 2 CPU budget, persistent
+data, logs and backups, and an `analytics-tools` migration profile. Analytics
+remain disabled by default. Set `CLICKHOUSE_PASSWORD` before rendering this
+template (the next installer generates it) and keep `INTERNAL_API_SECRET` the
+same on app, API and worker. Reader and writer credentials can be set separately;
+provision the corresponding ClickHouse users and grants as described in
+[analytics operations](/self-hosting/clickhouse-analytics). The template also
+forwards every documented `EXPORT_*` setting and both MCP write/publish limits.
+
+For an existing v0.2.1 installation needing those limits before the next release,
+use a separate `compose.limits.yml` override. Set the required `EXPORT_*`,
+`MCP_WRITE_RATE_LIMIT_PER_MIN` and `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` mappings on
+`server` and `worker`, then use the same ordered file list for every command:
+
+```bash
+docker compose -f docker-compose.yml -f compose.limits.yml config
+docker compose -f docker-compose.yml -f compose.limits.yml up -d server worker
+```
+
+Review the effective environment privately; it contains secrets. Rehearse with
+fictional data and verify the actual limits before production. The published
+Compose comments about skipping private proxy hops are stale: count every address
+after the client, private addresses included. Use the
+[proxy troubleshooting table](/self-hosting/troubleshooting#readers-see-too-many-requests).
+
+Manual image publication/deployment requires successful source-triggered runs of
+`ci.yml`, `codeql.yml`, and `gitleaks.yml` for the exact source SHA. Missing,
+pending, cancelled, failed or unreadable results stop the gate. There is no bypass.
+Docker builds remain manual-only. A read-only receipt can be obtained with:
+
+```bash
+SOURCE_SHA=$(git rev-parse HEAD) GITHUB_REPOSITORY=lord007tn/nibleaf GH_TOKEN="$(gh auth token)" node scripts/check-source-ci.mjs
+```
+
+At the next release preparation, set the new version in the production template,
+copy the reviewed templates into `release/published/`, regenerate both hashes and
+the verified README command together, and run `pnpm self-host:check` and
+`pnpm release:check`. Publish fresh assets under a new tag; never replace v0.2.1.
+The release is still pending a clean install, worker analytics health, dashboard
+activity and a concurrent `analytics-migrate` smoke test from the new assets.
+
+## Marketing HTML and CDN caching
+
+Marketing HTML still uses a per-request nonce CSP and `private, no-store`.
+Do not force-cache it at the CDN. Shared caching is deferred until the product
+owner accepts the following effects: GTM custom-HTML inline scripts may stop
+working under a hash CSP, CDN hits bypass origin crawler analytics, and stars and
+the footer year may lag by the TTL.
+
+Before enabling `public, max-age=60, s-maxage=300`, normalize router timestamps,
+move time-varying loader values out of inline state, render bots and humans with
+the same completed stream, then hash every inline script after the manifest
+rewrite. Remove nonce metadata only for eligible marketing HTML. Require
+byte-identical HTML and CSP across repeated EN/AR requests and an upgrade guard
+covering every emitted script. Keep dashboard, authentication and published-site
+routes on nonce CSP with `no-store`. At the CDN, bypass requests with any auth or
+session cookie or Authorization header, include the host in the cache key, and
+preserve `Vary: Accept` for Markdown negotiation. `Vary: Cookie` alone is insufficient.
+
+## CLI agent-resource checks
+
+`inspect` rejects empty or HTML/login `llms.txt`, including disguised HTML, while
+accepting English and Arabic UTF-8 text. OpenAPI requires JSON, version 3.0.x or
+3.1.x, nonempty `info.title` and `info.version`, and a `paths` object (which may be
+empty). This is a minimum document-shape check, not full OpenAPI validation.
+Failures identify the resource and corrective action; Markdown, `Vary: Accept`
+and real-404 checks still apply.

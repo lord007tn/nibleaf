@@ -62,6 +62,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   attestations: write
   contents: read
   id-token: write
@@ -153,6 +154,13 @@ jobs:
             fi
           fi
 
+      - name: Require successful source CI for publication or deployment
+        if: inputs.publish || inputs.deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node scripts/check-source-ci.mjs
+
       # QEMU emulates arm64 so the published image runs on Graviton/Ampere/
       # Raspberry Pi hosts as well as amd64.
       - name: Set up QEMU
@@ -232,6 +240,13 @@ jobs:
 
       # Deployment requires an explicit publish + deploy choice and is limited
       # to a workflow dispatched on main that also builds the main ref.
+      - name: Recheck source CI before deployment
+        if: inputs.publish && inputs.deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node scripts/check-source-ci.mjs
+
       - name: Deploy exact image with Coolify, verify production, and compensate on failure
         if: inputs.publish && inputs.deploy && inputs.ref == 'main' && github.ref == 'refs/heads/main'
         # This dedicated token must have exactly deploy, read, write, and

@@ -25,16 +25,13 @@
 # the same disk as the database is not a backup.
 #
 # ── RESTORE ────────────────────────────────────────────────────────────────
-# Database (into a running stack; drops and recreates objects it restores):
-#   docker compose -f docker-compose.prod.yml exec -T postgres \
-#     pg_restore -U nibleaf -d nibleaf --clean --if-exists \
-#     < backups/nibleaf-db-<STAMP>.dump
-#
-# Object storage (stop the stack first so maxio isn't writing):
-#   docker compose -f docker-compose.prod.yml stop
-#   docker run --rm -v <volume-from-backup-manifest>:/data -v "$PWD/backups":/backup \
-#     alpine:3.22 sh -c "rm -rf /data/* && tar xzf /backup/nibleaf-storage-<STAMP>.tar.gz -C /data"
-#   docker compose -f docker-compose.prod.yml up -d
+# Follow the empty-database restore procedure, using a compatible application
+# revision and the matching database + object-storage recovery set:
+#   https://docs.nibleaf.com/self-hosting/backups-upgrades#test-a-restore
+#   https://docs.nibleaf.com/ar/self-hosting/backups-upgrades
+# Preserve the previous database and storage volume. Never restore over existing
+# tables or automatically restart application services after a restore failure.
+# Keep app, admin, server and worker stopped until schema and records are verified.
 #
 # TEST YOUR RESTORE. An untested backup is a hope, not a plan — restore into a
 # scratch database/volume at least once and after every major upgrade.

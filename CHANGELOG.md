@@ -6,6 +6,19 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+### Fixed
+
+- Reject unusable CLI agent resources, point backup recovery at an empty target,
+  and require exact-source CI before manual image publication/deployment (#312).
+- Share app/API proxy parsing without changing hop semantics; correct operator
+  comments to count private hops after the client (#335).
+- Prepare ClickHouse, export and MCP limit wiring and generated analytics secrets
+  in the next-release production templates (#287). Published v0.2.1 inputs and
+  checksums are preserved separately in `release/published/`; existing downloads
+  are unchanged. New release assets and installation smoke tests remain pending.
+- Document the decisions and deterministic-rendering checks required before
+  marketing HTML can use shared CDN caching. Nonce HTML remains private (#329).
+
 ## v0.2.1
 
 ### Highlights

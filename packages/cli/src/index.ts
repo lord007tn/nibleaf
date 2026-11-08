@@ -42,18 +42,20 @@ const checkResponse = async (
   url: URL,
   fetchImpl: typeof fetch,
   init: RequestInit,
-  validate: (response: Response, body: string) => boolean,
+  validate: (response: Response, body: string) => boolean | string,
 ): Promise<EndpointCheck> => {
   try {
     const response = await fetchImpl(url, { ...init, redirect: 'follow', signal: AbortSignal.timeout(10_000) });
     const body = await response.text();
+    const result = validate(response, body);
     return {
       name,
       url: url.toString(),
       status: response.status,
       contentType: response.headers.get('content-type'),
       vary: response.headers.get('vary'),
-      ok: validate(response, body),
+      ok: result === true,
+      ...(typeof result === 'string' ? { error: result } : {}),
     };
   } catch (error) {
     return {
@@ -81,7 +83,17 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
 
   const checks = await Promise.all([
     checkResponse('home', targets.home, fetchImpl, {}, (response) => response.ok),
-    checkResponse('llms', targets.llms, fetchImpl, {}, (response, body) => response.status === 200 && body.trim().length > 0),
+    checkResponse('llms', targets.llms, fetchImpl, {}, (response, body) => {
+      if (response.status !== 200) return 'llms.txt must return HTTP 200.';
+      if (!body.trim()) return 'llms.txt must contain nonempty UTF-8 text.';
+      if (
+        /(?:text\/html|application\/xhtml\+xml)/i.test(response.headers.get('content-type') ?? '') ||
+        /^\s*<(?:!doctype\s+html|html|head|body|form)\b/i.test(body)
+      ) {
+        return 'llms.txt returned HTML, possibly a sign-in page; serve plain text or Markdown.';
+      }
+      return true;
+    }),
     checkResponse(
       'sitemap',
       targets.sitemap,
@@ -90,11 +102,30 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
       (response, body) => response.status === 200 && response.headers.get('content-type')?.includes('xml') === true && body.includes('<urlset'),
     ),
     checkResponse('openapi', targets.openapi, fetchImpl, {}, (response, body) => {
-      if (response.status !== 200 || !response.headers.get('content-type')?.includes('application/json')) return false;
+      if (response.status !== 200 || !response.headers.get('content-type')?.includes('application/json')) {
+        return 'openapi.json must return HTTP 200 with application/json.';
+      }
       try {
-        return typeof (JSON.parse(body) as { openapi?: unknown }).openapi === 'string';
+        const document = JSON.parse(body) as Record<string, unknown> | null;
+        if (!document || typeof document !== 'object' || typeof document.openapi !== 'string' || !/^3\.(?:0|1)\.\d+$/.test(document.openapi)) {
+          return 'openapi.json must declare a supported OpenAPI 3.0.x or 3.1.x version.';
+        }
+        const info = document.info as Record<string, unknown> | null;
+        if (
+          !info ||
+          typeof info.title !== 'string' ||
+          !info.title.trim() ||
+          typeof info.version !== 'string' ||
+          !info.version.trim() ||
+          !document.paths ||
+          typeof document.paths !== 'object' ||
+          Array.isArray(document.paths)
+        ) {
+          return 'openapi.json requires info.title, info.version and a paths object.';
+        }
+        return true;
       } catch {
-        return false;
+        return 'openapi.json contains malformed JSON.';
       }
     }),
     checkResponse(
