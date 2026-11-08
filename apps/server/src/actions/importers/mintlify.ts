@@ -3,12 +3,12 @@ import { slugify } from '@nibleaf/shared';
 import type { MintlifyImportBody, ProjectConfig } from '@nibleaf/validators';
 import { badRequest, ImportError } from '@/errors';
 import { importDocumentSchema } from '@/validators/importers';
-import { createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
+import { captureImportDraft, createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
 import { createLanguage, updateLanguage } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { deriveTitle, MAX_IMPORT_FILES, parseFrontmatter, stableHash } from './content';
 import { RemoteAssetMigrator } from './ghost-assets';
-import { getGitHubDefaultBranch, getGitHubTextFile, githubRawUrl, listGitHubFiles } from './github';
+import { getGitHubDefaultBranch, getGitHubSnapshot, getGitHubTextFile, githubRawUrl } from './github';
 import { resolveMintlifyConfigAsset, rewriteMintlifyAssetReferences } from './mintlify-assets';
 import { buildMintlifyLanguageRouteMap, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
 import {
@@ -37,14 +37,18 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
   id: 'mintlify',
 
   async run({ organizationId, projectId, input }): Promise<ImportSummary> {
+    await assertProjectInOrg(organizationId, projectId);
+    const draft = await captureImportDraft(projectId);
+    // Read settings after the fingerprint: a change during this read or the
+    // download must invalidate promotion rather than restore stale settings.
     const project = await assertProjectInOrg(organizationId, projectId);
 
     const [owner, name] = input.repo.split('/');
     if (!owner || !name) {
       throw badRequest('Use the form owner/repo.');
     }
-    const branch = input.branch?.trim() || (await getGitHubDefaultBranch(owner, name));
-    const tree = await listGitHubFiles(owner, name, branch);
+    const ref = input.branch?.trim() || (await getGitHubDefaultBranch(owner, name));
+    const { revision: branch, files: tree } = await getGitHubSnapshot(owner, name, ref);
     const blobs = new Set(tree.filter((item) => item.type === 'blob').map((item) => item.path));
     const textCache = new Map<string, Promise<string | null>>();
     const loadText = (filePath: string) => {
@@ -85,7 +89,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
       const currentTarget = await defaultImportTarget(projectId);
       const defaultTarget = { ...currentTarget, branchId: replacementBranch.id };
       const assets = new RemoteAssetMigrator(projectId, 'mintlify');
-      const state = { pages: 0, capWarned: false, versions: new Set<string>() };
+      const state = { pages: 0, versions: new Set<string>() };
       const languageResult = parseMintlifyLanguages(config);
       summary.warnings.push(...languageResult.warnings);
       let chromeNodes: NavNode[];
@@ -156,7 +160,7 @@ export const mintlifyImporter: ImporterSource<MintlifyImportBody> = {
         }
       }
 
-      await promoteImportReplacementBranch(projectId, replacementBranch.id, replacementConfig);
+      await promoteImportReplacementBranch(projectId, replacementBranch.id, replacementConfig, draft, input.replaceExisting !== true);
       summary.warnings.push('Replaced the existing draft navigation only after the complete Mintlify import succeeded.');
 
       return summary;
@@ -202,7 +206,7 @@ const importNavigation = async (
   blobs: ReadonlySet<string>,
   assets: RemoteAssetMigrator,
   summary: ImportSummary,
-  state: { pages: number; capWarned: boolean; versions: Set<string> },
+  state: { pages: number; versions: Set<string> },
   languageNavigation: readonly MintlifyLanguageNavigation[] = [],
 ) => {
   const { unversioned, versions } = partitionMintlifyVersions(sourceNodes);
@@ -378,7 +382,7 @@ const importNodes = async (
   assets: RemoteAssetMigrator,
   routeMap: ReadonlyMap<string, string>,
   summary: ImportSummary,
-  state: { pages: number; capWarned: boolean },
+  state: { pages: number },
   languageCode?: string,
 ): Promise<void> => {
   // Slug ledger (slug → nav path) for THIS parent's children; a fresh map per
@@ -391,12 +395,11 @@ const importNodes = async (
     // The cap bounds every CREATED node — groups included — so a hostile or
     // enormous nav tree can't fan out unbounded GROUP rows either.
     if (state.pages >= MAX_IMPORT_FILES) {
-      if (!state.capWarned) {
-        summary.warnings.push(`Import capped at ${MAX_IMPORT_FILES} pages — remaining navigation entries were skipped.`);
-        state.capWarned = true;
-      }
-      summary.skipped++;
-      continue;
+      throw new ImportError({
+        code: 'import:limit',
+        message: `Mintlify import exceeds ${MAX_IMPORT_FILES} navigation entries; the draft was preserved.`,
+        details: { limit: MAX_IMPORT_FILES },
+      });
     }
 
     if (node.kind === 'group') {
@@ -420,15 +423,19 @@ const importNodes = async (
     const candidates = [`${baseDir}${node.path}.mdx`, `${baseDir}${node.path}.md`];
     const filePath = candidates.find((candidate) => blobs.has(candidate));
     if (!filePath) {
-      summary.warnings.push(`Navigation page "${node.path}" was not found in the repository.`);
-      summary.skipped++;
-      continue;
+      throw new ImportError({
+        code: 'import:incomplete',
+        message: 'A Mintlify navigation page is missing; the draft was preserved. Check the navigation path and try again.',
+        details: { path: node.path },
+      });
     }
     const raw = await repo.loadText(filePath);
     if (raw === null) {
-      summary.warnings.push(`Could not download "${filePath}" — the page was skipped.`);
-      summary.skipped++;
-      continue;
+      throw new ImportError({
+        code: 'import:incomplete',
+        message: 'A Mintlify page could not be downloaded; the draft was preserved. Try again.',
+        details: { path: filePath },
+      });
     }
     state.pages++;
 

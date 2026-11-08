@@ -1,8 +1,9 @@
+import { prisma } from '@nibleaf/database';
 import { siteT } from '@nibleaf/i18n/site';
 import { slugify } from '@nibleaf/shared';
 import type { GhostImportBody } from '@nibleaf/validators';
 import { badRequest, ImportError } from '@/errors';
-import { getDefaultBranch } from '../branches';
+import { captureImportDraft, createImportReplacementBranch, promoteImportReplacementBranch } from '../branches';
 import { listLanguages } from '../languages';
 import { assertProjectInOrg } from '../projects';
 import { humanize, MAX_IMPORT_FILES } from './content';
@@ -32,6 +33,7 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
 
   async run({ organizationId, projectId, input }): Promise<ImportSummary> {
     await assertProjectInOrg(organizationId, projectId);
+    const draft = await captureImportDraft(projectId);
 
     const content = (() => {
       try {
@@ -52,7 +54,7 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
       throw badRequest('The Ghost export contains no published posts or pages.');
     }
 
-    const [branch, languages] = await Promise.all([getDefaultBranch(projectId), listLanguages(projectId)]);
+    const languages = await listLanguages(projectId);
     const defaultLanguage = languages.find((language) => language.isDefault);
     if (!defaultLanguage) {
       throw badRequest('The project needs a default language before content can be imported.');
@@ -72,49 +74,56 @@ export const ghostImporter: ImporterSource<GhostImportBody> = {
       throw badRequest(`Add these project languages before importing their tagged Ghost articles: ${missingLocaleTags.sort().join(', ')}.`);
     }
 
-    const targets = new Map(
-      languages.map((language) => [language.code, { projectId, branchId: branch.id, languageId: language.id } satisfies ImportTarget]),
-    );
-    const summary = emptySummary();
-    if (content.restricted > 0) {
-      summary.skipped += content.restricted;
-      summary.warnings.push(
-        `Skipped ${content.restricted} member, paid, or tier-restricted Ghost item${content.restricted === 1 ? '' : 's'} to avoid publishing protected content.`,
+    const replacement = await createImportReplacementBranch(projectId, 'ghost', true);
+    try {
+      const targets = new Map(
+        languages.map((language) => [language.code, { projectId, branchId: replacement.id, languageId: language.id } satisfies ImportTarget]),
       );
+      const summary = emptySummary();
+      if (content.restricted > 0) {
+        summary.skipped += content.restricted;
+        summary.warnings.push(
+          `Skipped ${content.restricted} member, paid, or tier-restricted Ghost item${content.restricted === 1 ? '' : 's'} to avoid publishing protected content.`,
+        );
+      }
+      if (placeholderCount > 0) {
+        summary.skipped += placeholderCount;
+        summary.warnings.push(`Skipped ${placeholderCount} default Ghost “Coming soon” placeholder${placeholderCount === 1 ? '' : 's'}.`);
+      }
+      const ghostSourceUrl = ghostImportSourceUrl(input);
+      const assets = new GhostAssetMigrator(projectId);
+      const state = { pages: 0, ghostUrlWarned: false, untagged: 0, ambiguous: 0 };
+      // One at a time: every cleanup takes the same project lock, so running them
+      // together would only hold extra connections queued behind it.
+      for (const target of targets.values()) await removeImportPlaceholders(target);
+      await importByLanguage(importedContent.posts, 'Blog', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
+      await importByLanguage(importedContent.pages, 'Pages', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
+      if (state.untagged > 0) {
+        summary.warnings.push(`${state.untagged} Ghost item(s) had no configured language tag and were imported into ${defaultLanguage.code}.`);
+      }
+      if (state.ambiguous > 0) {
+        summary.warnings.push(
+          `${state.ambiguous} Ghost item(s) had multiple language tags; their writing script was used to choose among the tagged languages.`,
+        );
+      }
+      summary.assetsImported = assets.migrated;
+      summary.assetsSkipped = assets.skipped;
+      if (assets.skipped > 0) {
+        const reasons = assets.failureReasons();
+        summary.warnings.push(
+          `${assets.skipped} remote image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source URLs were preserved.`,
+        );
+      }
+      await promoteImportReplacementBranch(projectId, replacement.id, undefined, draft, true);
+      return summary;
+    } catch (error) {
+      await prisma.branch.deleteMany({ where: { id: replacement.id, projectId, isDefault: false } }).catch(() => undefined);
+      throw error;
     }
-    if (placeholderCount > 0) {
-      summary.skipped += placeholderCount;
-      summary.warnings.push(`Skipped ${placeholderCount} default Ghost “Coming soon” placeholder${placeholderCount === 1 ? '' : 's'}.`);
-    }
-    const ghostSourceUrl = ghostImportSourceUrl(input);
-    const assets = new GhostAssetMigrator(projectId);
-    const state = { pages: 0, capWarned: false, ghostUrlWarned: false, untagged: 0, ambiguous: 0 };
-    // One at a time: every cleanup takes the same project lock, so running them
-    // together would only hold extra connections queued behind it.
-    for (const target of targets.values()) await removeImportPlaceholders(target);
-    await importByLanguage(importedContent.posts, 'Blog', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
-    await importByLanguage(importedContent.pages, 'Pages', targets, configuredCodes, defaultLanguage.code, ghostSourceUrl, assets, summary, state);
-    if (state.untagged > 0) {
-      summary.warnings.push(`${state.untagged} Ghost item(s) had no configured language tag and were imported into ${defaultLanguage.code}.`);
-    }
-    if (state.ambiguous > 0) {
-      summary.warnings.push(
-        `${state.ambiguous} Ghost item(s) had multiple language tags; their writing script was used to choose among the tagged languages.`,
-      );
-    }
-    summary.assetsImported = assets.migrated;
-    summary.assetsSkipped = assets.skipped;
-    if (assets.skipped > 0) {
-      const reasons = assets.failureReasons();
-      summary.warnings.push(
-        `${assets.skipped} remote image(s) could not be copied into project storage${reasons ? ` (${reasons})` : ''}. Their source URLs were preserved.`,
-      );
-    }
-    return summary;
   },
 };
 
-type ImportState = { pages: number; capWarned: boolean; ghostUrlWarned: boolean; untagged: number; ambiguous: number };
+type ImportState = { pages: number; ghostUrlWarned: boolean; untagged: number; ambiguous: number };
 
 const importByLanguage = async (
   items: GhostContentItem[],
@@ -161,12 +170,11 @@ const importCollection = async (
   const ordered = [...items].sort(byPublishedAt);
   for (const [position, item] of ordered.entries()) {
     if (state.pages >= MAX_IMPORT_FILES) {
-      if (!state.capWarned) {
-        summary.warnings.push(`Import capped at ${MAX_IMPORT_FILES} pages — the remaining entries were skipped.`);
-        state.capWarned = true;
-      }
-      summary.skipped++;
-      continue;
+      throw new ImportError({
+        code: 'import:limit',
+        message: `Ghost import exceeds ${MAX_IMPORT_FILES} pages; the draft was preserved.`,
+        details: { limit: MAX_IMPORT_FILES },
+      });
     }
     state.pages++;
 

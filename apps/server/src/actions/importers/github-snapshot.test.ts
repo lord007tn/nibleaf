@@ -19,3 +19,9 @@ it('pins the tree walk to the resolved commit instead of the mutable branch or t
   expect(await getGitHubSnapshot('public', 'docs', 'main')).toEqual({ revision: 'immutable-commit', files: [{ path: 'README.md', type: 'blob' }] });
   expect(api.getTree).toHaveBeenCalledWith({ owner: 'public', repo: 'docs', tree_sha: 'immutable-commit', recursive: 'true' });
 });
+
+it('refuses a truncated tree instead of importing an incomplete site', async () => {
+  api.getCommit.mockResolvedValue({ data: { sha: 'immutable-commit' } });
+  api.getTree.mockResolvedValue({ data: { truncated: true, tree: [{ path: 'README.md', type: 'blob' }] } });
+  await expect(getGitHubSnapshot('public', 'docs', 'main')).rejects.toMatchObject({ code: 'import:limit' });
+});

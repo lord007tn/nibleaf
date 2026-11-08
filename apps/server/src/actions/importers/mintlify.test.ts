@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { MintlifyImportBody } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMPORT_FILES } from './content';
@@ -22,6 +24,10 @@ const mem = vi.hoisted(() => ({
     title: string;
     content?: string;
     translationKey?: string;
+    description?: string;
+    icon?: string;
+    config?: unknown;
+    position?: number;
   }>,
   languages: new Map([['en', { id: 'lang-en', code: 'en' }]]),
   languageOperations: [] as Array<{ kind: 'create' | 'update'; code: string; position?: number; isDefault?: boolean; enabled?: boolean }>,
@@ -49,6 +55,7 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 vi.mock('../branches', () => ({
+  captureImportDraft: vi.fn(async () => 'draft-before-source-read'),
   createImportReplacementBranch: vi.fn(async () => ({ id: 'import-branch' })),
   promoteImportReplacementBranch: vi.fn(async () => ({})),
 }));
@@ -69,6 +76,7 @@ vi.mock('../languages', () => ({
 vi.mock('../projects', () => ({ assertProjectInOrg: vi.fn(async () => ({ id: 'project', config: null })) }));
 vi.mock('../assets', () => ({ findImportedAsset: vi.fn(), storeAsset: vi.fn() }));
 vi.mock('./github', () => ({
+  getGitHubSnapshot: async () => ({ revision: 'pinned-sha', files: [...mem.repoFiles.keys()].map((path) => ({ path, type: 'blob' as const })) }),
   getGitHubDefaultBranch: async () => 'main',
   listGitHubFiles: async () => [...mem.repoFiles.keys()].map((path) => ({ path, type: 'blob' as const })),
   getGitHubTextFile: async (_owner: string, _name: string, _branch: string, path: string) => mem.repoFiles.get(path) ?? null,
@@ -78,7 +86,10 @@ vi.mock('./github', () => ({
 vi.mock('./persistence', () => ({
   defaultImportTarget: async (projectId: string) => ({ projectId, branchId: 'branch', languageId: 'lang-en' }),
   removeImportPlaceholders: async () => 0,
-  ensureGroupPage: async (target: { languageId: string }, group: { parentId: string | null; title: string; slug: string }) => {
+  ensureGroupPage: async (
+    target: { languageId: string },
+    group: { parentId: string | null; title: string; slug: string; icon?: string; position?: number },
+  ) => {
     const found =
       mem.rows.find(
         (row) => row.languageId === target.languageId && row.kind === 'GROUP' && row.parentId === group.parentId && row.slug === group.slug,
@@ -87,6 +98,7 @@ vi.mock('./persistence', () => ({
         (row) => row.languageId === target.languageId && row.kind === 'GROUP' && row.parentId === group.parentId && row.title === group.title,
       );
     if (found) {
+      found.position = group.position;
       return found.id;
     }
     const row = {
@@ -96,13 +108,25 @@ vi.mock('./persistence', () => ({
       parentId: group.parentId,
       slug: group.slug,
       title: group.title,
+      icon: group.icon,
+      position: group.position,
     };
     mem.rows.push(row);
     return row.id;
   },
   upsertLeafPage: async (
     target: { languageId: string },
-    page: { parentId: string | null; slug: string; title: string; content: string; translationKey?: string },
+    page: {
+      parentId: string | null;
+      slug: string;
+      title: string;
+      content: string;
+      translationKey?: string;
+      description?: string;
+      icon?: string;
+      config?: unknown;
+      position?: number;
+    },
   ) => {
     const found = mem.rows.find(
       (row) => row.languageId === target.languageId && row.kind === 'PAGE' && row.parentId === page.parentId && row.slug === page.slug,
@@ -111,6 +135,10 @@ vi.mock('./persistence', () => ({
       found.title = page.title;
       found.content = page.content;
       found.translationKey = page.translationKey;
+      found.description = page.description;
+      found.icon = page.icon;
+      found.config = page.config;
+      found.position = page.position;
       return 'updated' as const;
     }
     mem.rows.push({
@@ -122,6 +150,10 @@ vi.mock('./persistence', () => ({
       title: page.title,
       content: page.content,
       translationKey: page.translationKey,
+      description: page.description,
+      icon: page.icon,
+      config: page.config,
+      position: page.position,
     });
     return 'imported' as const;
   },
@@ -149,13 +181,20 @@ beforeEach(() => {
 });
 
 describe('Mintlify replacement safety', () => {
+  it('refuses to promote when one page is missing after another page was staged', async () => {
+    setNavigation([{ group: 'Docs', pages: ['intro', 'missing'] }]);
+    mem.repoFiles.set('intro.mdx', '# Intro');
+    await expect(runImport()).rejects.toMatchObject({ code: 'import:incomplete', details: { path: 'missing' } });
+    expect(promoteImportReplacementBranch).not.toHaveBeenCalled();
+    expect(prisma.branch.deleteMany).toHaveBeenCalled();
+  });
   it('promotes the isolated replacement only after a complete import', async () => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     mem.repoFiles.set('intro.mdx', '# Intro');
 
     await runImport();
 
-    expect(promoteImportReplacementBranch).toHaveBeenCalledWith('project', 'import-branch', undefined);
+    expect(promoteImportReplacementBranch).toHaveBeenCalledWith('project', 'import-branch', undefined, 'draft-before-source-read', true);
   });
 
   it('deletes the isolated replacement when the import fails', async () => {
@@ -178,6 +217,33 @@ describe('Mintlify replacement safety', () => {
 
     expect(mem.rows.filter((row) => row.kind === 'PAGE').map((row) => row.slug)).toEqual(['intro']);
   });
+});
+
+it('re-imports the real Nibleaf docs in preserve mode with identical language, routes, metadata and content', async () => {
+  const root = resolve(import.meta.dirname, '../../../../..');
+  for (const entry of readdirSync(resolve(root, 'docs'), { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = resolve(entry.parentPath, entry.name);
+    const path = file.slice(root.length + 1).replaceAll('\\', '/');
+    mem.repoFiles.set(path, /\.(?:mdx?|json)$/.test(path) ? readFileSync(file, 'utf8') : '');
+  }
+  await runImport({ replaceExisting: false });
+  const route = (id: string | null): string => {
+    const row = mem.rows.find((candidate) => candidate.id === id);
+    return row ? `${route(row.parentId)}/${row.slug}` : '';
+  };
+  const tree = () =>
+    mem.rows.map(({ id: _id, parentId, content, ...row }) => ({
+      ...row,
+      parent: mem.rows.find((candidate) => candidate.id === parentId)?.slug ?? null,
+      path: `${route(parentId)}/${row.slug}`,
+      ...(content === undefined ? {} : { contentHash: createHash('sha256').update(content).digest('hex') }),
+    }));
+  const first = tree();
+  const result = await runImport({ replaceExisting: false });
+  expect(result.imported).toBe(0);
+  expect(tree()).toEqual(first);
+  await expect(`${JSON.stringify(first, null, 2)}\n`).toMatchFileSnapshot('./fixtures/nibleaf-docs.golden.json');
 });
 
 describe('mintlify importNodes slug collisions', () => {
@@ -392,23 +458,20 @@ describe('mintlify language import', () => {
 });
 
 describe('mintlify import cap', () => {
-  it('counts created GROUP nodes against the cap, warns once, and skips the remainder', async () => {
+  it('counts GROUP nodes against the cap and refuses to promote an incomplete tree', async () => {
     const total = MAX_IMPORT_FILES + 1; // 251 groups of one page each = 502 potential nodes
     setNavigation(Array.from({ length: total }, (_, i) => ({ group: `Group ${i}`, pages: [`page-${i}`] })));
     for (let i = 0; i < total; i++) {
       mem.repoFiles.set(`page-${i}.mdx`, `# Page ${i}`);
     }
 
-    const summary = await runImport();
+    await expect(runImport()).rejects.toMatchObject({ code: 'import:limit' });
     const groups = mem.rows.filter((row) => row.kind === 'GROUP');
     const pages = mem.rows.filter((row) => row.kind === 'PAGE');
     // Groups and leaves alternate, so half the node budget goes to each.
     expect(groups).toHaveLength(MAX_IMPORT_FILES / 2);
     expect(pages).toHaveLength(MAX_IMPORT_FILES / 2);
     expect(mem.rows).toHaveLength(MAX_IMPORT_FILES);
-    expect(summary.imported).toBe(MAX_IMPORT_FILES / 2);
-    expect(summary.warnings.filter((w) => w.includes('capped'))).toHaveLength(1);
-    // Every remaining top-level group counts as one skipped nav entry.
-    expect(summary.skipped).toBe(total - MAX_IMPORT_FILES / 2);
+    expect(promoteImportReplacementBranch).not.toHaveBeenCalled();
   });
 });
