@@ -179,6 +179,7 @@ export function SortablePageTree({
   onDelete,
   treeKey,
   dir = 'ltr',
+  readOnly = false,
 }: {
   pages: PageNode[];
   activeId: string | null;
@@ -193,6 +194,8 @@ export function SortablePageTree({
   treeKey?: string;
   /** Reading direction of this tree (its language), so drag-to-nest follows it. */
   dir?: 'ltr' | 'rtl';
+  /** Viewers browse the tree: no dragging, renaming, adding or deleting. */
+  readOnly?: boolean;
 }) {
   const t = useT();
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -319,11 +322,12 @@ export function SortablePageTree({
             collapsed={collapsed.has(item.id)}
             onToggleCollapse={toggleCollapse}
             onSelect={onSelect}
-            onAddChild={onAddChild}
-            onSettings={onSettings}
-            onDelete={onDelete}
+            onAddChild={readOnly ? undefined : onAddChild}
+            onSettings={readOnly ? undefined : onSettings}
+            onDelete={readOnly ? undefined : onDelete}
+            readOnly={readOnly}
             renaming={renamingId === item.id}
-            onStartRename={onRename ? setRenamingId : undefined}
+            onStartRename={onRename && !readOnly ? setRenamingId : undefined}
             onRename={(title) => {
               setRenamingId(null);
               if (title !== null) onRename?.(item.id, title, rowName(item.node).field);
@@ -348,6 +352,7 @@ function SortableRow({
   onAddChild,
   onSettings,
   onDelete,
+  readOnly,
   renaming,
   onStartRename,
   onRename,
@@ -360,14 +365,15 @@ function SortableRow({
   collapsed: boolean;
   onToggleCollapse: (id: string) => void;
   onSelect: (id: string) => void;
-  onAddChild: (parentId: string) => void;
-  onSettings: (id: string) => void;
+  onAddChild?: (parentId: string) => void;
+  onSettings?: (id: string) => void;
   onDelete?: (id: string) => void;
+  readOnly: boolean;
   renaming: boolean;
   onStartRename?: (id: string) => void;
   onRename: (title: string | null) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: renaming });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: renaming || readOnly });
   const style = { transform: CSS.Translate.toString(transform), transition };
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && 'opacity-40')}>
@@ -385,7 +391,7 @@ function SortableRow({
         renaming={renaming}
         onStartRename={onStartRename}
         onRename={onRename}
-        handleProps={{ ...attributes, ...listeners }}
+        handleProps={readOnly ? undefined : { ...attributes, ...listeners }}
       />
     </div>
   );
@@ -439,17 +445,22 @@ function RowPresentation({
       )}
       style={{ marginInlineStart: depth * INDENT }}
     >
-      <button
-        type="button"
-        aria-label={t('editor.dragToReorder')}
-        className={cn(
-          'flex size-5 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground/50 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing pointer-coarse:size-7',
-          ROW_ACTION,
-        )}
-        {...handleProps}
-      >
-        <GripVertical className="size-3.5" />
-      </button>
+      {handleProps || overlay ? (
+        <button
+          type="button"
+          aria-label={t('editor.dragToReorder')}
+          className={cn(
+            'flex size-5 shrink-0 cursor-grab items-center justify-center rounded-sm text-muted-foreground/50 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:cursor-grabbing pointer-coarse:size-7',
+            ROW_ACTION,
+          )}
+          {...handleProps}
+        >
+          <GripVertical className="size-3.5" />
+        </button>
+      ) : (
+        // A read-only tree has nothing to drag; keep the rows aligned.
+        <span aria-hidden className="size-1 shrink-0" />
+      )}
       {/* Collapse chevron for groups with children; a spacer otherwise so every
           row's icon stays aligned. */}
       {collapsible ? (

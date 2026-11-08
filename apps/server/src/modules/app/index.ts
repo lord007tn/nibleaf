@@ -16,6 +16,8 @@ import exports from './exports/handlers';
 import git from './git/handlers';
 import imports from './imports/handlers';
 import integrations from './integrations/handlers';
+import join from './join/handlers';
+import joinLinks from './join-links/handlers';
 import languages from './languages/handlers';
 import mcpOAuth from './mcp-oauth/handlers';
 import members from './members/handlers';
@@ -52,6 +54,7 @@ const app = new Hono<HonoEnv>()
   .route('/projects/:projectId/comments', comments)
   .route('/projects/:projectId/openapi', openapi)
   .route('/projects/:projectId/members', projectMembers)
+  .route('/projects/:projectId/join-links', joinLinks)
   .route('/projects/:projectId/settings', projectSettings)
   .route('/projects/:projectId/reader-access', readerAccess)
   .route('/projects/:projectId/settings/import', imports)
@@ -61,6 +64,7 @@ const app = new Hono<HonoEnv>()
   .route('/workspace', workspace)
   .route('/mcp-oauth', mcpOAuth)
   .route('/members', members)
+  .route('/join', join)
   .route('/notifications', notifications);
 
 export default app;

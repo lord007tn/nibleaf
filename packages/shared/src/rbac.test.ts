@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { MemberRole } from './constants';
+import { MCP_KEY_PRESETS, mcpPresetScopesForRole, mcpScopesForRole } from './mcp';
 import {
   ASSIGNABLE_MEMBER_ROLES,
   canAdminister,
   canAssignRole,
   canEdit,
   canManageMember,
+  canView,
   EXPORT_CREATE_ROLE,
   EXPORT_SCHEDULE_ROLE,
   planOwnershipTransfer,
@@ -14,11 +16,46 @@ import {
 } from './rbac';
 
 describe('rankOf', () => {
-  it('orders owner > admin > member > unknown', () => {
+  it('orders owner > admin > member > viewer > unknown', () => {
     expect(rankOf('owner')).toBeGreaterThan(rankOf('admin'));
     expect(rankOf('admin')).toBeGreaterThan(rankOf('member'));
     expect(rankOf('member')).toBeGreaterThan(rankOf('viewer'));
+    expect(rankOf('viewer')).toBeGreaterThan(rankOf('nonsense'));
     expect(rankOf('nonsense')).toBe(0);
+  });
+});
+
+describe('viewer — reads a site, never changes it', () => {
+  it('can view but not edit or administer', () => {
+    expect(canView(MemberRole.VIEWER)).toBe(true);
+    expect(canEdit(MemberRole.VIEWER)).toBe(false);
+    expect(canAdminister(MemberRole.VIEWER)).toBe(false);
+    expect(roleAtLeast(MemberRole.VIEWER, MemberRole.MEMBER)).toBe(false);
+  });
+  it('every real role can view; an unknown role cannot', () => {
+    for (const role of Object.values(MemberRole)) expect(canView(role)).toBe(true);
+    expect(canView('')).toBe(false);
+    expect(canView('nonsense')).toBe(false);
+  });
+  it('cannot create exports or manage schedules', () => {
+    expect(roleAtLeast(MemberRole.VIEWER, EXPORT_CREATE_ROLE)).toBe(false);
+    expect(roleAtLeast(MemberRole.VIEWER, EXPORT_SCHEDULE_ROLE)).toBe(false);
+  });
+  it('cannot assign any role but viewer, and cannot manage editors', () => {
+    expect(canAssignRole(MemberRole.VIEWER, MemberRole.VIEWER)).toBe(true);
+    expect(canAssignRole(MemberRole.VIEWER, MemberRole.MEMBER)).toBe(false);
+    expect(canManageMember(MemberRole.VIEWER, MemberRole.MEMBER)).toBe(false);
+  });
+  it('can be granted and managed by admins and owners', () => {
+    expect(canAssignRole(MemberRole.ADMIN, MemberRole.VIEWER)).toBe(true);
+    expect(canAssignRole(MemberRole.OWNER, MemberRole.VIEWER)).toBe(true);
+    expect(canManageMember(MemberRole.ADMIN, MemberRole.VIEWER)).toBe(true);
+  });
+  it('gets no MCP scopes and no MCP key preset', () => {
+    expect(mcpScopesForRole(MemberRole.VIEWER)).toEqual([]);
+    for (const preset of MCP_KEY_PRESETS) expect(mcpPresetScopesForRole(preset, MemberRole.VIEWER)).toBeNull();
+    // Editors keep their existing scopes.
+    expect(mcpScopesForRole(MemberRole.MEMBER).length).toBeGreaterThan(0);
   });
 });
 
@@ -30,7 +67,7 @@ describe('canAssignRole — owner is never assignable; otherwise never above you
   });
   it('excludes owner from the assignable-roles set', () => {
     expect(ASSIGNABLE_MEMBER_ROLES).not.toContain(MemberRole.OWNER);
-    expect(ASSIGNABLE_MEMBER_ROLES).toEqual([MemberRole.ADMIN, MemberRole.MEMBER]);
+    expect(ASSIGNABLE_MEMBER_ROLES).toEqual([MemberRole.ADMIN, MemberRole.MEMBER, MemberRole.VIEWER]);
   });
   it('lets an owner assign the non-owner roles', () => {
     expect(canAssignRole('owner', 'admin')).toBe(true);
@@ -40,9 +77,10 @@ describe('canAssignRole — owner is never assignable; otherwise never above you
     expect(canAssignRole('admin', 'admin')).toBe(true);
     expect(canAssignRole('admin', 'member')).toBe(true);
   });
-  it('lets a member assign only member', () => {
+  it('lets a member assign member and viewer only', () => {
     expect(canAssignRole('member', 'admin')).toBe(false);
     expect(canAssignRole('member', 'member')).toBe(true);
+    expect(canAssignRole('member', 'viewer')).toBe(true);
   });
   it('blocks an unknown actor role from assigning any real role', () => {
     expect(canAssignRole('', 'member')).toBe(false);

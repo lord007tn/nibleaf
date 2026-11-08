@@ -25,7 +25,7 @@ const editorAttribute = z.string().catch('');
  * as attributes). The class prefix is derived from the node name (`mdxStep` →
  * `pl-step`), and keystrokes in the inputs are kept from bubbling to ProseMirror.
  */
-export function TitledBlockView({ node, updateAttributes, extension }: NodeViewProps) {
+export function TitledBlockView({ node, updateAttributes, extension, editor }: NodeViewProps) {
   const { t } = useLocale();
   const tag = extension.name.replace(/^mdx/, '');
   const base = `pl-${tag.toLowerCase()}`;
@@ -42,6 +42,8 @@ export function TitledBlockView({ node, updateAttributes, extension }: NodeViewP
           : extension.name === 'mdxRelatedCard'
             ? ['description', 'icon', 'href']
             : [];
+  // A read-only editor (Viewers) shows the block's title but offers nothing to change.
+  const readOnly = !editor.isEditable;
   const stop = {
     onKeyDown: (event: React.KeyboardEvent) => event.stopPropagation(),
     onMouseDown: (event: React.MouseEvent) => event.stopPropagation(),
@@ -53,10 +55,11 @@ export function TitledBlockView({ node, updateAttributes, extension }: NodeViewP
         value={value}
         aria-label={t(placeholderByAttribute[attr])}
         placeholder={t(placeholderByAttribute[attr])}
+        readOnly={readOnly}
         onChange={(event) => updateAttributes({ [attr]: event.target.value })}
         {...stop}
       />
-      {extraAttributes.length > 0 ? (
+      {extraAttributes.length > 0 && !readOnly ? (
         <div className="pl-card-meta">
           {extraAttributes.map((extraAttribute) => (
             <input

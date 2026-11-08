@@ -42,6 +42,7 @@ import { Route as CompareNibleafVsDocusaurusRouteImport } from './routes/compare
 import { Route as CompareNibleafVsGitbookRouteImport } from './routes/compare/nibleaf-vs-gitbook'
 import { Route as CompareNibleafVsMintlifyRouteImport } from './routes/compare/nibleaf-vs-mintlify'
 import { Route as GitPreviewTokenRouteImport } from './routes/git-preview.$token'
+import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as OauthConsentRouteImport } from './routes/oauth.consent'
 import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
@@ -237,6 +238,11 @@ const GitPreviewTokenRoute = GitPreviewTokenRouteImport.update({
   path: '/git-preview/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JoinTokenRoute = JoinTokenRouteImport.update({
+  id: '/join/$token',
+  path: '/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthConsentRoute = OauthConsentRouteImport.update({
   id: '/oauth/consent',
   path: '/oauth/consent',
@@ -417,6 +423,7 @@ export interface FileRoutesByFullPath {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
@@ -475,6 +482,7 @@ export interface FileRoutesByTo {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
@@ -535,6 +543,7 @@ export interface FileRoutesById {
   '/compare/nibleaf-vs-gitbook': typeof CompareNibleafVsGitbookRoute
   '/compare/nibleaf-vs-mintlify': typeof CompareNibleafVsMintlifyRoute
   '/git-preview/$token': typeof GitPreviewTokenRoute
+  '/join/$token': typeof JoinTokenRoute
   '/oauth/consent': typeof OauthConsentRoute
   '/oauth/project': typeof OauthProjectRoute
   '/tools/rtl-documentation-readiness': typeof ToolsRtlDocumentationReadinessRoute
@@ -597,6 +606,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
@@ -655,6 +665,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
@@ -714,6 +725,7 @@ export interface FileRouteTypes {
     | '/compare/nibleaf-vs-gitbook'
     | '/compare/nibleaf-vs-mintlify'
     | '/git-preview/$token'
+    | '/join/$token'
     | '/oauth/consent'
     | '/oauth/project'
     | '/tools/rtl-documentation-readiness'
@@ -769,6 +781,7 @@ export interface RootRouteChildren {
   CompareNibleafVsGitbookRoute: typeof CompareNibleafVsGitbookRoute
   CompareNibleafVsMintlifyRoute: typeof CompareNibleafVsMintlifyRoute
   GitPreviewTokenRoute: typeof GitPreviewTokenRoute
+  JoinTokenRoute: typeof JoinTokenRoute
   OauthConsentRoute: typeof OauthConsentRoute
   OauthProjectRoute: typeof OauthProjectRoute
   ToolsRtlDocumentationReadinessRoute: typeof ToolsRtlDocumentationReadinessRoute
@@ -1007,6 +1020,13 @@ declare module '@tanstack/react-router' {
       path: '/git-preview/$token'
       fullPath: '/git-preview/$token'
       preLoaderRoute: typeof GitPreviewTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join/$token': {
+      id: '/join/$token'
+      path: '/join/$token'
+      fullPath: '/join/$token'
+      preLoaderRoute: typeof JoinTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/oauth/consent': {
@@ -1365,6 +1385,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareNibleafVsGitbookRoute: CompareNibleafVsGitbookRoute,
   CompareNibleafVsMintlifyRoute: CompareNibleafVsMintlifyRoute,
   GitPreviewTokenRoute: GitPreviewTokenRoute,
+  JoinTokenRoute: JoinTokenRoute,
   OauthConsentRoute: OauthConsentRoute,
   OauthProjectRoute: OauthProjectRoute,
   ToolsRtlDocumentationReadinessRoute: ToolsRtlDocumentationReadinessRoute,

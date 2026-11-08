@@ -166,7 +166,7 @@ sign-in before inviting users.
 Database migrations run through the one-shot `migrate` service. Follow the
 **[backup and upgrade guide](https://docs.nibleaf.com/self-hosting/backups-upgrades)**
 and the target release's migration instructions before changing image versions;
-do not re-run the installer to upgrade. The v0.1.2 to v0.2.0 transition requires
+do not re-run the installer to upgrade. The v0.1.2 to v0.2.1 transition requires
 the [staged upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2).
 Open **`$APP_URL/sign-up`** to create the
 first account and starter workspace; production does not seed demo credentials.

@@ -3,7 +3,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { canAdminister } from '@nibleaf/shared/rbac';
+import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import {
   Archive,
@@ -163,6 +163,9 @@ const isAppearanceSectionId = (value: unknown): value is ConfigSectionId => (APP
 // Content languages, team visibility, usage and one-time exports are available
 // to editors. The other sections write operational settings guarded by ADMIN.
 const EDITOR_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports', 'apiKeys']);
+// Viewers see the same sections read-only, except API keys: a key carries the
+// creator's write access, and the server refuses Viewers the key list.
+const VIEWER_SECTIONS = new Set<SectionId>(['languages', 'members', 'usage', 'exports']);
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
   validateSearch: (search: Record<string, unknown>): { section?: SectionId; appearanceSection?: ConfigSectionId } => ({
@@ -266,12 +269,14 @@ function ProjectSettingsPage() {
   const t = useT();
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
   const canManage = canAdminister(currentMember?.role ?? '');
-  const availableSections = SECTIONS.filter((item) => canManage || EDITOR_SECTIONS.has(item.id));
+  const canEditContent = canEdit(currentMember?.role ?? '');
+  const roleSections = canEditContent ? EDITOR_SECTIONS : VIEWER_SECTIONS;
+  const availableSections = SECTIONS.filter((item) => canManage || roleSections.has(item.id));
   const sectionItems = availableSections.map((item) => ({
     value: item.id,
     label: t(sectionLabelKey(item.id)),
   }));
-  const sectionAllowed = canManage || EDITOR_SECTIONS.has(section);
+  const sectionAllowed = canManage || roleSections.has(section);
 
   // Only the default entry chooses a section by role. Explicit locked links
   // retain their permission explanation instead of silently changing destination.
@@ -374,7 +379,9 @@ function ProjectSettingsPage() {
             ) : !sectionAllowed ? (
               <div className="rounded-xl border border-border bg-card p-6" role="status">
                 <h2 className="font-semibold text-lg">{t('settings.permissions.title')}</h2>
-                <p className="mt-2 text-muted-foreground text-sm">{t('settings.permissions.body')}</p>
+                <p className="mt-2 text-muted-foreground text-sm">
+                  {t(canEditContent ? 'settings.permissions.body' : 'settings.permissions.viewerBody')}
+                </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button
                     nativeButton={false}
@@ -386,12 +393,13 @@ function ProjectSettingsPage() {
                     {t(sectionLabelKey(redirectSection ?? 'languages'))}
                   </Button>
                   <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />}>
-                    {t('project.editor')}
+                    {t(canEditContent ? 'project.editor' : 'overview.viewPages')}
                   </Button>
                 </div>
               </div>
             ) : (
               <ActiveSection
+                canCreateExports={canEditContent}
                 canManageSchedules={canManage}
                 projectId={projectId}
                 project={project}
@@ -412,6 +420,7 @@ function ActiveSection({
   section,
   projectId,
   canManageSchedules,
+  canCreateExports,
   role,
   appearanceSection,
 }: {
@@ -419,6 +428,7 @@ function ActiveSection({
   section: SectionId;
   projectId: string;
   canManageSchedules: boolean;
+  canCreateExports: boolean;
   role: string;
   appearanceSection?: ConfigSectionId;
 }) {
@@ -441,7 +451,9 @@ function ActiveSection({
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
     smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
     notifications: <NotificationsTab key={`notifications-${projectId}`} projectId={projectId} />,
-    exports: <ExportsSection canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />,
+    exports: (
+      <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />
+    ),
     danger: <DangerSection project={project} />,
   };
   const wideSection = section === 'general' || section === 'usage' || section === 'integrations' || section === 'exports';

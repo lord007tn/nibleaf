@@ -13,7 +13,9 @@ const workspaceRoutes = {
     responses: ok,
   }),
   settings: createRouteConfig({
-    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    // Every role down to Viewer may read; getScopedWorkspaceSettings strips the
+    // admin-only sections (webhook secret, integrations) below Admin.
+    guard: [isAuthenticated, requireRole(MemberRole.VIEWER)],
     tags: ['workspace'],
     description: 'Get workspace settings.',
     responses: ok,

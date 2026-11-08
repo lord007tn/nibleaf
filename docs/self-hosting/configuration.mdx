@@ -14,7 +14,7 @@ Copy `.env.production.example` from the release you are deploying. It is the
 authoritative setting template. Pin an image, set browser-reachable public
 origins, generate independent secrets, and keep internal services private.
 
-The pinned v0.2.0 production Compose file does not include ClickHouse or pass
+The pinned v0.2.1 production Compose file does not include ClickHouse or pass
 its variables. The analytics table below describes current-source settings;
 provision the service and explicit API/worker environment mappings before using
 it. A variable in `.env` is not automatically passed to a container. See

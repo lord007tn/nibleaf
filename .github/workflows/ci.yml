@@ -79,7 +79,7 @@ jobs:
           git -C "$preview_dir" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
           cd "$preview_dir"
           node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const path="CHANGELOG.md"; const text=readFileSync(path,"utf8"); writeFileSync(path, "## Unreleased\n\n### Highlights\n\nPreview release notes from the checked-out source.\n\n" + text.replace(/^## Unreleased$/m,"## Source changes"));'
-          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.0 --output "$RUNNER_TEMP/release-notes-preview.md"
+          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
 
       - name: Test production email diagnostic boundaries
         run: node --test scripts/production-email-diagnostic.test.mjs
@@ -135,6 +135,21 @@ jobs:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           BRANCH_PROMOTE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
+
+      - name: Verify the Viewer role cannot change a site
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          VIEWER_ROLE_INTEGRATION: "1"
+        # The actions load the server env, which imports built workspace packages.
+        run: |
+          pnpm exec turbo run build --filter="@nibleaf/server^..."
+          pnpm --filter @nibleaf/server exec vitest run src/actions/viewer-role.postgres.test.ts
+
+      - name: Verify join links (atomic max uses, one answer for bad links)
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          JOIN_LINKS_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/join-links.postgres.test.ts
 
       - name: Exercise ClickHouse analytics migrations
         env:

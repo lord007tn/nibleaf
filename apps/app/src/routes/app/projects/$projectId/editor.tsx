@@ -65,6 +65,7 @@ import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
+import { ViewOnlyBadge, ViewOnlyBanner } from '@/components/project/view-only-notice';
 import type { Deployment, Language, PageNode } from '@/hooks/api';
 import {
   addressMayFollowTitle,
@@ -93,6 +94,7 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
+import { resolveProjectEditAccess } from '@/lib/project-settings-access';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
 
@@ -130,28 +132,36 @@ function EditorPage() {
   const { projectId } = Route.useParams();
   const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
-  const { data: memberData, isPending: membersPending } = useProjectMembers(projectId);
+  const { data: memberData, isPending: membersPending, isError: membersError } = useProjectMembers(projectId);
   const { data: session, isPending: sessionPending } = useSession();
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
   const permissionsPending = membersPending || sessionPending;
   const canManageSettings = !permissionsPending && canAdminister(currentMember?.role ?? '');
+  // Viewers read the site here: the canvas is read-only and write controls are
+  // disabled or absent. While the role is unknown nothing can be typed either,
+  // so a Viewer never writes a draft the server would refuse to save.
+  const editAccess = resolveProjectEditAccess(currentMember?.role, permissionsPending, membersError && !memberData);
+  const canEditContent = editAccess === 'edit';
+  const viewOnly = editAccess === 'viewOnly';
   // AI assist follows this site's own drafting capability (its Smart AI
   // connection or the instance key), not the instance-wide public flag. Disabled
   // and quota states keep the tab: the panel explains them when a draft is
   // refused. Only a site with no way to draft hides it. While the capability
   // loads, the tab keeps its place as a placeholder: unknown is not "no".
-  const aiCapability = useAiDraftCapability(projectId);
+  const aiCapability = useAiDraftCapability(projectId, { enabled: !viewOnly });
   // A failed capability request is unknown, not "no": keep AI assist reachable
   // so the panel can report the failure, instead of hiding it for the session.
-  const aiAssist = aiCapability.isPending
-    ? 'loading'
-    : aiCapability.data
-      ? aiCapability.data.reason !== 'not_configured'
-        ? 'shown'
-        : 'hidden'
-      : aiCapability.isError
-        ? 'shown'
-        : 'hidden';
+  const aiAssist = viewOnly
+    ? 'hidden'
+    : aiCapability.isPending
+      ? 'loading'
+      : aiCapability.data
+        ? aiCapability.data.reason !== 'not_configured'
+          ? 'shown'
+          : 'hidden'
+        : aiCapability.isError
+          ? 'shown'
+          : 'hidden';
   const aiDraft = aiAssist === 'shown';
   const aiTabs = aiAssist !== 'hidden';
 
@@ -328,7 +338,8 @@ function EditorPage() {
   // Unknown JSX components are represented by local opaque nodes. Inventory
   // them for the explanatory banner without locking the rest of the page.
   const unsupportedTags = useMemo(() => detectUnsupportedMdxTags(content), [content]);
-  const effectiveMode = editorMode;
+  // Markdown source is an editing workspace; Viewers read the visual page.
+  const effectiveMode = viewOnly && editorMode === 'markdown' ? visualMode : editorMode;
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
@@ -518,14 +529,14 @@ function EditorPage() {
 
   // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {
-    if (!page || !shouldAutosave({ synced, draft: { title, content } }, page)) {
+    if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content } }, page)) {
       // Undoing back to the server copy must cancel an older queued draft.
       saveDraft.cancel();
       return;
     }
     setStatus('saving');
     saveDraft.maybeExecute({ id: page.id, title, content });
-  }, [title, content, page, synced, saveDraft]);
+  }, [title, content, page, synced, saveDraft, canEditContent]);
 
   const flushCurrentDraft = async () => {
     saveDraft.cancel();
@@ -838,7 +849,8 @@ function EditorPage() {
     <PageTitleField
       label={t('editor.pageTitlePlaceholder')}
       lang={activeLanguage?.code}
-      onChange={setTitle}
+      onChange={canEditContent ? setTitle : ignoreEdit}
+      readOnly={!canEditContent}
       onEnter={() => focusBodyStart(canvasRef.current)}
       textareaRef={titleRef}
       value={title}
@@ -914,6 +926,7 @@ function EditorPage() {
             activeCommentId={activeCommentId}
             onSelectComment={setActiveCommentId}
             commentMode={commentMode}
+            readOnly={!canEditContent}
           />
         ) : (
           <AiAssist session={aiAssistSession} />
@@ -953,6 +966,7 @@ function EditorPage() {
           hideTrigger={!showBranchSwitcher}
           createOpen={newVersionOpen}
           onCreateOpenChange={setNewVersionOpen}
+          readOnly={!canEditContent}
           onSwitch={(id) => {
             void runAfterSavingDraft({
               action: () => {
@@ -968,6 +982,7 @@ function EditorPage() {
           <SaveStatus state={status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
         ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
+          {viewOnly ? <ViewOnlyBadge /> : null}
           {canManageSettings ? (
             <Button
               aria-label={t('editor.mode.configuration')}
@@ -1009,6 +1024,7 @@ function EditorPage() {
           ) : null}
         </div>
       </header>
+      {viewOnly ? <ViewOnlyBanner /> : null}
       {siteNeverPublished && view === 'content' ? (
         <NeverPublishedBanner />
       ) : view === 'content' && page && !switching && pageState ? (
@@ -1109,7 +1125,8 @@ function EditorPage() {
                   {newPageLanguage ? (
                     <Button
                       className="mb-2 w-full cursor-pointer justify-start"
-                      disabled={createPage.isPending || switching}
+                      disabled={!canEditContent || createPage.isPending || switching}
+                      title={viewOnly ? t('access.viewOnly.action') : undefined}
                       onClick={() => {
                         expandLang(newPageLanguage.id);
                         addPage(null, newPageLanguage.id);
@@ -1159,7 +1176,12 @@ function EditorPage() {
                               </span>
                             ) : null}
                           </button>
-                          <div className="flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100">
+                          <div
+                            className={cn(
+                              'flex shrink-0 gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100',
+                              !canEditContent && 'hidden',
+                            )}
+                          >
                             <Button
                               size="icon-xs"
                               variant="ghost"
@@ -1228,6 +1250,7 @@ function EditorPage() {
                                 }
                                 onRename={renameNode}
                                 onDelete={deleteNode}
+                                readOnly={!canEditContent}
                               />
                             )}
                           </div>
@@ -1237,13 +1260,15 @@ function EditorPage() {
                   })}
 
                   {/* Add a language */}
-                  <button
-                    type="button"
-                    onClick={() => setAddLangOpen(true)}
-                    className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
-                  >
-                    <Plus className="size-3.5" /> {t('editor.addLanguage')}
-                  </button>
+                  {canEditContent ? (
+                    <button
+                      type="button"
+                      onClick={() => setAddLangOpen(true)}
+                      className="mt-2 flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground"
+                    >
+                      <Plus className="size-3.5" /> {t('editor.addLanguage')}
+                    </button>
+                  ) : null}
                 </>
               )}
             </div>
@@ -1305,6 +1330,7 @@ function EditorPage() {
               onDelete={() => deleteNode(selectedGroup.id)}
               onOpenSettings={() => void runAfterSavingDraft({ action: () => setSettingsForId(selectedGroup.id) })}
               onRename={() => void renameGroup(selectedGroup)}
+              readOnly={!canEditContent}
             />
           ) : pageLoadFailed ? (
             <PageLoadFailedCanvas
@@ -1378,6 +1404,7 @@ function EditorPage() {
                   size="sm"
                   variant={commentMode ? 'secondary' : 'ghost'}
                   aria-pressed={commentMode}
+                  hidden={!canEditContent}
                   aria-label={commentMode ? t('editor.comments.commenting') : t('editor.comments.mode')}
                   className={cn('cursor-pointer', commentMode && 'bg-amber-500/15 text-amber-800 ring-1 ring-amber-500/35 dark:text-amber-300')}
                   onClick={toggleCommentMode}
@@ -1403,6 +1430,7 @@ function EditorPage() {
                   size="icon-sm"
                   variant="ghost"
                   className="cursor-pointer"
+                  hidden={!canEditContent}
                   onClick={() => activeId && void runAfterSavingDraft({ action: () => setSettingsForId(activeId) })}
                   aria-label={t('editor.pageSettings.title')}
                   title={t('editor.pageSettings.title')}
@@ -1416,6 +1444,7 @@ function EditorPage() {
                         size="icon-sm"
                         variant="ghost"
                         className="cursor-pointer"
+                        hidden={!canEditContent}
                         aria-label={t('editor.moreActions')}
                         title={t('editor.moreActions')}
                       />
@@ -1494,9 +1523,11 @@ function EditorPage() {
                   // The link picker searches the version this page belongs to.
                   <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
                     <TiptapEditor
-                      key={page.id}
+                      // Remounts once access is known, so block controls render for that access.
+                      key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
                       value={content}
-                      onChange={setContent}
+                      onChange={canEditContent ? setContent : ignoreEdit}
+                      editable={canEditContent}
                       className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
                       dir={activeLangDir}
                       lang={activeLanguage?.code}
@@ -1529,7 +1560,7 @@ function EditorPage() {
             </section>
           ) : (
             <EmptyCanvas
-              canCreate={Boolean(defaultLanguageId)}
+              canCreate={canEditContent && Boolean(defaultLanguageId)}
               creating={createPage.isPending || switching}
               onNewPage={() => defaultLanguageId && addPage(null, defaultLanguageId)}
             />
@@ -1554,6 +1585,10 @@ function EditorPage() {
     </div>
   );
 }
+
+/** Read-only fields report nothing back: a Viewer's draft must never diverge
+ *  from the server copy, or leaving the page would try to save it. */
+const ignoreEdit = () => undefined;
 
 const TREE_SKELETON_WIDTHS = ['w-1/2', 'w-4/5', 'w-3/4', 'w-2/3', 'w-4/5 ms-4', 'w-3/5 ms-4'];
 

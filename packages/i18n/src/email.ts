@@ -58,6 +58,10 @@ import {
   email_verifyemail_title,
   // biome-ignore lint/suspicious/noTsIgnore: Paraglide generates runtime JavaScript without declaration files.
   // @ts-ignore -- named imports keep dashboard and public-site catalogs out of transactional email bundles.
+  roles_admin,
+  roles_editor,
+  roles_owner,
+  roles_viewer,
 } from './paraglide/messages/_index.js';
 
 export type { MessageVariables } from './message-types';
@@ -102,6 +106,11 @@ const emailMessages = {
   'email.invite.message': email_invite_message,
   'email.invite.action': email_invite_action,
   'email.invite.expiry': email_invite_expiry,
+  // Role names inside the invitation sentence ("…as Viewer").
+  'roles.owner': roles_owner,
+  'roles.admin': roles_admin,
+  'roles.editor': roles_editor,
+  'roles.viewer': roles_viewer,
   'email.readerInvite.subject': email_readerinvite_subject,
   'email.readerInvite.preview': email_readerinvite_preview,
   'email.readerInvite.title': email_readerinvite_title,

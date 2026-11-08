@@ -32,6 +32,9 @@ export type ErrorCode =
   | 'validation:failed'
   | 'database:not_found'
   | 'database:conflict'
+  | 'join:invalid'
+  | 'join:email_unverified'
+  | 'join:domain_not_allowed'
   | 'branch:main_changed'
   | 'branch:baseline_missing'
   | 'branch:promote_blocked'
@@ -116,6 +119,10 @@ const ERROR_STATUS = {
   'validation:failed': 422,
   'database:not_found': 404,
   'database:conflict': 409,
+  // One answer for a bad, revoked, expired or used-up join link: no enumeration.
+  'join:invalid': 404,
+  'join:email_unverified': 403,
+  'join:domain_not_allowed': 403,
   'branch:main_changed': 409,
   'branch:baseline_missing': 409,
   'branch:promote_blocked': 409,

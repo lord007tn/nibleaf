@@ -60,7 +60,16 @@ const liveVersionKnown = (projectHasOne: boolean | undefined, recentReady: boole
   return projectHasOne === false && recentReady === false ? false : undefined;
 };
 
-export function ExportsSection({ projectId, canManageSchedules }: { projectId: string; canManageSchedules: boolean }) {
+export function ExportsSection({
+  projectId,
+  canManageSchedules,
+  canCreate = true,
+}: {
+  projectId: string;
+  canManageSchedules: boolean;
+  /** Viewers download finished exports; starting or cancelling one is for Editors. */
+  canCreate?: boolean;
+}) {
   const { locale, t } = useLocale();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
@@ -147,17 +156,21 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-xs" id={createHintId}>
-                {neverPublished ? t('settings.exports.workflow.publishFirst') : t('settings.exports.workflow.formatHint')}
+                {!canCreate
+                  ? t('access.viewOnly.action')
+                  : neverPublished
+                    ? t('settings.exports.workflow.publishFirst')
+                    : t('settings.exports.workflow.formatHint')}
               </p>
               {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it.
                   It looks like a disabled button too: dimmed, and no hover darkening or press movement. */}
               <Button
-                aria-describedby={neverPublished ? createHintId : undefined}
-                aria-disabled={neverPublished || undefined}
+                aria-describedby={neverPublished || !canCreate ? createHintId : undefined}
+                aria-disabled={neverPublished || !canCreate || undefined}
                 className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary aria-disabled:active:not-aria-[haspopup]:translate-y-0"
                 loading={create.isPending}
                 onClick={() => {
-                  if (neverPublished) return;
+                  if (neverPublished || !canCreate) return;
                   create.mutate(formats, {
                     onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
                     onError: (error) =>
@@ -243,7 +256,7 @@ export function ExportsSection({ projectId, canManageSchedules }: { projectId: s
                       · {formatDate(run.createdAt, locale)}
                     </div>
                   </div>
-                  {run.status === 'PENDING' || run.status === 'RUNNING' ? (
+                  {(run.status === 'PENDING' || run.status === 'RUNNING') && canCreate ? (
                     <Button
                       loading={cancel.isPending && cancel.variables === run.id}
                       onClick={() => cancel.mutate(run.id)}

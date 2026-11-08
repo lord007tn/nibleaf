@@ -10,6 +10,7 @@ import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { SectionHeader, SettingsListSkeleton, sortLanguagesDefaultFirst } from './shared';
 
 /** A small uppercase chip (direction / default / hidden badges). */
@@ -40,6 +41,8 @@ export function LanguagesSection({ project }: { project: Project }) {
   const update = useUpdateLanguage(project.id);
   const remove = useDeleteLanguage(project.id);
   const [addOpen, setAddOpen] = useState(false);
+  // Viewers see the site's languages and coverage; changing them is for Editors.
+  const readOnly = useProjectAdminStatus(project.id).edit === 'viewOnly';
 
   // Default language always first, then by configured position.
   const rows = sortLanguagesDefaultFirst(languages ?? []);
@@ -134,7 +137,7 @@ export function LanguagesSection({ project }: { project: Project }) {
                     </div>
                   ) : null}
                 </div>
-                {!language.isDefault ? (
+                {!language.isDefault && !readOnly ? (
                   <Button
                     className="min-h-11 cursor-pointer whitespace-normal rounded-md px-2.5 text-[12.5px]"
                     loading={update.isPending && update.variables?.id === language.id}
@@ -156,10 +159,10 @@ export function LanguagesSection({ project }: { project: Project }) {
                 <Switch
                   aria-label={t('settings.languages.enabledToggle', { label: language.label })}
                   checked={enabled}
-                  disabled={language.isDefault}
+                  disabled={language.isDefault || readOnly}
                   onCheckedChange={(checked) => void save(language.id, { enabled: checked })}
                 />
-                {!language.isDefault ? (
+                {!language.isDefault && !readOnly ? (
                   <Button
                     aria-label={t('settings.languages.delete')}
                     className="text-muted-foreground hover:text-destructive"
@@ -178,10 +181,16 @@ export function LanguagesSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      <Button className="mb-1.5 border-dashed text-muted-foreground" onClick={() => setAddOpen(true)} type="button" variant="outline">
-        <Plus className="size-3.5" /> {t('settings.languages.add')}
-      </Button>
-      <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('settings.languages.hint')}</p>
+      {readOnly ? (
+        <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('access.viewOnly.action')}</p>
+      ) : (
+        <>
+          <Button className="mb-1.5 border-dashed text-muted-foreground" onClick={() => setAddOpen(true)} type="button" variant="outline">
+            <Plus className="size-3.5" /> {t('settings.languages.add')}
+          </Button>
+          <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('settings.languages.hint')}</p>
+        </>
+      )}
 
       <AddLanguageDialog onCreated={() => setAddOpen(false)} onOpenChange={setAddOpen} open={addOpen} projectId={project.id} />
     </div>

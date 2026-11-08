@@ -6,9 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MembersSection } from './members-section';
 
 const translations: Record<string, string> = {
-  'settings.members.role.owner': 'المالك',
-  'settings.members.role.admin': 'مدير',
-  'settings.members.role.member': 'عضو',
+  'roles.owner': 'المالك',
+  'roles.admin': 'مدير',
+  'roles.editor': 'عضو',
+  'roles.viewer': 'مشاهد',
   'settings.members.removeConfirm': 'Remove {name} from this site?',
   'settings.members.revokeConfirm': 'Revoke the invitation for {email}?',
 };
@@ -19,6 +20,7 @@ const members = [
   { id: 'm-owner', role: 'owner', user: { id: 'u-owner', name: 'Owner', email: 'owner@example.com' } },
   { id: 'm-admin', role: 'admin', user: { id: 'u-admin', name: 'Admin', email: 'admin@example.com' } },
   { id: 'm-member', role: 'member', user: { id: 'u-member', name: 'Member', email: 'member@example.com' } },
+  { id: 'm-viewer', role: 'viewer', user: { id: 'u-viewer', name: 'Viewer', email: 'viewer@example.com' } },
 ];
 
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -29,6 +31,8 @@ vi.mock('@nibleaf/i18n/react', () => ({
   },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(async () => false) }));
+// Join links have their own tests; here only whether Admins get them matters.
+vi.mock('./join-links-section', () => ({ JoinLinksSection: () => <div data-testid="join-links-stub" /> }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: currentUserId } } }) }));
 vi.mock('@/hooks/api', async () => ({
   friendlyErrorMessage: (await vi.importActual<typeof import('@/hooks/api/errors')>('@/hooks/api/errors')).friendlyErrorMessage,
@@ -63,12 +67,12 @@ describe('MembersSection role selects', () => {
     const root = createRoot(container);
     await act(async () => root.render(<MembersSection projectId="project-a" />));
 
-    // Invite form (defaults to member), then the admin and member rows — the owner
-    // row is a badge, never a select.
+    // Invite form (defaults to Editor), then the admin, editor and viewer rows —
+    // the owner row is a badge, never a select.
     const triggerLabels = [...container.querySelectorAll('[data-slot="select-value"]')].map((node) => node.textContent);
-    expect(triggerLabels).toEqual(['عضو', 'مدير', 'عضو']);
+    expect(triggerLabels).toEqual(['عضو', 'مدير', 'عضو', 'مشاهد']);
     for (const label of triggerLabels) {
-      expect(label).not.toMatch(/^(admin|member)$/);
+      expect(label).not.toMatch(/^(admin|member|viewer)$/);
     }
 
     act(() => root.unmount());
@@ -85,6 +89,19 @@ describe('MembersSection role selects', () => {
     expect(container.querySelector('[aria-label="settings.members.revokeInvite"]')).toBeNull();
     expect(container.textContent).toContain('مدير');
     expect(container.textContent).toContain('عضو');
+    expect(container.textContent).toContain('مشاهد');
+    act(() => root.unmount());
+  });
+
+  it('shows a Viewer the team read-only', async () => {
+    currentUserId = 'u-viewer';
+    const root = createRoot(container);
+    await act(async () => root.render(<MembersSection projectId="project-a" />));
+    expect(container.querySelector('form')).toBeNull();
+    expect(container.querySelector('[role="combobox"]')).toBeNull();
+    expect(container.querySelector('[aria-label="settings.members.remove"]')).toBeNull();
+    expect(container.textContent).toContain('مشاهد');
+    expect(container.querySelector('[data-testid="join-links-stub"]')).toBeNull();
     act(() => root.unmount());
   });
 
@@ -93,10 +110,11 @@ describe('MembersSection role selects', () => {
     const root = createRoot(container);
     await act(async () => root.render(<MembersSection projectId="project-a" />));
     expect(container.querySelector('form')).not.toBeNull();
-    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(3);
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(4);
     expect(container.querySelector('[aria-label="settings.members.remove"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="settings.members.transferOwnership"]')).toBeNull();
+    expect(container.querySelector('[data-testid="join-links-stub"]')).not.toBeNull();
     act(() => root.unmount());
   });
 
@@ -188,7 +206,7 @@ describe('MembersSection destructive confirmations', () => {
       ...container.querySelectorAll<HTMLButtonElement>('[aria-label="settings.members.remove"], [aria-label="settings.members.revokeInvite"]'),
     ];
     // Admin row, member row, then the invitation.
-    expect(rowButtons.map((button) => button.hasAttribute('data-loading'))).toEqual([true, false, false]);
+    expect(rowButtons.map((button) => button.hasAttribute('data-loading'))).toEqual([true, false, false, false]);
     const settled = mutation.mutate.mock.calls[0]?.[1];
     await act(async () => {
       settled.onSuccess();

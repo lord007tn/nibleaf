@@ -311,6 +311,14 @@ export const getPublicMetaQueryOptions = () =>
     staleTime: 5 * 60 * 1000,
   });
 
+/** What a join link offers. A bad, revoked, expired or used-up link is one 404. */
+export const joinLinkPreviewQueryOptions = (token: string) =>
+  queryOptions({
+    queryKey: queryKeys.public.joinLink(token),
+    queryFn: async () => getData(await api.public.join[':token'].$get({ param: { token } }), 'join link'),
+    retry: false,
+  });
+
 export const getInvitationInfoQueryOptions = (invitationId: string | undefined) =>
   queryOptions({
     queryKey: queryKeys.public.invitation(invitationId ?? ''),
