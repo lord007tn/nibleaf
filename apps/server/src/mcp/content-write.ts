@@ -738,7 +738,7 @@ const publishChanges = async (
 ): Promise<McpWriteOutcome> => {
   const projectId = principal.project.id;
   const approvedDigest = readPublishPreviewToken(args.previewToken, actor.userId, projectId);
-  const { pending, settings, digest } = await readPublishState(projectId);
+  const { pending, settings, digest, snapshot } = await readPublishState(projectId);
   if (pending.changes.length === 0 && settings.length === 0) {
     throw new AppError({ code: 'mcp:nothing_to_publish', message: 'There are no unpublished changes. Nothing was published.' });
   }
@@ -773,6 +773,7 @@ const publishChanges = async (
     actor.userId,
     { message: publishMessage(args.message, principal.credential) },
     ctx.get('locale'),
+    snapshot,
   );
   // The replay carries the same next step; the message (the caller's own text)
   // stays out of the replay cache and is available from get_deployment.

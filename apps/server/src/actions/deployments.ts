@@ -7,6 +7,7 @@ import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/sh
 import type { CreateDeploymentBody } from '@nibleaf/validators';
 import { diffLines } from 'diff';
 import { AppError, badRequest, notFound } from '@/errors';
+import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { logPlatformEvent } from './platform-events';
 import { assertProjectInOrg } from './projects';
 
@@ -51,6 +52,7 @@ interface PendingChange extends DeploymentPageDiff {}
 
 /** What will change on the next publish, vs. the last READY deployment. */
 export interface PendingChanges {
+  reviewedStateHash: string;
   /** false = never published, so everything counts as new. */
   hasBaseline: boolean;
   lastVersion: number | null;
@@ -370,6 +372,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   if (!latest?.snapshot) {
     const firstSpecChange = openApiSummary(currentSnapshot.openapi, null, currentSnapshot.project.languages[0]?.code ?? 'en');
     return {
+      reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
       hasBaseline: false,
       lastVersion: null,
       lastPublishedAt: null,
@@ -400,6 +403,7 @@ export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteS
   if (specChange) changes.push(specChange);
 
   return {
+    reviewedStateHash: reviewedSnapshotDigest(currentSnapshot),
     hasBaseline: true,
     lastVersion: latest.version,
     lastPublishedAt: latest.completedAt?.toISOString() ?? null,
@@ -456,17 +460,40 @@ const enqueuePublish = async (deployment: Deployment, data: PublishDeploymentJob
 };
 
 /** Create a PENDING deployment and enqueue the publish job for the worker to build. */
-export const createDeployment = async (organizationId: string, projectId: string, userId: string, body: PublishDeploymentBody, locale?: string) => {
+export const createDeployment = async (
+  organizationId: string,
+  projectId: string,
+  userId: string,
+  body: PublishDeploymentBody,
+  locale?: string,
+  approvedSnapshot?: SiteSnapshot,
+) => {
   const project = await assertProjectInOrg(organizationId, projectId);
   if (project.takedownAt) {
     throw badRequest('This site has been taken down by the platform moderators and cannot be published. Contact support@nibleaf.com.', { projectId });
   }
-  // Fail before allocating a version or enqueueing work. The worker repeats
-  // this against its fresh read to close the edit-between-preflight-and-build
-  // race; either way the previous READY snapshot remains the only live one.
-  const redirectValidation = validateSnapshotRedirects(await getCurrentSnapshot(projectId));
+  // Validate before version allocation, then persist this exact input for the
+  // worker. It repeats checks against the immutable input rather than new drafts.
+  let reviewedInput = approvedSnapshot;
+  if (body.reviewedDeploymentId) {
+    const reviewed = await prisma.deployment.findFirst({
+      where: { id: body.reviewedDeploymentId, projectId, status: 'FAILED' },
+      select: { approvedSnapshot: true },
+    });
+    if (!reviewed?.approvedSnapshot) {
+      throw new AppError({ code: 'mcp:preview_stale', message: 'Review the changes again before publishing.' });
+    }
+    reviewedInput = reviewed.approvedSnapshot as unknown as SiteSnapshot;
+  }
+  const redirectValidation = validateSnapshotRedirects(reviewedInput ?? (await getCurrentSnapshot(projectId)));
   if (redirectValidation.issues.length > 0) {
     throw badRequest(summarizeRedirectIssues(redirectValidation.issues), { redirectIssues: redirectValidation.issues });
+  }
+  if (body.reviewedStateHash && body.reviewedStateHash !== reviewedSnapshotDigest(redirectValidation.snapshot)) {
+    throw new AppError({
+      code: 'mcp:preview_stale',
+      message: 'Your site changed since you reviewed it. Review the changes again before publishing.',
+    });
   }
   const deployment = await createWithNextVersion(projectId, (version) =>
     prisma.deployment.create({
@@ -474,6 +501,7 @@ export const createDeployment = async (organizationId: string, projectId: string
         projectId,
         version,
         status: 'PENDING',
+        approvedSnapshot: redirectValidation.snapshot as unknown as Prisma.InputJsonValue,
         createdById: userId,
         ...(body.message ? { commitMessage: body.message } : {}),
       },
@@ -489,7 +517,8 @@ export const createDeployment = async (organizationId: string, projectId: string
   };
   const queued = await enqueuePublish(deployment, jobData);
   logPlatformEvent('publish_clicked', { userId, projectId, metadata: { auto: false, version: deployment.version } });
-  return queued;
+  const { approvedSnapshot: _approvedSnapshot, ...result } = queued;
+  return result;
 };
 
 /** Re-publish a previous READY deployment's snapshot as a new deployment. */

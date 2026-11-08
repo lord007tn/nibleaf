@@ -66,6 +66,59 @@ integration('insights over real deduplicated facts', () => {
     }
     expect((await readPageDetail(reader, 'guides/api')).title).toBe('API guide');
   }, 60_000);
+  it('counts deduplicated drafting events by connection with exact period and tenant scope', async () => {
+    const draftingProject = `${projectId}-drafting`;
+    const now = Date.now();
+    const draftingScope = {
+      ...scope,
+      projectId: draftingProject,
+      meta: resolveInsightsMeta({ range: '7d', timezone: 'UTC', compare: 'none' }, new Date(now)),
+    };
+    const event = (connectionSource: 'workspace' | 'instance' | undefined, extra: Partial<Parameters<typeof fixedAnalyticsEvent>[0]> = {}) =>
+      fixedAnalyticsEvent({
+        tenantId: scope.tenantId,
+        projectId: draftingProject,
+        siteId: draftingProject,
+        eventId: randomUUID(),
+        source: 'dashboard',
+        occurredAt: new Date(now - 1000).toISOString(),
+        receivedAt: new Date(now).toISOString(),
+        payload: { name: 'answer_completed', connectionSource, provider: 'openrouter', model: 'fictional-model' },
+        ...extra,
+      });
+    const workspace = event('workspace');
+    try {
+      await insertAnalyticsEvents([
+        workspace,
+        workspace,
+        event('workspace', { payload: { name: 'answer_started', connectionSource: 'workspace', provider: 'openai', model: 'other-model' } }),
+        event('instance'),
+        event(undefined),
+        event('workspace', { source: 'public_site' }),
+        event('workspace', { tenantId: `${scope.tenantId}-other` }),
+        event('workspace', { occurredAt: new Date(now - 8 * 86_400_000).toISOString() }),
+        event('workspace', { occurredAt: new Date(now).toISOString() }),
+      ]);
+      const result = await readAiVisibility(new InsightsReader(draftingScope));
+      expect(result.drafting.total).toBe(4);
+      expect(result.drafting.connections).toEqual([
+        expect.objectContaining({ connection: 'workspace', events: 2, share: 0.5 }),
+        expect.objectContaining({ connection: 'instance', events: 1, share: 0.25 }),
+        expect.objectContaining({ connection: 'unknown', events: 1, share: 0.25 }),
+      ]);
+      expect(result.drafting.connections[0]?.models).toEqual(
+        expect.arrayContaining([
+          ['openrouter', 'fictional-model'],
+          ['openai', 'other-model'],
+        ]),
+      );
+      const empty = await readAiVisibility(new InsightsReader({ ...draftingScope, projectId: `${draftingProject}-empty` }));
+      expect(empty.drafting).toEqual({ total: 0, connections: [] });
+    } finally {
+      await deleteProjectAnalytics(scope.tenantId, draftingProject);
+      await deleteProjectAnalytics(`${scope.tenantId}-other`, draftingProject);
+    }
+  }, 60_000);
   it('answers all seven contracts, excludes bots, settles bursts and computes CTR', async () => {
     const overview = await queryOverviewInsights(scope);
     expect(overview.kpis.pageViews).toEqual({ value: 24, previous: 0 });

@@ -39,6 +39,7 @@ export type ErrorCode =
   | 'branch:baseline_missing'
   | 'branch:promote_blocked'
   | 'storage:error'
+  | 'asset:in_use'
   | 'domain:already_added'
   | 'domain:already_connected'
   | 'domain:provider_failed'
@@ -127,6 +128,7 @@ const ERROR_STATUS = {
   'branch:baseline_missing': 409,
   'branch:promote_blocked': 409,
   'storage:error': 502,
+  'asset:in_use': 409,
   'domain:already_added': 409,
   'domain:already_connected': 409,
   'domain:provider_failed': 502,

@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(repositoryRoot, 'release', 'self-host.json');
-const installerPath = join(repositoryRoot, 'scripts', 'install.sh');
-const composePath = join(repositoryRoot, 'docker-compose.prod.yml');
+const installerPath = join(repositoryRoot, 'release', 'published', 'install.sh');
+const composePath = join(repositoryRoot, 'release', 'published', 'docker-compose.yml');
 const readmePath = join(repositoryRoot, 'README.md');
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex');

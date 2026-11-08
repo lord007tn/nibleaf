@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "Conexões de redação",
+  "analytics_drafting_description": "Eventos de redação iniciados, concluídos e com falha no período selecionado.",
+  "analytics_drafting_total": "Total de eventos: {total}",
+  "analytics_drafting_connection": "Conexão",
+  "analytics_drafting_workspace": "Chave do espaço de trabalho",
+  "analytics_drafting_instance": "Chave da instância (Nibleaf)",
+  "analytics_drafting_unknown": "Desconhecida (dados antigos)",
+  "analytics_drafting_models": "Provedor / modelo (até 10)",
+  "analytics_drafting_events": "Eventos",
+  "analytics_drafting_share": "Participação",
+  "analytics_drafting_empty": "Nenhum evento de redação neste período.",
   "brand_oss": "OSS",
   "common_cancel": "Cancelar",
   "common_save": "Salvar alterações",
@@ -3242,6 +3253,9 @@
   "editor_image_lightversion": "Imagem do tema claro",
   "editor_image_darkversion": "Imagem do tema escuro",
   "editor_image_describe": "Descrever imagem",
+  "editor_image_legacynotshown": "Não aparece no seu site publicado",
+  "editor_image_legacyupload": "Enviar imagem",
+  "editor_image_legacyuploaded": "{filename} foi enviada e vai aparecer no seu site publicado",
   "editor_link_search": "Buscar páginas ou colar um link",
   "editor_callout_remove": "Remover destaque",
   "editor_image_toolarge": "Esta imagem é muito grande. Escolha uma com menos de 50 MB.",
@@ -3811,5 +3825,10 @@
   "settings_members_noinvites": "Nenhum convite pendente.",
   "members_suggestions_label": "Pessoas dos seus outros sites",
   "members_suggestions_hint": "Digite um nome ou e-mail. Sugerimos pessoas dos seus outros sites.",
-  "people_choosesite": "Escolha um site"
+  "people_choosesite": "Escolha um site",
+  "analytics_status_readsdisabled_title": "Os dados analíticos estão sendo coletados",
+  "analytics_status_readsdisabled_body": "O servidor está coletando dados analíticos. Quando a migração estiver pronta, o administrador poderá ativar os relatórios com ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Seu site mudou desde a revisão. Revise as alterações novamente antes de publicar.",
+  "admin_pagination_first": "Primeira página",
+  "admin_pagination_next": "Próxima página"
 }

@@ -33,6 +33,24 @@ x-service-env: &service-env
   POSTGRES_URL: postgresql://nibleaf:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.production.example)}@postgres:5432/nibleaf
   REDIS_HOST: dragonfly
   REDIS_PORT: "6379"
+  ANALYTICS_MODE: ${ANALYTICS_MODE:-disabled}
+  ANALYTICS_CONCURRENCY: ${ANALYTICS_CONCURRENCY:-10}
+  ANALYTICS_HASH_SALT: ${ANALYTICS_HASH_SALT:-}
+  CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+  CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+  CLICKHOUSE_READER_USERNAME: ${CLICKHOUSE_READER_USERNAME:-${CLICKHOUSE_USERNAME:-nibleaf}}
+  CLICKHOUSE_READER_PASSWORD: ${CLICKHOUSE_READER_PASSWORD:-${CLICKHOUSE_PASSWORD:-}}
+  CLICKHOUSE_WRITER_USERNAME: ${CLICKHOUSE_WRITER_USERNAME:-${CLICKHOUSE_USERNAME:-nibleaf}}
+  CLICKHOUSE_REQUEST_TIMEOUT_MS: ${CLICKHOUSE_REQUEST_TIMEOUT_MS:-5000}
+  CLICKHOUSE_MAX_BATCH_SIZE: ${CLICKHOUSE_MAX_BATCH_SIZE:-500}
+  CLICKHOUSE_MAX_BUFFERED_EVENTS: ${CLICKHOUSE_MAX_BUFFERED_EVENTS:-10000}
+  CLICKHOUSE_FLUSH_INTERVAL_MS: ${CLICKHOUSE_FLUSH_INTERVAL_MS:-1000}
+  CLICKHOUSE_RAW_RETENTION_DAYS: ${CLICKHOUSE_RAW_RETENTION_DAYS:-180}
+  CLICKHOUSE_ROLLUP_RETENTION_DAYS: ${CLICKHOUSE_ROLLUP_RETENTION_DAYS:-730}
+  CLICKHOUSE_SENSITIVE_RETENTION_DAYS: ${CLICKHOUSE_SENSITIVE_RETENTION_DAYS:-30}
+  CLICKHOUSE_CRAWLER_RETENTION_DAYS: ${CLICKHOUSE_CRAWLER_RETENTION_DAYS:-90}
+  CLICKHOUSE_MIGRATE_ON_BOOT: ${CLICKHOUSE_MIGRATE_ON_BOOT:-true}
+  CLICKHOUSE_WRITER_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${CLICKHOUSE_PASSWORD:-}}
   QUEUE_CLUSTER: "true"
   # Object storage. Defaults target the bundled maxio service; point the
   # STORAGE_* variables at Cloudflare R2 / AWS S3 / Backblaze B2 instead if you
@@ -63,6 +81,17 @@ x-service-env: &service-env
   MCP_ENABLED: ${MCP_ENABLED:-false}
   MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
   MCP_RATE_LIMIT_PER_MIN: ${MCP_RATE_LIMIT_PER_MIN:-120}
+  MCP_WRITE_RATE_LIMIT_PER_MIN: ${MCP_WRITE_RATE_LIMIT_PER_MIN:-20}
+  MCP_PUBLISH_RATE_LIMIT_PER_HOUR: ${MCP_PUBLISH_RATE_LIMIT_PER_HOUR:-6}
+  EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-2}
+  EXPORT_CHROMIUM_PATH: ${EXPORT_CHROMIUM_PATH:-/usr/bin/chromium-browser}
+  EXPORT_MAX_ACTIVE_PER_PROJECT: ${EXPORT_MAX_ACTIVE_PER_PROJECT:-3}
+  EXPORT_MAX_DAILY_PER_PROJECT: ${EXPORT_MAX_DAILY_PER_PROJECT:-20}
+  EXPORT_MAX_PAGES: ${EXPORT_MAX_PAGES:-5000}
+  EXPORT_MAX_SNAPSHOT_BYTES: ${EXPORT_MAX_SNAPSHOT_BYTES:-52428800}
+  EXPORT_MAX_ASSET_BYTES: ${EXPORT_MAX_ASSET_BYTES:-262144000}
+  EXPORT_MANUAL_RETENTION_DAYS: ${EXPORT_MANUAL_RETENTION_DAYS:-7}
+  EXPORT_DOWNLOAD_TTL_SECONDS: ${EXPORT_DOWNLOAD_TTL_SECONDS:-300}
   API_PORT: "4311"
   SERVER_SHUTDOWN_TIMEOUT_MS: ${SERVER_SHUTDOWN_TIMEOUT_MS:-25000}
   API_URL: http://server:4311
@@ -98,9 +127,9 @@ x-service-env: &service-env
   AI_DAILY_LIMIT: ${AI_DAILY_LIMIT:-}
   # Per-IP budget for the public site-serving API (requests/minute).
   RATE_LIMIT_PUBLIC_PER_MIN: ${RATE_LIMIT_PUBLIC_PER_MIN:-}
-  # Public proxy hops your edge appends to X-Forwarded-For (1 behind Cloudflare).
-  # Private hops are skipped automatically. See the production checklist:
-  # https://docs.nibleaf.com/self-hosting/production
+  # Count every address after the client in X-Forwarded-For, private ones included.
+  # Too high can trust a forged address. Use the same value on app and API.
+  # https://docs.nibleaf.com/self-hosting/troubleshooting#readers-see-too-many-requests
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-0}
   # Shared secret letting the app's SSR proxy attribute published-site traffic
   # to the real visitor IP for rate limiting. Optional but recommended:
@@ -115,6 +144,31 @@ x-service-env: &service-env
   NIBLEAF_RUN_SEED: ${NIBLEAF_RUN_SEED:-false}
 
 services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    profiles: ["analytics", "analytics-tools"]
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_WRITER_USERNAME:-${CLICKHOUSE_USERNAME:-nibleaf}}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${CLICKHOUSE_PASSWORD:-}}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    entrypoint: ["/bin/sh", "-ec", "test -n \"$$CLICKHOUSE_PASSWORD\" || { echo 'Set CLICKHOUSE_PASSWORD before enabling analytics' >&2; exit 1; }; exec /entrypoint.sh"]
+    volumes:
+      - nibleaf-clickhouse:/var/lib/clickhouse
+      - nibleaf-clickhouse-logs:/var/log/clickhouse-server
+      - nibleaf-clickhouse-backups:/var/lib/clickhouse/backups
+    configs:
+      - source: clickhouse-small-host
+        target: /etc/clickhouse-server/config.d/nibleaf.xml
+    mem_limit: 1536m
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   postgres:
     # Pinned to 17: postgres:18 changed the data-directory layout and breaks the
     # existing volume mount. Read the upgrade guide before a major bump:
@@ -182,6 +236,18 @@ services:
     environment: *service-env
     depends_on:
       postgres:
+        condition: service_healthy
+    restart: "no"
+
+  analytics-migrate:
+    image: *image
+    command: ["clickhouse-migrate"]
+    environment: *service-env
+    profiles: ["analytics-tools"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
         condition: service_healthy
     restart: "no"
 
@@ -310,3 +376,23 @@ volumes:
   nibleaf-pg:
   nibleaf-dragonfly:
   nibleaf-maxio:
+  nibleaf-clickhouse:
+  nibleaf-clickhouse-logs:
+  nibleaf-clickhouse-backups:
+
+configs:
+  clickhouse-small-host:
+    content: |
+      <clickhouse>
+        <max_server_memory_usage>1073741824</max_server_memory_usage>
+        <mark_cache_size>134217728</mark_cache_size>
+        <uncompressed_cache_size>0</uncompressed_cache_size>
+        <logger><level>warning</level><size>10M</size><count>3</count></logger>
+        <query_log remove="1"/><query_thread_log remove="1"/><trace_log remove="1"/>
+        <text_log remove="1"/><metric_log remove="1"/><asynchronous_metric_log remove="1"/>
+        <part_log remove="1"/><processors_profile_log remove="1"/>
+        <session_log remove="1"/><query_views_log remove="1"/>
+        <error_log remove="1"/><crash_log remove="1"/>
+        <storage_configuration><disks><backups><type>local</type><path>/var/lib/clickhouse/backups/</path></backups></disks></storage_configuration>
+        <backups><allowed_disk>backups</allowed_disk></backups>
+      </clickhouse>

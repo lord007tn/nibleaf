@@ -158,3 +158,30 @@ integration('ClickHouse schema integration', () => {
     await deleteProjectUsage('usage-tenant', projectId);
   });
 });
+
+integration('draft connection attribution', () => {
+  it('stores both new values and defaults older events to an empty connection', async () => {
+    const projectId = `connection-${randomUUID()}`;
+    const events = (['workspace', 'instance', undefined] as const).map((connectionSource) =>
+      fixedAnalyticsEvent({
+        eventId: randomUUID(),
+        projectId,
+        occurredAt: new Date().toISOString(),
+        receivedAt: new Date().toISOString(),
+        source: 'dashboard',
+        payload: { name: 'answer_completed', ...(connectionSource ? { connectionSource } : {}) },
+      }),
+    );
+    try {
+      await insertAnalyticsEvents(events);
+      const result = await getClickHouseClient('reader').query({
+        query: 'SELECT connection_source FROM analytics_events FINAL WHERE project_id = {project:String} ORDER BY connection_source',
+        query_params: { project: projectId },
+        format: 'JSONEachRow',
+      });
+      expect(await result.json()).toEqual([{ connection_source: '' }, { connection_source: 'instance' }, { connection_source: 'workspace' }]);
+    } finally {
+      await deleteProjectAnalytics('tenant-1', projectId);
+    }
+  });
+});

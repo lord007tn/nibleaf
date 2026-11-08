@@ -64,3 +64,8 @@ describe('ClickHouse ingestion', () => {
     expect(insert).not.toHaveBeenCalled();
   });
 });
+
+it.each(['workspace', 'instance'] as const)('persists the %s drafting connection', (connectionSource) => {
+  const row = eventToClickHouseRow(fixedAnalyticsEvent({ source: 'dashboard', payload: { name: 'answer_completed', connectionSource } }));
+  expect(row.connection_source).toBe(connectionSource);
+});

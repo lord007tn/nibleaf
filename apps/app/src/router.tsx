@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { createRouter as createTanStackRouter } from '@tanstack/react-router';
+import { type AnyRouter, createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
 import { ErrorPage } from '@/components/error-page';
 import { NotFound } from '@/components/not-found';
@@ -11,7 +11,7 @@ import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
 
 const requestNonce = createIsomorphicFn()
-  .server(() => ssrNonce.getStore())
+  .server(() => ssrNonce.getStore() || undefined)
   .client(() => undefined);
 
 // getRouter runs once in the browser before hydration, so the stale-chunk
@@ -19,6 +19,20 @@ const requestNonce = createIsomorphicFn()
 const recoverFromStaleChunks = createIsomorphicFn()
   .server(() => undefined)
   .client(reloadOnceOnChunkLoadFailure);
+
+const prepareMarketingRouter = createIsomorphicFn()
+  .server((router: AnyRouter) => {
+    if (ssrNonce.getStore() !== '') return;
+    // Start dehydrates immediately after load(), before its render callback.
+    // Normalize the request-local matches at that boundary, rather than editing
+    // serialized JavaScript whose shape can change across Router upgrades.
+    const load = router.load.bind(router);
+    router.load = async (options) => {
+      await load(options);
+      for (const match of router.stores.matches.get()) match.updatedAt = 0;
+    };
+  })
+  .client(() => undefined);
 
 export function getRouter() {
   recoverFromStaleChunks();
@@ -52,6 +66,7 @@ export function getRouter() {
         }
       : undefined,
   });
+  prepareMarketingRouter(router);
   return router;
 }
 

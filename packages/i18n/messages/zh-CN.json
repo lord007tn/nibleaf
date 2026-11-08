@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "起草连接",
+  "analytics_drafting_description": "所选期间内起草开始、完成和失败的事件。",
+  "analytics_drafting_total": "事件总数：{total}",
+  "analytics_drafting_connection": "连接",
+  "analytics_drafting_workspace": "工作区密钥",
+  "analytics_drafting_instance": "实例（Nibleaf）密钥",
+  "analytics_drafting_unknown": "未知（旧数据）",
+  "analytics_drafting_models": "提供商 / 模型（最多 10 个）",
+  "analytics_drafting_events": "事件",
+  "analytics_drafting_share": "占比",
+  "analytics_drafting_empty": "此期间没有起草事件。",
   "brand_oss": "开放源码软件",
   "common_cancel": "取消",
   "common_save": "保存更改",
@@ -3239,6 +3250,9 @@
   "editor_image_lightversion": "浅色主题图片",
   "editor_image_darkversion": "深色主题图片",
   "editor_image_describe": "描述图片",
+  "editor_image_legacynotshown": "不会显示在你已发布的站点上",
+  "editor_image_legacyupload": "上传图片",
+  "editor_image_legacyuploaded": "{filename} 已上传，将显示在你已发布的站点上",
   "editor_link_search": "搜索页面或粘贴链接",
   "editor_callout_remove": "移除提示框",
   "editor_image_toolarge": "图片太大。请选择小于 50 MB 的图片。",
@@ -3808,5 +3822,10 @@
   "settings_members_noinvites": "没有待处理的邀请。",
   "members_suggestions_label": "来自您其他站点的人员",
   "members_suggestions_hint": "输入姓名或邮箱，系统会推荐您其他站点的人员。",
-  "people_choosesite": "选择站点"
+  "people_choosesite": "选择站点",
+  "analytics_status_readsdisabled_title": "正在收集分析数据",
+  "analytics_status_readsdisabled_body": "服务器正在收集分析数据。迁移准备就绪后，管理员可通过 ANALYTICS_MODE=clickhouse 启用报告。",
+  "publish_reviewchanged": "网站自审核以来已发生变化。发布前请重新审核更改。",
+  "admin_pagination_first": "第一页",
+  "admin_pagination_next": "下一页"
 }

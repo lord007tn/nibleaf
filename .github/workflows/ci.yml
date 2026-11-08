@@ -161,6 +161,12 @@ jobs:
           PEOPLE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/people.postgres.test.ts
 
+      - name: Verify deleting an asset keeps files that saved content uses
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ASSET_DELETE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/asset-delete.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt
@@ -177,6 +183,19 @@ jobs:
         run: |
           pnpm --filter @nibleaf/clickhouse migrate
           pnpm --filter @nibleaf/clickhouse test
+
+      - name: Verify relational analytics and admin discovery on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ANALYTICS_POSTGRES: "1"
+          ADMIN_POSTGRES: "1"
+          REVIEWED_PUBLISH_POSTGRES: "1"
+          ANALYTICS_MODE: shadow_read
+          CLICKHOUSE_URL: http://127.0.0.1:8123
+          CLICKHOUSE_DATABASE: nibleaf_analytics
+          CLICKHOUSE_READER_USERNAME: nibleaf
+          CLICKHOUSE_READER_PASSWORD: nibleaf
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/relational-analytics.postgres.test.ts src/actions/admin.postgres.test.ts src/actions/deployments.reviewed.postgres.test.ts
 
       - name: Check documentation
         run: pnpm docs:check
@@ -255,7 +274,7 @@ jobs:
           curl --connect-timeout 2 --max-time 10 --fail --silent --show-error --header "Host: nibleaf.com" http://127.0.0.1:3000/blog/nibleaf-august-2026-source-release-ar > /tmp/nibleaf-release-ar.html
           grep --fixed-strings --quiet "Nibleaf’s August 2026 source release" /tmp/nibleaf-release-en.html
           grep --fixed-strings --quiet "إصدار مصدر Nibleaf في أغسطس 2026" /tmp/nibleaf-release-ar.html
-          node apps/app/scripts/check-ssr-nonce.mjs /tmp/nibleaf-release-en.html /tmp/nibleaf-release-en.headers
+          node apps/app/scripts/check-marketing-csp.mjs http://127.0.0.1:3000
           test "$(curl --connect-timeout 2 --max-time 10 --silent --output /dev/null --write-out '%{http_code}' --header 'Host: nibleaf.com' 'http://127.0.0.1:3000/%E0%A4%A')" = 400
 
       - name: Build production admin

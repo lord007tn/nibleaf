@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "मसौदा कनेक्शन",
+  "analytics_drafting_description": "चुनी गई अवधि में मसौदा शुरू होने, पूरा होने और विफल होने की घटनाएँ।",
+  "analytics_drafting_total": "कुल घटनाएँ: {total}",
+  "analytics_drafting_connection": "कनेक्शन",
+  "analytics_drafting_workspace": "वर्कस्पेस कुंजी",
+  "analytics_drafting_instance": "इंस्टेंस (Nibleaf) कुंजी",
+  "analytics_drafting_unknown": "अज्ञात (पुराना डेटा)",
+  "analytics_drafting_models": "प्रदाता / मॉडल (अधिकतम 10)",
+  "analytics_drafting_events": "घटनाएँ",
+  "analytics_drafting_share": "हिस्सा",
+  "analytics_drafting_empty": "इस अवधि में मसौदे की कोई घटना नहीं है।",
   "brand_oss": "ओ.एस.एस",
   "common_cancel": "रद्द करें",
   "common_save": "परिवर्तन सहेजें",
@@ -3239,6 +3250,9 @@
   "editor_image_lightversion": "हल्की थीम की छवि",
   "editor_image_darkversion": "गहरी थीम की छवि",
   "editor_image_describe": "छवि का वर्णन करें",
+  "editor_image_legacynotshown": "आपकी प्रकाशित साइट पर नहीं दिखता",
+  "editor_image_legacyupload": "चित्र अपलोड करें",
+  "editor_image_legacyuploaded": "{filename} अपलोड हो गया है और आपकी प्रकाशित साइट पर दिखेगा",
   "editor_link_search": "पृष्ठ खोजें या लिंक पेस्ट करें",
   "editor_callout_remove": "नोट का बॉक्स हटाएँ",
   "editor_image_toolarge": "यह चित्र बहुत बड़ा है। 50 MB से छोटा चित्र चुनें।",
@@ -3808,5 +3822,10 @@
   "settings_members_noinvites": "कोई लंबित न्योता नहीं।",
   "members_suggestions_label": "आपकी दूसरी साइटों के लोग",
   "members_suggestions_hint": "नाम या ईमेल लिखें। आपकी दूसरी साइटों के लोग सुझाए जाएँगे।",
-  "people_choosesite": "साइट चुनें"
+  "people_choosesite": "साइट चुनें",
+  "analytics_status_readsdisabled_title": "विश्लेषण डेटा एकत्र किया जा रहा है",
+  "analytics_status_readsdisabled_body": "सर्वर विश्लेषण डेटा एकत्र कर रहा है। माइग्रेशन तैयार होने पर व्यवस्थापक ANALYTICS_MODE=clickhouse से रिपोर्ट चालू कर सकते हैं।",
+  "publish_reviewchanged": "समीक्षा के बाद आपकी साइट बदल गई है। प्रकाशित करने से पहले बदलावों की फिर से समीक्षा करें।",
+  "admin_pagination_first": "पहला पृष्ठ",
+  "admin_pagination_next": "अगला पृष्ठ"
 }

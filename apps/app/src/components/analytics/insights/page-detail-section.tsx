@@ -117,7 +117,7 @@ function PageDetailView({
       </div>
 
       <InsightsStatus projectId={projectId} retry={retry} state={state} />
-      {state.availability === 'not_configured' ? null : (
+      {state.availability === 'not_configured' || state.availability === 'reads_disabled' ? null : (
         <>
           <KpiGrid className="xl:grid-cols-3">
             <KpiCard

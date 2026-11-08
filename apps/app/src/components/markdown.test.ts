@@ -92,6 +92,17 @@ describe('Markdown renderer — Mintlify component parity', () => {
     expect(html).not.toMatch(/\shref="javascript:/i);
   });
 
+  it('shows an authored uppercase <IMG> as the same image the editor saves it as', async () => {
+    const authored = await render('<IMG src="/diagram.png" alt="Diagram" width="320" onerror="alert(1)" style="position:fixed" />');
+    const saved = await render('<img src="/diagram.png" alt="Diagram" width="320" />');
+    for (const html of [authored, saved]) {
+      expect(html).toMatch(/<img[^>]*src="\/diagram\.png"/);
+      expect(html).toMatch(/<img[^>]*alt="Diagram"/);
+      expect(html).not.toMatch(/\sonerror=|position:fixed/i);
+    }
+    expect(authored).toBe(saved);
+  });
+
   it('keeps invalid TeX readable without failing the page render', async () => {
     const html = await render('Before $\\frac{1}{$ after.');
     expect(html).toContain('Before');

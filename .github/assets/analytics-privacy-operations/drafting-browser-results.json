@@ -1,0 +1,20 @@
+{
+  "total": 8,
+  "connections": [
+    {
+      "connection": "workspace",
+      "events": 6,
+      "models": [["openai", "fictional-workspace-model"]],
+      "share": 0.75
+    },
+    {
+      "connection": "instance",
+      "events": 2,
+      "models": [["openrouter", "fictional-instance-model"]],
+      "share": 0.25
+    }
+  ],
+  "pageOverflow": false,
+  "shareColumnVisible": true,
+  "errors": []
+}

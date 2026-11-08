@@ -99,7 +99,7 @@ export function InsightsStatus({ state, projectId, retry }: { state: InsightsSta
     );
   }
   if (state.availability === 'complete') return <FreshnessNotice lastEventAt={state.lastEventAt} projectId={projectId} />;
-  if (state.availability === 'not_configured') {
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled') {
     return (
       <Card>
         <CardContent className="flex flex-col items-start gap-3 py-2 sm:flex-row sm:items-center">
@@ -107,8 +107,12 @@ export function InsightsStatus({ state, projectId, retry }: { state: InsightsSta
             <Database aria-hidden className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="font-medium text-base">{t('analytics.status.notConfigured.title')}</h2>
-            <p className="mt-1 text-muted-foreground text-sm">{t('analytics.status.notConfigured.body')}</p>
+            <h2 className="font-medium text-base">
+              {t(state.availability === 'reads_disabled' ? 'analytics.status.readsDisabled.title' : 'analytics.status.notConfigured.title')}
+            </h2>
+            <p className="mt-1 text-muted-foreground text-sm">
+              {t(state.availability === 'reads_disabled' ? 'analytics.status.readsDisabled.body' : 'analytics.status.notConfigured.body')}
+            </p>
           </div>
           <Button
             nativeButton={false}

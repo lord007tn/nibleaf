@@ -1,22 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteT } from '@nibleaf/i18n/site';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectConfig } from '@/hooks/api/types';
-import { type AnalyticsScript, analyticsDeliveryMode, analyticsScripts } from '@/lib/site-seo';
-
-const consentKey = (projectId: string) => `nibleaf.analytics.consent.${projectId}`;
-
-/** Read the persisted consent choice; anything other than a stored accept/decline
- *  is treated as still pending (so the banner shows). */
-const readConsent = (projectId: string): 'pending' | 'accepted' | 'declined' => {
-  try {
-    const stored = window.localStorage.getItem(consentKey(projectId));
-    return stored === 'accepted' || stored === 'declined' ? stored : 'pending';
-  } catch {
-    return 'pending';
-  }
-};
+import { readSiteConsent, writeSiteConsent } from '@/lib/site-consent';
+import { type AnalyticsScript, analyticsScripts } from '@/lib/site-seo';
 
 export function appendAnalyticsScript(projectId: string, index: number, script: AnalyticsScript) {
   const id = `nibleaf-analytics-${projectId}-${index}`;
@@ -65,9 +54,9 @@ export function SiteAnalyticsConsent({
   reloadPage?: () => void;
 }) {
   const scripts = useMemo(() => analyticsScripts(config), [config]);
-  const mode = analyticsDeliveryMode(config);
-  const requiresConsent = mode === 'consent' && scripts.length > 0;
+  const requiresConsent = analyticsConsentPolicy(config) === 'required';
   const [choice, setChoice] = useState<'pending' | 'accepted' | 'declined'>('pending');
+  const [resolvedProject, setResolvedProject] = useState<string>();
   const acceptedBeforeManage = useRef(false);
   const t = siteT(lang);
   const settings = config?.addons?.consentBanner;
@@ -77,28 +66,25 @@ export function SiteAnalyticsConsent({
       return;
     }
     acceptedBeforeManage.current = false;
-    setChoice(readConsent(projectId));
+    setChoice(readSiteConsent(projectId));
+    setResolvedProject(projectId);
   }, [projectId, requiresConsent]);
 
   useEffect(() => {
-    if (typeof document === 'undefined' || scripts.length === 0 || !requiresConsent || choice !== 'accepted') {
+    if (typeof document === 'undefined' || scripts.length === 0 || !requiresConsent || resolvedProject !== projectId || choice !== 'accepted') {
       return;
     }
     for (const [index, script] of scripts.entries()) {
       appendAnalyticsScript(projectId, index, script);
     }
-  }, [choice, projectId, requiresConsent, scripts]);
+  }, [choice, projectId, requiresConsent, scripts, resolvedProject]);
 
-  if (!requiresConsent) {
+  if (!requiresConsent || resolvedProject !== projectId) {
     return null;
   }
 
   const persist = (next: 'accepted' | 'declined') => {
-    try {
-      window.localStorage.setItem(consentKey(projectId), next);
-    } catch {
-      // The choice remains effective for this page when storage is unavailable.
-    }
+    writeSiteConsent(projectId, next);
     if ((choice === 'accepted' || acceptedBeforeManage.current) && next === 'declined') {
       reloadPage();
       return;
@@ -110,7 +96,7 @@ export function SiteAnalyticsConsent({
   if (choice !== 'pending') {
     return (
       <Button
-        className="fixed end-4 bottom-4 z-40 shadow-lg"
+        className="fixed end-4 bottom-4 z-40 min-h-11 pointer-coarse:min-h-11 shadow-lg"
         onClick={() => {
           acceptedBeforeManage.current = choice === 'accepted';
           setChoice('pending');
@@ -141,11 +127,19 @@ export function SiteAnalyticsConsent({
     >
       <h2 className="font-semibold text-base">{t('analyticsConsentTitle')}</h2>
       <p className="text-sm leading-relaxed">{t('analyticsConsentBody')}</p>
+      {settings?.privacyPolicyUrl && (
+        <a
+          className="inline-flex min-h-11 pointer-coarse:min-h-11 items-center text-sm underline underline-offset-4"
+          href={settings.privacyPolicyUrl}
+        >
+          {t('analyticsConsentPrivacy')}
+        </a>
+      )}
       <div className={cn('mt-4 flex gap-2', buttonLayout === 'stacked' ? 'flex-col' : 'flex-col sm:flex-row sm:justify-end')}>
-        <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('declined')}>
+        <Button className="min-h-11 pointer-coarse:min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('declined')}>
           {t('analyticsConsentDecline')}
         </Button>
-        <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('accepted')}>
+        <Button className="min-h-11 pointer-coarse:min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('accepted')}>
           {t('analyticsConsentAccept')}
         </Button>
       </div>

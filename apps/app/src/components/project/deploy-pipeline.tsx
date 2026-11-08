@@ -27,7 +27,7 @@ export const publishedPageUrl = (projectId: string, page: PublishPage, site?: Si
 /** What a failed publish reported, for the "What went wrong" details: the
  *  per-page check issues when there are any, else the raw error text. */
 export const publishFailureDetails = (deployment: Pick<Deployment, 'error' | 'errorDetails'> | undefined): string[] => {
-  const issues = (deployment?.errorDetails ?? []).flatMap((issue) =>
+  const issues = (Array.isArray(deployment?.errorDetails) ? deployment.errorDetails : []).flatMap((issue) =>
     issue && typeof issue.detail === 'string' ? [[issue.pageTitle || issue.pagePath, issue.detail].filter(Boolean).join(' — ')] : [],
   );
   if (issues.length > 0) return [...new Set(issues)];
@@ -111,7 +111,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const superseded = Boolean(
     restoration && done && deployment && deployments.data?.some((item) => item.status === 'READY' && item.version > deployment.version),
   );
-  const failureDetails = failed ? publishFailureDetails(deployment) : [];
+  const reviewRequired = deployment?.errorDetails && !Array.isArray(deployment.errorDetails) && deployment.errorDetails.reason === 'review_stale';
+  const failureDetails = failed ? (reviewRequired ? [t('publish.reviewChanged')] : publishFailureDetails(deployment)) : [];
   const active = activeStep(retrying ? 'PENDING' : status);
 
   // The previous READY deployment is the rollback target.

@@ -7,7 +7,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^setup", "^build"],
-      "env": ["BUNDLE_ANALYZE"],
+      "env": ["BUNDLE_ANALYZE", "MARKETING_GITHUB_STARS"],
       "outputs": [
         "dist/**",
         ".output/**",

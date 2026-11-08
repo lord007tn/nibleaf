@@ -7,9 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./asset-references": "./src/asset-references.ts",
+    "./analytics-consent": "./src/analytics-consent.ts",
     "./addons": "./src/addons.ts",
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",
+    "./client-ip": "./src/client-ip.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
