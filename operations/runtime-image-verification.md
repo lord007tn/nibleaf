@@ -20,15 +20,19 @@ Production peers still install TypeScript and Vitest metadata. The runtime stage
 omits only TypeScript's unused optional native compiler packages; services execute
 TS/TSX with tsx/esbuild. Contributor builds retain the compiler. Other native
 optional dependencies, including sharp and Prisma, remain installed. The runner
-also omits the base image's unused npm/npx installer while retaining pnpm for
-existing migration/operator commands. Both the root package-manager pin and
-Corepack preparation use pnpm 10.34.9, whose bundled `ip-address` is 10.7.4,
-tar is 7.5.22, and http-cache-semantics is 4.3.0. Its bundled glob 10.5.0 and
-minimatch 9.0.9 findings remain unresolved. Root dependency overrides do not
-update pnpm's separate bundled dependencies; verify the actual image after
-changing the toolchain pin.
+also omits npm/npx, pnpm and Corepack, including Corepack's cached pnpm bundle.
+Migrations invoke the installed Prisma CLI and Node/tsx directly from their
+workspace directories; the optional seed retains its existing explicit opt-in.
+Contributor and builder installs still use pnpm 10.34.9. Root dependency
+overrides cannot update its separately bundled glob/minimatch copies.
 
-The base stays on Node 22 and Alpine 3.24. The runner upgrades all installed
+Nitro is a development dependency of the app and admin. Only its built SSR
+outputs are deployed. Its `nf3` dependency traces packages during the build;
+neither service needs that build-time tracer or its embedded glob at runtime.
+The image audit rejects Nitro/nf3 and package-manager artifacts in the final
+image, in addition to the previously excluded compiler/lint tooling.
+
+The base stays on digest-pinned Node 22 and Alpine 3.24. The runner upgrades all installed
 packages from that stable branch, including Chromium's native dependencies.
 The manual Docker workflow pulls the current base image and bypasses only the
 `runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm

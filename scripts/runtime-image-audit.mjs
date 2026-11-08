@@ -63,8 +63,11 @@ const visit = (directory) => {
 visit(path.join(app, 'node_modules'));
 for (const service of ['app', 'admin']) visit(path.join(app, 'apps', service, '.output/server/node_modules'));
 const inventory = [...packages.values()].sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
-const forbidden = inventory.filter(({ name }) => name === 'ultracite' || name === 'braces' || name.startsWith('@typescript/typescript-'));
+const forbidden = inventory.filter(({ name }) => ['ultracite', 'braces', 'nitro', 'nf3'].includes(name) || name.startsWith('@typescript/typescript-'));
 if (forbidden.length) throw new Error('Development-only graph remains installed: ' + JSON.stringify(forbidden));
+for (const file of ['/usr/local/bin/npm', '/usr/local/bin/npx', '/usr/local/bin/pnpm', '/usr/local/bin/corepack', '/root/.cache/node/corepack']) {
+  if (fs.existsSync(file)) throw new Error('Build-only package manager remains installed: ' + file);
+}
 if (!inventory.some(({ name }) => name === '@modelcontextprotocol/server')) throw new Error('Missing MCP runtime');
 console.log(JSON.stringify({ revision: process.env.NIBLEAF_REVISION, artifacts, required, packageCount: inventory.length, forbidden, inventory }));
 `;

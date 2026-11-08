@@ -7,7 +7,7 @@
 # run their self-contained Nitro SSR bundles.
 
 # Refresh within the reviewed Alpine branch; distro upgrades need their own review.
-FROM node:22-alpine3.24 AS base
+FROM node:22-alpine3.24@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS base
 ENV PNPM_HOME=/pnpm
 ENV PNPM_STORE_DIR=/pnpm/store
 ENV PATH=$PNPM_HOME:$PATH
@@ -47,7 +47,7 @@ RUN touch apps/app/.output/.nibleaf-runtime-required apps/admin/.output/.nibleaf
 
 # Install a clean production graph instead of copying the builder's tooling.
 # Keep the workspace layout: server/worker and their workspace dependencies run
-# through tsx, and the migration commands still use pnpm's workspace filters.
+# through tsx, and migrations invoke the installed Prisma/tsx entry points.
 FROM base AS runtime-deps
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
@@ -76,11 +76,14 @@ LABEL org.opencontainers.image.title="Nibleaf" \
   org.opencontainers.image.revision=$REVISION
 COPY --from=runtime-deps /app /app
 COPY --chmod=755 docker-entrypoint.sh /app/docker-entrypoint.sh
-# Services and operator migrations use Node/tsx or pnpm. The base image's npm
-# installer is unused and carries a separate bundled dependency graph.
+# Services and migrations use Node/tsx directly. Package managers are build tools;
+# remove their separate bundled dependency graphs from the shipped image.
 # Refresh every installed stable-branch package, including Chromium's native
 # dependencies. The manual workflow bypasses only this stage's layer cache.
-RUN apk upgrade --no-cache && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+RUN apk upgrade --no-cache && corepack disable && rm -rf \
+  /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+  /root/.cache/node/corepack /pnpm
 EXPOSE 4310 4311 4312 4315
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["help"]
