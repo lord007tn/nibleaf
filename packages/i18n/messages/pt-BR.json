@@ -3811,5 +3811,10 @@
   "settings_members_noinvites": "Nenhum convite pendente.",
   "members_suggestions_label": "Pessoas dos seus outros sites",
   "members_suggestions_hint": "Digite um nome ou e-mail. Sugerimos pessoas dos seus outros sites.",
-  "people_choosesite": "Escolha um site"
+  "people_choosesite": "Escolha um site",
+  "analytics_status_readsdisabled_title": "Os dados analíticos estão sendo coletados",
+  "analytics_status_readsdisabled_body": "O servidor está coletando dados analíticos. Quando a migração estiver pronta, o administrador poderá ativar os relatórios com ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Seu site mudou desde a revisão. Revise as alterações novamente antes de publicar.",
+  "admin_pagination_first": "Primeira página",
+  "admin_pagination_next": "Próxima página"
 }

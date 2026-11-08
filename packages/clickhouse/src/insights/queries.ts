@@ -14,7 +14,10 @@ import { readAiVisibility, readFeedback, readOverview, readPerformance } from '.
 import { readSearch } from './search';
 
 const query = async <T>(scope: InsightsScope, read: (reader: InsightsReader) => Promise<T>, empty: (scope: InsightsScope) => T): Promise<T> => {
-  if (!clickHouseReadsEnabled(keys().ANALYTICS_MODE)) return empty({ ...scope, meta: { ...scope.meta, availability: 'not_configured' } });
+  const mode = keys().ANALYTICS_MODE;
+  if (!clickHouseReadsEnabled(mode)) {
+    return empty({ ...scope, meta: { ...scope.meta, availability: mode === 'dual_write' ? 'reads_disabled' : 'not_configured' } });
+  }
   try {
     const reader = new InsightsReader(scope);
     // Exactly one tombstone lookup for the entire endpoint, including overview's

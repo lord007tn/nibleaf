@@ -3808,5 +3808,10 @@
   "settings_members_noinvites": "没有待处理的邀请。",
   "members_suggestions_label": "来自您其他站点的人员",
   "members_suggestions_hint": "输入姓名或邮箱，系统会推荐您其他站点的人员。",
-  "people_choosesite": "选择站点"
+  "people_choosesite": "选择站点",
+  "analytics_status_readsdisabled_title": "正在收集分析数据",
+  "analytics_status_readsdisabled_body": "服务器正在收集分析数据。迁移准备就绪后，管理员可通过 ANALYTICS_MODE=clickhouse 启用报告。",
+  "publish_reviewchanged": "网站自审核以来已发生变化。发布前请重新审核更改。",
+  "admin_pagination_first": "第一页",
+  "admin_pagination_next": "下一页"
 }

@@ -370,6 +370,10 @@ export const projectConfigSchema = z
             placement: z.enum(['bottom-start', 'bottom-center', 'bottom-end']),
             presentation: z.enum(['compact', 'comfortable']),
             buttonLayout: z.enum(['inline', 'stacked']),
+            privacyPolicyUrl: z
+              .url()
+              .refine((url) => ['http:', 'https:'].includes(new URL(url).protocol))
+              .optional(),
           })
           .strict()
           .optional(),
@@ -696,6 +700,11 @@ export type ReorderPagesBody = z.infer<typeof reorderPagesBody>;
 // ─── Deployment (publish) ────────────────────────────────────────────────────
 
 export const createDeploymentBody = z.object({
+  reviewedDeploymentId: z.string().min(1).max(200).optional(),
+  reviewedStateHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
   message: z.string().max(300).optional(),
 });
 export type CreateDeploymentBody = z.infer<typeof createDeploymentBody>;

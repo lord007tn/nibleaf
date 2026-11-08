@@ -45,7 +45,8 @@ function SearchView({
   const format = useInsightFormat();
   const { loading, unknown } = state;
   const kpis = data?.kpis;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled')
+    return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const noSearches = data !== undefined && !unknown && data.kpis.searches.value === 0;
   const hiddenBy = data !== undefined && !unknown && data.searchTermsVisibility !== 'visible' ? data.searchTermsVisibility : null;
   const granularity = data?.meta.granularity ?? 'day';

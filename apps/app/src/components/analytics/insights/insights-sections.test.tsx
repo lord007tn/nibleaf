@@ -255,6 +255,15 @@ describe('Overview', () => {
     expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
   });
 
+  it('explains dual-write collection without rendering unknown figures as zero', async () => {
+    mocks.overview.mockReturnValue(ready(emptyOverview('reads_disabled')));
+    const view = await render(<OverviewSection />);
+    expect(text(view)).toContain('Analytics is being collected');
+    expect(text(view)).toContain('ANALYTICS_MODE=clickhouse');
+    expect(view.querySelector('a[target="_blank"]')).not.toBeNull();
+    expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
+  });
+
   it('flags incomplete data without hiding what is known', async () => {
     mocks.overview.mockReturnValue(ready(overviewFixture('partial')));
     const view = await render(<OverviewSection />);

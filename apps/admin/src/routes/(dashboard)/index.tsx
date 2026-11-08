@@ -9,7 +9,7 @@ import type { ComponentType, SVGProps } from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { DataError } from '@/components/data-state';
 import { PublishRetentionReadout } from '@/components/publish-retention';
-import { type AdminUser, useAdminFunnel, useAdminOverview, useAdminSites, useAdminUsers } from '@/hooks/api/queries';
+import { useAdminFunnel, useAdminOverview, useAdminSites } from '@/hooks/api/queries';
 import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/(dashboard)/')({
@@ -19,13 +19,9 @@ export const Route = createFileRoute('/(dashboard)/')({
 const SIGNUP_DAYS = 14;
 
 /** Bucket customer sign-ups into a per-day series for the last `SIGNUP_DAYS`. */
-function buildSignupSeries(users: AdminUser[] | undefined): { date: string; signups: number }[] {
+function buildSignupSeries(rows: { date: string; signups: number }[] | undefined): { date: string; signups: number }[] {
   const days: { date: string; signups: number }[] = [];
-  const byDay = new Map<string, number>();
-  for (const u of users ?? []) {
-    const key = new Date(u.createdAt).toISOString().slice(0, 10);
-    byDay.set(key, (byDay.get(key) ?? 0) + 1);
-  }
+  const byDay = new Map((rows ?? []).map((row) => [row.date, row.signups]));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   for (let i = SIGNUP_DAYS - 1; i >= 0; i--) {
@@ -42,13 +38,12 @@ function OverviewPage() {
   const format = useFormatters();
   const overview = useAdminOverview();
   const { data, isPending } = overview;
-  const users = useAdminUsers();
   const sites = useAdminSites();
   const funnel = useAdminFunnel();
 
-  const series = buildSignupSeries(users.data);
+  const series = buildSignupSeries(data?.signupDaily);
   const hasSignups = series.some((d) => d.signups > 0);
-  const recentSites = [...(sites.data ?? [])].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 5);
+  const recentSites = [...(sites.data?.items ?? [])].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 5);
 
   const publishedPct = data && data.deployments > 0 ? Math.round((data.publishedDeployments / data.deployments) * 100) : 0;
   const verifiedPct = data && data.users > 0 ? Math.round((data.verifiedUsers / data.users) * 100) : 0;
@@ -83,12 +78,9 @@ function OverviewPage() {
     },
   ];
 
-  if (overview.isError || users.isError || sites.isError || funnel.isError) {
+  if (overview.isError || sites.isError || funnel.isError) {
     return (
-      <DataError
-        message={t('admin.overview.loadError')}
-        retry={() => void Promise.all([overview.refetch(), users.refetch(), sites.refetch(), funnel.refetch()])}
-      />
+      <DataError message={t('admin.overview.loadError')} retry={() => void Promise.all([overview.refetch(), sites.refetch(), funnel.refetch()])} />
     );
   }
 
@@ -161,7 +153,7 @@ function OverviewPage() {
             <CardDescription>{t('admin.overview.signupsPeriod', { days: format.number(SIGNUP_DAYS) })}</CardDescription>
           </CardHeader>
           <div className="px-2 pb-4 sm:px-6">
-            {users.isPending ? (
+            {overview.isPending ? (
               <Skeleton className="h-[220px] w-full" />
             ) : hasSignups ? (
               <ChartContainer config={chartConfig} className="aspect-auto h-[220px] w-full">

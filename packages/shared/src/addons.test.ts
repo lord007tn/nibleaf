@@ -194,3 +194,10 @@ describe('delivery entitlement projection', () => {
     expect(projectAddonRowsForDelivery(feedback, entitled, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: true });
   });
 });
+
+it('preserves the optional owner policy through durable add-on configuration and public projection', () => {
+  const config = addonConfigSchemas['consent-banner'].parse({ privacyPolicyUrl: 'https://example.invalid/privacy' });
+  const projected = projectConfigWithAddons({}, [{ key: 'consent-banner', enabled: true, config }]);
+  expect(projected).toMatchObject({ addons: { consentBanner: { privacyPolicyUrl: 'https://example.invalid/privacy' } } });
+  expect(addonConfigSchemas['consent-banner'].safeParse({ privacyPolicyUrl: 'javascript:alert(1)' }).success).toBe(false);
+});

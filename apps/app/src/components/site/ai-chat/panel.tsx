@@ -1,6 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import {
   AI_CHAT_EVENT,
   type AiChatClientEvent,
@@ -14,24 +15,16 @@ import {
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import { chatSiteFn, trackChatEventsFn } from '@/functions/site-chat';
+import { chatSiteFn } from '@/functions/site-chat';
+import { readSiteConsent } from '@/lib/site-consent';
+import { api } from '@/services/api';
 import { Composer } from './composer';
 import { createChatEventQueue } from './events';
 import { buildHistory, deriveConsent, errorKey } from './helpers';
 import { ChatMessage, type TurnScope } from './message';
 import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
+import { readerSession } from './session';
 import { useChatViewport } from './use-chat-viewport';
-
-const readerSession = (): string | undefined => {
-  try {
-    const id = sessionStorage.getItem('nibleaf.chat.session') ?? crypto.randomUUID();
-    sessionStorage.setItem('nibleaf.chat.session', id);
-    return id;
-  } catch {
-    // Storage may be blocked; keep the session ephemeral.
-    return undefined;
-  }
-};
 
 function Typing({ label, phase }: { label: string; phase: string }) {
   return (
@@ -78,23 +71,22 @@ export default function Panel(
   const pendingQuestion = useRef('');
   const lastRequest = useRef<number | undefined>(undefined);
   const end = useRef<HTMLDivElement>(null);
-  const consent = () => {
-    let stored: string | null = null;
-    try {
-      stored = localStorage.getItem(`nibleaf.analytics.consent.${options.projectId}`);
-    } catch {
-      // Storage may be blocked; keep consent unknown and the session ephemeral.
-    }
-    return deriveConsent(options.requiresConsent, stored);
-  };
+  const consent = () =>
+    analyticsConsentPolicy(options.config) === 'blocked'
+      ? ('denied' as const)
+      : deriveConsent(options.requiresConsent, readSiteConsent(options.projectId));
   // Content-free interaction events, batched and flushed when the reader leaves.
   const events = useMemo(
-    () => createChatEventQueue((body) => trackChatEventsFn({ data: { projectId: options.projectId, ...body } })),
+    () =>
+      createChatEventQueue((body) =>
+        api.public.sites[':id'].chat.events.$post({ param: { id: options.projectId }, json: body }, { init: { keepalive: true } }),
+      ),
     [options.projectId],
   );
   const track = (event: AiChatClientEvent) => {
-    const sessionId = readerSession();
-    events.track(event, { consent: consent(), ...(sessionId ? { sessionId } : {}), ...(options.lang ? { lang: options.lang } : {}) });
+    const consentState = consent();
+    const sessionId = readerSession(options.projectId, consentState);
+    events.track(event, { consent: consentState, ...(sessionId ? { sessionId } : {}), ...(options.lang ? { lang: options.lang } : {}) });
   };
   useEffect(() => () => events.flush(), [events]);
   useEffect(() => {
@@ -155,7 +147,8 @@ export default function Panel(
     }
     pendingQuestion.current = question;
     askedVersion.current = options.version;
-    const sessionId = readerSession();
+    const consentState = consent();
+    const sessionId = readerSession(options.projectId, consentState);
     void chat.sendMessage(question, {
       body: {
         conversationId,
@@ -164,7 +157,7 @@ export default function Panel(
         lang: options.lang,
         version: options.version,
         pagePath: context?.path,
-        consent: consent(),
+        consent: consentState,
         sessionId,
       },
       // Suggestions still loading for the last answer give way to the new question.

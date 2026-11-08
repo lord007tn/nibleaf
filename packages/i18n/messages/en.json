@@ -3810,5 +3810,10 @@
   "settings_members_noinvites": "No pending invites.",
   "members_suggestions_label": "People from your other sites",
   "members_suggestions_hint": "Type a name or email. People from your other sites are suggested.",
-  "people_choosesite": "Choose a site"
+  "people_choosesite": "Choose a site",
+  "analytics_status_readsdisabled_title": "Analytics is being collected",
+  "analytics_status_readsdisabled_body": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Your site changed since you reviewed it. Review the changes again before publishing.",
+  "admin_pagination_first": "First page",
+  "admin_pagination_next": "Next page"
 }

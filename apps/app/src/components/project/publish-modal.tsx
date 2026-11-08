@@ -232,10 +232,20 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
       setPreparing(false);
       return;
     }
+    if (pending?.reviewedStateHash && latestPreflight.data.reviewedStateHash !== pending.reviewedStateHash) {
+      toast.error(t('publish.reviewChanged'));
+      publishInFlight.current = false;
+      setPreparing(false);
+      return;
+    }
     const trimmed = message.trim();
     const firstPublishAttribution = readFirstPublishAttribution();
     publish.mutate(
-      { ...(trimmed ? { message: trimmed } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
+      {
+        reviewedStateHash: latestPreflight.data.reviewedStateHash,
+        ...(trimmed ? { message: trimmed } : {}),
+        ...(firstPublishAttribution ? { firstPublishAttribution } : {}),
+      },
       {
         onSuccess: (deployment) => {
           setMessage('');

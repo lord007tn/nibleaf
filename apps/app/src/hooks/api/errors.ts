@@ -10,6 +10,7 @@ type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 // `details.reason` (e.g. a 409 `database:conflict` whose reason is a slug
 // clash); a reason entry wins over its code.
 const API_ERROR_MESSAGE_KEYS = new Map<string, MessageKey>([
+  ['mcp:preview_stale', 'publish.reviewChanged'],
   ['slug_taken', 'editor.reorderSlugTaken'],
   ['branch:main_changed', 'error.branchMainChanged'],
   ['branch:baseline_missing', 'error.branchBaselineMissing'],

@@ -29,7 +29,9 @@ export type InsightsAvailability =
   /** ClickHouse is configured but did not answer (down, timeout, auth). */
   | 'unavailable'
   /** This instance does not read analytics from ClickHouse (ANALYTICS_MODE). */
-  | 'not_configured';
+  | 'not_configured'
+  /** Writes are enabled while reads await the migration cutover. */
+  | 'reads_disabled';
 
 export type InsightsPreset = '24h' | '7d' | '30d' | '90d';
 

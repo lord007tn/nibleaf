@@ -3810,5 +3810,10 @@
   "settings_members_noinvites": "Aucune invitation en attente.",
   "members_suggestions_label": "Personnes de vos autres sites",
   "members_suggestions_hint": "Saisissez un nom ou un e-mail. Des personnes de vos autres sites vous sont suggérées.",
-  "people_choosesite": "Choisissez un site"
+  "people_choosesite": "Choisissez un site",
+  "analytics_status_readsdisabled_title": "Les données statistiques sont collectées",
+  "analytics_status_readsdisabled_body": "Le serveur collecte les statistiques. Lorsque la migration est prête, son administrateur peut activer les rapports avec ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Votre site a changé depuis votre vérification. Vérifiez à nouveau les modifications avant de publier.",
+  "admin_pagination_first": "Première page",
+  "admin_pagination_next": "Page suivante"
 }

@@ -112,7 +112,7 @@ export function analyticsScripts(config: ProjectConfig | null): AnalyticsScript[
   return scripts;
 }
 
-export const analyticsDeliveryMode = (config: ProjectConfig | null): 'blocked' | 'consent' | 'direct' => {
+const analyticsDeliveryMode = (config: ProjectConfig | null): 'blocked' | 'consent' | 'direct' => {
   const consentAddon = config?.addons?.consentBanner;
   if (consentAddon) return consentAddon.enabled ? 'consent' : 'blocked';
   return config?.analytics?.cookieConsent ? 'consent' : 'direct';

@@ -3817,5 +3817,10 @@
   "settings_members_noinvites": "لا توجد دعوات معلّقة.",
   "members_suggestions_label": "أشخاص من مواقعك الأخرى",
   "members_suggestions_hint": "اكتب اسمًا أو بريدًا إلكترونيًا، وسنقترح أشخاصًا من مواقعك الأخرى.",
-  "people_choosesite": "اختر موقعًا"
+  "people_choosesite": "اختر موقعًا",
+  "analytics_status_readsdisabled_title": "جارٍ جمع التحليلات",
+  "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
+  "admin_pagination_first": "الصفحة الأولى",
+  "admin_pagination_next": "الصفحة التالية"
 }

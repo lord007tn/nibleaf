@@ -3817,5 +3817,10 @@
   "settings_members_noinvites": "Нет ожидающих приглашений.",
   "members_suggestions_label": "Люди с других ваших сайтов",
   "members_suggestions_hint": "Введите имя или почту — мы предложим людей с других ваших сайтов.",
-  "people_choosesite": "Выберите сайт"
+  "people_choosesite": "Выберите сайт",
+  "analytics_status_readsdisabled_title": "Собираются данные аналитики",
+  "analytics_status_readsdisabled_body": "Сервер собирает данные аналитики. Когда миграция будет готова, администратор сервера сможет включить отчёты с помощью ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Сайт изменился после проверки. Перед публикацией проверьте изменения ещё раз.",
+  "admin_pagination_first": "Первая страница",
+  "admin_pagination_next": "Следующая страница"
 }

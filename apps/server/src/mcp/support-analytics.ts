@@ -61,6 +61,7 @@ const availabilityReasons: Partial<Record<InsightsAvailability, string>> = {
   partial: 'Some events lack a visit or result record, so rates cover only the events that have them.',
   unavailable: 'The analytics store did not answer; try again later.',
   not_configured: 'ClickHouse analytics is not configured.',
+  reads_disabled: 'Analytics is being collected. The server admin can enable reads with ANALYTICS_MODE=clickhouse when migration is ready.',
 };
 const answered = (availability: InsightsAvailability) => availability === 'complete' || availability === 'partial';
 
