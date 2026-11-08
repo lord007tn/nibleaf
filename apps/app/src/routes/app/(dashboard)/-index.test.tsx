@@ -149,8 +149,21 @@ describe('dashboard request recovery', () => {
 
     const values = [...container.querySelectorAll('[data-slot="card-title"]')].map((card) => card.textContent);
     expect(values.slice(2)).toEqual(['—', '—']);
-    expect(container.textContent).toContain('analytics.state.unavailable.title');
+    expect(container.textContent).toContain('overview.traffic.unavailable.title');
     expect(container.querySelector('[data-testid="views-chart"]')).toBeNull();
+  });
+
+  it('says which traffic figures are incomplete, not AI token or cost values, and keeps them unknown', async () => {
+    mocks.analytics.mockReturnValue({
+      isPending: false,
+      data: { totalViews: null, uniqueVisitors: 12, timeseries: [], byProject: [], availability: 'partial' },
+    });
+    await act(async () => root.render(<DashboardPage />));
+    expect(container.textContent).toContain('overview.traffic.partial.title');
+    expect(container.textContent).toContain('overview.traffic.partial.body');
+    expect(container.textContent).not.toContain('analytics.state.partial');
+    const values = [...container.querySelectorAll('[data-slot="card-title"]')].map((card) => card.textContent);
+    expect(values[2]).toBe('—');
   });
 
   it('leads a brand-new user with a Start here path instead of empty analytics', async () => {

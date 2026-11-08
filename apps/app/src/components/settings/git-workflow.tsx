@@ -139,7 +139,25 @@ function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Co
   );
 }
 
-export function GitWorkflow({ projectId }: { projectId: string }) {
+/** Repository details carried over from legacy import settings; `key` changes per request. */
+export interface GitWorkflowPrefill {
+  key: number;
+  repository: string;
+  baseBranch: string;
+  contentPath: string;
+}
+
+export function GitWorkflow({
+  projectId,
+  prefill,
+  onConnected,
+}: {
+  projectId: string;
+  /** Fills the connect form (switching from legacy import settings). */
+  prefill?: GitWorkflowPrefill | null;
+  /** Called once the new connection is saved. */
+  onConnected?: () => void;
+}) {
   const { locale, t } = useLocale();
   const [repository, setRepository] = useState('');
   const [baseBranch, setBaseBranch] = useState('main');
@@ -171,6 +189,7 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
           setToken('');
           setAuthorizedAccount(null);
           toast.success(t('settings.git.workflow.connected'));
+          onConnected?.();
         },
         onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
       },
@@ -184,6 +203,16 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
     [connection],
   );
   const webhookUrl = new URL(`/api/public/git/webhook/${projectId}`, env.VITE_APP_URL).toString();
+
+  // A switch from legacy settings: the same repository, branch and folder, ready to authorize.
+  const [appliedPrefill, setAppliedPrefill] = useState<number | null>(null);
+  if (prefill && !connection && appliedPrefill !== prefill.key) {
+    setAppliedPrefill(prefill.key);
+    setRepository(prefill.repository);
+    setBaseBranch(prefill.baseBranch || 'main');
+    setContentPath(prefill.contentPath);
+    setConnectStep(1);
+  }
 
   useEffect(() => {
     if (!connection) return;
@@ -638,13 +667,19 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <div className="mt-4 flex flex-wrap justify-between gap-2">
               <Button
                 loading={disconnect.isPending}
-                onClick={() => {
-                  if (window.confirm(t('settings.git.workflow.disconnectConfirm'))) {
-                    disconnect.mutate(undefined, {
-                      onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
-                      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
-                    });
-                  }
+                onClick={async () => {
+                  // The same localized dialog as every other destructive action, naming what it affects.
+                  const approved = await confirm({
+                    title: t('settings.git.workflow.disconnectTitle', { repository: connection.repository }),
+                    description: t('settings.git.workflow.disconnectConfirm'),
+                    confirmLabel: t('settings.git.disconnect'),
+                    destructive: true,
+                  });
+                  if (!approved) return;
+                  disconnect.mutate(undefined, {
+                    onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
+                    onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
+                  });
                 }}
                 variant="destructive"
               >

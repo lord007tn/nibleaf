@@ -1,5 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
@@ -17,6 +17,7 @@ import type { Deployment } from '@/hooks/api';
 import {
   useBranches,
   useDeployments,
+  useGitWorkflow,
   useImportFromGit,
   useLanguages,
   useRotateGitWebhookSecret,
@@ -24,8 +25,9 @@ import {
   useWorkspaceSettings,
 } from '@/hooks/api';
 import { useFormatters } from '@/lib/format';
+import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
-import { GitWorkflow } from './git-workflow';
+import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
 import { SettingsSection } from './section';
 
 interface GitConfig {
@@ -379,6 +381,9 @@ function DeployOnPush({
 
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
+  const confirm = useConfirm();
+  const workflow = useGitWorkflow(projectId ?? '');
+  const [prefill, setPrefill] = useState<GitWorkflowPrefill | null>(null);
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
   const update = useUpdateWorkspaceSettings(projectId);
@@ -642,7 +647,16 @@ export function GitTab({ projectId }: { projectId?: string }) {
             loading={update.isPending}
             type="button"
             variant="destructive"
-            onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}
+            onClick={async () => {
+              // Never one click: say which repository and that this is the one-way import.
+              const approved = await confirm({
+                title: t('settings.git.import.disconnectTitle', { repository: (git.provider === 'git' ? git.cloneUrl : git.repo) ?? '' }),
+                description: t('settings.git.import.disconnectBody'),
+                confirmLabel: t('settings.git.disconnect'),
+                destructive: true,
+              });
+              if (approved) save({ connected: false }, t('settings.git.disconnectedToast'));
+            }}
           >
             {t('settings.git.disconnect')}
           </Button>
@@ -665,14 +679,15 @@ export function GitTab({ projectId }: { projectId?: string }) {
     </form>
   );
 
-  const publicImport = connected ? (
+  const legacyControls = (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-4">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        {/* Wraps on phones so the repository name keeps its own line. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground">
             <ProviderGlyph className="size-6" />
           </span>
-          <div className="min-w-0 flex-1 leading-snug">
+          <div className="min-w-0 flex-1 basis-40 leading-snug">
             <div className="truncate font-mono font-semibold text-sm tracking-tight" dir="ltr">
               {git.provider === 'git' ? git.cloneUrl : git.repo}
             </div>
@@ -708,29 +723,73 @@ export function GitTab({ projectId }: { projectId?: string }) {
         {connectForm}
       </SettingsSection>
     </div>
-  ) : (
-    <SettingsSection title={t('settings.git.repository.title')} description={t('settings.git.oneWayNote')}>
-      {connectForm}
-    </SettingsSection>
   );
+
+  // Legacy one-way import (workspace `metadata.git`), shown only while a site still uses it.
+  const legacyRepository = git.provider === 'git' ? git.cloneUrl : git.repo;
+  const switchable = git.provider === 'github' && Boolean(githubRepositoryPath(git.repo));
+  const replaced = Boolean(workflow.data);
+  const switchToNewConnection = () => {
+    setPrefill({ key: Date.now(), repository: githubRepositoryPath(git.repo) ?? '', baseBranch: git.branch ?? 'main', contentPath: git.path ?? '' });
+    document.getElementById('git-connection')?.scrollIntoView({ block: 'start' });
+    toast.success(t('settings.git.legacy.switchStarted'));
+  };
+  const removeLegacy = async () => {
+    const approved = await confirm({
+      title: t('settings.git.import.disconnectTitle', { repository: legacyRepository ?? '' }),
+      description: t('settings.git.import.disconnectBody'),
+      confirmLabel: t('settings.git.disconnect'),
+      destructive: true,
+    });
+    if (approved) save({ connected: false }, t('settings.git.disconnectedToast'));
+  };
+  const legacySettings = connected ? (
+    <section
+      aria-labelledby="git-legacy-title"
+      className="rounded-xl border border-border border-dashed bg-muted/10 p-3 sm:p-5"
+      data-testid="git-legacy"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-sm" id="git-legacy-title">
+            {t('settings.git.legacy.title')}
+          </h3>
+          <p className="mt-1 text-muted-foreground text-sm">
+            {t(replaced ? 'settings.git.legacy.replaced' : switchable ? 'settings.git.legacy.switchable' : 'settings.git.legacy.readOnly', {
+              repository: legacyRepository ?? '',
+            })}
+          </p>
+        </div>
+        {replaced ? (
+          <Button loading={update.isPending} onClick={() => void removeLegacy()} type="button" variant="outline">
+            {t('settings.git.legacy.remove')}
+          </Button>
+        ) : switchable ? (
+          <Button onClick={switchToNewConnection} type="button">
+            {t('settings.git.legacy.switch')}
+          </Button>
+        ) : null}
+      </div>
+      {replaced ? null : <div className="mt-5">{legacyControls}</div>}
+    </section>
+  ) : null;
 
   return (
     <div className="flex flex-col gap-6">
-      {projectId ? <GitWorkflow projectId={projectId} /> : null}
-      <Collapsible className="group rounded-xl border border-border bg-muted/10 data-[panel-open]:bg-card">
-        <CollapsibleTrigger className="flex w-full cursor-pointer items-center gap-3 rounded-xl px-5 py-4 text-start outline-none transition-colors hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-            <DownloadCloud className="size-4" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-medium text-sm">{t('settings.git.publicImport.title')}</span>
-            <span className="block text-muted-foreground text-xs">{t('settings.git.publicImport.description')}</span>
-          </span>
-          <span className="text-muted-foreground text-xs group-data-[panel-open]:hidden">{t('settings.git.publicImport.show')}</span>
-          <span className="hidden text-muted-foreground text-xs group-data-[panel-open]:inline">{t('settings.git.publicImport.hide')}</span>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-border border-t p-5">{publicImport}</CollapsibleContent>
-      </Collapsible>
+      {/* The one place to connect, sync and disconnect Git for this site. */}
+      {projectId ? (
+        <div className="scroll-mt-6" id="git-connection">
+          <GitWorkflow
+            onConnected={() => {
+              // The new connection takes over: switch the legacy import off.
+              if (connected) save({ connected: false }, t('settings.git.legacy.switched'));
+            }}
+            prefill={prefill}
+            projectId={projectId}
+          />
+        </div>
+      ) : null}
+      {legacySettings}
     </div>
   );
 }

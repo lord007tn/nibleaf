@@ -114,3 +114,30 @@ export function shouldFlushDraft(
 ): boolean {
   return Boolean(page && state.synced?.id === page.id && (shouldAutosave(state, page) || hasPending || saveFailed));
 }
+
+/**
+ * A draft that can no longer be saved: the person was made a Viewer while it
+ * had unsaved changes. Leaving must then ask (keep it on screen to copy, or
+ * discard it) instead of retrying a save the server will refuse forever.
+ */
+export function draftUnsavable(viewOnly: boolean, state: DraftState, page: Pick<ServerSnapshot, 'id'> | null | undefined): boolean {
+  return viewOnly && shouldAutosave(state, page);
+}
+
+/**
+ * Whether the editor offers AI assist: `'shown'`, `'loading'` (a placeholder
+ * tab) or `'hidden'`. A failed capability request is unknown, not "no", so the
+ * panel stays reachable to report it, except a 403: the person may not draft
+ * here (their role changed), which is a settled "no".
+ */
+export function aiAssistState(
+  viewOnly: boolean,
+  capability: { isPending: boolean; isError: boolean; error?: unknown; data?: { reason: string | null } | undefined },
+): 'shown' | 'loading' | 'hidden' {
+  if (viewOnly) return 'hidden';
+  if (capability.isPending) return 'loading';
+  if (capability.data) return capability.data.reason !== 'not_configured' ? 'shown' : 'hidden';
+  if (!capability.isError) return 'hidden';
+  const status = (capability.error as { status?: unknown } | null | undefined)?.status;
+  return status === 403 ? 'hidden' : 'shown';
+}

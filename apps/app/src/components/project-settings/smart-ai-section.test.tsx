@@ -110,3 +110,64 @@ it.each([false, true])('requires confirmation before turning off workspace AI (a
   expect(state.select.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
   if (approved) expect(state.select.mutate).toHaveBeenCalledWith({ providerId: 'disabled', answersEnabled: false }, expect.any(Object));
 });
+
+describe('Smart AI setup steps', () => {
+  const steps = () =>
+    [...document.querySelectorAll('[data-testid="smart-ai-steps"]')].map((list) =>
+      [...list.querySelectorAll('li')].map((item) => (item.hasAttribute('data-done') ? 'done' : 'todo')),
+    );
+  const typeKey = async (value: string) => {
+    const input = document.querySelector<HTMLInputElement>('input[type="password"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    await act(async () => {
+      setter?.call(input, value);
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+
+  it('shows the steps in order and why Save and Use this provider are not ready on first setup', async () => {
+    Object.assign(state.query, { isPending: false, isError: false, data: loaded });
+    Object.assign(state.models, { isSuccess: false, data: undefined });
+    await mount();
+    // OpenAI (new) has nothing done; OpenRouter is saved and turned on.
+    expect(steps()).toEqual([
+      ['todo', 'todo', 'todo', 'todo', 'todo'],
+      ['done', 'done', 'done', 'done', 'done'],
+    ]);
+    const openai = document.querySelectorAll('section')[0] as HTMLElement;
+    expect(openai.textContent).toContain('settings.smartAi.why.pasteKey');
+    expect(openai.textContent).toContain('settings.smartAi.why.saveFirst');
+    const save = [...openai.querySelectorAll('button')].find((item) => item.textContent?.includes('common.save'));
+    expect(save?.disabled).toBe(true);
+    expect(document.getElementById(save?.getAttribute('aria-describedby') ?? '')?.textContent).toBe('settings.smartAi.why.pasteKey');
+
+    await typeKey('sk-test');
+    expect(steps()[0]?.[0]).toBe('done');
+    expect(openai.textContent).toContain('settings.smartAi.why.chooseModel');
+  });
+
+  it('explains that replacing a stored key needs the consent box', async () => {
+    Object.assign(state.query, { isPending: false, isError: false, data: loaded });
+    await mount();
+    const keys = document.querySelectorAll<HTMLInputElement>('input[type="password"]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    await act(async () => {
+      setter?.call(keys[1], 'sk-new');
+      keys[1]?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const openrouter = document.querySelectorAll('section')[1] as HTMLElement;
+    expect(openrouter.textContent).toContain('settings.smartAi.why.replace');
+    await act(async () => openrouter.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click());
+    expect(openrouter.textContent).not.toContain('settings.smartAi.why.replace');
+  });
+
+  it('does not offer the OpenAI sign-in while it is unavailable', async () => {
+    Object.assign(state.query, {
+      isPending: false,
+      isError: false,
+      data: { ...loaded, openaiOAuth: { available: false, documentation: 'https://example.com' } },
+    });
+    await mount();
+    expect(document.body.textContent).not.toContain('settings.smartAi.oauthTitle');
+  });
+});

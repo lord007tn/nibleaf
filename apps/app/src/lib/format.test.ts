@@ -1,5 +1,6 @@
+import { translateFn } from '@nibleaf/i18n';
 import { describe, expect, it } from 'vitest';
-import { formatCurrency, localeTag, viewsTrend } from './format';
+import { countVariables, formatCurrency, localeTag, viewsTrend } from './format';
 
 const series = (...views: number[]) => views.map((v, i) => ({ date: `d${i}`, views: v }));
 
@@ -61,5 +62,57 @@ describe('formatCurrency', () => {
   it('uses Western digits under the Arabic tag', () => {
     expect(formatCurrency(localeTag('ar'), 0)).toContain('0');
     expect(formatCurrency(localeTag('ar'), 0)).not.toMatch(/[٠-٩]/);
+  });
+});
+
+describe('counted dashboard messages', () => {
+  const counts = [0, 1, 2, 3, 7, 11, 100];
+  const say = (key: Parameters<typeof translateFn>[0], locale: 'en' | 'ar' | 'ru', value: number) =>
+    translateFn(key, countVariables(locale, value), locale);
+
+  it('picks the plural form from the number, with Western digits in Arabic', () => {
+    expect(countVariables('ar', 3)).toEqual({ count: '3', form: 'few' });
+    expect(countVariables('en', 1)).toEqual({ count: '1', form: 'one' });
+    expect(countVariables('en', 1200).count).toBe('1,200');
+  });
+
+  it('says page counts in English singular and plural', () => {
+    expect(counts.map((value) => say('dashboard.pages', 'en', value))).toEqual([
+      '0 pages',
+      '1 page',
+      '2 pages',
+      '3 pages',
+      '7 pages',
+      '11 pages',
+      '100 pages',
+    ]);
+  });
+
+  it('uses every Arabic form for pages and days', () => {
+    expect(counts.map((value) => say('dashboard.pages', 'ar', value))).toEqual([
+      'لا توجد صفحات',
+      'صفحة واحدة',
+      'صفحتان',
+      '3 صفحات',
+      '7 صفحات',
+      '11 صفحة',
+      '100 صفحة',
+    ]);
+    expect(counts.map((value) => say('settings.apiKeys.expiryDays', 'ar', value))).toEqual([
+      '0 يوم',
+      'يوم واحد',
+      'يومان',
+      '3 أيام',
+      '7 أيام',
+      '11 يومًا',
+      '100 يوم',
+    ]);
+  });
+
+  it('covers language coverage and Russian counts too', () => {
+    expect(say('settings.languages.coverage.sourcePages', 'en', 1)).toBe('1 source page');
+    expect(say('settings.languages.coverage.missing', 'ar', 2)).toBe('صفحتان مفقودتان');
+    expect(say('settings.exports.workflow.pageCount', 'ru', 5)).toBe('5 страниц');
+    expect(say('settings.authentication.reader.pageCount', 'ru', 21)).toBe('21 страница');
   });
 });

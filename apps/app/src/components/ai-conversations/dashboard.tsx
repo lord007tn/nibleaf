@@ -9,7 +9,9 @@ import { useLocale, useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { RangeTabs } from '@/components/analytics/range-tabs';
+import { useLanguages } from '@/hooks/api';
 import { conversationFilters, useAiContentGaps, useAiConversationSummary, useAiConversations } from '@/hooks/api/ai-conversations';
+import { languageName } from '@/lib/language-name';
 import { ConversationList } from './conversation-list';
 import { ConversationDetail } from './detail';
 import { searchAiDocsUrl } from './docs';
@@ -90,6 +92,9 @@ export function AiDashboard({
   }, [text, search.q, onChange]);
   const summary = useAiConversationSummary(projectId, search.range, search.language);
   const languageSummary = useAiConversationSummary(projectId, search.range);
+  // Names, not codes, in the filter; the code stays the filter's value (and the URL's).
+  const { data: siteLanguages } = useLanguages(projectId);
+  const nameOf = (code: string) => languageName(code, siteLanguages, locale);
   const list = useAiConversations(projectId, conversationFilters(search), search.tab === 'conversations');
   const gaps = useAiContentGaps(projectId, search.range, search.language, search.tab === 'gaps');
   const active = search.tab === 'overview' ? summary : search.tab === 'gaps' ? gaps : list;
@@ -126,7 +131,7 @@ export function AiDashboard({
       <div className="flex flex-wrap items-center gap-3">
         <Select value={search.language ?? ''} onValueChange={(language) => onChange({ language: language || undefined })}>
           <SelectTrigger aria-label={t('dashboard.ai.language')} className="w-44">
-            <SelectValue>{search.language ?? t('dashboard.ai.allLanguages')}</SelectValue>
+            <SelectValue>{search.language ? nameOf(search.language) : t('dashboard.ai.allLanguages')}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">{t('dashboard.ai.allLanguages')}</SelectItem>
@@ -134,7 +139,7 @@ export function AiDashboard({
               ...new Set([...(languageSummary.data?.languages.map((item) => item.language) ?? []), ...(search.language ? [search.language] : [])]),
             ].map((language) => (
               <SelectItem value={language} key={language}>
-                {language}
+                {nameOf(language)}
               </SelectItem>
             ))}
           </SelectContent>

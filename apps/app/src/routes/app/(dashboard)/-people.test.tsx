@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   remove: { mutate: vi.fn(), isPending: false, variables: undefined },
   revoke: { mutate: vi.fn(), mutateAsync: vi.fn(() => new Promise(() => undefined)), isPending: false, variables: undefined },
   confirm: vi.fn(async () => true),
+  fetchNextPage: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -19,9 +20,10 @@ vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options }),
   Link: ({ children }: { children: ReactNode }) => <a href="/x">{children}</a>,
 }));
+// The search box's debounce is the library's; here the query follows the box at once.
+vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [value] }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/hooks/api/query-options', () => ({ peopleQueryOptions: () => ({ queryKey: ['people'] }) }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'me' } } }) }));
 vi.mock('@/components/members/role-select', () => ({
@@ -50,8 +52,24 @@ const overview = {
       memberships: [{ projectId: 'docs', memberId: 'm-g', role: 'viewer' }],
     },
   ],
+  total: 2,
+  nextCursor: null,
   invitations: [{ id: 'inv-1', email: 'new@acme.com', role: 'member', projectId: 'help', expiresAt: '2030-01-01' }],
+  invitationsTotal: 1,
 };
+
+/** The infinite query's shape: pages of the People list. */
+const infinite = (pages: Array<Record<string, unknown>>, extra: Record<string, unknown> = {}) => ({
+  data: { pages, pageParams: pages.map(() => undefined) },
+  isPending: false,
+  isError: false,
+  isPlaceholderData: false,
+  hasNextPage: false,
+  isFetchingNextPage: false,
+  isFetchNextPageError: false,
+  fetchNextPage: mocks.fetchNextPage,
+  ...extra,
+});
 
 describe('People page', () => {
   let container: HTMLDivElement;
@@ -64,7 +82,7 @@ describe('People page', () => {
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
-    mocks.people.mockReturnValue({ data: overview, isPending: false, isError: false });
+    mocks.people.mockReturnValue(infinite([overview]));
   });
   afterEach(async () => {
     await act(async () => root.unmount());
@@ -101,19 +119,47 @@ describe('People page', () => {
     expect(mocks.invite.mutate).toHaveBeenCalledWith({ projectId: 'help', email: 'grace@acme.com', role: 'member' }, expect.anything());
   });
 
-  it('filters people by name or email', async () => {
+  it('searches people on the server by name or email', async () => {
     await render();
+    expect(mocks.people).toHaveBeenLastCalledWith('');
     const input = container.querySelector<HTMLInputElement>('input[type="search"]') as HTMLInputElement;
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    mocks.people.mockReturnValue(infinite([{ ...overview, people: [overview.people[1]], total: 1 }]));
     await act(async () => {
-      setter?.call(input, 'grace@');
+      setter?.call(input, ' grace@ ');
       input.dispatchEvent(new Event('input', { bubbles: true }));
     });
+    expect(mocks.people).toHaveBeenLastCalledWith('grace@');
     expect(container.querySelectorAll('[data-testid="person"]')).toHaveLength(1);
+    expect(container.textContent).toContain('people.summary:1|2');
+  });
+
+  it('pages through a large team with Load more, counting everyone', async () => {
+    const page = (id: string) => ({ user: { id, name: id, email: `${id}@acme.com`, image: null }, memberships: [] });
+    const first = { ...overview, people: [page('a'), page('b')], total: 1200, nextCursor: 'b' };
+    mocks.people.mockReturnValue(infinite([first], { hasNextPage: true }));
+    await render();
+    expect(container.textContent).toContain('people.summary:1200|2');
+    expect(container.textContent).toContain('people.showing:2|1200');
+    const more = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('people.loadMore'));
+    await act(async () => more?.click());
+    expect(mocks.fetchNextPage).toHaveBeenCalledOnce();
+
+    // Later pages add people; sites and invitations stay those of the first page.
+    mocks.people.mockReturnValue(infinite([first, { ...first, people: [page('c')], nextCursor: null, invitations: [], invitationsTotal: 0 }]));
+    await render();
+    expect(container.querySelectorAll('[data-testid="person"]')).toHaveLength(3);
+    expect(container.textContent).toContain('new@acme.com');
+  });
+
+  it('says when only the most recent invitations are listed', async () => {
+    mocks.people.mockReturnValue(infinite([{ ...overview, invitationsTotal: 80 }]));
+    await render();
+    expect(container.textContent).toContain('people.invitationsLimited:1|80');
   });
 
   it('explains the page to someone who administers no site', async () => {
-    mocks.people.mockReturnValue({ data: { sites: [], people: [], invitations: [] }, isPending: false, isError: false });
+    mocks.people.mockReturnValue(infinite([{ sites: [], people: [], total: 0, nextCursor: null, invitations: [], invitationsTotal: 0 }]));
     await render();
     expect(container.textContent).toContain('people.empty.title');
   });

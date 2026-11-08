@@ -127,6 +127,25 @@ describe('MembersSection role selects', () => {
     act(() => root.unmount());
   });
 
+  it.each([
+    ['an editor', 'u-member'],
+    ['an owner', 'u-owner'],
+  ])('labels a role this version does not know as unknown for %s', async (_who, userId) => {
+    currentUserId = userId;
+    members.push({ id: 'm-odd', role: 'auditor', user: { id: 'u-odd', name: 'Odd', email: 'odd@example.com' } });
+    try {
+      const root = createRoot(container);
+      await act(async () => root.render(<MembersSection projectId="project-a" />));
+      // The odd member's row: the smallest block holding both their email and a role area.
+      const row = [...container.querySelectorAll('.border-t')].find((node) => node.textContent?.includes('odd@example.com'));
+      expect(row?.textContent).toContain('roles.unknown');
+      expect(row?.textContent).not.toContain('مشاهد');
+      act(() => root.unmount());
+    } finally {
+      members.pop();
+    }
+  });
+
   it('fails closed while the current membership is unavailable', async () => {
     currentUserId = 'unknown';
     const root = createRoot(container);

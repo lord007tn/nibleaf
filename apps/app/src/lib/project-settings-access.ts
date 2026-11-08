@@ -27,14 +27,13 @@ export function resolveProjectSettingsAccess(role: string | undefined, pending: 
  *   editor is read-only and write controls are disabled with an explanation.
  * - `'pending'`: not known yet. Screens keep write controls locked but say
  *   nothing, so a Viewer never types into a draft that cannot be saved.
- *
- * A team that failed to load resolves to `'edit'`: the server enforces every
- * write, so a real Editor is never locked out of their work by a failed read.
+ * - `'unknown'`: the team failed to load and nothing is cached. Write
+ *   controls stay locked (unknown is not "yes"), and screens offer a retry.
  */
-export type SiteEditState = 'pending' | 'edit' | 'viewOnly';
+export type SiteEditState = 'pending' | 'edit' | 'viewOnly' | 'unknown';
 
 export function resolveProjectEditAccess(role: string | undefined, pending: boolean, failed = false): SiteEditState {
-  if (failed) return 'edit';
+  if (failed) return 'unknown';
   if (pending) return 'pending';
   return canEdit(role ?? '') ? 'edit' : 'viewOnly';
 }

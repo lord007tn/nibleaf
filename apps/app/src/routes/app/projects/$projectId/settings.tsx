@@ -80,6 +80,7 @@ import {
   workspaceSettingsQueryOptions,
 } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { navFromIds } from '@/lib/section-nav';
 import { useSession } from '@/services/auth-client';
 
 // Site settings = the ADMIN/operational slice. The docs-website appearance
@@ -121,27 +122,28 @@ const GROUPS = [
   { id: 'advanced', labelKey: 'settings.group.advanced' },
 ] as const satisfies ReadonlyArray<{ id: SettingsGroupId; labelKey: MessageKey }>;
 
-const SECTIONS = [
-  { id: 'general', group: 'site', icon: CirclePlus },
-  { id: 'appearance', group: 'site', icon: Palette },
-  { id: 'languages', group: 'site', icon: Languages },
-  { id: 'domain', group: 'site', icon: Globe2 },
-  { id: 'authentication', group: 'site', icon: LockKeyhole },
-  { id: 'search', group: 'site', icon: Search },
-  { id: 'addons', group: 'site', icon: Blocks },
-  { id: 'git', group: 'deployment', icon: GitBranch },
-  { id: 'openapi', group: 'deployment', icon: Braces },
-  { id: 'contentImport', group: 'deployment', icon: Import },
-  { id: 'members', group: 'workspace', icon: Users },
-  { id: 'apiKeys', group: 'workspace', icon: KeyRound },
-  { id: 'plan', group: 'workspace', icon: Gem },
-  { id: 'usage', group: 'workspace', icon: ChartNoAxesCombined },
-  { id: 'integrations', group: 'workspace', icon: Plug },
-  { id: 'smartAi', group: 'workspace', icon: Bot },
-  { id: 'notifications', group: 'workspace', icon: Bell },
-  { id: 'exports', group: 'advanced', icon: Archive },
-  { id: 'danger', group: 'advanced', icon: TriangleAlert },
-] as const satisfies ReadonlyArray<{ id: SectionId; group: SettingsGroupId; icon: LucideIcon }>;
+// Keyed by SECTION_IDS, so a section added to one list and not the other fails typecheck.
+const SECTIONS = navFromIds<SectionId, { group: SettingsGroupId; icon: LucideIcon }>(SECTION_IDS, {
+  general: { group: 'site', icon: CirclePlus },
+  appearance: { group: 'site', icon: Palette },
+  languages: { group: 'site', icon: Languages },
+  domain: { group: 'site', icon: Globe2 },
+  authentication: { group: 'site', icon: LockKeyhole },
+  search: { group: 'site', icon: Search },
+  addons: { group: 'site', icon: Blocks },
+  git: { group: 'deployment', icon: GitBranch },
+  openapi: { group: 'deployment', icon: Braces },
+  contentImport: { group: 'deployment', icon: Import },
+  members: { group: 'workspace', icon: Users },
+  apiKeys: { group: 'workspace', icon: KeyRound },
+  plan: { group: 'workspace', icon: Gem },
+  usage: { group: 'workspace', icon: ChartNoAxesCombined },
+  integrations: { group: 'workspace', icon: Plug },
+  smartAi: { group: 'workspace', icon: Bot },
+  notifications: { group: 'workspace', icon: Bell },
+  exports: { group: 'advanced', icon: Archive },
+  danger: { group: 'advanced', icon: TriangleAlert },
+});
 
 const sectionLabelKey = (id: SectionId): MessageKey => (id === 'appearance' ? 'settings.tab.appearance' : `settings.${id}`);
 
