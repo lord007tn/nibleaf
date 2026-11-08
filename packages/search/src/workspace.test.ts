@@ -142,9 +142,17 @@ describe('workspace AI credential ownership', () => {
 });
 
 describe('workspace chat model options', () => {
-  it('never sends temperature to direct OpenAI, matching the answer provider', () => {
-    expect(workspaceChatModelOptions({ providerId: 'openai' })(1200)).toEqual({ max_completion_tokens: 1200 });
-    expect(workspaceChatModelOptions({ providerId: 'openrouter' })(120)).toEqual({ temperature: 0, max_tokens: 120 });
+  it('sets reasoning effort without sampling settings, and spares pinned models that reject it', () => {
+    expect(workspaceChatModelOptions({ providerId: 'openai', answerModel: 'gpt-6-luna' })(1200)).toEqual({
+      max_completion_tokens: 1200,
+      reasoning_effort: 'low',
+    });
+    // Direct OpenAI rejects reasoning_effort on a model without reasoning; a site that pinned one keeps answering.
+    expect(workspaceChatModelOptions({ providerId: 'openai', answerModel: 'gpt-pinned-chat-model' })(1200)).toEqual({ max_completion_tokens: 1200 });
+    expect(workspaceChatModelOptions({ providerId: 'openrouter', answerModel: 'openai/gpt-6-luna' }, 'medium')(120)).toEqual({
+      max_tokens: 120,
+      reasoning: { effort: 'medium', exclude: true },
+    });
   });
 });
 

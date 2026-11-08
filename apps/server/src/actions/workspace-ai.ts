@@ -64,9 +64,17 @@ const credentialReadable = (projectId: string, providerId: z.infer<typeof aiProv
   }
 };
 
+/** Direct OpenAI chat models the picker offers: the GPT-6 family and newer,
+ * without the non-chat and Responses-only variants. */
+const offeredOpenAiModel = (id: string) =>
+  Number(/^gpt-(\d+)(?:[.-]|$)/.exec(id)?.[1] ?? 0) >= 6 &&
+  !/embedding|audio|realtime|image|transcri|tts|codex|deep-research|search|pro(?:-|$)/.test(id);
+
 /** Fixed provider origins, bounded GET-only checks, and allowlisted response
- * fields. Never expose an SDK error containing authorization headers or a key. */
-const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdSchema>, apiKey: string) => {
+ * fields. Never expose an SDK error containing authorization headers or a key.
+ * `saved` is the connection's current model: it stays offered while the
+ * provider still lists it, so a site that chose an older model keeps it. */
+const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdSchema>, apiKey: string, saved?: string) => {
   const base = providerId === 'openai' ? 'https://api.openai.com/v1' : 'https://openrouter.ai/api/v1';
   const get = async (path: string) => {
     const response = await fetch(base + path, {
@@ -96,9 +104,7 @@ const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdS
     return catalog.data
       .filter((model) =>
         providerId === 'openai'
-          ? /^(gpt-|o[1-9])/.test(model.id) &&
-            !/^(gpt-3\.5|gpt-4(?:-|$)|gpt-4o-2024-05-13|o1-(?:mini|preview))/.test(model.id) &&
-            !/embedding|audio|realtime|image|transcri|tts|codex|deep-research|search|pro(?:-|$)/.test(model.id)
+          ? model.id === saved || offeredOpenAiModel(model.id)
           : model.architecture?.output_modalities?.includes('text') &&
             (model.supported_parameters?.includes('response_format') || model.supported_parameters?.includes('structured_outputs')),
       )
@@ -108,6 +114,11 @@ const discoverAiProviderModels = async (providerId: z.infer<typeof aiProviderIdS
     if (error instanceof AppError) throw error;
     throw new AppError({ code: 'integration:provider_unavailable', message: 'The provider could not verify this connection.' });
   }
+};
+
+const savedAnswerModel = (config: unknown) => {
+  const parsed = aiConnectionConfigSchema.safeParse(config);
+  return parsed.success ? parsed.data.answerModel : undefined;
 };
 
 export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) => {
@@ -170,12 +181,10 @@ export const getWorkspaceAi = async (ctx: Context<HonoEnv>, projectId: string) =
 export const getWorkspaceAiModels = async (ctx: Context<HonoEnv>, projectId: string, input: WorkspaceAiModelsBody) => {
   await authorize(ctx, projectId);
   const body = workspaceAiModelsBody.parse(input);
-  const connection = body.apiKey
-    ? null
-    : await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
+  const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: body.providerId } } });
   const apiKey = body.apiKey ?? (connection ? readCredential(projectId, body.providerId, connection.credentialEncrypted) : null);
   if (!apiKey) throw new AppError({ code: 'integration:credentials_invalid' });
-  return { models: await discoverAiProviderModels(body.providerId, apiKey) };
+  return { models: await discoverAiProviderModels(body.providerId, apiKey, savedAnswerModel(connection?.config)) };
 };
 
 export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId: string, input: SaveWorkspaceAiConnectionBody) => {
@@ -187,7 +196,7 @@ export const saveWorkspaceAiConnection = async (ctx: Context<HonoEnv>, projectId
   if ((current?.revision ?? 0) !== body.expectedRevision) throw conflict('The provider connection changed. Reload before saving.');
   const apiKey = body.apiKey ?? (current ? readCredential(projectId, body.providerId, current.credentialEncrypted) : null);
   if (!apiKey) throw new AppError({ code: 'integration:credentials_invalid' });
-  const models = await discoverAiProviderModels(body.providerId, apiKey);
+  const models = await discoverAiProviderModels(body.providerId, apiKey, savedAnswerModel(current?.config));
   if (!models.some((model) => model.id === body.answerModel))
     throw new AppError({ code: 'validation:failed', message: 'Choose an available structured-answer model.' });
   const ciphertext = body.apiKey

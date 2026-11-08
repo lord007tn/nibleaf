@@ -158,6 +158,32 @@ export class OpenAIEmbeddingProvider extends BatchedEmbeddingProvider {
   }
 }
 
+/** How hard a reasoning model thinks before it answers. GPT-6 models default
+ * to `medium`; every product call sets its effort explicitly instead. */
+export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high';
+
+/** The product's reasoning effort per kind of call, chosen from the answer and
+ * draft benchmarks (packages/search/eval/README.md). Chat rewrites and suggested
+ * questions share the answer's effort. */
+export const AI_REASONING_EFFORT = { answer: 'low', draft: 'low' } as const satisfies Record<string, ReasoningEffort>;
+
+/** Direct OpenAI rejects `reasoning_effort` on models without reasoning, so it is
+ * sent only to the reasoning families (o-series and GPT-5 onwards, not `-chat`
+ * snapshots). A site that pinned an older model keeps working unchanged.
+ * OpenRouter ignores `reasoning` on models without it, so it needs no check. */
+export const openaiSupportsReasoningEffort = (model: string) => {
+  const id = model.replace(/^openai\//, '');
+  return /^(?:o[1-9]|gpt-(?:[5-9]|[1-9]\d))(?:[.-]|$)/.test(id) && !/-chat(?:-|$)/.test(id);
+};
+
+/** The request field for a direct OpenAI call, empty when the model rejects it. */
+export const openaiReasoningEffort = (model: string, effort: ReasoningEffort) =>
+  openaiSupportsReasoningEffort(model) ? { reasoning_effort: effort } : {};
+
+/** A reasoning model's thinking counts against the output cap; a reply cut off
+ * there is incomplete and must not reach readers as an answer. */
+const TRUNCATED = 'The answer provider stopped at its output token limit.';
+
 interface ChatUsage {
   inputTokens?: number;
   outputTokens?: number;
@@ -170,7 +196,8 @@ export interface OpenRouterChatOptions {
   fetch?: Fetcher;
   model: string;
   siteUrl?: string;
-  temperature?: number;
+  /** Defaults to AI_REASONING_EFFORT.answer. */
+  reasoningEffort?: ReasoningEffort;
   timeoutMs?: number;
   title?: string;
 }
@@ -209,7 +236,9 @@ export class OpenRouterChatProvider {
           chatRequest: {
             model: this.model,
             messages,
-            temperature: this.options.temperature ?? 0,
+            // The SDK's schema keeps only `effort` and `summary`; the reply's
+            // `reasoning` field is never read, only `content`.
+            reasoning: { effort: this.options.reasoningEffort ?? AI_REASONING_EFFORT.answer },
             maxCompletionTokens: 1200,
             stream: false,
             responseFormat: {
@@ -229,6 +258,7 @@ export class OpenRouterChatProvider {
         throw new Error('The answer provider could not complete the request.');
       });
     if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
+    if (completion.choices[0]?.finishReason === 'length') throw new Error(TRUNCATED);
     const value = parseProviderAnswer(completion.choices[0]?.message.content);
     return {
       value,
@@ -251,9 +281,11 @@ export class OpenRouterChatProvider {
 export class OpenAIChatProvider {
   readonly model: string;
   private readonly client: OpenAI;
+  private readonly reasoningEffort: ReasoningEffort;
 
   constructor(options: OpenRouterChatOptions) {
     this.model = options.model;
+    this.reasoningEffort = options.reasoningEffort ?? AI_REASONING_EFFORT.answer;
     this.client = new OpenAI({ apiKey: options.apiKey, timeout: options.timeoutMs ?? 30_000, maxRetries: 0, fetch: options.fetch });
   }
 
@@ -265,6 +297,7 @@ export class OpenAIChatProvider {
           model: this.model,
           messages,
           max_completion_tokens: 1200,
+          ...openaiReasoningEffort(this.model, this.reasoningEffort),
           response_format: {
             type: 'json_schema',
             json_schema: { name: 'grounded_answer', strict: true, schema: z.toJSONSchema(answerOutputSchema) },
@@ -276,6 +309,7 @@ export class OpenAIChatProvider {
         signal?.throwIfAborted();
         throw new Error('The answer provider could not complete the request.');
       });
+    if (completion.choices[0]?.finish_reason === 'length') throw new Error(TRUNCATED);
     const value = parseProviderAnswer(completion.choices[0]?.message.content);
     return {
       value,

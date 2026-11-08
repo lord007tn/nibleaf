@@ -48,6 +48,8 @@ describe('direct OpenAI transport', () => {
     const body = await calls[0]?.json();
     expect(body).toMatchObject({ response_format: { type: 'json_schema', json_schema: { strict: true } }, model: 'gpt-test' });
     expect(body).not.toHaveProperty('temperature');
+    // An unversioned (pinned, non-reasoning) model must not get reasoning_effort, which OpenAI rejects there.
+    expect(body).not.toHaveProperty('reasoning_effort');
   });
 
   it('does not attach credential-bearing SDK failures to outward errors', async () => {

@@ -160,6 +160,12 @@ describe('streaming grounded chat with real TanStack fake adapter', () => {
     expect(await result).toMatchObject({ noAnswerReason: 'unverified', validationFailure: 'unknown_citation' });
   });
   it('settles without a delta consumer', async () => expect(await run('Yes [S1]').result).toMatchObject({ status: 'answered' }));
+  it('never accepts an answer cut off at the output cap, however well it cites', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: 'Use s3 for storage [S1]. Then set the bucket', finishReason: 'length' }]);
+    const result = await streamGroundedChat({ adapter, model: 'fake', question: 'How?', history: [], chunks, language: 'en' }).result;
+    expect(result).toMatchObject({ status: 'no_answer', noAnswerReason: 'unverified', truncated: true, citations: [] });
+  });
   it('sanitizes provider errors and ends deltas', async () => {
     const adapter = fakeText();
     adapter.setResponses([{ error: 'SECRET credential provider text' }]);
@@ -585,6 +591,15 @@ describe('follow-up suggestions', () => {
     expect(timedOut).toMatchObject({ questions: [], failed: true });
     const stopped = await suggestFollowUps({ adapter: fakeText(), question: 'How?', chunks, language: 'en', signal: AbortSignal.abort() });
     expect(stopped.failed).toBeUndefined();
+  });
+  it('keeps the original question when the rewrite is cut off at the output cap', async () => {
+    const adapter = fakeText();
+    adapter.setResponses([{ text: 'How do I configure S3 storage for', finishReason: 'length' }]);
+    expect(await condenseFollowUp({ adapter, question: 'How?', history: [{ role: 'user', content: 'storage' }], language: 'en' })).toMatchObject({
+      query: 'How?',
+      rewritten: false,
+      truncated: true,
+    });
   });
   it('reports a failed rewrite so the server can count it', async () => {
     const adapter = fakeText();

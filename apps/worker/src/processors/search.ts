@@ -4,7 +4,7 @@ import { keys as clickHouseKeys, clickHouseWritesEnabled } from '@nibleaf/clickh
 import { Prisma, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantIndexedPoint, type QdrantPoint } from '@nibleaf/qdrant';
-import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, sparseVectorForChunk } from '@nibleaf/search';
+import { chunkSearchDocument, type SearchChunk, type SearchChunkSource, searchEmbeddingText, sparseVectorForChunk } from '@nibleaf/search';
 import { resolveWorkspaceAi, workspaceEmbeddingProvider } from '@nibleaf/search/workspace';
 import { extractHeadings, type SiteSnapshot } from '@nibleaf/shared/site';
 import { buildUsageEvent, deterministicUsageEventId } from '@nibleaf/usage';
@@ -29,11 +29,6 @@ const deploymentFilter = (projectId: string, deploymentId: string): QdrantFilter
     { key: 'deployment_id', match: { value: deploymentId } },
   ],
 });
-
-const embeddingText = (chunk: SearchChunk): string =>
-  [`# ${chunk.title}`, chunk.headingPath.length > 0 ? chunk.headingPath.join(' > ') : '', chunk.description, chunk.content]
-    .filter(Boolean)
-    .join('\n\n');
 
 const sourceFromPage = (page: SiteSnapshot['pages'][number]): SearchChunkSource => ({
   id: page.id,
@@ -423,7 +418,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
       const batch = toEmbed.slice(offset, offset + BATCH_SIZE);
       const embedBatch = async () => {
         try {
-          return await provider.embed(batch.map(({ chunk }) => embeddingText(chunk)));
+          return await provider.embed(batch.map(({ chunk }) => searchEmbeddingText(chunk)));
         } catch (cause) {
           failedChunks = batch.length;
           issueSample = batch.slice(0, 25).map(({ chunk, versionSlug }) => issueFromChunk(chunk, versionSlug, 'failed', 'embedding_failed'));
@@ -437,7 +432,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
         .map(({ chunk }) => `${chunk.id}:${chunk.contentHash}`)
         .sort()
         .join('|');
-      const embeddedBytes = batch.reduce((total, { chunk }) => total + Buffer.byteLength(embeddingText(chunk), 'utf8'), 0);
+      const embeddedBytes = batch.reduce((total, { chunk }) => total + Buffer.byteLength(searchEmbeddingText(chunk), 'utf8'), 0);
       const usageEvents = [
         buildUsageEvent(
           {

@@ -149,7 +149,7 @@ describe('OpenRouter SDK answers', () => {
       Response.json({
         id: 'generation-1',
         created: 1,
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
         object: 'chat.completion',
         system_fingerprint: null,
         choices: [
@@ -168,7 +168,7 @@ describe('OpenRouter SDK answers', () => {
     const provider = new OpenRouterChatProvider({
       apiKey: 'secret',
       fetch: request,
-      model: 'openai/gpt-5.6-luna',
+      model: 'openai/test-answer-model',
       siteUrl: 'https://nibleaf.com',
       title: 'Nibleaf test',
     });
@@ -184,9 +184,12 @@ describe('OpenRouter SDK answers', () => {
     const [input, init] = call;
     const sdkRequest = input instanceof Request ? input : new Request(input, init);
     expect(sdkRequest.url).toBe('https://openrouter.ai/api/v1/chat/completions');
-    expect(JSON.parse(await sdkRequest.text())).toMatchObject({
-      model: 'openai/gpt-5.6-luna',
+    const body = JSON.parse(await sdkRequest.text());
+    expect(body).not.toHaveProperty('temperature');
+    expect(body).toMatchObject({
+      model: 'openai/test-answer-model',
       stream: false,
+      reasoning: { effort: 'low' },
       response_format: {
         type: 'json_schema',
         json_schema: { name: 'grounded_answer', strict: true, schema: expect.any(Object) },

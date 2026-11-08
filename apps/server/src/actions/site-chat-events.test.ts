@@ -41,7 +41,7 @@ describe('chat analytics payloads', () => {
         turnId,
         outcome: 'answered',
         provider: 'openrouter',
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
         inputTokens: 1200,
         outputTokens: 180,
         costUsd: 0.000_472,

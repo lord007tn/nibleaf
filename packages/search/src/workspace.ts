@@ -6,7 +6,15 @@ import { openaiCompatibleText } from '@tanstack/ai-openai/compatible';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { keys } from './keys';
-import { OpenAIChatProvider, OpenAIEmbeddingProvider, OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
+import {
+  AI_REASONING_EFFORT,
+  OpenAIChatProvider,
+  OpenAIEmbeddingProvider,
+  OpenRouterChatProvider,
+  OpenRouterEmbeddingProvider,
+  openaiReasoningEffort,
+  type ReasoningEffort,
+} from './providers';
 
 const configurationSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
@@ -83,16 +91,22 @@ export interface WorkspaceAiRuntime {
 
 /** Plain Markdown generation with the same provider credentials as search/chat.
  * Drafting keeps the SDK timeouts: OpenRouter has no SDK deadline; direct OpenAI
- * defaults to ten minutes. Search's short answer timeout must not truncate drafts. */
+ * defaults to ten minutes. Search's short answer timeout must not truncate drafts.
+ * No sampling settings: reasoning models reject or ignore them. The product sends no
+ * output cap; `maxTokens` exists so a benchmark can bound its spend. */
 export const completeWorkspaceText = async (
   runtime: WorkspaceAiRuntime,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   attribution?: { siteUrl: string; title: string },
+  effort: ReasoningEffort = AI_REASONING_EFFORT.draft,
+  maxTokens?: number,
 ) => {
   if (runtime.providerId === 'openai') {
     const completion = await new OpenAI({ apiKey: runtime.apiKey, maxRetries: 0 }).chat.completions.create({
       model: runtime.answerModel,
       messages,
+      ...openaiReasoningEffort(runtime.answerModel, effort),
+      ...(maxTokens ? { max_completion_tokens: maxTokens } : {}),
     });
     return {
       text: completion.choices[0]?.message.content ?? '',
@@ -105,7 +119,7 @@ export const completeWorkspaceText = async (
     httpReferer: attribution?.siteUrl,
     appTitle: attribution?.title,
   }).chat.send({
-    chatRequest: { model: runtime.answerModel, messages, temperature: 0.4, stream: false },
+    chatRequest: { model: runtime.answerModel, messages, reasoning: { effort }, stream: false, ...(maxTokens ? { maxTokens } : {}) },
   });
   if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
   return {
@@ -129,7 +143,7 @@ export const workspaceEmbeddingProvider = (runtime: WorkspaceAiRuntime) => {
 };
 
 export const workspaceAnswerProvider = (runtime: WorkspaceAiRuntime) => {
-  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS, temperature: 0 };
+  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS };
   return runtime.providerId === 'openai' ? new OpenAIChatProvider(options) : new OpenRouterChatProvider(options);
 };
 
@@ -192,9 +206,14 @@ export const costReportingFetch =
     return new Response(forward, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
 
-/** Direct OpenAI mirrors OpenAIChatProvider (no temperature, completion-token cap);
- * OpenRouter mirrors OpenRouterChatProvider (deterministic temperature). */
+/** Wire fields for the chat adapter, which sends them as they are. Direct OpenAI
+ * mirrors OpenAIChatProvider (completion-token cap, `reasoning_effort` only for
+ * models that accept it). OpenRouter takes `reasoning.effort` and is asked to
+ * leave the reasoning text out of the reply; the adapter would keep it apart
+ * from the answer text anyway. Either cap counts reasoning tokens. */
 export const workspaceChatModelOptions =
-  (runtime: Pick<WorkspaceAiRuntime, 'providerId'>) =>
+  (runtime: Pick<WorkspaceAiRuntime, 'providerId' | 'answerModel'>, effort: ReasoningEffort = AI_REASONING_EFFORT.answer) =>
   (maxTokens: number): Record<string, unknown> =>
-    runtime.providerId === 'openai' ? { max_completion_tokens: maxTokens } : { temperature: 0, max_tokens: maxTokens };
+    runtime.providerId === 'openai'
+      ? { max_completion_tokens: maxTokens, ...openaiReasoningEffort(runtime.answerModel, effort) }
+      : { max_tokens: maxTokens, reasoning: { effort, exclude: true } };
