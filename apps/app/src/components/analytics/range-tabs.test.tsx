@@ -42,7 +42,8 @@ async function render(element: React.ReactElement) {
 describe('RangeTabs', () => {
   it('labels every range with its translated message, never the raw enum value', async () => {
     const container = await render(<RangeTabs value="30d" onValueChange={() => undefined} />);
-    const tabs = [...container.querySelectorAll('[role="tab"]')];
+    const group = container.querySelector('[role="group"]');
+    const tabs = [...container.querySelectorAll('button')];
 
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       '[analytics.range.24h]',
@@ -50,7 +51,10 @@ describe('RangeTabs', () => {
       '[analytics.range.30d]',
       '[analytics.range.90d]',
     ]);
-    expect(tabs.map((tab) => tab.getAttribute('aria-selected'))).toEqual(['false', 'false', 'true', 'false']);
+    // A filter, not tabs: a named group of pressed-state buttons.
+    expect(group?.getAttribute('aria-label')).toBe('[analytics.range.label]');
+    expect(container.querySelector('[role="tab"]')).toBeNull();
+    expect(tabs.map((tab) => tab.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false']);
     expect(tabs.map((tab) => tab.textContent)).not.toContain('30d');
   });
 
@@ -58,15 +62,21 @@ describe('RangeTabs', () => {
     const onValueChange = vi.fn();
     const container = await render(<RangeTabs value="30d" onValueChange={onValueChange} />);
 
-    await act(async () => container.querySelectorAll<HTMLElement>('[role="tab"]')[3]?.click());
+    await act(async () => container.querySelectorAll<HTMLElement>('button')[3]?.click());
 
     expect(onValueChange).toHaveBeenCalledWith('90d');
+  });
+
+  it('marks no preset pressed while a custom range is active', async () => {
+    const container = await render(<RangeTabs value={null} onValueChange={() => undefined} />);
+
+    expect([...container.querySelectorAll('button')].every((tab) => tab.getAttribute('aria-pressed') === 'false')).toBe(true);
   });
 
   it('renders only the ranges a surface asks for', async () => {
     const container = await render(<RangeTabs value="7d" onValueChange={() => undefined} ranges={['7d', '30d', '90d']} />);
 
-    expect(container.querySelectorAll('[role="tab"]')).toHaveLength(3);
+    expect(container.querySelectorAll('button')).toHaveLength(3);
     expect(container.textContent).not.toContain('[analytics.range.24h]');
   });
 });

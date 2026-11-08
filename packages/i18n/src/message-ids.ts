@@ -3849,6 +3849,8 @@ export const MESSAGE_IDS = {
   'people.chooseSite': 'people_choosesite',
   'preview.privateTitle': 'preview_privatetitle',
   'preview.privateBody': 'preview_privatebody',
+  'dashboard.ai.inputTokens': 'dashboard_ai_inputtokens',
+  'dashboard.ai.outputTokens': 'dashboard_ai_outputtokens',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
