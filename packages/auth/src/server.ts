@@ -22,7 +22,7 @@ import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { reassignOrDeleteOrgs } from './account-deletion';
 import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 import { deliverAuthOtpEmail } from './auth-email-expiry';
-import { arrivingThroughJoinLink } from './join-links';
+import { arrivingThroughJoinLink, revokeJoinLinksBeyondRole } from './join-links';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
 import { organizationMetadataResponseFilter, stripServerOnlyOrganizationMetadata } from './organization-metadata';
@@ -777,6 +777,9 @@ const authInstance = betterAuth({
     deleteUser: {
       enabled: true,
       beforeDelete: async (user) => {
+        // A deleted account's join links stop working (createdById becomes null
+        // and authorizes nothing); disable them so admins see that too.
+        await revokeJoinLinksBeyondRole(prisma, null, user.id, null);
         await reassignOrDeleteOrgs(user.id);
       },
     },
@@ -844,6 +847,15 @@ const authInstance = betterAuth({
         },
         // Someone accepted an invite (members added via the org API → joins). Tell the
         // workspace's existing owners/admins, unless `member_joined` is disabled.
+        // Better Auth's own member endpoints: a removed or demoted member's join
+        // links stop granting more than they now can (the join-time creator
+        // check already refuses them; this keeps the admin list truthful).
+        afterRemoveMember: async ({ member, organization: org }) => {
+          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, null).catch(() => undefined);
+        },
+        afterUpdateMemberRole: async ({ member, organization: org }) => {
+          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, member.role).catch(() => undefined);
+        },
         afterAddMember: async ({ member, user, organization: org }) => {
           await notifyMemberJoined({ organization: org as JoinedOrganization, userId: member.userId, user });
         },

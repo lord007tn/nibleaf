@@ -3,11 +3,21 @@ import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { arrivingThroughJoinLink, readCookie } from './join-links';
 
-vi.mock('@nibleaf/database', () => ({ prisma: { joinLink: { findUnique: vi.fn() } } }));
+vi.mock('@nibleaf/database', () => ({ prisma: { joinLink: { findUnique: vi.fn() }, member: { findUnique: vi.fn() } } }));
 
 const token = generateJoinLinkToken();
 const headers = (cookie: string) => new Headers({ cookie });
-const active = { revokedAt: null, expiresAt: null, maxUses: null, useCount: 0, allowedDomain: null };
+const active = {
+  organizationId: 'org-1',
+  createdById: 'admin-1',
+  role: 'member',
+  revokedAt: null,
+  expiresAt: null,
+  maxUses: null,
+  useCount: 0,
+  allowedDomain: null,
+};
+const creator = (role: string, suspendedAt: Date | null = null) => ({ role, user: { suspendedAt } });
 
 describe('readCookie', () => {
   it('reads one cookie among several', () => {
@@ -18,7 +28,11 @@ describe('readCookie', () => {
 });
 
 describe('arrivingThroughJoinLink — when sign-up skips the starter workspace', () => {
-  beforeEach(() => vi.mocked(prisma.joinLink.findUnique).mockReset());
+  beforeEach(() => {
+    vi.mocked(prisma.joinLink.findUnique).mockReset();
+    vi.mocked(prisma.member.findUnique).mockReset();
+    vi.mocked(prisma.member.findUnique).mockResolvedValue(creator('admin') as never);
+  });
 
   it('skips for an active link, looked up by the token hash', async () => {
     vi.mocked(prisma.joinLink.findUnique).mockResolvedValue(active as never);
@@ -37,5 +51,21 @@ describe('arrivingThroughJoinLink — when sign-up skips the starter workspace',
   ])('keeps the starter workspace for %s', async (_label, cookie, link) => {
     vi.mocked(prisma.joinLink.findUnique).mockResolvedValue(link as never);
     await expect(arrivingThroughJoinLink('ada@other.io', headers(cookie))).resolves.toBe(false);
+  });
+
+  it.each([
+    ['the creator left the site', null],
+    ['the creator can no longer grant the role', creator('viewer')],
+    ['the creator is suspended', creator('admin', new Date())],
+  ])('keeps the starter workspace when %s', async (_label, member) => {
+    vi.mocked(prisma.joinLink.findUnique).mockResolvedValue(active as never);
+    vi.mocked(prisma.member.findUnique).mockResolvedValue(member as never);
+    await expect(arrivingThroughJoinLink('ada@acme.com', headers(`nibleaf_join=${token}`))).resolves.toBe(false);
+  });
+
+  it('keeps the starter workspace for a link whose creator was deleted', async () => {
+    vi.mocked(prisma.joinLink.findUnique).mockResolvedValue({ ...active, createdById: null } as never);
+    await expect(arrivingThroughJoinLink('ada@acme.com', headers(`nibleaf_join=${token}`))).resolves.toBe(false);
+    expect(prisma.member.findUnique).not.toHaveBeenCalled();
   });
 });

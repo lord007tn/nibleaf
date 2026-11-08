@@ -1,3 +1,4 @@
+import { joinLinkCreatorAuthorizes } from '@nibleaf/auth/join-links';
 import { notifyMemberJoined } from '@nibleaf/auth/server';
 import { Prisma, prisma } from '@nibleaf/database';
 import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto';
@@ -43,8 +44,19 @@ const absoluteUrl = (token: string) => `${env.APP_URL}${joinLinkPath(token)}`;
  *  can never tell which (and can't probe for live tokens). */
 const invalidLink = () => new AppError({ code: 'join:invalid', message: 'This join link is not valid.' });
 
-export const listJoinLinks = async (organizationId: string) =>
-  (await prisma.joinLink.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' }, select: linkSelect })).map(present);
+/** Admins see a link whose creator can no longer grant its role as disabled:
+ *  that's how it behaves (see joinLinkCreatorAuthorizes). */
+export const listJoinLinks = async (organizationId: string) => {
+  const links = await prisma.joinLink.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' }, select: linkSelect });
+  return Promise.all(
+    links.map(async (link) => {
+      const shown = present(link);
+      if (shown.status !== 'active') return shown;
+      const authorized = await joinLinkCreatorAuthorizes(prisma, { organizationId, createdById: link.createdBy?.id ?? null, role: link.role });
+      return authorized ? shown : { ...shown, status: 'revoked' as const };
+    }),
+  );
+};
 
 /**
  * Create a join link for a site. The granted role is never owner (schema) and
@@ -111,6 +123,7 @@ const usableLinkByToken = async (token: string) => {
     select: {
       id: true,
       organizationId: true,
+      createdById: true,
       role: true,
       allowedDomain: true,
       maxUses: true,
@@ -120,7 +133,8 @@ const usableLinkByToken = async (token: string) => {
       organization: { select: { id: true, name: true, metadata: true, projects: { select: { id: true, name: true }, take: 1 } } },
     },
   });
-  return link && joinLinkStatus(link) === 'active' ? link : null;
+  // Its creator must still be able to grant its role (same single answer otherwise).
+  return link && joinLinkStatus(link) === 'active' && (await joinLinkCreatorAuthorizes(prisma, link)) ? link : null;
 };
 
 /** What the public /join page shows before anyone signs in: the site, the

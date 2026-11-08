@@ -299,6 +299,29 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect((await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } })).name).not.toBe('Taken over');
   });
 
+  it("disables a member's join links when Better Auth's own endpoints remove or demote them", async () => {
+    const { cookie, organizationId } = await signInAsOwner();
+    const person = async (label: string, role: string) => {
+      const user = await prisma.user.create({ data: { email: addressFor(label), emailVerified: true, name: label } });
+      const member = await prisma.member.create({ data: { organizationId, userId: user.id, role } });
+      const link = await prisma.joinLink.create({
+        data: { organizationId, tokenHash: `hash-${label}-${run}`, role: 'admin', createdById: user.id },
+      });
+      return { member, link };
+    };
+    const demoted = await person('ba-demoted', 'admin');
+    const removed = await person('ba-removed', 'admin');
+
+    const demote = await send('/organization/update-member-role', { body: { memberId: demoted.member.id, role: 'member', organizationId }, cookie });
+    expect(demote.status).toBe(200);
+    const remove = await send('/organization/remove-member', { body: { memberIdOrEmail: removed.member.id, organizationId }, cookie });
+    expect(remove.status).toBe(200);
+
+    for (const { link } of [demoted, removed]) {
+      expect((await prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).revokedAt).toBeInstanceOf(Date);
+    }
+  });
+
   it('keeps workspace invitations on the Nibleaf action that enforces the single-owner rule', async () => {
     const { cookie, organizationId } = await signInAsOwner();
     const email = addressFor('second-owner');

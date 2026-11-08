@@ -9,9 +9,12 @@ const mocks = vi.hoisted(() => ({
   updateMany: vi.fn(),
   delete: vi.fn(),
   transaction: vi.fn(),
+  revokeJoinLinks: vi.fn(async () => 0),
 }));
 vi.mock('@nibleaf/database', () => ({ prisma: { member: mocks, $transaction: mocks.transaction } }));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: {} }));
+// Join-link revocation has its own PostgreSQL tests (join-links.postgres.test.ts).
+vi.mock('@nibleaf/auth/join-links', () => ({ revokeJoinLinksBeyondRole: mocks.revokeJoinLinks }));
 vi.mock('@nibleaf/email', () => ({ renderMemberInvitationEmail: vi.fn() }));
 vi.mock('@/env', () => ({ env: {} }));
 

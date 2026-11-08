@@ -15,6 +15,7 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('join links in Postg
   let db: typeof import('@nibleaf/database');
   let joinLinks: typeof import('./join-links');
   let auth: typeof import('@nibleaf/auth/join-links');
+  let members: typeof import('./members');
   const organizationIds: string[] = [];
   const userIds: string[] = [];
 
@@ -22,6 +23,7 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('join links in Postg
     db = await import('@nibleaf/database');
     joinLinks = await import('./join-links');
     auth = await import('@nibleaf/auth/join-links');
+    members = await import('./members');
   }, 120_000);
 
   afterAll(async () => {
@@ -175,5 +177,83 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('join links in Postg
     await expect(auth.arrivingThroughJoinLink('new@other.example', cookie(token))).resolves.toBe(false);
     await expect(auth.arrivingThroughJoinLink('new@acme.example', cookie(`nlj_${'B'.repeat(43)}`))).resolves.toBe(false);
     await expect(auth.arrivingThroughJoinLink('new@acme.example', new Headers())).resolves.toBe(false);
+  });
+
+  /** A site with an owner and an admin; the admin makes an Admin link and a Viewer link. */
+  const siteWithAdminLinks = async () => {
+    const base = await site();
+    const owner = await person('owner');
+    await db.prisma.member.create({ data: { organizationId: base.organization.id, userId: owner.id, role: MemberRole.OWNER } });
+    const adminLink = await joinLinks.createJoinLink(base.organization.id, base.admin, { role: MemberRole.ADMIN });
+    const viewerLink = await joinLinks.createJoinLink(base.organization.id, base.admin, { role: MemberRole.VIEWER });
+    const adminMember = await db.prisma.member.findUniqueOrThrow({
+      where: { organizationId_userId: { organizationId: base.organization.id, userId: base.admin.id } },
+    });
+    return { ...base, owner, adminLink, viewerLink, adminMemberId: adminMember.id };
+  };
+  const revokedAt = async (id: string) => (await db.prisma.joinLink.findUniqueOrThrow({ where: { id } })).revokedAt;
+
+  it('disables every link of a removed member, in the same action, and refuses them at join', async () => {
+    const { organization, owner, adminLink, viewerLink, adminMemberId } = await siteWithAdminLinks();
+    await members.removeMember(organization.id, adminMemberId, owner.id);
+    expect(await revokedAt(adminLink.link.id)).toBeInstanceOf(Date);
+    expect(await revokedAt(viewerLink.link.id)).toBeInstanceOf(Date);
+    // Not even from another account they control.
+    const otherAccount = await person('second-account');
+    for (const token of [adminLink.token, viewerLink.token]) {
+      await expect(joinLinks.joinWithLink(token, otherAccount.id)).rejects.toMatchObject({ code: 'join:invalid', status: 404 });
+    }
+    expect(await db.prisma.member.count({ where: { organizationId: organization.id, userId: otherAccount.id } })).toBe(0);
+  });
+
+  it('disables only the links above a demoted member’s new role', async () => {
+    const { organization, owner, adminLink, viewerLink, adminMemberId } = await siteWithAdminLinks();
+    await members.updateMemberRole(organization.id, adminMemberId, owner.id, { role: MemberRole.MEMBER });
+    expect(await revokedAt(adminLink.link.id)).toBeInstanceOf(Date);
+    expect(await revokedAt(viewerLink.link.id)).toBeNull();
+    await expect(joinLinks.getJoinLinkPreview(adminLink.token)).rejects.toMatchObject({ code: 'join:invalid' });
+    await expect(joinLinks.joinWithLink(viewerLink.token, (await person('still-ok')).id)).resolves.toMatchObject({
+      status: 'joined',
+      role: MemberRole.VIEWER,
+    });
+  });
+
+  it('refuses a link whose creator lost the role some other way (defense in depth)', async () => {
+    const { organization, admin, adminLink } = await siteWithAdminLinks();
+    // As if demoted or removed outside our actions (e.g. Better Auth's own endpoints).
+    await db.prisma.member.update({
+      where: { organizationId_userId: { organizationId: organization.id, userId: admin.id } },
+      data: { role: MemberRole.VIEWER },
+    });
+    expect(await revokedAt(adminLink.link.id)).toBeNull();
+    await expect(joinLinks.getJoinLinkPreview(adminLink.token)).rejects.toMatchObject({ code: 'join:invalid' });
+    await expect(joinLinks.joinWithLink(adminLink.token, (await person('late')).id)).rejects.toMatchObject({ code: 'join:invalid' });
+    const cookie = new Headers({ cookie: `nibleaf_join=${adminLink.token}` });
+    await expect(auth.arrivingThroughJoinLink('new@nibleaf.test', cookie)).resolves.toBe(false);
+    const listed = (await joinLinks.listJoinLinks(organization.id)).find((link) => link.id === adminLink.link.id);
+    expect(listed?.status).toBe('revoked');
+  });
+
+  it('refuses every link of a deleted creator', async () => {
+    const { admin, viewerLink } = await siteWithAdminLinks();
+    await db.prisma.user.delete({ where: { id: admin.id } });
+    expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: viewerLink.link.id } })).createdById).toBeNull();
+    await expect(joinLinks.getJoinLinkPreview(viewerLink.token)).rejects.toMatchObject({ code: 'join:invalid' });
+    await expect(joinLinks.joinWithLink(viewerLink.token, (await person('after-delete')).id)).rejects.toMatchObject({ code: 'join:invalid' });
+    await expect(auth.arrivingThroughJoinLink('new@nibleaf.test', new Headers({ cookie: `nibleaf_join=${viewerLink.token}` }))).resolves.toBe(false);
+  });
+
+  it('disables a deleted account’s links everywhere when the account deletion hook runs', async () => {
+    const { admin, adminLink, viewerLink } = await siteWithAdminLinks();
+    expect(await auth.revokeJoinLinksBeyondRole(db.prisma, null, admin.id, null)).toBe(2);
+    expect(await revokedAt(adminLink.link.id)).toBeInstanceOf(Date);
+    expect(await revokedAt(viewerLink.link.id)).toBeInstanceOf(Date);
+  });
+
+  it('keeps an owner transfer from leaving links above the new roles', async () => {
+    const { organization, owner, adminMemberId, adminLink } = await siteWithAdminLinks();
+    await members.transferOwnership(organization.id, owner.id, adminMemberId);
+    // The new owner's Admin link still works; the former owner (now Admin) had none above Admin.
+    await expect(joinLinks.getJoinLinkPreview(adminLink.token)).resolves.toMatchObject({ role: MemberRole.ADMIN });
   });
 });
