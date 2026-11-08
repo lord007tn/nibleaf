@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
+import { ViewOnlyBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
 import { env } from '@/env';
 import type { AnalyticsRange, Deployment } from '@/hooks/api';
@@ -90,7 +91,9 @@ function SiteOverviewPage() {
   const pagesFailed = pagesQuery.isError && !pages;
   const membersFailed = membersQuery.isError && !members;
   // Domain settings are for Admins; while that's unknown, show neither variant.
-  const { status: settingsAccess } = useProjectAdminStatus(projectId);
+  const { status: settingsAccess, edit: editAccess } = useProjectAdminStatus(projectId);
+  // Viewers read the site: they open the pages to read, and nothing here offers them a publish.
+  const viewOnly = editAccess === 'viewOnly';
   const deploymentsFailed = deploymentsQuery.isError && !deployments;
   const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
@@ -167,18 +170,22 @@ function SiteOverviewPage() {
             </Button>
           ) : null}
           <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} size="sm">
-            <PenLine className="size-3.5" /> {t('overview.openEditor')}
+            {viewOnly ? <FileText className="size-3.5" /> : <PenLine className="size-3.5" />}{' '}
+            {viewOnly ? t('overview.viewPages') : t('overview.openEditor')}
           </Button>
         </div>
       </div>
+      {viewOnly ? <ViewOnlyBanner className="mt-5 rounded-lg border" /> : null}
 
       {/* Publish-failure triage: what blocked the last publish, with per-page
           links into the editor and a grammar-only "Publish anyway" escape hatch. */}
-      {publishFailed && latestDeployment ? <PublishFailureCard projectId={projectId} deployment={latestDeployment} pages={pages ?? []} /> : null}
+      {publishFailed && latestDeployment ? (
+        <PublishFailureCard deployment={latestDeployment} pages={pages ?? []} projectId={projectId} viewOnly={viewOnly} />
+      ) : null}
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed ? (
+      {deployments && !hasReadyDeployment && !publishFailed && !viewOnly ? (
         <PublishNudge
           projectId={projectId}
           settingsAccess={settingsAccess}
@@ -527,10 +534,12 @@ function PublishFailureCard({
   projectId,
   deployment,
   pages,
+  viewOnly,
 }: {
   projectId: string;
   deployment: Deployment;
   pages: Array<{ id: string; path: string }>;
+  viewOnly: boolean;
 }) {
   const t = useT();
   const issues = publishIssuesOf(deployment);
@@ -567,10 +576,12 @@ function PublishFailureCard({
         </div>
         {grammarOnly ? (
           <Button
+            disabled={viewOnly}
             loading={publishAnyway.isPending}
             loadingText={t('overview.publishFailed.publishing')}
             onClick={publishAnywayWithFeedback}
             size="sm"
+            title={viewOnly ? t('access.viewOnly.publish') : undefined}
           >
             <Rocket className="size-3.5" />
             {t('overview.publishFailed.publishAnyway')}

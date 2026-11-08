@@ -161,6 +161,15 @@ describe('TiptapEditor', () => {
     expect(prose()?.querySelector('p')?.getAttribute('dir')).toBe('ltr');
   });
 
+  it('renders a read-only page for Viewers: not editable, and no editing toolbar or menus', async () => {
+    const onChange = vi.fn();
+    const { container, prose } = await mount(<TiptapEditor editable={false} onChange={onChange} value="Read me" variant="wysiwyg" />);
+    expect(prose()?.textContent).toContain('Read me');
+    expect(prose()?.getAttribute('contenteditable')).toBe('false');
+    expect(container.querySelector('[role="toolbar"]')).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('mounts with the given markdown', async () => {
     const onChange = vi.fn();
     const { prose } = await mount(<TiptapEditor value="Hello from page A" onChange={onChange} />);

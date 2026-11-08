@@ -3,19 +3,20 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import type { AssignableMemberRole } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute } from '@tanstack/react-router';
 import { Mail, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { RoleSelect } from '@/components/members/role-select';
 import { QueryErrorState } from '@/components/query-error-state';
 import { friendlyErrorMessage, useInviteMember, useMembers, useRemoveMember, useUpdateMemberRole } from '@/hooks/api';
 import { membersQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { email as validateEmail } from '@/lib/form';
+import { DEFAULT_INVITE_ROLE, roleLabelKey } from '@/lib/member-roles';
 
 const MEMBER_SKELETON_ROWS = ['a', 'b', 'c'];
 
@@ -23,21 +24,6 @@ export const Route = createFileRoute('/app/(dashboard)/members')({
   loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, membersQueryOptions()),
   component: MembersPage,
 });
-
-/** Grantable roles — `owner` is intentionally absent: a workspace has exactly
- *  one owner, and ownership only moves via the transfer-ownership flow. */
-type AssignableRole = 'admin' | 'member';
-
-/** Map a role value to its localized label key (editor = member). */
-const roleLabelKey = (role: string | null | undefined): MessageKey => {
-  if (role === 'owner') {
-    return 'members.role.owner';
-  }
-  if (role === 'admin') {
-    return 'members.role.admin';
-  }
-  return 'members.role.editor';
-};
 
 function MembersPage() {
   const t = useT();
@@ -62,15 +48,9 @@ function MembersPage() {
         toast.error(friendlyErrorMessage(t, error, 'settings.members.toast.removeError', { 409: 'settings.members.toast.removeError' })),
     });
   };
-  // No `owner` option: invitations and role changes can never grant ownership.
-  // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
-  const roleOptions = [
-    { value: 'member', label: t('members.role.editor') },
-    { value: 'admin', label: t('members.role.admin') },
-  ] as const satisfies ReadonlyArray<{ value: AssignableRole; label: string }>;
-
+  // RoleSelect never offers `owner`: invitations and role changes can never grant ownership.
   const form = useForm({
-    defaultValues: { email: '', role: 'member' as AssignableRole },
+    defaultValues: { email: '', role: DEFAULT_INVITE_ROLE as AssignableMemberRole },
     onSubmit: async ({ value }) => {
       const invited = value.email.trim();
       await new Promise<void>((resolve) => {
@@ -129,18 +109,12 @@ function MembersPage() {
         <div className="flex w-full items-end gap-3 sm:w-auto">
           <form.Field name="role">
             {(field) => (
-              <Select items={roleOptions} onValueChange={(v) => field.handleChange(v ?? 'member')} value={field.state.value}>
-                <SelectTrigger aria-label={t('members.col.role')} className="min-w-0 flex-1 sm:w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <RoleSelect
+                ariaLabel={t('members.col.role')}
+                className="min-w-0 flex-1 sm:w-32"
+                onValueChange={field.handleChange}
+                value={field.state.value}
+              />
             )}
           </form.Field>
           <Button className="flex-1 sm:flex-none" loading={invite.isPending} type="submit">
@@ -192,14 +166,15 @@ function MembersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {member.role === 'owner' ? (
-                      <span>{t('members.role.owner')}</span>
+                      <span>{t('roles.owner')}</span>
                     ) : (
-                      <Select
-                        items={roleOptions}
-                        value={member.role}
-                        onValueChange={(v) =>
+                      <RoleSelect
+                        ariaLabel={t('members.col.role')}
+                        className="w-32"
+                        value={member.role as AssignableMemberRole}
+                        onValueChange={(role) =>
                           updateRole.mutate(
-                            { id: member.id, body: { role: (v ?? 'member') as AssignableRole } },
+                            { id: member.id, body: { role } },
                             {
                               onSuccess: () => toast.success(t('members.toast.roleUpdated')),
                               onError: (error) =>
@@ -209,18 +184,7 @@ function MembersPage() {
                             },
                           )
                         }
-                      >
-                        <SelectTrigger aria-label={t('members.col.role')} className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roleOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     )}
                   </td>
                   <td className="px-4 py-3 text-end">

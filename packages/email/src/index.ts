@@ -119,6 +119,13 @@ export async function renderNewSignInEmail({ ipAddress, language = DEFAULT_EMAIL
   };
 }
 
+const INVITE_ROLE_LABELS: Record<string, 'roles.owner' | 'roles.admin' | 'roles.editor' | 'roles.viewer'> = {
+  owner: 'roles.owner',
+  admin: 'roles.admin',
+  member: 'roles.editor',
+  viewer: 'roles.viewer',
+};
+
 export async function renderMemberInvitationEmail({
   acceptUrl,
   days,
@@ -135,7 +142,8 @@ export async function renderMemberInvitationEmail({
   role: string;
 }) {
   const t = createEmailTranslator(language);
-  const params = { days, inviterName, organizationName, role };
+  // The sentence names the role in the reader's language, never the stored value.
+  const params = { days, inviterName, organizationName, role: t(INVITE_ROLE_LABELS[role] ?? 'roles.editor') };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       action: { label: t('email.invite.action'), url: acceptUrl },

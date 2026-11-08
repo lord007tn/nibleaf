@@ -25,6 +25,8 @@ interface CommentsPanelProps {
   onSelectComment?: (id: string | null) => void;
   /** In comment mode the panel shows only threads (no page-level composer). */
   commentMode?: boolean;
+  /** Viewers read the threads; they cannot add, resolve or delete comments. */
+  readOnly?: boolean;
 }
 
 /** Initials from a display name, e.g. "Mei Kawano" → "MK". */
@@ -66,6 +68,7 @@ export function CommentsPanel({
   activeCommentId,
   onSelectComment,
   commentMode,
+  readOnly = false,
 }: CommentsPanelProps) {
   const t = useT();
   const confirm = useConfirm();
@@ -110,7 +113,7 @@ export function CommentsPanel({
       </div>
 
       {/* Anchored composer — appears when highlighted text is submitted. */}
-      {pendingAnchor ? (
+      {pendingAnchor && !readOnly ? (
         <div className="mb-3 rounded-xl border border-primary/40 bg-primary/5 p-3">
           <p className="mb-2 line-clamp-2 border-amber-400 border-s-2 ps-2 text-muted-foreground text-xs italic" dir="auto">
             “{pendingAnchor.quote}”
@@ -209,7 +212,7 @@ export function CommentsPanel({
                     {comment.body}
                   </p>
                 </button>
-                <div className="mt-2 flex items-center gap-1">
+                <div className={cn('mt-2 flex items-center gap-1', readOnly && 'hidden')}>
                   <Button
                     className={cn('h-6 gap-1 px-1.5 text-xs', comment.resolved ? 'text-primary' : 'text-muted-foreground')}
                     // The hook reports every failed write itself (several may be queued).
@@ -249,7 +252,9 @@ export function CommentsPanel({
       </ScrollArea>
 
       {/* Page-level composer — only outside comment mode (in comment mode you click a block). */}
-      {!commentMode && !pendingAnchor ? (
+      {readOnly ? (
+        <p className="mt-3 border-border border-t pt-3 text-muted-foreground text-xs leading-snug">{t('editor.comments.viewOnly')}</p>
+      ) : !commentMode && !pendingAnchor ? (
         <div className="mt-3 space-y-2 border-border border-t pt-3">
           <Textarea
             className="min-h-[60px] resize-none text-sm"

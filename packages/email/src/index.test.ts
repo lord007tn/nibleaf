@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderEmailVerificationEmail, renderNewSignInEmail, renderVerificationCodeEmail } from './index';
+import { renderEmailVerificationEmail, renderMemberInvitationEmail, renderNewSignInEmail, renderVerificationCodeEmail } from './index';
 
 describe('localized transactional email rendering', () => {
   it('renders an English verification code with a plain-text body', async () => {
@@ -26,5 +26,23 @@ describe('localized transactional email rendering', () => {
     expect(email.html).toContain('token=abc&amp;next=&lt;home&gt;');
     expect(email.html).not.toContain('next=<home>');
     expect(email.text).toContain('https://example.com/verify?token=abc&next=<home>');
+  });
+
+  it.each([
+    ['en', 'viewer', 'as Viewer'],
+    ['en', 'member', 'as Editor'],
+    ['ar', 'viewer', 'بصفتك مشاهد'],
+    ['ar', 'admin', 'بصفتك مشرف'],
+  ] as const)('names the invited role in the reader language (%s, %s)', async (language, role, phrase) => {
+    const email = await renderMemberInvitationEmail({
+      acceptUrl: 'https://app.example.com/accept-invite/abc',
+      days: 7,
+      inviterName: 'Ada',
+      language,
+      organizationName: 'Acme Docs',
+      role,
+    });
+    expect(email.text).toContain(phrase);
+    expect(email.text).not.toMatch(/(viewer|member)/);
   });
 });

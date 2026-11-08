@@ -104,9 +104,12 @@ export function GroupCanvas({
   onRename,
   onOpenSettings,
   onDelete,
+  readOnly = false,
 }: {
   group: PageNode;
   addingPage: boolean;
+  /** Viewers see what the group is; adding, renaming and deleting are for Editors. */
+  readOnly?: boolean;
   onAddPage: () => void;
   onRename: () => void;
   onOpenSettings: () => void;
@@ -120,8 +123,8 @@ export function GroupCanvas({
         <h1 className="mt-3 break-words font-semibold text-xl tracking-tight" dir="auto">
           {group.title}
         </h1>
-        <p className="mt-1 text-muted-foreground text-sm">{t('editor.groupSelectedHint')}</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <p className="mt-1 text-muted-foreground text-sm">{t(readOnly ? 'editor.viewOnly.groupHint' : 'editor.groupSelectedHint')}</p>
+        <div className={cn('mt-4 flex flex-wrap justify-center gap-2', readOnly && 'hidden')}>
           {group.languageId ? (
             <Button disabled={addingPage} onClick={onAddPage}>
               <Plus className="size-4" /> {t('editor.addPageInside')}
