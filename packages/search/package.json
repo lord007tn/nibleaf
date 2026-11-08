@@ -26,7 +26,7 @@
     "eval:rag": "tsx scripts/evaluate-openrouter.ts",
     "eval:embeddings": "tsx scripts/evaluate-embeddings.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "@nibleaf/database": "workspace:*",

@@ -15,7 +15,7 @@
     "build": "tsdown",
     "migrate": "tsx ./scripts/migrate.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
     "seed:demo": "tsx ./scripts/seed-demo.ts"
   },
   "dependencies": {

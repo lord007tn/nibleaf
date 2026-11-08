@@ -169,6 +169,15 @@ describe('Markdown renderer', () => {
     expect(html).toContain('id="setup-1"');
   });
 
+  it('shows when a field is required or deprecated, and its default', () => {
+    const html = renderToStaticMarkup(
+      <Markdown body={'<ParamField query="limit" type="number" default="20" deprecated>\n\nPage size.\n\n</ParamField>'} />,
+    );
+    expect(html).toContain('limit');
+    expect(html).toContain('deprecated');
+    expect(html).toContain('<code dir="ltr">20</code>');
+  });
+
   it('adds the blank lines block components need', () => {
     expect(normalizeMarkdown('<Callout>\n**Bold**\n</Callout>')).toBe('<Callout>\n\n**Bold**\n\n</Callout>');
   });

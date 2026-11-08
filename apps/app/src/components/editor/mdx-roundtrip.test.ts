@@ -254,6 +254,29 @@ describe('MDX round trips', () => {
     },
   );
 
+  it.each([
+    ['> first\n>\n> **second**', '**second**'],
+    ['> first\n>\n> *second*', '*second*'],
+    ['> ![alt](/img.png)\n>\n> **second**', '**second**'],
+    ['> first\n>\n> - item\n>\n> **after a list**', '**after a list**'],
+  ])('keeps a plain quote paragraph that starts with bold or italic after another block, across two saves (#338): %j', (source, mark) => {
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).toContain(`> ${mark}`);
+    expect(saved).not.toMatch(/\*\*\*\*|\*> |\\\*/);
+    expect(createEditor(saved).state.doc.firstChild?.type.name).toBe('blockquote');
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it.each(['> Before\n>\n> ```js\n> const a = 1;\n> ```', '> [!NOTE]\n> Before\n>\n> ```js\n> const a = 1;\n> ```'])(
+    'saves a fenced code block inside a quote with one quote prefix per line (#338): %j',
+    (source) => {
+      const saved = getMarkdown(createEditor(source));
+      expect(saved).not.toContain('> >');
+      expect(saved).toContain('> ```js\n> const a = 1;\n> ```');
+      expect(getMarkdown(createEditor(saved))).toBe(saved);
+    },
+  );
+
   it('keeps components after an unmatched backtick, across a heading', () => {
     // A backtick that isn't closed on its line must not hide the blocks after it.
     const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';

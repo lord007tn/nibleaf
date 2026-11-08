@@ -27,7 +27,7 @@
     "smoke": "tsx ./scripts/runtime-smoke.ts",
     "studio": "pnpm with-env prisma studio",
     "clean": "git clean -xdf .cache .turbo dist node_modules src/generated",
-    "test": "vitest run",
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

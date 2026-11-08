@@ -22,10 +22,21 @@ const siteStub = `export const uniqueHeadingId = (text: string, used: Map<string
 };
 `;
 
+// The repository's Paraglide build compiles its en/ar catalogs; the fields
+// component reads three labels from it.
+const messagesStub = `export const fieldRequired = () => 'required';
+export const fieldDeprecated = () => 'deprecated';
+export const fieldDefault = () => 'default';
+`;
+
 let Markdown: ComponentType<{ body: string }>;
 
 beforeAll(async () => {
-  for (const file of [...themeRepositoryReaderTemplateFiles(), { path: 'src/lib/site.ts', content: siteStub }]) {
+  for (const file of [
+    ...themeRepositoryReaderTemplateFiles(),
+    { path: 'src/lib/site.ts', content: siteStub },
+    { path: 'src/paraglide/messages.js', content: messagesStub },
+  ]) {
     const target = join(root, file.path);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, file.content);
@@ -55,6 +66,12 @@ describe('exported theme repository Markdown', () => {
     ['body', 'email'],
   ])('names a ParamField by its %s prop like the reader', (location, name) => {
     expect(render(`<ParamField ${location}="${name}" type="string" required>\n\nText.\n\n</ParamField>`)).toContain(`<code dir="ltr">${name}</code>`);
+  });
+
+  it('shows when a field is required or deprecated, and its default, like the reader (#338)', () => {
+    const html = render('<ParamField query="limit" type="integer" required default="20" deprecated>\n\nPage size.\n\n</ParamField>');
+    expect(html).toContain('integer · required · deprecated · default: <code dir="ltr">20</code>');
+    expect(render('<ResponseField name="id" type="string">\n\nText.\n\n</ResponseField>')).not.toMatch(/deprecated|default:/);
   });
 
   it('lets only a plain color reach an Icon style, and reads a {24} size', () => {

@@ -72,7 +72,7 @@ const sniffImageType = (bytes: Uint8Array): string => {
   return '';
 };
 
-const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
+const fetchPublicImage = async (source: string, maxBytes: number): Promise<{ bytes: Uint8Array; contentType: string; filename: string }> => {
   let url = publicHttpUrl(source);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect++) {
     const request = got.stream(url, {
@@ -95,7 +95,7 @@ const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; co
       }
       if (status < 200 || status >= 300) throw new Error('remote response failed');
       const announcedSize = Number(response.headers['content-length'] ?? 0);
-      if (announcedSize > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
+      if (announcedSize > maxBytes) throw new Error('image is too large');
       const filename = filenameFromUrl(url);
       const announced = normalizeAssetContentType(response.headers['content-type'] ?? '');
       if (announced && announced !== 'application/octet-stream' && !isSafeInlineAssetContentType(announced)) {
@@ -108,7 +108,7 @@ const fetchPublicImage = async (source: string): Promise<{ bytes: Uint8Array; co
       for await (const chunk of request) {
         const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
         total += bytes.byteLength;
-        if (total > MAX_REMOTE_ASSET_BYTES) throw new Error('image exceeds 50 MiB');
+        if (total > maxBytes) throw new Error('image is too large');
         chunks.push(bytes);
       }
       if (total === 0) throw new Error('invalid image size');
@@ -142,6 +142,8 @@ export class RemoteAssetMigrator {
     private readonly namespace = 'ghost',
     private readonly maxDownloads = MAX_REMOTE_ASSETS,
     private readonly checkBudget: () => void = () => undefined,
+    /** Largest image accepted, counted in decoded bytes. Tests lower it. */
+    private readonly maxAssetBytes = MAX_REMOTE_ASSET_BYTES,
   ) {
     this.capMessage = `Asset migration was capped at ${maxDownloads} downloaded images.`;
   }
@@ -169,7 +171,7 @@ export class RemoteAssetMigrator {
           return source;
         }
         this.downloads++;
-        const image = await fetchPublicImage(source);
+        const image = await fetchPublicImage(source, this.maxAssetBytes);
         const asset = await storeAsset({ projectId: this.projectId, importId, ...image });
         this.migrated++;
         return asset.url;

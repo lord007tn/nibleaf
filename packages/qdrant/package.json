@@ -12,7 +12,7 @@
     "alias:switch": "tsx scripts/switch-alias.ts",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "@qdrant/js-client-rest": "1.20.0",

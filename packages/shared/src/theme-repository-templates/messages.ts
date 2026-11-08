@@ -30,6 +30,9 @@ export const messagesTemplate = ({ templateId }: ThemeRepositoryTemplateOptions)
     notFoundBody: 'This page does not exist in the selected language or version.',
     backToStart: 'Back to the first page',
     builtWith: 'Built with Nibleaf',
+    fieldRequired: 'required',
+    fieldDeprecated: 'deprecated',
+    fieldDefault: 'default',
   }),
   ar: json({
     themeLabel: THEME_LABELS[templateId].ar,
@@ -52,5 +55,8 @@ export const messagesTemplate = ({ templateId }: ThemeRepositoryTemplateOptions)
     notFoundBody: 'هذه الصفحة غير موجودة في اللغة أو الإصدار المحدد.',
     backToStart: 'العودة إلى الصفحة الأولى',
     builtWith: 'مبني باستخدام Nibleaf',
+    fieldRequired: 'مطلوب',
+    fieldDeprecated: 'مهمل',
+    fieldDefault: 'الافتراضي',
   }),
 });

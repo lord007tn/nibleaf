@@ -176,11 +176,14 @@ interface BranchChangedOnMainPage {
    *  field both changed (`replaced`), remove it (its comments and reader
    *  grants go with it), bring the version's copy
    *  back, give it a numbered address (`newPath`), move it because its parent
-   *  goes away (`newParentPath`, null for the top level), or refuse
-   *  (`blocked`: promote answers 409 branch:promote_blocked even when
-   *  confirmed). */
+   *  goes away (`moved`, with `newParentPath`), or refuse (`blocked`: promote
+   *  answers 409 branch:promote_blocked even when confirmed). */
   onPromote: 'kept' | 'merged' | 'replaced' | 'removed' | 'restored' | 'renamed' | 'moved' | 'blocked';
+  /** `renamed` only: the page's new address. */
   newPath?: string;
+  /** Where the page lands when its parent goes away (null: the top level).
+   *  Set on `moved`, and also on `merged` or `replaced` when the page moves
+   *  as well as being edited. Absent when it stays where it is. */
   newParentPath?: string | null;
   /** `replaced` only: which of main's own edits the version overwrites (field
    *  names, plus `content`, `settings`, `parent`). */

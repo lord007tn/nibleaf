@@ -246,6 +246,8 @@
   "editor_promote_renamed": "Another page has this address, so this one becomes {path}.",
   "editor_promote_moved": "Its folder goes away, so it moves under {path}.",
   "editor_promote_movedtop": "Its folder goes away, so it moves to the top level.",
+  "editor_promote_alsomoved": "Its folder also goes away, so it moves under {path}.",
+  "editor_promote_alsomovedtop": "Its folder also goes away, so it moves to the top level.",
   "editor_promote_restored": "Deleted on main, but this version edited it, so it comes back.",
   "editor_promote_merged": "Edited on both, in different places: both sets of edits are kept.",
   "editor_promote_kept": "Stays as it is on main.",

@@ -15,6 +15,7 @@ import {
   mdxTabsTemplate,
   mdxTooltipTemplate,
 } from './mdx-components';
+import { messagesTemplate } from './messages';
 
 /** The first 12 hex characters of a file's SHA-256: enough to catch any drift,
  *  and short enough not to read like a secret to secret scanners. */
@@ -41,6 +42,9 @@ describe('theme repository component templates', () => {
   //   color value reach an Icon's inline style.
   // - fields.tsx: a location prop (`path`, `query`, `header`, `body`) names a
   //   ParamField, like the reader.
+  // - fields.tsx and markdown.test.tsx: a field shows `deprecated` and its
+  //   `default`, like the reader, with labels from the theme's en/ar catalogs
+  //   (#338).
   it('keeps the exported Markdown and MDX component files byte-identical', () => {
     const sha256Prefixes = {
       'src/lib/markdown.tsx': sha256Prefix(markdownTemplate()),
@@ -60,19 +64,32 @@ describe('theme repository component templates', () => {
     };
     expect(sha256Prefixes).toEqual({
       'src/lib/markdown.tsx': '06c83728de3f',
-      'src/lib/markdown.test.tsx': '83c141811932',
+      'src/lib/markdown.test.tsx': '8df10c37c980',
       'src/components/mdx/shared.ts': 'a6002c02bb8e',
       'src/components/mdx/callouts.tsx': 'f468dfa7c363',
       'src/components/mdx/cards.tsx': '874efcd120f2',
       'src/components/mdx/tabs.tsx': '613800c9ea94',
       'src/components/mdx/disclosure.tsx': '289e2634932f',
       'src/components/mdx/steps.tsx': 'd43dcdc5f286',
-      'src/components/mdx/fields.tsx': '6c158a0d1381',
+      'src/components/mdx/fields.tsx': 'bcc2033b4d6a',
       'src/components/mdx/file-tree.tsx': '2e128d0a6f84',
       'src/components/mdx/api-example.tsx': 'da8189c1d4fd',
       'src/components/mdx/tooltip.tsx': 'ec6a45a817f7',
       'src/components/mdx/inline.tsx': '5f1169a75bfd',
       'src/components/mdx/index.tsx': '5c494b23b6ae',
     });
+  });
+
+  it("shows a field's default and deprecated flag, like the reader (#338)", () => {
+    const fields = mdxFieldsTemplate();
+    expect(fields).toContain('truthy(deprecated)');
+    expect(fields).toContain('stringAttr(props.default)');
+    expect(fields).toContain('m.fieldDeprecated()');
+    expect(fields).toContain('m.fieldDefault()');
+    const { en, ar } = messagesTemplate({ templateId: 'harbor' } as never);
+    for (const catalog of [JSON.parse(en), JSON.parse(ar)]) {
+      for (const key of ['fieldRequired', 'fieldDeprecated', 'fieldDefault']) expect(catalog[key], key).toEqual(expect.any(String));
+    }
+    expect(JSON.parse(ar).fieldDeprecated).toBe('مهمل');
   });
 });

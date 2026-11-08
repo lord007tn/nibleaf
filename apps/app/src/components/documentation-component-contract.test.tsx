@@ -29,12 +29,8 @@ import { MDX_BLOCK_TAGS, sanitizeSchema } from './site/mdx-config';
  * below with the reason.
  */
 const KNOWN_GAPS = {
-  portableMarkdown: {
-    // The public machine representations keep `<Update>` as authored text
-    // (normalizePublicMarkdownContent HTML-escapes it). Projecting it is a
-    // separate, output-changing fix.
-    Update: 'portablePublicMdxMarkdown has no Update projection yet',
-  } as Readonly<Record<string, string>>,
+  // Every registered component is projected (#338 added `Update`).
+  portableMarkdown: {} as Readonly<Record<string, string>>,
   /** Props that intentionally change nothing in the sample render, with the reason.
    *  The wiring test fails both for an unlisted inert prop and for a listed one
    *  that does render, so this list cannot go stale. */
@@ -404,5 +400,15 @@ describe('exported theme repository templates', () => {
       (match) => match[1] as string,
     );
     expect(sorted(keys)).toEqual(sorted(READER_TAGS));
+  });
+});
+
+describe('multi-line component openers in the reader (#338)', () => {
+  it('renders a Card whose opening tag spans several lines as a card, not as text and a blockquote', () => {
+    const html = renderRich('<Card\n  title="Multi"\n  href="/x"\n>\nBody text\n</Card>');
+    expect(html).not.toContain('&lt;Card');
+    expect(html).not.toContain('<blockquote');
+    expect(html).toContain('Multi');
+    expect(html).toContain('Body text');
   });
 });

@@ -169,6 +169,21 @@ describe('BranchSwitcher promote review', () => {
     expect(dialog()).toBeNull();
   });
 
+  it('says a merged or replaced page also moves when its folder goes away (#348)', async () => {
+    await promote(
+      preview([
+        entry({ onPromote: 'replaced', replacedFields: ['title'], newParentPath: null }),
+        entry({ pageId: 'page-2', onPromote: 'merged', newParentPath: 'billing' }),
+      ]),
+    );
+    expect(section('lost')?.textContent).toContain("Main's edits are lost for: Title. Its folder also goes away, so it moves to the top level.");
+    // Both sides' edits are kept, but the page lands somewhere else.
+    expect(section('stays')).toBeNull();
+    expect(section('moves')?.textContent).toContain(
+      'Edited on both, in different places: both sets of edits are kept. Its folder also goes away, so it moves under billing.',
+    );
+  });
+
   it('shows pages that block the promote, with no way to confirm', async () => {
     await promote(
       preview([entry({ change: 'conflict', onPromote: 'blocked' }), entry({ pageId: 'page-2', onPromote: 'replaced', replacedFields: ['slug'] })]),

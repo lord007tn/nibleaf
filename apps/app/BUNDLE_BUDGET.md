@@ -60,7 +60,23 @@ include that chunk. So:
   not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
 
+- Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
+  groups shared modules by the chunks that import them, so a new importer
+  re-splits the reader's icon chunks (#332 measured +292 B gzip with no reader
+  change). Use a copy in `components/marketing/site/marketing-icons.ts`.
+  `bundle:check` fails on a reader icon that a marketing chunk imports unless it
+  is one of the icons already shared on main@88daac87
+  (`marketingSharedReaderIcons` in `scripts/bundle-boundaries.mjs`).
+
 ## Budget history
+
+### Icon re-split guard, budget unchanged (#345)
+
+`bundle:check` now also fails when marketing code starts sharing a reader icon
+(see Import boundaries). It changes no shipped code, so the public profiles
+measure the same, and the budget stays at 349,700 bytes. What is left in
+#345 is its third option, taking non-reader routes out of the route tree that
+published docs hydrate; that needs a routing and SEO decision first.
 
 ### 356,000 → 349,700 bytes: marketing heads and non-reader loaders (#345)
 

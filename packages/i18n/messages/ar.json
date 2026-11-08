@@ -280,6 +280,8 @@
   "editor_promote_renamed": "لصفحة أخرى العنوان نفسه، لذلك يصبح عنوان هذه الصفحة {path}.",
   "editor_promote_moved": "سيُزال المجلد الذي يحتويها، لذلك تنتقل إلى {path}.",
   "editor_promote_movedtop": "سيُزال المجلد الذي يحتويها، لذلك تنتقل إلى المستوى الأعلى.",
+  "editor_promote_alsomoved": "وسيُزال المجلد الذي يحتويها أيضًا، لذلك تنتقل إلى {path}.",
+  "editor_promote_alsomovedtop": "وسيُزال المجلد الذي يحتويها أيضًا، لذلك تنتقل إلى المستوى الأعلى.",
   "editor_promote_restored": "حُذفت في main، لكن هذا الإصدار عدّلها، لذلك تعود.",
   "editor_promote_merged": "عُدّلت في الاثنين في مواضع مختلفة: ستُحفظ التعديلات كلها.",
   "editor_promote_kept": "تبقى كما هي في main.",
