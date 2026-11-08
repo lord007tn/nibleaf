@@ -98,3 +98,13 @@ without the BM25 half of hybrid search.
 
 A heuristic or LLM judge is a signal, not a verdict: spot-check answers in the
 Markdown receipt before changing a default.
+
+## Current defaults
+
+Answers and drafts use `openai/gpt-6-luna` at `low` reasoning effort
+(`AI_REASONING_EFFORT` in `src/providers.ts`). On the full fixture set
+(November 2026, judge `openai/gpt-6.1-sol`), Luna at `low` matched or beat the
+previous default on every measure at less than half its answer cost. Terra
+scored slightly higher with the judge at about ten times the cost. `medium` added
+latency without a clear quality gain, and cut off two of nine follow-up rewrites
+at their 120-token cap.
