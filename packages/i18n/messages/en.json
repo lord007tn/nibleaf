@@ -90,7 +90,16 @@
   "dashboard_stats_pageviews": "Page views",
   "dashboard_empty_title": "No sites yet",
   "dashboard_empty_body": "Create a site, write your first article, and publish it — it takes about five minutes.",
-  "dashboard_pages": "{count} pages",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "dashboard_start_title": "Start here",
   "dashboard_start_body": "Three steps to get your first help article in front of readers.",
   "dashboard_start_sample": "We created a sample site so you can look around — edit it or make your own.",
@@ -765,12 +774,39 @@
   "settings_languages_hiddenbadge": "Hidden",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} source pages",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} source page",
+        "form=*": "{count} source pages"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "No default-language pages to compare",
   "settings_languages_coverage_summary": "{matched} of {total} source pages",
   "settings_languages_coverage_percent": "{percent}% coverage",
-  "settings_languages_coverage_missing": "{count} missing",
-  "settings_languages_coverage_extra": "{count} language-only",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} missing",
+        "form=*": "{count} missing"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} only in this language",
+        "form=*": "{count} only in this language"
+      }
+    }
+  ],
   "settings_languages_makedefault": "Make default",
   "settings_languages_enabledtoggle": "Serve {label} on the published site",
   "settings_languages_delete": "Delete language",
@@ -945,7 +981,16 @@
   "settings_authentication_reader_audienceallpages": "Leave every page unselected to grant the entire site.",
   "settings_authentication_reader_createaudience": "Create audience",
   "settings_authentication_reader_entiresite": "Entire site",
-  "settings_authentication_reader_pagecount": "{count} pages",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} readers",
   "settings_authentication_reader_deleteaudienceconfirm": "Delete the {name} audience and remove its reader assignments?",
   "settings_authentication_reader_readerstitle": "Dedicated readers",
@@ -1173,7 +1218,16 @@
   "settings_apikeys_rotatedtoast": "API key rotated",
   "settings_apikeys_rotateerror": "Could not rotate the API key",
   "settings_apikeys_expiry": "Expiration",
-  "settings_apikeys_expirydays": "{days} days",
+  "settings_apikeys_expirydays": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} day",
+        "form=*": "{count} days"
+      }
+    }
+  ],
   "settings_apikeys_expires": "Expires:",
   "settings_apikeys_lastused": "Last used:",
   "settings_apikeys_neverused": "Never",
@@ -1292,7 +1346,6 @@
   "auth_verify_verifying": "Verifying your email…",
   "auth_verify_verified": "Your email is verified. Redirecting…",
   "auth_verify_sentto": "Enter the 6-digit code we sent to",
-  "auth_verify_sentgeneric": "Enter the verification code from your email to finish setting up your account.",
   "auth_verify_codelabel": "Verification code",
   "auth_verify_submit": "Verify email",
   "auth_verify_submitting": "Verifying…",
@@ -1301,10 +1354,13 @@
   "auth_verify_resending": "Sending…",
   "auth_verify_continuetoapp": "Open Nibleaf",
   "auth_verify_verifiedtoast": "Email verified",
-  "auth_verify_invalidlink": "This verification link is invalid or has expired.",
   "auth_verify_noemail": "No email address to send to.",
   "auth_verify_senttoast": "A new verification code was sent to {email}",
   "auth_verify_senderror": "The code could not be sent. Please try sending a new one.",
+  "auth_verify_invalidlinkresend": "This verification link is invalid or has expired. Send yourself a new code with the button below, then enter it here.",
+  "auth_verify_invalidlinkenteremail": "This verification link is invalid or has expired. Enter your email address to get a new code.",
+  "auth_verify_enteremail": "Enter the email address you signed up with, and we’ll send you a new verification code.",
+  "auth_verify_sendcode": "Send a new code",
   "auth_invite_subtitle": "You've been invited to a site",
   "auth_invite_signinprompt": "Log in or create an account to accept this invitation.",
   "auth_invite_createaccount": "Create an account",
@@ -1740,7 +1796,16 @@
   "settings_exports_workflow_noschedules": "No archival schedules",
   "settings_exports_workflow_noschedulesdesc": "Create one when exports need to run automatically across time zones.",
   "settings_exports_workflow_publishedversion": "Published v{version}",
-  "settings_exports_workflow_pagecount": "{count} pages",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "Scheduled",
   "settings_exports_workflow_manual": "Manual",
   "settings_exports_workflow_attempt": "Attempt {count}",
@@ -3827,6 +3892,17 @@
   "members_suggestions_label": "People from your other sites",
   "members_suggestions_hint": "Type a name or email. People from your other sites are suggested.",
   "people_choosesite": "Choose a site",
+  "gitpreview_title": "Pull request preview",
+  "gitpreview_snapshot": "A fixed copy of this pull request · hidden from search engines",
+  "gitpreview_openpages": "Pages",
+  "gitpreview_pagesnav": "Preview pages",
+  "gitpreview_language": "Language",
+  "gitpreview_version": "Version",
+  "gitpreview_empty": "This preview has no pages to show.",
+  "gitpreview_invalidtitle": "This preview isn’t available",
+  "gitpreview_invalidbody": "The link may be incomplete, or the pull request was updated or closed. Open the latest preview link from the pull request.",
+  "gitpreview_retry": "Try again",
+  "gitpreview_close": "Close",
   "analytics_status_readsdisabled_title": "Analytics is being collected",
   "analytics_status_readsdisabled_body": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Your site changed since you reviewed it. Review the changes again before publishing.",

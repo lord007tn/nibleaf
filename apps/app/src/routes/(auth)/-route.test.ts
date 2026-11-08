@@ -50,6 +50,21 @@ describe('(auth) beforeLoad', () => {
     });
   });
 
+  it('sends a signed-in visitor back to the dashboard page named in ?next=', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
+    const next = encodeURIComponent('/app/projects/p1/ai?conversation=c9&range=30d');
+    await expect(beforeLoad({ location: { pathname: '/sign-in', searchStr: `?next=${next}` } })).rejects.toEqual({
+      redirect: { href: '/app/projects/p1/ai?conversation=c9&range=30d' },
+    });
+  });
+
+  it('ignores a ?next= that leaves the dashboard', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
+    await expect(beforeLoad({ location: { pathname: '/sign-in', searchStr: '?next=https%3A%2F%2Fevil.example%2Fapp' } })).rejects.toEqual({
+      redirect: { to: '/app', search: {} },
+    });
+  });
+
   it('keeps the first-publish intent when a signed-in visitor opens sign-up', async () => {
     mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
     await expect(beforeLoad({ location: { pathname: '/sign-up', searchStr: '?intent=first-publish' } })).rejects.toEqual({

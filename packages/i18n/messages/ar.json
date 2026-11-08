@@ -90,7 +90,20 @@
   "dashboard_stats_pageviews": "مشاهدات الصفحة",
   "dashboard_empty_title": "لا توجد مواقع بعد",
   "dashboard_empty_body": "أنشئ موقعًا، واكتب مقالتك الأولى، ثم انشرها — يستغرق ذلك نحو خمس دقائق.",
-  "dashboard_pages": "{count} صفحة",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات",
+        "form=one": "صفحة واحدة",
+        "form=two": "صفحتان",
+        "form=few": "{count} صفحات",
+        "form=many": "{count} صفحة",
+        "form=*": "{count} صفحة"
+      }
+    }
+  ],
   "dashboard_start_title": "ابدأ من هنا",
   "dashboard_start_body": "ثلاث خطوات لتصل مقالتك الأولى إلى القرّاء.",
   "dashboard_start_sample": "أنشأنا لك موقعًا تجريبيًا لتستكشفه — عدّله أو أنشئ موقعك الخاص.",
@@ -765,12 +778,51 @@
   "settings_languages_hiddenbadge": "مخفية",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} صفحة مصدر",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات مصدر",
+        "form=one": "صفحة مصدر واحدة",
+        "form=two": "صفحتا مصدر",
+        "form=few": "{count} صفحات مصدر",
+        "form=many": "{count} صفحة مصدر",
+        "form=*": "{count} صفحة مصدر"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "لا توجد صفحات باللغة الافتراضية للمقارنة",
   "settings_languages_coverage_summary": "{matched} من أصل {total} صفحة مصدر",
   "settings_languages_coverage_percent": "اكتمال بنسبة {percent}٪",
-  "settings_languages_coverage_missing": "{count} مفقودة",
-  "settings_languages_coverage_extra": "{count} خاصة بهذه اللغة",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "{count} صفحة مفقودة",
+        "form=one": "صفحة واحدة مفقودة",
+        "form=two": "صفحتان مفقودتان",
+        "form=few": "{count} صفحات مفقودة",
+        "form=many": "{count} صفحة مفقودة",
+        "form=*": "{count} صفحة مفقودة"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "{count} صفحة خاصة بهذه اللغة",
+        "form=one": "صفحة واحدة خاصة بهذه اللغة",
+        "form=two": "صفحتان خاصتان بهذه اللغة",
+        "form=few": "{count} صفحات خاصة بهذه اللغة",
+        "form=many": "{count} صفحة خاصة بهذه اللغة",
+        "form=*": "{count} صفحة خاصة بهذه اللغة"
+      }
+    }
+  ],
   "settings_languages_makedefault": "تعيين كافتراضية",
   "settings_languages_enabledtoggle": "عرض {label} على الموقع المنشور",
   "settings_languages_delete": "حذف اللغة",
@@ -945,7 +997,20 @@
   "settings_authentication_reader_audienceallpages": "اترك كل الصفحات دون تحديد لمنح الوصول إلى الموقع كاملًا.",
   "settings_authentication_reader_createaudience": "إنشاء جمهور",
   "settings_authentication_reader_entiresite": "الموقع كاملًا",
-  "settings_authentication_reader_pagecount": "{count} صفحات",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات",
+        "form=one": "صفحة واحدة",
+        "form=two": "صفحتان",
+        "form=few": "{count} صفحات",
+        "form=many": "{count} صفحة",
+        "form=*": "{count} صفحة"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} قرّاء",
   "settings_authentication_reader_deleteaudienceconfirm": "حذف جمهور {name} وإزالة تعيينات قرّائه؟",
   "settings_authentication_reader_readerstitle": "قرّاء مخصصون",
@@ -1173,7 +1238,20 @@
   "settings_apikeys_rotatedtoast": "تم تدوير مفتاح API",
   "settings_apikeys_rotateerror": "تعذّر تدوير مفتاح API",
   "settings_apikeys_expiry": "انتهاء الصلاحية",
-  "settings_apikeys_expirydays": "{days} يومًا",
+  "settings_apikeys_expirydays": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "{count} يوم",
+        "form=one": "يوم واحد",
+        "form=two": "يومان",
+        "form=few": "{count} أيام",
+        "form=many": "{count} يومًا",
+        "form=*": "{count} يوم"
+      }
+    }
+  ],
   "settings_apikeys_expires": "تنتهي الصلاحية:",
   "settings_apikeys_lastused": "آخر استخدام:",
   "settings_apikeys_neverused": "لم يُستخدم",
@@ -1292,7 +1370,6 @@
   "auth_verify_verifying": "جارٍ التحقق من بريدك الإلكتروني…",
   "auth_verify_verified": "تم التحقق من بريدك الإلكتروني. جارٍ إعادة التوجيه…",
   "auth_verify_sentto": "أدخل الرمز المكوّن من 6 أرقام الذي أرسلناه إلى",
-  "auth_verify_sentgeneric": "أدخل رمز التحقق من بريدك الإلكتروني لإكمال إعداد حسابك.",
   "auth_verify_codelabel": "رمز التحقق",
   "auth_verify_submit": "تأكيد البريد الإلكتروني",
   "auth_verify_submitting": "جارٍ التحقق…",
@@ -1301,10 +1378,13 @@
   "auth_verify_resending": "جارٍ الإرسال…",
   "auth_verify_continuetoapp": "فتح Nibleaf",
   "auth_verify_verifiedtoast": "تم التحقق من البريد الإلكتروني",
-  "auth_verify_invalidlink": "رابط التحقق هذا غير صالح أو انتهت صلاحيته.",
   "auth_verify_noemail": "لا يوجد عنوان بريد إلكتروني للإرسال إليه.",
   "auth_verify_senttoast": "تم إرسال رمز تحقق جديد إلى {email}",
   "auth_verify_senderror": "تعذّر إرسال الرمز. حاول إرسال رمز جديد.",
+  "auth_verify_invalidlinkresend": "رابط التحقق هذا غير صالح أو انتهت صلاحيته. أرسل لنفسك رمزًا جديدًا بالزر أدناه، ثم أدخله هنا.",
+  "auth_verify_invalidlinkenteremail": "رابط التحقق هذا غير صالح أو انتهت صلاحيته. أدخل بريدك الإلكتروني لتحصل على رمز جديد.",
+  "auth_verify_enteremail": "أدخل البريد الإلكتروني الذي سجّلت به، وسنرسل إليك رمز تحقق جديدًا.",
+  "auth_verify_sendcode": "إرسال رمز جديد",
   "auth_invite_subtitle": "تمت دعوتك إلى موقع",
   "auth_invite_signinprompt": "سجّل الدخول أو أنشئ حسابًا لقبول هذه الدعوة.",
   "auth_invite_createaccount": "إنشاء حساب",
@@ -1740,7 +1820,20 @@
   "settings_exports_workflow_noschedules": "لا توجد جداول أرشفة",
   "settings_exports_workflow_noschedulesdesc": "أنشئ جدولاً عندما تحتاج إلى تشغيل التصدير تلقائيًا عبر مناطق زمنية.",
   "settings_exports_workflow_publishedversion": "الإصدار المنشور v{version}",
-  "settings_exports_workflow_pagecount": "{count} صفحات",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=zero": "لا توجد صفحات",
+        "form=one": "صفحة واحدة",
+        "form=two": "صفحتان",
+        "form=few": "{count} صفحات",
+        "form=many": "{count} صفحة",
+        "form=*": "{count} صفحة"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "مجدول",
   "settings_exports_workflow_manual": "يدوي",
   "settings_exports_workflow_attempt": "المحاولة {count}",
@@ -3834,6 +3927,17 @@
   "members_suggestions_label": "أشخاص من مواقعك الأخرى",
   "members_suggestions_hint": "اكتب اسمًا أو بريدًا إلكترونيًا، وسنقترح أشخاصًا من مواقعك الأخرى.",
   "people_choosesite": "اختر موقعًا",
+  "gitpreview_title": "معاينة طلب الدمج",
+  "gitpreview_snapshot": "نسخة ثابتة من طلب الدمج هذا · مخفية عن محركات البحث",
+  "gitpreview_openpages": "الصفحات",
+  "gitpreview_pagesnav": "صفحات المعاينة",
+  "gitpreview_language": "اللغة",
+  "gitpreview_version": "الإصدار",
+  "gitpreview_empty": "لا توجد صفحات لعرضها في هذه المعاينة.",
+  "gitpreview_invalidtitle": "هذه المعاينة غير متاحة",
+  "gitpreview_invalidbody": "قد يكون الرابط ناقصًا، أو تم تحديث طلب الدمج أو إغلاقه. افتح أحدث رابط معاينة من طلب الدمج.",
+  "gitpreview_retry": "أعد المحاولة",
+  "gitpreview_close": "إغلاق",
   "analytics_status_readsdisabled_title": "جارٍ جمع التحليلات",
   "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",

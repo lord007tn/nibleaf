@@ -33,7 +33,8 @@ export const Route = createFileRoute('/(auth)')({
     if (await session) {
       // Lazily too, for the same reason; only signed-in visitors of an auth page need it.
       const invitations = await import('@/lib/invitations');
-      const destination = invitations.afterAuthDestination({ invite: new URLSearchParams(location.searchStr).get('invite') });
+      const params = new URLSearchParams(location.searchStr);
+      const destination = invitations.afterAuthDestination({ invite: params.get('invite'), next: params.get('next') });
       if (destination) throw redirect({ href: destination });
       throw redirect({ to: '/app', search: isFirstPublishSignUp(location.pathname, location.searchStr) ? { firstPublish: true } : {} });
     }
@@ -75,7 +76,8 @@ function AuthGuard() {
     // While the page's own redirect is under way, the router already reports the
     // next location (no ?invite=, maybe nothing remembered): stay out of its way.
     if (!/^\/(sign-in|sign-up|verify-email|forgot-password|reset-password)\/?$/.test(location.pathname)) return null;
-    const destination = afterAuthDestination({ invite: new URLSearchParams(location.searchStr).get('invite') });
+    const params = new URLSearchParams(location.searchStr);
+    const destination = afterAuthDestination({ invite: params.get('invite'), next: params.get('next') });
     if (destination) return <GoTo href={destination} />;
     return <Navigate to="/app" search={isFirstPublishSignUp(location.pathname, location.searchStr) ? { firstPublish: true } : {}} />;
   }

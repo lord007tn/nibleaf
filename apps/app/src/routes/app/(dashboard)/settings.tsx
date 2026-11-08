@@ -8,13 +8,7 @@ import { type LucideIcon, Palette, UserRound } from 'lucide-react';
 import { ConfigDirtyProvider, useSettingsDirtyGuard } from '@/components/project-settings/shared';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
-
-// Global account settings only — everything site-specific (members, billing,
-// integrations, notifications, git) now lives per-site under each site's Settings.
-const SECTIONS = [
-  { value: 'account', labelKey: 'settings.tab.account', icon: UserRound },
-  { value: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
-] as const satisfies ReadonlyArray<{ value: TabValue; labelKey: MessageKey; icon: LucideIcon }>;
+import { navFromIds } from '@/lib/section-nav';
 
 // Tab ids alone: `validateSearch` is in the router's eager chunk, which published
 // docs pages load, so it must not read SECTIONS and pull in its icons.
@@ -22,6 +16,14 @@ const TAB_VALUES = ['account', 'appearance'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const isTabValue = (value: unknown): value is TabValue => (TAB_VALUES as readonly unknown[]).includes(value);
+
+// Global account settings only — everything site-specific (members, billing,
+// integrations, notifications, git) now lives per-site under each site's Settings.
+// Keyed by TAB_VALUES, so a tab added to one list and not the other fails typecheck.
+const SECTIONS = navFromIds<TabValue, { labelKey: MessageKey; icon: LucideIcon }>(TAB_VALUES, {
+  account: { labelKey: 'settings.tab.account', icon: UserRound },
+  appearance: { labelKey: 'settings.tab.appearance', icon: Palette },
+});
 
 export const Route = createFileRoute('/app/(dashboard)/settings')({
   component: WorkspaceSettingsPage,
@@ -35,7 +37,7 @@ function WorkspaceSettingsPage() {
   const t = useT();
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const sectionItems = SECTIONS.map((item) => ({ value: item.value, label: t(item.labelKey) }));
+  const sectionItems = SECTIONS.map((item) => ({ value: item.id, label: t(item.labelKey) }));
 
   return (
     <ConfigDirtyProvider report={reportDirty}>
@@ -64,7 +66,7 @@ function WorkspaceSettingsPage() {
                 {SECTIONS.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <SelectItem key={item.value} value={item.value}>
+                    <SelectItem key={item.id} value={item.id}>
                       <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                       {t(item.labelKey)}
                     </SelectItem>
@@ -80,12 +82,12 @@ function WorkspaceSettingsPage() {
               const Icon = item.icon;
               return (
                 <button
-                  key={item.value}
+                  key={item.id}
                   type="button"
-                  onClick={() => navigate({ search: { tab: item.value }, replace: true })}
+                  onClick={() => navigate({ search: { tab: item.id }, replace: true })}
                   className={cn(
                     'flex h-9 cursor-pointer items-center gap-2 rounded-lg px-3 text-start font-medium text-[13.5px] transition-colors',
-                    tab === item.value ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    tab === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
                   <Icon aria-hidden className="size-4 shrink-0" />

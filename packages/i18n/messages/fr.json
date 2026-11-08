@@ -56,7 +56,16 @@
   "dashboard_stats_pageviews": "Pages vues",
   "dashboard_empty_title": "Aucun site pour l'instant",
   "dashboard_empty_body": "Créez un site, rédigez votre premier article et publiez-le : cela prend environ cinq minutes.",
-  "dashboard_pages": "{count} pages",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "dashboard_start_title": "Commencez ici",
   "dashboard_start_body": "Trois étapes pour que votre premier article d'aide atteigne vos lecteurs.",
   "dashboard_start_sample": "Nous avons créé un site d'exemple pour que vous puissiez découvrir l'outil : modifiez-le ou créez le vôtre.",
@@ -717,12 +726,39 @@
   "settings_languages_hiddenbadge": "Caché",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} pages sources",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page source",
+        "form=*": "{count} pages sources"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "Aucune page dans la langue par défaut à comparer",
   "settings_languages_coverage_summary": "{matched} sur {total} pages sources",
   "settings_languages_coverage_percent": "Couverture de {percent} %",
-  "settings_languages_coverage_missing": "{count} manquant",
-  "settings_languages_coverage_extra": "{count} langue uniquement",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} manquante",
+        "form=*": "{count} manquantes"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} propre à cette langue",
+        "form=*": "{count} propres à cette langue"
+      }
+    }
+  ],
   "settings_languages_makedefault": "Par défaut",
   "settings_languages_enabledtoggle": "Servir {label} sur le site publié",
   "settings_languages_delete": "Supprimer la langue",
@@ -897,7 +933,16 @@
   "settings_authentication_reader_audienceallpages": "Laissez chaque page désélectionnée pour accorder l’intégralité du site.",
   "settings_authentication_reader_createaudience": "Créer une audience",
   "settings_authentication_reader_entiresite": "Site entier",
-  "settings_authentication_reader_pagecount": "{count} pages",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} lecteurs",
   "settings_authentication_reader_deleteaudienceconfirm": "Supprimer l'audience {name} et supprimer ses attributions de lecteurs ?",
   "settings_authentication_reader_readerstitle": "Des lecteurs dévoués",
@@ -1155,7 +1200,16 @@
   "settings_apikeys_rotatedtoast": "Clé API renouvelée",
   "settings_apikeys_rotateerror": "Impossible de renouveler la clé API",
   "settings_apikeys_expiry": "Expiration",
-  "settings_apikeys_expirydays": "{days} jours",
+  "settings_apikeys_expirydays": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} jour",
+        "form=*": "{count} jours"
+      }
+    }
+  ],
   "settings_apikeys_expires": "Expire le :",
   "settings_apikeys_lastused": "Dernière utilisation :",
   "settings_apikeys_neverused": "Jamais",
@@ -1274,7 +1328,6 @@
   "auth_verify_verifying": "Vérification de votre e-mail…",
   "auth_verify_verified": "Votre email est vérifié. Redirection…",
   "auth_verify_sentto": "Entrez le code à 6 chiffres que nous avons envoyé",
-  "auth_verify_sentgeneric": "Entrez le code de vérification de votre e-mail pour terminer la configuration de votre compte.",
   "auth_verify_codelabel": "Code de vérification",
   "auth_verify_submit": "Vérifier l'e-mail",
   "auth_verify_submitting": "Vérification…",
@@ -1283,10 +1336,13 @@
   "auth_verify_resending": "Envoi…",
   "auth_verify_continuetoapp": "Ouvrez Nibleaf",
   "auth_verify_verifiedtoast": "E-mail vérifié",
-  "auth_verify_invalidlink": "Ce lien de vérification n'est pas valide ou a expiré.",
   "auth_verify_noemail": "Aucune adresse e-mail à laquelle envoyer.",
   "auth_verify_senttoast": "Un nouveau code de vérification a été envoyé à {email}",
   "auth_verify_senderror": "Le code n'a pas pu être envoyé. Veuillez essayer d'en envoyer un nouveau.",
+  "auth_verify_invalidlinkresend": "Ce lien de vérification est invalide ou a expiré. Envoyez-vous un nouveau code avec le bouton ci-dessous, puis saisissez-le ici.",
+  "auth_verify_invalidlinkenteremail": "Ce lien de vérification est invalide ou a expiré. Saisissez votre adresse e-mail pour recevoir un nouveau code.",
+  "auth_verify_enteremail": "Saisissez l’adresse e-mail utilisée lors de votre inscription : nous vous enverrons un nouveau code de vérification.",
+  "auth_verify_sendcode": "Envoyer un nouveau code",
   "auth_invite_subtitle": "Vous avez été invité sur un site",
   "auth_invite_signinprompt": "Connectez-vous ou créez un compte pour accepter cette invitation.",
   "auth_invite_createaccount": "Créer un compte",
@@ -1682,7 +1738,16 @@
   "settings_exports_workflow_noschedules": "Pas de planning d'archivage",
   "settings_exports_workflow_noschedulesdesc": "Créez-en un lorsque les exportations doivent s’exécuter automatiquement sur plusieurs fuseaux horaires.",
   "settings_exports_workflow_publishedversion": "Publié v{version}",
-  "settings_exports_workflow_pagecount": "{count} pages",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} page",
+        "form=*": "{count} pages"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "Programmé",
   "settings_exports_workflow_manual": "Manuel",
   "settings_exports_workflow_attempt": "Tentative {count}",
@@ -3827,6 +3892,17 @@
   "members_suggestions_label": "Personnes de vos autres sites",
   "members_suggestions_hint": "Saisissez un nom ou un e-mail. Des personnes de vos autres sites vous sont suggérées.",
   "people_choosesite": "Choisissez un site",
+  "gitpreview_title": "Aperçu de la pull request",
+  "gitpreview_snapshot": "Une copie figée de cette pull request · masquée des moteurs de recherche",
+  "gitpreview_openpages": "Pages",
+  "gitpreview_pagesnav": "Pages de l’aperçu",
+  "gitpreview_language": "Langue",
+  "gitpreview_version": "Version",
+  "gitpreview_empty": "Cet aperçu ne contient aucune page à afficher.",
+  "gitpreview_invalidtitle": "Cet aperçu n’est pas disponible",
+  "gitpreview_invalidbody": "Le lien est peut-être incomplet, ou la pull request a été mise à jour ou fermée. Ouvrez le lien d’aperçu le plus récent depuis la pull request.",
+  "gitpreview_retry": "Réessayer",
+  "gitpreview_close": "Fermer",
   "analytics_status_readsdisabled_title": "Les données statistiques sont collectées",
   "analytics_status_readsdisabled_body": "Le serveur collecte les statistiques. Lorsque la migration est prête, son administrateur peut activer les rapports avec ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Votre site a changé depuis votre vérification. Vérifiez à nouveau les modifications avant de publier.",

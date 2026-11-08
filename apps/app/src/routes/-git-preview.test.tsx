@@ -4,8 +4,14 @@ import { act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 
+const mocks = vi.hoisted(() => ({ locale: 'en', invalidate: vi.fn() }));
 vi.mock('@/functions/site', () => ({ getGitPreviewFn: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => mocks.locale, subscribeLanguage: () => () => undefined }));
+vi.mock('@tanstack/react-router', async (original) => ({
+  ...(await original<typeof import('@tanstack/react-router')>()),
+  useRouter: () => ({ invalidate: mocks.invalidate }),
+}));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 import { getGitPreviewFn } from '@/functions/site';
@@ -143,6 +149,136 @@ it('opens a sidebar page at its top', async () => {
   expect(container.querySelector('article h1')?.textContent).toBe('Setup');
   expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 });
   await act(async () => root.unmount());
+});
+
+const translated = (base: SnapshotPage, languageCode: string, title: string, versionId = base.versionId): SnapshotPage => ({
+  ...base,
+  id: `${base.id}-${languageCode}-${versionId}`,
+  languageCode,
+  title,
+  versionId,
+  translationKey: base.id,
+});
+
+// Same titles in two languages and two versions: the old list showed "Setup" twice and "الإعداد" twice.
+const multiScope = {
+  ...snapshot,
+  project: {
+    ...snapshot.project,
+    languages: [...snapshot.project.languages, { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null }],
+  },
+  pages: [
+    { ...page('Setup', 'setup', 'Main setup.', 'branch_main'), translationKey: 'Setup' },
+    translated(page('Setup', 'setup', 'إعداد الرئيسي.', 'branch_main'), 'ar', 'الإعداد'),
+    { ...page('Setup-next', 'setup', 'Next setup.', 'branch_next'), title: 'Setup', translationKey: 'Setup' },
+    translated(page('Setup', 'setup', 'إعداد التالي.', 'branch_next'), 'ar', 'الإعداد'),
+  ],
+} as SiteSnapshot;
+
+const mount = async (data: SiteSnapshot) => {
+  window.scrollTo = vi.fn();
+  window.history.replaceState(null, '', '/git-preview/token');
+  vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot: data } as never);
+  const Page = Route.options.component as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Page />));
+  return { container, root };
+};
+const navButtons = (container: ParentNode, label = 'Preview pages') =>
+  [...container.querySelectorAll<HTMLButtonElement>(`nav[aria-label="${label}"] button`)].map((button) => button.textContent);
+const choose = async (select: HTMLSelectElement | null | undefined, value: string) => {
+  if (!select) throw new Error('Missing scope picker');
+  await act(async () => {
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+};
+
+it('shows one language and version at a time, with the scope named on the page', async () => {
+  const { container, root } = await mount(multiScope);
+  expect(navButtons(container)).toEqual(['Setup']);
+  expect(container.querySelector('article h1')?.textContent).toBe('Setup');
+  expect(container.querySelector('article')?.textContent).toContain('Main setup.');
+  expect(container.querySelector('article')?.textContent).toContain('English · main');
+
+  const [language, version] = container.querySelectorAll('select');
+  await choose(version, 'branch_next');
+  expect(container.querySelector('article')?.textContent).toContain('Next setup.');
+  expect(container.querySelector('article')?.textContent).toContain('English · next');
+
+  // Switching language keeps the same page, in that language and version.
+  await choose(language, 'ar');
+  expect(navButtons(container, 'صفحات المعاينة')).toEqual(['الإعداد']);
+  expect(container.querySelector('article h1')?.textContent).toBe('الإعداد');
+  expect(container.querySelector('article')?.textContent).toContain('إعداد التالي.');
+  await act(async () => root.unmount());
+});
+
+it('sets the page language and direction, and speaks the shell in that language', async () => {
+  const { container, root } = await mount(multiScope);
+  const shell = container.firstElementChild;
+  expect(shell?.getAttribute('lang')).toBe('en');
+  expect(shell?.getAttribute('dir')).toBe('ltr');
+  expect(container.textContent).toContain('Pull request preview');
+
+  await choose(container.querySelector('select'), 'ar');
+  expect(shell?.getAttribute('lang')).toBe('ar');
+  expect(shell?.getAttribute('dir')).toBe('rtl');
+  expect(container.textContent).toContain('معاينة طلب الدمج');
+  expect(container.textContent).not.toContain('Pull request preview');
+  await act(async () => root.unmount());
+});
+
+it('opens the page list as a drawer on phones and closes it after a page is picked', async () => {
+  const { container, root } = await mount(snapshot);
+  const open = [...container.querySelectorAll<HTMLButtonElement>('header button')].find((button) => button.textContent?.includes('Pages'));
+  expect(open?.getAttribute('aria-expanded')).toBe('false');
+  await act(async () => open?.click());
+  const drawer = await vi.waitFor(() => {
+    const element = document.querySelector<HTMLElement>('[data-slot="sheet-content"]');
+    if (!element) throw new Error('drawer not open');
+    return element;
+  });
+  expect(open?.getAttribute('aria-expanded')).toBe('true');
+  expect(navButtons(drawer)).toEqual(['Intro', 'Setup']);
+
+  const setup = [...drawer.querySelectorAll<HTMLButtonElement>('nav button')].find((button) => button.textContent === 'Setup');
+  await act(async () => setup?.click());
+  expect(container.querySelector('article h1')?.textContent).toBe('Setup');
+  await vi.waitFor(() => expect(open?.getAttribute('aria-expanded')).toBe('false'));
+  await act(async () => root.unmount());
+});
+
+it('says there is nothing to show for a snapshot without visible pages', async () => {
+  const { container, root } = await mount({ ...snapshot, pages: [{ ...page('Hidden', 'hidden', ''), hidden: true }] } as SiteSnapshot);
+  expect(container.querySelector('article')?.textContent).toBe('This preview has no pages to show.');
+  await act(async () => root.unmount());
+});
+
+it.each([
+  ['en', 'ltr', 'This preview isn’t available', 'Try again'],
+  ['ar', 'rtl', 'هذه المعاينة غير متاحة', 'أعد المحاولة'],
+])('explains an invalid or expired link in %s and offers to try again', async (locale, dir, title, retry) => {
+  mocks.locale = locale;
+  const Unavailable = Route.options.errorComponent as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Unavailable />));
+  expect(container.querySelector('main')?.getAttribute('dir')).toBe(dir);
+  expect(container.querySelector('h1')?.textContent).toBe(title);
+  await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === retry)?.click());
+  expect(mocks.invalidate).toHaveBeenCalledOnce();
+  mocks.invalidate.mockClear();
+  mocks.locale = 'en';
+  await act(async () => root.unmount());
+});
+
+it('stays out of search indexes', () => {
+  const head = (Route.options.head as () => { meta: Array<Record<string, string>> })();
+  expect(head.meta).toContainEqual({ name: 'robots', content: 'noindex,nofollow' });
 });
 
 it('shows a log-in screen instead of the drafts when the site is not public', async () => {

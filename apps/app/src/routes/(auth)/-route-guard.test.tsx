@@ -80,6 +80,13 @@ describe('(auth) guard for a visitor who has just signed in', () => {
     expect(mocks.navigateTo).not.toHaveBeenCalled();
   });
 
+  it('returns to the dashboard page that asked for sign-in, query included', async () => {
+    mocks.location = { pathname: '/sign-in', searchStr: `?next=${encodeURIComponent('/app/projects/p1/settings?section=members')}` };
+    await render();
+    expect(mocks.replace).toHaveBeenCalledWith('/app/projects/p1/settings?section=members');
+    expect(mocks.navigateTo).not.toHaveBeenCalled();
+  });
+
   it('still sends other signed-in visitors to the dashboard', async () => {
     mocks.location = { pathname: '/sign-in', searchStr: '' };
     await render();

@@ -20,6 +20,12 @@ export const safeAppPath = (value: unknown): string | null => {
   return /^\/[^\s]*$/.test(value) ? value : null;
 };
 
+/** A dashboard page (`/app`, `/app/…`) to return to after signing in, with its query; anything else is dropped. */
+export const safeReturnPath = (value: unknown): string | null => {
+  const path = safeAppPath(value);
+  return path && /^\/app(?:[/?#]|$)/.test(path) ? path : null;
+};
+
 /** Copy text with the standard Clipboard API. */
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
@@ -87,11 +93,20 @@ export function clearPendingInvitation(): void {
 
 /**
  * Where a visitor goes right after authenticating: the invitation named in the
- * auth page's URL, else the remembered pending destination, else nothing (the
- * caller's default). The (auth) layout's redirect and the sign-in/up pages use
- * the same answer, so a sign-in never races two different destinations.
+ * auth page's URL, else the dashboard page that sent them to sign in (`next`),
+ * else the remembered pending destination, else nothing (the caller's default).
+ * The (auth) layout's redirect and the sign-in/up pages use the same answer, so
+ * a sign-in never races two different destinations.
  */
-export function afterAuthDestination(search: { invite?: string | null } | undefined): string | null {
+export function afterAuthDestination(search: { invite?: string | null; next?: string | null } | undefined): string | null {
   if (search?.invite) return invitationPath(search.invite);
+  const next = safeReturnPath(search?.next);
+  if (next) return next;
   return typeof window === 'undefined' ? null : readPendingDestination();
+}
+
+/** The `next` search value for an auth page, from the URL the visitor asked for (`/app` alone needs none). */
+export function signInReturnSearch(href: string): { next?: string } {
+  const next = safeReturnPath(href);
+  return next && next !== '/app' && next !== '/app/' ? { next } : {};
 }

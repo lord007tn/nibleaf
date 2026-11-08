@@ -56,7 +56,16 @@
   "dashboard_stats_pageviews": "صفحہ کے نظارے",
   "dashboard_empty_title": "ابھی تک کوئی سائٹ نہیں",
   "dashboard_empty_body": "ایک سائٹ بنائیں، اپنا پہلا مضمون لکھیں اور اسے شائع کریں — اس میں تقریباً پانچ منٹ لگتے ہیں۔",
-  "dashboard_pages": "{count} صفحات",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ",
+        "form=*": "{count} صفحات"
+      }
+    }
+  ],
   "dashboard_start_title": "یہاں سے شروع کریں",
   "dashboard_start_body": "تین مراحل میں اپنا پہلا مدد کا مضمون قارئین تک پہنچائیں۔",
   "dashboard_start_sample": "ہم نے ایک نمونہ سائٹ بنائی ہے تاکہ آپ دیکھ سکیں — اسے ترمیم کریں یا اپنی سائٹ بنائیں۔",
@@ -717,12 +726,39 @@
   "settings_languages_hiddenbadge": "پوشیدہ",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} ماخذ صفحات",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} ماخذ صفحہ",
+        "form=*": "{count} ماخذ صفحات"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "موازنہ کرنے کے لیے پہلے سے طے شدہ زبان کے صفحات نہیں ہیں۔",
   "settings_languages_coverage_summary": "{matched} از {total} ماخذ صفحات",
   "settings_languages_coverage_percent": "{percent}% کوریج",
-  "settings_languages_coverage_missing": "{count} غائب ہے۔",
-  "settings_languages_coverage_extra": "{count} صرف زبان",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ موجود نہیں",
+        "form=*": "{count} صفحات موجود نہیں"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ صرف اس زبان میں",
+        "form=*": "{count} صفحات صرف اس زبان میں"
+      }
+    }
+  ],
   "settings_languages_makedefault": "پہلے سے طے شدہ بنائیں",
   "settings_languages_enabledtoggle": "شائع شدہ سائٹ پر {label} پیش کریں۔",
   "settings_languages_delete": "زبان کو حذف کریں۔",
@@ -897,7 +933,16 @@
   "settings_authentication_reader_audienceallpages": "پوری سائٹ کو دینے کے لیے ہر صفحہ کو غیر منتخب چھوڑ دیں۔",
   "settings_authentication_reader_createaudience": "سامعین بنائیں",
   "settings_authentication_reader_entiresite": "پوری سائٹ",
-  "settings_authentication_reader_pagecount": "{count} صفحات",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ",
+        "form=*": "{count} صفحات"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} قارئین",
   "settings_authentication_reader_deleteaudienceconfirm": "{name} سامعین کو حذف کریں اور اس کے ریڈر اسائنمنٹس کو ہٹائیں؟",
   "settings_authentication_reader_readerstitle": "سرشار قارئین",
@@ -1155,7 +1200,7 @@
   "settings_apikeys_rotatedtoast": "API کلید تبدیل کر دی گئی",
   "settings_apikeys_rotateerror": "API کلید تبدیل نہیں کی جا سکی",
   "settings_apikeys_expiry": "میعاد",
-  "settings_apikeys_expirydays": "{days} دن",
+  "settings_apikeys_expirydays": "{count} دن",
   "settings_apikeys_expires": "میعاد ختم:",
   "settings_apikeys_lastused": "آخری استعمال:",
   "settings_apikeys_neverused": "کبھی نہیں",
@@ -1274,7 +1319,6 @@
   "auth_verify_verifying": "آپ کی ای میل کی توثیق ہو رہی ہے…",
   "auth_verify_verified": "آپ کا ای میل تصدیق شدہ ہے۔ ری ڈائریکٹ ہو رہا ہے…",
   "auth_verify_sentto": "6 ہندسوں کا کوڈ درج کریں جسے ہم نے بھیجا ہے۔",
-  "auth_verify_sentgeneric": "اپنے اکاؤنٹ کا سیٹ اپ مکمل کرنے کے لیے اپنے ای میل سے تصدیقی کوڈ درج کریں۔",
   "auth_verify_codelabel": "تصدیقی کوڈ",
   "auth_verify_submit": "ای میل کی تصدیق کریں۔",
   "auth_verify_submitting": "تصدیق ہو رہی ہے…",
@@ -1283,10 +1327,13 @@
   "auth_verify_resending": "بھیج رہا ہے…",
   "auth_verify_continuetoapp": "کھولیں Nibleaf",
   "auth_verify_verifiedtoast": "ای میل کی تصدیق ہو گئی۔",
-  "auth_verify_invalidlink": "یہ تصدیقی لنک غلط ہے یا اس کی میعاد ختم ہو چکی ہے۔",
   "auth_verify_noemail": "بھیجنے کے لیے کوئی ای میل پتہ نہیں۔",
   "auth_verify_senttoast": "ایک نیا تصدیقی کوڈ {email} پر بھیجا گیا",
   "auth_verify_senderror": "کوڈ بھیجا نہیں جا سکا۔ براہ کرم ایک نیا بھیجنے کی کوشش کریں۔",
+  "auth_verify_invalidlinkresend": "یہ تصدیقی لنک غلط ہے یا اس کی میعاد ختم ہو چکی ہے۔ نیچے دیے گئے بٹن سے خود کو نیا کوڈ بھیجیں، پھر اسے یہاں درج کریں۔",
+  "auth_verify_invalidlinkenteremail": "یہ تصدیقی لنک غلط ہے یا اس کی میعاد ختم ہو چکی ہے۔ نیا کوڈ حاصل کرنے کے لیے اپنا ای میل پتہ درج کریں۔",
+  "auth_verify_enteremail": "وہ ای میل پتہ درج کریں جس سے آپ نے سائن اپ کیا تھا، اور ہم آپ کو ایک نیا تصدیقی کوڈ بھیجیں گے۔",
+  "auth_verify_sendcode": "نیا کوڈ بھیجیں",
   "auth_invite_subtitle": "آپ کو ایک سائٹ پر مدعو کیا گیا ہے",
   "auth_invite_signinprompt": "اس دعوت کو قبول کرنے کے لیے لاگ ان کریں یا ایک اکاؤنٹ بنائیں۔",
   "auth_invite_createaccount": "ایک اکاؤنٹ بنائیں",
@@ -1682,7 +1729,16 @@
   "settings_exports_workflow_noschedules": "کوئی آرکائیو شیڈول نہیں ہے۔",
   "settings_exports_workflow_noschedulesdesc": "جب برآمدات کو ٹائم زونز میں خود بخود چلنے کی ضرورت ہو تو ایک بنائیں۔",
   "settings_exports_workflow_publishedversion": "شائع شدہ v{version}",
-  "settings_exports_workflow_pagecount": "{count} صفحات",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} صفحہ",
+        "form=*": "{count} صفحات"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "طے شدہ",
   "settings_exports_workflow_manual": "دستی",
   "settings_exports_workflow_attempt": "کوشش {count}",
@@ -3827,6 +3883,17 @@
   "members_suggestions_label": "آپ کی دوسری سائٹس کے افراد",
   "members_suggestions_hint": "نام یا ای میل لکھیں۔ آپ کی دوسری سائٹس کے افراد تجویز کیے جائیں گے۔",
   "people_choosesite": "سائٹ منتخب کریں",
+  "gitpreview_title": "پل ریکویسٹ کا پیش منظر",
+  "gitpreview_snapshot": "اس پل ریکویسٹ کی ایک مستقل نقل · سرچ انجنوں سے پوشیدہ",
+  "gitpreview_openpages": "صفحات",
+  "gitpreview_pagesnav": "پیش منظر کے صفحات",
+  "gitpreview_language": "زبان",
+  "gitpreview_version": "ورژن",
+  "gitpreview_empty": "اس پیش منظر میں دکھانے کے لیے کوئی صفحہ نہیں ہے۔",
+  "gitpreview_invalidtitle": "یہ پیش منظر دستیاب نہیں ہے",
+  "gitpreview_invalidbody": "ہو سکتا ہے لنک نامکمل ہو، یا پل ریکویسٹ اپ ڈیٹ یا بند کر دی گئی ہو۔ پل ریکویسٹ سے پیش منظر کا تازہ ترین لنک کھولیں۔",
+  "gitpreview_retry": "دوبارہ کوشش کریں",
+  "gitpreview_close": "بند کریں",
   "analytics_status_readsdisabled_title": "تجزیاتی ڈیٹا جمع کیا جا رہا ہے",
   "analytics_status_readsdisabled_body": "سرور تجزیاتی ڈیٹا جمع کر رہا ہے۔ منتقلی تیار ہونے پر منتظم ANALYTICS_MODE=clickhouse سے رپورٹس فعال کر سکتا ہے۔",
   "publish_reviewchanged": "جائزے کے بعد آپ کی سائٹ بدل گئی ہے۔ شائع کرنے سے پہلے تبدیلیوں کا دوبارہ جائزہ لیں۔",

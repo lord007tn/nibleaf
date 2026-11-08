@@ -11,6 +11,7 @@ import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import { useFormatters } from '@/lib/format';
 import { SectionHeader, SettingsListSkeleton, sortLanguagesDefaultFirst } from './shared';
 
 /** A small uppercase chip (direction / default / hidden badges). */
@@ -35,6 +36,7 @@ function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 
  *  be disabled or deleted. */
 export function LanguagesSection({ project }: { project: Project }) {
   const t = useT();
+  const { count } = useFormatters();
   const confirm = useConfirm();
   const query = useLanguages(project.id);
   const { data: languages } = query;
@@ -105,7 +107,7 @@ export function LanguagesSection({ project }: { project: Project }) {
                     <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
                       <span>
                         {language.isDefault
-                          ? t('settings.languages.coverage.sourcePages', { count: coverage.pageCount })
+                          ? t('settings.languages.coverage.sourcePages', count(coverage.pageCount))
                           : coverage.sourcePageCount === 0
                             ? t('settings.languages.coverage.noSourcePages')
                             : t('settings.languages.coverage.summary', {
@@ -130,10 +132,10 @@ export function LanguagesSection({ project }: { project: Project }) {
                       ) : null}
                       {coverage.missingPages > 0 ? (
                         <span className="font-medium text-amber-600 dark:text-amber-400">
-                          {t('settings.languages.coverage.missing', { count: coverage.missingPages })}
+                          {t('settings.languages.coverage.missing', count(coverage.missingPages))}
                         </span>
                       ) : null}
-                      {coverage.extraPages > 0 ? <span>{t('settings.languages.coverage.extra', { count: coverage.extraPages })}</span> : null}
+                      {coverage.extraPages > 0 ? <span>{t('settings.languages.coverage.extra', count(coverage.extraPages))}</span> : null}
                     </div>
                   ) : null}
                 </div>

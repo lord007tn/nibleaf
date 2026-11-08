@@ -46,7 +46,7 @@ const WAIT_FOR_APP_MS = 10 * 60_000;
 export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
   const confirm = useConfirm();
-  const { number } = useFormatters();
+  const { number, count } = useFormatters();
   // The new key's id and the server time after which use counts as "your AI
   // app connected": 0 for a fresh key (never used), then the end of the
   // dashboard's own test so the test itself doesn't count.
@@ -96,7 +96,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     setSecret(value);
   };
   // One array feeds both the trigger label (`items`) and the rendered options so they can't drift.
-  const expiryOptions = EXPIRY_OPTIONS.map((days) => ({ value: String(days), label: t('settings.apiKeys.expiryDays', { days: number(days) }) }));
+  const expiryOptions = EXPIRY_OPTIONS.map((days) => ({ value: String(days), label: t('settings.apiKeys.expiryDays', count(days)) }));
 
   const toggleScope = (scope: IssuableMcpScope) => {
     if (scope === 'mcp:connect') return;

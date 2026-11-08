@@ -1,4 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Input } from '@nibleaf/design-system/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
@@ -20,6 +21,8 @@ export const Route = createFileRoute('/(auth)/verify-email')({
         email: z.string().optional().catch(undefined),
         token: z.string().optional().catch(undefined),
         invite: z.string().optional().catch(undefined),
+        // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
+        next: z.string().optional().catch(undefined),
         delivery: z.enum(['sent', 'failed']).optional().catch(undefined),
       })
       .parse(search),
@@ -31,18 +34,26 @@ function VerifyEmailPage() {
   const router = useRouter();
   const search = Route.useSearch();
   const { data: session } = useSession();
-  const email = search.email || session?.user?.email || '';
+  // With no address in the link or the session, the visitor types one to get a code.
+  const [typedEmail, setTypedEmail] = useState('');
+  const [codeEmail, setCodeEmail] = useState('');
+  const email = search.email || session?.user?.email || codeEmail;
   const [otp, setOtp] = useState('');
   const [error, setError] = useState<string | null>(search.delivery === 'failed' ? t('auth.verify.sendError') : null);
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(Boolean(search.token));
   const [verified, setVerified] = useState(false);
+  // An old link that failed: the page goes on with a code instead of waiting on the dead link.
+  const [linkFailed, setLinkFailed] = useState(false);
+  const [linkNotice, setLinkNotice] = useState(false);
+  const checkingLink = Boolean(search.token) && !linkFailed;
+  const shownError = error ?? (linkNotice ? t(email ? 'auth.verify.invalidLinkResend' : 'auth.verify.invalidLinkEnterEmail') : null);
 
   const continueAfterVerification = useCallback(() => {
-    const destination = afterAuthDestination({ invite: search.invite });
+    const destination = afterAuthDestination({ invite: search.invite, next: search.next });
     if (destination) router.history.push(destination);
     else navigate({ to: '/app' });
-  }, [navigate, router, search.invite]);
+  }, [navigate, router, search.invite, search.next]);
 
   // Keep old link-based verification emails valid while new signups use OTP.
   useEffect(() => {
@@ -56,7 +67,8 @@ function VerifyEmailPage() {
         return;
       }
       if (result.error) {
-        setError(t('auth.verify.invalidLink'));
+        setLinkFailed(true);
+        setLinkNotice(true);
         setVerifying(false);
         return;
       }
@@ -70,20 +82,23 @@ function VerifyEmailPage() {
   }, [search.token, t, continueAfterVerification]);
 
   const resend = async () => {
-    if (!email) {
+    const target = email || typedEmail.trim().toLowerCase();
+    if (!target) {
       setError(t('auth.verify.noEmail'));
       return;
     }
     setError(null);
     setSending(true);
-    const result = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+    const result = await authClient.emailOtp.sendVerificationOtp({ email: target, type: 'email-verification' });
     setSending(false);
     if (result.error) {
       setError(t('auth.verify.sendError'));
       return;
     }
     setOtp('');
-    toast.success(t('auth.verify.sentToast', { email }));
+    setLinkNotice(false);
+    setCodeEmail(target);
+    toast.success(t('auth.verify.sentToast', { email: target }));
   };
 
   const verifyCode = async () => {
@@ -92,6 +107,7 @@ function VerifyEmailPage() {
       return;
     }
     setError(null);
+    setLinkNotice(false);
     setVerifying(true);
     const result = await authClient.emailOtp.verifyEmail({ email, otp });
     if (result.error) {
@@ -104,6 +120,12 @@ function VerifyEmailPage() {
     continueAfterVerification();
   };
 
+  const errorAlert = shownError ? (
+    <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
+      {shownError}
+    </p>
+  ) : null;
+
   return (
     <AuthLayout subtitle={t('auth.verify.subtitle')}>
       <div className="text-center">
@@ -113,7 +135,7 @@ function VerifyEmailPage() {
         {/* The layout's subtitle is the page h1; this is its heading level below. */}
         <h2 className="font-semibold text-2xl tracking-tight">{t('auth.verify.title')}</h2>
         <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-          {verifying ? (
+          {checkingLink ? (
             t('auth.verify.verifying')
           ) : verified ? (
             t('auth.verify.verified')
@@ -122,73 +144,96 @@ function VerifyEmailPage() {
               {t('auth.verify.sentTo')} <span className="font-medium text-foreground">{email}</span>
             </>
           ) : (
-            t('auth.verify.sentGeneric')
+            t('auth.verify.enterEmail')
           )}
         </p>
       </div>
 
-      {email && !search.token ? (
+      {checkingLink || verified ? null : email ? (
+        <>
+          <form
+            className="mt-6 flex flex-col gap-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void verifyCode();
+            }}
+          >
+            <div className="flex flex-col items-center gap-2" dir="ltr">
+              <Label htmlFor="verification-code">{t('auth.verify.codeLabel')}</Label>
+              <InputOTP
+                aria-invalid={Boolean(shownError)}
+                autoComplete="one-time-code"
+                autoFocus
+                containerClassName="justify-center"
+                disabled={verifying}
+                id="verification-code"
+                inputMode="numeric"
+                maxLength={6}
+                onChange={setOtp}
+                onComplete={verifyCode}
+                value={otp}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            {errorAlert}
+            <Button className="w-full" disabled={otp.length !== 6} loading={verifying} loadingText={t('auth.verify.submitting')} type="submit">
+              {t('auth.verify.submit')}
+            </Button>
+          </form>
+          <Button
+            className="mt-3 w-full"
+            disabled={verifying}
+            loading={sending}
+            loadingText={t('auth.verify.resending')}
+            onClick={resend}
+            type="button"
+            variant="outline"
+          >
+            {t('auth.verify.resend')}
+          </Button>
+        </>
+      ) : (
         <form
           className="mt-6 flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault();
-            void verifyCode();
+            void resend();
           }}
         >
-          <div className="flex flex-col items-center gap-2" dir="ltr">
-            <Label htmlFor="verification-code">{t('auth.verify.codeLabel')}</Label>
-            <InputOTP
-              aria-invalid={Boolean(error)}
-              autoComplete="one-time-code"
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="verification-email">{t('auth.field.email')}</Label>
+            <Input
+              autoComplete="email"
               autoFocus
-              containerClassName="justify-center"
-              disabled={verifying}
-              id="verification-code"
-              inputMode="numeric"
-              maxLength={6}
-              onChange={setOtp}
-              onComplete={verifyCode}
-              value={otp}
-            >
-              <InputOTPGroup>
-                <InputOTPSlot index={0} />
-                <InputOTPSlot index={1} />
-                <InputOTPSlot index={2} />
-                <InputOTPSlot index={3} />
-                <InputOTPSlot index={4} />
-                <InputOTPSlot index={5} />
-              </InputOTPGroup>
-            </InputOTP>
+              id="verification-email"
+              onChange={(event) => setTypedEmail(event.target.value)}
+              placeholder="you@company.com"
+              required
+              type="email"
+              value={typedEmail}
+            />
           </div>
-          {error ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <Button className="w-full" disabled={otp.length !== 6} loading={verifying} loadingText={t('auth.verify.submitting')} type="submit">
-            {t('auth.verify.submit')}
+          {errorAlert}
+          <Button className="w-full" disabled={!typedEmail.trim()} loading={sending} loadingText={t('auth.verify.resending')} type="submit">
+            {t('auth.verify.sendCode')}
           </Button>
         </form>
-      ) : error ? (
-        <p className="mt-6 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-destructive text-sm" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <Button
-        className="mt-3 w-full"
-        disabled={verifying || !email}
-        loading={sending}
-        loadingText={t('auth.verify.resending')}
-        onClick={resend}
-        type="button"
-        variant="outline"
-      >
-        {t('auth.verify.resend')}
-      </Button>
+      )}
 
       <div className="mt-5 text-center text-muted-foreground text-sm">
-        <Link className="hover:text-primary hover:underline" search={{ email, invite: search.invite }} to="/sign-in">
+        <Link
+          className="hover:text-primary hover:underline"
+          search={{ email: email || undefined, invite: search.invite, next: search.next }}
+          to="/sign-in"
+        >
           {t('auth.backToSignIn')}
         </Link>
       </div>

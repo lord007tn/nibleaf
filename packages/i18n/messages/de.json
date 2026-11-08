@@ -56,7 +56,16 @@
   "dashboard_stats_pageviews": "Seitenaufrufe",
   "dashboard_empty_title": "Noch keine Websites",
   "dashboard_empty_body": "Erstellen Sie eine Website, schreiben Sie Ihren ersten Artikel und veröffentlichen Sie ihn – das dauert etwa fünf Minuten.",
-  "dashboard_pages": "{count} Seiten",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite",
+        "form=*": "{count} Seiten"
+      }
+    }
+  ],
   "dashboard_start_title": "Hier starten",
   "dashboard_start_body": "Drei Schritte, bis Ihr erster Hilfeartikel bei den Lesern ankommt.",
   "dashboard_start_sample": "Wir haben eine Beispiel-Website erstellt, damit Sie sich umsehen können – bearbeiten Sie sie oder erstellen Sie Ihre eigene.",
@@ -717,12 +726,39 @@
   "settings_languages_hiddenbadge": "Versteckt",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} Quellseiten",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Quellseite",
+        "form=*": "{count} Quellseiten"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "Keine Seiten in der Standardsprache zum Vergleichen",
   "settings_languages_coverage_summary": "{matched} von {total} Quellseiten",
   "settings_languages_coverage_percent": "{percent}% Abdeckung",
-  "settings_languages_coverage_missing": "{count} fehlt",
-  "settings_languages_coverage_extra": "{count} Nur Sprache",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} fehlt",
+        "form=*": "{count} fehlen"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} nur in dieser Sprache",
+        "form=*": "{count} nur in dieser Sprache"
+      }
+    }
+  ],
   "settings_languages_makedefault": "Als Standard festlegen",
   "settings_languages_enabledtoggle": "Stellen Sie {label} auf der veröffentlichten Website bereit",
   "settings_languages_delete": "Sprache löschen",
@@ -897,7 +933,16 @@
   "settings_authentication_reader_audienceallpages": "Lassen Sie jede Seite deaktiviert, um die gesamte Site zu gewähren.",
   "settings_authentication_reader_createaudience": "Publikum erstellen",
   "settings_authentication_reader_entiresite": "Gesamte Website",
-  "settings_authentication_reader_pagecount": "{count} Seiten",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite",
+        "form=*": "{count} Seiten"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} Leser",
   "settings_authentication_reader_deleteaudienceconfirm": "Die Zielgruppe {name} löschen und ihre Leserzuweisungen entfernen?",
   "settings_authentication_reader_readerstitle": "Engagierte Leser",
@@ -1155,7 +1200,16 @@
   "settings_apikeys_rotatedtoast": "API-Schlüssel rotiert",
   "settings_apikeys_rotateerror": "Der API-Schlüssel konnte nicht rotiert werden",
   "settings_apikeys_expiry": "Ablauf",
-  "settings_apikeys_expirydays": "{days} Tage",
+  "settings_apikeys_expirydays": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Tag",
+        "form=*": "{count} Tage"
+      }
+    }
+  ],
   "settings_apikeys_expires": "Läuft ab:",
   "settings_apikeys_lastused": "Zuletzt verwendet:",
   "settings_apikeys_neverused": "Nie",
@@ -1274,7 +1328,6 @@
   "auth_verify_verifying": "Ihre E-Mail-Adresse wird überprüft …",
   "auth_verify_verified": "Ihre E-Mail-Adresse ist bestätigt. Weiterleitung…",
   "auth_verify_sentto": "Geben Sie den 6-stelligen Code ein, den wir Ihnen gesendet haben",
-  "auth_verify_sentgeneric": "Geben Sie den Bestätigungscode aus Ihrer E-Mail ein, um die Einrichtung Ihres Kontos abzuschließen.",
   "auth_verify_codelabel": "Bestätigungscode",
   "auth_verify_submit": "E-Mail bestätigen",
   "auth_verify_submitting": "Überprüfen…",
@@ -1283,10 +1336,13 @@
   "auth_verify_resending": "Senden…",
   "auth_verify_continuetoapp": "Öffnen Sie Nibleaf",
   "auth_verify_verifiedtoast": "E-Mail bestätigt",
-  "auth_verify_invalidlink": "Dieser Bestätigungslink ist ungültig oder abgelaufen.",
   "auth_verify_noemail": "Keine E-Mail-Adresse zum Senden vorhanden.",
   "auth_verify_senttoast": "Ein neuer Bestätigungscode wurde an {email} gesendet.",
   "auth_verify_senderror": "Der Code konnte nicht gesendet werden. Bitte versuchen Sie, eine neue zu senden.",
+  "auth_verify_invalidlinkresend": "Dieser Bestätigungslink ist ungültig oder abgelaufen. Senden Sie sich mit der Schaltfläche unten einen neuen Code und geben Sie ihn hier ein.",
+  "auth_verify_invalidlinkenteremail": "Dieser Bestätigungslink ist ungültig oder abgelaufen. Geben Sie Ihre E-Mail-Adresse ein, um einen neuen Code zu erhalten.",
+  "auth_verify_enteremail": "Geben Sie die E-Mail-Adresse ein, mit der Sie sich registriert haben. Wir senden Ihnen dann einen neuen Bestätigungscode.",
+  "auth_verify_sendcode": "Neuen Code senden",
   "auth_invite_subtitle": "Sie wurden zu einer Website eingeladen",
   "auth_invite_signinprompt": "Melden Sie sich an oder erstellen Sie ein Konto, um diese Einladung anzunehmen.",
   "auth_invite_createaccount": "Erstellen Sie ein Konto",
@@ -1682,7 +1738,16 @@
   "settings_exports_workflow_noschedules": "Keine Archivierungspläne",
   "settings_exports_workflow_noschedulesdesc": "Erstellen Sie eine, wenn Exporte automatisch über Zeitzonen hinweg ausgeführt werden müssen.",
   "settings_exports_workflow_publishedversion": "Veröffentlicht v{version}",
-  "settings_exports_workflow_pagecount": "{count} Seiten",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} Seite",
+        "form=*": "{count} Seiten"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "Geplant",
   "settings_exports_workflow_manual": "Handbuch",
   "settings_exports_workflow_attempt": "Versuch {count}",
@@ -3827,6 +3892,17 @@
   "members_suggestions_label": "Personen von Ihren anderen Websites",
   "members_suggestions_hint": "Geben Sie einen Namen oder eine E-Mail ein. Personen von Ihren anderen Websites werden vorgeschlagen.",
   "people_choosesite": "Website auswählen",
+  "gitpreview_title": "Pull-Request-Vorschau",
+  "gitpreview_snapshot": "Eine feste Kopie dieses Pull-Requests · für Suchmaschinen verborgen",
+  "gitpreview_openpages": "Seiten",
+  "gitpreview_pagesnav": "Seiten der Vorschau",
+  "gitpreview_language": "Sprache",
+  "gitpreview_version": "Version",
+  "gitpreview_empty": "Diese Vorschau enthält keine anzeigbaren Seiten.",
+  "gitpreview_invalidtitle": "Diese Vorschau ist nicht verfügbar",
+  "gitpreview_invalidbody": "Der Link ist möglicherweise unvollständig, oder der Pull-Request wurde aktualisiert oder geschlossen. Öffnen Sie den neuesten Vorschaulink im Pull-Request.",
+  "gitpreview_retry": "Erneut versuchen",
+  "gitpreview_close": "Schließen",
   "analytics_status_readsdisabled_title": "Analysedaten werden erfasst",
   "analytics_status_readsdisabled_body": "Der Server erfasst Analysedaten. Sobald die Migration bereit ist, kann die Serververwaltung Berichte mit ANALYTICS_MODE=clickhouse aktivieren.",
   "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",

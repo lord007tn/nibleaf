@@ -23,6 +23,8 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     z
       .object({
         invite: z.string().optional().catch(undefined),
+        // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
+        next: z.string().optional().catch(undefined),
         email: z.string().optional().catch(undefined),
         // An MCP OAuth request handed off by the API (see lib/mcp-oauth).
         oauth_request: z.string().optional().catch(undefined),
@@ -250,7 +252,7 @@ function SignInPage() {
           </p>
           <p className="mt-5 text-center text-muted-foreground text-sm" hidden={connectingApp}>
             {t('auth.signIn.noAccount')}{' '}
-            <Link className="text-primary hover:underline" to="/sign-up">
+            <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-up">
               {t('auth.signIn.createOne')}
             </Link>
           </p>

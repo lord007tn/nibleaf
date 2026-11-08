@@ -56,7 +56,18 @@
   "dashboard_stats_pageviews": "Просмотры страниц",
   "dashboard_empty_title": "Пока нет сайтов",
   "dashboard_empty_body": "Создайте сайт, напишите первую статью и опубликуйте её — это займёт около пяти минут.",
-  "dashboard_pages": "{count} страниц",
+  "dashboard_pages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница",
+        "form=few": "{count} страницы",
+        "form=many": "{count} страниц",
+        "form=*": "{count} страницы"
+      }
+    }
+  ],
   "dashboard_start_title": "С чего начать",
   "dashboard_start_body": "Три шага, чтобы ваша первая справочная статья дошла до читателей.",
   "dashboard_start_sample": "Мы создали пример сайта, чтобы вы могли осмотреться, — измените его или создайте свой.",
@@ -717,12 +728,45 @@
   "settings_languages_hiddenbadge": "Скрытый",
   "settings_languages_direction_ltr": "LTR",
   "settings_languages_direction_rtl": "RTL",
-  "settings_languages_coverage_sourcepages": "{count} исходных страниц",
+  "settings_languages_coverage_sourcepages": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} исходная страница",
+        "form=few": "{count} исходные страницы",
+        "form=many": "{count} исходных страниц",
+        "form=*": "{count} исходной страницы"
+      }
+    }
+  ],
   "settings_languages_coverage_nosourcepages": "Нет страниц на языке по умолчанию для сравнения.",
   "settings_languages_coverage_summary": "{matched} из {total} исходных страниц",
   "settings_languages_coverage_percent": "Покрытие {percent}%",
-  "settings_languages_coverage_missing": "{count} отсутствует",
-  "settings_languages_coverage_extra": "{count} только для языка",
+  "settings_languages_coverage_missing": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница отсутствует",
+        "form=few": "{count} страницы отсутствуют",
+        "form=many": "{count} страниц отсутствуют",
+        "form=*": "{count} страницы отсутствуют"
+      }
+    }
+  ],
+  "settings_languages_coverage_extra": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница только на этом языке",
+        "form=few": "{count} страницы только на этом языке",
+        "form=many": "{count} страниц только на этом языке",
+        "form=*": "{count} страницы только на этом языке"
+      }
+    }
+  ],
   "settings_languages_makedefault": "Сделать по умолчанию",
   "settings_languages_enabledtoggle": "Размещайте {label} на опубликованном сайте",
   "settings_languages_delete": "Удалить язык",
@@ -897,7 +941,18 @@
   "settings_authentication_reader_audienceallpages": "Оставьте каждую страницу невыбранной, чтобы предоставить доступ ко всему сайту.",
   "settings_authentication_reader_createaudience": "Создать аудиторию",
   "settings_authentication_reader_entiresite": "Весь сайт",
-  "settings_authentication_reader_pagecount": "{count} страниц",
+  "settings_authentication_reader_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница",
+        "form=few": "{count} страницы",
+        "form=many": "{count} страниц",
+        "form=*": "{count} страницы"
+      }
+    }
+  ],
   "settings_authentication_reader_readercount": "{count} читателей",
   "settings_authentication_reader_deleteaudienceconfirm": "Удалить аудиторию {name} и удалить назначения читателей?",
   "settings_authentication_reader_readerstitle": "Преданные читатели",
@@ -1155,7 +1210,18 @@
   "settings_apikeys_rotatedtoast": "Ключ API сменён",
   "settings_apikeys_rotateerror": "Не удалось сменить ключ API",
   "settings_apikeys_expiry": "Срок действия",
-  "settings_apikeys_expirydays": "{days} дней",
+  "settings_apikeys_expirydays": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} день",
+        "form=few": "{count} дня",
+        "form=many": "{count} дней",
+        "form=*": "{count} дня"
+      }
+    }
+  ],
   "settings_apikeys_expires": "Истекает:",
   "settings_apikeys_lastused": "Последнее использование:",
   "settings_apikeys_neverused": "Никогда",
@@ -1274,7 +1340,6 @@
   "auth_verify_verifying": "Проверка электронной почты…",
   "auth_verify_verified": "Ваш адрес электронной почты подтвержден. Перенаправление…",
   "auth_verify_sentto": "Введите 6-значный код, который мы отправили",
-  "auth_verify_sentgeneric": "Введите код подтверждения из вашего электронного письма, чтобы завершить настройку учетной записи.",
   "auth_verify_codelabel": "Код подтверждения",
   "auth_verify_submit": "Подтвердите адрес электронной почты",
   "auth_verify_submitting": "Проверка…",
@@ -1283,10 +1348,13 @@
   "auth_verify_resending": "Отправка…",
   "auth_verify_continuetoapp": "Открыть Nibleaf",
   "auth_verify_verifiedtoast": "Адрес электронной почты подтвержден",
-  "auth_verify_invalidlink": "Эта ссылка для проверки недействительна или срок ее действия истек.",
   "auth_verify_noemail": "Нет адреса электронной почты для отправки.",
   "auth_verify_senttoast": "Новый код подтверждения был отправлен на адрес {email}.",
   "auth_verify_senderror": "Код не удалось отправить. Пожалуйста, попробуйте отправить новое.",
+  "auth_verify_invalidlinkresend": "Эта ссылка для подтверждения недействительна или устарела. Отправьте себе новый код кнопкой ниже и введите его здесь.",
+  "auth_verify_invalidlinkenteremail": "Эта ссылка для подтверждения недействительна или устарела. Введите адрес электронной почты, чтобы получить новый код.",
+  "auth_verify_enteremail": "Введите адрес электронной почты, с которым вы регистрировались, и мы отправим новый код подтверждения.",
+  "auth_verify_sendcode": "Отправить новый код",
   "auth_invite_subtitle": "Вас пригласили на сайт",
   "auth_invite_signinprompt": "Войдите в систему или создайте учетную запись, чтобы принять это приглашение.",
   "auth_invite_createaccount": "Создать учетную запись",
@@ -1682,7 +1750,18 @@
   "settings_exports_workflow_noschedules": "Нет архивных расписаний",
   "settings_exports_workflow_noschedulesdesc": "Создайте его, если экспорт должен выполняться автоматически между часовыми поясами.",
   "settings_exports_workflow_publishedversion": "Опубликовано v{version}",
-  "settings_exports_workflow_pagecount": "{count} страниц",
+  "settings_exports_workflow_pagecount": [
+    {
+      "declarations": ["input count", "input form"],
+      "selectors": ["form"],
+      "match": {
+        "form=one": "{count} страница",
+        "form=few": "{count} страницы",
+        "form=many": "{count} страниц",
+        "form=*": "{count} страницы"
+      }
+    }
+  ],
   "settings_exports_workflow_scheduled": "Запланировано",
   "settings_exports_workflow_manual": "Руководство",
   "settings_exports_workflow_attempt": "Попытка {count}",
@@ -3834,6 +3913,17 @@
   "members_suggestions_label": "Люди с других ваших сайтов",
   "members_suggestions_hint": "Введите имя или почту — мы предложим людей с других ваших сайтов.",
   "people_choosesite": "Выберите сайт",
+  "gitpreview_title": "Предпросмотр пул-реквеста",
+  "gitpreview_snapshot": "Неизменяемая копия этого пул-реквеста · скрыта от поисковых систем",
+  "gitpreview_openpages": "Страницы",
+  "gitpreview_pagesnav": "Страницы предпросмотра",
+  "gitpreview_language": "Язык",
+  "gitpreview_version": "Версия",
+  "gitpreview_empty": "В этом предпросмотре нет страниц для показа.",
+  "gitpreview_invalidtitle": "Этот предпросмотр недоступен",
+  "gitpreview_invalidbody": "Возможно, ссылка неполная, или пул-реквест обновили либо закрыли. Откройте последнюю ссылку на предпросмотр в пул-реквесте.",
+  "gitpreview_retry": "Повторить",
+  "gitpreview_close": "Закрыть",
   "analytics_status_readsdisabled_title": "Собираются данные аналитики",
   "analytics_status_readsdisabled_body": "Сервер собирает данные аналитики. Когда миграция будет готова, администратор сервера сможет включить отчёты с помощью ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Сайт изменился после проверки. Перед публикацией проверьте изменения ещё раз.",
