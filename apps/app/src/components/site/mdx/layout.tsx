@@ -26,9 +26,33 @@ export function Banner({ type, children }: { type?: string; children?: ReactNode
   );
 }
 
+/** Mintlify's badge colors, on design-system tokens that hold in light and
+ *  dark themes. The authored value only selects an entry: it never reaches a
+ *  class, a style or an attribute. */
+const BADGE_COLORS = new Map<string, string>([
+  ['gray', 'bg-muted text-foreground'],
+  ['blue', 'bg-info/12 text-info'],
+  ['green', 'bg-success/12 text-success'],
+  ['yellow', 'bg-warning/15 text-warning'],
+  ['orange', 'bg-badge-orange/12 text-badge-orange'],
+  ['red', 'bg-destructive/12 text-destructive'],
+  ['purple', 'bg-badge-purple/12 text-badge-purple'],
+  ['white', 'border border-border bg-background text-foreground'],
+  ['surface', 'border border-border bg-card text-card-foreground'],
+  ['white-destructive', 'border border-border bg-background text-destructive'],
+  ['surface-destructive', 'border border-border bg-card text-destructive'],
+]);
+
+/** The badge color to draw: a known name (any case), else the default gray. */
+const badgeColor = (value?: string): string => {
+  const name = value?.trim().toLowerCase() ?? '';
+  return BADGE_COLORS.has(name) ? name : 'gray';
+};
+
 export function Badge({ color, children }: { color?: string; children?: ReactNode }) {
+  const name = badgeColor(color);
   return (
-    <span data-color={color} className="inline-flex rounded-full bg-muted px-2 py-0.5 font-semibold text-[0.78em] text-foreground align-middle">
+    <span data-color={name} className={cn('inline-flex rounded-full px-2 py-0.5 font-semibold text-[0.78em] align-middle', BADGE_COLORS.get(name))}>
       {children}
     </span>
   );
