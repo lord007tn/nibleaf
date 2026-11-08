@@ -20,6 +20,13 @@ const assetsRoutes = {
     description: 'Record an uploaded asset.',
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
+  remove: createRouteConfig({
+    guard: [...editor],
+    tags: ['assets'],
+    description:
+      'Delete an uploaded asset that no saved content uses: no page in any language or version, no site, language or page settings, and no published, exported or preview snapshot. Answers 409 asset:in_use and keeps the file otherwise.',
+    responses: ok,
+  }),
 };
 
 export default assetsRoutes;
