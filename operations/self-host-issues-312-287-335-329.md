@@ -147,3 +147,20 @@ Prisma's concurrent index migration. The harness now completes Prisma first,
 then holds the independent analytics lock and requires both worker and CLI
 contention messages before release. The earlier receipt proved migration while
 the worker ran; the refreshed receipt distinguishes verified lock contention.
+
+The refreshed packaging smoke passed after both contention messages were observed;
+all seven services became healthy, and all-profile cleanup left zero containers
+and volumes for the reserved project. The isolated restore drill also passed a
+referenced asset archive/extraction/readback and rejected a second extraction
+into the occupied target. Its readiness check now waits for an actual SQL query
+against the fixture database, rather than accepting the temporary init server.
+
+The coordinator requested another rebase after the delayed review: base is now
+`7c818988`, and #374's marketing route table and thin routes are preserved. The
+runtime guard discovers marketing URLs independently from the origin sitemap,
+covering the moved route families as well as EN/AR pages. The fixed-star test
+mocks its framework adapter to avoid importing the whole runtime within a unit
+test's timeout. Rebased typecheck passed all 27 tasks; 62 focused app tests and
+39 EN/AR documentation pairs passed. The push-only gate was exercised read-only
+on this base: CI run 42519166889/job 128848659057, CodeQL 42519166903/job
+128848659170, and secret scanning 42519166899/job 128848659238 all succeeded.

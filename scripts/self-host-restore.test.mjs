@@ -38,7 +38,7 @@ test('isolated pre-migration dump restores into an empty target and fails closed
     let ready = false;
     for (let attempt = 0; attempt < 30; attempt++) {
       try {
-        docker(['exec', container, 'pg_isready', '-U', 'fixture', '-d', 'original']);
+        assert.equal(sql('original', 'SELECT 1'), '1');
         ready = true;
         break;
       } catch {

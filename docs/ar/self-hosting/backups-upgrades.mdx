@@ -85,7 +85,7 @@ docker compose up -d
 ```bash
 set -eu
 docker compose --profile admin stop app admin server worker
-# تحقّق قبل تشغيل maxio؛ ارفض أي وحدة موجودة ولا تحذف محتوياتها.
+# Resolve the target before starting maxio: a retained volume is never safe.
 RESTORE_STORAGE_VOLUME=$(docker compose config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); v=next(v["source"] for v in c["services"]["maxio"]["volumes"] if v["target"]=="/data"); print(c["volumes"][v]["name"])')
 test -n "$RESTORE_STORAGE_VOLUME"
 if docker volume inspect "$RESTORE_STORAGE_VOLUME" >/dev/null 2>&1; then

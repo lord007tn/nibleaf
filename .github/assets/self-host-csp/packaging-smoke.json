@@ -1,7 +1,7 @@
 {
-  "observedAt": "2026-11-08T19:55:37.660Z",
-  "sourceHead": "cf1af668be652c648aae896b6ab1956131d38c50",
-  "composeSha256": "1c4b3a6478f3828c140d3c6ccca066d57ca85ff484f2a110dd266bf9856e98e6",
+  "observedAt": "2026-11-08T20:38:44.991Z",
+  "sourceHead": "c4af0bf68077608b2321a4fda09e1ba1b199a64b",
+  "composeSha256": "ece4ad9dec830fb26904fe8fd536ef666e0e2cca166a70352effbe9d977ed815",
   "project": "nibleaf-selfhost",
   "image": "v0.2.1",
   "app": 200,
@@ -13,5 +13,11 @@
   "indexDigest": "ghcr.io/lord007tn/nibleaf@sha256:857a58870f75ef3e764727043c2a36dc3b1f5090c0d673ddfa7f6b72fb715f2d",
   "imageSourceRevision": "7a8e3d5c2c47cdae84ae72138a8909a2ccab8d9f",
   "hostPorts": [4450, 4451, 4452, 9360],
-  "ownedContainersAndVolumesAfterCleanup": 0
+  "ownedContainersAndVolumesAfterCleanup": 0,
+  "harnessWorkingTreeChanges": true,
+  "contentionEvidence": {
+    "worker": "ClickHouse migration lock held by another process; retrying",
+    "cli": "ClickHouse migrations are running in another process",
+    "lockHeldUntilBothObserved": true
+  }
 }

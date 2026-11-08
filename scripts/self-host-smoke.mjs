@@ -158,7 +158,7 @@ try {
   process.exitCode = 1;
 } finally {
   try {
-    dc('down', '--volumes');
+    dc('--profile', '*', 'down', '--volumes', '--remove-orphans');
   } catch {
     process.exitCode = 1;
   }

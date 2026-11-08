@@ -19,15 +19,11 @@ const get = (path, headers = {}, method = 'GET') =>
     req.on('error', reject);
     req.end();
   });
-for (const path of [
-  '/',
-  '/ar',
-  '/pricing',
-  '/about',
-  '/developers',
-  '/blog/nibleaf-august-2026-source-release',
-  '/blog/nibleaf-august-2026-source-release-ar',
-]) {
+const sitemap = await get('/sitemap.xml');
+assert.equal(sitemap.status, 200);
+const paths = [...new Set([...sitemap.html.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => new URL(match[1]).pathname))];
+assert.ok(paths.includes('/ar') && paths.includes('/compare/nibleaf-vs-gitbook') && paths.includes('/blog/nibleaf-august-2026-source-release-ar'));
+for (const path of paths) {
   const first = await get(path, { 'user-agent': 'Mozilla/5.0 Chrome/130.0' });
   const second = await get(path, { 'user-agent': 'Googlebot', 'accept-language': 'ar,en;q=0.5' });
   assert.equal(first.status, 200, path);

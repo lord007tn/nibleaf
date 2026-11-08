@@ -1,5 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 
+vi.mock('@tanstack/react-start', () => ({ createServerFn: () => ({ handler: (handler: unknown) => handler }) }));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.resetModules();
