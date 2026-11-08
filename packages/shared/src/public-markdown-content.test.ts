@@ -23,7 +23,9 @@ import Example from './example'
 
     const normalized = normalizePublicMarkdownContent(source);
 
-    expect(normalized).toContain('&gt; **Portable guidance**');
+    // A callout is a real Markdown blockquote: its marker isn't escaped (#341).
+    expect(normalized).toContain('> **Portable guidance**');
+    expect(normalized).not.toContain('&gt; **Portable guidance**');
     expect(normalized).toContain('&lt;Unknown onclick=&quot;run()&quot;&gt;Readable&lt;/Unknown&gt;');
     expect(normalized).toContain("```mdx\nimport Example from './example'\n<Callout>Code sample</Callout>\n```");
     expect(normalized).not.toContain('Exploit');
@@ -140,12 +142,14 @@ describe('#338 follow-ups', () => {
   });
 });
 
-// Safety cases from #320's reviews (#341). The container projection redesign is
-// tracked in #341; until then these pin that the .md projection never lets an
-// active tag through and never breaks code out of its block.
+// Safety cases from #320's reviews (#341): the .md projection never lets an active
+// tag through and never breaks code out of its block.
 describe('public Markdown projection safety (#341)', () => {
   const md = (source: string) => normalizePublicMarkdownContent(source);
   const fence = ['```js', 'const tag = "<script>kept as code</script>";', '```'].join('\n');
+  // Containers prefix each code line (`> `, indentation): compare and strip code line by line.
+  const unprefixed = (output: string) => output.replace(/^[ >]*/gm, '');
+  const withoutCode = (output: string, code: string) => unprefixed(output).replace(code, '');
 
   it.each([
     ['nested Folders', `<Folder name="a">\n<Folder name="b">\n\n${fence}\n\n</Folder>\n</Folder>`],
@@ -153,8 +157,8 @@ describe('public Markdown projection safety (#341)', () => {
     ['a Folder inside a callout', `<Note>\n<Folder name="a">\n\n${fence}\n\n</Folder>\n</Note>`],
   ])('removes a script after %s around a fenced block and keeps the code literal', (_label, around) => {
     const output = md(`${around}\n\n<script>alert(1)</script>\n\nAfter`);
-    expect(output.replace(fence, '')).not.toMatch(/<\/?script/i);
-    expect(output).toContain(fence);
+    expect(withoutCode(output, fence)).not.toMatch(/<\/?script/i);
+    expect(unprefixed(output)).toContain(fence);
     expect(output).toContain('After');
   });
 
@@ -164,8 +168,8 @@ describe('public Markdown projection safety (#341)', () => {
   ])('keeps code literal in a callout around %s and removes scripts from the prose after it', (_label, lines) => {
     const code = lines.join('\n');
     const output = md(`<Note>\n\n${code}\n\n</Note>\n\nProse <script>alert(1)</script> continues`);
-    expect(output).toContain(code);
-    expect(output.replace(code, '')).not.toMatch(/<\/?script/i);
+    expect(unprefixed(output)).toContain(code);
+    expect(withoutCode(output, code)).not.toMatch(/<\/?script/i);
     expect(output).toContain('Prose');
     expect(output).toContain('continues');
   });
