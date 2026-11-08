@@ -29,7 +29,9 @@ export type InsightsAvailability =
   /** ClickHouse is configured but did not answer (down, timeout, auth). */
   | 'unavailable'
   /** This instance does not read analytics from ClickHouse (ANALYTICS_MODE). */
-  | 'not_configured';
+  | 'not_configured'
+  /** Writes are enabled while reads await the migration cutover. */
+  | 'reads_disabled';
 
 export type InsightsPreset = '24h' | '7d' | '30d' | '90d';
 
@@ -278,6 +280,17 @@ export type CrawledResource = 'page' | 'markdown' | 'llms_txt' | 'llms_full_txt'
 
 export interface AiVisibilityInsights {
   meta: InsightsMeta;
+  drafting: {
+    /** All started/completed/failed dashboard drafting events in the selected period; null outside raw coverage. */
+    total: number | null;
+    connections: Array<{
+      connection: 'workspace' | 'instance' | 'unknown';
+      events: number;
+      share: number;
+      /** Up to ten distinct stored provider/model pairs. No credentials. */
+      models: Array<[string, string]>;
+    }>;
+  };
   kpis: {
     aiCrawlerRequests: Compared;
     aiAssistantFetches: Compared;

@@ -17,7 +17,7 @@
     "with-env": "dotenv -e ../../.env --",
     "seed": "pnpm with-env tsx ./src/database/seed/index.ts",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "test": "vitest run",
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
     "eval:drafts": "tsx src/scripts/evaluate-drafts.ts",
     "search:reindex-all": "tsx src/scripts/reindex-search.ts",
     "typecheck": "tsc --noEmit"

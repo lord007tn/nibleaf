@@ -51,6 +51,7 @@ vi.mock('@/hooks/api', () => ({
   useCreatePage: () => ({}),
   useUpdatePage: () => ({}),
   useUploadAsset: () => ({}),
+  useDeleteAsset: () => ({}),
   useReorderPages: () => ({}),
 }));
 vi.mock('@/hooks/api/query-options', () => ({

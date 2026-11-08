@@ -16,7 +16,6 @@ type Options = { dnsLookup: LookupFunction; followRedirect: boolean; timeout: { 
 type Fixture = { status?: number; headers?: Record<string, string>; body?: () => AsyncIterable<Buffer> };
 const source = 'https://images.example/image.png';
 const markdown = `![Image](${source})`;
-const limit = 50 * 1024 * 1024;
 const { default: realGot } = await vi.importActual<typeof import('got')>('got');
 let requests: Array<ReturnType<typeof realGot.stream>>;
 let produced: number;
@@ -146,8 +145,12 @@ describe('remote image transport', () => {
   });
 
   it('handles compressed responses over the size limit', async () => {
-    const compressed = gzipSync(Buffer.alloc(limit + 1));
-    expect(compressed.length).toBeLessThan(limit);
+    // A small injected limit keeps the fixture cheap: compressing and decoding
+    // 50 MiB is CPU work that a loaded machine can't finish in time (#330).
+    const small = 64 * 1024;
+    const compressed = gzipSync(Buffer.alloc(small * 16));
+    // Only the decoded size is over: the announced length passes.
+    expect(compressed.length).toBeLessThan(small);
     // Exercise Got's decoder with a compressed response and no network.
     respond([
       {
@@ -157,10 +160,26 @@ describe('remote image transport', () => {
         },
       },
     ]);
-    const migrator = new RemoteAssetMigrator('synthetic');
+    const migrator = new RemoteAssetMigrator('synthetic', 'ghost', undefined, undefined, small);
     expect(await migrator.rewrite(markdown)).toBe(markdown);
+    expect(migrator.failures).toEqual(new Set(['image migration failed']));
     expect(storeAsset).not.toHaveBeenCalled();
     expect(requests[0]?.destroyed).toBe(true);
+  });
+
+  it('stores a compressed image that decodes to exactly the limit', async () => {
+    const small = 64 * 1024;
+    const decoded = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47]), Buffer.alloc(small - 4)]);
+    respond([
+      {
+        headers: { 'content-encoding': 'gzip' },
+        async *body() {
+          yield gzipSync(decoded);
+        },
+      },
+    ]);
+    expect(await new RemoteAssetMigrator('synthetic', 'ghost', undefined, undefined, small).rewrite(markdown)).toBe('![Image](/stored.png)');
+    expect(storeAsset).toHaveBeenCalledWith(expect.objectContaining({ bytes: decoded }));
   });
 
   it('stores decoded bytes from a normal compressed public image', async () => {

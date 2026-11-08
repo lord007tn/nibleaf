@@ -70,6 +70,7 @@ export const eventToClickHouseRow = (event: AnalyticsEventEnvelope) => {
     site_id: event.siteId,
     deployment_id: event.deploymentId,
     source: event.source,
+    connection_source: asString(payloadValue(payload, 'connectionSource')),
     consent_state: event.consentState,
     visibility: event.visibility,
     event_name: payload.name,

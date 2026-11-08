@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   port: 4310,
@@ -35,12 +35,28 @@ vi.mock('@/env.server', () => ({
   },
 }));
 
+/** Import the server entry once per environment: `api` and `server` read
+ *  PORT / NITRO_PORT and patch the global fetch while their modules evaluate,
+ *  so a configuration needs its own module graph. Evaluating it is CPU-bound
+ *  (#330), so it happens here, outside the per-test timeout, and each test
+ *  measures only the request path. */
+const serverFor = (port: number, nitroPort: number | undefined) => {
+  const loaded = {} as { api: typeof import('./api')['api']; server: typeof import('../server')['default'] };
+  beforeAll(async () => {
+    vi.resetModules();
+    mocks.port = port;
+    mocks.nitroPort = nitroPort;
+    vi.stubGlobal('fetch', mocks.fetch);
+    loaded.api = (await import('./api')).api;
+    loaded.server = (await import('../server')).default;
+  }, 120_000);
+  afterAll(() => vi.unstubAllGlobals());
+  return loaded;
+};
+
 describe('SSR RPC request context through the loopback proxy', () => {
   beforeEach(() => {
-    vi.resetModules();
     vi.clearAllMocks();
-    mocks.nitroPort = undefined;
-    vi.stubGlobal('fetch', mocks.fetch);
     mocks.fetch.mockResolvedValue(Response.json({ data: {} }));
     mocks.got.mockImplementation(async (url: string) => {
       const target = new URL(url);
@@ -50,75 +66,78 @@ describe('SSR RPC request context through the loopback proxy', () => {
       return { ok: false, statusCode: 404, body: '', headers: {} };
     });
   });
-  afterEach(() => vi.unstubAllGlobals());
 
-  it.each([
+  describe.each([
     [4310, undefined, 'http://public-dashboard.example:4410/sites/synthetic-site/المقدمة?lang=ar'],
     [5510, undefined, 'https://docs.synthetic.example/المقدمة?lang=ar'],
     [4310, 5511, 'https://docs.synthetic.example/المقدمة?lang=ar'],
-  ] as const)('keeps reader auth, locale and visitor context on PORT %s / NITRO_PORT %s for %s', async (port, nitroPort, url) => {
-    mocks.port = port;
-    mocks.nitroPort = nitroPort;
-    const { api } = await import('./api');
-    const { default: server } = await import('../server');
-    let renderedRequest: Request | undefined;
-    mocks.startHandler.mockImplementation(async (request) => {
-      renderedRequest = request;
-      await api.public.sites[':id'].page.$get({ param: { id: 'synthetic-site' }, query: { lang: 'ar', path: '/المقدمة' } });
-      return new Response('<!doctype html><title>Reader</title>', { headers: { 'content-type': 'text/html' } });
-    });
-    const response = await server.fetch(
-      new Request(url, {
-        headers: {
-          accept: 'text/html',
-          cookie: 'synthetic-session=reader',
-          authorization: 'Bearer synthetic-reader',
-          'x-forwarded-for': '203.0.113.42',
-          'x-private-unrelated': 'must-not-forward',
-        },
-      }),
-    );
-    expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toContain('private');
-    const [input, init] = mocks.fetch.mock.calls[0] ?? [];
-    const target = new URL(String(input));
-    expect(target.origin).toBe(`http://localhost:${nitroPort ?? port}`);
-    expect(target.pathname).toBe('/api/public/sites/synthetic-site/page');
-    expect(target.searchParams.get('lang')).toBe('ar');
-    expect(target.searchParams.get('path')).toBe('/المقدمة');
-    const headers = new Headers(init?.headers);
-    expect(headers.get('cookie')).toBe('synthetic-session=reader');
-    expect(headers.get('authorization')).toBe('Bearer synthetic-reader');
-    expect(headers.get('x-nibleaf-client-ip')).toBe('203.0.113.42');
-    expect(headers.get('x-nibleaf-internal')).toBe('synthetic-internal-secret');
-    expect(headers.get('x-nibleaf-locale')).toBe('ar');
-    expect(headers.get('x-private-unrelated')).toBeNull();
-    if (url.startsWith('https://docs.')) {
-      expect(renderedRequest?.headers.get('x-nibleaf-site-origin')).toBe('https://docs.synthetic.example');
-      expect(new URL(renderedRequest?.url ?? '').pathname).toContain('/sites/synthetic-site/');
-    }
+  ] as const)('on PORT %s / NITRO_PORT %s', (port, nitroPort, url) => {
+    const loaded = serverFor(port, nitroPort);
 
-    mocks.fetch.mockClear();
-    await server.fetch(new Request(url, { headers: { accept: 'text/html' } }));
-    const anonymous = new Headers(mocks.fetch.mock.calls[0]?.[1]?.headers);
-    expect(anonymous.get('cookie')).toBeNull();
-    expect(anonymous.get('authorization')).toBeNull();
-    expect(anonymous.get('x-nibleaf-internal')).toBeNull();
+    it(`keeps reader auth, locale and visitor context for ${url}`, async () => {
+      const { api, server } = loaded;
+      let renderedRequest: Request | undefined;
+      mocks.startHandler.mockImplementation(async (request) => {
+        renderedRequest = request;
+        await api.public.sites[':id'].page.$get({ param: { id: 'synthetic-site' }, query: { lang: 'ar', path: '/المقدمة' } });
+        return new Response('<!doctype html><title>Reader</title>', { headers: { 'content-type': 'text/html' } });
+      });
+      const response = await server.fetch(
+        new Request(url, {
+          headers: {
+            accept: 'text/html',
+            cookie: 'synthetic-session=reader',
+            authorization: 'Bearer synthetic-reader',
+            'x-forwarded-for': '203.0.113.42',
+            'x-private-unrelated': 'must-not-forward',
+          },
+        }),
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toContain('private');
+      const [input, init] = mocks.fetch.mock.calls[0] ?? [];
+      const target = new URL(String(input));
+      expect(target.origin).toBe(`http://localhost:${nitroPort ?? port}`);
+      expect(target.pathname).toBe('/api/public/sites/synthetic-site/page');
+      expect(target.searchParams.get('lang')).toBe('ar');
+      expect(target.searchParams.get('path')).toBe('/المقدمة');
+      const headers = new Headers(init?.headers);
+      expect(headers.get('cookie')).toBe('synthetic-session=reader');
+      expect(headers.get('authorization')).toBe('Bearer synthetic-reader');
+      expect(headers.get('x-nibleaf-client-ip')).toBe('203.0.113.42');
+      expect(headers.get('x-nibleaf-internal')).toBe('synthetic-internal-secret');
+      expect(headers.get('x-nibleaf-locale')).toBe('ar');
+      expect(headers.get('x-private-unrelated')).toBeNull();
+      if (url.startsWith('https://docs.')) {
+        expect(renderedRequest?.headers.get('x-nibleaf-site-origin')).toBe('https://docs.synthetic.example');
+        expect(new URL(renderedRequest?.url ?? '').pathname).toContain('/sites/synthetic-site/');
+      }
+
+      mocks.fetch.mockClear();
+      await server.fetch(new Request(url, { headers: { accept: 'text/html' } }));
+      const anonymous = new Headers(mocks.fetch.mock.calls[0]?.[1]?.headers);
+      expect(anonymous.get('cookie')).toBeNull();
+      expect(anonymous.get('authorization')).toBeNull();
+      expect(anonymous.get('x-nibleaf-internal')).toBeNull();
+    });
   });
 
-  it.each([
-    ['http://public-dashboard.example:4410/sites/synthetic-site/intro', null],
-    ['https://docs.synthetic.example/intro', 'https://docs.synthetic.example'],
-  ] as const)('ignores a client-sent site origin on %s', async (url, expected) => {
-    mocks.port = 4310;
-    const { default: server } = await import('../server');
-    let renderedRequest: Request | undefined;
-    mocks.startHandler.mockImplementation(async (request) => {
-      renderedRequest = request;
-      return new Response('<!doctype html><title>Reader</title>', { headers: { 'content-type': 'text/html' } });
+  describe('a client-sent site origin', () => {
+    const loaded = serverFor(4310, undefined);
+
+    it.each([
+      ['http://public-dashboard.example:4410/sites/synthetic-site/intro', null],
+      ['https://docs.synthetic.example/intro', 'https://docs.synthetic.example'],
+    ] as const)('is ignored on %s', async (url, expected) => {
+      const { server } = loaded;
+      let renderedRequest: Request | undefined;
+      mocks.startHandler.mockImplementation(async (request) => {
+        renderedRequest = request;
+        return new Response('<!doctype html><title>Reader</title>', { headers: { 'content-type': 'text/html' } });
+      });
+      await server.fetch(new Request(url, { headers: { accept: 'text/html', 'x-nibleaf-site-origin': 'https://spoofed.example' } }));
+      expect(renderedRequest).toBeDefined();
+      expect(renderedRequest?.headers.get('x-nibleaf-site-origin')).toBe(expected);
     });
-    await server.fetch(new Request(url, { headers: { accept: 'text/html', 'x-nibleaf-site-origin': 'https://spoofed.example' } }));
-    expect(renderedRequest).toBeDefined();
-    expect(renderedRequest?.headers.get('x-nibleaf-site-origin')).toBe(expected);
   });
 });

@@ -5,7 +5,7 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Archive, GitBranch, Globe2, type LucideIcon, RefreshCw, Rocket, Search, TriangleAlert } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
 import { useAdminOperations } from '@/hooks/api/queries';
@@ -18,33 +18,16 @@ type Queue = 'deployments' | 'domains' | 'exports' | 'git';
 function OperationsPage() {
   const t = useT();
   const format = useFormatters();
-  const query = useAdminOperations();
   const [queue, setQueue] = useState<Queue>('deployments');
   const [search, setSearch] = useState('');
   const [onlyIssues, setOnlyIssues] = useState(false);
+  const [cursor, setCursor] = useState<string>();
+  const query = useAdminOperations({ search, onlyIssues, queue, cursor });
   const data = query.data;
 
-  const counts = {
-    deploymentIssues:
-      data?.deployments.filter((item) => item.status === 'FAILED' || item.status === 'BUILDING' || item.status === 'PENDING').length ?? 0,
-    domainIssues: data?.domains.filter((item) => item.dnsStatus === 'ERROR' || item.sslStatus === 'ERROR').length ?? 0,
-    exportIssues: data?.exports.filter((item) => item.status === 'FAILED').length ?? 0,
-    gitIssues: data?.git.filter((item) => item.status === 'FAILED' || item.status === 'CONFLICT').length ?? 0,
-  };
+  const counts = data?.issueCounts ?? { deploymentIssues: 0, domainIssues: 0, exportIssues: 0, gitIssues: 0 };
 
-  const items = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    const source = data?.[queue] ?? [];
-    return source.filter((item) => {
-      const matchesSearch =
-        !needle || item.projectName.toLowerCase().includes(needle) || ('domain' in item && item.domain.toLowerCase().includes(needle));
-      const isIssue =
-        ('dnsStatus' in item && (item.dnsStatus === 'ERROR' || item.sslStatus === 'ERROR')) ||
-        ('status' in item && ['FAILED', 'CONFLICT'].includes(item.status)) ||
-        ('status' in item && queue === 'deployments' && ['PENDING', 'BUILDING'].includes(item.status));
-      return matchesSearch && (!onlyIssues || isIssue);
-    });
-  }, [data, onlyIssues, queue, search]);
+  const items = data?.[queue] ?? [];
   const queueRecordName =
     queue === 'deployments'
       ? t('admin.operations.deployment')
@@ -57,10 +40,10 @@ function OperationsPage() {
   if (query.isError) return <DataError message={t('admin.operations.loadError')} retry={() => void query.refetch()} />;
 
   const queueButtons: { id: Queue; label: string; count: number; icon: LucideIcon }[] = [
-    { id: 'deployments', label: t('admin.overview.deployments'), count: data?.deployments.length ?? 0, icon: Rocket },
-    { id: 'domains', label: t('admin.operations.domains'), count: data?.domains.length ?? 0, icon: Globe2 },
-    { id: 'exports', label: t('admin.operations.exports'), count: data?.exports.length ?? 0, icon: Archive },
-    { id: 'git', label: t('admin.operations.git'), count: data?.git.length ?? 0, icon: GitBranch },
+    { id: 'deployments', label: t('admin.overview.deployments'), count: data?.totals.deployments ?? 0, icon: Rocket },
+    { id: 'domains', label: t('admin.operations.domains'), count: data?.totals.domains ?? 0, icon: Globe2 },
+    { id: 'exports', label: t('admin.operations.exports'), count: data?.totals.exports ?? 0, icon: Archive },
+    { id: 'git', label: t('admin.operations.git'), count: data?.totals.git ?? 0, icon: GitBranch },
   ];
 
   return (
@@ -115,7 +98,10 @@ function OperationsPage() {
               <Button
                 aria-pressed={queue === item.id}
                 key={item.id}
-                onClick={() => setQueue(item.id)}
+                onClick={() => {
+                  setCursor(undefined);
+                  setQueue(item.id);
+                }}
                 size="sm"
                 variant={queue === item.id ? 'default' : 'outline'}
               >
@@ -130,14 +116,25 @@ function OperationsPage() {
               <span className="sr-only">{t('admin.operations.search')}</span>
               <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="ps-9"
+                className="min-h-11 pointer-coarse:min-h-11 ps-9"
                 id="operations-search"
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setCursor(undefined);
+                  setSearch(event.target.value);
+                }}
                 placeholder={t('admin.operations.searchPlaceholder')}
                 value={search}
+                maxLength={200}
               />
             </label>
-            <Button aria-pressed={onlyIssues} onClick={() => setOnlyIssues((value) => !value)} variant={onlyIssues ? 'default' : 'outline'}>
+            <Button
+              aria-pressed={onlyIssues}
+              onClick={() => {
+                setCursor(undefined);
+                setOnlyIssues((value) => !value);
+              }}
+              variant={onlyIssues ? 'default' : 'outline'}
+            >
               <TriangleAlert className="size-4" />
               {t('admin.operations.issuesOnly')}
             </Button>
@@ -247,6 +244,23 @@ function OperationsPage() {
           ) : null}
         </CardContent>
       </Card>
+      <div className="flex gap-2">
+        {cursor && (
+          <Button className="min-h-11 pointer-coarse:min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(undefined)}>
+            {t('admin.pagination.first')}
+          </Button>
+        )}
+        {data?.nextCursor[queue] && (
+          <Button
+            className="min-h-11 pointer-coarse:min-h-11"
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => setCursor(data.nextCursor[queue] ?? undefined)}
+          >
+            {t('admin.pagination.next')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

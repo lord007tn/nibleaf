@@ -204,6 +204,7 @@ export const feedbackFixture = (): FeedbackInsights => ({
 
 export const aiFixture = (): AiVisibilityInsights => ({
   meta: meta(),
+  drafting: { total: 0, connections: [] },
   kpis: {
     aiCrawlerRequests: { value: 900, previous: 600 },
     aiAssistantFetches: { value: 40, previous: 30 },

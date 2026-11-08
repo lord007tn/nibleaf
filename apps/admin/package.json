@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "@nibleaf/design-system": "workspace:*",

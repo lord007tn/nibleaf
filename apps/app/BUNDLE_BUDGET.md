@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 349,700-byte gzip JavaScript budget. The
+Public documentation pages have a 348,200-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
 measured size. CI also rejects public profiles that contain known
@@ -51,16 +51,69 @@ include that chunk. So:
 - Export only `Route` from a route file. Put page components in
   `src/components/**`: an exported component keeps its whole import graph
   eager, because the router's code splitter can't drop exports.
-- Build a marketing page's head in its loader and pass it through loader data:
-  `head: ({ loaderData }) => loaderData?.head ?? {}`. Keep the builder private
-  to the route file, and have the loader import the helpers it needs
-  (`lib/marketing-seo.ts`, `lib/blog-seo.ts`, page copy) lazily. `head` can't
-  be split, so anything it calls directly is eager.
+- Add a marketing page to the marketing route table, not to `src/routes`. A
+  page is a module in `components/marketing/pages/` that exports `load` (its
+  data and the `head` it renders) and `Page` (which reads that data with
+  `useMarketingData`), listed in `MARKETING_ROUTES`
+  (`components/marketing/routes.tsx`). The router holds only nine thin
+  marketing routes (`/`, `/$page`, `/blog/$slug`, `/compare/$slug`,
+  `/alternatives/$slug`, `/use-cases/$slug`, `/tools/$slug`, `/ar/$page`,
+  `/ar/use-cases/$slug`) that dispatch into it, so a new page adds nothing to
+  what published docs load. Add a router route only for a new URL shape, with a
+  static first segment: a route like `/$section/$slug` would also catch unknown
+  dashboard URLs such as `/app/xyz`.
+- A page's `load` imports the helpers it needs (`lib/marketing-seo.ts`,
+  `lib/blog-seo.ts`, page copy) lazily, and builds the head there.
 - Keep `validateSearch` and `beforeLoad` small: check ids against a plain list,
   not a list of icons and labels, and import anything larger lazily.
 - Loaders import only i18n-free factory modules (`DATA_LOADING.md`).
 
+- Marketing code doesn't import a Lucide icon the reader also uses. Rolldown
+  groups shared modules by the chunks that import them, so a new importer
+  re-splits the reader's icon chunks (#332 measured +292 B gzip with no reader
+  change). Use a copy in `components/marketing/site/marketing-icons.ts`.
+  `bundle:check` fails on a reader icon that a marketing chunk imports unless it
+  is one of the icons already shared on main@88daac87
+  (`marketingSharedReaderIcons` in `scripts/bundle-boundaries.mjs`).
+
 ## Budget history
+
+### 349,700 → 348,200 bytes: a marketing route table (#345)
+
+Measured first, on this change's base: building without the 29 marketing route
+files (their pages removed outright) gave the upper bound of what moving
+marketing out of the router could save.
+
+| Build | public-docs | public-docs-index | non-reader route modules |
+| --- | --- | --- | --- |
+| before (29 marketing route files) | 340.31 KiB | 339.51 KiB | 58, 30.39 KiB rendered |
+| marketing route files deleted (upper bound) | 335.49 KiB | 334.69 KiB | 33, 18.26 KiB rendered |
+| marketing route table, nine thin routes | **338.01 KiB** | **337.21 KiB** | 42, 22.46 KiB rendered |
+
+- The marketing definitions cost published docs pages 4.82 KiB gzip; the
+  table takes back 2.30 KiB of it. The nine routes left are about 480 B
+  rendered each.
+- The rest of the upper bound is chunk grouping: marketing pages still share
+  chunks (icons, UI parts) with the reader, which only deleting them removes.
+- One root splat (`/$`) would save a little more, but it would also take over
+  unknown dashboard URLs, which today 404 inside their own layout, so every
+  marketing route keeps a static first segment.
+- URLs, heads and the sitemap are unchanged. Before the move, every head of the
+  66 sitemap URLs was captured from the old routes' loaders, and after it the
+  table's loaders rendered all 66 byte-identical. `routes.test.ts` checks that
+  every sitemap URL reaches a marketing route through the router (on the tree
+  rebuilt from `routeTree.gen.ts`), has a self canonical and `og:url`, and that
+  the table and sitemap list the same pages.
+- The guard below found one icon marketing already shared that it hadn't seen:
+  `circle-question-mark`, from the RTL grader, which lived under `src/routes`.
+
+The budget is the 346,122 bytes measured for public-docs plus the same ~2 KiB
+margin (2,078 bytes of headroom).
+
+### Icon re-split guard (#345)
+
+`bundle:check` now also fails when marketing code starts sharing a reader icon
+(see Import boundaries). It changes no shipped code.
 
 ### 356,000 → 349,700 bytes: marketing heads and non-reader loaders (#345)
 

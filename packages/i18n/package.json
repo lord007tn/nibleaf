@@ -24,7 +24,7 @@
     "setup": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie preferredLanguage baseLocale --output-structure message-modules --emit-ts-declarations",
     "clean": "git clean -xdf .cache .turbo dist node_modules src/paraglide",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "@inlang/paraglide-js": "2.29.3"

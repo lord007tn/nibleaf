@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import PRODUCTION_COMPOSE from '../../../../docker-compose.prod.yml?raw';
-import INSTALL_TEMPLATE from '../../../../scripts/install.sh?raw';
+import PRODUCTION_COMPOSE from '../../../../release/published/docker-compose.yml?raw';
+import INSTALL_TEMPLATE from '../../../../release/published/install.sh?raw';
 import { renderSelfHostInstaller, SELF_HOST_INSTALL_COMMAND, SELF_HOST_RELEASE, selfHostReleaseBaseUrl } from './self-host-release';
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');

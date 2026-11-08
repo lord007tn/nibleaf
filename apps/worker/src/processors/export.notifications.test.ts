@@ -9,19 +9,26 @@ const mocks = vi.hoisted(() => ({
   render: vi.fn(),
   put: vi.fn(),
   track: vi.fn(),
+  runs: vi.fn(),
+  schedule: vi.fn(),
+  remove: vi.fn(),
+  deleteObject: vi.fn(),
+  info: vi.fn(),
 }));
 vi.mock('@nibleaf/database', () => ({
   Prisma: {},
   prisma: {
-    exportJob: { findUnique: mocks.find, update: mocks.update },
+    exportJob: { findUnique: mocks.find, update: mocks.update, findMany: mocks.runs, deleteMany: mocks.remove, delete: mocks.remove },
+    exportSchedule: { findUnique: mocks.schedule },
+    exportSnapshot: { deleteMany: vi.fn() },
     notification: { create: mocks.notify },
     platformEvent: { create: mocks.event },
     exportArtifact: { upsert: mocks.artifact },
   },
 }));
-vi.mock('@nibleaf/logger', () => ({ createLogger: () => ({ info: vi.fn() }) }));
+vi.mock('@nibleaf/logger', () => ({ createLogger: () => ({ info: mocks.info, warn: vi.fn() }) }));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: { EXPORT: 'export' } }));
-vi.mock('@nibleaf/storage', () => ({ deleteObject: vi.fn(), deletePrefix: vi.fn(), getObjectStream: vi.fn(), putObject: mocks.put }));
+vi.mock('@nibleaf/storage', () => ({ deleteObject: mocks.deleteObject, deletePrefix: vi.fn(), getObjectStream: vi.fn(), putObject: mocks.put }));
 vi.mock('../env', () => ({ env: { EXPORT_MAX_ASSET_BYTES: 1024 } }));
 vi.mock('../exports/pdf', () => ({ renderPdf: vi.fn() }));
 vi.mock('../exports/render', () => ({ renderMarkdownZip: mocks.render, renderStaticHtml: vi.fn(), selectPublishedAssets: () => [] }));
@@ -73,5 +80,40 @@ describe('export notification parameters', () => {
     await expect(handleExportJobs(job)).rejects.toThrow('ProviderError');
     expect(mocks.notify).toHaveBeenCalledWith({ data: expect.objectContaining({ params: { details: message.slice(0, 300) } }) });
     expect(mocks.update).toHaveBeenCalledWith({ where: { id: 'export-1' }, data: expect.objectContaining({ status: 'FAILED', error: message }) });
+  });
+});
+
+describe.each(['expiry', 'schedule'] as const)('%s export retention retries', (path) => {
+  const run = { id: 'expired', createdAt: new Date('2000-01-01'), artifacts: [{ storageKey: 'a' }, { storageKey: 'b' }, { storageKey: 'c' }] };
+  const cleanup = () =>
+    handleExportJobs(
+      path === 'expiry' ? ({ ...job, name: 'cleanup-exports', data: { requestedAt: new Date().toISOString() } } as unknown as typeof job) : job,
+    );
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.find.mockResolvedValue({
+      id: 'new',
+      projectId: 'site-1',
+      status: 'PENDING',
+      scheduleId: 'schedule',
+      formats: [],
+      snapshot: { snapshot: { project: { slug: 'synthetic' } }, assets: [] },
+    });
+    mocks.runs.mockResolvedValue([run]);
+    mocks.schedule.mockResolvedValue({ retentionCount: 1, retentionDays: 7 });
+    mocks.deleteObject.mockResolvedValue(undefined);
+  });
+  it.each([1, 3])('retains all keys when %i deletes fail, then removes records after a successful retry', async (failures) => {
+    for (let i = 0; i < failures; i++) mocks.deleteObject.mockRejectedValueOnce(new Error('storage unavailable'));
+    const first = await cleanup();
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.update).toHaveBeenCalledWith({ where: { id: run.id }, data: { expiresAt: expect.any(Date) } });
+    if (path === 'expiry') expect(first).toEqual({ deleted: 0, pending: 1 });
+    else expect(mocks.info).toHaveBeenCalledWith({ scheduleId: 'schedule', deleted: 0, pending: 1 }, expect.any(String));
+    mocks.deleteObject.mockClear();
+    const second = await cleanup();
+    expect(mocks.deleteObject.mock.calls.map(([key]) => key)).toEqual(['a', 'b', 'c']);
+    expect(mocks.remove).toHaveBeenCalledWith({ where: { id: run.id } });
+    if (path === 'expiry') expect(second).toEqual({ deleted: 1, pending: 0 });
   });
 });

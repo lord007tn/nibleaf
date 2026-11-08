@@ -21,7 +21,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { ChevronRight, Copy, ExternalLink, Mail, Plus, Search } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { StatusBadge } from '@/components/status-badge';
@@ -250,12 +250,13 @@ function InviteOrganizationDialog() {
 function SitesPage() {
   const t = useT();
   const format = useFormatters();
-  const query = useAdminSites();
   const takedown = useTakedownSite();
   const confirm = useConfirm();
   const prompt = usePrompt();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<SiteFilter>('all');
+  const [cursor, setCursor] = useState<string>();
+  const query = useAdminSites({ search, filter, cursor });
   const filterOptions = [
     { value: 'all', label: t('admin.sites.all') },
     { value: 'healthy', label: t('admin.status.healthy') },
@@ -264,24 +265,7 @@ function SitesPage() {
     { value: 'taken-down', label: t('admin.status.takenDown') },
   ] satisfies { value: SiteFilter; label: string }[];
 
-  const sites = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return (query.data ?? []).filter((site) => {
-      const matchesSearch =
-        !needle ||
-        site.name.toLowerCase().includes(needle) ||
-        site.owner.toLowerCase().includes(needle) ||
-        site.org.toLowerCase().includes(needle) ||
-        site.slug.toLowerCase().includes(needle);
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'healthy' && !site.takedownAt && site.domainIssues === 0 && site.latestDeployment?.status === 'READY') ||
-        (filter === 'attention' && (site.domainIssues > 0 || site.latestDeployment?.status === 'FAILED' || site.ownerStatus === 'missing')) ||
-        (filter === 'unpublished' && !site.latestDeployment) ||
-        (filter === 'taken-down' && Boolean(site.takedownAt));
-      return matchesSearch && matchesFilter;
-    });
-  }, [filter, query.data, search]);
+  const sites = query.data?.items ?? [];
 
   const copyOwnerInvitation = async (site: AdminSite) => {
     if (!site.ownerInvitationId) {
@@ -351,18 +335,29 @@ function SitesPage() {
           <span className="sr-only">{t('admin.sites.search')}</span>
           <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="ps-9"
+            className="min-h-11 pointer-coarse:min-h-11 ps-9"
             id="site-search"
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setCursor(undefined);
+              setSearch(event.target.value);
+            }}
             placeholder={t('admin.sites.searchPlaceholder')}
             value={search}
+            maxLength={200}
           />
         </label>
         <div>
           <Label className="sr-only" htmlFor="site-filter">
             {t('admin.sites.filter')}
           </Label>
-          <Select items={filterOptions} onValueChange={(value) => setFilter(value ?? 'all')} value={filter}>
+          <Select
+            items={filterOptions}
+            onValueChange={(value) => {
+              setCursor(undefined);
+              setFilter(value ?? 'all');
+            }}
+            value={filter}
+          >
             <SelectTrigger className="w-full bg-background" id="site-filter">
               <SelectValue />
             </SelectTrigger>
@@ -563,9 +558,26 @@ function SitesPage() {
       )}
       {!query.isPending ? (
         <p className="text-muted-foreground text-xs" aria-live="polite">
-          {t('admin.sites.showing', { shown: format.number(sites.length), total: format.number(query.data?.length ?? 0) })}
+          {t('admin.sites.showing', { shown: format.number(sites.length), total: format.number(query.data?.total ?? 0) })}
         </p>
       ) : null}
+      <div className="flex gap-2">
+        {cursor && (
+          <Button className="min-h-11 pointer-coarse:min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(undefined)}>
+            {t('admin.pagination.first')}
+          </Button>
+        )}
+        {query.data?.nextCursor && (
+          <Button
+            className="min-h-11 pointer-coarse:min-h-11"
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => setCursor(query.data?.nextCursor ?? undefined)}
+          >
+            {t('admin.pagination.next')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

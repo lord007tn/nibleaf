@@ -14,7 +14,7 @@
     "preview": "vite preview",
     "clean": "git clean -xdf .cache .turbo .output dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "@nibleaf/search": "workspace:*",
@@ -42,6 +42,7 @@
     "@tanstack/react-start": "1.169.4",
     "@tanstack/react-table": "8.21.3",
     "@tiptap/core": "3.32.2",
+    "@tiptap/extension-blockquote": "3.32.2",
     "@tiptap/extension-character-count": "3.32.2",
     "@tiptap/extension-code-block-lowlight": "3.32.2",
     "@tiptap/extension-drag-handle-react": "3.32.2",
@@ -69,7 +70,6 @@
     "lucide-react": "^1.65.0",
     "mermaid": "^12.2.0",
     "nitro": "3.0.260903-beta",
-    "octokit": "5.0.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",

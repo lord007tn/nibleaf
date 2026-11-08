@@ -1,16 +1,37 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
 
+/** A character reference a Markdown renderer decodes to text: named,
+ *  decimal or hexadecimal. */
+const CHARACTER_REFERENCE = /^&(?:[a-z][a-z\d]{1,31}|#\d{1,7}|#x[\da-f]{1,6});/i;
+
+/** Escape HTML, leaving character references already written (`&amp;`,
+ *  `&#65;`) as they are: they decode to text, never to markup, and escaping
+ *  them again would show their source (`&amp;amp;`). */
 const escapeHtml = (value: string): string =>
-  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+  value
+    .replace(/&/g, (ampersand, offset: number) => (CHARACTER_REFERENCE.test(value.slice(offset, offset + 40)) ? ampersand : '&amp;'))
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+
+/** A tag's attributes, up to the `>` that ends it: a `>` inside a quoted
+ *  value doesn't end it. */
+const ATTRIBUTES = `((?:[^>"']|"[^"]*"|'[^']*')*)`;
 
 const mdxAttribute = (source: string, name: string): string | undefined => {
   const match = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(source);
   return match?.[1] ?? match?.[2];
 };
 
+/** An attribute value as one line of inert Markdown text. Angle brackets
+ *  become character references, not backslash escapes, so escaping the line
+ *  for HTML afterwards doesn't show a literal `\&gt;`. */
 const markdownText = (value?: string): string =>
   (value ?? '')
-    .replace(/[\\`*_[\]<>]/g, '\\$&')
+    .replace(/[\\`*_[\]]/g, '\\$&')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
     .replace(/[\r\n]+/g, ' ')
     .trim();
 
@@ -45,40 +66,111 @@ const safeHref = (value?: string): string | undefined => {
   return href.replace(/[\s()]/g, (character) => (character === '(' ? '%28' : character === ')' ? '%29' : encodeURIComponent(character)));
 };
 
-const mdxContainer = (source: string, tag: string, render: (attributes: string, body: string) => string): string => {
-  const pattern = new RegExp(`<${tag}\\b([^>]*)>([\\s\\S]*?)<\\/${tag}>`, 'gi');
+/** Project `<tag …>body</tag>`, for one tag or a family of tags, innermost
+ *  first: a body never holds another opening tag of the family, so a nested
+ *  container is projected before the one around it, and the outer one's line
+ *  prefixes (`> `, indentation) apply once, to the finished inner text. */
+const mdxContainer = (source: string, tags: string | readonly string[], render: (attributes: string, body: string) => string): string => {
+  const family = (typeof tags === 'string' ? [tags] : tags).join('|');
+  const pattern = new RegExp(`<(${family})\\b${ATTRIBUTES}>((?:(?!<(?:${family})\\b)[\\s\\S])*?)<\\/\\1>`, 'gi');
   let current = source;
   for (let pass = 0; pass < 8; pass += 1) {
-    const next = current.replace(pattern, (_match, attributes: string, body: string) => render(attributes, body.trim()));
+    const next = current.replace(pattern, (_match, _tag: string, attributes: string, body: string) => render(attributes, body.trim()));
     if (next === current) return current;
     current = next;
   }
   return current;
 };
 
+/** Where a Markdown link destination starting at `start` ends: an `<…>`
+ *  destination after its `>`, any other at whitespace or at a `)` that closes
+ *  no parenthesis it opened. */
+const destinationEnd = (source: string, start: number): number => {
+  if (source[start] === '<') {
+    const close = source.indexOf('>', start);
+    const newline = source.indexOf('\n', start);
+    return close >= 0 && (newline < 0 || close < newline) ? close + 1 : start;
+  }
+  let depth = 0;
+  let index = start;
+  for (; index < source.length; index += 1) {
+    const character = source[index] as string;
+    if (character === '\\') {
+      index += 1;
+      continue;
+    }
+    if (character.charCodeAt(0) <= 0x20) break;
+    if (character === '(') depth += 1;
+    if (character === ')') {
+      if (depth === 0) break;
+      depth -= 1;
+    }
+  }
+  return index;
+};
+
+const unsafeDestination = (destination: string): boolean => {
+  const bare = destination.startsWith('<') && destination.endsWith('>') ? destination.slice(1, -1) : destination;
+  return bare.length > 0 && !isSafeLinkDestination(bare);
+};
+
+/** True when the character before `index` is escaped by an odd run of backslashes. */
+const escapedAt = (source: string, index: number): boolean => {
+  let backslashes = 0;
+  for (let i = index - 1; i >= 0 && source[i] === '\\'; i -= 1) backslashes += 1;
+  return backslashes % 2 === 1;
+};
+
+const skipSpaces = (source: string, index: number): number => {
+  let at = index;
+  while (source[at] === ' ' || source[at] === '\t') at += 1;
+  return at;
+};
+
+/** Point authored links and images with an unsafe destination
+ *  (`[x](javascript:…)`, `[x]: vbscript:…`) at `#`, as the HTML and PDF
+ *  exports do; their text stays. This also covers a component body that
+ *  carries its own link, such as a Button's. Code is masked before it runs. */
+const neutralizeUnsafeLinks = (source: string): string => {
+  let output = '';
+  let cursor = 0;
+  for (let at = source.indexOf('](', cursor); at >= 0; at = source.indexOf('](', cursor)) {
+    // The destination may follow spaces and one line break.
+    let start = skipSpaces(source, at + 2);
+    if (source[start] === '\n') start = skipSpaces(source, start + 1);
+    const end = destinationEnd(source, start);
+    const unsafe = !escapedAt(source, at) && unsafeDestination(source.slice(start, end));
+    output += unsafe ? `${source.slice(cursor, start)}#` : source.slice(cursor, end);
+    cursor = Math.max(end, at + 2);
+  }
+  output += source.slice(cursor);
+  return output.replace(/^( {0,3}\[(?:[^\]\\\n]|\\.)+\]:[ \t]*)(<[^>\n]*>|\S+)/gm, (definition, label: string, destination: string) =>
+    unsafeDestination(destination) ? `${label}#` : definition,
+  );
+};
+
 /** Convert supported authored MDX to inert Markdown for every public machine
  * representation. Only text and allowlisted attributes are projected. */
 export const portablePublicMdxMarkdown = (source: string): string => {
-  let output = source.replace(/<(?:File)\b([^>]*)\/>/gi, (_match, attributes: string) => {
+  let output = source.replace(new RegExp(`<File\\b${ATTRIBUTES}\\/>`, 'gi'), (_match, attributes: string) => {
     const name = markdownText(mdxAttribute(attributes, 'name'));
     return name ? `- \`${name}\`` : '';
   });
-  output = output.replace(/<RelatedCard\b([^>]*)\/>/gi, (_match, attributes: string) => {
+  output = output.replace(new RegExp(`<RelatedCard\\b${ATTRIBUTES}\\/>`, 'gi'), (_match, attributes: string) => {
     const title = markdownText(mdxAttribute(attributes, 'title'));
     const description = markdownText(mdxAttribute(attributes, 'description'));
     const href = safeHref(mdxAttribute(attributes, 'href'));
     return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
   });
-  output = output.replace(/<Icon\b[^>]*\/>/gi, '');
+  output = output.replace(new RegExp(`<Icon\\b${ATTRIBUTES}\\/>`, 'gi'), '');
 
-  for (const tag of ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger']) {
-    output = mdxContainer(output, tag, (_attributes, body) =>
-      body
-        .split('\n')
-        .map((line) => (line ? `> ${line}` : '>'))
-        .join('\n'),
-    );
-  }
+  // One family, so a callout inside another is quoted once more, not twice.
+  output = mdxContainer(output, ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger'], (_attributes, body) =>
+    body
+      .split('\n')
+      .map((line) => (line ? `> ${line}` : '>'))
+      .join('\n'),
+  );
   output = mdxContainer(output, 'Folder', (attributes, body) => {
     const name = markdownText(mdxAttribute(attributes, 'name'));
     const nested = body
@@ -121,6 +213,12 @@ export const portablePublicMdxMarkdown = (source: string): string => {
       return `${name || type ? `#### ${name}${type ? ` · ${type}` : ''}\n\n` : ''}${body}`;
     });
   }
+  // A changelog entry: its label as a heading, then its description and body.
+  output = mdxContainer(output, 'Update', (attributes, body) => {
+    const label = markdownText(mdxAttribute(attributes, 'label'));
+    const description = markdownText(mdxAttribute(attributes, 'description'));
+    return [label ? `## ${label}` : '', description, body].filter(Boolean).join('\n\n');
+  });
   output = mdxContainer(output, 'Frame', (attributes, body) => {
     const caption = markdownText(mdxAttribute(attributes, 'caption'));
     return `${body}${caption ? `\n\n_${caption}_` : ''}`;
@@ -180,7 +278,7 @@ const stripMdxExpressions = (source: string): string => {
 
 const sanitizeAuthoredProse = (source: string): string => {
   const protectedCode = protectMarkdownCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(portablePublicMdxMarkdown(protectedCode.content));
+  const withoutActiveBlocks = stripActiveMarkup(neutralizeUnsafeLinks(portablePublicMdxMarkdown(protectedCode.content)));
   const sanitized = stripMdxExpressions(withoutActiveBlocks)
     .split('\n')
     .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))

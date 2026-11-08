@@ -39,7 +39,8 @@ function PerformanceView({
   const t = useT();
   const format = useInsightFormat();
   const { loading, unknown } = state;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled')
+    return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const noSamples = data !== undefined && !unknown && data.overall.samples === 0;
   const vitalCell = (metric: 'lcp' | 'inp' | 'cls', value: number | null) => (
     <span className="inline-flex items-center justify-end gap-2">

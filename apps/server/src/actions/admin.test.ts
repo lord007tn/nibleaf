@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   prisma: {
-    deployment: { findMany: vi.fn() },
-    domain: { findMany: vi.fn() },
-    exportJob: { findMany: vi.fn(), groupBy: vi.fn() },
+    deployment: { findMany: vi.fn(), count: vi.fn(async () => 1) },
+    domain: { findMany: vi.fn(), count: vi.fn(async () => 1) },
+    exportJob: { findMany: vi.fn(), groupBy: vi.fn(), count: vi.fn(async () => 0) },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
     platformEvent: { findMany: vi.fn() },
-    gitSyncOperation: { findMany: vi.fn() },
+    gitSyncOperation: { findMany: vi.fn(), count: vi.fn(async () => 0) },
   },
 }));
 
@@ -100,4 +100,20 @@ describe('admin activity delivery markers', () => {
       }),
     );
   });
+});
+
+it('filters unresolved operations in the database before applying page limits', async () => {
+  mocks.prisma.deployment.findMany.mockResolvedValue([]);
+  mocks.prisma.domain.findMany.mockResolvedValue([]);
+  mocks.prisma.exportJob.findMany.mockResolvedValue([]);
+  mocks.prisma.gitSyncOperation.findMany.mockResolvedValue([]);
+  await getAdminOperations({ onlyIssues: true, search: 'Older', queue: 'deployments', cursor: 'page-2' });
+  expect(mocks.prisma.deployment.findMany).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      where: { project: { name: { contains: 'Older', mode: 'insensitive' } }, status: { in: ['FAILED', 'BUILDING', 'PENDING'] } },
+      take: 51,
+      cursor: { id: 'page-2' },
+      skip: 1,
+    }),
+  );
 });

@@ -1,39 +1,6 @@
 import { createServerFn } from '@tanstack/react-start';
-import type { Octokit } from 'octokit';
+import { MARKETING_BUILD } from '@/lib/marketing-build';
 
-const STARS_TTL_MS = 60 * 60 * 1000;
-const STARS_ERROR_TTL_MS = 60 * 1000;
-let starsCache: { fetchedAt: number; value: number } | null = null;
-let inFlight: Promise<number> | null = null;
-let github: Octokit | undefined;
-
-export const getGithubStars = async () => {
-  const now = Date.now();
-  if (starsCache) {
-    const ttl = starsCache.value > 0 ? STARS_TTL_MS : STARS_ERROR_TTL_MS;
-    if (now - starsCache.fetchedAt < ttl) return starsCache.value;
-  }
-  if (!inFlight) {
-    inFlight = import('octokit')
-      .then(({ Octokit: GithubClient }) => {
-        github ??= new GithubClient({ request: { timeout: 2000 }, userAgent: 'nibleaf-marketing' });
-        return github.rest.repos.get({ owner: 'lord007tn', repo: 'nibleaf' });
-      })
-      .then((response) => {
-        const value = response.data.stargazers_count;
-        starsCache = { value, fetchedAt: Date.now() };
-        return value;
-      })
-      .catch(() => {
-        const value = starsCache?.value ?? 0;
-        starsCache = { value, fetchedAt: Date.now() };
-        return value;
-      })
-      .finally(() => {
-        inFlight = null;
-      });
-  }
-  return starsCache?.value ?? 0;
-};
-
+// Loader state must be identical across requests, including a cold process.
+export const getGithubStars = async () => MARKETING_BUILD.stars;
 export const getGithubStarsFn = createServerFn({ method: 'GET' }).handler(getGithubStars);

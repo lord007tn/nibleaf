@@ -7,9 +7,11 @@
   "exports": {
     ".": "./src/index.ts",
     "./asset-references": "./src/asset-references.ts",
+    "./analytics-consent": "./src/analytics-consent.ts",
     "./addons": "./src/addons.ts",
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",
+    "./client-ip": "./src/client-ip.ts",
     "./constants": "./src/constants.ts",
     "./rbac": "./src/rbac.ts",
     "./ids": "./src/ids.ts",
@@ -35,7 +37,7 @@
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
     "github-slugger": "^2.0.0",

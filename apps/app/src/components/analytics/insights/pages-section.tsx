@@ -19,7 +19,8 @@ function PagesOverview() {
   const result = usePagesInsights(projectId, query);
   const state = insightsState(result);
   const data = result.data;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} state={state} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled')
+    return <InsightsStatus projectId={projectId} state={state} />;
   const noRows = data !== undefined && !state.unknown && data.rows.length === 0;
   return (
     <InsightsRegion loading={state.loading}>

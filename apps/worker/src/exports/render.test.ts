@@ -281,7 +281,11 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     expect(full).toContain('&lt;custom onclick=&quot;run()&quot;&gt;Readable&lt;/custom&gt;');
     expect(full).toContain('&lt;svg onload=&quot;run()&quot;&gt;');
     expect(full).toContain('&lt;math href=&quot;javascript:run()&quot;&gt;math link&lt;/math&gt;');
-    expect(full).toContain('&amp;lt;scr');
+    // The crafted `&lt;scr<script>ipt&gt;` loses its active tag; the reference
+    // already written stays a reference (text, never markup) rather than being
+    // escaped again into `&amp;lt;` (#338).
+    expect(full).toContain('&lt;scr');
+    expect(full).not.toContain('&amp;lt;scr');
     expect(full).toContain('&gt; **Portable guidance**');
     expect(full).toContain('## Continue');
     expect(full).toContain('[Setup](/setup)');

@@ -1,5 +1,5 @@
 import TurndownService from 'turndown';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   byPublishedAt,
   convertGhostHtml,
@@ -279,35 +279,44 @@ describe('ghostItemToMarkdown', () => {
     expect(usedFallback).toBe(false);
   });
 
-  it('uses Ghost official renderers for Lexical and legacy Mobiledoc exports', async () => {
-    const lexical = JSON.stringify({
-      root: {
-        children: [
-          {
-            children: [{ detail: 0, format: 0, mode: 'normal', style: '', text: 'Lexical body', type: 'text', version: 1 }],
-            direction: null,
-            format: '',
-            indent: 0,
-            type: 'paragraph',
-            version: 1,
-          },
-        ],
-        direction: null,
-        format: '',
-        indent: 0,
-        type: 'root',
-        version: 1,
-      },
-    });
-    const mobiledoc = JSON.stringify({
-      version: '0.3.1',
-      atoms: [],
-      cards: [],
-      markups: [],
-      sections: [[1, 'p', [[0, [], 0, 'Mobiledoc body']]]],
-    });
+  const lexical = JSON.stringify({
+    root: {
+      children: [
+        {
+          children: [{ detail: 0, format: 0, mode: 'normal', style: '', text: 'Lexical body', type: 'text', version: 1 }],
+          direction: null,
+          format: '',
+          indent: 0,
+          type: 'paragraph',
+          version: 1,
+        },
+      ],
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'root',
+      version: 1,
+    },
+  });
+  const mobiledoc = JSON.stringify({
+    version: '0.3.1',
+    atoms: [],
+    cards: [],
+    markups: [],
+    sections: [[1, 'p', [[0, [], 0, 'Mobiledoc body']]]],
+  });
 
+  // The first render loads and initializes Ghost's renderers, CPU-bound work
+  // that a loaded machine can't be expected to finish inside one test's
+  // timeout (#330). Do it once here, outside the test, which then measures
+  // only the conversion.
+  beforeAll(async () => {
+    await ghostItemToMarkdown({ ...base, html: null, lexical });
+    await ghostItemToMarkdown({ ...base, html: null, mobiledoc });
+  }, 120_000);
+
+  it('uses Ghost official renderers for Lexical and legacy Mobiledoc exports', async () => {
     await expect(ghostItemToMarkdown({ ...base, html: null, lexical })).resolves.toMatchObject({ markdown: 'Lexical body' });
     await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc })).resolves.toMatchObject({ markdown: 'Mobiledoc body' });
-  }, 20_000); // Cold official-renderer initialization can exceed Vitest's 5 s default in the combined single-worker suite.
+  });
 });

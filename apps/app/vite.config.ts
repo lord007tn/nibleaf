@@ -112,6 +112,12 @@ export default defineConfig(({ mode }) => {
       },
     },
     resolve: { tsconfigPaths: true },
+    define: {
+      __MARKETING_BUILD__: JSON.stringify({
+        year: new Date().getUTCFullYear(),
+        stars: z.coerce.number().int().nonnegative().default(0).parse(process.env.MARKETING_GITHUB_STARS),
+      }),
+    },
     server: {
       port: 4310,
       // Vite's static middleware claims unknown dotted paths before Nitro in

@@ -1,20 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { LandingPage } from '@/components/marketing/landing/landing-page';
+import { MarketingPage } from '@/components/marketing/routes';
 
+// A marketing route: its pages, loaders and heads live in the marketing route
+// table (components/marketing/routes.tsx), which loads with this route, not in
+// the router tree every published docs page hydrates (#345).
 export const Route = createFileRoute('/')({
-  // The head and the SEO helpers load with this page, not with every page's route tree.
-  loader: async () => {
-    const [{ getGithubStarsFn }, { landingHead }] = await Promise.all([
-      import('@/lib/marketing-seo'),
-      import('@/components/marketing/copy/landing-head'),
-    ]);
-    return { stars: await getGithubStarsFn(), head: landingHead('en') };
-  },
+  loader: ({ location }) => import('@/components/marketing/routes').then((routes) => routes.loadMarketingPage(location.pathname)),
   head: ({ loaderData }) => loaderData?.head ?? {},
-  component: Landing,
+  component: MarketingIndexRoute,
 });
 
-function Landing() {
-  const { stars } = Route.useLoaderData();
-  return <LandingPage stars={stars} />;
+function MarketingIndexRoute() {
+  return <MarketingPage data={Route.useLoaderData()} />;
 }

@@ -116,6 +116,69 @@ describe('image uploads', () => {
         .map((node) => node.attrs?.src),
     ).toEqual(['https://example.com/kept.png']);
   });
+  it('deletes a recorded upload when its card is removed before the image was placed', async () => {
+    let editable = true;
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: [StarterKit, Image, ImageUpload.configure({ canEdit: () => editable })],
+      content: '<p>Before</p>',
+    });
+    editors.push(editor);
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    flushSync(() => root.render(createElement(EditorContent, { editor })));
+    roots.push({ root, container });
+    const discard = vi.fn().mockRejectedValue(Object.assign(new Error('in use'), { code: 'asset:in_use' }));
+    // The file is recorded, but editing pauses before it can be placed, so the card stays with Retry.
+    await uploadEditorImage(editor, new File(['image'], 'placed-late.png', { type: 'image/png' }), async () => {
+      editable = false;
+      return { url: 'https://example.com/recorded.png', discard };
+    });
+    editable = true;
+    // Any transaction re-renders the card with editing allowed again.
+    editor.view.dispatch(editor.state.tr);
+    const removeButton = () => Array.from(editor.view.dom.querySelectorAll('button')).find((node) => node.textContent === 'Remove');
+    await vi.waitFor(() => expect(removeButton()?.disabled).toBe(false));
+    expect(editor.view.dom.textContent).toContain('This image could not be uploaded');
+    removeButton()?.click();
+    expect(discard).toHaveBeenCalledTimes(1);
+    // A refused delete (the file is in use) only removes the card.
+    await vi.waitFor(() => expect(editor.view.dom.textContent).not.toContain('placed-late.png'));
+    expect(editor.getJSON().content?.some((node) => node.type === 'image')).toBe(false);
+  });
+  it('deletes a file whose confirmation lands after Remove', async () => {
+    const editor = makeEditor();
+    const discard = vi.fn().mockResolvedValue({ id: 'asset' });
+    let resolve!: (value: { url: string; discard: () => Promise<unknown> }) => void;
+    const upload = uploadEditorImage(
+      editor,
+      new File(['image'], 'late.png', { type: 'image/png' }),
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    await vi.waitFor(() => expect(editor.view.dom.querySelector('[role="status"]')).not.toBeNull());
+    Array.from(editor.view.dom.querySelectorAll('button'))
+      .find((node) => node.textContent === 'Remove')
+      ?.click();
+    await upload;
+    expect(discard).not.toHaveBeenCalled();
+    resolve({ url: 'https://example.com/late.png', discard });
+    await vi.waitFor(() => expect(discard).toHaveBeenCalledTimes(1));
+    expect(editor.getJSON().content?.some((node) => node.type === 'image')).toBe(false);
+  });
+  it('never deletes an upload that was placed in the page', async () => {
+    const editor = makeEditor();
+    const discard = vi.fn();
+    await uploadEditorImage(editor, new File(['image'], 'kept.png', { type: 'image/png' }), async () => ({
+      url: 'https://example.com/kept.png',
+      discard,
+    }));
+    expect(editor.getJSON().content?.find((node) => node.type === 'image')?.attrs?.src).toBe('https://example.com/kept.png');
+    expect(discard).not.toHaveBeenCalled();
+  });
   it('shows an indeterminate progress bar until byte progress is available', async () => {
     const editor = makeEditor();
     let resolve!: (url: string | null) => void;

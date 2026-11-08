@@ -320,11 +320,19 @@ const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deplo
 export const usePublish = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ message, firstPublishAttribution }: { message?: string; firstPublishAttribution?: FirstPublishAttribution }) =>
+    mutationFn: async ({
+      message,
+      firstPublishAttribution,
+      reviewedStateHash,
+    }: {
+      message?: string;
+      firstPublishAttribution?: FirstPublishAttribution;
+      reviewedStateHash?: string;
+    }) =>
       mutateData<Deployment>(
         await api.app.projects[':projectId'].deployments.$post({
           param: { projectId },
-          json: { ...(message ? { message } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
+          json: { reviewedStateHash, ...(message ? { message } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
         }),
         'Could not publish.',
       ),
@@ -335,9 +343,9 @@ export const usePublish = (projectId: string) => {
 export const usePublishAnyway = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
+    mutationFn: async (reviewedDeploymentId: string) =>
       mutateData<Deployment>(
-        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
+        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true, reviewedDeploymentId } }),
         'Could not publish.',
       ),
     onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),
@@ -413,8 +421,9 @@ export const useUploadAsset = (projectId: string) => {
         );
       } catch (confirmationError) {
         if (signal?.aborted) throw confirmationError;
-        // The server currently exposes duplicate-key P2002 as a generic 500.
-        // Never infer success from that status: verify the exact recorded key.
+        // Confirm is idempotent for the same key, so Retry normally gets the
+        // recorded asset back. If confirm still fails, look for the exact
+        // recorded key; never infer success from the error status.
         let existing: Asset | undefined;
         try {
           const assets = await getData(await api.app.projects[':projectId'].assets.$get({ param: { projectId } }, { init: { signal } }), 'assets');
@@ -428,6 +437,17 @@ export const useUploadAsset = (projectId: string) => {
       return asset;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.assets.all(projectId) }),
+  });
+};
+
+/** Delete an upload this editor session recorded but never placed. The server
+ *  keeps any file that saved content still uses (409 asset:in_use). */
+export const useDeleteAsset = (projectId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (assetId: string) =>
+      mutateData(await api.app.projects[':projectId'].assets[':assetId'].$delete({ param: { projectId, assetId } }), 'Could not delete the file.'),
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.assets.all(projectId) }),
   });
 };
 

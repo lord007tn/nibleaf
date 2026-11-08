@@ -3,7 +3,7 @@ title: 'Take a self-hosted installation to production'
 description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
 audience: 'operators responsible for production readiness'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-08'
 verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
@@ -128,3 +128,102 @@ For MCP OAuth, check discovery on the HTTPS dashboard origin, connect one
 least-privilege app, and verify disconnect stops the next request. For MCP
 writes, preview a fictional project with another writer’s pending draft and
 confirm the preview includes the whole project before publishing.
+
+## Next-release packaging and source CI
+
+`release/self-host.json` and `release/published/` describe the published v0.2.1
+assets. `docker-compose.prod.yml` and `scripts/install.sh` now prepare the next
+release; they do not change existing downloads. Do not replace a released
+installation with these templates as an upgrade shortcut.
+
+The next template includes optional ClickHouse with a 1536 MiB / 2 CPU budget, persistent
+data, logs and backups, and an `analytics-tools` migration profile. Analytics
+remain disabled by default. Set `COMPOSE_PROFILES=analytics` and choose an
+`ANALYTICS_MODE` from the rollout guide to enable it. Set `CLICKHOUSE_PASSWORD` before rendering this
+template (the next installer generates it) and keep `INTERNAL_API_SECRET` the
+same on app, API and worker. Reader and writer credentials can be set separately;
+provision the corresponding ClickHouse users and grants as described in
+[analytics operations](/self-hosting/clickhouse-analytics). The template also
+forwards every documented `EXPORT_*` setting and both MCP write/publish limits.
+
+For an existing v0.2.1 installation needing those limits before the next release,
+use a separate `compose.limits.yml` override. Set the required `EXPORT_*`,
+`MCP_WRITE_RATE_LIMIT_PER_MIN` and `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` mappings on
+`server` and `worker`, then use the same ordered file list for every command:
+
+```bash
+docker compose -f docker-compose.yml -f compose.limits.yml config
+docker compose -f docker-compose.yml -f compose.limits.yml up -d server worker
+```
+
+Review the effective environment privately; it contains secrets. Rehearse with
+fictional data and verify the actual limits before production. The published
+Compose comments about skipping private proxy hops are stale: count every address
+after the client, private addresses included. Use the
+[proxy troubleshooting table](/self-hosting/troubleshooting#readers-see-too-many-requests).
+
+Manual image publication/deployment requires successful `push` runs of
+`ci.yml`, `codeql.yml`, and `gitleaks.yml` for the exact source SHA. Missing,
+pending, cancelled, failed or unreadable results stop the gate. There is no bypass.
+Pull-request merge runs cannot qualify a different published source tree. The
+manual workflow builds an OCI archive first, rechecks CI immediately before
+copying that archive to the registry, then rechecks again before deployment.
+The named required job must pass too; a successful workflow wrapper is insufficient.
+Docker builds remain manual-only. A read-only receipt can be obtained with:
+
+```bash
+SOURCE_SHA=$(git rev-parse HEAD) GITHUB_REPOSITORY=lord007tn/nibleaf GH_TOKEN="$(gh auth token)" node scripts/check-source-ci.mjs
+```
+
+At the next release preparation, set the new version in the production template,
+copy the reviewed templates into `release/published/`, regenerate both hashes and
+the verified README command together, and run `pnpm self-host:check` and
+`pnpm release:check`. Publish fresh assets under a new tag; never replace v0.2.1.
+`pnpm self-host:smoke` boots these templates with fictional credentials in the
+isolated `nibleaf-selfhost` project, checks app/worker/analytics health and runs
+the analytics migrator while the worker runs, then removes its own stack.
+It uses the compatible v0.2.1 image; publishing new assets remains a release action.
+
+## Marketing HTML and CDN caching
+
+Allowlisted marketing pages on `nibleaf.com` now use hash-based script CSP and
+`public, max-age=60, s-maxage=300` for GET/HEAD requests without any Cookie,
+Authorization or query string. They contain no nonce metadata. Dashboard,
+authentication, reader, unknown and credential-bearing routes keep request
+nonces and `private, no-store`. Errors and responses setting cookies are private.
+This applies to HTML responses when `Accept` permits HTML; requests preferring
+Markdown receive the Markdown representation and its own cache policy.
+
+Marketing rendering completes Suspense before emitting HTML, normalizes router
+timestamps before dehydration, and computes hashes after the manifest rewrite.
+The footer year is fixed at build time. Set `MARKETING_GITHUB_STARS` to a verified
+nonnegative integer when building to display a fixed star count; the default 0
+is the unavailable-count fallback. Counts and year refresh on the next build.
+For a Docker source build, pass `--build-arg MARKETING_GITHUB_STARS=<verified-count>`.
+The manual publication workflow reads the repository's verified star count and
+passes that snapshot to the image build automatically.
+The built-app CI guard compares human/bot HTML and checks every inline hash on
+English and Arabic pages after every framework upgrade.
+
+The owner accepted these trade-offs: GTM custom-HTML inline scripts are blocked
+unless covered by the policy, while allowed GTM script loading remains available;
+CDN hits bypass origin crawler analytics; public values may be stale in caches.
+
+Before enabling HTML caching at the CDN, install a bypass rule with precedence
+over the marketing cache rule for any Cookie or Authorization header or query
+string. Match only `nibleaf.com`, the allowlisted marketing paths and GET/HEAD;
+never cache `/app`, `/sites`, authentication or unknown routes. Include the host
+and negotiated Accept representation in the cache key, preserve `Vary: Accept`,
+and honor origin Cache-Control and Set-Cookie. `Vary: Cookie` alone is insufficient.
+Keep the CDN disabled until these rules are verified. This source change does
+not claim a live CDN rollout. On deployment, purge cached marketing HTML or retain
+the previous build's hashed assets through the cache lifetime.
+
+## CLI agent-resource checks
+
+`inspect` rejects empty or HTML/login `llms.txt`, including disguised HTML, while
+accepting English and Arabic UTF-8 text. OpenAPI requires JSON, version 3.0.x or
+3.1.x, nonempty `info.title` and `info.version`, and a `paths` object (which may be
+empty). This is a minimum document-shape check, not full OpenAPI validation.
+Failures identify the resource and corrective action; Markdown, `Vary: Accept`
+and real-404 checks still apply.
