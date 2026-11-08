@@ -536,7 +536,6 @@
   "analytics_kpi_pageviews": "Page views",
   "analytics_kpi_uniquevisitors": "Unique visitors",
   "analytics_kpi_searches": "Searches",
-  "analytics_kpi_projectswithtraffic": "Projects with traffic",
   "analytics_chart_pageviewsallprojects": "Pageviews · all projects",
   "analytics_section_byproject": "By project",
   "analytics_section_referrers": "Referrers",
@@ -574,7 +573,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3950,5 +3948,7 @@
   "admin_pagination_first": "First page",
   "admin_pagination_next": "Next page",
   "dashboard_ai_inputtokens": "Text units in questions",
-  "dashboard_ai_outputtokens": "Text units in answers"
+  "dashboard_ai_outputtokens": "Text units in answers",
+  "analytics_kpi_siteswithtraffic": "Sites with traffic",
+  "analytics_workspace_termspersite": "What readers searched for is shown in each site's Search report, where that site's privacy settings apply."
 }

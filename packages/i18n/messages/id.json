@@ -493,7 +493,6 @@
   "analytics_kpi_pageviews": "Tampilan halaman",
   "analytics_kpi_uniquevisitors": "Pengunjung unik",
   "analytics_kpi_searches": "Pencarian",
-  "analytics_kpi_projectswithtraffic": "Proyek dengan lalu lintas",
   "analytics_chart_pageviewsallprojects": "Tayangan Halaman · semua proyek",
   "analytics_section_byproject": "Berdasarkan proyek",
   "analytics_section_referrers": "Referensi",
@@ -1977,7 +1976,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3885,5 +3883,7 @@
   "admin_pagination_first": "Halaman pertama",
   "admin_pagination_next": "Halaman berikutnya",
   "dashboard_ai_inputtokens": "Unit teks dalam pertanyaan",
-  "dashboard_ai_outputtokens": "Unit teks dalam jawaban"
+  "dashboard_ai_outputtokens": "Unit teks dalam jawaban",
+  "analytics_kpi_siteswithtraffic": "Situs dengan kunjungan",
+  "analytics_workspace_termspersite": "Kata yang dicari pembaca ditampilkan di laporan Pencarian setiap situs, sesuai pengaturan privasi situs tersebut."
 }

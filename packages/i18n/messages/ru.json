@@ -504,7 +504,6 @@
   "analytics_kpi_pageviews": "Просмотры страниц",
   "analytics_kpi_uniquevisitors": "Уникальные посетители",
   "analytics_kpi_searches": "Поиски",
-  "analytics_kpi_projectswithtraffic": "Проекты с трафиком",
   "analytics_chart_pageviewsallprojects": "Просмотры страниц · все проекты",
   "analytics_section_byproject": "По проекту",
   "analytics_section_referrers": "Рефереры",
@@ -2054,7 +2053,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3971,5 +3969,7 @@
   "admin_pagination_first": "Первая страница",
   "admin_pagination_next": "Следующая страница",
   "dashboard_ai_inputtokens": "Текстовые единицы в вопросах",
-  "dashboard_ai_outputtokens": "Текстовые единицы в ответах"
+  "dashboard_ai_outputtokens": "Текстовые единицы в ответах",
+  "analytics_kpi_siteswithtraffic": "Сайты с посещениями",
+  "analytics_workspace_termspersite": "Что искали читатели, показано в отчёте «Поиск» каждого сайта — с учётом его настроек конфиденциальности."
 }

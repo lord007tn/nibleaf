@@ -502,7 +502,6 @@
   "analytics_kpi_pageviews": "Seitenaufrufe",
   "analytics_kpi_uniquevisitors": "Einzigartige Besucher",
   "analytics_kpi_searches": "Suchen",
-  "analytics_kpi_projectswithtraffic": "Projekte mit Verkehr",
   "analytics_chart_pageviewsallprojects": "Seitenaufrufe · alle Projekte",
   "analytics_section_byproject": "Nach Projekt",
   "analytics_section_referrers": "Referenten",
@@ -2040,7 +2039,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3950,5 +3948,7 @@
   "admin_pagination_first": "Erste Seite",
   "admin_pagination_next": "Nächste Seite",
   "dashboard_ai_inputtokens": "Texteinheiten in Fragen",
-  "dashboard_ai_outputtokens": "Texteinheiten in Antworten"
+  "dashboard_ai_outputtokens": "Texteinheiten in Antworten",
+  "analytics_kpi_siteswithtraffic": "Websites mit Besuchen",
+  "analytics_workspace_termspersite": "Wonach gesucht wurde, zeigt der Suchbericht jeder Website – dort gelten ihre Datenschutzeinstellungen."
 }
