@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   sessionFind: vi.fn(),
   sessionUpdate: vi.fn(),
   readerUpdate: vi.fn(),
+  memberSessionFind: vi.fn(),
+  memberSessionUpdate: vi.fn(),
 }));
 
 vi.mock('@nibleaf/auth/server', () => ({ auth: { api: { getSession: mocks.getSession } } }));
@@ -18,6 +20,7 @@ vi.mock('@nibleaf/database', () => ({
     member: { findUnique: mocks.memberFind },
     readerSession: { findFirst: mocks.sessionFind, update: mocks.sessionUpdate },
     reader: { update: mocks.readerUpdate },
+    siteMemberSession: { findFirst: mocks.memberSessionFind, update: mocks.memberSessionUpdate },
   },
 }));
 vi.mock('@/env', () => ({ env: { APP_URL: 'https://docs.example.com' } }));
@@ -30,6 +33,7 @@ describe('resolveViewerAccess', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSession.mockResolvedValue(null);
+    mocks.memberSessionFind.mockResolvedValue(null);
   });
 
   it('preserves anonymous access for the explicit PUBLIC default', async () => {
@@ -40,6 +44,45 @@ describe('resolveViewerAccess', () => {
   it('denies anonymous readers and dedicated reader cookies in WORKSPACE mode', async () => {
     await expect(resolveViewerAccess('project', 'WORKSPACE', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
     expect(mocks.sessionFind).not.toHaveBeenCalled();
+  });
+
+  it('lets a team member signed in on the site read in both private modes while they remain a member', async () => {
+    const session = { id: 'site-session', userId: 'user', lastUsedAt: new Date(), project: { organizationId: 'org' } };
+    mocks.memberSessionFind.mockResolvedValue({ ...session, user: { banned: false, suspendedAt: null } });
+    mocks.memberFind.mockResolvedValue({ id: 'member' });
+    for (const mode of ['WORKSPACE', 'READERS'] as const) {
+      await expect(resolveViewerAccess('project', mode, headers('nibleaf_reader_project=opaque'))).resolves.toEqual({
+        kind: 'workspace',
+        allowedPageIds: null,
+        siteSession: true,
+      });
+    }
+    expect(mocks.memberFind).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { organizationId_userId: { organizationId: 'org', userId: 'user' } } }),
+    );
+    mocks.memberFind.mockResolvedValue(null);
+    await expect(resolveViewerAccess('project', 'WORKSPACE', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
+    // A suspended account's existing site sessions stop working.
+    mocks.memberFind.mockResolvedValue({ id: 'member' });
+    for (const user of [
+      { banned: true, suspendedAt: null },
+      { banned: false, suspendedAt: new Date() },
+    ]) {
+      mocks.memberSessionFind.mockResolvedValue({ ...session, user });
+      await expect(resolveViewerAccess('project', 'READERS', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
+    }
+  });
+
+  it('offers a dashboard member Sign out on the site when they also signed in there', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'user' } });
+    mocks.projectFind.mockResolvedValue({ organizationId: 'org' });
+    mocks.memberFind.mockResolvedValue({ id: 'member' });
+    await expect(resolveViewerAccess('project', 'READERS', headers('nibleaf_reader_project=opaque'))).resolves.toEqual({
+      kind: 'workspace',
+      allowedPageIds: null,
+      siteSession: true,
+    });
+    await expect(resolveViewerAccess('project', 'READERS', headers('other=1'))).resolves.toEqual({ kind: 'workspace', allowedPageIds: null });
   });
 
   it('grants full private access to an owning workspace member', async () => {

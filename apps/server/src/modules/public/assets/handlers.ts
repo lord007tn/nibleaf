@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { prisma } from '@nibleaf/database';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
-import { getProjectAssetAccess, isProjectTakenDown } from '@/actions/sites';
+import { getProjectAssetAccess, isPrivateSiteBrandingAsset, isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
 import { publicAssetResponseHeaders } from '@/lib/asset-response';
 import { deliveryCacheHeaders } from '@/lib/delivery-cache';
@@ -55,7 +55,9 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // A page-scoped reader may load only assets that the pages they can read
   // (or the site chrome) reference.
   const viewer = projectId ? await getProjectAssetAccess(projectId, key, ctx.req.raw.headers) : null;
-  if (projectId && !viewer) {
+  // A private site's sign-in screen shows its own logo to visitors who can't read it yet.
+  const signInBranding = Boolean(projectId && !viewer && (await isPrivateSiteBrandingAsset(projectId, key)));
+  if (projectId && !viewer && !signInBranding) {
     throw notFound('asset', { key });
   }
   const head = await headObject(key).catch(() => null);
@@ -75,7 +77,7 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // caches within a day rather than being pinned for a year.
   // Reader/workspace responses vary by a private session cookie and must never
   // enter a shared cache. Public assets retain the historical one-day policy.
-  const isPrivate = Boolean(viewer && viewer.kind !== 'public');
+  const isPrivate = signInBranding || Boolean(viewer && viewer.kind !== 'public');
   for (const [name, value] of Object.entries(deliveryCacheHeaders(isPrivate, 'public, max-age=86400'))) {
     ctx.header(name, value);
   }

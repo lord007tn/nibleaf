@@ -400,6 +400,8 @@ export interface SiteShell {
   openapi?: PublishedOpenApi | null;
   /** `answer`: the site enables AI answers and the instance can serve them.
    *  Optional because a response from an older API omits it; treat as off. */
+  /** Signed in on the site itself (a reader, or a team member signed in with an email code), so it can offer Sign out. */
+  signedIn?: boolean;
   capabilities?: { answer: boolean };
 }
 
