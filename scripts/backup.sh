@@ -59,7 +59,7 @@ PG_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q postgres)"
 [[ -n "$PG_CONTAINER" && "$PG_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected postgres container"
 PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$PG_CONTAINER")"
 [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fatal "could not identify the selected Compose project"
-SERVER_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q server)"
+SERVER_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps --all -q server)"
 [[ -n "$SERVER_CONTAINER" && "$SERVER_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected server container to identify configured storage"
 SERVER_PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$SERVER_CONTAINER")"
 [[ "$SERVER_PROJECT" = "$PROJECT" ]] || fatal "server belongs to a different Compose project"
@@ -71,7 +71,7 @@ if [[ "$BACKUP_STORAGE" = bundled && ! "$STORAGE_ENDPOINT" =~ ^http://maxio(:900
 fi
 VOLUME=""
 if [[ "$BACKUP_STORAGE" = bundled ]]; then
-  STORAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q maxio)"
+  STORAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps --all -q maxio)"
   [[ -n "$STORAGE_CONTAINER" && "$STORAGE_CONTAINER" != *$'\n'* ]] || fatal "bundled maxio container missing; use BACKUP_STORAGE=external only for external storage"
   STORAGE_PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$STORAGE_CONTAINER")"
   [[ "$STORAGE_PROJECT" = "$PROJECT" ]] || fatal "maxio belongs to a different Compose project"

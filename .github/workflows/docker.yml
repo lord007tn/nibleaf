@@ -196,7 +196,11 @@ jobs:
             type=raw,value=${{ inputs.image_tag }}
             type=raw,value=${{ steps.source.outputs.image_tag }}
 
-      - name: Build and publish
+      - name: Install OCI archive publisher
+        if: inputs.publish
+        run: sudo apt-get update -qq && sudo apt-get install -y skopeo
+
+      - name: Build image archive
         id: build
         uses: docker/build-push-action@v7
         with:
@@ -204,7 +208,8 @@ jobs:
           file: ./Dockerfile
           target: runner
           platforms: ${{ inputs.platforms }}
-          push: ${{ inputs.publish }}
+          push: false
+          outputs: type=oci,dest=${{ runner.temp }}/nibleaf-image.tar
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
@@ -220,6 +225,22 @@ jobs:
             type=gha,mode=max,scope=nibleaf-image,ignore-error=true
           provenance: mode=max
           sbom: true
+
+      - name: Recheck source CI before publication
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node scripts/check-source-ci.mjs
+
+      - name: Publish the checked image archive
+        if: inputs.publish
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+          TAG: ${{ inputs.image_tag }}
+          OCI_ARCHIVE: ${{ runner.temp }}/nibleaf-image.tar
+        run: node scripts/publish-built-image.mjs
 
       - name: Verify published immutable image
         if: inputs.publish

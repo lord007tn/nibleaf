@@ -25,9 +25,10 @@ export async function checkSourceCi({ repository, sha, token, fetchImpl = fetch 
     const body = await response.json();
     if (!Array.isArray(body.workflow_runs)) throw new Error(`Invalid source CI response for ${workflow}.`);
     // The newest attempt wins, even if an older run passed. Scheduled/dispatch
-    // runs cannot substitute for the source-triggered checks.
+    // runs cannot substitute for push checks. PR workflows test a synthetic
+    // merge commit, even though their run metadata names the feature head SHA.
     const run = body.workflow_runs
-      .filter((candidate) => candidate.head_sha === sha && ['push', 'pull_request'].includes(candidate.event))
+      .filter((candidate) => candidate.head_sha === sha && candidate.event === 'push')
       .sort((a, b) => b.id - a.id)[0];
     if (run?.status !== 'completed' || run.conclusion !== 'success') {
       throw new Error(`Source CI ${workflow} for ${sha}: ${run ? `${run.status}/${run.conclusion}` : 'missing exact-SHA run'}.`);

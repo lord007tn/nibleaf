@@ -26,6 +26,8 @@ describe('inspectSite', () => {
     ['HTML content type', '<h1>Sign in</h1>', 'text/html'],
     ['mixed-case HTML content type', '<h1>Sign in</h1>', 'Text/HTML'],
     ['disguised HTML', '<!doctype html><html>Login</html>', 'text/plain'],
+    ['comment-prefixed HTML', '<!-- gateway -->\n<!doctype html><html>Login</html>', 'text/plain'],
+    ['login fragment', '<div><h1>Sign in</h1><input type="password"></div>', 'text/plain'],
     ['empty text', '  \n ', 'text/plain'],
   ])('rejects llms.txt with %s and explains the failure', async (_label, body, type) => {
     const result = await inspectEndpoint('llms.txt', () => new Response(body, { headers: { 'content-type': type } }));

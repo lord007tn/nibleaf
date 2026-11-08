@@ -14,9 +14,11 @@ None was fully fixed. This record is local/source evidence, not a deployment.
   `release/published/` preserves the prior inputs; manifest and published hashes
   are unchanged. The template is the next release Compose, with analytics optional via its
   profile and flag. Public v0.2.1 assets remain unchanged.
-- #335: corrected proxy comments and moved the unchanged parser into shared code
+- #335: corrected proxy comments and moved the parser into shared code
   consumed by app and API. Tests cover CDN, multiple public proxies, trailing
   Docker/private hops, internal-only chains, and an excessive trust count.
+  Review hardening validates IPv6/mapped addresses and selects the configured
+  boundary even for private clients; EN/AR guidance counts every trailing proxy.
 - #329: the owner accepted hash CSP and the GTM/crawler/staleness trade-offs.
   Anonymous allowlisted marketing documents now use completed deterministic
   rendering, normalized router timestamps and build-fixed stars/year, with hashes
@@ -127,3 +129,21 @@ exception). Rebased typecheck, lint, dead-code, release/docs checks, 61 focused
 app tests, production app build and bundle budget all passed. The seven-route
 built guard and isolated headless captures were refreshed on this source, with
 external and API browser requests blocked and the local API target on port 4451.
+
+## Delivered review hardening
+
+CodeRabbit subsequently delivered its delayed review. The fixes reject retained
+smoke/restore resources before cleanup, avoid logging Docker exceptions or env,
+discover stopped backup services, refuse reused restore storage, and keep
+optional analytics credentials optional until service startup. CLI fixtures
+cover disguised HTML, and the Turbo build key includes the star snapshot.
+Publication uses a locally built OCI archive with CI refreshed after build;
+only successful push runs qualify the actual published source tree. No registry
+publication is performed by these tests. HEAD retains Accept negotiation, and
+the built guard checks credentialed hydration scripts against their nonce.
+
+The first contention harness exposed that an open PostgreSQL snapshot blocks
+Prisma's concurrent index migration. The harness now completes Prisma first,
+then holds the independent analytics lock and requires both worker and CLI
+contention messages before release. The earlier receipt proved migration while
+the worker ran; the refreshed receipt distinguishes verified lock contention.

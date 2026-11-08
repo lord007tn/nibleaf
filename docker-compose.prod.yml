@@ -151,8 +151,9 @@ services:
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}
       CLICKHOUSE_USER: ${CLICKHOUSE_WRITER_USERNAME:-${CLICKHOUSE_USERNAME:-nibleaf}}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD in .env}}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_WRITER_PASSWORD:-${CLICKHOUSE_PASSWORD:-}}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    entrypoint: ["/bin/sh", "-ec", "test -n \"$$CLICKHOUSE_PASSWORD\" || { echo 'Set CLICKHOUSE_PASSWORD before enabling analytics' >&2; exit 1; }; exec /entrypoint.sh"]
     volumes:
       - nibleaf-clickhouse:/var/lib/clickhouse
       - nibleaf-clickhouse-logs:/var/log/clickhouse-server

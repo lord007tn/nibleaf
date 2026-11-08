@@ -88,7 +88,7 @@ export async function inspectSite(input: string, options: InspectOptions = {}): 
       if (!body.trim()) return 'llms.txt must contain nonempty UTF-8 text.';
       if (
         /(?:text\/html|application\/xhtml\+xml)/i.test(response.headers.get('content-type') ?? '') ||
-        /^\s*<(?:!doctype\s+html|html|head|body|form)\b/i.test(body)
+        /^(?:\s|<!--[\s\S]*?-->)*<(?:!doctype\s+html|html|head|body|form|div|main|section|h[1-6]|input)\b/i.test(body)
       ) {
         return 'llms.txt returned HTML, possibly a sign-in page; serve plain text or Markdown.';
       }

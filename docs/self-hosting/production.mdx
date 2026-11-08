@@ -162,9 +162,12 @@ Compose comments about skipping private proxy hops are stale: count every addres
 after the client, private addresses included. Use the
 [proxy troubleshooting table](/self-hosting/troubleshooting#readers-see-too-many-requests).
 
-Manual image publication/deployment requires successful source-triggered runs of
+Manual image publication/deployment requires successful `push` runs of
 `ci.yml`, `codeql.yml`, and `gitleaks.yml` for the exact source SHA. Missing,
 pending, cancelled, failed or unreadable results stop the gate. There is no bypass.
+Pull-request merge runs cannot qualify a different published source tree. The
+manual workflow builds an OCI archive first, rechecks CI immediately before
+copying that archive to the registry, then rechecks again before deployment.
 The named required job must pass too; a successful workflow wrapper is insufficient.
 Docker builds remain manual-only. A read-only receipt can be obtained with:
 

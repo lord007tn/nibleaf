@@ -44,3 +44,12 @@ it.each([
   expect(response.headers.get('cache-control')).toBe('private, no-store');
   expect(response.headers.get('content-security-policy')).toContain('nonce-');
 });
+
+it('preserves content negotiation when rendering a marketing HEAD as GET', async () => {
+  const accept = 'text/markdown, text/html;q=0.5';
+  const get = await server.fetch(new Request('https://nibleaf.com/pricing', { headers: { accept } }));
+  const head = await server.fetch(new Request('https://nibleaf.com/pricing', { method: 'HEAD', headers: { accept } }));
+  expect(head.status).toBe(get.status);
+  expect(head.headers.get('content-type')).toBe(get.headers.get('content-type'));
+  expect(await head.text()).toBe('');
+});

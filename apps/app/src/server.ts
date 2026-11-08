@@ -927,7 +927,7 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     acceptsHtml(request.headers.get('accept')) &&
     marketingSitemapEntries().some((entry) => entry.path === url.pathname);
   const nonce = marketing ? '' : randomBytes(18).toString('base64');
-  const renderRequest = marketing && request.method === 'HEAD' ? asHtmlRenderRequest(request) : request;
+  const renderRequest = marketing && request.method === 'HEAD' ? new Request(request.url, { method: 'GET', headers: request.headers }) : request;
   return ssrNonce.run(nonce, async () =>
     withoutHeadBody(
       await withSecurityHeaders(

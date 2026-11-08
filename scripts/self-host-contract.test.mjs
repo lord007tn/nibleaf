@@ -12,6 +12,8 @@ test('published v0.2.1 inputs remain checksum-identical while next-release templ
 test('Docker builds can supply the fixed marketing star snapshot', async () => {
   const dockerfile = await readFile('Dockerfile', 'utf8');
   assert.match(dockerfile, /FROM base AS build\nARG MARKETING_GITHUB_STARS=0\nENV MARKETING_GITHUB_STARS=\$MARKETING_GITHUB_STARS/);
+  const turbo = JSON.parse(await readFile('turbo.json', 'utf8'));
+  assert.ok(turbo.tasks.build.env.includes('MARKETING_GITHUB_STARS'));
 });
 
 test('restore advice points to empty-target recovery and cannot revive the unsafe recipe', async () => {
@@ -21,12 +23,25 @@ test('restore advice points to empty-target recovery and cannot revive the unsaf
   assert.match(script, /compatible application\n# revision/);
   assert.match(script, /Preserve the previous database/);
   assert.match(script, /Keep app, admin, server and worker stopped/);
+  assert.match(script, /ps --all -q server/);
+  assert.match(script, /ps --all -q maxio/);
   for (const lang of ['', 'ar/']) {
     const doc = await readFile(`docs/${lang}self-hosting/backups-upgrades.mdx`, 'utf8');
     assert.match(doc, /--exit-on-error/);
     assert.match(doc, /schemaname='public'/);
     assert.doesNotMatch(doc, /pg_restore[^\n]*--clean/);
+    assert.match(doc, /RESTORE_STORAGE_VOLUME/);
+    assert.doesNotMatch(doc, /find \/data -mindepth 1 -delete/);
   }
+});
+
+test('smoke refuses retained data and never prints Docker environment or service logs', async () => {
+  const script = await readFile('scripts/self-host-smoke.mjs', 'utf8');
+  assert.ok(script.indexOf('assertUnusedProject(project)') < script.indexOf('await mkdtemp'));
+  assert.doesNotMatch(script, /console\.error|throw error|console\.log\(dc/);
+  assert.match(script, /image: 'v0\.2\.1'/);
+  const restore = await readFile('scripts/self-host-restore.test.mjs', 'utf8');
+  assert.ok(restore.indexOf("assertUnusedProject('nibleaf-selfhost')") < restore.indexOf("dc('up'"));
 });
 
 test('next-release Compose forwards documented export/MCP values and includes bounded analytics', async () => {
@@ -106,7 +121,7 @@ test('next-release Compose forwards documented export/MCP values and includes bo
   assert.ok(config.services['analytics-migrate'].depends_on.clickhouse);
   const disabled = JSON.parse(
     execFileSync('docker', ['compose', '-p', 'nibleaf-selfhost', '-f', 'docker-compose.prod.yml', 'config', '--format', 'json'], {
-      env: { ...env, COMPOSE_PROFILES: '', ANALYTICS_MODE: 'disabled' },
+      env: { ...env, COMPOSE_PROFILES: '', ANALYTICS_MODE: 'disabled', CLICKHOUSE_PASSWORD: '', CLICKHOUSE_WRITER_PASSWORD: '' },
       encoding: 'utf8',
     }),
   );

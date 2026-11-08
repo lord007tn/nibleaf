@@ -57,6 +57,7 @@ for (const candidate of [
   { ...run, status: 'in_progress', conclusion: null },
   { ...run, head_sha: 'b'.repeat(40) },
   { ...run, event: 'workflow_dispatch' },
+  { ...run, event: 'pull_request' },
 ]) {
   test(`rejects ${candidate.status}/${candidate.conclusion}/${candidate.event}/${candidate.head_sha[0]}`, async () => {
     await assert.rejects(checkSourceCi(options([candidate])), /Source CI/);
@@ -88,4 +89,12 @@ test('publication and deployment both run the gate before side effects; Docker r
   assert.ok(workflow.indexOf('run: node scripts/check-source-ci.mjs') < workflow.indexOf('uses: docker/build-push-action'));
   assert.ok(workflow.indexOf('run: node scripts/check-source-ci.mjs') < workflow.indexOf('uses: docker/login-action'));
   assert.doesNotMatch(workflow, /^ {2}(push|pull_request):/m);
+  assert.match(workflow, /push: false/);
+  const publication = workflow.indexOf('- name: Recheck source CI before publication');
+  assert.ok(publication > workflow.indexOf('uses: docker/build-push-action'));
+  assert.ok(publication < workflow.indexOf('run: node scripts/publish-built-image.mjs'));
+  const deployment = workflow.indexOf('- name: Recheck source CI before deployment');
+  assert.ok(deployment > publication);
+  assert.match(workflow.slice(deployment), /if: inputs.publish && inputs.deploy[\s\S]*run: node scripts\/check-source-ci.mjs/);
+  assert.ok(deployment < workflow.indexOf('- name: Deploy exact image'));
 });

@@ -54,7 +54,7 @@ R2 or S3 buckets are not in this volume, so skip those lines and use provider ve
 replication, or an independent bucket backup.
 
 In a repository checkout, `bash scripts/backup.sh` discovers the selected
-Compose project's running server and maxio volume, fails if bundled storage is
+Compose project's server (including stopped containers) and maxio volume, fails if bundled storage is
 missing, and writes a recovery manifest. Set `BACKUP_STORAGE=external` explicitly
 for a database-only backup and back up that bucket separately. `STORAGE_VOLUME`
 is an optional assertion against the inspected mount, not a default volume name.
@@ -86,14 +86,18 @@ Restore with the application revision that created the backup. Preserve the prev
 ```bash
 set -eu
 docker compose --profile admin stop app admin server worker
-docker compose up -d postgres dragonfly maxio
+# Resolve the target before starting maxio: a retained volume is never safe.
+RESTORE_STORAGE_VOLUME=$(docker compose config --format json | python3 -c 'import json,sys; c=json.load(sys.stdin); v=next(v["source"] for v in c["services"]["maxio"]["volumes"] if v["target"]=="/data"); print(c["volumes"][v]["name"])')
+test -n "$RESTORE_STORAGE_VOLUME"
+if docker volume inspect "$RESTORE_STORAGE_VOLUME" >/dev/null 2>&1; then
+  echo 'Refusing an existing storage volume; use a fresh isolated target' >&2
+  exit 1
+fi
+docker compose up -d postgres dragonfly
 test "$(docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc "SELECT count(*) FROM pg_tables WHERE schemaname='public'")" = 0
 docker compose exec -T postgres pg_restore -U nibleaf -d nibleaf --exit-on-error < "backups/nibleaf-db-$STAMP.dump"
-MAXIO_VOLUME=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$(docker compose ps --all -q maxio)")
-test -n "$MAXIO_VOLUME"
-docker volume inspect "$MAXIO_VOLUME" >/dev/null
-docker compose stop maxio
-docker run --rm -v "$MAXIO_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -c "find /data -mindepth 1 -delete && tar xzf /backup/nibleaf-storage-$STAMP.tar.gz -C /data"
+docker volume create "$RESTORE_STORAGE_VOLUME" >/dev/null
+docker run --rm -v "$RESTORE_STORAGE_VOLUME":/data -v "$PWD/backups":/backup alpine:3.22 sh -ec 'test -z "$(ls -A /data)"; tar xzf "/backup/$1" -C /data' sh "nibleaf-storage-$STAMP.tar.gz"
 ```
 
 After verifying schema, migration history and recovered records, start only the compatible application revision with `docker compose up -d`.

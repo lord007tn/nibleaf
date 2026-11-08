@@ -10,12 +10,13 @@ manifest remains the authority for the latest published artifact.
 
 - Reject unusable CLI agent resources, point backup recovery at an empty target,
   and require exact-source CI before manual image publication/deployment (#312).
-- Share app/API proxy parsing without changing hop semantics; correct operator
-  comments to count private hops after the client (#335).
+- Share app/API proxy parsing, validate mapped IPv6 addresses, and honor the
+  configured boundary for private clients. Count every proxy after the client (#335).
 - Prepare ClickHouse, export and MCP limit wiring and generated analytics secrets
   in the next-release production templates (#287). Published v0.2.1 inputs and
   checksums are preserved separately in `release/published/`; existing downloads
-  are unchanged. New release assets and installation smoke tests remain pending.
+  are unchanged. The next-release template passed an isolated boot with the
+  published v0.2.1 image; new release artifacts remain a separate release step.
 - Serve anonymous marketing HTML with deterministic completed rendering and a
   hash-based script CSP, with credential/query bypass and an EN/AR framework
   upgrade guard. Dashboard and reader routes retain nonce CSP (#329).

@@ -9,9 +9,6 @@
 
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 
-/** Loose IPv6 shape check — hex groups and colons (after brackets/zone are stripped). */
-const IPV6 = /^[0-9a-f:]+$/i;
-
 /** Strip an optional `[...]` wrapper, a `:port` suffix (IPv4 only — IPv6 colons
  *  are ambiguous without brackets) and a `%zone` id from a forwarded hop. */
 export const normalizeIp = (raw: string): string => {
@@ -34,7 +31,14 @@ export const isValidIp = (value: string): boolean => {
   if (v4) {
     return v4.slice(1).every((octet) => Number(octet) <= 255);
   }
-  return value.includes(':') && IPV6.test(value);
+  if (!value.includes(':')) return false;
+  try {
+    // WHATWG URL parsing validates IPv6, including dotted IPv4-mapped forms,
+    // in both the browser and server runtimes that consume this module.
+    return /^[0-9a-f:.]+$/i.test(value) && new URL(`http://[${value}]/`).hostname.startsWith('[');
+  } catch {
+    return false;
+  }
 };
 
 /** Private / reserved ranges that can never be a real public client: loopback,
@@ -65,17 +69,16 @@ export const isPrivateIp = (ip: string): boolean => {
  * /api proxy forwards this header unchanged (no xfwd option). Leftmost entries
  * can be client-supplied; ingress must sanitize untrusted forwarding headers.
  *
- * First drop trustedHops entries from the right, keeping at least one. Then
- * scan the remainder right-to-left for a public address, skipping private ones.
+ * First drop trustedHops entries from the right, keeping at least one. The
+ * rightmost remaining address is the trust boundary, even for private clients.
  *
  * @param trustedHops Count every address after the client's address, private
  *                    addresses included. Use the same value on app and API.
  *                    Too high can select an attacker-supplied address.
  * See /self-hosting/troubleshooting#readers-see-too-many-requests.
  *
- * When every remaining hop is private (an internal-only deployment) the rightmost
- * one is used so callers still get per-caller buckets. Null for a missing or
- * unparseable header.
+ * Never scan left past a private client into a client-supplied prefix. Null for
+ * a missing or unparseable header.
  */
 export const clientIpFromForwardedFor = (header: string | null | undefined, trustedHops = 0): string | null => {
   if (!header) {
@@ -88,14 +91,7 @@ export const clientIpFromForwardedFor = (header: string | null | undefined, trus
   if (hops.length === 0) {
     return null;
   }
-  // Drop the configured proxy hops, then walk right-to-left past remaining
-  // private proxy hops. Everything still further left is client-supplied.
+  // Everything left of the selected boundary may be client-supplied.
   const candidates = trustedHops > 0 ? hops.slice(0, Math.max(1, hops.length - trustedHops)) : hops;
-  for (let i = candidates.length - 1; i >= 0; i--) {
-    const hop = candidates[i] as string;
-    if (!isPrivateIp(hop)) {
-      return hop;
-    }
-  }
   return (candidates[candidates.length - 1] as string) ?? null;
 };

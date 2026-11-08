@@ -52,6 +52,21 @@ for (const path of [
     const privateResponse = await get(path, headers);
     assert.equal(privateResponse.headers['cache-control'], 'private, no-store', path);
     assert.match(privateResponse.headers['content-security-policy'] ?? '', /nonce-/);
+    const nonce = /'nonce-([^']+)'/.exec(privateResponse.headers['content-security-policy'] ?? '')?.[1];
+    let executable = 0;
+    for (const script of privateResponse.html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+      if (/\bsrc=|\btype=["']application\/ld\+json/i.test(script[1])) continue;
+      assert.ok(script[1].includes(`nonce="${nonce}"`), `Nonce mismatch at ${path}`);
+      executable++;
+    }
+    assert.ok(executable > 0 && privateResponse.html.includes('data-tsr-stream-part'), `Missing private hydration at ${path}`);
   }
   console.log(`${path}: deterministic human/bot HTML, ${scripts} covered inline scripts, credential bypass`);
+}
+for (const accept of ['text/markdown, text/html;q=0.5', 'text/html, text/markdown;q=0.5']) {
+  const getResponse = await get('/pricing', { accept });
+  const headResponse = await get('/pricing', { accept }, 'HEAD');
+  assert.equal(headResponse.status, getResponse.status);
+  assert.equal(headResponse.headers['content-type'], getResponse.headers['content-type']);
+  assert.equal(headResponse.headers['cache-control'], getResponse.headers['cache-control']);
 }
