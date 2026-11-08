@@ -6,7 +6,7 @@ const metadata = {
   plan: 'free',
   notifications: { member_joined: true },
   integrations: { slack: { webhookUrl: 'https://hooks.slack.com/services/secret' } },
-  git: { provider: 'github', repo: 'acme/docs', lastSyncStatus: 'ok' },
+  git: { provider: 'github', repo: 'acme/docs', lastSyncStatus: 'ok', cloneUrl: 'https://user:tok@git.example.com/acme/docs.git?x=1' },
 };
 
 vi.mock('@nibleaf/database', () => ({
@@ -33,7 +33,7 @@ describe('getScopedWorkspaceSettings: admin-only material never reaches Editors 
 
   it.each([MemberRole.MEMBER, MemberRole.VIEWER, '', 'unknown'])('strips the webhook secret and integration blob for %j', async (role) => {
     const visible = await getScopedWorkspaceSettings('org-1', role);
-    expect(visible.git).toEqual(metadata.git);
+    expect(visible.git).toEqual({ ...metadata.git, cloneUrl: 'https://git.example.com/acme/docs.git' });
     expect(visible.integrations).toEqual({});
     expect(visible.notifications).toEqual({ member_joined: true });
     expect(visible.name).toBe('Acme');

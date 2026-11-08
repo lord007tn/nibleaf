@@ -47,6 +47,23 @@ const getWorkspaceSettings = async (organizationId: string) => {
   };
 };
 
+/** An http(s) URL without credentials, query or fragment; null when it can't be
+ *  parsed. Mirrors the auth package's organization-response redaction. */
+const withoutUrlCredentials = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    url.username = '';
+    url.password = '';
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
 /** Logs only the error code: a database error message can echo query arguments. */
 const logMoveFailure = (organizationId: string, error: unknown): void => {
   logger.warn(
@@ -69,6 +86,16 @@ export const getScopedWorkspaceSettings = async (organizationId: string, role: s
   if ('webhookSecret' in git) {
     delete git.webhookSecret;
     await settleLegacyWebhookSecretIn(organizationId, settings.git).catch((error: unknown) => logMoveFailure(organizationId, error));
+  }
+  if (!roleAtLeast(role, MemberRole.ADMIN)) {
+    // Legacy rows may hold credentials inside the stored Git URLs. Only Admins,
+    // who can fix them, see the stored value.
+    for (const field of ['cloneUrl', 'instanceUrl'] as const) {
+      if (!(field in git)) continue;
+      const clean = withoutUrlCredentials(git[field]);
+      if (clean === null) delete git[field];
+      else git[field] = clean;
+    }
   }
   if (roleAtLeast(role, MemberRole.ADMIN)) {
     const webhookSecret = await getGitWebhookSecret(organizationId).catch(async (error: unknown) => {

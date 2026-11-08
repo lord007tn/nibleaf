@@ -18,7 +18,7 @@ export const ROLE_PICKER_ORDER: readonly AssignableMemberRole[] = [MemberRole.VI
 /** Invitations default to Editor, as before the Viewer role existed. */
 export const DEFAULT_INVITE_ROLE: AssignableMemberRole = MemberRole.MEMBER;
 
-const isKnownRole = (role: string): role is MemberRole => role in ROLE_COPY;
+const isKnownRole = (role: string): role is MemberRole => Object.hasOwn(ROLE_COPY, role);
 
 /** Label key for any stored role. An unrecognised value reads as the least
  *  privileged role, which is also how every server guard ranks it. */

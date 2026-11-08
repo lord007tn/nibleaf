@@ -30,3 +30,9 @@ describe('member role copy', () => {
     expect(DEFAULT_INVITE_ROLE).toBe('member');
   });
 });
+
+describe('roleLabelKey ignores inherited object keys', () => {
+  it.each(['constructor', 'toString', '__proto__'])('treats %s as unknown (Viewer)', (role) => {
+    expect(roleLabelKey(role)).toBe('roles.viewer');
+  });
+});
