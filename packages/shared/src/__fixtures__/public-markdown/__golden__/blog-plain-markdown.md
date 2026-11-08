@@ -102,4 +102,4 @@ Ask any documentation vendor two questions. First: *what exactly is written to s
 
 If the answers are &quot;Markdown&quot; and &quot;yes,&quot; the platform is competing for your renewal on quality. Any other answer, and part of what you are paying for — now or eventually — is the difficulty of leaving.
 
-&gt; Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as reviewed on August 17, 2026 and may change.
+> Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as reviewed on August 17, 2026 and may change.

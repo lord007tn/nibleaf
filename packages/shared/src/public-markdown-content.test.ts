@@ -23,7 +23,9 @@ import Example from './example'
 
     const normalized = normalizePublicMarkdownContent(source);
 
-    expect(normalized).toContain('&gt; **Portable guidance**');
+    // A callout is a real Markdown blockquote: its marker isn't escaped (#341).
+    expect(normalized).toContain('> **Portable guidance**');
+    expect(normalized).not.toContain('&gt; **Portable guidance**');
     expect(normalized).toContain('&lt;Unknown onclick=&quot;run()&quot;&gt;Readable&lt;/Unknown&gt;');
     expect(normalized).toContain("```mdx\nimport Example from './example'\n<Callout>Code sample</Callout>\n```");
     expect(normalized).not.toContain('Exploit');

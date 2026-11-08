@@ -1,0 +1,43 @@
+# Code stays exactly as written
+
+Inline code that runs onto the next line: `<Note>
+title="x" & {expr}</Note>` stays one span.
+
+A double-tick span ``with `ticks` and <Card title="a">
+across a line break`` and a lone ` backtick.
+
+> Quoted code:
+>
+> ```html
+> <Note>&amp; <script>kept()</script></Note>
+> ```
+
+- In a list:
+
+  ~~~mdx
+  <Tabs>
+  	<Tab title="tab-indented">{props.x}</Tab>
+  </Tabs>   
+  ~~~
+
+````md
+```js
+<Callout>nested fence</Callout>
+```
+````
+
+```text
+an unclosed-looking ``` inside a line is not a closer
+<Warning>still code</Warning>
+`````
+
+> Inside a callout, `<Badge>inline</Badge>` and:
+>
+> ```json
+> { "a": "<b>", "c": "&amp;" }
+> ```
+
+- **src/**
+  ```txt
+  indented	with tab
+  ```

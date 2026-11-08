@@ -1,4 +1,4 @@
-import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from './markdown-code';
+import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
 /** A character reference a Markdown renderer decodes to text: named,
  *  decimal or hexadecimal. */
@@ -15,25 +15,18 @@ const escapeHtml = (value: string): string =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
-/** A tag's attributes, up to the `>` that ends it: a `>` inside a quoted
- *  value doesn't end it. */
-const ATTRIBUTES = `((?:[^>"']|"[^"]*"|'[^']*')*)`;
-
 const mdxAttribute = (source: string, name: string): string | undefined => {
   const match = new RegExp(`(?:^|\\s)${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(source);
   return match?.[1] ?? match?.[2];
 };
 
-/** An attribute value as one line of inert Markdown text. Angle brackets
- *  become character references, not backslash escapes, so escaping the line
- *  for HTML afterwards doesn't show a literal `\&gt;`. */
-const markdownText = (value?: string): string =>
-  (value ?? '')
+/** Attribute text as inert Markdown text. Angle brackets become character references, not
+ *  backslash escapes, so escaping the line for HTML afterwards doesn't show a literal `\&gt;`. */
+const markdownText = (value: string): string =>
+  value
     .replace(/[\\`*_[\]]/g, '\\$&')
     .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replace(/[\r\n]+/g, ' ')
-    .trim();
+    .replaceAll('>', '&gt;');
 
 /** Decode what a Markdown renderer would decode in a link destination
  *  (character references, backslash escapes, ignored whitespace) before
@@ -64,22 +57,6 @@ const safeHref = (value?: string): string | undefined => {
   if (!href || !isSafeLinkDestination(href)) return undefined;
   // UTF-8 bytes, as a browser would send them: U+2003 is `%E2%80%83`, not `%2003`.
   return href.replace(/[\s()]/g, (character) => (character === '(' ? '%28' : character === ')' ? '%29' : encodeURIComponent(character)));
-};
-
-/** Project `<tag …>body</tag>`, for one tag or a family of tags, innermost
- *  first: a body never holds another opening tag of the family, so a nested
- *  container is projected before the one around it, and the outer one's line
- *  prefixes (`> `, indentation) apply once, to the finished inner text. */
-const mdxContainer = (source: string, tags: string | readonly string[], render: (attributes: string, body: string) => string): string => {
-  const family = (typeof tags === 'string' ? [tags] : tags).join('|');
-  const pattern = new RegExp(`<(${family})\\b${ATTRIBUTES}>((?:(?!<(?:${family})\\b)[\\s\\S])*?)<\\/\\1>`, 'gi');
-  let current = source;
-  for (let pass = 0; pass < 8; pass += 1) {
-    const next = current.replace(pattern, (_match, _tag: string, attributes: string, body: string) => render(attributes, body.trim()));
-    if (next === current) return current;
-    current = next;
-  }
-  return current;
 };
 
 /** Where a Markdown link destination starting at `start` ends: an `<…>`
@@ -149,168 +126,203 @@ const neutralizeUnsafeLinks = (source: string): string => {
   );
 };
 
-/** Convert supported authored MDX to inert Markdown for every public machine
- * representation. Only text and allowlisted attributes are projected. */
-export const portablePublicMdxMarkdown = (source: string): string => {
-  let output = source.replace(new RegExp(`<File\\b${ATTRIBUTES}\\/>`, 'gi'), (_match, attributes: string) => {
-    const name = markdownText(mdxAttribute(attributes, 'name'));
-    return name ? `- \`${name}\`` : '';
-  });
-  output = output.replace(new RegExp(`<RelatedCard\\b${ATTRIBUTES}\\/>`, 'gi'), (_match, attributes: string) => {
-    const title = markdownText(mdxAttribute(attributes, 'title'));
-    const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = safeHref(mdxAttribute(attributes, 'href'));
-    return title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : '';
-  });
-  output = output.replace(new RegExp(`<Icon\\b${ATTRIBUTES}\\/>`, 'gi'), '');
-
-  // One family, so a callout inside another is quoted once more, not twice.
-  output = mdxContainer(output, ['Callout', 'Note', 'Info', 'Tip', 'Check', 'Warning', 'Danger'], (_attributes, body) =>
-    body
-      .split('\n')
-      .map((line) => (line ? `> ${line}` : '>'))
-      .join('\n'),
-  );
-  output = mdxContainer(output, 'Folder', (attributes, body) => {
-    const name = markdownText(mdxAttribute(attributes, 'name'));
-    const nested = body
-      .split('\n')
-      .map((line) => (line ? `  ${line}` : line))
-      .join('\n');
-    return `${name ? `- **${name}/**` : '-'}\n${nested}`;
-  });
-  output = mdxContainer(output, 'RelatedCard', (attributes, body) => {
-    const title = markdownText(mdxAttribute(attributes, 'title'));
-    const description = markdownText(mdxAttribute(attributes, 'description'));
-    const href = safeHref(mdxAttribute(attributes, 'href'));
-    return `${title ? `- ${href ? `[${title}](${href})` : title}${description ? ` — ${description}` : ''}` : ''}${body ? `\n  ${body}` : ''}`;
-  });
-
-  const titledContainers: ReadonlyArray<readonly [string, number]> = [
-    ['RelatedContent', 2],
-    ['ApiExample', 2],
-    ['RequestExample', 3],
-    ['ResponseExample', 3],
-    ['Tab', 3],
-    ['Accordion', 3],
-    ['Expandable', 3],
-    ['Step', 3],
-    ['Card', 3],
-  ];
-  for (const [tag, level] of titledContainers) {
-    output = mdxContainer(output, tag, (attributes, body) => {
-      const title = markdownText(mdxAttribute(attributes, 'title'));
-      const status = tag === 'ResponseExample' ? markdownText(mdxAttribute(attributes, 'status')) : '';
-      const href = tag === 'Card' ? safeHref(mdxAttribute(attributes, 'href')) : undefined;
-      const label = title ? (href ? `[${title}](${href})` : title) : '';
-      return `${label || status ? `${'#'.repeat(level)} ${label}${status ? ` · ${status}` : ''}\n\n` : ''}${body}`;
-    });
-  }
-  for (const tag of ['ParamField', 'ResponseField']) {
-    output = mdxContainer(output, tag, (attributes, body) => {
-      const name = markdownText(mdxAttribute(attributes, 'name'));
-      const type = markdownText(mdxAttribute(attributes, 'type'));
-      return `${name || type ? `#### ${name}${type ? ` · ${type}` : ''}\n\n` : ''}${body}`;
-    });
-  }
-  // A changelog entry: its label as a heading, then its description and body.
-  output = mdxContainer(output, 'Update', (attributes, body) => {
-    const label = markdownText(mdxAttribute(attributes, 'label'));
-    const description = markdownText(mdxAttribute(attributes, 'description'));
-    return [label ? `## ${label}` : '', description, body].filter(Boolean).join('\n\n');
-  });
-  output = mdxContainer(output, 'Frame', (attributes, body) => {
-    const caption = markdownText(mdxAttribute(attributes, 'caption'));
-    return `${body}${caption ? `\n\n_${caption}_` : ''}`;
-  });
-  output = mdxContainer(output, 'Button', (attributes, body) => {
-    const href = safeHref(mdxAttribute(attributes, 'href'));
-    return href ? `[${body}](${href})` : body;
-  });
-  output = mdxContainer(output, 'Tooltip', (_attributes, body) => body);
-  output = mdxContainer(output, 'Badge', (_attributes, body) => `**${body}**`);
-  for (const tag of ['FileTree', 'Tabs', 'AccordionGroup', 'Steps', 'CardGroup', 'CodeGroup', 'Columns', 'Column', 'Banner']) {
-    output = mdxContainer(output, tag, (_attributes, body) => body);
-  }
-  return output;
+/** True when a boolean attribute is present: bare (`required`) or set (`required="true"`). */
+const mdxFlag = (source: string, name: string): boolean => {
+  const match = new RegExp(`(?:^|\\s)${name}(?=\\s|=|$)(?:\\s*=\\s*(?:"([^"]*)"|'([^']*)'|\\{([^}]*)\\}))?`, 'i').exec(source);
+  if (!match) return false;
+  const value = (match[1] ?? match[2] ?? match[3])?.trim();
+  return value === undefined || !['false', '0'].includes(value);
 };
 
-const activeBlockTag = /<\/?(?:script|style|iframe|object|embed)\b[^>]*>/gi;
+/** One piece of projected output. `text` is authored prose and `attribute` is attribute text
+ *  (both escaped for `.md`); `code` is kept byte for byte; `markup` is Markdown the projection writes. */
+type Segment = { kind: 'text' | 'attribute' | 'code' | 'markup'; value: string };
+type Target = 'markdown' | 'export';
 
-const stripActiveMarkup = (source: string): string => {
-  let output = '';
+const markup = (value: string): Segment => ({ kind: 'markup', value });
+
+/** Attribute text as inert Markdown. Inline code in it stays code (`title="Use `<Note>`"`). */
+const attributeText = (value: string | undefined): Segment[] => {
+  const segments: Segment[] = [];
+  const line = (value ?? '').replace(/[\r\n]+/g, ' ').trim();
   let cursor = 0;
-  let blockedDepth = 0;
-  for (const match of source.matchAll(activeBlockTag)) {
-    const token = match[0];
-    const index = match.index;
-    if (blockedDepth === 0) output += source.slice(cursor, index);
-    if (token.startsWith('</')) {
-      blockedDepth = Math.max(0, blockedDepth - 1);
-      cursor = index + token.length;
-    } else if (token.endsWith('/>')) {
-      cursor = index + token.length;
-    } else {
-      blockedDepth += 1;
-      if (blockedDepth === 1) cursor = index;
-    }
+  for (const match of line.matchAll(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)) {
+    if (match.index > cursor) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor, match.index)) });
+    segments.push({ kind: 'code', value: match[0] });
+    cursor = match.index + match[0].length;
   }
-  if (blockedDepth === 0) output += source.slice(cursor);
-  return output;
+  if (cursor < line.length) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor)) });
+  return segments;
+};
+const hasText = (segments: readonly Segment[]): boolean => segments.some((segment) => segment.value !== '');
+
+/** Trim leading and trailing whitespace across segments, as a body is trimmed. */
+const trimSegments = (segments: readonly Segment[]): Segment[] => {
+  const result = segments.filter((segment) => segment.value !== '').map((segment) => ({ ...segment }));
+  while (result[0] && !result[0].value.trimStart()) result.shift();
+  while (result.at(-1) && !result.at(-1)?.value.trimEnd()) result.pop();
+  // Code keeps its own indentation: trimming an indented fence's opening line would shift it.
+  const first = result[0];
+  if (first && first.kind !== 'code') first.value = first.value.trimStart();
+  const last = result.at(-1);
+  if (last && last.kind !== 'code') last.value = last.value.trimEnd();
+  return result;
 };
 
-const stripMdxExpressions = (source: string): string => {
-  let output = '';
-  let expressionDepth = 0;
-  for (const character of source) {
-    if (character === '{') {
-      expressionDepth += 1;
-      continue;
-    }
-    if (character === '}') {
-      expressionDepth = Math.max(0, expressionDepth - 1);
-      continue;
-    }
-    if (expressionDepth === 0) output += character;
+/** Prefix every line of `segments` (fence lines included), so nested containers prefix once per level. */
+const prefixLines = (segments: readonly Segment[], prefix: (empty: boolean) => string): Segment[] => {
+  const lines: Segment[][] = [[]];
+  for (const segment of segments) {
+    segment.value.split('\n').forEach((piece, index) => {
+      if (index > 0) lines.push([]);
+      if (piece) lines.at(-1)?.push({ ...segment, value: piece });
+    });
   }
-  return output;
+  return lines.flatMap((line, index) => [...(index > 0 ? [markup('\n')] : []), markup(prefix(line.length === 0)), ...line]);
 };
 
-const sanitizeAuthoredProse = (source: string): string => {
-  const protectedCode = protectMarkdownCode(source);
-  const withoutActiveBlocks = stripActiveMarkup(neutralizeUnsafeLinks(portablePublicMdxMarkdown(protectedCode.content)));
-  const sanitized = stripMdxExpressions(withoutActiveBlocks)
-    .split('\n')
-    .map((line) => (/^\s*(?:import|export)(?:\s|\{|\*)/.test(line) ? '' : escapeHtml(line)))
-    .join('\n');
-  return protectedCode.restore(sanitized);
+const joined = (parts: ReadonlyArray<readonly Segment[]>, separator: string): Segment[] =>
+  parts.filter(hasText).flatMap((part, index) => [...(index > 0 ? [markup(separator)] : []), ...part]);
+
+const link = (label: Segment[], href: string | undefined): Segment[] => (href ? [markup('['), ...label, markup(`](${href})`)] : label);
+
+const relatedLabel = (attributes: string): Segment[] => {
+  const title = attributeText(mdxAttribute(attributes, 'title'));
+  if (!hasText(title)) return [];
+  const description = attributeText(mdxAttribute(attributes, 'description'));
+  return [markup('- '), ...link(title, safeHref(mdxAttribute(attributes, 'href'))), ...(hasText(description) ? [markup(' — '), ...description] : [])];
 };
 
-export const normalizePublicMarkdownContent = (markdown: string): string => {
-  const output: string[] = [];
-  const prose: string[] = [];
-  let fence: MarkdownFence | undefined;
-  const flushProse = () => {
-    if (prose.length === 0) return;
-    output.push(sanitizeAuthoredProse(prose.join('\n')));
-    prose.length = 0;
+type Renderer = (attributes: string, body: Segment[]) => Segment[];
+
+const CALLOUTS = ['callout', 'note', 'info', 'tip', 'check', 'warning', 'danger'];
+const quoted: Renderer = (_attributes, body) => prefixLines(body, (empty) => (empty ? '>' : '> '));
+const indented = (body: Segment[]): Segment[] => prefixLines(body, (empty) => (empty ? '' : '  '));
+const titled =
+  (level: number, options: { href?: boolean; status?: boolean } = {}): Renderer =>
+  (attributes, body) => {
+    const title = attributeText(mdxAttribute(attributes, 'title'));
+    const label = hasText(title) ? link(title, options.href ? safeHref(mdxAttribute(attributes, 'href')) : undefined) : [];
+    const status = options.status ? attributeText(mdxAttribute(attributes, 'status')) : [];
+    if (!hasText(label) && !hasText(status)) return body;
+    return [markup(`${'#'.repeat(level)} `), ...label, ...(hasText(status) ? [markup(' · '), ...status] : []), markup('\n\n'), ...body];
   };
+/** A parameter or response field: named by `name`, or by where it goes (`path`, `query`,
+ *  `header`, `body`), then its type, `required`, `default` and `deprecated`. */
+const field: Renderer = (attributes, body) => {
+  const name = ['name', 'path', 'query', 'header', 'body'].map((key) => attributeText(mdxAttribute(attributes, key))).find(hasText) ?? [];
+  const fallback = attributeText(mdxAttribute(attributes, 'default'));
+  const details: Segment[][] = [
+    attributeText(mdxAttribute(attributes, 'type')),
+    mdxFlag(attributes, 'required') ? [markup('required')] : [],
+    hasText(fallback) ? [markup('default: '), ...fallback] : [],
+    mdxFlag(attributes, 'deprecated') ? [markup('deprecated')] : [],
+  ];
+  const heading = joined([name, ...details], ' · ');
+  return hasText(heading) ? [markup('#### '), ...heading, markup('\n\n'), ...body] : body;
+};
+const unwrap: Renderer = (_attributes, body) => body;
 
-  for (const line of markdown.split('\n')) {
-    if (fence) {
-      output.push(line);
-      if (closesMarkdownFence(line, fence)) fence = undefined;
+/** How each supported component projects to inert Markdown, by lowercase tag name. Any other
+ *  tag stays text. */
+const RENDERERS: Readonly<Record<string, Renderer>> = {
+  ...Object.fromEntries(CALLOUTS.map((name) => [name, quoted])),
+  file: (attributes, body) => {
+    const name = attributeText(mdxAttribute(attributes, 'name'));
+    return joined([hasText(name) ? [markup('- `'), ...name, markup('`')] : [], body], '\n');
+  },
+  icon: () => [],
+  folder: (attributes, body) => {
+    const name = attributeText(mdxAttribute(attributes, 'name'));
+    return [...(hasText(name) ? [markup('- **'), ...name, markup('/**')] : [markup('-')]), markup('\n'), ...indented(body)];
+  },
+  relatedcard: (attributes, body) => [...relatedLabel(attributes), ...(hasText(body) ? [markup('\n'), ...indented(body)] : [])],
+  relatedcontent: titled(2),
+  apiexample: titled(2),
+  requestexample: titled(3),
+  responseexample: titled(3, { status: true }),
+  tab: titled(3),
+  accordion: titled(3),
+  expandable: titled(3),
+  step: titled(3),
+  card: titled(3, { href: true }),
+  paramfield: field,
+  responsefield: field,
+  // A changelog entry: its label as a heading, then its description and body.
+  update: (attributes, body) => {
+    const label = attributeText(mdxAttribute(attributes, 'label'));
+    return joined([hasText(label) ? [markup('## '), ...label] : [], attributeText(mdxAttribute(attributes, 'description')), body], '\n\n');
+  },
+  frame: (attributes, body) => {
+    const caption = attributeText(mdxAttribute(attributes, 'caption'));
+    return [...body, ...(hasText(caption) ? [markup('\n\n_'), ...caption, markup('_')] : [])];
+  },
+  button: (attributes, body) => link(body, safeHref(mdxAttribute(attributes, 'href'))),
+  tooltip: (attributes, body) => {
+    const tip = attributeText(mdxAttribute(attributes, 'tip'));
+    return hasText(tip) ? [...body, markup(' ('), ...tip, markup(')')] : body;
+  },
+  badge: (_attributes, body) => [markup('**'), ...body, markup('**')],
+  ...Object.fromEntries(
+    ['filetree', 'tabs', 'accordiongroup', 'steps', 'cardgroup', 'codegroup', 'columns', 'column', 'banner'].map((name) => [name, unwrap]),
+  ),
+};
+const COMPONENT_NAMES: ReadonlySet<string> = new Set(Object.keys(RENDERERS));
+
+const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
+  nodes.flatMap((node): Segment[] => {
+    switch (node.kind) {
+      case 'code':
+        return [{ kind: 'code', value: node.value }];
+      case 'text':
+        return [{ kind: 'text', value: target === 'markdown' ? neutralizeUnsafeLinks(node.value) : node.value }];
+      // `.md` escapes it with the prose; the exports write it as references, so `marked` never
+      // sees an unpaired formatting tag.
+      case 'stray':
+        return target === 'markdown' ? [{ kind: 'text', value: node.value }] : [markup(node.value.replace('<', '&lt;').replace('>', '&gt;'))];
+      // `.md` drops what would run or import; the exports show it as source, escaped by `marked`.
+      case 'active':
+      case 'expression':
+      case 'esm':
+        return target === 'markdown' ? [] : [{ kind: 'text', value: node.value }];
+      default: {
+        const children = renderNodes(node.children, target);
+        const renderer = RENDERERS[node.name];
+        if (renderer) return renderer(node.attributes, trimSegments(children));
+        // A correctly nested formatting pair (`10<sup>-3</sup>`) is kept as markup.
+        return [markup(`<${node.name}>`), ...children, markup(`</${node.name}>`)];
+      }
+    }
+  });
+
+const projectMdx = (source: string, target: Target): Segment[] => renderNodes(buildMdxTree(tokenizeMdx(source, COMPONENT_NAMES)), target);
+
+/** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
+ *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
+export const portablePublicMdxMarkdown = (source: string): string =>
+  projectMdx(source, 'export')
+    .map((segment) => segment.value)
+    .join('');
+
+/** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
+ *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
+export const normalizePublicMarkdownContent = (markdown: string): string => {
+  let output = '';
+  for (const segment of projectMdx(markdown, 'markdown')) {
+    if (segment.kind === 'code' || segment.kind === 'markup') {
+      output += segment.value;
       continue;
     }
-    const openingFence = openingMarkdownFence(line);
-    if (openingFence) {
-      flushProse();
-      output.push(line);
-      fence = openingFence;
-      continue;
-    }
-    prose.push(line);
+    // Prose is escaped once. An authored blockquote marker at the start of a line stays Markdown:
+    // `>` there quotes text, it never opens a tag.
+    const lineStart = output === '' || output.endsWith('\n') || /\n(?: {0,3}> ?)+$/.test(output) || /^(?: {0,3}> ?)+$/.test(output);
+    output += segment.value
+      .split('\n')
+      .map((line, index) => {
+        const marker = segment.kind === 'text' && (index > 0 || lineStart) ? (/^(?: {0,3}> ?)+/.exec(line)?.[0] ?? '') : '';
+        return marker + escapeHtml(line.slice(marker.length));
+      })
+      .join('\n');
   }
-  flushProse();
-  return output.join('\n').trim();
+  return output.trim();
 };

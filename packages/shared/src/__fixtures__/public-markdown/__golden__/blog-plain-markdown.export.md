@@ -44,7 +44,9 @@ on every request:
 const valid = verifySignature(payload, header, secret);
 ```
 
-> Webhook secrets should rotate on the same schedule as API keys.
+<Callout title="Rotate your secrets">
+Webhook secrets should rotate on the same schedule as API keys.
+</Callout>
 ````
 
 Contrast this with editors that persist their internal JSON and offer Markdown only as an *export*. Export-to-Markdown is a one-way, best-effort conversion that runs when you ask for it. Round-tripping Markdown means Markdown *is* the record, every save, verifiable by opening the file.

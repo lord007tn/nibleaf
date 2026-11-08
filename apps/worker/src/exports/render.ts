@@ -91,7 +91,9 @@ const marked = new Marked({
     // Published Markdown may contain MDX/HTML. Static exports display unknown
     // markup as source instead of executing scripts or event handlers.
     html(token) {
-      return escapeHtml(token.text);
+      // The shared projection leaves only correctly nested `sub`/`sup`/`u` pairs as tags
+      // (strays arrive as references), so those render and everything else stays escaped.
+      return escapeHtml(token.text).replace(/&lt;(\/?(?:sub|sup|u))&gt;/g, '<$1>');
     },
     blockquote(token) {
       const callout = (token as CalloutBlockquote).callout;
@@ -486,6 +488,8 @@ const themeJs = (searchEntries: Array<{ title: string; path: string; text: strin
 const plainText = (markdown: string): string =>
   markdown
     .replace(/```[\s\S]*?```/g, ' ')
+    // Formatting splits no word: `H<sub>2</sub>O` searches as `H2O`.
+    .replace(/<\/?(?:sub|sup|u)>/g, '')
     .replace(/\[!\w+\]/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[#*_`>[\]()!-]/g, ' ')
@@ -677,7 +681,8 @@ export const renderPdfHtml = (
           // already escaped the value, so `&amp;` is read as `&` for the check only.
           if (!isSafeLinkDestination(href.replaceAll('&amp;', '&'))) return `${before}#${after}`;
           const target = resolvePageTarget(snapshot, page, href);
-          return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href)}${after}`;
+          // marked already escaped `&` in the destination: unescape once, so it is escaped once.
+          return `${before}${escapeHtml(target ? `${options.internalLinkPrefix ?? '#page-'}${encodeURIComponent(target.id)}` : href.replaceAll('&amp;', '&'))}${after}`;
         });
       return `<article id="page-${escapeHtml(page.id)}" dir="${direction.toLowerCase()}"><h1>${escapeHtml(page.title)}</h1>${html}</article>`;
     })

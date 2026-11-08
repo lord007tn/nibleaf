@@ -20,7 +20,7 @@ English before العربية بعد English. Keep the command left-to-right: `c
 }
 ```
 
-&gt; The editor may normalize insignificant whitespace, but it must preserve meaning, links, code, and supported component attributes.
+> The editor may normalize insignificant whitespace, but it must preserve meaning, links, code, and supported component attributes.
 
 1. Import this file.
 2. Change the sentence below in the visual editor.

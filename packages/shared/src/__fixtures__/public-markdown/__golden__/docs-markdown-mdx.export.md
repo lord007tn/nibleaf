@@ -61,9 +61,13 @@ Put each component tag on its own line, and leave a blank line around Markdown
 inside it:
 
 ```mdx
-### Create a backup
+<Steps>
+  <Step title="Create a backup">
 
-Run the backup script and record the output files.
+  Run the backup script and record the output files.
+
+  </Step>
+</Steps>
 ```
 
 A file tree only shows the names you type. It doesn't read real files. API
@@ -81,7 +85,7 @@ arrow keys move between labels, and they follow the reading direction in Arabic.
 | `Badge` | A small label, such as "Beta" | `color` |
 | `Button` | A link styled as a button | `href`, `variant` (`outline` for an outlined button) |
 
-Example: `term`.
+Example: `<Tooltip tip="A plain-language definition">term</Tooltip>`.
 
 Don't put required instructions in a tooltip, and don't rely on an icon alone to
 carry meaning.

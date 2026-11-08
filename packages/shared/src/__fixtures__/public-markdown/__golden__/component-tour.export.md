@@ -12,7 +12,7 @@ import { Chart } from './chart'
 
 ### Install
 
-```bash
+  ```bash
   pnpm add nibleaf
   ```
   ### Configure
@@ -37,15 +37,15 @@ Get going in five minutes.
 
 The link is dropped, the title stays.
 
-### Why \`MDX\`?
+### Why `MDX`?
 
 Because components read well.
 
 - **src/**
   - `index.ts`
-  <File name="config.ts"></File>
+  - `config.ts`
 
-####  · number
+#### limit · number · required · default: 20
 
 Page size.
 
@@ -77,7 +77,7 @@ March release
 
 Faster search.
 
-Inline: **Beta**, [Start](/start), API, , 10<sup>-3</sup>, H<sub>2</sub>O, <u>underlined</u>.
+Inline: **Beta**, [Start](/start), API (Application programming interface), , 10<sup>-3</sup>, H<sub>2</sub>O, <u>underlined</u>.
 
 Expression {props.version} and a stray } brace. <Unknown onclick="run()">Unknown stays text</Unknown>.
 

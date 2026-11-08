@@ -9,6 +9,29 @@ import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './pub
 const fixtures = new URL('./__fixtures__/public-markdown/', import.meta.url);
 const names = readdirSync(fixtures).filter((name) => name.endsWith('.mdx'));
 
+/** Every fenced block and inline span of a source, with each line stripped of any quote or list
+ *  prefix (a container re-prefixes code lines in the output). */
+const codeOf = (source: string): string[] => {
+  const unprefixed = (value: string) => value.replace(/^(?: {0,3}> ?)*(?: {0,3}[-*+] )?\s*/gm, '');
+  const blocks = [...source.matchAll(/^(?:[ >-]*)(`{3,}|~{3,})[^\n]*\n[\s\S]*?\n(?:[ >-]*)\1[`~]*[ \t]*$/gm)].map((match) => match[0]);
+  let prose = source;
+  for (const block of blocks) prose = prose.replace(block, '');
+  const spans = [...prose.matchAll(/(?<!`)(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g)].map((match) => match[0]).filter((span) => !span.includes('\n\n'));
+  return [...blocks, ...spans].map(unprefixed);
+};
+
+describe('public Markdown code preservation (#338, #341)', () => {
+  it('keeps every fenced block and inline span byte-identical in both outputs', () => {
+    const source = readFileSync(new URL('code-preservation.mdx', fixtures), 'utf8');
+    const code = codeOf(source);
+    expect(code.length).toBeGreaterThanOrEqual(8);
+    for (const output of [normalizePublicMarkdownContent(source), portablePublicMdxMarkdown(source)]) {
+      const plain = output.replace(/^(?: {0,3}> ?)*(?: {0,3}[-*+] )?\s*/gm, '');
+      for (const sample of code) expect(plain).toContain(sample);
+    }
+  });
+});
+
 describe('public Markdown golden outputs', () => {
   it.each(names)('%s', async (name) => {
     const source = readFileSync(new URL(name, fixtures), 'utf8');
