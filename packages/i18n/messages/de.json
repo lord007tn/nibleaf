@@ -3970,5 +3970,8 @@
   "admin_pagination_first": "Erste Seite",
   "admin_pagination_next": "Nächste Seite",
   "dashboard_ai_inputtokens": "Texteinheiten in Fragen",
-  "dashboard_ai_outputtokens": "Texteinheiten in Antworten"
+  "dashboard_ai_outputtokens": "Texteinheiten in Antworten",
+  "settings_usage_progressvalue": "{used} von {limit} ({percent})",
+  "settings_apikeys_namelabel": "Name des Schlüssels",
+  "settings_credentials_refreshfailed": "Diese Liste konnte nicht aktualisiert werden. Angezeigt wird der zuletzt geladene Stand."
 }

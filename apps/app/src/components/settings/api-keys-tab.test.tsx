@@ -15,6 +15,7 @@ vi.mock('sonner', () => ({ toast: toasts }));
 
 vi.mock('@nibleaf/i18n/react', () => ({
   useLocale: () => ({ locale: 'en', t: (key: string, params?: Record<string, string>) => (params?.tool ? `${key}:${params.tool}` : key) }),
+  useT: () => (key: string) => key,
 }));
 vi.mock('@/hooks/api', () => ({
   useApiKeys: hooks.useApiKeys,
@@ -90,13 +91,38 @@ const button = (container: ParentNode, label: string) =>
   Array.from(container.querySelectorAll('button')).find((element) => element.textContent?.includes(label));
 
 describe('API-key settings list state', () => {
-  it('renders a localized query failure instead of the empty state', async () => {
-    hooks.useApiKeys.mockReturnValue({ data: undefined, error: new Error('sensitive backend detail'), isError: true, isPending: false });
+  it('renders a localized, retryable query failure instead of the empty state', async () => {
+    const refetch = vi.fn();
+    hooks.useApiKeys.mockReturnValue({
+      data: undefined,
+      error: new Error('sensitive backend detail'),
+      isError: true,
+      isFetching: false,
+      isPending: false,
+      refetch,
+    });
     const container = await renderTab();
 
-    expect(container.querySelector('[role="alert"]')?.textContent).toBe('settings.apiKeys.loadError');
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('settings.apiKeys.loadError');
     expect(container.textContent).not.toContain('settings.apiKeys.empty');
     expect(container.textContent).not.toContain('sensitive backend detail');
+    await act(async () => button(alert as ParentNode, 'error.tryAgain')?.click());
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it('keeps cached rows and offers a retry when a background refresh fails', async () => {
+    const refetch = vi.fn();
+    hooks.useApiKeys.mockReturnValue({ ...response(true, [apiKey()]), isError: true, isFetching: false, refetch });
+    const container = await renderTab();
+
+    expect(container.querySelector('li')?.textContent).toContain('Support');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    const notice = Array.from(container.querySelectorAll('[role="status"]')).find((element) =>
+      element.textContent?.includes('settings.credentials.refreshFailed'),
+    );
+    await act(async () => button(notice as ParentNode, 'error.tryAgain')?.click());
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it('shows row-shaped skeletons with one status while the first load is pending', async () => {
@@ -328,6 +354,61 @@ describe('API-key actions', () => {
     await act(async () => roots[0]?.render(<ApiKeysTab projectId="project-1" role={MEMBER} />));
     const confirm = button(document.querySelector('[role="alertdialog"]') as ParentNode, 'settings.apiKeys.revoke');
     expect(confirm?.getAttribute('aria-busy')).toBe('true');
+  });
+});
+
+describe('API-key creation form', () => {
+  const nameInput = (container: ParentNode) => container.querySelector<HTMLInputElement>('#api-key-name');
+  const typeName = async (container: ParentNode, value: string) => {
+    const input = nameInput(container);
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  };
+
+  it('submits with Enter from the name field', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    const container = await renderTab();
+    await typeName(container, 'Docs bot');
+    const form = nameInput(container)?.form;
+    // Enter in a text field clicks the form's first submit button: Create.
+    const defaultButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
+    expect(defaultButton?.textContent).toContain('settings.apiKeys.create');
+    expect(defaultButton?.disabled).toBe(false);
+    await act(async () => form?.requestSubmit());
+    expect(hooks.create.mutate).toHaveBeenCalledExactlyOnceWith(
+      { name: 'Docs bot', preset: 'support_writer', expiresInDays: 90 },
+      expect.any(Object),
+    );
+  });
+
+  it('explains an empty name inline instead of creating a key', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    const container = await renderTab();
+    await typeName(container, '   ');
+    await act(async () => button(container, 'settings.apiKeys.create')?.click());
+
+    expect(hooks.create.mutate).not.toHaveBeenCalled();
+    expect(container.querySelector('#api-key-name-error')?.textContent).toBe('validation.required');
+    expect(nameInput(container)?.getAttribute('aria-invalid')).toBe('true');
+    expect(nameInput(container)?.getAttribute('aria-describedby')).toBe('api-key-name-error');
+  });
+
+  it('keeps the draft when creating fails and resets it after a success', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    hooks.create.mutate.mockImplementationOnce((_body, options) => options.onError?.(new Error('nope')));
+    const container = await renderTab();
+    await typeName(container, 'Release notes bot');
+    await act(async () => button(container, 'settings.apiKeys.create')?.click());
+    expect(hooks.create.mutate).toHaveBeenCalledOnce();
+    expect(nameInput(container)?.value).toBe('Release notes bot');
+    expect(container.textContent).not.toContain('settings.apiKeys.created.title');
+
+    hooks.create.mutate.mockImplementationOnce((_body, options) => options.onSuccess({ id: 'new-key', secret: 'test-once-secret' }));
+    await act(async () => button(container, 'settings.apiKeys.create')?.click());
+    expect(container.textContent).toContain('test-once-secret');
+    expect(nameInput(container)?.value).toBe('settings.apiKeys.defaultName');
   });
 });
 

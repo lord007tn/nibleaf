@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   requestChange: vi.fn(),
   changeEmail: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
 }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/services/auth-client', () => ({
@@ -20,7 +21,7 @@ vi.mock('@/services/auth-client', () => ({
     emailOtp: { sendVerificationOtp: mocks.send, requestEmailChange: mocks.requestChange, changeEmail: mocks.changeEmail },
   },
 }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: mocks.toastError } }));
+vi.mock('sonner', () => ({ toast: { success: mocks.toastSuccess, error: mocks.toastError } }));
 
 import { AccountTab } from './account-tab';
 
@@ -109,6 +110,52 @@ describe('account settings hydration', () => {
     });
     await act(async () => input?.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
   }
+
+  const deferred = <T,>() => {
+    let resolve: (value: T) => void = () => undefined;
+    const promise = new Promise<T>((done) => {
+      resolve = done;
+    });
+    return { promise, resolve };
+  };
+  const button = (label: string) => [...container.querySelectorAll('button')].find((element) => element.textContent === label);
+
+  it('ignores a code request that answers after Cancel, clears the draft and returns focus', async () => {
+    const send = deferred<{ error: null }>();
+    mocks.send.mockReturnValue(send.promise);
+    await beginEmailChange();
+    expect(mocks.send).toHaveBeenCalledOnce();
+    await act(async () => button('common.cancel')?.click());
+    expect(document.activeElement).toBe(button('settings.account.email.change'));
+
+    await act(async () => send.resolve({ error: null }));
+    expect(container.querySelector('#acct-current-email-otp')).toBeNull();
+    expect(container.querySelector('#acct-email')).toBeNull();
+    expect(button('settings.account.email.change')).toBeDefined();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+
+    // Starting again begins from an empty address.
+    await act(async () => button('settings.account.email.change')?.click());
+    expect(container.querySelector<HTMLInputElement>('#acct-email')?.value).toBe('');
+  });
+
+  it('ignores a current-address verification that answers after Cancel', async () => {
+    const request = deferred<{ error: null }>();
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.requestChange.mockReturnValue(request.promise);
+    await beginEmailChange();
+    await typeCode('#acct-current-email-otp', '123456');
+    expect(mocks.requestChange).toHaveBeenCalledOnce();
+    mocks.toastSuccess.mockClear();
+    await act(async () => button('common.cancel')?.click());
+    expect(document.activeElement).toBe(button('settings.account.email.change'));
+
+    await act(async () => request.resolve({ error: null }));
+    expect(container.querySelector('#acct-email-otp')).toBeNull();
+    expect(container.querySelector('#acct-current-email-otp')).toBeNull();
+    expect(button('settings.account.email.change')).toBeDefined();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+  });
 
   it('stops at the form when the new address is the current one, instead of sending codes that can never work', async () => {
     await beginEmailChange(' ADA@example.test ');

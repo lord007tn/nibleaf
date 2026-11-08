@@ -3905,5 +3905,8 @@
   "admin_pagination_first": "第一页",
   "admin_pagination_next": "下一页",
   "dashboard_ai_inputtokens": "问题中的文本单位",
-  "dashboard_ai_outputtokens": "回答中的文本单位"
+  "dashboard_ai_outputtokens": "回答中的文本单位",
+  "settings_usage_progressvalue": "已用 {used}，共 {limit}（{percent}）",
+  "settings_apikeys_namelabel": "密钥名称",
+  "settings_credentials_refreshfailed": "无法刷新此列表，当前显示的是之前加载的内容。"
 }

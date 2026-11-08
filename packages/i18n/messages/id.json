@@ -3905,5 +3905,8 @@
   "admin_pagination_first": "Halaman pertama",
   "admin_pagination_next": "Halaman berikutnya",
   "dashboard_ai_inputtokens": "Unit teks dalam pertanyaan",
-  "dashboard_ai_outputtokens": "Unit teks dalam jawaban"
+  "dashboard_ai_outputtokens": "Unit teks dalam jawaban",
+  "settings_usage_progressvalue": "{used} dari {limit} ({percent})",
+  "settings_apikeys_namelabel": "Nama kunci",
+  "settings_credentials_refreshfailed": "Daftar ini tidak dapat diperbarui. Menampilkan data yang dimuat sebelumnya."
 }

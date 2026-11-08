@@ -3867,6 +3867,9 @@ export const MESSAGE_IDS = {
   'site.signOutFailed': 'site_signoutfailed',
   'dashboard.ai.inputTokens': 'dashboard_ai_inputtokens',
   'dashboard.ai.outputTokens': 'dashboard_ai_outputtokens',
+  'settings.usage.progressValue': 'settings_usage_progressvalue',
+  'settings.apiKeys.nameLabel': 'settings_apikeys_namelabel',
+  'settings.credentials.refreshFailed': 'settings_credentials_refreshfailed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

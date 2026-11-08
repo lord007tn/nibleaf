@@ -3905,5 +3905,8 @@
   "admin_pagination_first": "पहला पृष्ठ",
   "admin_pagination_next": "अगला पृष्ठ",
   "dashboard_ai_inputtokens": "प्रश्नों में टेक्स्ट इकाइयाँ",
-  "dashboard_ai_outputtokens": "उत्तरों में टेक्स्ट इकाइयाँ"
+  "dashboard_ai_outputtokens": "उत्तरों में टेक्स्ट इकाइयाँ",
+  "settings_usage_progressvalue": "{limit} में से {used} ({percent})",
+  "settings_apikeys_namelabel": "कुंजी का नाम",
+  "settings_credentials_refreshfailed": "यह सूची रीफ़्रेश नहीं हो सकी। पहले लोड की गई जानकारी दिखाई जा रही है।"
 }

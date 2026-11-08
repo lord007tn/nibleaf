@@ -3991,5 +3991,8 @@
   "admin_pagination_first": "Первая страница",
   "admin_pagination_next": "Следующая страница",
   "dashboard_ai_inputtokens": "Текстовые единицы в вопросах",
-  "dashboard_ai_outputtokens": "Текстовые единицы в ответах"
+  "dashboard_ai_outputtokens": "Текстовые единицы в ответах",
+  "settings_usage_progressvalue": "{used} из {limit} ({percent})",
+  "settings_apikeys_namelabel": "Название ключа",
+  "settings_credentials_refreshfailed": "Не удалось обновить список. Показаны ранее загруженные данные."
 }

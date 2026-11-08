@@ -3961,5 +3961,8 @@
   "admin_pagination_first": "پہلا صفحہ",
   "admin_pagination_next": "اگلا صفحہ",
   "dashboard_ai_inputtokens": "سوالات میں متن کی اکائیاں",
-  "dashboard_ai_outputtokens": "جوابات میں متن کی اکائیاں"
+  "dashboard_ai_outputtokens": "جوابات میں متن کی اکائیاں",
+  "settings_usage_progressvalue": "{limit} میں سے {used} ({percent})",
+  "settings_apikeys_namelabel": "کلید کا نام",
+  "settings_credentials_refreshfailed": "یہ فہرست تازہ نہیں ہو سکی۔ پہلے لوڈ کی گئی معلومات دکھائی جا رہی ہیں۔"
 }
