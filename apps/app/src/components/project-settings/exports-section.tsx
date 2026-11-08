@@ -29,7 +29,7 @@ import {
   useUpdateExportSchedule,
 } from '@/hooks/api/exports';
 import { formatExportFileSize } from '@/lib/export-file-size';
-import { localeTag } from '@/lib/format';
+import { countVariables, localeTag } from '@/lib/format';
 import { DirtyStateReporter, SectionHeader } from './shared';
 
 const labelKeys: Record<ExportFormat, MessageKey> = {
@@ -249,7 +249,7 @@ export function ExportsSection({
                     </div>
                     <div className="mt-1 text-muted-foreground text-xs">
                       {t('settings.exports.workflow.publishedVersion', { version: run.snapshot.deploymentVersion })} ·{' '}
-                      {t('settings.exports.workflow.pageCount', { count: run.snapshot.pagesCount })} ·{' '}
+                      {t('settings.exports.workflow.pageCount', countVariables(locale, run.snapshot.pagesCount))} ·{' '}
                       {run.trigger === 'SCHEDULED'
                         ? (run.schedule?.name ?? t('settings.exports.workflow.scheduled'))
                         : t('settings.exports.workflow.manual')}{' '}
@@ -309,7 +309,7 @@ export function ExportsSection({
           </a>
           {' · '}
           <a className="underline" download href={`/api/app/projects/${projectId}/theme-repository`}>
-            {t('settings.theme.export')}
+            {t('settings.exports.downloadRepository')}
           </a>
           .
         </p>

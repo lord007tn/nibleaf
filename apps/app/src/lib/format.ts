@@ -12,6 +12,8 @@ export function useFormatters() {
   const tag = localeTag(locale);
   return {
     number: (value: number | bigint, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(tag, options).format(value),
+    /** Variables for a counted message (`{count}` with plural forms); see {@link countVariables}. */
+    count: (value: number) => countVariables(locale, value),
     /** A currency amount (default USD) with the locale's symbol placement and Western digits. */
     currency: (value: number, currency = 'USD') => formatCurrency(tag, value, currency),
     date: (value: string | number | Date) => new Intl.DateTimeFormat(tag, { dateStyle: 'medium' }).format(new Date(value)),
@@ -41,6 +43,15 @@ export function useFormatters() {
       return rtf.format(Math.round(diffMs / week), 'week');
     },
   };
+}
+
+/**
+ * A counted message's variables: the number in the locale's digits, and its
+ * plural category (`one`, `two`, `few`…) picked from the number itself, so
+ * "1 page", Arabic "صفحتان" and Russian "5 страниц" each get their own form.
+ */
+export function countVariables(locale: string, value: number) {
+  return { count: new Intl.NumberFormat(localeTag(locale)).format(value), form: new Intl.PluralRules(locale).select(value) };
 }
 
 /** The BCP-47 tag used for UI formatting. Arabic uses Western 0-9 digits. */

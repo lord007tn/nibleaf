@@ -49,7 +49,14 @@ import { BranchSwitcher } from '@/components/editor/branch-switcher';
 import { CommentsPanel } from '@/components/editor/comments-panel';
 import { deepLinkBranchDecision, publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { ConfigCanvas, EmptyCanvas, GroupCanvas, PageCanvasSkeleton, PageLoadFailedCanvas } from '@/components/editor/editor-canvas-states';
-import { nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft } from '@/components/editor/editor-draft';
+import {
+  aiAssistState,
+  draftUnsavable,
+  nextHydration,
+  type ServerSnapshot,
+  shouldAutosave,
+  shouldFlushDraft,
+} from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
@@ -66,7 +73,7 @@ import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
 import { useMediaQuery } from '@/components/editor/use-media-query';
-import { ViewOnlyBadge, ViewOnlyBanner } from '@/components/project/view-only-notice';
+import { AccessUnknownBanner, ViewOnlyBadge, ViewOnlyBanner } from '@/components/project/view-only-notice';
 import type { Deployment, Language, PageNode } from '@/hooks/api';
 import {
   addressMayFollowTitle,
@@ -134,7 +141,13 @@ function EditorPage() {
   const { projectId } = Route.useParams();
   const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
-  const { data: memberData, isPending: membersPending, isError: membersError } = useProjectMembers(projectId);
+  const {
+    data: memberData,
+    isPending: membersPending,
+    isError: membersError,
+    isFetching: membersFetching,
+    refetch: retryMembers,
+  } = useProjectMembers(projectId);
   const { data: session, isPending: sessionPending } = useSession();
   const currentMember = memberData?.members.find((member) => member.user.id === session?.user.id);
   const permissionsPending = membersPending || sessionPending;
@@ -151,19 +164,8 @@ function EditorPage() {
   // refused. Only a site with no way to draft hides it. While the capability
   // loads, the tab keeps its place as a placeholder: unknown is not "no".
   const aiCapability = useAiDraftCapability(projectId, { enabled: !viewOnly });
-  // A failed capability request is unknown, not "no": keep AI assist reachable
-  // so the panel can report the failure, instead of hiding it for the session.
-  const aiAssist = viewOnly
-    ? 'hidden'
-    : aiCapability.isPending
-      ? 'loading'
-      : aiCapability.data
-        ? aiCapability.data.reason !== 'not_configured'
-          ? 'shown'
-          : 'hidden'
-        : aiCapability.isError
-          ? 'shown'
-          : 'hidden';
+  // A failed capability request is unknown, not "no", except a 403; see aiAssistState.
+  const aiAssist = aiAssistState(viewOnly, aiCapability);
   const aiDraft = aiAssist === 'shown';
   const aiTabs = aiAssist !== 'hidden';
 
@@ -588,6 +590,20 @@ function EditorPage() {
 
   useBlocker({
     shouldBlockFn: async () => {
+      // Made a Viewer with unsaved changes: saving would be refused on every try,
+      // so ask once. Staying keeps the text on screen to copy; leaving discards it.
+      if (draftUnsavable(viewOnly, draftRef.current, draftRef.current.page)) {
+        const discard = await confirm({
+          title: t('editor.unsavableDraft.title'),
+          description: t('editor.unsavableDraft.body'),
+          confirmLabel: t('editor.unsavableDraft.discard'),
+          cancelLabel: t('editor.unsavableDraft.keep'),
+          destructive: true,
+        });
+        if (!discard) return true;
+        saveDraft.cancel();
+        return !(await guardConfigChanges());
+      }
       try {
         await flushCurrentDraft();
         return !(await guardConfigChanges());
@@ -935,7 +951,7 @@ function EditorPage() {
             readOnly={!canEditContent}
           />
         ) : (
-          <AiAssist session={aiAssistSession} />
+          <AiAssist session={aiAssistSession} source={aiCapability.data} />
         )}
       </div>
     </Tabs>
@@ -1031,6 +1047,7 @@ function EditorPage() {
         </div>
       </header>
       {viewOnly ? <ViewOnlyBanner /> : null}
+      {editAccess === 'unknown' ? <AccessUnknownBanner onRetry={() => void retryMembers()} retrying={membersFetching} /> : null}
       {siteNeverPublished && view === 'content' ? (
         <NeverPublishedBanner />
       ) : view === 'content' && page && !switching && pageState ? (

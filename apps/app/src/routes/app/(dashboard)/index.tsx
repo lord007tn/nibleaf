@@ -281,8 +281,9 @@ function ProjectsPage() {
           {!analyticsError && (analyticsUnavailable || analytics?.availability === 'partial') ? (
             <Alert variant="warning">
               <AlertTriangle />
-              <AlertTitle>{t(analyticsUnavailable ? 'analytics.state.unavailable.title' : 'analytics.state.partial.title')}</AlertTitle>
-              <AlertDescription>{t(analyticsUnavailable ? 'analytics.state.unavailable.body' : 'analytics.state.partial.body')}</AlertDescription>
+              {/* About traffic, the only figures here that can be missing; not AI token or cost values. */}
+              <AlertTitle>{t(analyticsUnavailable ? 'overview.traffic.unavailable.title' : 'overview.traffic.partial.title')}</AlertTitle>
+              <AlertDescription>{t(analyticsUnavailable ? 'overview.traffic.unavailable.body' : 'overview.traffic.partial.body')}</AlertDescription>
             </Alert>
           ) : null}
 

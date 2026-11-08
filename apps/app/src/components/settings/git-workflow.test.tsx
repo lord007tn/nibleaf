@@ -133,3 +133,46 @@ it.each([false, true])('confirms webhook secret replacement before sending the r
     host.remove();
   }
 });
+
+it.each([false, true])('asks in the localized dialog, naming the repository, before disconnecting two-way sync (%s)', async (approved) => {
+  mutation.mutate.mockClear();
+  state.confirm.mockReset();
+  state.confirm.mockResolvedValue(approved);
+  const confirmSpy = vi.spyOn(window, 'confirm');
+  query.use.mockReturnValue({
+    isPending: false,
+    data: {
+      repository: 'team/docs',
+      baseBranch: 'main',
+      headBranch: 'docs',
+      contentPath: 'content',
+      lastSyncStatus: 'READY',
+      pullRequests: [],
+      conflicts: [],
+      operations: [],
+    },
+  });
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<GitWorkflow projectId="site-1" />));
+    const button = (key: string) => [...host.querySelectorAll('button')].find((item) => item.textContent?.includes(key));
+    await act(async () => button('settings.git.workflow.nav.connection')?.click());
+    await act(async () => button('settings.git.disconnect')?.click());
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(state.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'settings.git.workflow.disconnectTitle',
+        description: 'settings.git.workflow.disconnectConfirm',
+        destructive: true,
+      }),
+    );
+    // Cancel changes nothing; confirming disconnects only this connection.
+    expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
+  } finally {
+    confirmSpy.mockRestore();
+    await act(async () => root.unmount());
+    host.remove();
+  }
+});

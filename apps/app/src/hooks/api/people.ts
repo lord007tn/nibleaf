@@ -1,12 +1,14 @@
 import type { AssignableMemberRole } from '@nibleaf/shared/rbac';
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
 import { peopleQueryOptions } from './query-options';
 
-export const usePeople = () => useQuery(peopleQueryOptions());
-export type PeopleOverview = NonNullable<ReturnType<typeof usePeople>['data']>;
+/** The People page's list for a search (`q`), one page at a time. */
+export const usePeople = (q = '') => useInfiniteQuery(peopleQueryOptions(q));
+/** One page of the People list: sites you administer, people, and (first page only) invitations. */
+export type PeopleOverview = NonNullable<ReturnType<typeof usePeople>['data']>['pages'][number];
 
 /** People from your other administered sites whose name or email starts with
  *  `query`, for a site's invite box (Admins only; empty query → nothing). */

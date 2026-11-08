@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Locale, MessageKey, MessageVariables } from '@nibleaf/i18n';
-import { act, type ComponentType } from 'react';
+import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,9 +20,17 @@ vi.mock('@nibleaf/i18n/react', async () => {
   });
   return { useLocale, useT: () => useLocale().t };
 });
+// The formatters read the same locale as the translator, as in the app.
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => i18n.locale, subscribeLanguage: () => () => undefined }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
   useNavigate: () => mocks.navigate,
+  // The router's Link renders an anchor with the resolved href.
+  Link: ({ to, params, children, ...props }: { to: string; params: Record<string, string>; children: ReactNode }) => (
+    <a href={to.replace('$projectId', params.projectId ?? '')} {...props}>
+      {children}
+    </a>
+  ),
 }));
 vi.mock('@/hooks/api/query-options', () => ({ projectsQueryOptions: () => ({ queryKey: ['projects'] }) }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
@@ -67,6 +75,27 @@ describe('SitesPage', () => {
     await render();
 
     expect(container.textContent).toContain('58 pages');
+  });
+
+  it('says one page, and two pages in Arabic, from the number itself', async () => {
+    mocks.useProjects.mockReturnValue({ ...mocks.useProjects(), data: [{ id: 'project-1', name: 'Docs', slug: 'docs', _count: { pages: 1 } }] });
+    await render();
+    expect(container.textContent).toContain('1 page');
+    expect(container.textContent).not.toContain('1 pages');
+
+    i18n.locale = 'ar';
+    mocks.useProjects.mockReturnValue({ ...mocks.useProjects(), data: [{ id: 'project-1', name: 'Docs', slug: 'docs', _count: { pages: 2 } }] });
+    await render();
+    expect(container.textContent).toContain('صفحتان');
+  });
+
+  it('renders each site card as a link to its overview, named by the site', async () => {
+    await render();
+    const card = container.querySelector<HTMLAnchorElement>('a[href="/app/projects/project-1"]');
+    expect(card).not.toBeNull();
+    expect(card?.textContent).toContain('Docs');
+    expect(container.querySelector('button[type="button"] bdi')).toBeNull();
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it('hydrates the loading boundary before rendering an already-cached project query', async () => {

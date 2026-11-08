@@ -139,11 +139,18 @@ describe('useProjectAdminStatus', () => {
     expect((await read('site-1'))?.edit).toBe('pending');
   });
 
-  // The server enforces every write, so a failed team read must not lock a
-  // real Editor out of their work.
-  it('falls back to edit when the team failed to load', async () => {
+  // Unknown is not "yes": a failed team read keeps writes (and Publish) locked,
+  // and screens offer a retry, instead of unlocking them for a possible Viewer.
+  it('keeps writes locked, as unknown, when the team failed to load', async () => {
     Object.assign(state, { session: signedIn, members: failed });
-    expect((await read('site-1'))?.edit).toBe('edit');
+    const status = await read('site-1');
+    expect(status?.edit).toBe('unknown');
+    expect(status?.isError).toBe(true);
+  });
+
+  it('is unknown even when the members request fails before the session resolves', async () => {
+    Object.assign(state, { session: { data: undefined, isPending: true }, members: failed });
+    expect((await read('site-1'))?.edit).toBe('unknown');
   });
 
   it('is view-only for someone signed in but missing from the loaded team', async () => {

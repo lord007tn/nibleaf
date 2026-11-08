@@ -13,13 +13,17 @@ import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
-  beforeLoad: async ({ context: { queryClient } }) => {
+  beforeLoad: async ({ context: { queryClient }, location }) => {
     const routeSession = await getSessionFn();
     if (typeof window !== 'undefined') {
       syncDashboardSession(queryClient, routeSession?.user.id ?? null);
     }
     if (!routeSession) {
-      throw redirect({ to: '/sign-in' });
+      // Keep the page they asked for (a shared conversation, a settings section…)
+      // so signing in brings them back to it instead of the overview. Imported
+      // lazily: beforeLoad is in the router's eager chunk, which docs pages load.
+      const { signInReturnSearch } = await import('@/lib/invitations');
+      throw redirect({ to: '/sign-in', search: signInReturnSearch(location.href) });
     }
     return { routeSession };
   },

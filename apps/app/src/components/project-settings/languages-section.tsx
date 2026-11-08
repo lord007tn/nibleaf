@@ -7,10 +7,12 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
+import { AccessUnknownBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import { useFormatters } from '@/lib/format';
 import { SectionHeader, SettingsListSkeleton, sortLanguagesDefaultFirst } from './shared';
 
 /** A small uppercase chip (direction / default / hidden badges). */
@@ -35,6 +37,7 @@ function Chip({ children, tone = 'muted' }: { children: React.ReactNode; tone?: 
  *  be disabled or deleted. */
 export function LanguagesSection({ project }: { project: Project }) {
   const t = useT();
+  const { count } = useFormatters();
   const confirm = useConfirm();
   const query = useLanguages(project.id);
   const { data: languages } = query;
@@ -42,7 +45,10 @@ export function LanguagesSection({ project }: { project: Project }) {
   const remove = useDeleteLanguage(project.id);
   const [addOpen, setAddOpen] = useState(false);
   // Viewers see the site's languages and coverage; changing them is for Editors.
-  const readOnly = useProjectAdminStatus(project.id).edit === 'viewOnly';
+  const access = useProjectAdminStatus(project.id);
+  const editAccess = access.edit;
+  // A Viewer, or a role that couldn't be read: no writes until it is known.
+  const readOnly = editAccess === 'viewOnly' || editAccess === 'unknown';
 
   // Default language always first, then by configured position.
   const rows = sortLanguagesDefaultFirst(languages ?? []);
@@ -105,7 +111,7 @@ export function LanguagesSection({ project }: { project: Project }) {
                     <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
                       <span>
                         {language.isDefault
-                          ? t('settings.languages.coverage.sourcePages', { count: coverage.pageCount })
+                          ? t('settings.languages.coverage.sourcePages', count(coverage.pageCount))
                           : coverage.sourcePageCount === 0
                             ? t('settings.languages.coverage.noSourcePages')
                             : t('settings.languages.coverage.summary', {
@@ -130,10 +136,10 @@ export function LanguagesSection({ project }: { project: Project }) {
                       ) : null}
                       {coverage.missingPages > 0 ? (
                         <span className="font-medium text-amber-600 dark:text-amber-400">
-                          {t('settings.languages.coverage.missing', { count: coverage.missingPages })}
+                          {t('settings.languages.coverage.missing', count(coverage.missingPages))}
                         </span>
                       ) : null}
-                      {coverage.extraPages > 0 ? <span>{t('settings.languages.coverage.extra', { count: coverage.extraPages })}</span> : null}
+                      {coverage.extraPages > 0 ? <span>{t('settings.languages.coverage.extra', count(coverage.extraPages))}</span> : null}
                     </div>
                   ) : null}
                 </div>
@@ -181,7 +187,9 @@ export function LanguagesSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      {readOnly ? (
+      {editAccess === 'unknown' ? (
+        <AccessUnknownBanner className="mt-2 rounded-lg border" onRetry={() => void access.retry()} retrying={access.retrying} />
+      ) : readOnly ? (
         <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('access.viewOnly.action')}</p>
       ) : (
         <>

@@ -214,18 +214,21 @@ function SmartAiSettings({ data, project, refetch }: { data: WorkspaceAi; projec
           </Button>
         </div>
       </section>
-      <section className="rounded-xl border p-5">
-        <h3 className="font-semibold">{t('settings.smartAi.oauthTitle')}</h3>
-        <p className="mt-2 text-muted-foreground text-sm">{t('settings.smartAi.oauthDescription')}</p>
-        <a
-          className="mt-3 inline-flex text-primary text-sm underline-offset-4 hover:underline"
-          href={data.openaiOAuth.documentation}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {t('settings.smartAi.oauthDocs')}
-        </a>
-      </section>
+      {/* Shown only once it can be used; today it needs a registration this server doesn't have. */}
+      {data.openaiOAuth.available ? (
+        <section className="rounded-xl border p-5">
+          <h3 className="font-semibold">{t('settings.smartAi.oauthTitle')}</h3>
+          <p className="mt-2 text-muted-foreground text-sm">{t('settings.smartAi.oauthDescription')}</p>
+          <a
+            className="mt-3 inline-flex text-primary text-sm underline-offset-4 hover:underline"
+            href={data.openaiOAuth.documentation}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {t('settings.smartAi.oauthDocs')}
+          </a>
+        </section>
+      ) : null}
       <p className="flex items-start gap-2 text-muted-foreground text-xs">
         <ShieldCheck className="size-4 shrink-0" />
         {t('settings.smartAi.security')}
@@ -264,6 +267,28 @@ function ProviderCard({
   const save = useSaveWorkspaceAiConnection(projectId);
   const options = models.data?.models ?? (provider.answerModel ? [{ id: provider.answerModel }] : []);
   const pending = save.isPending || models.isPending || busy;
+  const keyEntered = Boolean(apiKey.trim());
+  const saved = provider.configured && !keyEntered && answerModel === (provider.answerModel ?? '');
+  // The setup in order, each step ticked once it is done, so an empty model list
+  // or a disabled Save is never a mystery.
+  const steps = [
+    { key: 'key', label: 'settings.smartAi.step.key', done: provider.configured || keyEntered },
+    { key: 'check', label: 'settings.smartAi.step.check', done: models.isSuccess || provider.verified },
+    { key: 'model', label: 'settings.smartAi.step.model', done: Boolean(answerModel) },
+    { key: 'save', label: 'settings.smartAi.step.save', done: saved },
+    { key: 'enable', label: 'settings.smartAi.step.enable', done: selected },
+  ] as const;
+  // Why Save or "Use this provider" can't be pressed yet, in plain words.
+  const saveBlocked = !canSave
+    ? 'settings.smartAi.why.encryption'
+    : !provider.configured && !keyEntered
+      ? 'settings.smartAi.why.pasteKey'
+      : !answerModel
+        ? 'settings.smartAi.why.chooseModel'
+        : provider.configured && keyEntered && !replace
+          ? 'settings.smartAi.why.replace'
+          : null;
+  const enableBlocked = selected ? null : !provider.verified ? 'settings.smartAi.why.saveFirst' : !canEnable ? 'settings.smartAi.why.server' : null;
   const submit = (event: FormEvent) => {
     event.preventDefault();
     save.mutate(
@@ -295,6 +320,22 @@ function ProviderCard({
           {t(selected ? 'settings.smartAi.selected' : provider.verified ? 'settings.smartAi.verified' : 'settings.smartAi.notConnected')}
         </Badge>
       </div>
+      <ol aria-label={t('settings.smartAi.step.title')} className="mb-4 space-y-1.5 text-xs" data-testid="smart-ai-steps">
+        {steps.map((step, index) => (
+          <li className="flex items-start gap-2" data-done={step.done || undefined} key={step.key}>
+            <span
+              aria-hidden
+              className={`grid size-4.5 shrink-0 place-items-center rounded-full border text-[10px] tabular-nums ${step.done ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground'}`}
+            >
+              {step.done ? <Check className="size-3" /> : index + 1}
+            </span>
+            <span className={step.done ? 'text-muted-foreground' : undefined}>
+              {t(step.label)}
+              {step.done ? <span className="sr-only"> ({t('settings.smartAi.step.done')})</span> : null}
+            </span>
+          </li>
+        ))}
+      </ol>
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-2">
           <Label htmlFor={`${id}-key`}>{t('settings.smartAi.apiKey')}</Label>
@@ -355,16 +396,16 @@ function ProviderCard({
         )}
         <div className="flex flex-wrap gap-2">
           <Button
-            disabled={
-              pending || !canSave || !answerModel || (!provider.configured && !apiKey.trim()) || (provider.configured && Boolean(apiKey) && !replace)
-            }
+            aria-describedby={saveBlocked ? `${id}-save-why` : undefined}
+            disabled={pending || saveBlocked !== null}
             loading={save.isPending}
             type="submit"
           >
             {t('common.save')}
           </Button>
           <Button
-            disabled={pending || !provider.verified || !canEnable || selected}
+            aria-describedby={enableBlocked ? `${id}-enable-why` : undefined}
+            disabled={pending || enableBlocked !== null || selected}
             loading={selecting}
             onClick={onSelect}
             type="button"
@@ -373,6 +414,16 @@ function ProviderCard({
             {t('settings.smartAi.useProvider')}
           </Button>
         </div>
+        {saveBlocked && !saved ? (
+          <p className="text-muted-foreground text-xs" id={`${id}-save-why`}>
+            {t(saveBlocked)}
+          </p>
+        ) : null}
+        {enableBlocked ? (
+          <p className="text-muted-foreground text-xs" id={`${id}-enable-why`}>
+            {t(enableBlocked)}
+          </p>
+        ) : null}
       </form>
     </section>
   );
