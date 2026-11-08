@@ -86,6 +86,7 @@ import {
   useUpdatePage,
   useUploadAsset,
 } from '@/hooks/api';
+import { assetUploadErrorMessage } from '@/hooks/api/client-helpers';
 import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -215,7 +216,16 @@ function EditorPage() {
     onProgress?: (percent: number) => void,
     signal?: AbortSignal,
     onFinishing?: () => void,
-  ): Promise<string | null> => (await uploadAsset.mutateAsync({ file, onProgress, signal, onFinishing })).url;
+  ): Promise<string | null> => {
+    try {
+      return (await uploadAsset.mutateAsync({ file, onProgress, signal, onFinishing })).url;
+    } catch (error) {
+      // The upload card shows the generic failure; also say when the pending-upload limit refused it.
+      const pendingLimit = assetUploadErrorMessage(error, '', t('editor.pendingUploadLimit'));
+      if (pendingLimit) toast.error(pendingLimit);
+      throw error;
+    }
+  };
 
   // Languages ordered default-first, then by position; pages grouped per language.
   const orderedLanguages = useMemo<Language[]>(

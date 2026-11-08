@@ -3731,5 +3731,6 @@
   "editor_reorderslugtaken": "توجد صفحة بهذا الرابط في هذه المجموعة. غيّر رابطها أولًا.",
   "deploy_rollback_restoring": "جارٍ استعادة النسخة {version}…",
   "deploy_rollback_superseded": "نُشرت نسخة أحدث بعد طلب الاستعادة، وهي النسخة التي يراها القرّاء الآن.",
-  "deploy_rollback_supersededtitle": "نسخة أحدث متاحة الآن"
+  "deploy_rollback_supersededtitle": "نسخة أحدث متاحة الآن",
+  "editor_pendinguploadlimit": "وصلت إلى الحد الأقصى لعمليات الرفع المعلّقة. أكمل عمليات الرفع الحالية أو حاول مجددًا بعد التنظيف التلقائي."
 }

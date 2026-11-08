@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { supportActionUrlSchema } from './action-urls';
 
 /**
  * Shared contracts for the published-docs AI assistant: the reader chat wire
@@ -133,7 +134,7 @@ export const aiChatFinalEventSchema = z
     /** Opaque proof that this reader received this turn; required for feedback. */
     feedbackToken: z.string().min(16).max(256),
     /** Where readers can get help when the docs do not answer (no_answer only). */
-    supportUrl: z.string().max(500).optional(),
+    supportUrl: supportActionUrlSchema.optional(),
     language: z.string(),
     limits: z
       .object({

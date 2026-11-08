@@ -4,7 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@nibleaf/database', () => ({ prisma: {}, Prisma: { PrismaClientKnownRequestError: class extends Error {} } }));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: { PUBLISH: 'publish' } }));
 
-import { extractPushBranch, generateWebhookSecret, verifyGitHubSignature, verifyGitLabToken } from './git-webhook';
+import { extractPushBranch, verifyGitHubSignature, verifyGitLabToken } from './git-webhook';
+import { generateWebhookSecret } from './git-webhook-secret';
 
 const SECRET = 'a'.repeat(64);
 const sign = (body: string, secret = SECRET) => `sha256=${createHmac('sha256', secret).update(body, 'utf8').digest('hex')}`;

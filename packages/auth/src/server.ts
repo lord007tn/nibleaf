@@ -24,6 +24,7 @@ import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailS
 import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
+import { organizationMetadataResponseFilter, stripServerOnlyOrganizationMetadata } from './organization-metadata';
 import { googleOAuthEnabled } from './providers';
 import {
   STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT,
@@ -748,6 +749,9 @@ const authInstance = betterAuth({
       // storage, usage); the plugin's own delete endpoint would skip all of it.
       disableOrganizationDeletion: true,
       organizationHooks: {
+        // Organization metadata is readable by every member; server-only
+        // fields are never accepted into it.
+        beforeUpdateOrganization: stripServerOnlyOrganizationMetadata,
         // Single-owner invariant, enforced even through better-auth's OWN
         // update-member-role endpoint: `owner` can never be granted here, and
         // the current owner's role can only change via the dedicated
@@ -819,6 +823,9 @@ const authInstance = betterAuth({
       },
     }),
     ...(mcpOAuth ? mcpOAuthPlugins(mcpOAuth) : []),
+    // Every organization response is filtered, so metadata rows the API has
+    // not cleaned up yet never reach members with server-only fields.
+    organizationMetadataResponseFilter(),
   ],
   databaseHooks: {
     user: {

@@ -47,6 +47,15 @@ describe('Paraglide message catalogs', () => {
     }
   });
 
+  it('includes non-empty upload-limit copy in every locale and natural Arabic copy', () => {
+    const arabic = loadCatalog('ar').editor_pendinguploadlimit;
+    expect(arabic).toMatch(/[\u0600-\u06ff]/);
+    expect(arabic).not.toBe(english.editor_pendinguploadlimit);
+    for (const { code } of INTERFACE_LOCALES) {
+      if (code !== 'ar') expect(loadCatalog(code).editor_pendinguploadlimit?.trim()).toBeTruthy();
+    }
+  });
+
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
     expect(

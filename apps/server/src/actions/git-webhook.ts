@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
 import { Prisma, prisma } from '@nibleaf/database';
@@ -8,6 +8,7 @@ import type { GitConfigStored } from '@nibleaf/validators';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { importFromGitProvider } from './git-import';
+import { moveLegacyWebhookSecret } from './git-webhook-secret';
 import { logPlatformEvent } from './platform-events';
 
 /**
@@ -18,12 +19,10 @@ import { logPlatformEvent } from './platform-events';
  * per-project secret to their repo, and every verified push to the configured
  * branch re-runs the one-way import (and optionally auto-publishes).
  *
- * The secret and sync bookkeeping live in the org metadata `git` blob next to
- * the client-editable GitConfig (see GitConfigStored in @nibleaf/validators).
+ * Sync bookkeeping lives in the org metadata `git` blob next to the
+ * client-editable GitConfig (see GitConfigStored in @nibleaf/validators). The
+ * secret itself is server-only storage (see ./git-webhook-secret).
  */
-
-/** 32 random bytes as hex — the shared webhook secret for one project's org. */
-export const generateWebhookSecret = (): string => randomBytes(32).toString('hex');
 
 /** Constant-time string equality (length mismatch short-circuits, which only
  *  leaks the length — not the content — of the expected value). */
@@ -73,7 +72,7 @@ const parseMetadata = (raw: string | null): Record<string, unknown> => {
   }
 };
 
-/** The org's stored git config (client fields + server-managed webhook fields). */
+/** The org's stored git config (client fields + server-managed sync fields). */
 export const getStoredGitConfig = async (organizationId: string): Promise<GitConfigStored> => {
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
   return (parseMetadata(org?.metadata ?? null).git ?? {}) as GitConfigStored;
@@ -83,17 +82,11 @@ export const getStoredGitConfig = async (organizationId: string): Promise<GitCon
 const patchStoredGitConfig = async (organizationId: string, patch: Partial<GitConfigStored>): Promise<void> => {
   const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
   const metadata = parseMetadata(org?.metadata ?? null);
+  await moveLegacyWebhookSecret(organizationId, metadata);
   const git = { ...((metadata.git ?? {}) as Record<string, unknown>), ...patch };
   // `undefined` values mean "remove the key" (JSON.stringify drops them).
   metadata.git = git;
   await prisma.organization.update({ where: { id: organizationId }, data: { metadata: JSON.stringify(metadata) } });
-};
-
-/** Generate (or rotate) the project's webhook secret. Admin-guarded at the route. */
-export const rotateGitWebhookSecret = async (organizationId: string): Promise<string> => {
-  const webhookSecret = generateWebhookSecret();
-  await patchStoredGitConfig(organizationId, { webhookSecret });
-  return webhookSecret;
 };
 
 const MAX_SYNC_ERROR_LENGTH = 300;

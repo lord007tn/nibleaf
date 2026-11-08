@@ -12,7 +12,12 @@ const workspaceRoutes = {
     description: 'Aggregate analytics across all workspace projects.',
     responses: ok,
   }),
-  settings: createRouteConfig({ guard: isAuthenticated, tags: ['workspace'], description: 'Get workspace settings.', responses: ok }),
+  settings: createRouteConfig({
+    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    tags: ['workspace'],
+    description: 'Get workspace settings.',
+    responses: ok,
+  }),
   updateSettings: createRouteConfig({
     guard: [isAuthenticated, requireRole(MemberRole.ADMIN)],
     tags: ['workspace'],

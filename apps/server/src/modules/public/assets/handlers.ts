@@ -1,8 +1,9 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
+import { prisma } from '@nibleaf/database';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
-import { getProjectDeliveryAccess, isProjectTakenDown } from '@/actions/sites';
+import { getProjectAssetAccess, isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
 import { publicAssetResponseHeaders } from '@/lib/asset-response';
 import { deliveryCacheHeaders } from '@/lib/delivery-cache';
@@ -26,6 +27,7 @@ const PROJECT_SCOPED_KEY = /^projects\/[^/]+\//;
  *  normalize it, so a check and the read could reach different objects. Refuse any
  *  such key that could touch `projects/`; other keys stay as they were. */
 const isAmbiguousProjectKey = (key: string): boolean => {
+  if (key.includes('\\')) return true;
   const normalized = posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
   return normalized !== key && (key.startsWith('projects/') || normalized.startsWith('projects/'));
 };
@@ -41,12 +43,18 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (isAmbiguousProjectKey(key) || (!projectId && PROJECT_SCOPED_KEY.test(key))) {
     throw notFound('asset', { key });
   }
+  if (projectId) {
+    const asset = await prisma.asset.findUnique({ where: { key }, select: { projectId: true } });
+    if (asset?.projectId !== projectId) throw notFound('asset', { key });
+  }
   // Moderation: a taken-down project's hosted files (the usual phishing/DMCA
   // payload) must stop being served, not just its pages.
   if (projectId && (await isProjectTakenDown(projectId))) {
     throw notFound('asset', { key });
   }
-  const viewer = projectId ? await getProjectDeliveryAccess(projectId, ctx.req.raw.headers) : null;
+  // A page-scoped reader may load only assets that the pages they can read
+  // (or the site chrome) reference.
+  const viewer = projectId ? await getProjectAssetAccess(projectId, key, ctx.req.raw.headers) : null;
   if (projectId && !viewer) {
     throw notFound('asset', { key });
   }

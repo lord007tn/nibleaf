@@ -1,8 +1,9 @@
 import { aiSelectionSchema } from '@nibleaf/shared/ai';
+import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
-
+import { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
 import { AI_CHAT_LIMITS } from './ai-chat';
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
 import { themeConfigSchema } from './themes';
@@ -16,6 +17,7 @@ export {
   resolveRedirectTarget,
   validateRedirectGraph,
 } from '@nibleaf/shared/redirects';
+export { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
 export {
   addonConfigSchemas,
   addonIdParam,
@@ -99,11 +101,7 @@ const kvPair = z.object({ key: z.string().max(80), value: z.string().max(500) })
 export const SEARCH_MAX_RESULTS = { default: 12, min: 1, max: 50 } as const;
 
 /** Where readers can get human help when the docs do not answer. */
-export const aiSupportUrlSchema = z
-  .string()
-  .trim()
-  .max(500)
-  .regex(/^(?:https?:\/\/|mailto:)/i, 'Use an https:// link or a mailto: address.');
+export const aiSupportUrlSchema = supportActionUrlSchema;
 
 export const aiStarterQuestionsSchema = z
   .array(z.string().trim().min(AI_CHAT_LIMITS.starterQuestionMin).max(AI_CHAT_LIMITS.starterQuestionMax))
@@ -363,8 +361,8 @@ export const projectConfigSchema = z
         brokenLinks: z.boolean().optional(),
         grammarLinter: z.boolean().optional(),
         previewDeployments: z.boolean().optional(),
-        editUrl: z.string().max(500).optional(),
-        issueUrl: z.string().max(500).optional(),
+        editUrl: webActionUrlSchema.optional(),
+        issueUrl: webActionUrlSchema.optional(),
         consentBanner: z
           .object({
             enabled: z.boolean(),
@@ -829,11 +827,7 @@ export const presignAssetBody = z.object({
     .max(150)
     .transform((value) => normalizeAssetContentType(value))
     .refine((value) => isSafeInlineAssetContentType(value), { message: 'Only PNG, JPEG, GIF, WebP, AVIF, and ICO images can be uploaded.' }),
-  size: z
-    .number()
-    .int()
-    .min(1)
-    .max(50 * 1024 * 1024),
+  size: z.number().int().min(1).max(MAX_ASSET_UPLOAD_BYTES),
 });
 export type PresignAssetBody = z.infer<typeof presignAssetBody>;
 
@@ -846,7 +840,7 @@ export const confirmAssetBody = z.object({
     .max(150)
     .transform((value) => normalizeAssetContentType(value))
     .refine((value) => isSafeInlineAssetContentType(value), { message: 'Only PNG, JPEG, GIF, WebP, AVIF, and ICO images can be uploaded.' }),
-  size: z.number().int().min(1),
+  size: z.number().int().min(1).max(MAX_ASSET_UPLOAD_BYTES),
 });
 export type ConfirmAssetBody = z.infer<typeof confirmAssetBody>;
 

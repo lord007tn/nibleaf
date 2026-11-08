@@ -5,6 +5,7 @@ import { closeClickHouseClients, initializeClickHouseFn, startClickHouseBootMigr
 import { logger } from '@nibleaf/logger';
 import { env } from './env';
 import systemApp, { setWorkerReady } from './modules/system/handlers';
+import { startPendingAssetUploadSweeper } from './pending-asset-uploads';
 import { processors } from './processors';
 import { startDeploymentReaper } from './reaper';
 
@@ -19,6 +20,7 @@ process.on('uncaughtException', (error) => {
 
 let server: ServerType | null = null;
 let reaperTimer: NodeJS.Timeout | null = null;
+let assetUploadTimer: NodeJS.Timeout | null = null;
 let stopping = false;
 
 async function main() {
@@ -36,6 +38,7 @@ async function main() {
   }
   // Sweep deployments stranded by a crash mid-build back to FAILED.
   reaperTimer = startDeploymentReaper();
+  assetUploadTimer = startPendingAssetUploadSweeper();
   setWorkerReady(true);
   logger.info('Queue workers started');
 }
@@ -45,6 +48,7 @@ async function cleanup() {
   if (reaperTimer) {
     clearInterval(reaperTimer);
   }
+  if (assetUploadTimer) clearInterval(assetUploadTimer);
   await Promise.allSettled([closeWorkers(), closeQueueEvents(), closeQueues(), closeClickHouseClients()]);
   server?.close();
 }

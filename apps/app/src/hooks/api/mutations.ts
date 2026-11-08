@@ -359,7 +359,7 @@ export const useRollback = (projectId: string) => {
 /** Browsers occasionally omit File.type for valid images; never infer an active type. */
 const uploadContentType = (file: File): string => file.type.trim() || inferSafeInlineAssetContentType(file.name) || 'application/octet-stream';
 
-type AssetUploadAttempt = { key: string; uploadUrl: string; putComplete: boolean };
+type AssetUploadAttempt = { key: string; uploadUrl: string; contentType: string; putComplete: boolean };
 
 /** Presign → PUT bytes → confirm. Returns the recorded asset. */
 export const useUploadAsset = (projectId: string) => {
@@ -394,18 +394,18 @@ export const useUploadAsset = (projectId: string) => {
         attempts.current.set(file, perProject);
       }
       if (!attempt.putComplete) {
-        await putAsset(attempt.uploadUrl, file, contentType, onProgress, signal);
+        await putAsset(attempt.uploadUrl, file, attempt.contentType, onProgress, signal);
         attempt.putComplete = true;
       }
       if (!(input instanceof File)) input.onFinishing?.();
-      const key = attempt.key;
+      const { key, contentType: signedContentType } = attempt;
       let asset: Asset;
       try {
         asset = await mutateData(
           await api.app.projects[':projectId'].assets.confirm.$post(
             {
               param: { projectId },
-              json: { key, contentType, size: file.size },
+              json: { key, contentType: signedContentType, size: file.size },
             },
             { init: { signal } },
           ),
@@ -418,7 +418,7 @@ export const useUploadAsset = (projectId: string) => {
         let existing: Asset | undefined;
         try {
           const assets = await getData(await api.app.projects[':projectId'].assets.$get({ param: { projectId } }, { init: { signal } }), 'assets');
-          existing = assets.find((item) => item.key === key && item.size === file.size && item.contentType === contentType);
+          existing = assets.find((item) => item.key === key && item.size === file.size && item.contentType === signedContentType);
         } catch {
           throw confirmationError;
         }

@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
+import { moveLegacyWebhookSecret } from './git-webhook-secret';
 import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './importers/cleanup-locks';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
 import { getGitHubTextFile, listGitHubFiles } from './importers/github';
@@ -547,6 +548,7 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
   }
 
   // Record that this repo is connected + when it last imported.
+  await moveLegacyWebhookSecret(organizationId, metadata);
   metadata.git = { ...git, connected: true, lastImportedAt: new Date().toISOString() };
   await prisma.organization.update({ where: { id: organizationId }, data: { metadata: JSON.stringify(metadata) } });
 

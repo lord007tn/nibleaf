@@ -20,21 +20,31 @@ import { getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTar
 export { defaultTarget, getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
 
 const DELETE_BATCH_SIZE = 1000;
+/** Largest body a presigned upload may declare. Kept equal to MAX_ASSET_UPLOAD_BYTES
+ *  in @nibleaf/shared/constants; a server test pins the two together. */
+export const MAX_PRESIGNED_UPLOAD_BYTES = 50 * 1024 * 1024;
 export const DEFAULT_PRESIGN_EXPIRES_IN_SECONDS = 3600;
+export const UPLOAD_PRESIGN_EXPIRES_IN_SECONDS = 600;
 
-/** `DeleteObjects` reports per-object failures inside an HTTP success. Only counts
- * and an error code leave this module: object keys can be personal. */
 /** S3 error codes are short identifiers. Anything else a backend sends stays out of logs. */
 const safeErrorCode = (code: string | undefined): string => (code && /^\w{1,64}$/.test(code) ? code : 'unknown');
 
 export class StorageDeleteError extends Error {
+  readonly #failedKeys: readonly string[];
   constructor(
     readonly failedCount: number,
     readonly deletedCount: number,
     readonly firstErrorCode: string,
+    failedKeys: readonly string[] = [],
   ) {
     super(`Could not delete ${failedCount} stored object(s); first error code: ${firstErrorCode}.`);
     this.name = 'StorageDeleteError';
+    this.#failedKeys = [...failedKeys];
+  }
+
+  /** Internal retry routing only. Keys are intentionally non-enumerable and never part of the error message. */
+  getFailedKeys(): readonly string[] {
+    return this.#failedKeys;
   }
 }
 
@@ -93,6 +103,36 @@ export const deleteObject = async (key: string, target?: StorageTarget): Promise
   await getS3Client(target).send(new DeleteObjectCommand({ Bucket: getBucket(target), Key: key }));
 };
 
+/** Delete exact keys in S3-compatible batches, retaining only failed keys for retry routing. */
+export const deleteObjects = async (keys: string[], target?: StorageTarget): Promise<void> => {
+  const client = getS3Client(target);
+  const failed: string[] = [];
+  let firstErrorCode: string | undefined;
+  for (let offset = 0; offset < keys.length; offset += DELETE_BATCH_SIZE) {
+    const batch = keys.slice(offset, offset + DELETE_BATCH_SIZE);
+    try {
+      const { Errors: errors = [] } = await client.send(
+        new DeleteObjectsCommand({
+          Bucket: getBucket(target),
+          Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true },
+        }),
+      );
+      const failures = errors.filter((error) => error.Code !== 'NoSuchKey' && error.Code !== 'NotFound');
+      if (failures.some((error) => !error.Key || !batch.includes(error.Key))) {
+        failed.push(...batch);
+      } else {
+        failed.push(...failures.flatMap((error) => (error.Key ? [error.Key] : [])));
+      }
+      firstErrorCode ??= failures[0]?.Code;
+    } catch {
+      failed.push(...batch);
+      firstErrorCode ??= 'StorageUnavailable';
+    }
+  }
+  const failedKeys = [...new Set(failed)];
+  if (failedKeys.length) throw new StorageDeleteError(failedKeys.length, keys.length - failedKeys.length, safeErrorCode(firstErrorCode), failedKeys);
+};
+
 export const deletePrefix = async (prefix: string, target?: StorageTarget): Promise<number> => {
   const client = getS3Client(target);
   const bucket = getBucket(target);
@@ -119,6 +159,8 @@ export const deletePrefix = async (prefix: string, target?: StorageTarget): Prom
 };
 
 export interface PresignPutOptions {
+  signingDate?: Date;
+  contentLength: number;
   contentType?: string;
   expiresInSeconds?: number;
   key: string;
@@ -129,13 +171,24 @@ export interface PresignPutOptions {
 export const presignPutUrl = ({
   key,
   contentType,
-  expiresInSeconds = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS,
+  contentLength,
+  expiresInSeconds = UPLOAD_PRESIGN_EXPIRES_IN_SECONDS,
   target,
+  signingDate,
 }: PresignPutOptions): Promise<string> => {
+  if (!Number.isSafeInteger(contentLength) || contentLength < 1 || contentLength > MAX_PRESIGNED_UPLOAD_BYTES) {
+    throw new Error('Upload size must be between 1 byte and 50 MiB.');
+  }
   const signTarget = target ?? publicTarget();
-  return getSignedUrl(getS3Client(signTarget), new PutObjectCommand({ Bucket: getBucket(signTarget), Key: key, ContentType: contentType }), {
-    expiresIn: expiresInSeconds,
-  });
+  return getSignedUrl(
+    getS3Client(signTarget),
+    new PutObjectCommand({ Bucket: getBucket(signTarget), Key: key, ContentType: contentType, ContentLength: contentLength }),
+    {
+      expiresIn: Math.min(expiresInSeconds, UPLOAD_PRESIGN_EXPIRES_IN_SECONDS),
+      signingDate,
+      signableHeaders: new Set(['content-length', 'content-type']),
+    },
+  );
 };
 
 export interface PresignGetOptions {
@@ -213,7 +266,7 @@ export const configureUploadCors = (origins: string[], target?: StorageTarget): 
     target,
   );
 
-const isNotFound = (error: unknown): boolean => {
+export const isNotFound = (error: unknown): boolean => {
   if (!(error instanceof S3ServiceException)) return false;
   return error.name === 'NotFound' || error.name === 'NoSuchKey' || error.$metadata.httpStatusCode === 404;
 };

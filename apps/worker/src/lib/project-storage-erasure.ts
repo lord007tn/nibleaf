@@ -2,20 +2,16 @@ import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { type EraseProjectStorageJobData, eraseProjectStorageFinalPassJobId } from '@nibleaf/bullmq/jobs/erasure';
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
+import { MAX_ACCEPTED_PUT_DURATION_MS } from '@nibleaf/shared/constants';
 import { DEFAULT_PRESIGN_EXPIRES_IN_SECONDS, deletePrefix, StorageDeleteError } from '@nibleaf/storage';
 import type { Job } from 'bullmq';
 import { isFinalExportAttempt } from '../exports/lifecycle';
 
 const log = createLogger({ processor: 'project-storage-erasure' });
 
-/** Time for a PUT that started just before its URL expired, or an export that was
- * already running, to finish. Nothing enforces this as a deadline: the queue lock
- * on an export renews while it runs. It's far longer than either should take. */
-const LATE_WRITE_MARGIN_MS = 23 * 60 * 60 * 1000;
-
-/** An upload URL signed just before deletion stays usable for its whole lifetime, so
- * an object can appear after the first pass. One written after the final pass stays. */
-export const FINAL_PASS_DELAY_MS = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS * 1000 + LATE_WRITE_MARGIN_MS;
+/** Allow an outstanding URL to expire, then wait the shared accepted-PUT allowance.
+ * Providers enforce that duration externally; an export's queue lock can renew beyond it. */
+export const FINAL_PASS_DELAY_MS = DEFAULT_PRESIGN_EXPIRES_IN_SECONDS * 1000 + MAX_ACCEPTED_PUT_DURATION_MS;
 
 class ProjectStillExistsError extends Error {
   constructor() {

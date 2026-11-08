@@ -123,8 +123,22 @@ model Organization {
   usagePlan          OrganizationUsagePlan?
   usageStorageMarker UsageStorageMarker?
   usageIngestCheckpoints UsageIngestCheckpoint[]
+  gitWebhookSecret       OrganizationGitWebhookSecret?
 
   @@map("organization")
+}
+
+/// Server-only shared secret that authenticates one-way push-to-deploy webhooks.
+/// It is kept out of `organization.metadata`, which the auth organization
+/// endpoints return to every member; only the API reads this table.
+model OrganizationGitWebhookSecret {
+  organizationId String       @id
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  secret         String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("organization_git_webhook_secret")
 }
 
 /// Provider-neutral commercial configuration. These rows express product
@@ -605,6 +619,8 @@ model Project {
   domains         Domain[]
   apiKeys         ApiKey[]
   assets          Asset[]
+  pendingAssetUploads PendingAssetUpload[]
+  assetUploadTombstones AssetUploadTombstone[]
   comments        Comment[]
   analyticsEvents AnalyticsEvent[]
   readers         Reader[]
@@ -1348,6 +1364,10 @@ model Deployment {
   status        DeploymentStatus @default(PENDING)
   /// { project: {...}, pages: [...] } captured at publish time.
   snapshot      Json?
+  assetReferenceIndex Json?
+  assetReferenceBytes Int?
+  assetSourceBytes Int?
+  assetSourcePages Int?
   pagesCount    Int              @default(0)
   commitMessage String?
   createdById   String?
@@ -1654,6 +1674,45 @@ model McpOAuthGrant {
   @@map("mcp_oauth_grant")
 }
 
+
+model PendingAssetUpload {
+  key              String   @id
+  projectId        String
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  size             Int
+  contentType      String
+  createdAt        DateTime @default(now())
+  expiresAt        DateTime
+  urlExpiresAt     DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + '00:11:00'::interval)"))
+  nextAttemptAt    DateTime @default(now())
+  attempts         Int      @default(0)
+  cleanupStartedAt DateTime?
+  rejectedAt       DateTime?
+
+  @@index([projectId])
+  @@index([expiresAt, key])
+  @@index([cleanupStartedAt(sort: Desc), expiresAt, key])
+  @@index([nextAttemptAt])
+  @@map("pending_asset_upload")
+}
+
+model AssetUploadTombstone {
+  key         String   @id
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  size        Int
+  urlExpiresAt DateTime
+  firstRecheckedAt DateTime?
+  nextCheckAt DateTime
+  nextAttemptAt DateTime @default(now())
+  attempts Int @default(0)
+
+  @@index([projectId])
+  @@index([projectId, firstRecheckedAt])
+  @@index([nextCheckAt, key])
+  @@index([nextAttemptAt])
+  @@map("asset_upload_tombstone")
+}
 
 model Asset {
   id          String   @id @default(cuid())
