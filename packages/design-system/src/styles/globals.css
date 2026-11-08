@@ -46,6 +46,8 @@
   --color-warning: var(--warning);
   --color-success-foreground: var(--success-foreground);
   --color-success: var(--success);
+  --color-badge-orange: var(--badge-orange);
+  --color-badge-purple: var(--badge-purple);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -101,6 +103,9 @@
   --warning-foreground: #fffbeb;
   --success: #15803d;
   --success-foreground: #f0fdf4;
+  /* Badge colors without a semantic token (Mintlify's orange and purple). */
+  --badge-orange: #c2410c;
+  --badge-purple: #7c3aed;
   --border: #e5e5e5;
   --input: #e5e5e5;
   --ring: #c2410c;
@@ -143,6 +148,8 @@
   --warning-foreground: #451a03;
   --success: #4ade80;
   --success-foreground: #052e16;
+  --badge-orange: #fb923c;
+  --badge-purple: #a78bfa;
   --border: #262626;
   --input: #404040;
   --ring: #f97316;

@@ -22,15 +22,30 @@ const siteStub = `export const uniqueHeadingId = (text: string, used: Map<string
 };
 `;
 
+// The repository's Paraglide build compiles its en/ar catalogs; the fields
+// component reads three labels from it.
+const messagesStub = `export const fieldRequired = () => 'required';
+export const fieldDeprecated = () => 'deprecated';
+export const fieldDefault = () => 'default';
+`;
+
 let Markdown: ComponentType<{ body: string }>;
+let normalizeMarkdown: (source: string) => string;
 
 beforeAll(async () => {
-  for (const file of [...themeRepositoryReaderTemplateFiles(), { path: 'src/lib/site.ts', content: siteStub }]) {
+  for (const file of [
+    ...themeRepositoryReaderTemplateFiles(),
+    { path: 'src/lib/site.ts', content: siteStub },
+    { path: 'src/paraglide/messages.js', content: messagesStub },
+  ]) {
     const target = join(root, file.path);
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, file.content);
   }
-  ({ Markdown } = (await import(/* @vite-ignore */ join(root, 'src/lib/markdown.tsx'))) as { Markdown: ComponentType<{ body: string }> });
+  ({ Markdown, normalizeMarkdown } = (await import(/* @vite-ignore */ join(root, 'src/lib/markdown.tsx'))) as {
+    Markdown: ComponentType<{ body: string }>;
+    normalizeMarkdown: (source: string) => string;
+  });
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -55,6 +70,12 @@ describe('exported theme repository Markdown', () => {
     ['body', 'email'],
   ])('names a ParamField by its %s prop like the reader', (location, name) => {
     expect(render(`<ParamField ${location}="${name}" type="string" required>\n\nText.\n\n</ParamField>`)).toContain(`<code dir="ltr">${name}</code>`);
+  });
+
+  it('shows when a field is required or deprecated, and its default, like the reader (#338)', () => {
+    const html = render('<ParamField query="limit" type="integer" required default="20" deprecated>\n\nPage size.\n\n</ParamField>');
+    expect(html).toContain('integer · required · deprecated · default: <code dir="ltr">20</code>');
+    expect(render('<ResponseField name="id" type="string">\n\nText.\n\n</ResponseField>')).not.toMatch(/deprecated|default:/);
   });
 
   it('lets only a plain color reach an Icon style, and reads a {24} size', () => {
@@ -103,5 +124,34 @@ describe('exported theme repository Markdown', () => {
     expect(html).toContain('<u>underlined</u>');
     expect(html).toContain('<sub>2</sub>');
     expect(html).toContain('<sup>2</sup>');
+  });
+});
+
+describe('exported theme normaliser and code samples (#338)', () => {
+  const samples = [
+    ['a backtick fence', '```mdx\n<Frame caption="x">\n<File name="a.ts" />\n<Callout>\nText\n</Callout>\n</Frame>\n```'],
+    ['a tilde fence closed by a longer one', '~~~mdx\n<Frame>\n<Icon icon="star" />\n~~~~'],
+    ['a fence inside a blockquote', '> ```mdx\n> <Frame>\n> <File name="a.ts" />\n> ```'],
+    ['a fence inside a list item', '- Example:\n\n  ```mdx\n  <Callout>\n  Text\n  </Callout>\n  ```'],
+    ['inline code that runs onto the next line', 'Write `<Frame\ncaption="x">` or `<File name="a.ts"\n/>` here.'],
+    ['inline code on one line', 'Use `<RelatedCard title="x" />` and ``<Frame>``.'],
+  ] as const;
+
+  it.each(samples)('leaves %s byte-identical', (_label, sample) => {
+    const source = `Intro.\n\n${sample}\n\nAfter.`;
+    expect(normalizeMarkdown(source)).toBe(source);
+  });
+
+  it('still normalises the prose around a code sample', () => {
+    const output = normalizeMarkdown(
+      '<Callout>\n**Bold**\n</Callout>\n\n```mdx\n<Frame>\n```\n\n<Frame>\n\nPicture\n\n</Frame>\n\nA <File name="b.ts" /> atom.',
+    );
+    expect(output).toBe(
+      '<Callout>\n\n**Bold**\n\n</Callout>\n\n```mdx\n<Frame>\n```\n\n<mdxframe>\n\nPicture\n\n</mdxframe>\n\nA <File name="b.ts" ></File> atom.',
+    );
+  });
+
+  it('gives a component a blank line before a fence it holds, without touching the fence', () => {
+    expect(normalizeMarkdown('<Callout>\n```js\n<Frame />\n```\n</Callout>')).toBe('<Callout>\n\n```js\n<Frame />\n```\n\n</Callout>');
   });
 });

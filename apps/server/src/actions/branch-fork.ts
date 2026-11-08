@@ -32,9 +32,11 @@ import { joinPath } from '@nibleaf/shared/utils';
  *  - Deleted on main: stays deleted, unless the version edited its copy. An
  *    unedited copy still comes back when a page the version keeps lives under
  *    it, so no page loses its parent.
- *  - Pages added on main since the fork are kept. If their parent goes away
- *    they move up to the nearest kept ancestor (or the top level), listed as
- *    `onPromote: 'moved'` with `newParentPath`.
+ *  - Pages main keeps whose parent goes away move up to the nearest kept
+ *    ancestor (or the top level) and carry `newParentPath`. A page with no
+ *    other change is listed as `onPromote: 'moved'`; a page that is also
+ *    `merged` or `replaced` keeps that outcome on the same entry, with
+ *    `newParentPath` beside it (#348).
  *  - Pages created in the version move onto main.
  *  - Same address: when two pages would end up at the same path in the same
  *    language, one keeps it and the others get a numbered slug ("refunds-2"),
@@ -164,7 +166,9 @@ type ChangedOnMainPage = {
   onPromote: OnPromote;
   /** `renamed` only: the page's new address. */
   newPath?: string;
-  /** `moved` only: the address of its new parent (null: the top level). */
+  /** `moved`, and `merged` or `replaced` when the page's parent also goes
+   *  away: the address of its new parent (null: the top level). Absent when
+   *  the page stays where it is. */
   newParentPath?: string | null;
   /** `replaced` only: what of main's own edits the version overwrites
    *  (field names, plus `content`, `settings`, `parent`). */

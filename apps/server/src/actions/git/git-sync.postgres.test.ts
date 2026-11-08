@@ -432,6 +432,38 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
     });
   }, 60_000);
 
+  it("re-scopes a promoted page's import identity to main in the promote itself (#349)", async () => {
+    const setup = await fixture();
+    const intro = await setup.createPage({ title: 'Intro', slug: 'intro' });
+    const scope = { projectId: setup.project.id, languageId: setup.language.id };
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: intro.id, branchId: setup.branch.id, path: 'docs/intro.md' } });
+    const draft = await branches.createBranch(setup.project.id, { name: `draft-${randomUUID()}` });
+    const added = (slug: string) =>
+      db.prisma.page.create({
+        data: { ...scope, branchId: draft.id, title: slug, slug, path: slug, content: slug },
+      });
+    const fresh = await added('refunds');
+    const clash = await added('intro-again');
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: fresh.id, branchId: draft.id, path: 'docs/refunds.md' } });
+    // The copy of intro already holds docs/intro.md in the version; a row from
+    // an older branch for the same file, on a page the version added, stays
+    // stale rather than breaking main's unique key.
+    await db.prisma.pageGitImportSource.create({ data: { ...scope, pageId: clash.id, branchId: `merged-${randomUUID()}`, path: 'docs/intro.md' } });
+
+    await branches.mergeBranch(setup.project.id, draft.id);
+
+    expect(await db.prisma.pageGitImportSource.findUniqueOrThrow({ where: { pageId: fresh.id } })).toMatchObject({
+      branchId: setup.branch.id,
+      path: 'docs/refunds.md',
+    });
+    expect(await db.prisma.pageGitImportSource.findUniqueOrThrow({ where: { pageId: intro.id } })).toMatchObject({
+      branchId: setup.branch.id,
+      path: 'docs/intro.md',
+    });
+    expect((await db.prisma.pageGitImportSource.findUniqueOrThrow({ where: { pageId: clash.id } })).branchId).not.toBe(setup.branch.id);
+    expect(await db.prisma.pageGitImportSource.count({ where: { projectId: setup.project.id, branchId: draft.id } })).toBe(0);
+  }, 60_000);
+
   it('applies a 1,000-file sync well inside the transaction limit', async () => {
     const setup = await fixture();
     const connection = await db.prisma.gitConnection.create({

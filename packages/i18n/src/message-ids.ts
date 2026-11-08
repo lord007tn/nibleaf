@@ -442,6 +442,8 @@ export const MESSAGE_IDS = {
   'editor.promote.renamed': 'editor_promote_renamed',
   'editor.promote.moved': 'editor_promote_moved',
   'editor.promote.movedTop': 'editor_promote_movedtop',
+  'editor.promote.alsoMoved': 'editor_promote_alsomoved',
+  'editor.promote.alsoMovedTop': 'editor_promote_alsomovedtop',
   'editor.promote.restored': 'editor_promote_restored',
   'editor.promote.merged': 'editor_promote_merged',
   'editor.promote.kept': 'editor_promote_kept',

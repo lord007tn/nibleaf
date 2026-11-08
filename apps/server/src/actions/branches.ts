@@ -368,6 +368,42 @@ const deleteLocked = async (tx: Prisma.TransactionClient, projectId: string, ids
   }
 };
 
+/** Pages that moved onto main take their Git import identity with them: the
+ *  row is re-scoped to main so it never names the deleted version. A row whose
+ *  file main already holds (same language and path) is left as it is, since
+ *  the unique key allows one per branch; Git import lets such a stale row yield
+ *  to main's own. Rows already scoped to main are untouched. */
+const rescopeImportIdentities = async (tx: Prisma.TransactionClient, projectId: string, mainId: string, movedIds: string[]) => {
+  const key = (s: { languageId: string; path: string }) => JSON.stringify([s.languageId, s.path]);
+  const stale: { pageId: string; languageId: string; path: string }[] = [];
+  for (const chunk of chunks(movedIds)) {
+    const rows = await tx.pageGitImportSource.findMany({
+      where: { projectId, pageId: { in: chunk }, branchId: { not: mainId } },
+      select: { pageId: true, languageId: true, path: true },
+    });
+    stale.push(...rows);
+  }
+  if (stale.length === 0) return;
+  const held = new Set<string>();
+  for (const chunk of chunks(stale)) {
+    const rows = await tx.pageGitImportSource.findMany({
+      where: { projectId, branchId: mainId, OR: chunk.map((s) => ({ languageId: s.languageId, path: s.path })) },
+      select: { languageId: true, path: true },
+    });
+    for (const r of rows) held.add(key(r));
+  }
+  // One row per file: the lowest page id wins, the rest stay as they are.
+  const rescoped: string[] = [];
+  for (const s of [...stale].sort((a, b) => a.pageId.localeCompare(b.pageId, 'en'))) {
+    if (held.has(key(s))) continue;
+    held.add(key(s));
+    rescoped.push(s.pageId);
+  }
+  for (const chunk of chunks(rescoped)) {
+    await tx.pageGitImportSource.updateMany({ where: { projectId, pageId: { in: chunk } }, data: { branchId: mainId } });
+  }
+};
+
 /** Promote a version into the default branch ('main').
  *   - No baseline: 409 `branch:baseline_missing`, nothing changed.
  *   - A plan that would put pages inside each other: 409
@@ -494,6 +530,12 @@ export const mergeBranch = async (projectId: string, id: string, body: MergeBran
           }
         }
         await deleteLocked(tx, projectId, toDelete);
+        await rescopeImportIdentities(
+          tx,
+          projectId,
+          main.id,
+          plan.moves.map((m) => m.id),
+        );
         // Every version page was moved, folded or dropped; anything left would
         // be lost with the version.
         if ((await tx.page.count({ where: { projectId, branchId: branch.id } })) > 0) throw promoteRaced();
