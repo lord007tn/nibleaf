@@ -57,7 +57,7 @@ const logMoveFailure = (organizationId: string, error: unknown): void => {
 
 /**
  * The settings DTO shared by every workspace and site settings response. Only
- * known sections are returned. The webhook secret is read from server-only
+ * known sections are returned, to every role down to Viewer. The webhook secret is read from server-only
  * storage and included for ADMIN and above. A copy found in metadata is never
  * returned, and it is moved to server-only storage on any member's read. A
  * failed move is logged and never fails the read.
@@ -80,7 +80,9 @@ export const getScopedWorkspaceSettings = async (organizationId: string, role: s
   return {
     plan: settings.plan,
     notifications: settings.notifications,
-    integrations: settings.integrations,
+    // The legacy `integrations` blob may hold webhook URLs: admin material, like
+    // the webhook secret. Editors and Viewers get every other section read-only.
+    integrations: roleAtLeast(role, MemberRole.ADMIN) ? settings.integrations : {},
     git,
     name: settings.name,
     slug: settings.slug,

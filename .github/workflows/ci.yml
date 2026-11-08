@@ -136,6 +136,12 @@ jobs:
           BRANCH_PROMOTE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/branches.postgres.test.ts
 
+      - name: Verify the Viewer role cannot change a site
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          VIEWER_ROLE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/viewer-role.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

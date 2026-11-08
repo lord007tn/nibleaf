@@ -756,12 +756,12 @@ export type AddDomainBody = z.infer<typeof addDomainBody>;
 // ─── Members & invitations ───────────────────────────────────────────────────
 
 /** Every role a member can HOLD (display, filters). Do not use for grants. */
-export const memberRoleEnum = z.enum(['owner', 'admin', 'member']);
+export const memberRoleEnum = z.enum(['owner', 'admin', 'member', 'viewer']);
 
 /** Roles that can be GRANTED via invites and role changes. `owner` is
  *  deliberately excluded at the schema level: a workspace has exactly one
  *  owner, and ownership moves only through the transfer-ownership endpoint. */
-export const assignableMemberRoleEnum = z.enum(['admin', 'member']);
+export const assignableMemberRoleEnum = z.enum(['admin', 'member', 'viewer']);
 
 export const inviteMemberBody = z.object({
   email: z.email(),

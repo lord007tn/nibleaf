@@ -2,9 +2,10 @@ import { MemberRole } from './constants';
 
 /** Higher rank = more privilege. Unknown roles rank lowest. */
 const ROLE_RANK: Record<string, number> = {
-  [MemberRole.MEMBER]: 1,
-  [MemberRole.ADMIN]: 2,
-  [MemberRole.OWNER]: 3,
+  [MemberRole.VIEWER]: 1,
+  [MemberRole.MEMBER]: 2,
+  [MemberRole.ADMIN]: 3,
+  [MemberRole.OWNER]: 4,
 };
 
 export const rankOf = (role: string): number => ROLE_RANK[role] ?? 0;
@@ -12,7 +13,11 @@ export const rankOf = (role: string): number => ROLE_RANK[role] ?? 0;
 /** Whether `role` is at least as privileged as `required`. */
 export const roleAtLeast = (role: string, required: MemberRole): boolean => rankOf(role) >= rankOf(required);
 
-/** Roles allowed to edit documentation content. */
+/** Roles allowed to read a site's dashboard: content, drafts, history,
+ *  analytics and (read-only) settings. Every real role qualifies. */
+export const canView = (role: string): boolean => roleAtLeast(role, MemberRole.VIEWER);
+
+/** Roles allowed to edit documentation content. Viewers are read-only. */
 export const canEdit = (role: string): boolean => roleAtLeast(role, MemberRole.MEMBER);
 
 /** Roles allowed to manage members, billing, domains, and danger-zone actions. */
@@ -27,7 +32,7 @@ export const EXPORT_SCHEDULE_ROLE = MemberRole.ADMIN;
  *  deliberately absent: a workspace has exactly ONE owner, and ownership moves
  *  only through the explicit transfer-ownership flow (never by assigning the
  *  role directly). */
-export const ASSIGNABLE_MEMBER_ROLES = [MemberRole.ADMIN, MemberRole.MEMBER] as const;
+export const ASSIGNABLE_MEMBER_ROLES = [MemberRole.ADMIN, MemberRole.MEMBER, MemberRole.VIEWER] as const;
 export type AssignableMemberRole = (typeof ASSIGNABLE_MEMBER_ROLES)[number];
 
 /** Whether an actor may GRANT `targetRole` to someone. Two rules:

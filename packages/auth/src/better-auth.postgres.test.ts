@@ -267,6 +267,38 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.member.count({ where: { organizationId, user: { email } } })).toBe(1);
   });
 
+  it('turns a viewer invitation into a read-only member that Better Auth grants no organization powers', async () => {
+    const { organizationId, userId: ownerId } = await signInAsOwner();
+    const email = addressFor('viewer');
+    const id = `viewer-invitation-${run}`;
+    await prisma.invitation.create({
+      data: { id, organizationId, email, role: 'viewer', status: 'pending', expiresAt: new Date(Date.now() + 3_600_000), inviterId: ownerId },
+    });
+    const cookie = sessionCookie(await signInWithCode(email));
+    expect((await send('/organization/accept-invitation', { body: { invitationId: id }, cookie })).status).toBe(200);
+    const viewer = await prisma.member.findFirstOrThrow({ where: { organizationId, user: { email } } });
+    expect(viewer.role).toBe('viewer');
+
+    // Better Auth's own organization endpoints stay closed to the role: it is
+    // not in the plugin's access-control table, so it holds no permission.
+    const editorUser = await prisma.user.create({ data: { email: addressFor('viewer-teammate'), emailVerified: true, name: 'Editor' } });
+    const editor = await prisma.member.create({ data: { organizationId, userId: editorUser.id, role: 'member' } });
+    const attempts = [
+      ['/organization/update-member-role', { memberId: viewer.id, role: 'admin', organizationId }],
+      ['/organization/remove-member', { memberIdOrEmail: editor.id, organizationId }],
+      ['/organization/update', { data: { name: 'Taken over' }, organizationId }],
+      ['/organization/cancel-invitation', { invitationId: id }],
+    ] as const;
+    for (const [path, body] of attempts) {
+      const response = await send(path, { body, cookie });
+      // Better Auth answers 401 or 403 depending on the endpoint; both are a refusal on permission.
+      expect([401, 403], path).toContain(response.status);
+    }
+    expect((await prisma.member.findUniqueOrThrow({ where: { id: viewer.id } })).role).toBe('viewer');
+    expect(await prisma.member.count({ where: { id: editor.id } })).toBe(1);
+    expect((await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } })).name).not.toBe('Taken over');
+  });
+
   it('keeps workspace invitations on the Nibleaf action that enforces the single-owner rule', async () => {
     const { cookie, organizationId } = await signInAsOwner();
     const email = addressFor('second-owner');
