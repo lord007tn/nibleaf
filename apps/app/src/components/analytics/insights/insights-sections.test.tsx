@@ -656,7 +656,7 @@ describe('First load', () => {
     ],
     ['search', () => mocks.search_.mockReturnValue(loading), () => <SearchSection />, { tiles: 6, charts: 1, lists: 0, tables: [5, 4, 2] }],
     ['feedback', () => mocks.feedback.mockReturnValue(loading), () => <FeedbackSection />, { tiles: 4, charts: 1, lists: 0, tables: [5] }],
-    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [4, 6, 4] }],
+    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [3, 6, 4] }],
     [
       'performance',
       () => mocks.performance.mockReturnValue(loading),

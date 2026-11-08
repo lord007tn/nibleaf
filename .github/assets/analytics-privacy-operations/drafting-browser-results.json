@@ -15,5 +15,6 @@
     }
   ],
   "pageOverflow": false,
+  "shareColumnVisible": true,
   "errors": []
 }

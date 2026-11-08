@@ -24,17 +24,19 @@ export function DraftingConnections({
       <SimpleTable
         caption={t('analytics.drafting.title')}
         columns={[
-          { key: 'connection', header: t('analytics.drafting.connection'), cell: (row: Connection) => t(`analytics.drafting.${row.connection}`) },
           {
-            key: 'models',
-            header: t('analytics.drafting.models'),
+            key: 'connection',
+            header: t('analytics.drafting.connection'),
             cell: (row: Connection) => (
-              <span className="whitespace-normal break-words" dir="ltr">
-                {row.models
-                  .map(([provider, model]) => [provider, model].filter(Boolean).join(' / '))
-                  .filter(Boolean)
-                  .join(', ') || format.count(null)}
-              </span>
+              <div className="max-w-48 whitespace-normal">
+                <span>{t(`analytics.drafting.${row.connection}`)}</span>
+                <p className="mt-1 break-all text-muted-foreground text-xs" dir="ltr" title={t('analytics.drafting.models')}>
+                  {row.models
+                    .map(([provider, model]) => [provider, model].filter(Boolean).join(' / '))
+                    .filter(Boolean)
+                    .join(', ') || format.count(null)}
+                </p>
+              </div>
             ),
           },
           { key: 'events', header: t('analytics.drafting.events'), cell: (row: Connection) => format.count(row.events), numeric: true },
