@@ -260,11 +260,22 @@ describe('tenant-safe search actions', () => {
     await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
       queued: ['project-a'],
       skipped: [{ projectId: 'project-b', reason: 'not_published' }],
+      failed: [],
     });
     expect(mocks.createRun).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ projectId: 'project-a', requestedById: null, vectorSize: 1536 }) }),
     );
     expect(mocks.createJob).toHaveBeenCalledOnce();
+  });
+
+  it('reports a site whose rebuild could not be queued as failed, not as an intentional skip', async () => {
+    mocks.findProjects.mockResolvedValue([{ id: 'project-a', deployments: [{ id: 'deployment-a' }] }]);
+    mocks.createJob.mockRejectedValueOnce(new Error('redis down'));
+    await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
+      queued: [],
+      skipped: [],
+      failed: [{ projectId: 'project-a', reason: 'queue_unavailable' }],
+    });
   });
 
   it('returns opaque no-READY and distinct active-run conflict errors', async () => {

@@ -381,7 +381,12 @@ const queueProjectSearchReindex = async (projectId: string, requestedById: strin
       where: { id: run.id, status: 'PENDING', jobId: run.jobId },
       data: { errorCode: 'queue_unavailable' },
     });
-    throw new AppError({ code: 'search:unavailable', message: 'Search indexing could not be queued.', cause });
+    throw new AppError({
+      code: 'search:unavailable',
+      message: 'Search indexing could not be queued.',
+      details: { reason: 'queue_unavailable' },
+      cause,
+    });
   }
 
   return { id: run.id, status: run.status, createdAt: run.createdAt.toISOString(), deploymentVersion: deployment.version };
@@ -390,8 +395,10 @@ const queueProjectSearchReindex = async (projectId: string, requestedById: strin
 /** After an embedding-settings change, queue a rebuild of every published site
  * into the newly configured collection (src/scripts/reindex-search.ts). A site
  * with no usable embedding provider, no READY deployment or a run already in
- * progress is skipped with its reason. Chunks already in the configured
- * collection are not embedded again, so running it twice costs nothing extra. */
+ * progress is skipped with its reason. A site whose rebuild could not be queued
+ * (or failed unexpectedly) is reported as failed, so the operator command can exit
+ * non-zero. Chunks already in the configured collection are not embedded again,
+ * so running it twice costs nothing extra. */
 export const queueSearchReindexForAllProjects = async () => {
   const projects = await prisma.project.findMany({
     orderBy: { createdAt: 'asc' },
@@ -399,6 +406,7 @@ export const queueSearchReindexForAllProjects = async () => {
   });
   const queued: string[] = [];
   const skipped: Array<{ projectId: string; reason: string }> = [];
+  const failed: Array<{ projectId: string; reason: string }> = [];
   for (const { id, deployments } of projects) {
     if (deployments.length === 0) {
       skipped.push({ projectId: id, reason: 'not_published' });
@@ -408,8 +416,10 @@ export const queueSearchReindexForAllProjects = async () => {
       await queueProjectSearchReindex(id);
       queued.push(id);
     } catch (error) {
-      skipped.push({ projectId: id, reason: error instanceof AppError ? error.code : 'unexpected_error' });
+      if (!(error instanceof AppError)) failed.push({ projectId: id, reason: 'unexpected_error' });
+      else if (error.details?.reason === 'queue_unavailable') failed.push({ projectId: id, reason: 'queue_unavailable' });
+      else skipped.push({ projectId: id, reason: error.code });
     }
   }
-  return { queued, skipped };
+  return { queued, skipped, failed };
 };
