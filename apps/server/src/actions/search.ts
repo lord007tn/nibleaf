@@ -310,6 +310,12 @@ export const getProjectSearchIndexDiagnostics = async (ctx: Context<HonoEnv>, pr
 
 export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectId: string) => {
   const { actorId } = await authorizeProjectSearch(ctx, projectId, 'search:reindex', true);
+  return queueProjectSearchReindex(projectId, actorId);
+};
+
+/** Rebuild a project's latest READY deployment into the configured collection.
+ * `requestedById` is the administrator who asked; operator commands have none. */
+const queueProjectSearchReindex = async (projectId: string, requestedById: string | null = null) => {
   if (!(getQdrantClient() && (await resolveWorkspaceAi(projectId)))) {
     throw new AppError({ code: 'search:unavailable', message: 'Search indexing is not configured.' });
   }
@@ -347,7 +353,7 @@ export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectI
           revisionId: deployment.id,
           embeddingModel: env.SEARCH_EMBEDDING_MODEL,
           vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
-          requestedById: actorId,
+          requestedById,
         },
         select: { id: true, deploymentId: true, jobId: true, status: true, createdAt: true },
       });
@@ -375,8 +381,45 @@ export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectI
       where: { id: run.id, status: 'PENDING', jobId: run.jobId },
       data: { errorCode: 'queue_unavailable' },
     });
-    throw new AppError({ code: 'search:unavailable', message: 'Search indexing could not be queued.', cause });
+    throw new AppError({
+      code: 'search:unavailable',
+      message: 'Search indexing could not be queued.',
+      details: { reason: 'queue_unavailable' },
+      cause,
+    });
   }
 
   return { id: run.id, status: run.status, createdAt: run.createdAt.toISOString(), deploymentVersion: deployment.version };
+};
+
+/** After an embedding-settings change, queue a rebuild of every published site
+ * into the newly configured collection (src/scripts/reindex-search.ts). A site
+ * with no usable embedding provider, no READY deployment or a run already in
+ * progress is skipped with its reason. A site whose rebuild could not be queued
+ * (or failed unexpectedly) is reported as failed, so the operator command can exit
+ * non-zero. Chunks already in the configured collection are not embedded again,
+ * so running it twice costs nothing extra. */
+export const queueSearchReindexForAllProjects = async () => {
+  const projects = await prisma.project.findMany({
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, deployments: { where: { status: 'READY' }, take: 1, select: { id: true } } },
+  });
+  const queued: string[] = [];
+  const skipped: Array<{ projectId: string; reason: string }> = [];
+  const failed: Array<{ projectId: string; reason: string }> = [];
+  for (const { id, deployments } of projects) {
+    if (deployments.length === 0) {
+      skipped.push({ projectId: id, reason: 'not_published' });
+      continue;
+    }
+    try {
+      await queueProjectSearchReindex(id);
+      queued.push(id);
+    } catch (error) {
+      if (!(error instanceof AppError)) failed.push({ projectId: id, reason: 'unexpected_error' });
+      else if (error.details?.reason === 'queue_unavailable') failed.push({ projectId: id, reason: 'queue_unavailable' });
+      else skipped.push({ projectId: id, reason: error.code });
+    }
+  }
+  return { queued, skipped, failed };
 };

@@ -19,6 +19,7 @@
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "test": "vitest run",
     "eval:drafts": "tsx src/scripts/evaluate-drafts.ts",
+    "search:reindex-all": "tsx src/scripts/reindex-search.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

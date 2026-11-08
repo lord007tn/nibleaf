@@ -22,13 +22,13 @@ const sdkClient = () => ({
   query: vi.fn(async (_collection: string, _input: Record<string, unknown>) => ({ points: [] })),
 });
 
-const harness = (options: { alias?: string; schemaVersion?: string } = {}) => {
+const harness = (options: { alias?: string; schemaVersion?: string; vectorSize?: number } = {}) => {
   const sdk = sdkClient();
   const client = new QdrantClient({
     url: 'https://qdrant.test',
     alias: options.alias,
     schemaVersion: options.schemaVersion,
-    vectorSize: 1,
+    vectorSize: options.vectorSize ?? 1,
     client: sdk as unknown as QdrantSdkClient,
   });
   return { client, sdk };
@@ -69,6 +69,20 @@ describe('QdrantClient official SDK boundary', () => {
     expect(sdk.updateCollectionAliases).toHaveBeenCalledWith({
       actions: [{ create_alias: { collection_name: 'nibleaf_search_active_v1_1', alias_name: 'nibleaf_search_active' } }],
     });
+  });
+
+  it('builds a new vector size in its own collection and leaves the alias serving the old one until it is switched', async () => {
+    const { client, sdk } = harness({ vectorSize: 3072 });
+    sdk.collectionExists.mockResolvedValueOnce({ exists: false });
+    sdk.getAliases.mockResolvedValue({ aliases: [{ alias_name: 'nibleaf_search_active', collection_name: 'nibleaf_search_active_v1_1536' }] });
+
+    await expect(client.ensureHybridCollection()).resolves.toMatchObject({ collection: 'nibleaf_search_active_v1_3072', created: true });
+    expect(sdk.createCollection).toHaveBeenCalledWith(
+      'nibleaf_search_active_v1_3072',
+      expect.objectContaining({ vectors: { dense: { distance: 'Cosine', size: 3072 } } }),
+    );
+    expect(sdk.updateCollectionAliases).not.toHaveBeenCalled();
+    await expect(client.servedCollection()).resolves.toBe('nibleaf_search_active_v1_1536');
   });
 
   it('passes mandatory filters to both hybrid lanes and scopes IDF to the same authorized corpus', async () => {

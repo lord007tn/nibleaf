@@ -229,6 +229,7 @@ vi.mock('@nibleaf/search/workspace', () => ({
   workspaceEmbeddingProvider: () => ({ dimensions: 2, model: 'test-embedding', embed: mocks.embed }),
 }));
 
+import { env } from '../env';
 import { handleSearchJobs } from './search';
 
 let jobSequence = 0;
@@ -453,6 +454,46 @@ describe('hybrid search differential indexing jobs', () => {
     await expect(handleSearchJobs(job('index-deployment', undefined, 'search-deployment-a'))).resolves.toMatchObject({ embedded: 1 });
     expect(mocks.runs).toHaveLength(1);
     expect(mocks.runs[0]).toMatchObject({ id: 'run-pending', status: 'READY', attempt: 1 });
+  });
+
+  it('records the settings it built with on a run queued before an embedding-settings change', async () => {
+    // Queued under v1 with the earlier model, recovered after the upgrade to v2.
+    const configured = env.QDRANT_COLLECTION_VERSION;
+    env.QDRANT_COLLECTION_VERSION = 'v2';
+    try {
+      mocks.runs.push({
+        id: 'run-before-upgrade',
+        projectId: 'tenant-a',
+        deploymentId: 'deployment-a',
+        jobId: 'search-deployment-a',
+        status: 'PENDING',
+        claimToken: null,
+        claimExpiresAt: null,
+        startedAt: null,
+        updatedAt: new Date(),
+        indexedChunks: 0,
+        embeddedChunks: 0,
+        reusedChunks: 0,
+        unchangedChunks: 0,
+        metadataUpdatedChunks: 0,
+        deletedChunks: 0,
+        attempt: 0,
+        schemaVersion: 'v1',
+        embeddingModel: 'earlier-embedding',
+        vectorSize: 1,
+      });
+      await expect(handleSearchJobs(job('index-deployment', undefined, 'search-deployment-a'))).resolves.toMatchObject({ embedded: 1 });
+      // The API's readiness gate looks for exactly these settings.
+      expect(mocks.runs[0]).toMatchObject({
+        id: 'run-before-upgrade',
+        status: 'READY',
+        schemaVersion: 'v2',
+        embeddingModel: env.SEARCH_EMBEDDING_MODEL,
+        vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
+      });
+    } finally {
+      env.QDRANT_COLLECTION_VERSION = configured;
+    }
   });
 
   it('reclaims an expired RUNNING claim but does not create a second run', async () => {
