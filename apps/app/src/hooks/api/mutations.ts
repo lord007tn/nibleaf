@@ -431,31 +431,6 @@ export const useUploadAsset = (projectId: string) => {
   });
 };
 
-export const useInviteMember = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: InviteMemberBody) => mutateData(await api.app.members.invite.$post({ json: body }), 'Could not send the invite.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
-  });
-};
-
-export const useUpdateMemberRole = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: UpdateMemberRoleBody }) =>
-      mutateData(await api.app.members[':id'].role.$patch({ param: { id }, json: body }), 'Could not update the role.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
-  });
-};
-
-export const useRemoveMember = () => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => mutateData(await api.app.members[':id'].$delete({ param: { id } }), 'Could not remove the member.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.all() }),
-  });
-};
-
 // ─── Per-site members (each site owns its own people/roles) ──────────────────
 
 export const useInviteProjectMember = (projectId: string) => {

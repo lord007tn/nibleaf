@@ -151,6 +151,12 @@ jobs:
           JOIN_LINKS_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/join-links.postgres.test.ts
 
+      - name: Verify the People page only shows sites you administer
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PEOPLE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/people.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

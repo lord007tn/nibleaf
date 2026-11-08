@@ -176,4 +176,24 @@ describe('join page', () => {
     expect(container.textContent).toContain('join.wrongDomain:acme.com|ada@other.io');
     expect([...container.querySelectorAll('button')].some((item) => item.textContent === 'join.useAnotherAccount')).toBe(true);
   });
+
+  it('switches to the invalid state when a refetch finds the link gone', async () => {
+    mocks.session.mockReturnValue({ data: { user: { id: 'u1', email: 'ada@acme.com' } }, isPending: false });
+    await render();
+    expect(container.textContent).toContain('join.joinButton');
+    // The link was disabled while the page was open: joining says so, and the refetch 404s.
+    mocks.preview.mockRejectedValue(new ApiResponseError('This join link is not valid.', 404, 'join:invalid'));
+    const join = [...container.querySelectorAll('button')].find((item) => item.textContent?.startsWith('join.joinButton'));
+    await act(async () => join?.click());
+    const [, options] = mocks.join.mock.calls[0] as [string, { onError: (error: unknown) => void }];
+    await act(async () => {
+      options.onError(new ApiResponseError('This join link is not valid.', 404, 'join:invalid'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(container.textContent).toContain('join.invalid');
+    expect(container.textContent).not.toContain('join.joinButton');
+  });
 });

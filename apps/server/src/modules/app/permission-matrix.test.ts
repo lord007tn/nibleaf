@@ -96,6 +96,7 @@ const VIEWER_DENIED_READS = [
   'GET /projects/:projectId/integrations/:providerId',
   'GET /projects/:projectId/reader-access',
   'GET /projects/:projectId/join-links',
+  'GET /projects/:projectId/members/suggestions',
   'GET /projects/:projectId/settings/ai',
   'GET /projects/:projectId/ai/draft-capability',
   'GET /projects/:projectId/branches/:id/merge-preview',

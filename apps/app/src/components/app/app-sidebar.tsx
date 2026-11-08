@@ -13,15 +13,17 @@ import {
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookOpen, LayoutDashboard, type LucideIcon, Settings } from 'lucide-react';
+import { BarChart3, BookOpen, LayoutDashboard, type LucideIcon, Settings, Users } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { SiteSwitcher } from '@/components/app/site-switcher';
 
-// Account-level nav. Members live per-site now (each site's Settings → Members),
-// so they're not here; Analytics stays as the cross-site global view.
+// Account-level nav. People is the cross-site view of who can open which of the
+// sites you administer (each site's Settings → Members manages one site);
+// Analytics stays as the cross-site global view.
 const NAV = [
   { to: '/app', labelKey: 'nav.overview', icon: LayoutDashboard, exact: true },
   { to: '/app/sites', labelKey: 'nav.sites', icon: BookOpen, exact: false },
+  { to: '/app/people', labelKey: 'nav.people', icon: Users, exact: false },
   { to: '/app/analytics', labelKey: 'nav.analytics', icon: BarChart3, exact: false },
   { to: '/app/settings', labelKey: 'nav.settings', icon: Settings, exact: false },
 ] as const satisfies ReadonlyArray<{ to: string; labelKey: MessageKey; icon: LucideIcon; exact: boolean }>;
