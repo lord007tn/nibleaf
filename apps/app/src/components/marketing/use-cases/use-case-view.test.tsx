@@ -89,7 +89,7 @@ describe.each(pages)('%s use-case pages', (lang, Page, copies, alternate, altern
       expect(image.getAttribute('alt')?.length).toBeGreaterThan(0);
     }
 
-    expect(root.textContent).not.toMatch(/v0\.2|trusted by thousands|10,000 teams/i);
+    expect(root.textContent).not.toMatch(/v0\.2\.0|next self-hosted release|trusted by thousands|10,000 teams/i);
   });
 });
 

@@ -48,7 +48,7 @@ describe('bilingual landing journey', () => {
       expect(Number(image.getAttribute('height'))).toBeGreaterThan(0);
       expect(image.getAttribute('alt')?.length).toBeGreaterThan(0);
     }
-    expect(root.textContent).not.toMatch(/v0\.2|Other SaaS|trusted by thousands|10,000 teams/i);
+    expect(root.textContent).not.toMatch(/v0\.2\.0|next self-hosted release|Other SaaS|trusted by thousands|10,000 teams/i);
     expect(root.innerHTML).not.toMatch(/nibleaf-install\.sh|View Markdown|Copy Markdown/);
   });
 

@@ -9,7 +9,9 @@ import type { MarketingLang } from './types';
  * - Nibleaf Cloud is a manual, pinned deploy, and the owner confirms its rollout.
  *
  * `in-source`: on main, not yet in a published self-hosted release or on Cloud.
- * `released`: in the published self-hosted release, still rolling out to Cloud.
+ * `released`: in the installer-pinned self-hosted release (v0.2.1, per
+ *   `release/self-host.json`), still rolling out to Cloud. The `released` notes
+ *   name that release, so update them when the installer moves to a new one.
  * `live`: in the published release and enabled on nibleaf.com.
  * Move a capability forward only when that is true; every page that mentions it
  * picks the change up.
@@ -29,20 +31,20 @@ export type RolloutCapability =
 
 // Typed as the full union, not narrowed literals, so moving a value forward needs no other change.
 const AVAILABILITY: Record<RolloutCapability, Availability> = {
-  askAi: 'in-source',
+  askAi: 'released',
   /** The redesigned reader search (#281): section-level results, recent searches, the Ask AI hand-off. */
-  readerSearch: 'in-source',
-  supportMcp: 'in-source',
-  docsInsights: 'in-source',
-  bringYourOwnKey: 'in-source',
+  readerSearch: 'released',
+  supportMcp: 'released',
+  docsInsights: 'released',
+  bringYourOwnKey: 'released',
   /** Harbor, Manuscript and Signal (#96, #101, #104): merged after the v0.1.2 release. */
-  readerThemes: 'in-source',
+  readerThemes: 'released',
   /** The GitBook Git Sync importer (#235). */
-  gitbookImport: 'in-source',
+  gitbookImport: 'released',
   /** The ClickHouse reader-analytics pipeline (#97): consent linking, no IP storage, the two-visit search-term threshold. */
-  readerAnalytics: 'in-source',
+  readerAnalytics: 'released',
   /** The start-here checklist and page, setting and action search in the command palette (#283). */
-  dashboardOnboarding: 'in-source',
+  dashboardOnboarding: 'released',
 };
 
 const NOTES: Record<Availability, Record<MarketingLang, string>> = {
@@ -51,8 +53,8 @@ const NOTES: Record<Availability, Record<MarketingLang, string>> = {
     ar: 'موجودة الآن في الشيفرة المفتوحة المصدر، وتصل مع الإصدار القادم للاستضافة الذاتية وإلى Nibleaf Cloud تدريجيًا.',
   },
   released: {
-    en: 'Available when you self-host today, and on Nibleaf Cloud as it rolls out.',
-    ar: 'متاحة الآن عند الاستضافة الذاتية، وتصل إلى Nibleaf Cloud تدريجيًا.',
+    en: 'Available in self-hosted v0.2.1, and on Nibleaf Cloud as it rolls out.',
+    ar: 'متاحة في الإصدار v0.2.1 للاستضافة الذاتية، وتصل إلى Nibleaf Cloud تدريجيًا.',
   },
   live: {
     en: 'Available on Nibleaf Cloud and when you self-host.',
@@ -81,8 +83,8 @@ export function isRollingOut(capability: RolloutCapability): boolean {
 }
 
 const HERO_NOTES: Record<MarketingLang, string> = {
-  en: 'Ask AI, search insights and AI-assistant connections are new: they are in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as they roll out.',
-  ar: 'ميزات «اسأل المساعد» ورؤى البحث وربط مساعدي الذكاء الاصطناعي جديدة: موجودة الآن في الشيفرة المفتوحة المصدر، وتصل مع الإصدار القادم للاستضافة الذاتية وإلى Nibleaf Cloud تدريجيًا.',
+  en: 'Ask AI, search insights and AI-assistant connections are new: they are available in self-hosted v0.2.1, and on Nibleaf Cloud as they roll out.',
+  ar: 'ميزات «اسأل المساعد» ورؤى البحث وربط مساعدي الذكاء الاصطناعي جديدة: متاحة في الإصدار v0.2.1 للاستضافة الذاتية، وتصل إلى Nibleaf Cloud تدريجيًا.',
 };
 
 /** One-line caption for the hero while any AI capability is still rolling out; `undefined` once all are live. */
