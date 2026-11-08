@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { MintlifyImportBody } from '@nibleaf/validators';
+import { unzipSync } from 'fflate';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_IMPORT_FILES } from './content';
 import type { ImportSummary } from './types';
@@ -219,14 +220,7 @@ describe('Mintlify replacement safety', () => {
   });
 });
 
-it('re-imports the real Nibleaf docs in preserve mode with identical language, routes, metadata and content', async () => {
-  const root = resolve(import.meta.dirname, '../../../../..');
-  for (const entry of readdirSync(resolve(root, 'docs'), { recursive: true, withFileTypes: true })) {
-    if (!entry.isFile()) continue;
-    const file = resolve(entry.parentPath, entry.name);
-    const path = file.slice(root.length + 1).replaceAll('\\', '/');
-    mem.repoFiles.set(path, /\.(?:mdx?|json)$/.test(path) ? readFileSync(file, 'utf8') : '');
-  }
+const preservingDocsTree = async () => {
   await runImport({ replaceExisting: false });
   const route = (id: string | null): string => {
     const row = mem.rows.find((candidate) => candidate.id === id);
@@ -243,7 +237,30 @@ it('re-imports the real Nibleaf docs in preserve mode with identical language, r
   const result = await runImport({ replaceExisting: false });
   expect(result.imported).toBe(0);
   expect(tree()).toEqual(first);
+  return first;
+};
+
+it('matches the recorded Nibleaf docs golden in preserve mode', async () => {
+  const files = unzipSync(readFileSync(new URL('./fixtures/nibleaf-docs.source.zip', import.meta.url)));
+  const recording = JSON.parse(new TextDecoder().decode(files['recording.json'])) as { revision: string; paths: string[] };
+  expect(recording.revision).toBe('72699708f3939eb503ab31053b136b2776988573');
+  for (const path of recording.paths) {
+    const text = files[path];
+    mem.repoFiles.set(path, text ? new TextDecoder().decode(text) : '');
+  }
+  const first = await preservingDocsTree();
   await expect(`${JSON.stringify(first, null, 2)}\n`).toMatchFileSnapshot('./fixtures/nibleaf-docs.golden.json');
+});
+
+it('re-imports the current repository docs with identical language, routes, metadata and content', async () => {
+  const root = resolve(import.meta.dirname, '../../../../..');
+  for (const entry of readdirSync(resolve(root, 'docs'), { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    const file = resolve(entry.parentPath, entry.name);
+    const path = file.slice(root.length + 1).replaceAll('\\', '/');
+    mem.repoFiles.set(path, /\.(?:mdx?|json)$/.test(path) ? readFileSync(file, 'utf8') : '');
+  }
+  await preservingDocsTree();
 });
 
 describe('mintlify importNodes slug collisions', () => {
