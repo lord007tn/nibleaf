@@ -30,6 +30,7 @@ export const fieldDefault = () => 'default';
 `;
 
 let Markdown: ComponentType<{ body: string }>;
+let normalizeMarkdown: (source: string) => string;
 
 beforeAll(async () => {
   for (const file of [
@@ -41,7 +42,10 @@ beforeAll(async () => {
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, file.content);
   }
-  ({ Markdown } = (await import(/* @vite-ignore */ join(root, 'src/lib/markdown.tsx'))) as { Markdown: ComponentType<{ body: string }> });
+  ({ Markdown, normalizeMarkdown } = (await import(/* @vite-ignore */ join(root, 'src/lib/markdown.tsx'))) as {
+    Markdown: ComponentType<{ body: string }>;
+    normalizeMarkdown: (source: string) => string;
+  });
 });
 
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -120,5 +124,34 @@ describe('exported theme repository Markdown', () => {
     expect(html).toContain('<u>underlined</u>');
     expect(html).toContain('<sub>2</sub>');
     expect(html).toContain('<sup>2</sup>');
+  });
+});
+
+describe('exported theme normaliser and code samples (#338)', () => {
+  const samples = [
+    ['a backtick fence', '```mdx\n<Frame caption="x">\n<File name="a.ts" />\n<Callout>\nText\n</Callout>\n</Frame>\n```'],
+    ['a tilde fence closed by a longer one', '~~~mdx\n<Frame>\n<Icon icon="star" />\n~~~~'],
+    ['a fence inside a blockquote', '> ```mdx\n> <Frame>\n> <File name="a.ts" />\n> ```'],
+    ['a fence inside a list item', '- Example:\n\n  ```mdx\n  <Callout>\n  Text\n  </Callout>\n  ```'],
+    ['inline code that runs onto the next line', 'Write `<Frame\ncaption="x">` or `<File name="a.ts"\n/>` here.'],
+    ['inline code on one line', 'Use `<RelatedCard title="x" />` and ``<Frame>``.'],
+  ] as const;
+
+  it.each(samples)('leaves %s byte-identical', (_label, sample) => {
+    const source = `Intro.\n\n${sample}\n\nAfter.`;
+    expect(normalizeMarkdown(source)).toBe(source);
+  });
+
+  it('still normalises the prose around a code sample', () => {
+    const output = normalizeMarkdown(
+      '<Callout>\n**Bold**\n</Callout>\n\n```mdx\n<Frame>\n```\n\n<Frame>\n\nPicture\n\n</Frame>\n\nA <File name="b.ts" /> atom.',
+    );
+    expect(output).toBe(
+      '<Callout>\n\n**Bold**\n\n</Callout>\n\n```mdx\n<Frame>\n```\n\n<mdxframe>\n\nPicture\n\n</mdxframe>\n\nA <File name="b.ts" ></File> atom.',
+    );
+  });
+
+  it('gives a component a blank line before a fence it holds, without touching the fence', () => {
+    expect(normalizeMarkdown('<Callout>\n```js\n<Frame />\n```\n</Callout>')).toBe('<Callout>\n\n```js\n<Frame />\n```\n\n</Callout>');
   });
 });
