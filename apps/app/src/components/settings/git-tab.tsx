@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
@@ -379,6 +380,7 @@ function DeployOnPush({
 
 export function GitTab({ projectId }: { projectId?: string }) {
   const t = useT();
+  const confirm = useConfirm();
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
   const update = useUpdateWorkspaceSettings(projectId);
@@ -642,7 +644,16 @@ export function GitTab({ projectId }: { projectId?: string }) {
             loading={update.isPending}
             type="button"
             variant="destructive"
-            onClick={() => save({ connected: false }, t('settings.git.disconnectedToast'))}
+            onClick={async () => {
+              // Never one click: say which repository and that this is the one-way import.
+              const approved = await confirm({
+                title: t('settings.git.import.disconnectTitle', { repository: (git.provider === 'git' ? git.cloneUrl : git.repo) ?? '' }),
+                description: t('settings.git.import.disconnectBody'),
+                confirmLabel: t('settings.git.disconnect'),
+                destructive: true,
+              });
+              if (approved) save({ connected: false }, t('settings.git.disconnectedToast'));
+            }}
           >
             {t('settings.git.disconnect')}
           </Button>

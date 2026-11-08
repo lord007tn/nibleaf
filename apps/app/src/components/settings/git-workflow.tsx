@@ -638,13 +638,19 @@ export function GitWorkflow({ projectId }: { projectId: string }) {
             <div className="mt-4 flex flex-wrap justify-between gap-2">
               <Button
                 loading={disconnect.isPending}
-                onClick={() => {
-                  if (window.confirm(t('settings.git.workflow.disconnectConfirm'))) {
-                    disconnect.mutate(undefined, {
-                      onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
-                      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
-                    });
-                  }
+                onClick={async () => {
+                  // The same localized dialog as every other destructive action, naming what it affects.
+                  const approved = await confirm({
+                    title: t('settings.git.workflow.disconnectTitle', { repository: connection.repository }),
+                    description: t('settings.git.workflow.disconnectConfirm'),
+                    confirmLabel: t('settings.git.disconnect'),
+                    destructive: true,
+                  });
+                  if (!approved) return;
+                  disconnect.mutate(undefined, {
+                    onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
+                    onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
+                  });
                 }}
                 variant="destructive"
               >

@@ -8,7 +8,6 @@ import { getSessionFn } from '@/functions/session';
 import { projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
-import { signInReturnSearch } from '@/lib/invitations';
 import { useSession } from '@/services/auth-client';
 import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
@@ -21,7 +20,9 @@ export const Route = createFileRoute('/app')({
     }
     if (!routeSession) {
       // Keep the page they asked for (a shared conversation, a settings section…)
-      // so signing in brings them back to it instead of the overview.
+      // so signing in brings them back to it instead of the overview. Imported
+      // lazily: beforeLoad is in the router's eager chunk, which docs pages load.
+      const { signInReturnSearch } = await import('@/lib/invitations');
       throw redirect({ to: '/sign-in', search: signInReturnSearch(location.href) });
     }
     return { routeSession };
