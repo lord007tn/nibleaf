@@ -70,6 +70,7 @@ test('next-release Compose forwards documented export/MCP values and includes bo
     }
   }
   const clickhouse = config.services.clickhouse;
+  assert.deepEqual(clickhouse.profiles, ['analytics', 'analytics-tools']);
   assert.equal(clickhouse.mem_limit, '1610612736');
   assert.equal(clickhouse.cpus, 2);
   assert.equal(clickhouse.ports, undefined);

@@ -73,6 +73,7 @@
     "release:notes": "node scripts/release-notes.mjs",
     "release:check": "node --test scripts/coolify-release-probes.test.mjs scripts/coolify-env-literal.test.mjs scripts/check-source-ci.test.mjs scripts/self-host-contract.test.mjs && node scripts/check-release-contract.mjs",
     "self-host:check": "node scripts/self-host-release.mjs",
+    "self-host:smoke": "node scripts/self-host-smoke.mjs",
     "docs:check": "node scripts/check-docs.mjs",
     "theme-repository:fixture": "tsx scripts/theme-repository-fixture.ts",
     "db:generate": "pnpm --filter @nibleaf/database generate",

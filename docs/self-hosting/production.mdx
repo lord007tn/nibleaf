@@ -136,9 +136,10 @@ assets. `docker-compose.prod.yml` and `scripts/install.sh` now prepare the next
 release; they do not change existing downloads. Do not replace a released
 installation with these templates as an upgrade shortcut.
 
-The next template includes ClickHouse with a 1536 MiB / 2 CPU budget, persistent
+The next template includes optional ClickHouse with a 1536 MiB / 2 CPU budget, persistent
 data, logs and backups, and an `analytics-tools` migration profile. Analytics
-remain disabled by default. Set `CLICKHOUSE_PASSWORD` before rendering this
+remain disabled by default. Set `COMPOSE_PROFILES=analytics` and choose an
+`ANALYTICS_MODE` from the rollout guide to enable it. Set `CLICKHOUSE_PASSWORD` before rendering this
 template (the next installer generates it) and keep `INTERNAL_API_SECRET` the
 same on app, API and worker. Reader and writer credentials can be set separately;
 provision the corresponding ClickHouse users and grants as described in
@@ -174,26 +175,39 @@ At the next release preparation, set the new version in the production template,
 copy the reviewed templates into `release/published/`, regenerate both hashes and
 the verified README command together, and run `pnpm self-host:check` and
 `pnpm release:check`. Publish fresh assets under a new tag; never replace v0.2.1.
-The release is still pending a clean install, worker analytics health, dashboard
-activity and a concurrent `analytics-migrate` smoke test from the new assets.
+`pnpm self-host:smoke` boots these templates with fictional credentials in the
+isolated `nibleaf-selfhost` project, checks app/worker/analytics health and runs
+the analytics migrator while the worker runs, then removes its own stack.
+It uses the compatible v0.2.1 image; publishing new assets remains a release action.
 
 ## Marketing HTML and CDN caching
 
-Marketing HTML still uses a per-request nonce CSP and `private, no-store`.
-Do not force-cache it at the CDN. Shared caching is deferred until the product
-owner accepts the following effects: GTM custom-HTML inline scripts may stop
-working under a hash CSP, CDN hits bypass origin crawler analytics, and stars and
-the footer year may lag by the TTL.
+Allowlisted marketing pages on `nibleaf.com` now use hash-based script CSP and
+`public, max-age=60, s-maxage=300` for GET/HEAD requests without any Cookie,
+Authorization or query string. They contain no nonce metadata. Dashboard,
+authentication, reader, unknown and credential-bearing routes keep request
+nonces and `private, no-store`. Errors and responses setting cookies are private.
 
-Before enabling `public, max-age=60, s-maxage=300`, normalize router timestamps,
-move time-varying loader values out of inline state, render bots and humans with
-the same completed stream, then hash every inline script after the manifest
-rewrite. Remove nonce metadata only for eligible marketing HTML. Require
-byte-identical HTML and CSP across repeated EN/AR requests and an upgrade guard
-covering every emitted script. Keep dashboard, authentication and published-site
-routes on nonce CSP with `no-store`. At the CDN, bypass requests with any auth or
-session cookie or Authorization header, include the host in the cache key, and
-preserve `Vary: Accept` for Markdown negotiation. `Vary: Cookie` alone is insufficient.
+Marketing rendering completes Suspense before emitting HTML, normalizes router
+timestamps before dehydration, and computes hashes after the manifest rewrite.
+The footer year is fixed at build time. Set `MARKETING_GITHUB_STARS` to a verified
+nonnegative integer when building to display a fixed star count; the default 0
+is the unavailable-count fallback. Counts and year refresh on the next build.
+The built-app CI guard compares human/bot HTML and checks every inline hash on
+English and Arabic pages after every framework upgrade.
+
+The owner accepted these trade-offs: GTM custom-HTML inline scripts are blocked
+unless covered by the policy, while allowed GTM script loading remains available;
+CDN hits bypass origin crawler analytics; public values may be stale in caches.
+
+Before enabling HTML caching at the CDN, install a bypass rule with precedence
+over the marketing cache rule for any Cookie or Authorization header or query
+string. Match only `nibleaf.com`, the allowlisted marketing paths and GET/HEAD;
+never cache `/app`, `/sites`, authentication or unknown routes. Include the host
+and negotiated Accept representation in the cache key, preserve `Vary: Accept`,
+and honor origin Cache-Control and Set-Cookie. `Vary: Cookie` alone is insufficient.
+Keep the CDN disabled until these rules are verified. This source change does
+not claim a live CDN rollout.
 
 ## CLI agent-resource checks
 

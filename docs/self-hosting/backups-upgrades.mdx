@@ -163,7 +163,9 @@ Treat the database upgrade as a separate dump-and-restore project.
 ## ClickHouse analytics recovery
 
 The source quickstart and Coolify Compose files define the `backups` disk at
-`/var/lib/clickhouse/backups` on a separate named volume. The v0.2.1
+`/var/lib/clickhouse/backups` on a separate named volume. The next-release
+production template now includes the same disk under the optional `analytics`
+profile. The published v0.2.1
 `docker-compose.prod.yml` has no ClickHouse service at all. First provision
 your own ClickHouse service and application environment mappings. On that service, mount a
 volume at `/var/lib/clickhouse/backups` and add this file as

@@ -12,14 +12,17 @@ None was fully fixed. This record is local/source evidence, not a deployment.
   CI, CodeQL and secret scanning. No override is provided.
 - #287: prepared analytics and export/MCP limits in the next-release templates.
   `release/published/` preserves the prior inputs; manifest and published hashes
-  are unchanged. Shipment stays open until new release assets and fresh-install,
-  analytics-health/dashboard and concurrent-migration smoke tests exist.
+  are unchanged. The template is the next release Compose, with analytics optional via its
+  profile and flag. Public v0.2.1 assets remain unchanged.
 - #335: corrected proxy comments and moved the unchanged parser into shared code
   consumed by app and API. Tests cover CDN, multiple public proxies, trailing
   Docker/private hops, internal-only chains, and an excessive trust count.
-- #329: shared HTML caching remains disabled. EN/AR guidance records the owner
-  decisions and deterministic-render/hash/CDN tests still needed. This issue stays
-  open; no CDN configuration, hash CSP or deterministic rendering is claimed.
+- #329: the owner accepted hash CSP and the GTM/crawler/staleness trade-offs.
+  Anonymous allowlisted marketing documents now use completed deterministic
+  rendering, normalized router timestamps and build-fixed stars/year, with hashes
+  computed after the manifest rewrite. Cookies, Authorization and query strings
+  bypass sharing. Dashboard and reader nonce CSP remains unchanged. CDN rules
+  are documented; no live CDN rollout is claimed.
 
 ## Checks
 
@@ -31,7 +34,7 @@ None was fully fixed. This record is local/source evidence, not a deployment.
 - CLI: 21 tests passed; app server/release integrity: 41; server IP: 17;
   shared proxy compatibility: 7. Release-check Node tests: 22 passed.
 - `BUNDLE_ANALYZE=true pnpm build:app` and app `bundle:check`: passed;
-  public docs 340.24 KiB gzip against 341.50 KiB budget.
+  public docs 340.25 KiB gzip against 341.50 KiB budget.
 - A negative fixture against original `main` accepted HTML `llms.txt` plus an
   arbitrary OpenAPI string; the repaired inspection rejected both. Additional
   fixtures cover EN/AR UTF-8, malformed JSON, document shape and supported versions.
@@ -45,10 +48,12 @@ None was fully fixed. This record is local/source evidence, not a deployment.
   chain byte-for-byte at an owned HTTP upstream on port 4451. The generated Nitro
   API route has no `xfwd` option. No existing processes were stopped.
 - Built-app HTTP checks on port 4450 passed for `/` and `/ar`: anonymous and
-  synthetic auth-cookie requests returned 200, private/no-store and distinct
-  CSP nonces with nonce metadata. Sign-in did not pass production configuration
-  validation in this minimal process (no production auth secret); its nonce/cache
-  behavior is covered by the app tests. The owned process was stopped.
+  synthetic auth-cookie requests returned 200 with distinct nonce policies before
+  the accepted marketing change. The final built-app marketing guard separately
+  passed all seven EN/AR URLs with byte-identical human/bot HTML, 7-9 covered inline
+  scripts per page, no nonce metadata and credential bypass. Sign-in without a
+  production auth configuration was not an end-to-end auth test. The owned process
+  was stopped.
 - Downloaded public v0.2.1 assets independently matched the existing manifest:
   Compose `1fa726f217dd864619a23011eaa1dabe82853ed09b812ce02954e1d247a3a486`;
   installer `b653c9e51106ff0d6778ad65163ebbed08c57c5dbc7c2ac869a31e9c32778032`.
@@ -72,3 +77,12 @@ Screenshots/video do not meaningfully verify these CLI, header, restore and
 packaging contracts. There is no visual layout or interaction change. The
 executable regressions, bilingual documentation check and receipts above are the
 equivalent evidence. CI/review results belong to the final PR head.
+
+## Accepted completion scope
+
+The coordinator instructed completion of #287 and #329 in this PR. Both are now
+implementation work, rather than deferred decisions. The CDN cache rule must
+bypass any Cookie/Authorization/query and vary the key by host and Accept; it
+remains an operator rollout step, separate from source cacheability. Stars can
+be supplied at build time through MARKETING_GITHUB_STARS; 0 is the unavailable
+count fallback and the footer year is fixed in the same build snapshot.

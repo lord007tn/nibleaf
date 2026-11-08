@@ -17,8 +17,10 @@ import { z } from 'zod';
 import { serverEnv } from '@/env.server';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { observeCrawlerResponse } from '@/lib/crawler-hits';
+import { marketingHashResponse } from '@/lib/marketing-csp.server';
 import { marketingLlms, marketingLlmsFull, marketingPricingMarkdown } from '@/lib/marketing-llms';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
+import { renderMarketing } from '@/lib/marketing-render.server';
 import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
@@ -58,7 +60,7 @@ import INSTALL_SCRIPT from '../../../release/published/install.sh?raw';
 // errors inside that context before leaving it, preserving headers and cookies.
 const startHandler = createServerEntry({
   fetch: createStartHandler(async (context) => {
-    const result = await defaultStreamHandler(context);
+    const result = await (ssrNonce.getStore() === '' ? renderMarketing(context) : defaultStreamHandler(context));
     return readerRateLimitResponse(
       result,
       context.router.state.matches.map((match) => match.error),
@@ -620,6 +622,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
         res.headers.set('X-Robots-Tag', 'noindex, nofollow');
       }
       res.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(res));
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
       res.headers.set('cache-control', 'private, no-store');
@@ -639,6 +642,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
         wrapped.headers.set('X-Robots-Tag', 'noindex, nofollow');
       }
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(wrapped));
       wrapped.headers.set('cache-control', 'private, no-store');
       return encodePublicRouteManifestResponse(wrapped);
     }
@@ -910,17 +914,33 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
       );
     }
   }
-  const nonce = randomBytes(18).toString('base64');
-  return ssrNonce.run(nonce, () =>
-    withSecurityHeaders(
-      observeCrawlerResponse(
-        request,
-        // The page route's internal Markdown flag never leaves the server,
-        // whichever path rendered the page (cloud origin, dotted paths, …).
-        Promise.resolve(handleRequestInner(request, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
-        crawlerProjectForRequest,
+  const url = new URL(request.url);
+  // Allowlisted cloud marketing documents only. Conservatively bypass all
+  // cookies, Authorization and query strings, as the CDN rule must also do.
+  const marketing =
+    IS_CLOUD_MARKETING &&
+    effectiveRequestHost(request, url).split(':')[0] === MARKETING_HOST &&
+    ['GET', 'HEAD'].includes(request.method) &&
+    !url.search &&
+    !request.headers.has('cookie') &&
+    !request.headers.has('authorization') &&
+    acceptsHtml(request.headers.get('accept')) &&
+    marketingSitemapEntries().some((entry) => entry.path === url.pathname);
+  const nonce = marketing ? '' : randomBytes(18).toString('base64');
+  const renderRequest = marketing && request.method === 'HEAD' ? asHtmlRenderRequest(request) : request;
+  return ssrNonce.run(nonce, async () =>
+    withoutHeadBody(
+      await withSecurityHeaders(
+        observeCrawlerResponse(
+          request,
+          // The page route's internal Markdown flag never leaves the server,
+          // whichever path rendered the page (cloud origin, dotted paths, …).
+          Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
+          crawlerProjectForRequest,
+        ),
+        nonce,
       ),
-      nonce,
+      request.method,
     ),
   );
 };

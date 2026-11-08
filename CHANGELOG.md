@@ -16,8 +16,9 @@ manifest remains the authority for the latest published artifact.
   in the next-release production templates (#287). Published v0.2.1 inputs and
   checksums are preserved separately in `release/published/`; existing downloads
   are unchanged. New release assets and installation smoke tests remain pending.
-- Document the decisions and deterministic-rendering checks required before
-  marketing HTML can use shared CDN caching. Nonce HTML remains private (#329).
+- Serve anonymous marketing HTML with deterministic completed rendering and a
+  hash-based script CSP, with credential/query bypass and an EN/AR framework
+  upgrade guard. Dashboard and reader routes retain nonce CSP (#329).
 
 ## v0.2.1
 

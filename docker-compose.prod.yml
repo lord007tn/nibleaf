@@ -146,6 +146,7 @@ x-service-env: &service-env
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:25.8-alpine
+    profiles: ["analytics", "analytics-tools"]
     restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE:-nibleaf_analytics}

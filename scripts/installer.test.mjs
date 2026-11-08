@@ -66,6 +66,8 @@ for (const scenario of [
         assert.match(env, new RegExp(`EMAIL_DELIVERY_REQUIRED='${scenario === 'smtp'}'`));
         assert.match(env, /CLICKHOUSE_PASSWORD='[0-9a-f]{48}'/);
         assert.match(env, /ANALYTICS_HASH_SALT='[0-9a-f]{64}'/);
+        assert.match(env, /ANALYTICS_MODE='disabled'/);
+        assert.match(env, /COMPOSE_PROFILES=''/);
         const key = env.match(/INTEGRATION_CREDENTIAL_ENCRYPTION_KEY='([^']+)'/)[1];
         assert.equal(Buffer.from(key, 'base64').length, 32);
         assert.ok(

@@ -162,6 +162,7 @@ API وعامل المعالجة (worker) جاهزين.
 ## استعادة تحليلات ClickHouse
 
 يعرّف ملفّا Compose للتشغيل السريع من المصدر ولـCoolify قرص `backups` عند `/var/lib/clickhouse/backups` على وحدة تخزين مسماة مستقلة.
+يتضمن قالب الإنتاج للإصدار التالي القرص نفسه ضمن ملف التعريف الاختياري `analytics`.
 لا يتضمن `docker-compose.prod.yml` في v0.2.1 خدمة ClickHouse أصلاً. جهّز خدمة مستقلة وتعيينات بيئة التطبيق أولاً. ثم اربط فيها وحدة تخزين عند `/var/lib/clickhouse/backups` وأضف الملف التالي بالمسار `/etc/clickhouse-server/config.d/backups.xml`:
 
 ```xml
