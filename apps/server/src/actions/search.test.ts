@@ -252,13 +252,14 @@ describe('tenant-safe search actions', () => {
   });
 
   it('queues every published site for the operator rebuild and reports the ones it skips', async () => {
-    mocks.findProjects.mockResolvedValue([{ id: 'project-a' }, { id: 'project-b' }]);
-    mocks.findDeployment.mockImplementation(async ({ where }: { where: { projectId: string } }) =>
-      where.projectId === 'project-a' ? mocks.deployment : null,
-    );
+    // project-b has never been published; it is reported, not silently dropped.
+    mocks.findProjects.mockResolvedValue([
+      { id: 'project-a', deployments: [{ id: 'deployment-a' }] },
+      { id: 'project-b', deployments: [] },
+    ]);
     await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
       queued: ['project-a'],
-      skipped: [{ projectId: 'project-b', reason: 'database:not_found' }],
+      skipped: [{ projectId: 'project-b', reason: 'not_published' }],
     });
     expect(mocks.createRun).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ projectId: 'project-a', requestedById: null, vectorSize: 1536 }) }),

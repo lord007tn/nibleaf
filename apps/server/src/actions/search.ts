@@ -394,13 +394,16 @@ const queueProjectSearchReindex = async (projectId: string, requestedById: strin
  * collection are not embedded again, so running it twice costs nothing extra. */
 export const queueSearchReindexForAllProjects = async () => {
   const projects = await prisma.project.findMany({
-    where: { deployments: { some: { status: 'READY' } } },
     orderBy: { createdAt: 'asc' },
-    select: { id: true },
+    select: { id: true, deployments: { where: { status: 'READY' }, take: 1, select: { id: true } } },
   });
   const queued: string[] = [];
   const skipped: Array<{ projectId: string; reason: string }> = [];
-  for (const { id } of projects) {
+  for (const { id, deployments } of projects) {
+    if (deployments.length === 0) {
+      skipped.push({ projectId: id, reason: 'not_published' });
+      continue;
+    }
     try {
       await queueProjectSearchReindex(id);
       queued.push(id);
