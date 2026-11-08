@@ -214,8 +214,9 @@ async function rewrite(model: string, effort: ReasoningEffort, f: Fixture): Prom
     ...spend(model, result.usage, sink),
   };
 }
-// A reasoning judge's thinking counts against its cap; leave room for it.
-const JUDGE_MAX_TOKENS = 4000;
+// A reasoning judge's thinking counts against its cap; at low effort it used
+// under 200 tokens in smoke runs, so this leaves ample room.
+const JUDGE_MAX_TOKENS = 1000;
 async function judge(f: Fixture, answer: string) {
   const input = JSON.stringify({
     question: f.question,
