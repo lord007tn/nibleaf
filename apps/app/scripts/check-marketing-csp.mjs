@@ -35,6 +35,8 @@ for (const path of [
   assert.equal(first.html, second.html, `Non-deterministic HTML for ${path}`);
   assert.equal(first.headers['content-security-policy'], second.headers['content-security-policy'], path);
   const head = await get(path, {}, 'HEAD');
+  assert.equal(head.status, 200, path);
+  assert.equal(head.headers['cache-control'], first.headers['cache-control'], path);
   assert.equal(head.html, '');
   assert.equal(head.headers['content-security-policy'], first.headers['content-security-policy'], `HEAD policy at ${path}`);
   assert.match(first.headers.vary ?? '', /Accept/i);

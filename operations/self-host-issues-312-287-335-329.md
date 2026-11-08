@@ -31,10 +31,10 @@ None was fully fixed. This record is local/source evidence, not a deployment.
 - `pnpm lint`, `pnpm check:dead-code`, `pnpm release:check`, `pnpm self-host:check`,
   `pnpm docs:check`: passed. Release checks include real Docker Compose rendering
   with non-default dummy export/MCP settings and fail-closed source-CI fixtures.
-- CLI: 21 tests passed; app server/release integrity: 41; server IP: 17;
-  shared proxy compatibility: 7. Release-check Node tests: 22 passed.
+- CLI: 21 tests passed; app security/server/loader/release integrity: 61; server IP: 17;
+  shared proxy compatibility: 7. Release-check Node tests: 25 passed.
 - `BUNDLE_ANALYZE=true pnpm build:app` and app `bundle:check`: passed;
-  public docs 340.25 KiB gzip against 341.50 KiB budget.
+  public docs 340.64 KiB gzip against 341.50 KiB budget.
 - A negative fixture against original `main` accepted HTML `llms.txt` plus an
   arbitrary OpenAPI string; the repaired inspection rejected both. Additional
   fixtures cover EN/AR UTF-8, malformed JSON, document shape and supported versions.
@@ -73,10 +73,20 @@ CLI validation without rejecting Markdown that merely mentions HTML tags. No
 remaining actionable slop found. Published-input duplication is intentional:
 it separates immutable downloads from future templates.
 
-Screenshots/video do not meaningfully verify these CLI, header, restore and
-packaging contracts. There is no visual layout or interaction change. The
-executable regressions, bilingual documentation check and receipts above are the
-equivalent evidence. CI/review results belong to the final PR head.
+Isolated headless Chromium evidence is committed under
+.github/assets/self-host-csp/: English desktop and Arabic mobile screenshots,
+a short theme-switch recording, and a JSON receipt naming the observed source
+head. Both pages hydrated without page errors, the theme interaction worked,
+and an injected untrusted inline script was blocked. Zod's caught JIT feature
+probe produced its pre-existing denied-eval event; eval remains blocked. External
+requests were blocked by the test. No owner desktop, live session or shared
+browser was used. The built-app guard also verifies HEAD policy parity.
+
+[English desktop](../.github/assets/self-host-csp/marketing-en.png),
+[Arabic mobile](../.github/assets/self-host-csp/marketing-ar.png),
+[theme recording](../.github/assets/self-host-csp/marketing-theme.webm),
+[browser receipt](../.github/assets/self-host-csp/receipt.json), and
+[packaging receipt](../.github/assets/self-host-csp/packaging-smoke.json).
 
 ## Accepted completion scope
 
@@ -86,3 +96,34 @@ bypass any Cookie/Authorization/query and vary the key by host and Accept; it
 remains an operator rollout step, separate from source cacheability. Stars can
 be supplied at build time through MARKETING_GITHUB_STARS; 0 is the unavailable
 count fallback and the footer year is fixed in the same build snapshot.
+
+## Packaging boot and final gate hardening
+
+`pnpm self-host:smoke` passed with the next-release Compose template and the
+unchanged published v0.2.1 image: app HTTP 200, worker and analytics `ok`, and the
+analytics migration command succeeded while the worker ran. All seven persistent
+services were healthy. The runner removed its containers and volumes afterward;
+label-filtered readback confirmed zero remain. It used only fictional credentials
+and ports 4450-4452 / 9360. No existing service or data was changed.
+
+The committed `packaging-smoke.json` binds the candidate Compose hash, public image
+index/platform digest, image source revision and actual health/migration receipt.
+This tests packaging compatibility with v0.2.1; the new marketing implementation
+was separately built and checked from source. No new release or deployment occurred.
+
+An additional negative regression reproduced a successful workflow hiding a
+missing/failed/skipped required job. The gate now reads the latest attempt's
+named job and fails closed on job lookup errors as well. A live read-only dry run
+at the original base verified successful jobs 128814939928 (CI), 128814940293
+(CodeQL), and 128814939740 (secret scanning). No image publication was triggered.
+
+Final cleanup included the marketing rendering/cache boundary, required-job gate,
+Docker snapshot argument, and manual smoke runner. It reused the existing
+Fetch-compatible HTML request helper after the built HEAD check caught a Nitro
+Request constructor incompatibility. No remaining actionable slop found.
+
+The requested final rebase is on main 2eed134d (including the merged OSV
+exception). Rebased typecheck, lint, dead-code, release/docs checks, 61 focused
+app tests, production app build and bundle budget all passed. The seven-route
+built guard and isolated headless captures were refreshed on this source, with
+external and API browser requests blocked and the local API target on port 4451.

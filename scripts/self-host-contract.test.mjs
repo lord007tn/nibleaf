@@ -9,6 +9,11 @@ test('published v0.2.1 inputs remain checksum-identical while next-release templ
   assertManifestMatches(release);
 });
 
+test('Docker builds can supply the fixed marketing star snapshot', async () => {
+  const dockerfile = await readFile('Dockerfile', 'utf8');
+  assert.match(dockerfile, /FROM base AS build\nARG MARKETING_GITHUB_STARS=0\nENV MARKETING_GITHUB_STARS=\$MARKETING_GITHUB_STARS/);
+});
+
 test('restore advice points to empty-target recovery and cannot revive the unsafe recipe', async () => {
   const script = await readFile('scripts/backup.sh', 'utf8');
   assert.doesNotMatch(script, /pg_restore[^\n]*(?:--clean|--if-exists)/);
@@ -38,6 +43,21 @@ test('next-release Compose forwards documented export/MCP values and includes bo
     CLICKHOUSE_PASSWORD: 'fixture',
     ANALYTICS_MODE: 'clickhouse',
     INTERNAL_API_SECRET: 'fixture-internal',
+    ANALYTICS_CONCURRENCY: '3',
+    ANALYTICS_HASH_SALT: 'fixture-salt',
+    CLICKHOUSE_URL: 'http://fixture-clickhouse:8123',
+    CLICKHOUSE_DATABASE: 'fixture_analytics',
+    CLICKHOUSE_READER_USERNAME: 'fixture_reader',
+    CLICKHOUSE_READER_PASSWORD: 'fixture-reader',
+    CLICKHOUSE_WRITER_USERNAME: 'fixture_writer',
+    CLICKHOUSE_WRITER_PASSWORD: 'fixture-writer',
+    CLICKHOUSE_REQUEST_TIMEOUT_MS: '2001',
+    CLICKHOUSE_MAX_BATCH_SIZE: '17',
+    CLICKHOUSE_MAX_BUFFERED_EVENTS: '1234',
+    CLICKHOUSE_FLUSH_INTERVAL_MS: '501',
+    CLICKHOUSE_RAW_RETENTION_DAYS: '32',
+    CLICKHOUSE_ROLLUP_RETENTION_DAYS: '33',
+    CLICKHOUSE_SENSITIVE_RETENTION_DAYS: '34',
     CLICKHOUSE_CRAWLER_RETENTION_DAYS: '41',
     CLICKHOUSE_MIGRATE_ON_BOOT: 'false',
     ...Object.fromEntries(keys.map((key) => [key, key === 'EXPORT_CHROMIUM_PATH' ? '/fixture/chromium' : '1'])),
@@ -65,7 +85,10 @@ test('next-release Compose forwards documented export/MCP values and includes bo
   for (const service of ['server', 'worker', 'app', 'admin', 'analytics-migrate']) {
     const actual = config.services[service].environment;
     for (const key of keys) assert.equal(actual[key], env[key], `${service}.${key}`);
-    for (const key of ['INTERNAL_API_SECRET', 'ANALYTICS_MODE', 'CLICKHOUSE_CRAWLER_RETENTION_DAYS', 'CLICKHOUSE_MIGRATE_ON_BOOT']) {
+    const analyticsKeys = [...example.matchAll(/^((?:ANALYTICS|CLICKHOUSE)_\w+)=/gm)]
+      .map((match) => match[1])
+      .filter((key) => key !== 'CLICKHOUSE_PASSWORD');
+    for (const key of ['INTERNAL_API_SECRET', ...analyticsKeys]) {
       assert.equal(actual[key], env[key], `${service}.${key}`);
     }
   }
@@ -74,11 +97,20 @@ test('next-release Compose forwards documented export/MCP values and includes bo
   assert.equal(clickhouse.mem_limit, '1610612736');
   assert.equal(clickhouse.cpus, 2);
   assert.equal(clickhouse.ports, undefined);
+  assert.equal(clickhouse.environment.CLICKHOUSE_USER, 'fixture_writer');
+  assert.equal(clickhouse.environment.CLICKHOUSE_PASSWORD, 'fixture-writer');
   assert.ok(clickhouse.healthcheck);
   assert.equal(clickhouse.volumes.length, 3);
   assert.ok(config.configs['clickhouse-small-host'].content.includes('<allowed_disk>backups</allowed_disk>'));
   assert.ok(config.services['analytics-migrate'].depends_on.postgres);
   assert.ok(config.services['analytics-migrate'].depends_on.clickhouse);
+  const disabled = JSON.parse(
+    execFileSync('docker', ['compose', '-p', 'nibleaf-selfhost', '-f', 'docker-compose.prod.yml', 'config', '--format', 'json'], {
+      env: { ...env, COMPOSE_PROFILES: '', ANALYTICS_MODE: 'disabled' },
+      encoding: 'utf8',
+    }),
+  );
+  assert.equal(disabled.services.clickhouse, undefined);
 });
 
 test('operator proxy guidance counts private hops and links to the troubleshooting table', async () => {

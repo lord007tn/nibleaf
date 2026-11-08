@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 // These workflows cover the three protected-main checks. Look up workflow runs,
 // rather than accepting a same-named status from an arbitrary integration.
 export const requiredWorkflows = ['ci.yml', 'codeql.yml', 'gitleaks.yml'];
+const requiredJobs = {
+  'ci.yml': 'Typecheck, lint & test',
+  'codeql.yml': 'Analyze (javascript-typescript)',
+  'gitleaks.yml': 'Scan repository history',
+};
 
 export async function checkSourceCi({ repository, sha, token, fetchImpl = fetch }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '') || !/^[0-9a-f]{40}$/.test(sha ?? '') || !token) {
@@ -27,7 +32,20 @@ export async function checkSourceCi({ repository, sha, token, fetchImpl = fetch 
     if (run?.status !== 'completed' || run.conclusion !== 'success') {
       throw new Error(`Source CI ${workflow} for ${sha}: ${run ? `${run.status}/${run.conclusion}` : 'missing exact-SHA run'}.`);
     }
-    receipts.push({ workflow, sha, runId: run.id, conclusion: run.conclusion });
+    // A green workflow can contain skipped or unsuccessful required jobs.
+    // Check the latest attempt's named job before allowing publication.
+    const jobsResponse = await fetchImpl(`https://api.github.com/repos/${repository}/actions/runs/${run.id}/jobs?filter=latest&per_page=100`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!jobsResponse.ok) throw new Error(`Source CI required job lookup for ${workflow} failed (HTTP ${jobsResponse.status}).`);
+    const jobsBody = await jobsResponse.json();
+    if (!Array.isArray(jobsBody.jobs)) throw new Error(`Invalid source CI required job response for ${workflow}.`);
+    const job = jobsBody.jobs.find((candidate) => candidate.name === requiredJobs[workflow]);
+    if (job?.status !== 'completed' || job.conclusion !== 'success') {
+      throw new Error(`Source CI ${workflow} required job ${requiredJobs[workflow]}: ${job ? `${job.status}/${job.conclusion}` : 'missing'}.`);
+    }
+    receipts.push({ workflow, sha, runId: run.id, job: job.name, jobId: job.id, conclusion: job.conclusion });
   }
   return receipts;
 }

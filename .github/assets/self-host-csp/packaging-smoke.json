@@ -1,0 +1,17 @@
+{
+  "observedAt": "2026-11-08T19:55:37.660Z",
+  "sourceHead": "cf1af668be652c648aae896b6ab1956131d38c50",
+  "composeSha256": "1c4b3a6478f3828c140d3c6ccca066d57ca85ff484f2a110dd266bf9856e98e6",
+  "project": "nibleaf-selfhost",
+  "image": "v0.2.1",
+  "app": 200,
+  "worker": "ok",
+  "analytics": "ok",
+  "concurrentMigration": "passed",
+  "platform": "linux/amd64",
+  "platformManifest": "sha256:78f1290f9c1c462a228ca3df797742a30bd923cc7de56fe981e3c8d1e2ec87d9",
+  "indexDigest": "ghcr.io/lord007tn/nibleaf@sha256:857a58870f75ef3e764727043c2a36dc3b1f5090c0d673ddfa7f6b72fb715f2d",
+  "imageSourceRevision": "7a8e3d5c2c47cdae84ae72138a8909a2ccab8d9f",
+  "hostPorts": [4450, 4451, 4452, 9360],
+  "ownedContainersAndVolumesAfterCleanup": 0
+}

@@ -3,7 +3,7 @@ title: 'Take a self-hosted installation to production'
 description: 'Prove DNS, TLS, service health, storage, email, search, security, monitoring, and recovery before a self-hosted Nibleaf launch.'
 audience: 'operators responsible for production readiness'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-08'
 verified_against: 'docker-compose.prod.yml, apps/server/src/index.ts, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
@@ -165,6 +165,7 @@ after the client, private addresses included. Use the
 Manual image publication/deployment requires successful source-triggered runs of
 `ci.yml`, `codeql.yml`, and `gitleaks.yml` for the exact source SHA. Missing,
 pending, cancelled, failed or unreadable results stop the gate. There is no bypass.
+The named required job must pass too; a successful workflow wrapper is insufficient.
 Docker builds remain manual-only. A read-only receipt can be obtained with:
 
 ```bash
@@ -193,6 +194,7 @@ timestamps before dehydration, and computes hashes after the manifest rewrite.
 The footer year is fixed at build time. Set `MARKETING_GITHUB_STARS` to a verified
 nonnegative integer when building to display a fixed star count; the default 0
 is the unavailable-count fallback. Counts and year refresh on the next build.
+For a Docker source build, pass `--build-arg MARKETING_GITHUB_STARS=<verified-count>`.
 The built-app CI guard compares human/bot HTML and checks every inline hash on
 English and Arabic pages after every framework upgrade.
 
@@ -207,7 +209,8 @@ never cache `/app`, `/sites`, authentication or unknown routes. Include the host
 and negotiated Accept representation in the cache key, preserve `Vary: Accept`,
 and honor origin Cache-Control and Set-Cookie. `Vary: Cookie` alone is insufficient.
 Keep the CDN disabled until these rules are verified. This source change does
-not claim a live CDN rollout.
+not claim a live CDN rollout. On deployment, purge cached marketing HTML or retain
+the previous build's hashed assets through the cache lifetime.
 
 ## CLI agent-resource checks
 

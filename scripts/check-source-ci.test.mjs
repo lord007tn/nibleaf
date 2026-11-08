@@ -5,7 +5,41 @@ import { checkSourceCi, requiredWorkflows } from './check-source-ci.mjs';
 
 const sha = 'a'.repeat(40);
 const run = { id: 42, head_sha: sha, event: 'push', status: 'completed', conclusion: 'success' };
-const options = (runs) => ({ repository: 'lord007tn/nibleaf', sha, token: 'fixture', fetchImpl: async () => Response.json({ workflow_runs: runs }) });
+const passingJobs = ['Typecheck, lint & test', 'Analyze (javascript-typescript)', 'Scan repository history'].map((name) => ({
+  name,
+  status: 'completed',
+  conclusion: 'success',
+  id: 100,
+}));
+const options = (runs, jobs = passingJobs) => ({
+  repository: 'lord007tn/nibleaf',
+  sha,
+  token: 'fixture',
+  fetchImpl: async (url) => Response.json(String(url).includes('/jobs?') ? { jobs } : { workflow_runs: runs }),
+});
+
+test('a successful workflow cannot hide a missing, skipped, failed or pending required job', async () => {
+  for (const jobs of [
+    [],
+    [{ ...passingJobs[0], conclusion: 'skipped' }],
+    [{ ...passingJobs[0], conclusion: 'failure' }],
+    [{ ...passingJobs[0], status: 'in_progress', conclusion: null }],
+  ]) {
+    await assert.rejects(checkSourceCi(options([run], jobs)), /required job/);
+  }
+});
+
+test('fails closed when the required-job lookup is unauthorized or malformed', async () => {
+  for (const response of [new Response('', { status: 403 }), Response.json({})]) {
+    await assert.rejects(
+      checkSourceCi({
+        ...options([run]),
+        fetchImpl: async (url) => (String(url).includes('/jobs?') ? response : Response.json({ workflow_runs: [run] })),
+      }),
+      /required job/,
+    );
+  }
+});
 
 test('accepts exact-SHA successful source runs and returns a dry-run receipt', async () => {
   const receipts = await checkSourceCi(options([run]));
