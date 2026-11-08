@@ -14,10 +14,13 @@ export const createChatEventQueue = (send: (body: SiteChatEventsBody) => Promise
     }
     const batch = pending;
     pending = undefined;
-    if (batch)
-      void Promise.resolve()
-        .then(() => send(batch))
-        .catch(() => undefined);
+    if (batch) {
+      try {
+        void send(batch).catch(() => undefined);
+      } catch {
+        // Unload telemetry remains best effort even if transport throws synchronously.
+      }
+    }
   };
   const hidden = () => {
     if (document.visibilityState === 'hidden') flush();

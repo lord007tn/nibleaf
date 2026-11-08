@@ -1,9 +1,9 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { useRouter } from '@tanstack/react-router';
 import { Sparkles } from 'lucide-react';
 import { lazy, type Ref, Suspense, useEffect, useRef, useState } from 'react';
-import { analyticsDeliveryMode, analyticsScripts } from '@/lib/site-seo';
 import type { ChatRequest, ChatRootOptions, OpenChat } from './provider';
 
 /*
@@ -28,7 +28,7 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
   }
   const launcher = useRef<HTMLButtonElement | null>(null);
   const consumed = useRef<string | undefined>(undefined);
-  const requiresConsent = analyticsDeliveryMode(options.config) === 'consent' && analyticsScripts(options.config).length > 0;
+  const requiresConsent = analyticsConsentPolicy(options.config) !== 'not_required';
   const router = useRouter();
   useEffect(() => {
     if (!ask) {

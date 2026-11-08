@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { api, type InferResponseType } from '@/services/api';
 
-export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data'][number];
-export type AdminSite = InferResponseType<typeof api.admin.sites.$get>['data'][number];
+export type AdminUser = InferResponseType<typeof api.admin.users.$get>['data']['items'][number];
+export type AdminSite = InferResponseType<typeof api.admin.sites.$get>['data']['items'][number];
 export type AdminPublishRetention = InferResponseType<typeof api.admin.funnel.$get>['data']['publishRetention'];
 
 /** Typed failure used by the admin role gate without parsing error messages. */
@@ -29,11 +29,11 @@ export function useAdminOverview() {
   });
 }
 
-export function useAdminUsers() {
+export function useAdminUsers(options: { search?: string; filter?: 'all' | 'active' | 'unverified' | 'suspended' | 'admin'; cursor?: string } = {}) {
   return useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: ['admin', 'users', options],
     queryFn: async () => {
-      const res = await api.admin.users.$get();
+      const res = await api.admin.users.$get({ query: { search: options.search, cursor: options.cursor, filter: options.filter } });
       if (!res.ok) {
         throw new AdminApiError(res.status);
       }
@@ -55,11 +55,13 @@ export function useAdminUser(id: string) {
   });
 }
 
-export function useAdminSites() {
+export function useAdminSites(
+  options: { search?: string; filter?: 'all' | 'healthy' | 'attention' | 'unpublished' | 'taken-down'; cursor?: string } = {},
+) {
   return useQuery({
-    queryKey: ['admin', 'sites'],
+    queryKey: ['admin', 'sites', options],
     queryFn: async () => {
-      const res = await api.admin.sites.$get();
+      const res = await api.admin.sites.$get({ query: { search: options.search, cursor: options.cursor, filter: options.filter } });
       if (!res.ok) {
         throw new AdminApiError(res.status);
       }
@@ -81,11 +83,15 @@ export function useAdminSite(id: string) {
   });
 }
 
-export function useAdminOperations() {
+export function useAdminOperations(
+  options: { search?: string; cursor?: string; onlyIssues?: boolean; queue?: 'deployments' | 'domains' | 'exports' | 'git' } = {},
+) {
   return useQuery({
-    queryKey: ['admin', 'operations'],
+    queryKey: ['admin', 'operations', options],
     queryFn: async () => {
-      const res = await api.admin.operations.$get();
+      const res = await api.admin.operations.$get({
+        query: { search: options.search, cursor: options.cursor, onlyIssues: options.onlyIssues ? 'true' : 'false', queue: options.queue },
+      });
       if (!res.ok) {
         throw new AdminApiError(res.status);
       }

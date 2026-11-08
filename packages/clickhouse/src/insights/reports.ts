@@ -5,7 +5,7 @@ import type { AiVisibilityInsights, FeedbackInsights, OverviewInsights, Performa
 
 export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibilityInsights> => {
   const crawlers = `${reader.facts} AND actor_type = 'bot' AND event_name = 'crawler_request'`;
-  const [totals, bots, resources, pages, referrals, series, landing, crawlerSeries] = await Promise.all([
+  const [totals, bots, resources, pages, referrals, series, landing, crawlerSeries, drafting] = await Promise.all([
     reader.rows<{ current: number; ai: number; fetches: number; pages: number; engines: number; visits: number }>(`WITH totals AS (
       SELECT current, countIf(startsWith(bot_category, 'ai_')) AS ai, countIf(bot_category = 'ai_assistant') AS fetches,
         uniqExactIf(${CRAWLED_PAGE}, startsWith(bot_category, 'ai_') AND crawled_resource IN ('page', 'markdown')) AS pages,
@@ -37,6 +37,12 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
     reader.rows<{ category: AiVisibilityInsights['crawlerSeries'][number]['category']; bucket: string; value: number }>(
       `SELECT bot_category AS category, ${reader.bucket} AS bucket, count() AS value FROM (${crawlers}) WHERE current GROUP BY category, bucket ORDER BY bucket`,
     ),
+    reader.rows<Omit<AiVisibilityInsights['drafting']['connections'][number], 'share'>>(`SELECT
+      multiIf(connection_source = 'workspace', 'workspace', connection_source = 'instance', 'instance', 'unknown') AS connection,
+      count() AS events, groupUniqArray(10)(tuple(provider, model)) AS models
+      FROM (${reader.facts}) WHERE current AND source = 'dashboard'
+      AND event_name IN ('answer_started', 'answer_completed', 'answer_failed')
+      GROUP BY connection ORDER BY events DESC, connection`),
   ]);
   const compared = (key: 'ai' | 'fetches' | 'pages' | 'engines' | 'visits') => ({
     value: reader.covered('current', key === 'visits' ? 'human' : 'crawler') ? (totals.find((row) => row.current === 1)?.[key] ?? 0) : null,
@@ -44,8 +50,13 @@ export const readAiVisibility = async (reader: InsightsReader): Promise<AiVisibi
   });
   const previousBots = new Map(bots.filter((row) => !row.current).map((row) => [row.bot, row.requests]));
   const previousReferrals = new Map(referrals.filter((row) => !row.current).map((row) => [row.source, row.visits]));
+  const draftingTotal = drafting.reduce((sum, row) => sum + row.events, 0);
   return {
     meta: reader.meta(),
+    drafting: {
+      total: reader.covered('current') ? draftingTotal : null,
+      connections: drafting.map((row) => ({ ...row, share: row.events / draftingTotal })),
+    },
     kpis: {
       aiCrawlerRequests: compared('ai'),
       aiAssistantFetches: compared('fetches'),

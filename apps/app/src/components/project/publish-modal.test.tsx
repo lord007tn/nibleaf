@@ -55,7 +55,7 @@ vi.mock('@/hooks/api', () => ({
   }),
   usePendingChanges: () => ({
     // One edited page: publishing is only offered when there is something to publish.
-    data: { changes: [pendingChange], redirectIssues: preflight.issues, hasBaseline: true },
+    data: { changes: [pendingChange], redirectIssues: preflight.issues, hasBaseline: true, reviewedStateHash: 'reviewed-hash' },
     isPending: false,
     isFetching: preflight.isFetching,
     isError: false,
@@ -79,7 +79,7 @@ describe('publish draft barrier', () => {
     preflight.membersMissing = false;
     preflight.membersFetching = false;
     preflight.sessionPending = false;
-    refreshPreflight.mockResolvedValue({ data: { redirectIssues: [] }, isError: false });
+    refreshPreflight.mockResolvedValue({ data: { redirectIssues: [], reviewedStateHash: 'reviewed-hash' }, isError: false });
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
     document.body.append(container);
@@ -110,6 +110,15 @@ describe('publish draft barrier', () => {
     await act(async () => finishSaving());
     expect(mutate).toHaveBeenCalledOnce();
     expect(refreshPreflight).toHaveBeenCalledOnce();
+  });
+
+  it('requires another review when the saved draft changed after the displayed review', async () => {
+    refreshPreflight.mockResolvedValue({ data: { redirectIssues: [], reviewedStateHash: 'changed-hash' }, isError: false });
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
+    await act(async () => publish?.click());
+    expect(mutate).not.toHaveBeenCalled();
+    expect(showError).toHaveBeenCalledWith('publish.reviewChanged');
   });
 
   it.each(['admin', 'owner'])('links %s directly to the Redirects subsection', async (role) => {

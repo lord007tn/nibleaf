@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "اتصالات الصياغة",
+  "analytics_drafting_description": "أحداث بدء الصياغة واكتمالها وفشلها في الفترة المحددة.",
+  "analytics_drafting_total": "إجمالي الأحداث: {total}",
+  "analytics_drafting_connection": "الاتصال",
+  "analytics_drafting_workspace": "مفتاح مساحة العمل",
+  "analytics_drafting_instance": "مفتاح المثيل (Nibleaf)",
+  "analytics_drafting_unknown": "غير معروف (بيانات قديمة)",
+  "analytics_drafting_models": "المزوّد / النموذج (حتى 10)",
+  "analytics_drafting_events": "الأحداث",
+  "analytics_drafting_share": "النسبة",
+  "analytics_drafting_empty": "لا توجد أحداث صياغة في هذه الفترة.",
   "settings_apikeys_defaultname": "مساعد الدعم",
   "settings_apikeys_preset": "صلاحيات المساعد",
   "settings_apikeys_read_only": "القراءة فقط",
@@ -3817,5 +3828,10 @@
   "settings_members_noinvites": "لا توجد دعوات معلّقة.",
   "members_suggestions_label": "أشخاص من مواقعك الأخرى",
   "members_suggestions_hint": "اكتب اسمًا أو بريدًا إلكترونيًا، وسنقترح أشخاصًا من مواقعك الأخرى.",
-  "people_choosesite": "اختر موقعًا"
+  "people_choosesite": "اختر موقعًا",
+  "analytics_status_readsdisabled_title": "جارٍ جمع التحليلات",
+  "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
+  "admin_pagination_first": "الصفحة الأولى",
+  "admin_pagination_next": "الصفحة التالية"
 }

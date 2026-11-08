@@ -37,7 +37,8 @@ function FeedbackView({
   const format = useInsightFormat();
   const { loading, unknown } = state;
   const kpis = data?.kpis;
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled')
+    return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   const noVotes = data !== undefined && !unknown && data.kpis.helpful.value === 0 && data.kpis.notHelpful.value === 0;
   return (
     <InsightsRegion loading={loading}>

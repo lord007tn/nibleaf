@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { ChevronRight, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { DataEmpty, DataError } from '@/components/data-state';
 import { useSetUserRole, useSuspendUser } from '@/hooks/api/mutations';
 import { type AdminUser, useAdminUsers } from '@/hooks/api/queries';
@@ -27,12 +27,13 @@ function UsersRoute() {
 function UsersPage() {
   const t = useT();
   const format = useFormatters();
-  const query = useAdminUsers();
   const setRole = useSetUserRole();
   const suspend = useSuspendUser();
   const confirm = useConfirm();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<UserFilter>('all');
+  const [cursor, setCursor] = useState<string>();
+  const query = useAdminUsers({ search, filter, cursor });
   const filterOptions = [
     { value: 'all', label: t('admin.users.all') },
     { value: 'active', label: t('admin.status.active') },
@@ -41,19 +42,7 @@ function UsersPage() {
     { value: 'admin', label: t('admin.users.platformAdmins') },
   ] satisfies { value: UserFilter; label: string }[];
 
-  const users = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return (query.data ?? []).filter((user) => {
-      const matchesSearch = !needle || user.name.toLowerCase().includes(needle) || user.email.toLowerCase().includes(needle);
-      const matchesFilter =
-        filter === 'all' ||
-        (filter === 'active' && !user.suspendedAt) ||
-        (filter === 'unverified' && !user.emailVerified) ||
-        (filter === 'suspended' && Boolean(user.suspendedAt)) ||
-        (filter === 'admin' && user.role === 'admin');
-      return matchesSearch && matchesFilter;
-    });
-  }, [filter, query.data, search]);
+  const users = query.data?.items ?? [];
 
   const onToggleSuspend = async (user: AdminUser) => {
     const suspending = !user.suspendedAt;
@@ -88,18 +77,29 @@ function UsersPage() {
           <span className="sr-only">{t('admin.users.search')}</span>
           <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="ps-9"
+            className="min-h-11 pointer-coarse:min-h-11 ps-9"
             id="customer-search"
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setCursor(undefined);
+              setSearch(event.target.value);
+            }}
             placeholder={t('admin.users.searchPlaceholder')}
             value={search}
+            maxLength={200}
           />
         </label>
         <div>
           <Label className="sr-only" htmlFor="customer-filter">
             {t('admin.users.filter')}
           </Label>
-          <Select items={filterOptions} onValueChange={(value) => setFilter(value ?? 'all')} value={filter}>
+          <Select
+            items={filterOptions}
+            onValueChange={(value) => {
+              setCursor(undefined);
+              setFilter(value ?? 'all');
+            }}
+            value={filter}
+          >
             <SelectTrigger className="w-full bg-background" id="customer-filter">
               <SelectValue />
             </SelectTrigger>
@@ -260,9 +260,26 @@ function UsersPage() {
       )}
       {!query.isPending ? (
         <p className="text-muted-foreground text-xs" aria-live="polite">
-          {t('admin.users.showing', { shown: format.number(users.length), total: format.number(query.data?.length ?? 0) })}
+          {t('admin.users.showing', { shown: format.number(users.length), total: format.number(query.data?.total ?? 0) })}
         </p>
       ) : null}
+      <div className="flex gap-2">
+        {cursor && (
+          <Button className="min-h-11 pointer-coarse:min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(undefined)}>
+            {t('admin.pagination.first')}
+          </Button>
+        )}
+        {query.data?.nextCursor && (
+          <Button
+            className="min-h-11 pointer-coarse:min-h-11"
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => setCursor(query.data?.nextCursor ?? undefined)}
+          >
+            {t('admin.pagination.next')}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

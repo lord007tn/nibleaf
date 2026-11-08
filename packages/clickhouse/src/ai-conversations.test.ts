@@ -107,7 +107,7 @@ describe('AI archive', () => {
   it('appends date-versioned, idempotent AI chat migrations and registers every AI table', () => {
     const versions = migrations.map((migration) => migration.version);
     expect(new Set(versions).size).toBe(versions.length);
-    const ai = migrations.filter((migration) => migration.version > 2_026_110_605);
+    const ai = migrations.filter((migration) => migration.version > 2_026_110_605 && migration.version <= 2_026_110_608);
     expect(ai.map((migration) => migration.version)).toEqual([2_026_110_606, 2_026_110_607, 2_026_110_608]);
     expect(ai.flatMap((migration) => migration.statements).every((statement) => statement.includes('IF NOT EXISTS'))).toBe(true);
     const registered = new Map(ANALYTICS_PROJECT_TABLES.map((table) => [table.name, table]));

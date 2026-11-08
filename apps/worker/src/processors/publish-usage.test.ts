@@ -244,6 +244,84 @@ describe('publish usage queue isolation', () => {
     );
   });
 
+  it('builds the reviewed input even when mutable pages have changed', async () => {
+    const historical: SiteSnapshot = {
+      project: { id: 'project-a', name: 'Old docs', slug: 'old-docs', icon: null, description: null, languages: [], versions: [], config: {} },
+      pages: [
+        {
+          id: 'old-page',
+          parentId: null,
+          versionId: 'v1',
+          languageCode: 'en',
+          updatedAt: '',
+          kind: 'PAGE',
+          title: 'Old',
+          slug: 'old',
+          path: 'old',
+          icon: null,
+          description: null,
+          content: 'Old content',
+          config: null,
+          translationKey: null,
+          position: 0,
+          hidden: false,
+        },
+      ],
+      generatedAt: '',
+    };
+    mocks.pageFindMany.mockResolvedValue(
+      historical.pages.map((page) => ({
+        ...page,
+        branchId: page.versionId,
+        language: { code: page.languageCode },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        content: 'Unreviewed late edit',
+      })),
+    );
+    const references = buildAssetReferencesSync(historical, () => undefined);
+    const pending = {
+      status: 'PENDING',
+      approvedSnapshot: historical,
+      snapshot: null,
+      pagesCount: 1,
+      version: 3,
+      createdById: 'author-a',
+      assetReferenceIndex: references,
+      assetReferenceBytes: references.weight,
+      assetSourceBytes: null,
+      assetSourcePages: null,
+    };
+    mocks.deploymentFindFirst.mockResolvedValue(pending);
+    mocks.deploymentUpdate.mockImplementation(async ({ data }) => ({ ...pending, ...data }));
+    const job = { data: { deploymentId: 'rollback-a', projectId: 'project-a', auto: false } } as Job<PublishDeploymentJobData>;
+    await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 1 });
+    expect(mocks.deploymentUpdate).toHaveBeenCalledWith({
+      where: { id: 'rollback-a', projectId: 'project-a', status: 'BUILDING' },
+      data: expect.objectContaining({ status: 'READY' }),
+    });
+    expect(mocks.createJob).toHaveBeenCalledWith(
+      'search',
+      {
+        name: 'index-deployment',
+        data: { projectId: 'project-a', deploymentId: 'rollback-a' },
+      },
+      { jobId: 'search-rollback-a' },
+    );
+    expect(mocks.pageFindMany).not.toHaveBeenCalled();
+    expect(mocks.deploymentUpdate.mock.calls[0]?.[0].data.snapshot.pages[0].content).toBe('Old content');
+    expect(mocks.deploymentUpdate.mock.calls[0]?.[0].data.approvedSnapshot).toBeNull();
+    expect(mocks.recordPublishReady).toHaveBeenCalledWith(job.data, expect.objectContaining({ status: 'READY' }));
+  });
+
+  it('fails closed for pre-migration manual jobs without any reviewed input', async () => {
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'PENDING', snapshot: null, approvedSnapshot: null });
+    const job = { data: { deploymentId: 'legacy', projectId: 'project-a', auto: false } } as Job<PublishDeploymentJobData>;
+    await expect(handlePublishJobs(job)).rejects.toThrow('fresh review');
+    expect(mocks.pageFindMany).not.toHaveBeenCalled();
+    expect(mocks.deploymentUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'FAILED' }) }));
+  });
+
   it('cannot revive a reaped deployment after building its index', async () => {
     mocks.deploymentFindFirst.mockResolvedValue({ status: 'PENDING', snapshot: null });
     mocks.projectFindUnique.mockResolvedValue({
@@ -262,7 +340,7 @@ describe('publish usage queue isolation', () => {
     });
     mocks.pageFindMany.mockResolvedValue([]);
     mocks.deploymentUpdate.mockRejectedValueOnce(Object.assign(new Error('Deployment no longer building'), { code: 'P2025' }));
-    const job = { data: { deploymentId: 'reaped', projectId: 'project-a' } } as Job<PublishDeploymentJobData>;
+    const job = { data: { deploymentId: 'reaped', projectId: 'project-a', auto: true } } as Job<PublishDeploymentJobData>;
     await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 0 });
     expect(mocks.deploymentUpdate).toHaveBeenCalledExactlyOnceWith({
       where: { id: 'reaped', projectId: 'project-a', status: 'BUILDING' },
@@ -308,7 +386,7 @@ describe('publish usage queue isolation', () => {
       branches: [{ id: 'main', name: 'main', isDefault: true, createdAt: new Date() }],
     });
     mocks.pageFindMany.mockResolvedValue([]);
-    const job = { data: { deploymentId: 'deployment-a', projectId: 'project-a' } } as Job<PublishDeploymentJobData>;
+    const job = { data: { deploymentId: 'deployment-a', projectId: 'project-a', auto: true } } as Job<PublishDeploymentJobData>;
     await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 0 });
     expect(mocks.deploymentUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: 'READY', error: null }) }));
   });

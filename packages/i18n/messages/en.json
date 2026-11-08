@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "Drafting connections",
+  "analytics_drafting_description": "Started, completed, and failed drafting events in the selected period.",
+  "analytics_drafting_total": "Total events: {total}",
+  "analytics_drafting_connection": "Connection",
+  "analytics_drafting_workspace": "Workspace key",
+  "analytics_drafting_instance": "Instance (Nibleaf) key",
+  "analytics_drafting_unknown": "Unknown (legacy)",
+  "analytics_drafting_models": "Provider / model (up to 10)",
+  "analytics_drafting_events": "Events",
+  "analytics_drafting_share": "Share",
+  "analytics_drafting_empty": "No drafting events in this period.",
   "settings_apikeys_defaultname": "Support assistant",
   "settings_apikeys_preset": "Assistant permissions",
   "settings_apikeys_read_only": "Read only",
@@ -3810,5 +3821,10 @@
   "settings_members_noinvites": "No pending invites.",
   "members_suggestions_label": "People from your other sites",
   "members_suggestions_hint": "Type a name or email. People from your other sites are suggested.",
-  "people_choosesite": "Choose a site"
+  "people_choosesite": "Choose a site",
+  "analytics_status_readsdisabled_title": "Analytics is being collected",
+  "analytics_status_readsdisabled_body": "The server is collecting analytics. When migration is ready, the server admin can enable reports with ANALYTICS_MODE=clickhouse.",
+  "publish_reviewchanged": "Your site changed since you reviewed it. Review the changes again before publishing.",
+  "admin_pagination_first": "First page",
+  "admin_pagination_next": "Next page"
 }

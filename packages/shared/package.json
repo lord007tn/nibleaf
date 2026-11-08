@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./asset-references": "./src/asset-references.ts",
+    "./analytics-consent": "./src/analytics-consent.ts",
     "./addons": "./src/addons.ts",
     "./ai": "./src/ai.ts",
     "./callouts": "./src/callouts.ts",

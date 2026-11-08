@@ -2,6 +2,7 @@
 
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectConfig } from '@/hooks/api/types';
 import { appendAnalyticsScript, SiteAnalyticsConsent } from './site-analytics-consent';
@@ -80,6 +81,26 @@ describe('SiteAnalyticsConsent', () => {
     expect(window.localStorage.getItem(`nibleaf.analytics.consent.project-${lang}`)).toBe('accepted');
   });
 
+  it.each(['en', 'ar'])('renders the configured policy as an accessible %s link', async (lang) => {
+    const config = {
+      ...consentConfig,
+      addons: { consentBanner: { ...consentConfig.addons.consentBanner, privacyPolicyUrl: 'https://example.invalid/privacy' } },
+    };
+    await act(async () => root.render(createElement(SiteAnalyticsConsent, { projectId: 'policy', config, lang })));
+    const link = container.querySelector('a');
+    expect(link?.href).toBe('https://example.invalid/privacy');
+    expect(link?.textContent?.trim()).toBeTruthy();
+    expect(link?.className).toContain('min-h-11');
+  });
+
+  it('lets readers choose native analytics consent without any third-party scripts', async () => {
+    await act(async () =>
+      root.render(createElement(SiteAnalyticsConsent, { projectId: 'native', config: { analytics: { cookieConsent: true } }, lang: 'en' })),
+    );
+    expect(container.querySelector('section')).not.toBeNull();
+    expect(document.head.querySelectorAll('script')).toHaveLength(0);
+  });
+
   it('reloads after an accepted visitor reopens privacy choices and withdraws consent', async () => {
     const reloadPage = vi.fn();
     window.localStorage.setItem('nibleaf.analytics.consent.project-withdraw', 'accepted');
@@ -112,4 +133,11 @@ describe('SiteAnalyticsConsent', () => {
     expect(container.textContent).toContain('Privacy choices');
     expect(document.head.querySelectorAll('script')).toHaveLength(0);
   });
+});
+
+it.each(['accepted', 'declined'])('does not render the pending banner on the hydration snapshot for stored %s', (choice) => {
+  window.localStorage.setItem('nibleaf.analytics.consent.hydration', choice);
+  const html = renderToString(createElement(SiteAnalyticsConsent, { projectId: 'hydration', config: consentConfig, lang: 'en' }));
+  expect(html).not.toContain('<section');
+  expect(html).not.toContain('Accept analytics');
 });

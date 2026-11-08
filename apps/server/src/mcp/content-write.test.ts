@@ -1369,6 +1369,7 @@ describe('preview and publish', () => {
       'user-1',
       { message: 'Refund policy update (via MCP key "Support bot")' },
       'en',
+      expect.objectContaining({ project: expect.objectContaining({ id: 'project-1' }), pages: expect.any(Array) }),
     );
     expect(published.structuredContent.data).toMatchObject({
       deploymentId: 'deployment-1',
