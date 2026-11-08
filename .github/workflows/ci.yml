@@ -155,6 +155,12 @@ jobs:
           JOIN_LINKS_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/join-links.postgres.test.ts
 
+      - name: Verify preserving content imports on PostgreSQL
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          IMPORT_REHEARSAL: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/importers/import-safety.postgres.test.ts
+
       - name: Verify the People page only shows sites you administer
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf

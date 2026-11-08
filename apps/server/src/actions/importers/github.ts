@@ -30,6 +30,7 @@ const githubFailureMessage = (error: RequestError) => {
 };
 
 const githubFailure = (error: unknown) => {
+  if (error instanceof ImportError) return error;
   if (error instanceof RequestError) {
     return badRequest(githubFailureMessage(error), { provider: 'github', providerStatus: error.status });
   }
@@ -40,6 +41,11 @@ const githubFailure = (error: unknown) => {
 export const listGitHubFiles = async (owner: string, repo: string, branch: string) => {
   try {
     const response = await github.rest.git.getTree({ owner, repo, tree_sha: branch, recursive: 'true' });
+    if (response.data.truncated)
+      throw new ImportError({
+        code: 'import:limit',
+        message: 'The repository file listing is incomplete. Move the documentation to a smaller repository and try again.',
+      });
     return response.data.tree.flatMap((entry) =>
       entry.path && (entry.type === 'blob' || entry.type === 'tree') ? [{ path: entry.path, type: entry.type }] : [],
     );
