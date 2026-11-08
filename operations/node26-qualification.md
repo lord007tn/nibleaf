@@ -32,3 +32,12 @@ Revisit the qualification when either renderer family changes or publishes an
 engine range admitting Node 26. Re-run the importer suites and exact Alpine
 image checks for that dependency change; do not infer compatibility from an
 engine range alone.
+
+The web wrapper disables readiness for one second, then forwards SIGTERM to
+the HTTP server. Its default forced-exit allowance is eight more seconds,
+within Compose's default 30-second stop window. A forced kill or failed child
+exit produces a nonzero status. Request-local SSR query caches retain TanStack
+Query's infinite server GC lifetime so cache timers do not hold the process
+open after HTTP closure; browser caches still expire after five minutes.
+When overriding `NIBLEAF_DRAIN_DELAY_MS` or `NIBLEAF_WEB_FORCE_EXIT_MS`, keep
+their sum below the configured Compose stop grace.

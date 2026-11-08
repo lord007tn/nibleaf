@@ -16,8 +16,8 @@ if (
 }
 
 const drainFile = process.env.NIBLEAF_DRAIN_FILE ?? '/tmp/nibleaf-draining';
-const drainDelayMs = Number(process.env.NIBLEAF_DRAIN_DELAY_MS ?? 15_000);
-const forceExitMs = Number(process.env.NIBLEAF_WEB_FORCE_EXIT_MS ?? 25_000);
+const drainDelayMs = Number(process.env.NIBLEAF_DRAIN_DELAY_MS ?? 1000);
+const forceExitMs = Number(process.env.NIBLEAF_WEB_FORCE_EXIT_MS ?? 8000);
 if (!Number.isInteger(drainDelayMs) || drainDelayMs < 1000 || drainDelayMs > 60_000)
   throw new Error('NIBLEAF_DRAIN_DELAY_MS must be between 1000 and 60000.');
 if (!Number.isInteger(forceExitMs) || forceExitMs < 1000 || forceExitMs > 120_000)
@@ -32,7 +32,10 @@ const shutdown = async (signal) => {
   shuttingDown = true;
   await writeFile(drainFile, `${signal}\n`, { mode: 0o600 });
   process.stdout.write(`[nibleaf] ${signal}: readiness disabled; draining for ${drainDelayMs}ms\n`);
-  const forceTimer = setTimeout(() => child.kill('SIGKILL'), drainDelayMs + forceExitMs);
+  const forceTimer = setTimeout(() => {
+    process.stderr.write('[nibleaf] web service exceeded its shutdown deadline; sending SIGKILL\n');
+    child.kill('SIGKILL');
+  }, drainDelayMs + forceExitMs);
   forceTimer.unref();
   setTimeout(() => child.kill(signal), drainDelayMs).unref();
 };
@@ -45,6 +48,6 @@ child.once('error', (error) => {
   process.exitCode = 1;
 });
 child.once('exit', (code, signal) => {
-  if (signal && !shuttingDown) process.stderr.write(`[nibleaf] web service exited from ${signal}\n`);
-  process.exit(shuttingDown ? 0 : (code ?? 1));
+  if (signal) process.stderr.write(`[nibleaf] web service exited from ${signal}\n`);
+  process.exit(code ?? 1);
 });
