@@ -109,13 +109,27 @@ const getEffectivePlanConfiguration = async (organizationId: string, now = new D
   return { availability: 'complete' as const, configured, reason: null };
 };
 
+/**
+ * Paid author seats on a site: active members who can change content. Viewers
+ * are read-only and never take a seat (so a Viewer join link can't consume
+ * one); suspended and banned accounts don't either. This is the ONLY place the
+ * `editor_seat` meter is counted: usage summaries, plan limits
+ * (`@nibleaf/usage` evaluateLimit) and the legacy `members` projection all
+ * read it from here.
+ */
+export const countEditorSeats = async (organizationId: string): Promise<bigint | null> => {
+  const rows = await prisma.$queryRaw<Array<{ quantity: bigint }>>(
+    Prisma.sql`SELECT COUNT(*)::bigint AS quantity FROM "member" AS member
+      INNER JOIN "user" AS account ON account."id" = member."userId"
+      WHERE member."organizationId" = ${organizationId} AND member."role" <> ${MemberRole.VIEWER}
+        AND account."suspendedAt" IS NULL AND account."banned" = false`,
+  );
+  return rows[0]?.quantity ?? null;
+};
+
 const getSnapshotQuantities = async (organizationId: string, projectId: string) => {
-  const [members, assets, domains, deployment] = await Promise.all([
-    prisma.$queryRaw<Array<{ quantity: bigint }>>(
-      Prisma.sql`SELECT COUNT(*)::bigint AS quantity FROM "member" AS member
-        INNER JOIN "user" AS account ON account."id" = member."userId"
-        WHERE member."organizationId" = ${organizationId} AND account."suspendedAt" IS NULL AND account."banned" = false`,
-    ),
+  const [seats, assets, domains, deployment] = await Promise.all([
+    countEditorSeats(organizationId),
     prisma.$queryRaw<Array<{ quantity: bigint }>>(
       Prisma.sql`SELECT COALESCE(SUM("size"), 0)::bigint AS quantity FROM "asset" WHERE "projectId" = ${projectId}`,
     ),
@@ -130,7 +144,7 @@ const getSnapshotQuantities = async (organizationId: string, projectId: string) 
     }),
   ]);
   return new Map<SummaryMeterKey, string | null>([
-    ['editor_seat', members[0]?.quantity.toString() ?? null],
+    ['editor_seat', seats?.toString() ?? null],
     ['asset_storage_byte', assets[0]?.quantity.toString() ?? null],
     ['custom_domain', domains[0]?.quantity.toString() ?? null],
     ['published_page', deployment ? String(deployment.pagesCount) : null],

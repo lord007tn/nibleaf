@@ -9,6 +9,7 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
   let members: typeof import('./members');
   let projects: typeof import('./projects');
   let guard: typeof import('@/middlewares/guard');
+  let usage: typeof import('./usage');
   const organizationIds: string[] = [];
   const userIds: string[] = [];
 
@@ -17,6 +18,7 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
     members = await import('./members');
     projects = await import('./projects');
     guard = await import('@/middlewares/guard');
+    usage = await import('./usage');
   }, 120_000);
 
   afterAll(async () => {
@@ -138,5 +140,20 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
     await expect(members.transferOwnership(organization.id, team.owner.userId, team.viewer.memberId)).rejects.toMatchObject({
       code: 'database:conflict',
     });
+  });
+
+  it('never counts a Viewer as a paid editor seat', async () => {
+    const { organization, project, team } = await site();
+    // owner, admin, editor and viewer: three seats.
+    expect(await usage.countEditorSeats(organization.id)).toBe(3n);
+    expect((await usage.getProjectUsage(organization.id, project.id)).members).toBe(3);
+    const reader = await person('reader');
+    await db.prisma.member.create({ data: { organizationId: organization.id, userId: reader.id, role: MemberRole.VIEWER } });
+    expect(await usage.countEditorSeats(organization.id)).toBe(3n);
+    // Turning the Viewer into an Editor takes a seat; turning an Editor into a Viewer frees one.
+    await members.updateMemberRole(organization.id, team.viewer.memberId, team.owner.userId, { role: MemberRole.MEMBER });
+    expect(await usage.countEditorSeats(organization.id)).toBe(4n);
+    await members.updateMemberRole(organization.id, team.editor.memberId, team.owner.userId, { role: MemberRole.VIEWER });
+    expect(await usage.countEditorSeats(organization.id)).toBe(3n);
   });
 });
