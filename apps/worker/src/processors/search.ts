@@ -178,6 +178,9 @@ const claimRun = async (data: ReindexProjectJobData, deployment: { id: string },
             unchangedChunks: true,
             metadataUpdatedChunks: true,
             deletedChunks: true,
+            schemaVersion: true,
+            embeddingModel: true,
+            vectorSize: true,
           },
         });
 
@@ -226,6 +229,9 @@ const claimRun = async (data: ReindexProjectJobData, deployment: { id: string },
               unchangedChunks: true,
               metadataUpdatedChunks: true,
               deletedChunks: true,
+              schemaVersion: true,
+              embeddingModel: true,
+              vectorSize: true,
             },
           });
         }
@@ -235,6 +241,21 @@ const claimRun = async (data: ReindexProjectJobData, deployment: { id: string },
         const expired = run.claimExpiresAt ? run.claimExpiresAt <= now : run.updatedAt <= staleBefore;
         if (run.status === 'RUNNING' && run.claimToken && !expired) throw new SearchRunBusy('Search index run is actively claimed.');
 
+        const building = {
+          schemaVersion: env.QDRANT_COLLECTION_VERSION,
+          embeddingModel: env.SEARCH_EMBEDDING_MODEL,
+          vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
+        };
+        const requested = { schemaVersion: run.schemaVersion, embeddingModel: run.embeddingModel, vectorSize: run.vectorSize };
+        if (
+          requested.schemaVersion !== building.schemaVersion ||
+          requested.embeddingModel !== building.embeddingModel ||
+          requested.vectorSize !== building.vectorSize
+        )
+          log.warn(
+            { projectId: data.projectId, runId: run.id, requested, building },
+            "Search index run was queued with other embedding settings; building it with this worker's settings and recording those. If this worker predates an embedding change, finish the deploy, then reindex the site.",
+          );
         const claimToken = randomUUID();
         const claimed = await tx.searchIndexRun.updateMany({
           where: { id: run.id, updatedAt: run.updatedAt, status: { in: ['PENDING', 'RUNNING', 'FAILED'] } },
