@@ -44,7 +44,7 @@ jobs:
           send "\r"
           expect "Enable transactional email delivery for sign-in codes and invitations?"
           send "n\r"
-          # The v0.2.0 installer requires this acknowledgement without email delivery.
+          # The v0.2.1 installer requires this acknowledgement without email delivery.
           expect "Continue without email delivery and configure Google sign-in separately?"
           send "y\r"
           expect eof

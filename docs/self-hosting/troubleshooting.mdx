@@ -108,7 +108,7 @@ Do not skip migrations by removing dependencies from the Compose file.
 Unknown recurring configuration in analytics; complete the migration using the retained staged v5 image
 ```
 
-v0.2.0 started on schedules from v0.1.2, usually because the version was changed
+v0.2.1 started on schedules from v0.1.2, usually because the version was changed
 without the staged migration. Your data is intact. Do not delete the Dragonfly
 volume, remove jobs, or re-run the installer. Follow
 [If you skip the staged step](/self-hosting/upgrade-v0-2#if-you-skip-the-staged-step).
@@ -210,8 +210,8 @@ results can be up to ten seconds old; the worker migration flag is immediate.
 
 Check the exact Compose file list and deployed image. `.env` supplies Compose
 interpolation; it is not automatically the container environment. The pinned
-v0.2.0 production file passes no ClickHouse/search controls, queue allowlist,
-export tuning, or later MCP write limits. Use a reviewed override and a matching
+v0.2.1 production file passes no ClickHouse/search controls, queue allowlist,
+export tuning, or MCP write limits. Use a reviewed override and a matching
 image, then recreate the affected service. Do not print the full environment
 or rendered configuration into a support ticket. See the
 [release wiring reference](/reference/environment-variables).

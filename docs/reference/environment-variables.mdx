@@ -11,7 +11,7 @@ translation_key: 'reference/environment-variables'
 ---
 
 Start from `.env.production.example` shipped with the release. This page explains
-the setting groups for the current source. The pinned v0.2.0 Compose file and
+the setting groups for the current source. The pinned v0.2.1 Compose file and
 its image have a separate release boundary. Never commit a populated `.env`.
 
 The first tables use production Compose defaults unless marked otherwise. The
@@ -25,7 +25,7 @@ does not reach a container unless Compose passes it in `environment` or
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `NIBLEAF_VERSION` | Yes in practice | `v0.2.0` in the current template | GHCR release tag. Pin an existing release; avoid floating tags. The manual Docker workflow rejects overwriting an existing `v*` release tag, making published version tags immutable by repository policy. |
+| `NIBLEAF_VERSION` | Yes in practice | `v0.2.1` in the current template | GHCR release tag. Pin an existing release; avoid floating tags. The manual Docker workflow rejects overwriting an existing `v*` release tag, making published version tags immutable by repository policy. |
 | `APP_URL` | Yes | None | Browser-facing dashboard and normal authentication origin, without a trailing slash. |
 | `ADMIN_URL` | Only when admin is exposed | `http://localhost:4315` | Public origin for the optional operator console. |
 | `NIBLEAF_BIND` | No | `127.0.0.1` | Host interface for the app port. Keep loopback when the proxy is local. |
@@ -281,7 +281,7 @@ repeat the workflow checks in [production readiness](/self-hosting/production).
 
 ## Check release wiring before applying settings
 
-The pinned `docker-compose.prod.yml` for v0.2.0 has no ClickHouse or Qdrant
+The pinned `docker-compose.prod.yml` for v0.2.1 has no ClickHouse or Qdrant
 service. It does not pass analytics variables, search variables,
 `AI_DRAFT_MODEL`, `MCP_WRITE_RATE_LIMIT_PER_MIN`,
 `MCP_PUBLISH_RATE_LIMIT_PER_HOUR`, `WORKER_QUEUES`, export tuning, or the new
