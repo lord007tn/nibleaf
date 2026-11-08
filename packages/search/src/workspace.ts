@@ -92,18 +92,21 @@ export interface WorkspaceAiRuntime {
 /** Plain Markdown generation with the same provider credentials as search/chat.
  * Drafting keeps the SDK timeouts: OpenRouter has no SDK deadline; direct OpenAI
  * defaults to ten minutes. Search's short answer timeout must not truncate drafts.
- * No sampling settings: reasoning models reject or ignore them. */
+ * No sampling settings: reasoning models reject or ignore them. The product sends no
+ * output cap; `maxTokens` exists so a benchmark can bound its spend. */
 export const completeWorkspaceText = async (
   runtime: WorkspaceAiRuntime,
   messages: Array<{ role: 'system' | 'user'; content: string }>,
   attribution?: { siteUrl: string; title: string },
   effort: ReasoningEffort = AI_REASONING_EFFORT.draft,
+  maxTokens?: number,
 ) => {
   if (runtime.providerId === 'openai') {
     const completion = await new OpenAI({ apiKey: runtime.apiKey, maxRetries: 0 }).chat.completions.create({
       model: runtime.answerModel,
       messages,
       ...openaiReasoningEffort(runtime.answerModel, effort),
+      ...(maxTokens ? { max_completion_tokens: maxTokens } : {}),
     });
     return {
       text: completion.choices[0]?.message.content ?? '',
@@ -116,7 +119,7 @@ export const completeWorkspaceText = async (
     httpReferer: attribution?.siteUrl,
     appTitle: attribution?.title,
   }).chat.send({
-    chatRequest: { model: runtime.answerModel, messages, reasoning: { effort }, stream: false },
+    chatRequest: { model: runtime.answerModel, messages, reasoning: { effort }, stream: false, ...(maxTokens ? { maxTokens } : {}) },
   });
   if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
   return {

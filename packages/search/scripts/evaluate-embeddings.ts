@@ -34,6 +34,7 @@ const PRODUCT_DIMENSIONS = 1536;
 /** The worker embeds sequentially in batches of 64 (apps/worker/src/processors/search.ts). */
 const WORKER_BATCH = 64;
 const budget = Number(process.env.EVAL_MAX_COST_USD ?? 2);
+if (!Number.isFinite(budget) || budget <= 0) throw new Error('EVAL_MAX_COST_USD must be a positive number.');
 
 const catalog = (await (await fetch('https://openrouter.ai/api/v1/embeddings/models')).json()) as {
   data: { id: string; pricing: { prompt: string } }[];
@@ -41,7 +42,9 @@ const catalog = (await (await fetch('https://openrouter.ai/api/v1/embeddings/mod
 const price = (id: string) => {
   const found = catalog.data.find((model) => model.id === id);
   if (!found) throw new Error(`Embedding model absent from the live catalog: ${id}`);
-  return Number(found.pricing.prompt);
+  const value = Number(found.pricing.prompt);
+  if (!Number.isFinite(value) || value < 0) throw new Error(`Unknown pricing: ${id}`);
+  return value;
 };
 for (const id of models) price(id);
 

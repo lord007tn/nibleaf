@@ -30,6 +30,9 @@ if (models.length !== 2) throw new Error('EVAL_DRAFT_MODELS must name exactly tw
 const effort = (process.env.EVAL_DRAFT_EFFORT ?? AI_REASONING_EFFORT.draft) as typeof AI_REASONING_EFFORT.draft;
 const seed = process.env.EVAL_SEED ?? 'nibleaf-drafts-v1';
 const budget = Number(process.env.EVAL_MAX_COST_USD ?? 1);
+if (!Number.isFinite(budget) || budget <= 0) throw new Error('EVAL_MAX_COST_USD must be a positive number.');
+/** Every request is capped here, and the spend reservation assumes the full cap. */
+const DRAFT_OUTPUT_CAP = 6000;
 
 const catalog = (await (await fetch('https://openrouter.ai/api/v1/models')).json()) as {
   data: { id: string; pricing: { prompt: string; completion: string } }[];
@@ -37,7 +40,10 @@ const catalog = (await (await fetch('https://openrouter.ai/api/v1/models')).json
 const price = (id: string) => {
   const found = catalog.data.find((model) => model.id === id)?.pricing;
   if (!found) throw new Error(`Model absent from the live catalog: ${id}`);
-  return { input: Number(found.prompt), output: Number(found.completion) };
+  const input = Number(found.prompt);
+  const output = Number(found.completion);
+  if (!Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) throw new Error(`Unknown pricing: ${id}`);
+  return { input, output };
 };
 for (const id of models) price(id);
 
@@ -118,7 +124,7 @@ let reservedUsd = 0;
 const run = async (model: string, body: AiDraftBody) => {
   const { input, output } = price(model);
   // Conservative reservation: every prompt byte as a token, and a long reply with reasoning.
-  reservedUsd += (Buffer.byteLength(JSON.stringify(draftMessages(body)), 'utf8') + 200) * input + 6000 * output;
+  reservedUsd += (Buffer.byteLength(JSON.stringify(draftMessages(body)), 'utf8') + 200) * input + DRAFT_OUTPUT_CAP * output;
   if (reservedUsd > budget) throw new Error('Draft spend reservation exceeds EVAL_MAX_COST_USD; no request dispatched.');
   const started = performance.now();
   const result = await completeWorkspaceText(
@@ -126,6 +132,7 @@ const run = async (model: string, body: AiDraftBody) => {
     draftMessages(body),
     { siteUrl: 'https://nibleaf.com', title: 'Nibleaf draft benchmark' },
     effort,
+    DRAFT_OUTPUT_CAP,
   );
   return {
     text: result.text.trim(),
