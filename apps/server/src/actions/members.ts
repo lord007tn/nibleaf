@@ -1,3 +1,4 @@
+import { revokeJoinLinksBeyondRole } from '@nibleaf/auth/join-links';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
@@ -144,7 +145,10 @@ export const updateMemberRole = async (organizationId: string, memberId: string,
         throw conflict('You cannot demote the last owner of the workspace. Transfer ownership instead.');
       }
     }
-    return tx.member.update({ where: { id: memberId }, data: { role: body.role } });
+    const updated = await tx.member.update({ where: { id: memberId }, data: { role: body.role } });
+    // Links they created that the new role can't grant stop working, in the same transaction.
+    await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.role);
+    return updated;
   });
 };
 
@@ -186,6 +190,10 @@ export const transferOwnership = async (organizationId: string, actorUserId: str
     }
 
     await tx.member.updateMany({ where: { organizationId, role: MemberRole.OWNER }, data: { role: MemberRole.ADMIN } });
+    // Former owners are Admins now; no link can carry owner, but keep the rule in one place.
+    for (const previous of members.filter((member) => member.role === MemberRole.OWNER)) {
+      await revokeJoinLinksBeyondRole(tx, organizationId, previous.userId, MemberRole.ADMIN);
+    }
     return tx.member.update({
       where: { id: plan.promote },
       data: { role: MemberRole.OWNER },
@@ -199,7 +207,7 @@ export const removeMember = async (organizationId: string, memberId: string, act
     const actor = await tx.member.findFirst({ where: { organizationId, userId: actorUserId } });
     if (!actor) throw forbidden('You are not a member of this workspace.');
     if (!canAdminister(actor.role)) throw forbidden('You do not have permission to manage workspace members.');
-    const member = await tx.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true } });
+    const member = await tx.member.findFirst({ where: { id: memberId, organizationId }, select: { id: true, role: true, userId: true } });
     if (!member) {
       throw notFound('member', { id: memberId });
     }
@@ -213,6 +221,8 @@ export const removeMember = async (organizationId: string, memberId: string, act
       }
     }
     await tx.member.delete({ where: { id: memberId } });
+    // Someone who left the site keeps no working join link to it.
+    await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, null);
     return { id: memberId };
   });
 

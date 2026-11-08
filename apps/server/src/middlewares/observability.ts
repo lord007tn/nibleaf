@@ -2,6 +2,10 @@ import { logger } from '@nibleaf/logger';
 import type { MiddlewareHandler } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
 
+/** Join-link tokens are credentials (only their hash is stored), so the path
+ *  logged for /join/:token keeps the route shape and drops the token. */
+export const loggablePath = (path: string) => path.replace(/\/join\/nlj_[A-Za-z0-9_-]+/g, '/join/[token]');
+
 /** Emit one canonical log line per request with method, path, status, and duration. */
 export const observabilityMiddleware = (): MiddlewareHandler<HonoEnv> => async (ctx, next) => {
   const start = performance.now();
@@ -11,7 +15,7 @@ export const observabilityMiddleware = (): MiddlewareHandler<HonoEnv> => async (
     {
       requestId: ctx.get('requestId'),
       method: ctx.req.method,
-      path: ctx.req.path,
+      path: loggablePath(ctx.req.path),
       status: ctx.res.status,
       durationMs,
     },

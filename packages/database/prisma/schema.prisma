@@ -39,6 +39,8 @@ model User {
   accounts        Account[]
   members         Member[]
   invitations     Invitation[]
+  joinLinksCreated JoinLink[]    @relation("JoinLinkCreator")
+  joinLinkUses     JoinLinkUse[]
   comments        Comment[]
   exportJobs      ExportJob[]      @relation("ExportJobCreator")
   exportSchedules ExportSchedule[] @relation("ExportScheduleCreator")
@@ -119,6 +121,7 @@ model Organization {
 
   members     Member[]
   invitations Invitation[]
+  joinLinks   JoinLink[]
   projects    Project[]
   usagePlan          OrganizationUsagePlan?
   usageStorageMarker UsageStorageMarker?
@@ -307,6 +310,52 @@ model Invitation {
 
   @@index([organizationId])
   @@map("invitation")
+}
+
+/// A shareable link that lets anyone with it join one site's organization,
+/// without an email invitation. Only a SHA-256 hash of the token is stored: the
+/// link is shown once, at creation or regeneration. `useCount` is incremented
+/// atomically against `maxUses`, so concurrent joins can never exceed it.
+model JoinLink {
+  id             String        @id @default(cuid())
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tokenHash      String        @unique
+  /// Short, non-secret label shown to admins (e.g. "Acme support team").
+  label          String?
+  /// Role granted on join: viewer | member | admin. Never owner.
+  role           String        @default("member")
+  /// Lower-case email domain the joiner's verified address must use, or null for any.
+  allowedDomain  String?
+  maxUses        Int?
+  useCount       Int           @default(0)
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  createdById    String?
+  createdBy      User?         @relation("JoinLinkCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  uses           JoinLinkUse[]
+
+  @@index([organizationId])
+  @@map("join_link")
+}
+
+/// One person joining through a join link (the audit trail admins see).
+model JoinLinkUse {
+  id         String   @id @default(cuid())
+  joinLinkId String
+  joinLink   JoinLink @relation(fields: [joinLinkId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// The address at join time, kept if the account is later deleted.
+  email      String
+  role       String
+  createdAt  DateTime @default(now())
+
+  @@index([joinLinkId, createdAt])
+  @@index([userId])
+  @@map("join_link_use")
 }
 
 // ─── MCP OAuth (better-auth jwt + @better-auth/mcp + @better-auth/cimd) ──────

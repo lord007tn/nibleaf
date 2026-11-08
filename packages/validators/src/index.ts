@@ -1,5 +1,6 @@
 import { aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
+import { normalizeEmailDomain } from '@nibleaf/shared/join-links';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
@@ -773,6 +774,37 @@ export type InviteMemberBody = z.infer<typeof inviteMemberBody>;
 // Role changes can never grant owner — see assignableMemberRoleEnum.
 export const updateMemberRoleBody = z.object({ role: assignableMemberRoleEnum });
 export type UpdateMemberRoleBody = z.infer<typeof updateMemberRoleBody>;
+
+// ─── Join links ───────────────────────────────────────────────────────────────
+
+/** Create a join link. The role can never be owner (schema) nor exceed the
+ *  creator's own role (checked in the action). Every limit is optional. */
+export const createJoinLinkBody = z
+  .object({
+    label: z.string().trim().max(60).optional(),
+    role: assignableMemberRoleEnum.default('member'),
+    /** Days from now until the link stops working; omit for no expiry. */
+    expiresInDays: z.number().int().min(1).max(365).optional(),
+    /** How many people can join through it; omit for unlimited. */
+    maxUses: z.number().int().min(1).max(10_000).optional(),
+    /** Only verified addresses at this exact domain can join (e.g. acme.com). */
+    allowedDomain: z
+      .string()
+      .trim()
+      .max(253)
+      .transform((value, context) => {
+        if (!value) return;
+        const domain = normalizeEmailDomain(value);
+        if (!domain) {
+          context.addIssue({ code: 'custom', message: 'Enter a domain like acme.com' });
+          return z.NEVER;
+        }
+        return domain;
+      })
+      .optional(),
+  })
+  .strict();
+export type CreateJoinLinkBody = z.infer<typeof createJoinLinkBody>;
 
 /** The ONLY path to the owner role: an owner-guarded transfer that atomically
  *  promotes the target admin and demotes the previous owner(s) to admin. */
