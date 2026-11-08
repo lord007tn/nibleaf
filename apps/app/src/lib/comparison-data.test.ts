@@ -15,8 +15,8 @@ describe('competitor facts', () => {
   });
 
   it('states current Nibleaf capabilities with rollout and infrastructure boundaries', () => {
-    expect(serialized).not.toMatch(/v0\.2|read-only MCP|no tracker|instant publishing/i);
-    expect(serialized).toContain('in the open-source code now, arriving in the next self-hosted release and on Nibleaf Cloud as it rolls out.');
+    expect(serialized).not.toMatch(/v0\.2\.0|next self-hosted release|read-only MCP|no tracker|instant publishing/i);
+    expect(serialized).toContain('are available on Nibleaf Cloud and in self-hosted v0.2.1.');
     expect(serialized).toContain('workspace or instance AI provider key');
     expect(serialized).toContain('the Qdrant service when self-hosting');
     expect(serialized).toContain('optional ClickHouse when self-hosting');

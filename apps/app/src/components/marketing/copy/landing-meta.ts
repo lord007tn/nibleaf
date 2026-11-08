@@ -18,8 +18,7 @@ export interface MarketingPageMeta {
 export const LANDING_META: Record<MarketingLang, MarketingPageMeta> = {
   en: {
     title: 'Nibleaf: open-source docs and help center in English and Arabic',
-    description:
-      'Open-source docs and help center in English and Arabic. AI answers that cite your docs are rolling out. Free cloud beta, or self-host it.',
+    description: 'Open-source docs and help center in English and Arabic, with AI answers that cite your docs. Free cloud beta, or self-host it.',
     ogImagePath: '/brand/raster/social/nibleaf-og-home.png',
     ogImageAlt:
       'Nibleaf, docs that answer your customers: a published docs page, with the Ask AI answer on a phone citing the sections it came from.',
@@ -27,7 +26,7 @@ export const LANDING_META: Record<MarketingLang, MarketingPageMeta> = {
   ar: {
     title: 'Nibleaf | منصة توثيق ومركز مساعدة بالعربية وRTL',
     description:
-      'منصة توثيق مفتوحة المصدر ومركز مساعدة لعملائك: توثيق عربي من اليمين إلى اليسار (RTL)، وإجابات ذكية تُحيل إلى صفحاتك تصل تدريجيًا. جرّب السحابة مجانًا أو استضفها بنفسك.',
+      'منصة توثيق مفتوحة المصدر ومركز مساعدة لعملائك: توثيق عربي من اليمين إلى اليسار (RTL)، وإجابات ذكية تُحيل إلى صفحاتك. جرّب السحابة مجانًا أو استضفها بنفسك.',
     ogImagePath: '/brand/raster/social/nibleaf-og-home-ar.png',
     ogImageAlt: 'Nibleaf، وثائق تُجيب عملاءك بلغتهم: صفحة وثائق منشورة، وعلى الهاتف إجابة «اسأل المساعد» مع الأقسام التي أُخذت منها.',
   },
