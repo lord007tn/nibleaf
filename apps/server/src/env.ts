@@ -60,7 +60,7 @@ export const env = createEnv({
     POSTMARK_MESSAGE_STREAM: z.string().optional(),
     SMTP_URL: z.string().optional(),
     OPENROUTER_API_KEY: z.string().optional(),
-    AI_DRAFT_MODEL: z.string().default('openai/gpt-4o-mini'),
+    AI_DRAFT_MODEL: z.string().default('openai/gpt-6-luna'),
     EXPORT_MAX_ACTIVE_PER_PROJECT: z.coerce.number().int().min(1).max(20).default(3),
     EXPORT_MAX_DAILY_PER_PROJECT: z.coerce.number().int().min(1).max(1000).default(20),
     EXPORT_MAX_PAGES: z.coerce.number().int().positive().default(5000),

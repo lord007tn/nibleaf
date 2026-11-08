@@ -172,7 +172,7 @@ describe('reader AI chat stream', () => {
     vi.clearAllMocks();
     mocks.request.current = new Request('http://localhost/api/public/sites/p/chat', { method: 'POST' });
     mocks.context.mockResolvedValue(context());
-    mocks.runtime.mockResolvedValue({ providerId: 'openrouter', answerModel: 'openai/gpt-5.6-luna', answersEnabled: true });
+    mocks.runtime.mockResolvedValue({ providerId: 'openrouter', answerModel: 'openai/test-answer-model', answersEnabled: true });
     mocks.reserve.mockImplementation(async () => ({ ...reservation }));
     mocks.extend.mockImplementation(async (_project: string, _conversation: string, hold: { reservedTokens: number }, wanted: number) => {
       hold.reservedTokens += wanted;
@@ -203,7 +203,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install', heading: 'With npm' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 100, outputTokens: 20 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
         latencyMs: 10,
         firstTokenMs: 4,
       }),
@@ -253,7 +253,7 @@ describe('reader AI chat stream', () => {
     expect(recorded()[2]).toMatchObject({
       outcome: 'answered',
       provider: 'openrouter',
-      model: 'openai/gpt-5.6-luna',
+      model: 'openai/test-answer-model',
       inputTokens: 130,
       outputTokens: 30,
       retrievalCacheHit: false,
@@ -291,9 +291,9 @@ describe('reader AI chat stream', () => {
   });
 
   it('records a low-confidence follow-up as known: the rewrite on the utility model, nothing on the answer model', async () => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
-      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.0001, calls: 1, costed: 1 });
+      if (sink && runtime.answerModel === 'openai/test-utility-model') Object.assign(sink, { costUsd: 0.0001, calls: 1, costed: 1 });
       return { kind: runtime.answerModel };
     });
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
@@ -305,7 +305,7 @@ describe('reader AI chat stream', () => {
       inputTokens: 0,
       outputTokens: 0,
       costUsd: 0,
-      utilityModel: 'openai/gpt-5.6-luna-mini',
+      utilityModel: 'openai/test-utility-model',
       utilityInputTokens: 50,
       utilityOutputTokens: 10,
       utilityCostUsd: 0.0001,
@@ -345,7 +345,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     const reader = (await chatSite('project-1', body())).body?.getReader();
@@ -392,7 +392,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     const events = await readEvents(await chatSite('project-1', body()));
@@ -425,7 +425,7 @@ describe('reader AI chat stream', () => {
   });
 
   it('routes rewriting and suggestions to the utility model on OpenRouter only', async () => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, failed: true });
     mocks.stream.mockReturnValue({
       deltas: (async function* () {
@@ -441,24 +441,24 @@ describe('reader AI chat stream', () => {
       }),
     });
     await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
-    expect(mocks.condense.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/gpt-5.6-luna-mini' } });
-    expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/gpt-5.6-luna-mini' } });
-    expect(mocks.stream.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/gpt-5.6-luna' } });
+    expect(mocks.condense.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/test-utility-model' } });
+    expect(mocks.suggest.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/test-utility-model' } });
+    expect(mocks.stream.mock.calls[0]?.[0]).toMatchObject({ adapter: { kind: 'openai/test-answer-model' } });
     await settle();
     expect(recorded()).toContainEqual(expect.objectContaining({ name: 'provider_error', phase: 'condense' }));
     expect(recorded()[0]).toMatchObject({ name: 'question_asked', followUp: true });
 
     mocks.adapter.mockClear();
-    mocks.runtime.mockResolvedValue({ providerId: 'openai', answerModel: 'gpt-5.6-luna', answersEnabled: true });
+    mocks.runtime.mockResolvedValue({ providerId: 'openai', answerModel: 'test-answer-model', answersEnabled: true });
     await readEvents(await chatSite('project-1', body()));
     expect(mocks.adapter).toHaveBeenCalledTimes(1);
   });
 
   it("records a separate utility model's usage and cost apart from the answer model's", async () => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     // Each model's provider-reported cost lands in its own sink.
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
-      if (sink) Object.assign(sink, { costUsd: runtime.answerModel.endsWith('-mini') ? 0.0001 : 0.002, calls: 1, costed: 1 });
+      if (sink) Object.assign(sink, { costUsd: runtime.answerModel === 'openai/test-utility-model' ? 0.0001 : 0.002, calls: 1, costed: 1 });
       return { kind: runtime.answerModel };
     });
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
@@ -472,18 +472,18 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
     await settle();
     expect(mocks.recordTurn).toHaveBeenCalledWith(
       expect.objectContaining({
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
         inputTokens: 900,
         outputTokens: 120,
         costUsd: 0.002,
-        utilityModel: 'openai/gpt-5.6-luna-mini',
+        utilityModel: 'openai/test-utility-model',
         utilityInputTokens: 80,
         utilityOutputTokens: 20,
         utilityCostUsd: 0.0001,
@@ -491,11 +491,11 @@ describe('reader AI chat stream', () => {
     );
     // Budgets count both models; the event reports the model it names.
     expect(mocks.settle.mock.calls.at(-1)?.[3]).toBe(1120);
-    expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', model: 'openai/gpt-5.6-luna', inputTokens: 900, costUsd: 0.002 });
+    expect(recorded().at(-1)).toMatchObject({ name: 'answer_completed', model: 'openai/test-answer-model', inputTokens: 900, costUsd: 0.002 });
 
     // Naming the answer model as the utility model is not a separate model.
     mocks.recordTurn.mockClear();
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-answer-model';
     await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
     await settle();
     expect(mocks.recordTurn.mock.calls.at(-1)?.[0]).not.toHaveProperty('utilityModel');
@@ -503,9 +503,9 @@ describe('reader AI chat stream', () => {
   });
 
   it("keeps the answer model's reported usage and cost when only the utility model's suggestions went unreported", async () => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
-      if (sink) Object.assign(sink, { costUsd: runtime.answerModel.endsWith('-mini') ? 0.0001 : 0.002, calls: 1, costed: 1 });
+      if (sink) Object.assign(sink, { costUsd: runtime.answerModel === 'openai/test-utility-model' ? 0.0001 : 0.002, calls: 1, costed: 1 });
       return { kind: runtime.answerModel };
     });
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
@@ -521,7 +521,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
@@ -531,7 +531,7 @@ describe('reader AI chat stream', () => {
       inputTokens: 900,
       outputTokens: 120,
       costUsd: 0.002,
-      utilityModel: 'openai/gpt-5.6-luna-mini',
+      utilityModel: 'openai/test-utility-model',
       utilityUsageEstimated: true,
     });
     expect(turn).not.toHaveProperty('usageEstimated');
@@ -547,7 +547,7 @@ describe('reader AI chat stream', () => {
     // Two billed responses (rewrite and answer), only one of them with a readable cost.
     mocks.adapter.mockImplementation((_runtime: unknown, sink?: Record<string, number>) => {
       if (sink) Object.assign(sink, { costUsd: 0.002, calls: 2, costed: 1 });
-      return { kind: 'openai/gpt-5.6-luna' };
+      return { kind: 'openai/test-answer-model' };
     });
     mocks.condense.mockResolvedValue({ query: 'install', rewritten: true, usage: { inputTokens: 50, outputTokens: 10 } });
     mocks.stream.mockReturnValue({
@@ -560,7 +560,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     await readEvents(await chatSite('project-1', body({ history: [{ role: 'user', content: 'npm' }] })));
@@ -659,7 +659,7 @@ describe('reader AI chat stream', () => {
           citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
           droppedParagraphs: 0,
           usage: { inputTokens: 900, outputTokens: 120 },
-          model: 'openai/gpt-5.6-luna',
+          model: 'openai/test-answer-model',
         }),
       });
       await readEvents(await chatSite('project-1', body()));
@@ -675,9 +675,9 @@ describe('reader AI chat stream', () => {
   });
 
   it("keeps an answered turn and its suggestions' reported usage when the reader leaves before they arrive", async () => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
-      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
+      if (sink && runtime.answerModel === 'openai/test-utility-model') Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
       return { kind: runtime.answerModel };
     });
     const leave = new AbortController();
@@ -699,7 +699,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 900, outputTokens: 120 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     const reader = (await chatSite('project-1', body())).body?.getReader();
@@ -716,9 +716,9 @@ describe('reader AI chat stream', () => {
   });
 
   it.each(['failed', 'cancelled'] as const)('starts no suggestions for an answer that is %s', async (status) => {
-    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/gpt-5.6-luna-mini';
+    mocks.extras.SEARCH_CHAT_UTILITY_MODEL = 'openai/test-utility-model';
     mocks.adapter.mockImplementation((runtime: { answerModel: string }, sink?: Record<string, number>) => {
-      if (sink && runtime.answerModel.endsWith('-mini')) Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
+      if (sink && runtime.answerModel === 'openai/test-utility-model') Object.assign(sink, { costUsd: 0.000_123, calls: 1, costed: 1 });
       return { kind: runtime.answerModel };
     });
     const reader = new AbortController();
@@ -848,7 +848,7 @@ describe('reader AI chat stream', () => {
         citations: [{ id: 'S1', pageId: 'page-1', title: 'Install', path: 'guides/install' }],
         droppedParagraphs: 0,
         usage: { inputTokens: 100, outputTokens: 20 },
-        model: 'openai/gpt-5.6-luna',
+        model: 'openai/test-answer-model',
       }),
     });
     await readEvents(await chatSite('project-1', body({ consent: 'not_required', sessionId: 'reader-session-0001' })));

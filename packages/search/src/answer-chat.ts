@@ -24,6 +24,8 @@ export interface GroundedChatResult {
   model: string;
   latencyMs: number;
   firstTokenMs?: number;
+  /** The provider stopped at the output cap (reasoning tokens count against it). */
+  truncated?: true;
 }
 export const estimateTokens = (text: string): number => Math.ceil(new TextEncoder().encode(text).length / 3);
 const stripMarkers = (text: string) => text.replace(/\[S\d+(?:\s*[,;،؛]\s*S\d+)*\]/g, '');
@@ -323,7 +325,17 @@ export const largestChatTurnTokens = ({
 };
 /** Provider request options for a completion capped at `maxTokens`. */
 export type ChatModelOptions = (maxTokens: number) => Record<string, unknown>;
-const defaultModelOptions: ChatModelOptions = (maxTokens) => ({ temperature: 0, max_tokens: maxTokens });
+/** No sampling settings: reasoning models reject or ignore them. */
+const defaultModelOptions: ChatModelOptions = (maxTokens) => ({ max_tokens: maxTokens });
+/** Middleware that records the call's usage, and whether it stopped at its output cap. */
+const callObserver = (seen: { usage?: ChatUsage; truncated?: true }) => ({
+  onUsage: (_ctx: unknown, value: TokenUsage) => {
+    seen.usage = usageFrom(value);
+  },
+  onFinish: (_ctx: unknown, info: { finishReason: string | null }) => {
+    if (info.finishReason === 'length') seen.truncated = true;
+  },
+});
 export interface CondenseFollowUpOptions {
   adapter: AnyTextAdapter;
   question: string;
@@ -332,7 +344,7 @@ export interface CondenseFollowUpOptions {
   signal?: AbortSignal;
   /** Re-applied defensively; pass the server's configured limits. */
   historyLimits?: { maxMessages: number; maxTokens: number };
-  /** Provider-specific options (e.g. direct OpenAI rejects temperature on newer models). */
+  /** Provider-specific wire options: the output cap's name and the reasoning effort. */
   modelOptions?: ChatModelOptions;
 }
 export const condenseFollowUp = async ({
@@ -343,14 +355,14 @@ export const condenseFollowUp = async ({
   signal,
   historyLimits = DEFAULT_HISTORY_LIMITS,
   modelOptions = defaultModelOptions,
-}: CondenseFollowUpOptions): Promise<{ query: string; rewritten: boolean; usage?: ChatUsage; failed?: true }> => {
+}: CondenseFollowUpOptions): Promise<{ query: string; rewritten: boolean; usage?: ChatUsage; failed?: true; truncated?: true }> => {
   const bounded = boundChatHistory(history, historyLimits);
   if (!bounded.length) return { query: question, rewritten: false };
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) abort();
-  let usage: ChatUsage | undefined;
+  const seen: { usage?: ChatUsage; truncated?: true } = {};
   try {
     const { text } = await chat({
       adapter,
@@ -360,23 +372,17 @@ export const condenseFollowUp = async ({
       systemPrompts: [condenseSystemPrompt(language)],
       messages: [...bounded, { role: 'user', content: question }],
       modelOptions: modelOptions(CHAT_OUTPUT_TOKEN_LIMITS.condense),
-      middleware: [
-        {
-          onUsage: (_ctx, value) => {
-            usage = usageFrom(value);
-          },
-        },
-      ],
+      middleware: [callObserver(seen)],
     });
     const query = stripMarkers(text)
       .replace(/["'“”‘’]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 300);
-    return { query: query || question, rewritten: Boolean(query && query !== question), usage };
+    return { query: query || question, rewritten: Boolean(query && query !== question), ...seen };
   } catch {
     // The original question still retrieves; the caller only reports the failure.
-    return { query: question, rewritten: false, usage, ...(signal?.aborted ? {} : { failed: true as const }) };
+    return { query: question, rewritten: false, ...seen, ...(signal?.aborted ? {} : { failed: true as const }) };
   } finally {
     signal?.removeEventListener('abort', abort);
   }
@@ -511,13 +517,13 @@ export const suggestFollowUps = async ({
   signal,
   modelOptions = defaultModelOptions,
   asked = [],
-}: SuggestFollowUpsOptions): Promise<{ questions: string[]; usage?: ChatUsage; failed?: true }> => {
+}: SuggestFollowUpsOptions): Promise<{ questions: string[]; usage?: ChatUsage; failed?: true; truncated?: true }> => {
   if (chunks.length === 0) return { questions: [] };
   const controller = new AbortController();
   const abort = () => controller.abort(signal?.reason);
   signal?.addEventListener('abort', abort, { once: true });
   if (signal?.aborted) abort();
-  let usage: ChatUsage | undefined;
+  const seen: { usage?: ChatUsage; truncated?: true } = {};
   try {
     const topics = followUpTopics(chunks);
     const { text } = await chat({
@@ -528,22 +534,16 @@ export const suggestFollowUps = async ({
       systemPrompts: [followUpSystemPrompt(question, language)],
       messages: [{ role: 'user', content: followUpUserPrompt(question, answer, topics) }],
       modelOptions: modelOptions(CHAT_OUTPUT_TOKEN_LIMITS.followUps),
-      middleware: [
-        {
-          onUsage: (_ctx, value) => {
-            usage = usageFrom(value);
-          },
-        },
-      ],
+      middleware: [callObserver(seen)],
     });
     // Output of a call stopped or timed out is not used.
     signal?.throwIfAborted();
     const { questions, unreadable } = parseFollowUpQuestions(text, question, asked);
-    return { questions, usage, ...(unreadable ? { failed: true as const } : {}) };
+    return { questions, ...seen, ...(unreadable ? { failed: true as const } : {}) };
   } catch {
     // Stopped with the turn is not a failure; timing out is.
     const timedOut = (signal?.reason as { name?: string } | undefined)?.name === 'TimeoutError';
-    return { questions: [], usage, ...(signal?.aborted && !timedOut ? {} : { failed: true as const }) };
+    return { questions: [], ...seen, ...(signal?.aborted && !timedOut ? {} : { failed: true as const }) };
   } finally {
     signal?.removeEventListener('abort', abort);
   }
@@ -592,7 +592,7 @@ export const streamGroundedChat = ({
     let released = false;
     let declined = false;
     let firstTokenMs: number | undefined;
-    let usage: ChatUsage | undefined;
+    const seen: { usage?: ChatUsage; truncated?: true } = {};
     try {
       signal?.throwIfAborted();
       const stream = chat({
@@ -603,13 +603,7 @@ export const streamGroundedChat = ({
         systemPrompts: [chatSystemPrompt(language)],
         messages: [...boundChatHistory(history, historyLimits), { role: 'user', content: chatUserPrompt(question, chunks, pageContext, language) }],
         modelOptions: modelOptions(CHAT_OUTPUT_TOKEN_LIMITS.answer),
-        middleware: [
-          {
-            onUsage: (_ctx, value) => {
-              usage = usageFrom(value);
-            },
-          },
-        ],
+        middleware: [callObserver(seen)],
       });
       for await (const event of stream) {
         signal?.throwIfAborted();
@@ -630,7 +624,13 @@ export const streamGroundedChat = ({
       }
       signal?.throwIfAborted();
       if (!released && !declined) push(prefix);
-      const metadata = { model, usage, latencyMs: performance.now() - started, firstTokenMs };
+      const metadata = {
+        model,
+        usage: seen.usage,
+        latencyMs: performance.now() - started,
+        firstTokenMs,
+        ...(seen.truncated ? { truncated: seen.truncated } : {}),
+      };
       const fallback = (
         noAnswerReason: GroundedChatResult['noAnswerReason'],
         validationFailure?: GroundedChatResult['validationFailure'],
