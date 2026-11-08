@@ -16,6 +16,7 @@ import type { Job } from 'bullmq';
 import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
 import { recordPublishReady } from '../lib/publish-activation';
+import { buildDeploymentAssetReferences } from '../lib/publish-asset-references';
 import { DurableUsageEnqueueError, enqueueAnalyticsEvent } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'publish' });
@@ -425,10 +426,11 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       throw new Error('This site has been taken down by the platform moderators and cannot be published.');
     }
     if (deployment.snapshot) {
-      // Rollbacks already carry a reviewed immutable snapshot. Activate it via
-      // the same retryable indexing and notification pipeline as a new publish.
+      // Rollbacks already carry a reviewed immutable snapshot and its copied reference
+      // index or bounded legacy metadata. Activate them unchanged, without rebuilding
+      // from page bodies, via the same retryable indexing and notification pipeline.
       const ready = await prisma.deployment.update({
-        where: { id: deploymentId, projectId },
+        where: { id: deploymentId, projectId, status: 'BUILDING' },
         data: { status: 'READY', error: null, errorDetails: Prisma.DbNull, completedAt: new Date() },
       });
       snapshotReady = true;
@@ -462,13 +464,16 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
       throw new Error(summarizeRedirectIssues(redirectValidation.issues));
     }
     const snapshot = redirectValidation.snapshot;
+    const references = await buildDeploymentAssetReferences(snapshot);
     const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({
-      where: { id: deploymentId, projectId },
+      where: { id: deploymentId, projectId, status: 'BUILDING' },
       data: {
         status: 'READY',
         snapshot: snapshot as unknown as object,
+        assetReferenceIndex: references as unknown as Prisma.InputJsonValue,
+        assetReferenceBytes: references.weight,
         pagesCount: pageCount,
         error: null,
         errorDetails: Prisma.DbNull,
@@ -482,9 +487,11 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     // A delivery failure after READY must not revoke the published snapshot.
     // Let the job retry the durable receipt using the READY fast path above.
     if (snapshotReady) throw error;
+    // A reaped deployment is no longer BUILDING: neither revive it nor mark it again.
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2025') return { pages: 0 };
     const retrying = (job.attemptsMade ?? 0) + 1 < (job.opts?.attempts ?? 1);
     const failed = await prisma.deployment.update({
-      where: { id: deploymentId, projectId },
+      where: { id: deploymentId, projectId, status: 'BUILDING' },
       data: {
         status: 'FAILED',
         // A null completion time means BullMQ still has an automatic retry.

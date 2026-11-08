@@ -1364,6 +1364,10 @@ model Deployment {
   status        DeploymentStatus @default(PENDING)
   /// { project: {...}, pages: [...] } captured at publish time.
   snapshot      Json?
+  assetReferenceIndex Json?
+  assetReferenceBytes Int?
+  assetSourceBytes Int?
+  assetSourcePages Int?
   pagesCount    Int              @default(0)
   commitMessage String?
   createdById   String?

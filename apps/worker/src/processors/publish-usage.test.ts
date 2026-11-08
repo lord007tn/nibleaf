@@ -1,4 +1,6 @@
 import type { PublishDeploymentJobData } from '@nibleaf/bullmq/jobs/publish';
+import { buildAssetReferencesSync } from '@nibleaf/shared/asset-references';
+import type { SiteSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -181,14 +183,48 @@ describe('publish usage queue isolation', () => {
   });
 
   it('activates the stored rollback snapshot and indexes its new deployment ID', async () => {
-    const historical = { project: { name: 'Old docs' }, pages: [{ content: 'Old content' }] };
-    const pending = { status: 'PENDING', snapshot: historical, pagesCount: 1, version: 3, createdById: 'author-a' };
+    const historical: SiteSnapshot = {
+      project: { id: 'project-a', name: 'Old docs', slug: 'old-docs', icon: null, description: null, languages: [], versions: [], config: {} },
+      pages: [
+        {
+          id: 'old-page',
+          parentId: null,
+          versionId: 'v1',
+          languageCode: 'en',
+          updatedAt: '',
+          kind: 'PAGE',
+          title: 'Old',
+          slug: 'old',
+          path: 'old',
+          icon: null,
+          description: null,
+          content: 'Old content',
+          config: null,
+          translationKey: null,
+          position: 0,
+          hidden: false,
+        },
+      ],
+      generatedAt: '',
+    };
+    const references = buildAssetReferencesSync(historical, () => undefined);
+    const pending = {
+      status: 'PENDING',
+      snapshot: historical,
+      pagesCount: 1,
+      version: 3,
+      createdById: 'author-a',
+      assetReferenceIndex: references,
+      assetReferenceBytes: references.weight,
+      assetSourceBytes: null,
+      assetSourcePages: null,
+    };
     mocks.deploymentFindFirst.mockResolvedValue(pending);
     mocks.deploymentUpdate.mockImplementation(async ({ data }) => ({ ...pending, ...data }));
     const job = { data: { deploymentId: 'rollback-a', projectId: 'project-a', auto: false } } as Job<PublishDeploymentJobData>;
     await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 1 });
     expect(mocks.deploymentUpdate).toHaveBeenCalledWith({
-      where: { id: 'rollback-a', projectId: 'project-a' },
+      where: { id: 'rollback-a', projectId: 'project-a', status: 'BUILDING' },
       data: expect.objectContaining({ status: 'READY' }),
     });
     expect(mocks.createJob).toHaveBeenCalledWith(
@@ -201,6 +237,38 @@ describe('publish usage queue isolation', () => {
     );
     expect(mocks.pageFindMany).not.toHaveBeenCalled();
     expect(mocks.deploymentUpdate.mock.calls[0]?.[0].data).not.toHaveProperty('snapshot');
+    expect(mocks.deploymentUpdate.mock.calls[0]?.[0].data).not.toHaveProperty('assetReferenceIndex');
+    expect(mocks.recordPublishReady).toHaveBeenCalledWith(
+      job.data,
+      expect.objectContaining({ assetReferenceIndex: references, assetReferenceBytes: references.weight }),
+    );
+  });
+
+  it('cannot revive a reaped deployment after building its index', async () => {
+    mocks.deploymentFindFirst.mockResolvedValue({ status: 'PENDING', snapshot: null });
+    mocks.projectFindUnique.mockResolvedValue({
+      id: 'project-a',
+      name: 'Docs',
+      slug: 'docs',
+      organizationId: 'org-a',
+      accessMode: 'PUBLIC',
+      config: {},
+      icon: null,
+      description: null,
+      languages: [{ code: 'en', label: 'English', direction: 'LTR', isDefault: true, enabled: true, config: null, projectTranslations: [] }],
+      branches: [{ id: 'main', name: 'main', isDefault: true }],
+      addons: [],
+      organization: { usagePlan: null },
+    });
+    mocks.pageFindMany.mockResolvedValue([]);
+    mocks.deploymentUpdate.mockRejectedValueOnce(Object.assign(new Error('Deployment no longer building'), { code: 'P2025' }));
+    const job = { data: { deploymentId: 'reaped', projectId: 'project-a' } } as Job<PublishDeploymentJobData>;
+    await expect(handlePublishJobs(job)).resolves.toEqual({ pages: 0 });
+    expect(mocks.deploymentUpdate).toHaveBeenCalledExactlyOnceWith({
+      where: { id: 'reaped', projectId: 'project-a', status: 'BUILDING' },
+      data: expect.objectContaining({ status: 'READY' }),
+    });
+    expect(mocks.recordPublishReady).not.toHaveBeenCalled();
   });
 
   it('retries indexing delivery after READY without revoking or rebuilding the snapshot', async () => {

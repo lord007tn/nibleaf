@@ -4,6 +4,7 @@ import { prisma } from '@nibleaf/database';
 import type { SearchHit, SearchScope } from '@nibleaf/search';
 import { searchDocs } from '@nibleaf/search';
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -30,6 +31,7 @@ import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { consumeAnswerQuota } from '@/lib/ai-search/quota';
 import { answerPublishedSearch, answerSearchAvailable, runPublishedSearch } from '@/lib/ai-search/runtime';
+import { AssetReferenceAccess } from '@/lib/asset-reference-access';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
@@ -67,8 +69,11 @@ interface PublishedSite {
   viewer: ViewerAccess;
 }
 
+type LiveDeployment = { id: string; version: number; frozen: SiteSnapshot };
+
 /** The live, non-versioned site chrome fields read off the Project row. */
 interface LiveChromeRow {
+  stamp: string | null;
   name: string;
   description: string | null;
   icon: string | null;
@@ -114,11 +119,27 @@ const llmsFullTxtCache = new LruCache<string, string>(50);
  *  the live site within seconds, so this cache is TTL-bounded at 15s. Executable
  *  redirects are the exception and remain sourced from the READY snapshot. */
 const liveChromeCache = new TtlCache<string, LiveChromeRow | null>(200, 15_000);
+// Asset delivery accepts up to 15s of deployment lag; getPublished reads the current READY deployment directly.
+const liveDeploymentCache = new TtlCache<string, LiveDeployment | null>(50, 15_000);
+const assetReferences = new AssetReferenceAccess();
+const assetHeadSelect = { id: true, version: true, assetReferenceBytes: true, assetSourceBytes: true, assetSourcePages: true } as const;
+type AssetDeploymentHead = {
+  id: string;
+  version: number;
+  assetReferenceBytes: number | null;
+  assetSourceBytes: number | null;
+  assetSourcePages: number | null;
+};
+const assetDeploymentHeads = new TtlCache<string, AssetDeploymentHead>(256, 15_000);
+const deploymentMissCache = new TtlCache<string, { deploymentId: string; lookup: Promise<{ id: string; version: number } | null> }>(256, 1000);
 
 /** Apply local settings mutations immediately. Other API replicas remain
  * bounded by the documented 15-second live-chrome TTL. */
 export const invalidatePublishedSiteConfig = (projectId: string): void => {
   liveChromeCache.delete(projectId);
+  liveDeploymentCache.delete(projectId);
+  assetDeploymentHeads.delete(projectId);
+  deploymentMissCache.delete(projectId);
 };
 
 const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> => {
@@ -175,8 +196,9 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       },
     },
   });
-  liveChromeCache.set(projectId, live);
-  return live;
+  const stamped = live ? { ...live, stamp: await assetReferences.stamp(projectId, live) } : null;
+  if (!stamped || stamped.stamp !== null) liveChromeCache.set(projectId, stamped);
+  return stamped;
 };
 
 /** Overlay live, non-versioned site chrome from the Project row onto a snapshot
@@ -226,10 +248,134 @@ export const isProjectTakenDown = async (projectId: string): Promise<boolean> =>
   return Boolean(live?.takedownAt);
 };
 
-export const getProjectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
+const getProjectDeliveryAccess = async (projectId: string, headers: Headers): Promise<ViewerAccess | null> => {
   const live = await getLiveChrome(projectId).catch(() => null);
   if (!live || live.takedownAt) return null;
   return resolveViewerAccess(projectId, live.accessMode, headers);
+};
+
+/** Whether a viewer may read site-wide material that no page grant covers, such
+ *  as the API reference and the release history. */
+const hasSiteWideAccess = (viewer: ViewerAccess): boolean => viewer.allowedPageIds === null;
+
+/** The live READY deployment and its frozen snapshot, or null when the project
+ *  has nothing published. */
+const loadDeploymentSnapshot = async (deployment: { id: string; version: number } | null): Promise<LiveDeployment | null> => {
+  if (!deployment) return null;
+  let frozen = snapshotCache.get(deployment.id);
+  if (!frozen) {
+    const row = await prisma.deployment.findUnique({ where: { id: deployment.id }, select: { snapshot: true } });
+    if (!row?.snapshot) return null;
+    frozen = row.snapshot as unknown as SiteSnapshot;
+    snapshotCache.set(deployment.id, frozen);
+  }
+  return { id: deployment.id, version: deployment.version, frozen };
+};
+
+const findLiveDeployment = (projectId: string) =>
+  prisma.deployment.findFirst({
+    where: { projectId, status: 'READY' },
+    orderBy: { version: 'desc' },
+    select: { id: true, version: true },
+  });
+
+const loadLiveDeployment = async (projectId: string): Promise<LiveDeployment | null> => loadDeploymentSnapshot(await findLiveDeployment(projectId));
+
+const findAssetDeployment = (projectId: string) =>
+  prisma.deployment.findFirst({
+    where: { projectId, status: 'READY' },
+    orderBy: { version: 'desc' },
+    select: assetHeadSelect,
+  });
+
+const readerReferencesAsset = async (
+  projectId: string,
+  deployment: AssetDeploymentHead,
+  live: LiveChromeRow,
+  key: string,
+  grants: Set<string>,
+): Promise<boolean> => {
+  let index: PublishedAssetReferences | null = null;
+  let legacy: SiteSnapshot | undefined;
+  if (deployment.assetReferenceBytes) {
+    index = await assetReferences.load(projectId, deployment.id, deployment.assetReferenceBytes, async () => {
+      const row = await prisma.deployment.findUnique({ where: { id: deployment.id, projectId }, select: { assetReferenceIndex: true } });
+      return (row?.assetReferenceIndex ?? null) as unknown as PublishedAssetReferences | null;
+    });
+    if (!index) return false;
+  } else {
+    // The migration measures legacy snapshots once. Oversized old deployments need republishing, not request-time scans.
+    if (!assetReferences.canReadLegacy(deployment.assetSourceBytes, deployment.assetSourcePages)) return false;
+    legacy = snapshotCache.get(deployment.id);
+    if (!legacy) {
+      if (!assetReferences.reserveRead(deployment.assetSourceBytes ?? 0)) return false;
+      legacy = (await loadDeploymentSnapshot(deployment))?.frozen;
+    }
+    if (!legacy) return false;
+  }
+  const base = index?.chromeBase ?? legacy?.project;
+  if (!base) return false;
+  return assetReferences.allows({
+    projectId,
+    deploymentId: deployment.id,
+    index,
+    legacy,
+    key,
+    grants,
+    chromeStamp: live.stamp,
+    chrome: () => overlayLiveChrome(base, live),
+  });
+};
+
+const findLiveDeploymentAfterMiss = (projectId: string, deploymentId: string) => {
+  const cached = deploymentMissCache.get(projectId);
+  if (cached?.deploymentId === deploymentId) return cached.lookup;
+  const lookup = findLiveDeployment(projectId).catch((error: unknown) => {
+    deploymentMissCache.delete(projectId);
+    throw error;
+  });
+  deploymentMissCache.set(projectId, { deploymentId, lookup });
+  return lookup;
+};
+
+/** Authorize one stored project asset. Site-wide viewers may load any asset of
+ *  the project. A page-scoped reader may load only an asset referenced by the
+ *  site chrome or by a page they are allowed to read in the live deployment; a
+ *  reader without any effective grant may load none. */
+export const getProjectAssetAccess = async (projectId: string, key: string, headers: Headers): Promise<ViewerAccess | null> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  if (!live || live.takedownAt) return null;
+  const viewer = await resolveViewerAccess(projectId, live.accessMode, headers);
+  if (!viewer || hasSiteWideAccess(viewer)) return viewer;
+  const allowedPageIds = viewer.allowedPageIds;
+  if (!allowedPageIds || allowedPageIds.size === 0) return null;
+  let deployment = assetDeploymentHeads.get(projectId);
+  if (!deployment) {
+    try {
+      const current = await findAssetDeployment(projectId);
+      if (!current) return null;
+      deployment = current;
+      assetDeploymentHeads.set(projectId, deployment);
+    } catch {
+      return null;
+    }
+  }
+  try {
+    if (await readerReferencesAsset(projectId, deployment, live, key, allowedPageIds)) return viewer;
+    // Assets accept a 15s deployment lag; a miss checks READY metadata without extending removed-image exposure.
+    const current = await findLiveDeploymentAfterMiss(projectId, deployment.id);
+    if (!current) {
+      assetDeploymentHeads.delete(projectId);
+      return null;
+    }
+    if (current.id === deployment.id) return null;
+    const fresh = await findAssetDeployment(projectId);
+    if (!fresh) return null;
+    assetDeploymentHeads.set(projectId, fresh);
+    return (await readerReferencesAsset(projectId, fresh, live, key, allowedPageIds)) ? viewer : null;
+  } catch {
+    return null;
+  }
 };
 
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
@@ -241,24 +387,16 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   if (!live || live.takedownAt) {
     throw notFound('site', { identifier, reason: live?.takedownAt ? 'takedown' : 'delivery_configuration_unavailable' });
   }
-  // Cheap metadata-only lookup — the heavy `snapshot` JSONB column is only
-  // fetched (and parsed) on a cache miss for this deployment id.
-  const deployment = await prisma.deployment.findFirst({
-    where: { projectId, status: 'READY' },
-    orderBy: { version: 'desc' },
-    select: { id: true, version: true },
-  });
+  const deployment = await loadLiveDeployment(projectId);
   if (!deployment) {
     throw notFound('site', { identifier, reason: 'not_published' });
   }
-  let frozen = snapshotCache.get(deployment.id);
-  if (!frozen) {
-    const row = await prisma.deployment.findUnique({ where: { id: deployment.id }, select: { snapshot: true } });
-    if (!row?.snapshot) {
-      throw notFound('site', { identifier, reason: 'not_published' });
-    }
-    frozen = row.snapshot as unknown as SiteSnapshot;
-    snapshotCache.set(deployment.id, frozen);
+  const { frozen } = deployment;
+  // Asset requests follow a deployment already observed by the page response, even inside the miss-lookup TTL.
+  if (liveDeploymentCache.get(projectId)?.id !== deployment.id) {
+    liveDeploymentCache.set(projectId, deployment);
+    deploymentMissCache.delete(projectId);
+    assetDeploymentHeads.delete(projectId);
   }
   // Overlay the LIVE site chrome (branding, styling, navbar/footer, SEO,
   // visibility, analytics) over the frozen snapshot so config/appearance edits
@@ -284,7 +422,9 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
     throw notFound('site', { identifier: projectId, reason: 'private' });
   }
   const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
-  const snapshot: SiteSnapshot = { ...frozen, project, pages };
+  // No page grant covers the API reference, so only site-wide viewers get it.
+  const openapi = hasSiteWideAccess(viewer) ? frozen.openapi : null;
+  const snapshot: SiteSnapshot = { ...frozen, project, pages, openapi };
   return { snapshot, version: deployment.version, deploymentId: deployment.id, viewer };
 };
 
@@ -384,7 +524,8 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
 };
 
 /** The immutable published OpenAPI document. This goes through the exact same
- *  publication, takedown, and private-site membership gates as pages. */
+ *  publication, takedown, and private-site membership gates as pages, and is
+ *  available only to site-wide viewers. */
 export const getSiteOpenApi = async (identifier: string) => {
   const { snapshot } = await getPublished(identifier);
   if (!snapshot.openapi) {
@@ -718,18 +859,28 @@ const changelogEntries = async (projectId: string) => {
   }));
 };
 
+/** Release history describes the whole site, so a page-scoped reader cannot
+ *  read it. */
+const getPublishedReleaseHistory = async (identifier: string): Promise<PublishedSite> => {
+  const published = await getPublished(identifier);
+  if (!hasSiteWideAccess(published.viewer)) {
+    throw notFound('changelog', { identifier: published.snapshot.project.id, reason: 'page_scoped_reader' });
+  }
+  return published;
+};
+
 /** Public changelog for a site, derived from its READY deployments (newest first). */
 export const getSiteChangelog = async (identifier: string) => {
   // Load (and visibility-gate) the published site first so a private site's
   // release history isn't exposed to anonymous visitors.
-  const { snapshot } = await getPublished(identifier);
+  const { snapshot } = await getPublishedReleaseHistory(identifier);
   return changelogEntries(snapshot.project.id);
 };
 
 /** RSS 2.0 representation of the same immutable release history. The app edge
  * rebases internal /sites/:id URLs to a verified custom domain when present. */
 export const getSiteChangelogRss = async (identifier: string): Promise<SiteTextDocument> => {
-  const { snapshot } = await getPublished(identifier);
+  const { snapshot } = await getPublishedReleaseHistory(identifier);
   const entries = await changelogEntries(snapshot.project.id);
   const config = seoConfigOf(snapshot);
   return {

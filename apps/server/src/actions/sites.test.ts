@@ -325,7 +325,7 @@ describe('searchSite multilingual scope', () => {
   });
 
   it('never widens a reader’s page grants: the same scope and pages with and without prefer', async () => {
-    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: ['page-en'] } as never);
+    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: new Set(['page-en']) } as never);
     onTestFinished(() => {
       vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'public', allowedPageIds: null } as never);
     });
@@ -345,7 +345,7 @@ describe('searchSite multilingual scope', () => {
     const withPrefer = await scopes('ar');
     expect(withPrefer).toEqual(without);
     expect(without.indexes.every((index) => index.pages.join() === 'page-en')).toBe(true);
-    expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en']))).toBe(true);
+    expect(without.indexes.every((index) => JSON.stringify([...(index.allowed as Set<string>)]) === JSON.stringify(['page-en']))).toBe(true);
   });
 
   it('never widens a page-scoped reader on a three-language site, with or without prefer', async () => {
@@ -361,7 +361,7 @@ describe('searchSite multilingual scope', () => {
       ],
     };
     mocks.deploymentFindUnique.mockResolvedValue({ snapshot: trilingual });
-    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: ['page-en', 'page-fr'] } as never);
+    vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'reader', allowedPageIds: new Set(['page-en', 'page-fr']) } as never);
     onTestFinished(() => {
       vi.mocked(resolveViewerAccess).mockResolvedValue({ kind: 'public', allowedPageIds: null } as never);
     });
@@ -388,7 +388,9 @@ describe('searchSite multilingual scope', () => {
       );
     }
     expect(without.indexes.every((index) => index.pages.join() === 'page-en,page-fr')).toBe(true);
-    expect(without.indexes.every((index) => JSON.stringify(index.allowed) === JSON.stringify(['page-en', 'page-fr']))).toBe(true);
+    expect(without.indexes.every((index) => JSON.stringify([...(index.allowed as Set<string>)]) === JSON.stringify(['page-en', 'page-fr']))).toBe(
+      true,
+    );
   });
 
   it('points a hit at the section that matched, with a preview from that section', async () => {

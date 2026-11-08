@@ -3,7 +3,7 @@ import { Readable } from 'node:stream';
 import { prisma } from '@nibleaf/database';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
-import { getProjectDeliveryAccess, isProjectTakenDown } from '@/actions/sites';
+import { getProjectAssetAccess, isProjectTakenDown } from '@/actions/sites';
 import { notFound } from '@/errors';
 import { publicAssetResponseHeaders } from '@/lib/asset-response';
 import { deliveryCacheHeaders } from '@/lib/delivery-cache';
@@ -52,7 +52,9 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   if (projectId && (await isProjectTakenDown(projectId))) {
     throw notFound('asset', { key });
   }
-  const viewer = projectId ? await getProjectDeliveryAccess(projectId, ctx.req.raw.headers) : null;
+  // A page-scoped reader may load only assets that the pages they can read
+  // (or the site chrome) reference.
+  const viewer = projectId ? await getProjectAssetAccess(projectId, key, ctx.req.raw.headers) : null;
   if (projectId && !viewer) {
     throw notFound('asset', { key });
   }

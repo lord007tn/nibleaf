@@ -6,7 +6,7 @@ import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({
   getObjectStream: vi.fn(),
-  getProjectDeliveryAccess: vi.fn(),
+  getProjectAssetAccess: vi.fn(),
   headObject: vi.fn(),
   isProjectTakenDown: vi.fn(),
   findUnique: vi.fn(),
@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: mocks.getObjectStream, headObject: mocks.headObject }));
 vi.mock('@nibleaf/database', () => ({ prisma: { asset: { findUnique: mocks.findUnique } } }));
-vi.mock('@/actions/sites', () => ({ getProjectDeliveryAccess: mocks.getProjectDeliveryAccess, isProjectTakenDown: mocks.isProjectTakenDown }));
+vi.mock('@/actions/sites', () => ({ getProjectAssetAccess: mocks.getProjectAssetAccess, isProjectTakenDown: mocks.isProjectTakenDown }));
 
 import handlers from './handlers';
 
@@ -36,7 +36,7 @@ describe('public asset delivery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isProjectTakenDown.mockResolvedValue(false);
-    mocks.getProjectDeliveryAccess.mockResolvedValue({ kind: 'public', allowedPageIds: null });
+    mocks.getProjectAssetAccess.mockResolvedValue({ kind: 'public', allowedPageIds: null });
     mocks.findUnique.mockResolvedValue({ projectId: 'project-a' });
     mocks.headObject.mockResolvedValue({ ContentType: 'image/png' });
     mocks.getObjectStream.mockImplementation(async () => Readable.from([Buffer.from('image-bytes')]));
@@ -63,19 +63,19 @@ describe('public asset delivery', () => {
     expect(await response.text()).toBe('image-bytes');
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(response.headers.get('cache-control')).toBe('public, max-age=86400');
-    expect(mocks.getProjectDeliveryAccess).toHaveBeenCalledWith('project-a', expect.any(Headers));
+    expect(mocks.getProjectAssetAccess).toHaveBeenCalledWith('project-a', 'projects/project-a/assets/logo.png', expect.any(Headers));
     expect(mocks.headObject).toHaveBeenCalledWith('projects/project-a/assets/logo.png');
   });
 
   it('keeps an asset of a private project out of shared caches for an allowed viewer', async () => {
-    mocks.getProjectDeliveryAccess.mockResolvedValue({ kind: 'workspace', allowedPageIds: null });
+    mocks.getProjectAssetAccess.mockResolvedValue({ kind: 'workspace', allowedPageIds: null });
     const response = await assetRequest('projects/project-a/assets/logo.png');
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('hides an asset of a private or unknown project from a visitor without access', async () => {
-    mocks.getProjectDeliveryAccess.mockResolvedValue(null);
+    mocks.getProjectAssetAccess.mockResolvedValue(null);
     const response = await assetRequest('projects/project-a/assets/logo.png');
     expect(response.status).toBe(404);
     expect(await errorOf(response)).toMatchObject({ code: 'database:not_found', entityType: 'asset' });
@@ -107,7 +107,7 @@ describe('public asset delivery', () => {
     expect(response.status).toBe(404);
     expect(await errorOf(response)).toMatchObject({ code: 'database:not_found', entityType: 'asset' });
     expectNoStorageCall();
-    expect(mocks.getProjectDeliveryAccess).not.toHaveBeenCalled();
+    expect(mocks.getProjectAssetAccess).not.toHaveBeenCalled();
   });
 
   it('matches the response of an object that does not exist', async () => {
@@ -127,7 +127,7 @@ describe('public asset delivery', () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toBe('image-bytes');
     expect(mocks.isProjectTakenDown).not.toHaveBeenCalled();
-    expect(mocks.getProjectDeliveryAccess).not.toHaveBeenCalled();
+    expect(mocks.getProjectAssetAccess).not.toHaveBeenCalled();
     expect(mocks.headObject).toHaveBeenCalledWith(stored);
   });
 });
