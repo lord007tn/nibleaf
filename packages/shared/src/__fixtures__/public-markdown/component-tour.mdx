@@ -1,0 +1,115 @@
+import { Chart } from './chart'
+
+# Component tour
+
+<Note>
+Callouts quote every line, code included:
+
+```bash
+npm install <package>
+```
+</Note>
+
+<Warning>
+<Tip>
+A tip inside a warning.
+</Tip>
+</Warning>
+
+<Steps>
+  <Step title="Install">
+
+  ```bash
+  pnpm add nibleaf
+  ```
+
+  </Step>
+  <Step title="Configure">
+  Set `NIBLEAF_URL` and restart.
+  </Step>
+</Steps>
+
+<Tabs>
+<Tab title="JavaScript">
+
+```js
+const ok = 1 < 2 && "<Card>" !== '';
+```
+
+</Tab>
+<Tab title="Python">
+
+```py
+ok = 1 < 2
+```
+
+</Tab>
+</Tabs>
+
+<CardGroup cols={2}>
+<Card title="Quickstart" href="/quickstart" icon="rocket">
+Get going in five minutes.
+</Card>
+<Card title="Unsafe" href="javascript:alert(1)">
+The link is dropped, the title stays.
+</Card>
+</CardGroup>
+
+<AccordionGroup>
+<Accordion title="Why `MDX`?">
+Because components read well.
+</Accordion>
+</AccordionGroup>
+
+<FileTree>
+<Folder name="src">
+<File name="index.ts" />
+<File name="config.ts"></File>
+</Folder>
+</FileTree>
+
+<ParamField query="limit" type="number" default="20" required>
+Page size.
+</ParamField>
+
+<ResponseField name="items" type="array">
+The results.
+</ResponseField>
+
+<RequestExample>
+
+```bash
+curl https://api.example.com/items?limit=20&page=2
+```
+
+</RequestExample>
+
+<ResponseExample title="Success" status="200">
+
+```json
+{ "items": [] }
+```
+
+</ResponseExample>
+
+<Frame caption="The dashboard, x > 1">
+![Dashboard](/images/dashboard.png)
+</Frame>
+
+<RelatedContent title="Read next">
+<RelatedCard title="Publishing" href="/publishing" description="Ship it" />
+</RelatedContent>
+
+<Update label="v1.2" description="March release">
+Faster search.
+</Update>
+
+Inline: <Badge>Beta</Badge>, <Button href="/start">Start</Button>, <Tooltip tip="Application programming interface">API</Tooltip>, <Icon icon="star" />, 10<sup>-3</sup>, H<sub>2</sub>O, <u>underlined</u>.
+
+Expression {props.version} and a stray } brace. <Unknown onclick="run()">Unknown stays text</Unknown>.
+
+<script>alert('never')</script>
+
+> An authored quote & a [safe link](/a) and an [unsafe one](javascript:alert(1)).
+
+Literal `<Note>` in code and ``a `tick` <Card>``.
