@@ -19,7 +19,19 @@ Document overflow was also zero before the fix, despite clipped portaled popups.
 
 [15.48-second Arabic mobile interaction recording](mobile-shell-ar.webm)
 
-## Verification
+## Council review follow-up
+
+The bell now uses the plain localized name when the unread count is zero, including after marking all notifications read. Positive counts retain the formatted unread name and badge. The notification component suite verifies counts 0, 1, 12, and 1,234 and the transition to zero; all 12 tests passed. The browser script's zero-state expectation was updated to the plain localized label, but that script and the gallery were not rerun for this accessible-name-only correction. Their receipts below remain historical evidence from the initial delivery.
+
+The follow-up was rebased onto `origin/main@551fdcff`. Its fresh check results are recorded below and in `verification.jsonl`. Cleanup review of the follow-up's three code/test hunks found no additional actionable issues; optional spacing and workspace-group-label nits were left unchanged.
+
+- App/design-system Turbo typecheck: 8 tasks passed. Lint and dead-code checks passed.
+- Full app suite: `pnpm --filter @nibleaf/app test --maxWorkers=2`, 262 files passed, 2,891 tests passed and 14 existing opt-in tests skipped. An initial four-worker run hit the inherited site-search lazy-import `beforeAll` timeout; the focused file passed all 48 tests, then the full two-worker run passed with deadlines, assertions and selection unchanged.
+- i18n parity and tests: 4 files, 145 tests passed. Design system has no test script; its typecheck and app coverage passed.
+- Analyzed production build and bundle checks passed: public docs 337.96 KiB gzip, index 337.16 KiB, budget 340.04 KiB (348,200 bytes). Module and copy boundaries passed.
+- Updated browser script syntax check passed. No browser/runtime or screenshot rerun is claimed for this follow-up; the accessible-name correction is verified by the component tests above.
+
+## Initial delivery verification
 
 - App/design-system Turbo typecheck: 8 tasks passed.
 - App suite: `pnpm --filter @nibleaf/app test --maxWorkers=4` passed all 253 files: 2,807 tests passed, 14 existing opt-in tests skipped. Default-worker runs hit cold-import timeouts in the inherited marketing and site-search tests; the focused marketing file passed 142 tests, and the four-worker full run preserved all deadlines, assertions, and test selection.

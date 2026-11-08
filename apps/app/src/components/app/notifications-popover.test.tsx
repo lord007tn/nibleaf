@@ -76,7 +76,12 @@ beforeEach(() => {
   mocks.count = 1;
 });
 
-it.each([0, 1, 12, 1234])('announces the full formatted unread count (%s) and row unread state', async (count) => {
+it.each([
+  { count: 0, label: 'notifications.bellLabel' },
+  { count: 1, label: 'notifications.bellUnreadLabel: 1' },
+  { count: 12, label: 'notifications.bellUnreadLabel: 12' },
+  { count: 1234, label: 'notifications.bellUnreadLabel: 1,234' },
+])('uses the expected bell name for unread count $count and exposes row unread state', async ({ count, label }) => {
   mocks.count = count;
   const host = document.createElement('div');
   document.body.append(host);
@@ -84,7 +89,7 @@ it.each([0, 1, 12, 1234])('announces the full formatted unread count (%s) and ro
   try {
     await act(() => root.render(<NotificationsPopover />));
     const bell = host.querySelector<HTMLButtonElement>('button');
-    expect(bell?.getAttribute('aria-label')).toBe(`notifications.bellUnreadLabel: ${count.toLocaleString('en-US')}`);
+    expect(bell?.getAttribute('aria-label')).toBe(label);
     expect(bell?.querySelector('span')?.getAttribute('aria-hidden')).toBe(count > 0 ? 'true' : undefined);
     await act(() => bell?.click());
     expect(document.querySelector('[data-slot="popover-content"] .sr-only')?.textContent).toContain('notifications.unread');
@@ -103,7 +108,8 @@ it.each([0, 1, 12, 1234])('announces the full formatted unread count (%s) and ro
       },
     ];
     await act(() => root.render(<NotificationsPopover />));
-    expect(bell?.getAttribute('aria-label')).toBe('notifications.bellUnreadLabel: 0');
+    expect(bell?.getAttribute('aria-label')).toBe('notifications.bellLabel');
+    expect(bell?.querySelector('span')).toBeNull();
     expect(document.querySelector('[data-slot="popover-content"]')?.textContent).not.toContain('notifications.unread');
   } finally {
     await act(() => root.unmount());

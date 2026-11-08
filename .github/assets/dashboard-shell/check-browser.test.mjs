@@ -195,7 +195,10 @@ try {
   const recoveryBell = recoveryPage.locator('header button:has(svg.lucide-bell)');
   await recoveryBell.click();
   await recoveryPage.getByRole('button', { name: ar.notifications_markallread, exact: true }).click();
-  await recoveryPage.waitForFunction(() => document.querySelector('header button:has(svg.lucide-bell)')?.getAttribute('aria-label')?.includes('0'));
+  await recoveryPage.waitForFunction(
+    (label) => document.querySelector('header button:has(svg.lucide-bell)')?.getAttribute('aria-label') === label,
+    ar.notifications_belllabel,
+  );
   assert.equal(await recoveryPage.locator('[data-slot="popover-content"] .sr-only').filter({ hasText: ar.notifications_unread }).count(), 0);
   const persisted = await recovery.request.get(`${api}/api/app/notifications/unread-count`);
   assert.equal((await persisted.json()).data.count, 0);

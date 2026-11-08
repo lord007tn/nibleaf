@@ -92,7 +92,7 @@ export function NotificationsPopover() {
       <PopoverTrigger
         render={
           <Button
-            aria-label={unread ? t('notifications.bellUnreadLabel', { count: number(unreadCount) }) : t('notifications.bellLabel')}
+            aria-label={unreadCount > 0 ? t('notifications.bellUnreadLabel', { count: number(unreadCount) }) : t('notifications.bellLabel')}
             className="relative size-8 shrink-0"
             size="icon"
             variant="ghost"
