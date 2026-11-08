@@ -47,7 +47,7 @@ describe('public asset delivery', () => {
     const response = await assetRequest('projects/project-a/assets/pending.png');
     expect(response.status).toBe(404);
     expectNoStorageCall();
-    expect(mocks.getProjectDeliveryAccess).not.toHaveBeenCalled();
+    expect(mocks.getProjectAssetAccess).not.toHaveBeenCalled();
     expect(mocks.isProjectTakenDown).not.toHaveBeenCalled();
   });
 

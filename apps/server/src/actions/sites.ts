@@ -36,6 +36,7 @@ import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
 import { buildLlmsFullTxt, buildLlmsTxt } from '@/lib/llms-txt';
 import { LruCache, TtlCache } from '@/lib/lru';
+import { sanitizePublishedSiteActionUrls } from '@/lib/published-action-urls';
 import { overlayLiveConfigPreservingPublishedRedirects } from '@/lib/published-config';
 import { buildPublishedPageMarkdown } from '@/lib/published-markdown';
 import { filterPagesForReader } from '@/lib/reader-scope';
@@ -425,7 +426,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   // No page grant covers the API reference, so only site-wide viewers get it.
   const openapi = hasSiteWideAccess(viewer) ? frozen.openapi : null;
   const snapshot: SiteSnapshot = { ...frozen, project, pages, openapi };
-  return { snapshot, version: deployment.version, deploymentId: deployment.id, viewer };
+  return { snapshot: sanitizePublishedSiteActionUrls(snapshot), version: deployment.version, deploymentId: deployment.id, viewer };
 };
 
 /** Resolve the active language code: the requested `lang` if it exists in the
