@@ -66,6 +66,12 @@ export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefiniti
   ),
 );
 
+/** All-caps names of HTML elements the editor handles itself. MDX reads `<IMG>` as a
+ *  component, yet the reader renders it as an HTML image, so the editor treats it as
+ *  `<img>`: the image attribute allow-list applies and it saves as `<img …>`. Mixed-case
+ *  names such as `<Img>` stay components. */
+const HTML_ELEMENT_ALIASES: ReadonlyMap<string, string> = new Map([['IMG', 'img']]);
+
 interface TagToken {
   start: number;
   end: number;
@@ -329,7 +335,7 @@ function unsupportedRanges(source: string, tokens: TagToken[], pairs: Map<number
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || token.start < coveredUntil || SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()]) continue;
+    if (!token || token.start < coveredUntil || SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
     if (token.closing) {
       ranges.push({ start: token.start, end: token.end, source: token.raw, name: token.name, block: isWholeLine(source, token.start, token.end) });
       continue;
@@ -469,6 +475,12 @@ function prepareMdxForEditor(source: string): string {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || opaqueCoverage(token.start)) continue;
+    const element = HTML_ELEMENT_ALIASES.get(token.name);
+    if (element) {
+      // img is a void element: a stray closing tag has nothing to close.
+      replacements.push({ start: token.start, end: token.end, value: token.closing ? '' : `<${element}${token.raw.slice(token.name.length + 1)}` });
+      continue;
+    }
     const definition = SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()];
     if (!definition) continue;
     if (token.closing) {
@@ -508,7 +520,7 @@ export function findUnsupportedMdxComponents(source: string): string[] {
   const seen = new Set<string>();
   for (const token of tokens) {
     const lower = token.name.toLowerCase();
-    if (!SUPPORTED_MDX_COMPONENTS[lower] && !seen.has(lower)) {
+    if (!SUPPORTED_MDX_COMPONENTS[lower] && !HTML_ELEMENT_ALIASES.has(token.name) && !seen.has(lower)) {
       seen.add(lower);
       result.push(token.name);
     }
