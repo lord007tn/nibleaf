@@ -6,7 +6,7 @@ The requested `sha-9cf0b0cb4d21bfe02910a0e506af0470f53c8a1c` tag is absent
 `ghcr.io/lord007tn/nibleaf@sha256:9a9098961bb45c5b6c8a2f9d4a998c25a98246c5a2744908e301e91ca48a6f8e`.
 
 The candidate was manually built from code commit
-`eccacada5314dd40ae97f24e25d89c262c2e40c8`. The attached reports identify the
+`42640b930f306687ebbbd9560bf88e5f8063da68`. The attached reports identify the
 exact image and installed graph. The subsequent evidence commit changes only
 this `.github` directory, which is excluded from the Docker build context.
 
@@ -63,11 +63,38 @@ assessment; next review date: **2026-11-15**. Their historical advisory counts a
 not represented as current findings or as unreachable. No edge/testing packages,
 scanner suppression or security-protection weakening was introduced.
 
+## Operator compatibility follow-up
+
+The first pruning candidate omitted documented pnpm operator invocations. The
+final code adds `search-reindex-all` and `search-alias-switch` entrypoint modes
+that exec Node/tsx directly. Evergreen EN/AR docs and README use these modes;
+published v0.2.1 instructions retain their historical commands with a pointer
+for later images. The staged BullMQ v5 migration scripts stay version-pinned
+and use direct Node/tsx; they are deliberately absent from the current v6 image.
+
+The source guard validates 47 documented container commands, including continued
+lines, environment options, shell wrappers, backing-image tools and entrypoint
+subcommands. Six guard tests passed. The physical image audit also resolves every
+documented executable and checks documented subcommands against the image itself.
+It rejects the earlier pruning image for missing `search-alias-switch`; the
+final image passes with 18 required artifacts. Six Linux signal/exit-code tests
+passed, including both operators.
+
+Exact-image proof in `operator-proof.json`: the real reindex command queued one
+fictional published site. Its worker reached READY with two English/Arabic
+pages/chunks, no failures, and two new-deployment Qdrant points. It reused two
+synthetic cached vectors, with zero embedding calls and provider hosts blocked;
+this is not live-provider acceptance. The actual alias-switch command moved a
+dummy alias from its v1 collection to v2, retained both collections, and an
+unconfirmed switch exited 1 without changing the alias. The fixture input is
+retained as text for reproduction. All records and collections are owned test
+fixtures in the `nibleaf-runtime` project.
+
 ## Verification
 
 - All 27 local typecheck tasks, lint, dead-code checks and all 25 full-test Turbo
   tasks passed on Node 26.13.0. The candidate itself runs Node 22.23.4; its manual
-  Linux build passed and its four Linux entrypoint/signal tests passed.
+  Linux build passed and its six Linux entrypoint/signal tests passed.
 - PostgreSQL: 44 migrations, runtime query smoke, three migration upgrade smoke
   scripts, tenant-fence suite, 21 Better Auth tests, 223 server integration tests
   across 18 files, and five worker tests passed against the owned disposable
@@ -78,13 +105,14 @@ scanner suppression or security-protection weakening was introduced.
 - Analyzed app build and `CI=true pnpm --filter @nibleaf/app bundle:check` passed,
   including module boundaries. Public-docs gzip: 338.00 KiB; index: 337.20 KiB;
   existing budget: 340.04 KiB.
-- Exact candidate: all 16 runtime artifacts and required resolutions passed;
+- Exact candidate: all 18 runtime artifacts and required resolutions passed;
   Nitro/nf3, excluded development tools and package managers are absent.
 - Owned Compose project `nibleaf-runtime`: server/worker health and app/admin
   sign-in SSR returned 200; seven worker queues and ClickHouse were ready.
   Both direct migration entrypoints passed, including idempotent repeat runs,
   with production seeding excluded. No source overlays or revision overrides.
-- Shutdown observation: worker/server/admin exited 0; app exceeded the existing
+- Earlier Node 22 shutdown observation (code `7f6333e1`), tracked in #391:
+  worker/server/admin exited 0; app exceeded the existing
   30-second Compose stop window and exited 137 after logging server closure.
   Shutdown timing was not modified by this patch.
 
