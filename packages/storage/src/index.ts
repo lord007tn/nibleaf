@@ -16,6 +16,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { logger } from '@nibleaf/logger';
 import { getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
+import { keys } from './keys';
 
 export { defaultTarget, getBucket, getPublicBaseUrl, getS3Client, publicTarget, type StorageTarget } from './client';
 
@@ -167,8 +168,15 @@ export interface PresignPutOptions {
   target?: StorageTarget;
 }
 
+/** maxio (through 0.4.2) splits `X-Amz-SignedHeaders` on `;` without percent-decoding it,
+ *  so `content-length%3Bcontent-type%3Bhost` reads as one header and every signature
+ *  fails. A literal `;` is valid in a query and SigV4 canonicalizes it back to `%3B`, so
+ *  the signature is unchanged and maxio reads each signed header. */
+const maxioSignedHeaders = (url: string): string =>
+  url.replace(/([?&]X-Amz-SignedHeaders=)([^&#]*)/, (_match, name: string, value: string) => `${name}${value.replace(/%3B/gi, ';')}`);
+
 /** Create a presigned URL a client can PUT bytes to directly (signed with the public endpoint). */
-export const presignPutUrl = ({
+export const presignPutUrl = async ({
   key,
   contentType,
   contentLength,
@@ -180,7 +188,7 @@ export const presignPutUrl = ({
     throw new Error('Upload size must be between 1 byte and 50 MiB.');
   }
   const signTarget = target ?? publicTarget();
-  return getSignedUrl(
+  const url = await getSignedUrl(
     getS3Client(signTarget),
     new PutObjectCommand({ Bucket: getBucket(signTarget), Key: key, ContentType: contentType, ContentLength: contentLength }),
     {
@@ -189,6 +197,8 @@ export const presignPutUrl = ({
       signableHeaders: new Set(['content-length', 'content-type']),
     },
   );
+  // Only the configured default storage has a known provider; explicit targets are signed as is.
+  return !target && keys().STORAGE_PROVIDER === 'maxio' ? maxioSignedHeaders(url) : url;
 };
 
 export interface PresignGetOptions {
