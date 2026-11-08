@@ -1,20 +1,60 @@
+import { buttonVariants } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { isRtl } from '@nibleaf/i18n/locales';
+import { useLocale } from '@nibleaf/i18n/react';
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { createFileRoute } from '@tanstack/react-router';
-import { Eye, FileText, GitPullRequest } from 'lucide-react';
+import { Eye, FileText, GitPullRequest, Lock } from 'lucide-react';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Markdown } from '@/components/markdown';
 import { getGitPreviewFn } from '@/functions/site';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { setPendingDestination } from '@/lib/invitations';
 import { safeDecode } from '@/lib/site-paths';
 
 export const Route = createFileRoute('/git-preview/$token')({
-  loader: async ({ params }) => JSON.parse(await getGitPreviewFn({ data: { token: params.token } })) as { snapshot: SiteSnapshot },
+  loader: async ({ params }): Promise<{ snapshot: SiteSnapshot } | { snapshot: null }> => {
+    try {
+      return JSON.parse(await getGitPreviewFn({ data: { token: params.token } })) as { snapshot: SiteSnapshot };
+    } catch (error) {
+      // A preview of a site that is not public opens only for its members.
+      if (error instanceof ApiResponseError && error.status === 404 && error.reason === 'private') return { snapshot: null };
+      throw error;
+    }
+  },
   head: () => ({ meta: [{ title: 'Pull request preview · Nibleaf' }, { name: 'robots', content: 'noindex,nofollow' }] }),
-  component: GitPreviewPage,
+  component: GitPreviewRoute,
 });
 
-function GitPreviewPage() {
+function GitPreviewRoute() {
   const { snapshot } = Route.useLoaderData();
+  return snapshot ? <GitPreviewPage snapshot={snapshot} /> : <PrivatePreview />;
+}
+
+/** A signed-out visitor, or someone outside the site, opened a private site's preview. */
+function PrivatePreview() {
+  const { locale, t } = useLocale();
+  const { token } = Route.useParams();
+  return (
+    <div className="grid min-h-screen place-items-center bg-background px-6 text-center" dir={isRtl(locale) ? 'rtl' : 'ltr'} lang={locale}>
+      <div className="flex max-w-sm flex-col items-center">
+        <Lock aria-hidden className="size-8 text-muted-foreground" />
+        <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('preview.privateTitle')}</h1>
+        <p className="mt-2 text-muted-foreground text-sm">{t('preview.privateBody')}</p>
+        {/* Log in, then come back to this preview (the auth pages follow the pending destination). */}
+        <a
+          className={buttonVariants({ className: 'mt-5' })}
+          href="/sign-in"
+          onClick={() => setPendingDestination(`/git-preview/${encodeURIComponent(token)}`)}
+        >
+          {t('auth.otp.sendSignIn')}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function GitPreviewPage({ snapshot }: { snapshot: SiteSnapshot }) {
   const pages = useMemo(() => snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden), [snapshot.pages]);
   const [pageId, setPageId] = useState(pages[0]?.id);
   const page = pages.find((item) => item.id === pageId) ?? pages[0];

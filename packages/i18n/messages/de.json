@@ -143,6 +143,8 @@
   "preview_description": "So werden Ihre unveröffentlichten Änderungen für Leser aussehen.",
   "preview_disabled": "Vorschaubereitstellungen sind für diese Site deaktiviert.",
   "preview_empty": "Es stehen keine Entwurfsseiten zur Vorschau zur Verfügung.",
+  "preview_privatetitle": "Diese Vorschau ist privat",
+  "preview_privatebody": "Nur Mitglieder dieser Website können ihre Pull-Request-Vorschauen öffnen. Melden Sie sich mit Ihrem Team-Konto an, dann kommen Sie hierher zurück.",
   "editor_previewsaveerror": "Der neueste Entwurf konnte vor dem Öffnen der Vorschau nicht gespeichert werden.",
   "editor_previewpopupblocked": "Lassen Sie Pop-ups zu, um die Entwurfsvorschau in einem neuen Tab zu öffnen.",
   "settings_heading": "Site-Konfigurationen",

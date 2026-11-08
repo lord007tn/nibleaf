@@ -16,6 +16,7 @@ import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
 import { serializeGitPage } from '../importers/content';
 import { getDefaultLanguage } from '../languages';
+import { isSiteMemberRequest } from '../reader-access';
 import { applyGitContentChanges, GitApplyConflictError, type GitContentChange, type ObservedPage } from './apply';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { GitHubProvider } from './github';
@@ -985,11 +986,21 @@ export const getGitWorkspaceStatus = async (projectId: string) => {
   return connection ? redactConnection(connection) : null;
 };
 
-export const getReadyGitPreview = async (token: string) => {
+/** A ready pull-request preview. The link is posted on the pull request, which
+ *  may sit in a public repository, so a preview of a site that is not public
+ *  (Team only or Invited readers) opens only for a signed-in member of the site.
+ *  Readers never see unpublished drafts. */
+export const getReadyGitPreview = async (token: string, headers: Headers) => {
   if (!/^[A-Za-z0-9_-]{32,64}$/.test(token)) throw notFound('git preview');
-  const preview = await prisma.gitPreview.findUnique({ where: { token }, select: { status: true, snapshot: true, completedAt: true } });
+  const preview = await prisma.gitPreview.findUnique({
+    where: { token },
+    select: { status: true, snapshot: true, completedAt: true, projectId: true, project: { select: { accessMode: true } } },
+  });
   if (preview?.status !== 'READY' || !preview.snapshot) throw notFound('git preview');
-  return preview;
+  if (preview.project.accessMode !== 'PUBLIC' && !(await isSiteMemberRequest(preview.projectId, headers))) {
+    throw notFound('git preview', { reason: 'private' });
+  }
+  return { status: preview.status, snapshot: preview.snapshot, completedAt: preview.completedAt };
 };
 
 export const recordWebhookDelivery = async (input: {

@@ -177,6 +177,8 @@
   "preview_description": "This is how your unpublished changes will look to readers.",
   "preview_disabled": "Preview deployments are disabled for this site.",
   "preview_empty": "No draft pages are available to preview.",
+  "preview_privatetitle": "This preview is private",
+  "preview_privatebody": "Only members of this site can open its pull request previews. Log in with your team account and you'll come back here.",
   "editor_previewsaveerror": "Could not save the latest draft before opening preview.",
   "editor_previewpopupblocked": "Allow pop-ups to open the draft preview in a new tab.",
   "settings_heading": "Site configurations",

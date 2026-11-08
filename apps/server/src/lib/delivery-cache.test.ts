@@ -24,6 +24,14 @@ describe('deliveryCacheHeaders', () => {
     expect(response.headers.get('vary')).toBe('Cookie, Authorization');
   });
 
+  it.each(['/api/public/git/previews/token', '/api/public/reader-access/activate', '/api/public/assets/projects/p/assets/a.png'])(
+    'keeps session-dependent failures at %s out of shared caches',
+    (path) => {
+      const response = protectPrivateDeliveryFailureResponse(path, new Response(null, { status: 404 }));
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    },
+  );
+
   it('does not change unrelated API errors', () => {
     const response = protectPrivateDeliveryFailureResponse('/api/app/projects/missing', new Response(null, { status: 404 }));
     expect(response.headers.get('cache-control')).toBeNull();
