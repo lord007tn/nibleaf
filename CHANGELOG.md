@@ -6,7 +6,78 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+## v0.2.1
+
+### Highlights
+
+v0.2.1 is the first published release since v0.1.2 and includes everything listed under v0.2.0, which was built as an image but never published as a release: optional hybrid search with grounded AI answers, a GitBook importer, project add-ons, portable documentation themes, usage metering, project integrations, an MCP endpoint, and published sites that move between pages without a full reload. Since then, AI answers and drafts default to GPT-6 Luna, search embeddings move to `openai/text-embedding-3-large` at 3072 dimensions, which needs a one-time search reindex where hybrid search already runs, accepting an invitation always ends in the invited site, and Promote shows a review dialog first. v0.2.1 also includes security hardening, so all self-hosted installs should upgrade; from v0.1.2 the upgrade takes two steps, so follow the [upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) instead of only changing the image tag.
+
+### Upgrade actions
+
+These apply when you upgrade a self-hosted installation. New installations need
+none of them. The
+[upgrade guide](https://docs.nibleaf.com/self-hosting/upgrade-v0-2) has the full
+procedure from v0.1.2.
+
+- **Upgrade in two hops from v0.1.2.** Changing only the image tag does not work.
+  BullMQ 6 refuses the repeat definitions left by v0.1.2: the log shows `Unknown
+  recurring configuration`, scheduling is refused, and the API and worker do not
+  become ready. Migrate the schedules from the staged image first (#123, #147).
+- **Take a tested backup.** From v0.1.2, nineteen Prisma migrations run on start
+  and are forward-only. Going back means restoring the pre-upgrade backup. Rolling
+  back the schedules alone is not enough.
+- **Check for duplicate linked accounts.** Better Auth refuses a sign-in when two
+  `account` rows share a provider and account ID. The check in the upgrade guide must
+  return no rows (#249).
+- **Replace the Compose file** with the release's verified copy, keeping `.env`, the
+  Compose project name, and the volume names. Changing only the version misses the
+  `MCP_*` and `INTEGRATION_*` settings.
+- **Add `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY`** to `.env`, as a base64-encoded
+  32-byte key, before using integrations or a workspace AI connection. Do not change
+  it once they are in use.
+- **Confirm a sign-in path.** Sign-in uses email codes, or Google when configured.
+  The worker health check returns 503 while required email delivery has no provider.
+  Configure Postmark or SMTP, or set `EMAIL_DELIVERY_REQUIRED=false` on an instance
+  that signs in through Google.
+- **Move AI to OpenRouter.** The instance AI provider reads `OPENROUTER_API_KEY`.
+  `OPENAI_API_KEY` is no longer used (#100). The release Compose file passes the new
+  key to the services (#241).
+- **Add `erasure` to `WORKER_QUEUES` if you set it.** Deleting a project also erases
+  its stored files through the `erasure` queue. An allowlist without it leaves those
+  files in place (#248).
+- **From the v0.2.0 image**, which was published without a release, no staged step
+  is needed. Take a backup, replace the Compose file, pin `v0.2.1`, and run
+  `migrate`, as in [back up and upgrade](https://docs.nibleaf.com/self-hosting/backups-upgrades).
+- **Rebuild the search index if you already run hybrid search.** v0.1.2 has no
+  hybrid search, so this applies only to Qdrant indexes built by the v0.2.0 image or
+  a source build. The new embeddings need a new collection. Until you switch to it,
+  readers get keyword results and AI answers and Ask AI are paused. After the
+  upgrade, queue a rebuild of every published site:
+
+  ```bash
+  docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+  ```
+
+  Wait until every site's index is READY with the new settings, then switch the
+  alias:
+
+  ```bash
+  docker compose exec -T -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 server pnpm --filter @nibleaf/qdrant alias:switch
+  ```
+
+  Keep `nibleaf_search_active_v1_1536` until you are satisfied. To stay on the
+  previous model, or to roll back, follow
+  [hybrid search and grounded answers](https://docs.nibleaf.com/self-hosting/search-ai)
+  (#355, #356).
+
+### Security
+
+- Security hardening. All self-hosted installs should upgrade.
+
 ## v0.2.0
+
+> Not published as a release. The `v0.2.0` image was built, but no `v0.2.0` tag or
+> GitHub release was made. v0.2.1 supersedes it and includes everything below.
 
 ### Highlights
 

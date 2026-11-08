@@ -10,15 +10,15 @@ dir: 'ltr'
 translation_key: 'getting-started/self-hosted'
 ---
 
-The guided installer pulls the pinned v0.2.0 `linux/amd64` image. It does not
+The guided installer pulls the pinned v0.2.1 `linux/amd64` image. It does not
 compile Nibleaf on your server. Use a disposable host for the first installation.
 The production Compose file has no Qdrant or ClickHouse service; ordinary
-published search works without them. Newer source features such as workspace AI
-keys, Ask AI chat and MCP OAuth need a compatible reviewed image and configuration.
+published search works without them. Optional features such as workspace AI
+keys, Ask AI chat and MCP OAuth stay off until you configure them in their guides.
 
 This tutorial creates a new installation. Preserve existing secrets and data:
 use [backups and upgrades](/self-hosting/backups-upgrades), or the
-[v0.1.2 to v0.2.0 guide](/self-hosting/upgrade-v0-2), for an existing stack.
+[v0.1.2 to v0.2.1 guide](/self-hosting/upgrade-v0-2), for an existing stack.
 
 ## Prerequisites
 
@@ -49,18 +49,12 @@ hash from `release/self-host.json` before execution. If the hash differs, the
 shell stops; do not bypass it:
 
 ```bash
-set -eu
-d=$(mktemp -d)
-curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh
-actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh")
-actual=${actual##* }
-[ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ]
-sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.1/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "b653c9e51106ff0d6778ad65163ebbed08c57c5dbc7c2ac869a31e9c32778032" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 The installer asks for public origins and mail settings, generates fresh secrets,
 writes a mode-600 `.env`, verifies the Compose download, and starts the services.
-Leave the image tag at v0.2.0 for the pinned release. It refuses an existing
+Leave the image tag at v0.2.1 for the pinned release. It refuses an existing
 installation or existing Compose volumes. Do not delete those volumes to get past
 the check; use the upgrade guide.
 
@@ -81,7 +75,7 @@ required for this path. Check out the release tag so a moving `main` does not
 supply a different template:
 
 ```bash
-git clone --branch v0.2.0 --depth 1 https://github.com/lord007tn/nibleaf.git
+git clone --branch v0.2.1 --depth 1 https://github.com/lord007tn/nibleaf.git
 cd nibleaf
 cp .env.production.example .env
 chmod 600 .env

@@ -87,7 +87,11 @@
             "x-nibleaf": {
               "slug": "releases"
             },
-            "pages": ["releases/v0-2-0", "releases/august-2026-capabilities"]
+            "pages": [
+              "releases/v0-2-1",
+              "releases/v0-2-0",
+              "releases/august-2026-capabilities"
+            ]
           },
           {
             "group": "Reference",
@@ -197,6 +201,7 @@
               "slug": "releases"
             },
             "pages": [
+              "ar/releases/v0-2-1",
               "ar/releases/v0-2-0",
               "ar/releases/august-2026-capabilities"
             ]

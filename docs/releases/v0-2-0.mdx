@@ -1,19 +1,20 @@
 ---
 title: 'Nibleaf v0.2.0 release notes'
-description: 'See what ships in Nibleaf v0.2.0, which capabilities need configuration, and how to install it or upgrade from v0.1.2.'
+description: 'What Nibleaf v0.2.0 contains and what it needs. It was never published as a release; v0.2.1 supersedes it.'
 audience: 'self-hosted operators, evaluators, and documentation teams choosing a Nibleaf release'
 content_type: 'reference'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-08'
 verified_against: 'CHANGELOG.md v0.2.0, release/self-host.json, docker-compose.prod.yml, docker-compose.search.yml, and scripts/install.sh'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'releases/v0-2-0'
 ---
 
-v0.2.0 is the self-host release pinned in the committed manifest. The guided installer, the
-production Compose file, and the pinned `ghcr.io/lord007tn/nibleaf:v0.2.0`
-image all point to it. The full list of changes, with pull request numbers, is in
-the repository's `CHANGELOG.md` and on the GitHub release page.
+**v0.2.0 was never published as a release.** Its
+`ghcr.io/lord007tn/nibleaf:v0.2.0` image was built, but no v0.2.0 tag or GitHub
+release was made. [v0.2.1](/releases/v0-2-1) supersedes it and includes everything
+on this page, so install or upgrade to v0.2.1 instead. The full list of changes,
+with pull request numbers, is in the repository's `CHANGELOG.md`.
 
 ## What ships in v0.2.0
 
@@ -68,11 +69,11 @@ boundaries.
 
 ## Install or upgrade
 
-- **New installation:** follow [self-hosted installation](/getting-started/self-hosted).
-  The README's pinned bootstrap command verifies the v0.2.0 installer's SHA-256
-  digest before it runs.
+Install or upgrade to v0.2.1 instead. Its [release notes](/releases/v0-2-1) cover
+new installations, upgrades from v0.1.2, and upgrades from the v0.2.0 image.
+
 - **From v0.1.2:** changing only the image tag does not work. Follow the
-  [v0.2.0 upgrade guide](/self-hosting/upgrade-v0-2), which migrates recurring job
+  [upgrade guide](/self-hosting/upgrade-v0-2), which migrates recurring job
   schedules in two steps and covers the backup, Compose file, and new
   environment settings.
 - **If you set `WORKER_QUEUES`:** add `erasure`; otherwise, files belonging to

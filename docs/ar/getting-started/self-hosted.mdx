@@ -10,15 +10,15 @@ dir: 'rtl'
 translation_key: 'getting-started/self-hosted'
 ---
 
-يسحب برنامج التثبيت الموجّه صورة v0.2.0 المثبّتة لمعمارية `linux/amd64`، دون
+يسحب برنامج التثبيت الموجّه صورة v0.2.1 المثبّتة لمعمارية `linux/amd64`، دون
 ترجمة Nibleaf على الخادم. جرّب التثبيت الأول على مضيف يمكن الاستغناء عنه.
 لا يتضمن ملف Compose الإنتاجي Qdrant أو ClickHouse؛ يعمل البحث المنشور العادي
-دونهما. تحتاج ميزات المصدر الأحدث، مثل مفاتيح ذكاء مساحة العمل ومحادثة Ask AI
-وتسجيل دخول MCP عبر OAuth، إلى صورة متوافقة مراجعة وإعداد ملائم.
+دونهما. تبقى الميزات الاختيارية، مثل مفاتيح ذكاء مساحة العمل ومحادثة Ask AI
+وتسجيل دخول MCP عبر OAuth، معطّلة حتى تضبطها وفق أدلتها.
 
 ينشئ هذا الدليل تثبيتاً جديداً. احتفظ بأسرار وبيانات أي تثبيت قائم واتبع
 [النسخ والترقية](/ar/self-hosting/backups-upgrades)، أو
-[الترقية من v0.1.2 إلى v0.2.0](/ar/self-hosting/upgrade-v0-2)، بدلاً منه.
+[الترقية من v0.1.2 إلى v0.2.1](/ar/self-hosting/upgrade-v0-2)، بدلاً منه.
 
 ## المتطلبات الأساسية
 
@@ -47,17 +47,11 @@ openssl version
 في `release/self-host.json` قبل تنفيذه. عند اختلاف البصمة يتوقف الغلاف؛ لا تتجاوز الفحص:
 
 ```bash
-set -eu
-d=$(mktemp -d)
-curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/nibleaf-install.sh
-actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh")
-actual=${actual##* }
-[ "$actual" = "eea1eaf68f3f6335807edc3494cfdee7b8575c3062b69bfd19f8ce04749721a7" ]
-sh "$d/nibleaf-install.sh"
+set -eu; d=$(mktemp -d); trap 'rm -rf "$d"' EXIT; curl -fsSLo "$d/nibleaf-install.sh" https://github.com/lord007tn/nibleaf/releases/download/v0.2.1/nibleaf-install.sh; actual=$(openssl dgst -sha256 "$d/nibleaf-install.sh"); actual=${actual##* }; [ "$actual" = "b653c9e51106ff0d6778ad65163ebbed08c57c5dbc7c2ac869a31e9c32778032" ] || { echo "Nibleaf installer checksum mismatch" >&2; exit 1; }; sh "$d/nibleaf-install.sh"
 ```
 
 يسأل البرنامج عن العناوين العامة والبريد، وينشئ أسراراً جديدة، ويكتب `.env`
-بصلاحيات 600، ويتحقق من ملف Compose ثم يبدأ الخدمات. أبقِ وسم الصورة v0.2.0
+بصلاحيات 600، ويتحقق من ملف Compose ثم يبدأ الخدمات. أبقِ وسم الصورة v0.2.1
 للتثبيت المثبّت. يرفض وجود تثبيت أو وحدات Compose سابقة؛ لا تحذفها لتجاوز
 الفحص، بل استخدم دليل الترقية.
 
@@ -77,7 +71,7 @@ cd nibleaf
 حتى لا يزوّدك فرع `main` المتغيّر بقالب مختلف:
 
 ```bash
-git clone --branch v0.2.0 --depth 1 https://github.com/lord007tn/nibleaf.git
+git clone --branch v0.2.1 --depth 1 https://github.com/lord007tn/nibleaf.git
 cd nibleaf
 cp .env.production.example .env
 chmod 600 .env

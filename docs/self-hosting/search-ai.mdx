@@ -17,11 +17,12 @@ site opt-in, using either a workspace connection or the instance provider.
 
 ## Release boundary
 
-The setup below describes the current source, including workspace AI keys and
-Ask AI chat merged in November. v0.2.0 predates those workflows. Its production
-Compose file includes neither Qdrant nor ClickHouse. Use a reviewed compatible
-image and explicit Compose overrides for current-source features; do not assume
-that adding their variables upgrades the pinned release.
+The setup below describes v0.2.1 and the current source, including workspace AI
+keys and Ask AI chat merged in November. The v0.2.0 image predates those
+workflows. The v0.2.1 production Compose file includes neither Qdrant nor
+ClickHouse. Use v0.2.1 or a later reviewed image, the optional search overlay,
+and explicit Compose overrides for these features; adding their variables to
+`.env` alone does not enable them.
 
 ## Understand the boundary
 

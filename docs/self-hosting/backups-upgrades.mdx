@@ -106,7 +106,7 @@ successful isolated restore is not recovery evidence.
 Do not re-run the installer to upgrade. It is for new installations only, and
 replacing `.env` with newly generated secrets locks you out of existing data.
 
-**From v0.1.2 to v0.2.0, follow the [upgrade guide](/self-hosting/upgrade-v0-2).**
+**From v0.1.2 to v0.2.1, follow the [upgrade guide](/self-hosting/upgrade-v0-2).**
 That upgrade has a required staged step. If you change only the version, scheduling
 is refused and the API and worker do not become ready.
 
@@ -150,7 +150,7 @@ restore the prior Compose file, and recreate the services. If a migration change
 database, stop writes and restore the pre-upgrade recovery set before starting the
 older application. Do not run the older application against the migrated schema.
 
-Going back from v0.2.0 also needs the schedule rollback in the
+Going back from v0.2.1 to v0.1.2 also needs the schedule rollback in the
 [upgrade guide](/self-hosting/upgrade-v0-2#roll-back). Neither the schedule rollback
 nor the database restore is enough alone.
 
@@ -160,7 +160,7 @@ Treat the database upgrade as a separate dump-and-restore project.
 ## ClickHouse analytics recovery
 
 The source quickstart and Coolify Compose files define the `backups` disk at
-`/var/lib/clickhouse/backups` on a separate named volume. The v0.2.0
+`/var/lib/clickhouse/backups` on a separate named volume. The v0.2.1
 `docker-compose.prod.yml` has no ClickHouse service at all. First provision
 your own ClickHouse service and application environment mappings. On that service, mount a
 volume at `/var/lib/clickhouse/backups` and add this file as
