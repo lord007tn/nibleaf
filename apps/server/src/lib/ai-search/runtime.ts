@@ -100,19 +100,20 @@ const readAnswerAvailability = async (projectId?: string, deploymentId?: string)
   const runtime = await resolveWorkspaceAi(projectId);
   if (!runtime?.answersEnabled) return false;
   if (!deploymentId) return true;
+  // Only runs built with the current embedding settings indexed the collection
+  // being served; a newer run for other settings (before a rollback) does not count.
   const latestRun = await prisma.searchIndexRun.findFirst({
-    where: { projectId, deploymentId },
+    where: {
+      projectId,
+      deploymentId,
+      schemaVersion: env.QDRANT_COLLECTION_VERSION,
+      embeddingModel: env.SEARCH_EMBEDDING_MODEL,
+      vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
+    },
     orderBy: { createdAt: 'desc' },
-    select: { status: true, indexedChunks: true, schemaVersion: true, embeddingModel: true, vectorSize: true },
+    select: { status: true, indexedChunks: true },
   });
-  // A run built for earlier embedding settings indexed another collection.
-  return (
-    latestRun?.status === 'READY' &&
-    latestRun.indexedChunks > 0 &&
-    latestRun.schemaVersion === env.QDRANT_COLLECTION_VERSION &&
-    latestRun.embeddingModel === env.SEARCH_EMBEDDING_MODEL &&
-    latestRun.vectorSize === env.SEARCH_EMBEDDING_DIMENSIONS
-  );
+  return latestRun?.status === 'READY' && latestRun.indexedChunks > 0;
 };
 
 export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null => {

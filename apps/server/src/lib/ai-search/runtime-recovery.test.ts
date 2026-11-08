@@ -6,7 +6,7 @@ const doubles = vi.hoisted(() => ({
   embed: vi.fn(),
   resolveWorkspaceAi: vi.fn(),
   servedCollection: vi.fn(),
-  latestRun: vi.fn(),
+  runs: [] as Array<Record<string, unknown> & { createdAt: Date }>,
 }));
 vi.mock('@nibleaf/qdrant', () => ({
   getQdrantClient: () => ({
@@ -17,7 +17,17 @@ vi.mock('@nibleaf/qdrant', () => ({
     servedCollection: doubles.servedCollection,
   }),
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: { searchIndexRun: { findFirst: doubles.latestRun } } }));
+// The newest run matching every field of the query, as Prisma orders them.
+vi.mock('@nibleaf/database', () => ({
+  prisma: {
+    searchIndexRun: {
+      findFirst: async ({ where }: { where: Record<string, unknown> }) =>
+        doubles.runs
+          .filter((run) => Object.entries(where).every(([key, value]) => run[key] === value))
+          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null,
+    },
+  },
+}));
 vi.mock('@/env', () => ({
   env: {
     SEARCH_RUNTIME: 'hybrid',
@@ -50,7 +60,17 @@ const result = { id: 'booking', title: 'إضافة حجز', path: 'booking', des
 
 // Each test reads the alias afresh: the server trusts one reading for 30 seconds.
 let clock = Date.parse('2026-11-08T00:00:00Z');
-const readyRun = { status: 'READY', indexedChunks: 4, schemaVersion: 'v1', embeddingModel: 'test', vectorSize: 2 };
+// Built with the settings this test's instance runs (v1, the `test` model, 2 dimensions).
+const readyRun = {
+  projectId: 'project',
+  deploymentId: 'deployment',
+  status: 'READY',
+  indexedChunks: 4,
+  schemaVersion: 'v1',
+  embeddingModel: 'test',
+  vectorSize: 2,
+  createdAt: new Date('2026-11-01T00:00:00Z'),
+};
 
 describe('hybrid index recovery', () => {
   beforeEach(() => {
@@ -59,7 +79,7 @@ describe('hybrid index recovery', () => {
     clock += 60_000;
     vi.setSystemTime(clock);
     doubles.servedCollection.mockResolvedValue('search_active_v1_2');
-    doubles.latestRun.mockResolvedValue(readyRun);
+    doubles.runs = [readyRun];
     doubles.embed.mockResolvedValue({ vectors: [[1, 0]] });
     doubles.resolveWorkspaceAi.mockResolvedValue({
       providerId: 'openrouter',
@@ -87,8 +107,17 @@ describe('hybrid index recovery', () => {
 
   it('offers AI answers only from an index built with the current embedding settings', async () => {
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
-    doubles.latestRun.mockResolvedValue({ ...readyRun, embeddingModel: 'earlier-model', vectorSize: 1 });
+    doubles.runs = [{ ...readyRun, embeddingModel: 'earlier-model', vectorSize: 1 }];
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
+  });
+
+  it('keeps AI answers on the retained index after rolling back from a newer embedding rebuild', async () => {
+    // v1 READY, then a v2 rebuild READY; the instance is back on v1 and the alias serves v1 again.
+    doubles.runs = [
+      readyRun,
+      { ...readyRun, schemaVersion: 'v2', embeddingModel: 'larger-model', vectorSize: 3, createdAt: new Date('2026-11-05T00:00:00Z') },
+    ];
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
   });
 
   it('keeps keyword search available while the published index is empty', async () => {
