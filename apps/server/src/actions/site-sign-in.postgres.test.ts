@@ -160,7 +160,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     const after = await db.prisma.reader.findUniqueOrThrow({ where: { id: reader.id } });
     expect(after).toMatchObject({ status: 'ACTIVE' });
     expect(after.activatedAt).not.toBeNull();
-    const shell = await (await app.request(`/api/public/sites/${project.id}`, { headers: { cookie } })).json();
+    const shell = (await (await app.request(`/api/public/sites/${project.id}`, { headers: { cookie } })).json()) as { data: { signedIn?: boolean } };
     expect(shell.data.signedIn).toBe(true);
   });
 
@@ -299,7 +299,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     const { project } = await site('READERS');
     const response = await app.request(`/api/public/sites/${project.id}/page?path=guide`);
     expect(response.status).toBe(404);
-    const body = await response.json();
+    const body = (await response.json()) as { error: { details: unknown } };
     expect(body.error.details).toMatchObject({ reason: 'private', gate: { projectId: project.id, name: project.name, mode: 'READERS' } });
     expect(JSON.stringify(body)).not.toContain('Confidential guide');
   });
