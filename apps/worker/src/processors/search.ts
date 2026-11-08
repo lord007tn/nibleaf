@@ -247,6 +247,11 @@ const claimRun = async (data: ReindexProjectJobData, deployment: { id: string },
             startedAt: run.startedAt ?? now,
             completedAt: null,
             errorCode: null,
+            // A run queued before an embedding-settings change is built with
+            // this worker's settings, so it must record them.
+            schemaVersion: env.QDRANT_COLLECTION_VERSION,
+            embeddingModel: env.SEARCH_EMBEDDING_MODEL,
+            vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
           },
         });
         if (claimed.count !== 1) throw new SearchRunBusy('Search index run ownership changed.');
