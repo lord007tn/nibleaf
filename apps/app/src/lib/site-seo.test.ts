@@ -9,6 +9,7 @@ import {
   siteHead,
   siteIconHref,
   siteLanguageFromMatches,
+  siteRobotsHeaders,
   unavailableSiteHead,
 } from './site-seo';
 
@@ -408,6 +409,13 @@ describe('siteHead analytics scripts', () => {
     version: 1,
     generatedAt: '2026-07-01T00:00:00.000Z',
     capabilities: { answer: false },
+  });
+
+  it('sends a noindex header for a private site and for a refused shell, never for a public one', () => {
+    expect(siteRobotsHeaders(shell({ visibility: 'private' }))).toEqual({ 'X-Robots-Tag': 'noindex, nofollow' });
+    expect(siteRobotsHeaders(null)).toEqual({ 'X-Robots-Tag': 'noindex, nofollow' });
+    expect(siteRobotsHeaders(shell({ visibility: 'public' }))).toBeUndefined();
+    expect(siteRobotsHeaders(shell(null))).toBeUndefined();
   });
 
   it('carries the site’s own icon and never Nibleaf’s', () => {

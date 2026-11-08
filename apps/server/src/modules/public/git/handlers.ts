@@ -116,7 +116,7 @@ const app = new Hono<HonoEnv>()
     return ctx.json({ data: { ok: true } }, 200);
   })
   .get('/previews/:token', ...gitRoutes.preview, async (ctx) => {
-    const preview = await getReadyGitPreview(ctx.req.param('token'));
+    const preview = await getReadyGitPreview(ctx.req.param('token'), ctx.req.raw.headers);
     ctx.header('Cache-Control', 'private, no-store');
     ctx.header('X-Robots-Tag', 'noindex, nofollow');
     return ctx.json({ data: preview }, 200);

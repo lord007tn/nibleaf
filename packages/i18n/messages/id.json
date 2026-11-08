@@ -132,6 +132,8 @@
   "preview_description": "Seperti inilah perubahan yang belum diterbitkan akan terlihat oleh pembaca.",
   "preview_disabled": "Penerapan pratinjau dinonaktifkan untuk situs ini.",
   "preview_empty": "Tidak ada halaman draf yang tersedia untuk dipratinjau.",
+  "preview_privatetitle": "Pratinjau ini privat",
+  "preview_privatebody": "Hanya anggota situs ini yang dapat membuka pratinjau pull request-nya. Masuk dengan akun tim Anda dan Anda akan kembali ke sini.",
   "editor_previewsaveerror": "Tidak dapat menyimpan draf terbaru sebelum membuka pratinjau.",
   "editor_previewpopupblocked": "Izinkan pop-up untuk membuka pratinjau draf di tab baru.",
   "settings_heading": "Konfigurasi situs",

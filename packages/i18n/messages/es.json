@@ -132,6 +132,8 @@
   "preview_description": "Así verán los lectores tus cambios sin publicar.",
   "preview_disabled": "Las implementaciones de vista previa están deshabilitadas para este sitio.",
   "preview_empty": "No hay borradores de páginas disponibles para obtener una vista previa.",
+  "preview_privatetitle": "Esta vista previa es privada",
+  "preview_privatebody": "Solo los miembros de este sitio pueden abrir las vistas previas de sus pull requests. Inicia sesión con tu cuenta del equipo y volverás aquí.",
   "editor_previewsaveerror": "No se pudo guardar el último borrador antes de abrir la vista previa.",
   "editor_previewpopupblocked": "Permitir que las ventanas emergentes abran la vista previa del borrador en una nueva pestaña.",
   "settings_heading": "Configuraciones del sitio",

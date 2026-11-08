@@ -526,7 +526,12 @@ function seoUnavailableResponse(file: string): Response {
       },
     });
   }
-  return new Response('Not found', { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+  // Whether this answer is a 404 can depend on the visitor's session (a private
+  // site's files exist for its readers), so it must never enter a shared cache.
+  return new Response('Not found', {
+    status: 404,
+    headers: { 'cache-control': 'private, no-store', 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow' },
+  });
 }
 
 /** Serve robots.txt / sitemap.xml / llms(-full).txt at a custom domain's ROOT,

@@ -98,7 +98,8 @@ export interface ViewerAccess {
   allowedPageIds: Set<string> | null;
 }
 
-const workspaceViewer = async (projectId: string, headers: Headers): Promise<boolean> => {
+/** Whether the request carries a dashboard session of a member of this site. */
+export const isSiteMemberRequest = async (projectId: string, headers: Headers): Promise<boolean> => {
   const result = await auth.api.getSession({ headers }).catch(() => null);
   if (!result?.user?.id) return false;
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
@@ -120,7 +121,7 @@ export const resolveViewerAccess = async (
   headers: Headers,
 ): Promise<ViewerAccess | null> => {
   if (accessMode === 'PUBLIC') return { kind: 'public', allowedPageIds: null };
-  if (await workspaceViewer(projectId, headers)) return { kind: 'workspace', allowedPageIds: null };
+  if (await isSiteMemberRequest(projectId, headers)) return { kind: 'workspace', allowedPageIds: null };
   if (accessMode === 'WORKSPACE') return null;
 
   const rawCookie = headers.get('cookie') ?? '';

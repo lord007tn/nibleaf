@@ -5,8 +5,11 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 
 vi.mock('@/functions/site', () => ({ getGitPreviewFn: vi.fn() }));
+vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
+import { getGitPreviewFn } from '@/functions/site';
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { Route } from './git-preview.$token';
 
 const page = (id: string, path: string, content: string, versionId = 'branch_next'): SnapshotPage => ({
@@ -139,5 +142,31 @@ it('opens a sidebar page at its top', async () => {
   await act(async () => setup?.click());
   expect(container.querySelector('article h1')?.textContent).toBe('Setup');
   expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 });
+  await act(async () => root.unmount());
+});
+
+it('shows a log-in screen instead of the drafts when the site is not public', async () => {
+  const loader = Route.options.loader as (input: { params: { token: string } }) => Promise<unknown>;
+  vi.mocked(getGitPreviewFn).mockRejectedValueOnce(
+    new ApiResponseError('git preview not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, { reason: 'private' }),
+  );
+  await expect(loader({ params: { token: 'token' } })).resolves.toEqual({ snapshot: null });
+  // Any other failure (an unknown or expired link) stays an error.
+  vi.mocked(getGitPreviewFn).mockRejectedValueOnce(new ApiResponseError('git preview not found', 404, 'database:not_found'));
+  await expect(loader({ params: { token: 'token' } })).rejects.toBeInstanceOf(ApiResponseError);
+
+  vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot: null } as never);
+  vi.spyOn(Route, 'useParams').mockReturnValue({ token: 'token' } as never);
+  const Page = Route.options.component as ComponentType;
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => root.render(<Page />));
+  expect(container.querySelector('h1')?.textContent).toBe('preview.privateTitle');
+  expect(container.querySelector('article')).toBeNull();
+  const logIn = container.querySelector<HTMLAnchorElement>('a[href="/sign-in"]');
+  logIn?.addEventListener('click', (event) => event.preventDefault());
+  await act(async () => logIn?.click());
+  expect(window.localStorage.getItem('nibleaf.pendingDestination')).toBe('/git-preview/token');
   await act(async () => root.unmount());
 });

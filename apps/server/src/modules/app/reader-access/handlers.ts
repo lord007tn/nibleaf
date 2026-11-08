@@ -21,15 +21,21 @@ import {
   updateAudience,
   updateReader,
 } from '@/actions/reader-access';
+import { invalidatePublishedSiteConfig } from '@/actions/sites';
 import { getContextLocale, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import routes from './routes';
 
 const app = new Hono<HonoEnv>()
   .get('/', ...routes.list, async (ctx) => ctx.json({ data: await listReaderAccess(ctx.req.param('projectId') as string) }, 200))
-  .put('/mode', ...routes.updateMode, validator('json', projectAccessModeBody), async (ctx) =>
-    ctx.json({ data: await setProjectAccessMode(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json')) }, 200),
-  )
+  .put('/mode', ...routes.updateMode, validator('json', projectAccessModeBody), async (ctx) => {
+    const projectId = ctx.req.param('projectId') as string;
+    const data = await setProjectAccessMode(projectId, getContextUserOrThrow().id, ctx.req.valid('json'));
+    // Apply the new gate on this instance now, not after the 15-second live
+    // settings cache expires: a site switched to private must stop serving at once.
+    invalidatePublishedSiteConfig(projectId);
+    return ctx.json({ data }, 200);
+  })
   .post('/audiences', ...routes.createAudience, validator('json', createAudienceBody), async (ctx) =>
     ctx.json({ data: await createAudience(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json')) }, 201),
   )

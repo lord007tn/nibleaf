@@ -132,6 +132,8 @@
   "preview_description": "Voici comment vos modifications non publiées apparaîtront aux lecteurs.",
   "preview_disabled": "Les déploiements en version préliminaire sont désactivés pour ce site.",
   "preview_empty": "Aucun brouillon de page n'est disponible pour un aperçu.",
+  "preview_privatetitle": "Cet aperçu est privé",
+  "preview_privatebody": "Seuls les membres de ce site peuvent ouvrir les aperçus de ses pull requests. Connectez-vous avec votre compte d'équipe et vous reviendrez ici.",
   "editor_previewsaveerror": "Impossible d'enregistrer le dernier brouillon avant d'ouvrir l'aperçu.",
   "editor_previewpopupblocked": "Autoriser les fenêtres contextuelles à ouvrir l'aperçu du brouillon dans un nouvel onglet.",
   "settings_heading": "Configurations de sites",

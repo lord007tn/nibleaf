@@ -9,9 +9,11 @@ export const deliveryCacheHeaders = (isPrivate: boolean, publicPolicy: string): 
 /** Delivery lookups deliberately return the same not-found response for an
  * absent resource and a private resource the visitor cannot read. Preserve that
  * non-disclosure boundary at the cache layer too: the global error response must
- * never enter a shared cache before a handler can choose its success policy. */
+ * never enter a shared cache before a handler can choose its success policy.
+ * Pull-request previews and reader sign-in answers depend on the visitor's
+ * session in the same way. */
 export const protectPrivateDeliveryFailureResponse = (path: string, response: Response): Response => {
-  if (!/^\/api\/public\/(?:sites|assets)(?:\/|$)/.test(path)) return response;
+  if (!/^\/api\/public\/(?:sites|assets|reader-access|git\/previews)(?:\/|$)/.test(path)) return response;
   for (const [name, value] of Object.entries(PRIVATE_DELIVERY_HEADERS)) response.headers.set(name, value);
   return response;
 };

@@ -132,6 +132,8 @@
   "preview_description": "这是读者将看到的尚未发布的更改效果。",
   "preview_disabled": "此站点禁用预览部署。",
   "preview_empty": "没有草稿页面可供预览。",
+  "preview_privatetitle": "此预览为私有",
+  "preview_privatebody": "只有此站点的成员才能打开它的拉取请求预览。使用你的团队账户登录后，你会回到这里。",
   "editor_previewsaveerror": "打开预览之前无法保存最新草稿。",
   "editor_previewpopupblocked": "允许弹出窗口在新选项卡中打开草稿预览。",
   "settings_heading": "站点配置",

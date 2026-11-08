@@ -257,6 +257,12 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
   return { meta, links, ...(scripts.length ? { scripts } : {}) };
 }
 
+/** Route `headers` for every published-site response: a site that is not
+ *  public (or whose shell the API refused) also says noindex in a header, so
+ *  crawlers that skip the HTML `<meta>` still keep its pages out of results. */
+export const siteRobotsHeaders = (site: SiteShell | null | undefined): Record<string, string> | undefined =>
+  !site || site.project.config?.visibility === 'private' ? { 'X-Robots-Tag': 'noindex, nofollow' } : undefined;
+
 /** <head> for a site whose shell the API refused: a private site, or one
  *  that is not published. No Nibleaf branding, never indexed. */
 export function unavailableSiteHead(reason: 'private' | undefined, lang?: string): Head {

@@ -3782,6 +3782,8 @@ export const MESSAGE_IDS = {
   'members.suggestions.label': 'members_suggestions_label',
   'members.suggestions.hint': 'members_suggestions_hint',
   'people.chooseSite': 'people_choosesite',
+  'preview.privateTitle': 'preview_privatetitle',
+  'preview.privateBody': 'preview_privatebody',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

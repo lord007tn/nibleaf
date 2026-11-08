@@ -316,3 +316,18 @@ describe('published Markdown edge routing', () => {
     expect(await response.text()).toBe('ok');
   });
 });
+
+describe('machine files of a site the visitor cannot read', () => {
+  it('keeps the not-found answer out of shared caches and search results', async () => {
+    mocks.got.mockImplementation(async (url: string) => {
+      if (url.includes('/api/public/sites/private-project/')) return upstream({ error: 'not found' }, 404);
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    for (const file of ['llms.txt', 'llms-full.txt', 'sitemap.xml', 'changelog/rss.xml']) {
+      const response = await server.fetch(new Request(`http://localhost:4310/sites/private-project/${file}`));
+      expect(response.status, file).toBe(404);
+      expect(response.headers.get('cache-control'), file).toBe('private, no-store');
+      expect(response.headers.get('x-robots-tag'), file).toBe('noindex, nofollow');
+    }
+  });
+});
