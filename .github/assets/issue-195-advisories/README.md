@@ -6,7 +6,7 @@ The requested `sha-9cf0b0cb4d21bfe02910a0e506af0470f53c8a1c` tag is absent
 `ghcr.io/lord007tn/nibleaf@sha256:9a9098961bb45c5b6c8a2f9d4a998c25a98246c5a2744908e301e91ca48a6f8e`.
 
 The candidate was manually built from code commit
-`7f6333e1f67245c7a0925fa8d45598d9bf03c6cb`. The attached reports identify the
+`eccacada5314dd40ae97f24e25d89c262c2e40c8`. The attached reports identify the
 exact image and installed graph. The subsequent evidence commit changes only
 this `.github` directory, which is excluded from the Docker build context.
 

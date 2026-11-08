@@ -1,11 +1,11 @@
 {
-  "image": "nibleaf-runtime:195",
+  "image": "nibleaf-runtime:195-final",
   "services": {
     "server": {
       "status": 200,
       "health": {
         "status": "ok",
-        "revision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb"
+        "revision": "eccacada5314dd40ae97f24e25d89c262c2e40c8"
       }
     },
     "worker": {
@@ -13,7 +13,7 @@
       "health": {
         "status": "ok",
         "service": "worker",
-        "revision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb",
+        "revision": "eccacada5314dd40ae97f24e25d89c262c2e40c8",
         "queues": {
           "status": "ok",
           "workers": [
@@ -75,7 +75,7 @@
         },
         "analytics": {
           "configured": true,
-          "latencyMs": 21,
+          "latencyMs": 54,
           "status": "ok"
         }
       }
@@ -87,6 +87,6 @@
       "status": 200
     }
   },
-  "imageId": "sha256:35ee8c5dbd39289f14f8c9be85a2effda528fc8e917931dcca5b2fc3dea31b94",
-  "sourceRevision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb"
+  "imageId": "sha256:d0fa24f408b62ad9f7eac538abc8fdc79486e548786ee1a7dde7dbf7819b268b",
+  "sourceRevision": "eccacada5314dd40ae97f24e25d89c262c2e40c8"
 }

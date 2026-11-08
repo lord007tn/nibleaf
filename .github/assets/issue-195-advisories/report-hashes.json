@@ -4,11 +4,11 @@
     "rawBytes": 1398266
   },
   "after.trivy.json.gz": {
-    "rawSha256": "6ecf0628c4782cdcb0912fc43ef6e12623a9d74467456392f32d0bdedf9085b3",
-    "rawBytes": 1284087
+    "rawSha256": "af80d5ffedd5139f1f5bb0289d2debab03a3c8a8931807a49272f284cb36358a",
+    "rawBytes": 1284199
   },
   "runtime-inventory.json.gz": {
-    "rawSha256": "d9c07cc31a10a84b5760242d16e32a808b3807de438c4ac4e9e29e58c03241f5",
-    "rawBytes": 175010
+    "rawSha256": "2c5c5c8c6f0366dab8f7aaddc3c17978902024fb8dc736735a0f2446f437ebe6",
+    "rawBytes": 175016
   }
 }
