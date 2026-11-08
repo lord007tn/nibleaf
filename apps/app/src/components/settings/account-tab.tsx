@@ -337,7 +337,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <Button disabled={otp.length !== 6} loading={isVerifying} type="submit" loadingText={t('auth.otp.verifying')}>
               {t('settings.account.email.confirm')}
             </Button>
-            <Button onClick={cancel} type="button" variant="outline">
+            {/* Once the final confirmation is on its way the address may already have changed: no cancelling it then. */}
+            <Button disabled={isVerifying} onClick={cancel} type="button" variant="outline">
               {t('common.cancel')}
             </Button>
           </div>

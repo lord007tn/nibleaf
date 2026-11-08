@@ -157,6 +157,21 @@ describe('account settings hydration', () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 
+  it('cannot be cancelled once the final confirmation is on its way (the address may already have changed)', async () => {
+    const change = deferred<{ error: { status: number; message: string } }>();
+    mocks.send.mockResolvedValue({ error: null });
+    mocks.requestChange.mockResolvedValue({ error: null });
+    mocks.changeEmail.mockReturnValue(change.promise);
+    await beginEmailChange();
+    await typeCode('#acct-current-email-otp', '123456');
+    await typeCode('#acct-email-otp', '654321');
+    expect(mocks.changeEmail).toHaveBeenCalledOnce();
+    expect(button('common.cancel')?.disabled).toBe(true);
+
+    await act(async () => change.resolve({ error: { status: 400, message: 'Invalid OTP' } }));
+    expect(button('common.cancel')?.disabled).toBe(false);
+  });
+
   it('stops at the form when the new address is the current one, instead of sending codes that can never work', async () => {
     await beginEmailChange(' ADA@example.test ');
     expect(mocks.send).not.toHaveBeenCalled();
