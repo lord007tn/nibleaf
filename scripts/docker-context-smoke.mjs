@@ -65,7 +65,7 @@ try {
     '}',
     "console.log('Docker context excludes all synthetic QA, auth, volume, and env canaries.');",
   ].join('\n');
-  const dockerfile = ['FROM node:22-alpine AS smoke', 'COPY . /context', `RUN ${JSON.stringify(['node', '-e', probe])}`, ''].join('\n');
+  const dockerfile = ['FROM node:26-alpine AS smoke', 'COPY . /context', `RUN ${JSON.stringify(['node', '-e', probe])}`, ''].join('\n');
   const result = spawnSync('docker', ['build', '--progress=plain', '--file', '-', '--tag', tag, root], {
     input: dockerfile,
     stdio: ['pipe', 'inherit', 'inherit'],

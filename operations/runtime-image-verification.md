@@ -37,7 +37,7 @@ neither service needs that build-time tracer or its embedded glob at runtime.
 The image audit rejects Nitro/nf3 and package-manager artifacts in the final
 image, in addition to the previously excluded compiler/lint tooling.
 
-The base stays on digest-pinned Node 22 and Alpine 3.24. The runner upgrades all installed
+The base stays on digest-pinned, qualified Node 26 and Alpine 3.24. The runner upgrades all installed
 packages from that stable branch, including Chromium's native dependencies.
 The manual Docker workflow pulls the current base image and bypasses only the
 `runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm

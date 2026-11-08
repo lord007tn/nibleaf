@@ -7,7 +7,7 @@
 # run their self-contained Nitro SSR bundles.
 
 # Refresh within the reviewed Alpine branch; distro upgrades need their own review.
-FROM node:22-alpine3.24@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS base
+FROM node:26-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS base
 ENV PNPM_HOME=/pnpm
 ENV PNPM_STORE_DIR=/pnpm/store
 ENV PATH=$PNPM_HOME:$PATH
