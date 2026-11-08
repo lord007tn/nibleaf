@@ -5,6 +5,10 @@ export type AnalyticsAvailability = 'complete' | 'partial' | 'unavailable';
 export type AnalyticsRange = '24h' | '7d' | '30d' | '90d';
 
 const RANGE_DAYS: Record<AnalyticsRange, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
+/** The selected rolling window, and the equal window right before it. */
+const CURRENT_WINDOW = "hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))";
+const PREVIOUS_WINDOW =
+  "hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16} * 2)) AND hour < toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))";
 const safeTimezone = (timezone: string): string => {
   try {
     new Intl.DateTimeFormat('en', { timeZone: timezone }).format();
@@ -32,11 +36,45 @@ const json = async <T>(client: ClickHouseClient, query: string, queryParams: Rec
 };
 const num = (value: string | number | undefined): number => Number(value ?? 0);
 
+/**
+ * Every calendar day, in `timezone`, that the rolling window [now - days, now]
+ * touches, oldest first. Both partial edge days are included so every counted
+ * event has a bucket.
+ */
+export const windowDays = (days: number, timezone: string, now = new Date()): string[] => {
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const dateAt = (instant: Date) => {
+    const parts = Object.fromEntries(formatter.formatToParts(instant).map(({ type, value }) => [type, value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const last = dateAt(now);
+  const out: string[] = [];
+  let day = new Date(`${dateAt(new Date(now.getTime() - days * 86_400_000))}T00:00:00Z`);
+  while (day.toISOString().slice(0, 10) <= last) {
+    out.push(day.toISOString().slice(0, 10));
+    day = new Date(day.getTime() + 86_400_000);
+  }
+  return out;
+};
+
+/**
+ * ClickHouse only returns days that had views. Charted as-is, a quiet weekend
+ * disappears and its neighbours are drawn side by side, so fill every day of
+ * the window with zero (keeping any bucket the query returned).
+ */
+export const fillDays = (rows: DayRow[], days: number, timezone: string, now = new Date()): Array<{ date: string; views: number }> => {
+  const counts = new Map(rows.map((row) => [row.date, num(row.views)]));
+  const dates = new Set([...windowDays(days, timezone, now), ...counts.keys()]);
+  return [...dates].sort().map((date) => ({ date, views: counts.get(date) ?? 0 }));
+};
+
 export interface ProjectAnalyticsOverview {
   availability: AnalyticsAvailability;
   range: AnalyticsRange;
   timezone: string;
   totalViews: number | null;
+  /** Page views in the equal window right before this one (for "vs previous period"). */
+  previousTotalViews: number | null;
   uniqueVisitors: number | null;
   timeseries: Array<{ date: string; views: number }>;
   topPages: Array<{ path: string; views: number }>;
@@ -67,6 +105,7 @@ const unavailableProjectOverview = (range: AnalyticsRange, timezone: string): Pr
   range,
   timezone,
   totalViews: null,
+  previousTotalViews: null,
   uniqueVisitors: null,
   timeseries: [],
   topPages: [],
@@ -88,12 +127,19 @@ export const queryProjectAnalytics = async (
 ): Promise<ProjectAnalyticsOverview> => {
   const tz = safeTimezone(timezone);
   const params = { tenant_id: tenantId, project_id: projectId, days: RANGE_DAYS[range], timezone: tz };
-  const common = `tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
+  const scope =
+    'tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)';
+  const common = `${scope} AND ${CURRENT_WINDOW}`;
   try {
-    const [totals, visitors, days, pages, referrers, languages, devices, search, ai, noAnswer, engagement] = await Promise.all([
+    const [totals, previousTotals, visitors, days, pages, referrers, languages, devices, search, ai, noAnswer, engagement] = await Promise.all([
       json<CountRow>(
         client,
         `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
+        params,
+      ),
+      json<CountRow>(
+        client,
+        `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
         params,
       ),
       json<CountRow>(
@@ -181,8 +227,9 @@ export const queryProjectAnalytics = async (
       range,
       timezone: tz,
       totalViews: num(totals[0]?.value),
+      previousTotalViews: num(previousTotals[0]?.value),
       uniqueVisitors: num(visitors[0]?.value),
-      timeseries: days.map((row) => ({ date: row.date, views: num(row.views) })),
+      timeseries: fillDays(days, RANGE_DAYS[range], tz),
       topPages: pages.map((row) => ({ path: row.key, views: num(row.value) })),
       referrers: referrers.map((row) => ({ referrer: row.key, views: num(row.value) })),
       languages: languages.map((row) => ({ language: row.key, views: num(row.value) })),
@@ -233,8 +280,9 @@ export const queryWorkspaceAnalytics = async (
       range,
       timezone: tz,
       totalViews: 0,
+      previousTotalViews: 0,
       uniqueVisitors: 0,
-      timeseries: [],
+      timeseries: fillDays([], RANGE_DAYS[range], tz),
       byProject: [],
       topPages: [],
       referrers: [],
@@ -249,12 +297,19 @@ export const queryWorkspaceAnalytics = async (
     days: RANGE_DAYS[range],
     timezone: tz,
   };
-  const common = `(tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)}) AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL) AND hour >= toStartOfHour(now('UTC') - toIntervalDay({days:UInt16}))`;
+  const scope =
+    '(tenant_id, project_id) IN arrayZip({tenant_ids:Array(String)}, {project_ids:Array(String)}) AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)';
+  const common = `${scope} AND ${CURRENT_WINDOW}`;
   try {
-    const [total, visitors, days, byProject, pages, referrers, devices, search, ai] = await Promise.all([
+    const [total, previousTotal, visitors, days, byProject, pages, referrers, devices, search, ai] = await Promise.all([
       json<CountRow>(
         client,
         `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${common} AND event_name = 'page_view' GROUP BY project_id, hour, path, language, device, referrer_domain)`,
+        params,
+      ),
+      json<CountRow>(
+        client,
+        `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY project_id, hour, path, language, device, referrer_domain)`,
         params,
       ),
       json<CountRow>(
@@ -314,8 +369,9 @@ export const queryWorkspaceAnalytics = async (
       range,
       timezone: tz,
       totalViews: num(total[0]?.value),
+      previousTotalViews: num(previousTotal[0]?.value),
       uniqueVisitors: num(visitors[0]?.value),
-      timeseries: days.map((row) => ({ date: row.date, views: num(row.views) })),
+      timeseries: fillDays(days, RANGE_DAYS[range], tz),
       byProject: byProject.map((row) => ({ projectId: row.key, views: num(row.value) })),
       topPages: pages.map((row) => ({ projectId: String(row.project_id), path: String(row.path), views: num(row.value) })),
       referrers: referrers.map((row) => ({ referrer: row.key, views: num(row.value) })),

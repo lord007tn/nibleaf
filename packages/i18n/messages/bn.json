@@ -493,7 +493,6 @@
   "analytics_kpi_pageviews": "পৃষ্ঠা দর্শন",
   "analytics_kpi_uniquevisitors": "অনন্য দর্শক",
   "analytics_kpi_searches": "অনুসন্ধান করে",
-  "analytics_kpi_projectswithtraffic": "ট্রাফিক সঙ্গে প্রকল্প",
   "analytics_chart_pageviewsallprojects": "পৃষ্ঠা দেখা · সমস্ত প্রকল্প",
   "analytics_section_byproject": "প্রকল্প দ্বারা",
   "analytics_section_referrers": "রেফারার",
@@ -1977,7 +1976,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3885,5 +3883,7 @@
   "admin_pagination_first": "প্রথম পৃষ্ঠা",
   "admin_pagination_next": "পরের পৃষ্ঠা",
   "dashboard_ai_inputtokens": "প্রশ্নে টেক্সট ইউনিট",
-  "dashboard_ai_outputtokens": "উত্তরে টেক্সট ইউনিট"
+  "dashboard_ai_outputtokens": "উত্তরে টেক্সট ইউনিট",
+  "analytics_kpi_siteswithtraffic": "ট্রাফিক থাকা সাইট",
+  "analytics_workspace_termspersite": "পাঠকেরা কী খুঁজেছেন তা প্রতিটি সাইটের সার্চ রিপোর্টে দেখানো হয়, যেখানে সেই সাইটের গোপনীয়তা সেটিংস প্রযোজ্য।"
 }

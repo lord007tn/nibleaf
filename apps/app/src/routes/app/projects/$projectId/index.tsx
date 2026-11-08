@@ -25,6 +25,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { compareDelta } from '@/components/analytics/insights/metrics';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
@@ -49,7 +50,7 @@ import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { isolate } from '@/lib/bidi';
 import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment-status';
-import { useFormatters, viewsTrend } from '@/lib/format';
+import { useFormatters } from '@/lib/format';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
@@ -95,7 +96,8 @@ function SiteOverviewPage() {
   // Viewers read the site: they open the pages to read, and nothing here offers them a publish.
   const viewOnly = editAccess === 'viewOnly';
   const deploymentsFailed = deploymentsQuery.isError && !deployments;
-  const { data: analytics, isPending: analyticsPending, isError: analyticsError } = useProjectAnalytics(projectId, range);
+  const analyticsQuery = useProjectAnalytics(projectId, range);
+  const { data: analytics, isPending: analyticsPending, isError: analyticsError } = analyticsQuery;
   const analyticsUnknown = analyticsError || analytics?.availability === 'unavailable';
 
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
@@ -114,7 +116,10 @@ function SiteOverviewPage() {
   // the always-working internal /sites/:id path (never a hardcoded fake host).
   const liveDomain = primaryDomain?.domain ?? (project && baseDomain ? `${project.slug}.${baseDomain}` : null);
   const liveHref = siteUrl(liveDomain, projectId);
-  const trend = useMemo(() => viewsTrend(analytics?.timeseries ?? []), [analytics?.timeseries]);
+  // Against the equal window right before this one; hidden when either side isn't known.
+  const viewsDelta = analyticsUnknown
+    ? null
+    : compareDelta({ value: analytics?.totalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
   const recentPages = useMemo(
     () =>
       (pages ?? [])
@@ -334,14 +339,15 @@ function SiteOverviewPage() {
           label={t('overview.stats.pageviews')}
           value={analytics?.totalViews ?? null}
           icon={<BarChart3 className="size-4" />}
-          trend={trend}
-          hint={trend ? t('analytics.vsPrevious') : undefined}
+          delta={viewsDelta}
+          hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
           loading={analyticsPending}
         />
       </div>
 
       {/* Traffic chart */}
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-4">
+        {analyticsError ? <QueryErrorState onRetry={() => void analyticsQuery.refetch()} retrying={analyticsQuery.isFetching} /> : null}
         <ViewsAreaChart
           title={t('overview.viewsTitle')}
           description={t('overview.viewsDesc')}

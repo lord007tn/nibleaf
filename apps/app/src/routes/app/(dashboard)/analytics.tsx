@@ -5,10 +5,14 @@ import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Activity, AlertTriangle, BarChart3, Search, Sparkles, Users } from 'lucide-react';
 import { BarRow } from '@/components/analytics/bar-row';
+import { compareDelta } from '@/components/analytics/insights/metrics';
+import { TermsEmptyState } from '@/components/analytics/insights/search-terms';
 import { ListCard } from '@/components/analytics/list-card';
 import { RangeTabs } from '@/components/analytics/range-tabs';
+import { SectionCard } from '@/components/analytics/section-card';
 import { StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
+import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
 // Loader factories come from the i18n-free module: loaders ship in every page's first load.
@@ -45,11 +49,11 @@ function WorkspaceAnalyticsRoute() {
 
 function WorkspaceAnalyticsPage() {
   const t = useT();
-  const { number } = useFormatters();
+  const { number, usd } = useFormatters();
   const EMPTY = t('analytics.empty.traffic');
   const navigate = useNavigate();
   const { range, setRange, timezone } = useAnalyticsFilters();
-  const { data, isPending, isError } = useWorkspaceAnalytics(range, { timezone });
+  const { data, isPending, isError, isFetching, refetch } = useWorkspaceAnalytics(range, { timezone });
   const unavailable = isError || data?.availability === 'unavailable';
   const partial = data?.availability === 'partial';
   const emptyTraffic = unavailable ? t('analytics.state.unknown') : EMPTY;
@@ -66,7 +70,14 @@ function WorkspaceAnalyticsPage() {
     1,
     devices.reduce((sum, d) => sum + d.count, 0),
   );
-  const projectsWithTraffic = unavailable ? null : byProject.filter((p) => p.views > 0).length;
+  const sitesWithTraffic = unavailable ? null : byProject.filter((p) => p.views > 0).length;
+  // Against the equal window right before this one; hidden when either side isn't known.
+  const viewsDelta = unavailable ? null : compareDelta({ value: data?.totalViews ?? null, previous: data?.previousTotalViews ?? null }, 'count');
+  // The workspace roll-up never lists search terms when they're redacted (each site's Search
+  // report applies its own privacy settings), so an empty list with searches isn't "no searches".
+  const searchTotal = data?.searches.total ?? 0;
+  const termsHidden = !unavailable && searchTotal > 0 && (data?.searches.topTerms ?? []).length === 0;
+  const costMicros = data?.ai.costMicros ?? null;
   const zeroResults = data?.searches && 'zeroResults' in data.searches ? data.searches.zeroResults : null;
   const clickedResults = data?.searches && 'clickedResults' in data.searches ? data.searches.clickedResults : null;
 
@@ -80,7 +91,8 @@ function WorkspaceAnalyticsPage() {
         <RangeTabs value={range} onValueChange={setRange} />
       </div>
 
-      {unavailable ? (
+      {isError ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
+      {unavailable && !isError ? (
         <Alert variant="warning">
           <AlertTriangle />
           <AlertTitle>{t('analytics.state.unavailable.title')}</AlertTitle>
@@ -97,7 +109,14 @@ function WorkspaceAnalyticsPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label={t('analytics.kpi.pageViews')} value={data?.totalViews ?? null} icon={<BarChart3 className="size-4" />} loading={isPending} />
+        <SectionCard
+          label={t('analytics.kpi.pageViews')}
+          value={unavailable ? null : (data?.totalViews ?? null)}
+          icon={<BarChart3 className="size-4" />}
+          delta={viewsDelta}
+          hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
+          loading={isPending}
+        />
         <StatCard
           label={t('analytics.kpi.uniqueVisitors')}
           value={data?.uniqueVisitors ?? null}
@@ -105,12 +124,7 @@ function WorkspaceAnalyticsPage() {
           loading={isPending}
         />
         <StatCard label={t('analytics.kpi.searches')} value={data?.searches.total ?? null} icon={<Search className="size-4" />} loading={isPending} />
-        <StatCard
-          label={t('analytics.kpi.projectsWithTraffic')}
-          value={projectsWithTraffic}
-          icon={<Activity className="size-4" />}
-          loading={isPending}
-        />
+        <StatCard label={t('analytics.kpi.sitesWithTraffic')} value={sitesWithTraffic} icon={<Activity className="size-4" />} loading={isPending} />
       </div>
 
       {/* Pageviews chart */}
@@ -129,8 +143,9 @@ function WorkspaceAnalyticsPage() {
           loading={isPending}
         />
         <StatCard
-          label={t('analytics.kpi.aiCostMicros')}
-          value={data?.ai.costMicros ?? null}
+          label={t('dashboard.ai.cost')}
+          value={costMicros}
+          display={costMicros === null ? undefined : usd(costMicros / 1_000_000)}
           icon={<Sparkles className="size-4" />}
           loading={isPending}
         />
@@ -214,20 +229,27 @@ function WorkspaceAnalyticsPage() {
           )}
         </div>
 
-        <ListCard
-          title={t('analytics.section.topSearches')}
-          loading={isPending}
-          empty={emptySearches}
-          items={(data?.searches.topTerms ?? []).map((s) => ({
-            key: s.query,
-            label: (
-              <span className="font-mono text-xs" dir="auto">
-                {s.query}
-              </span>
-            ),
-            value: s.count,
-          }))}
-        />
+        {termsHidden ? (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="mb-3 font-medium text-sm">{t('analytics.section.topSearches')}</div>
+            <TermsEmptyState reason={t('analytics.workspace.termsPerSite')} />
+          </div>
+        ) : (
+          <ListCard
+            title={t('analytics.section.topSearches')}
+            loading={isPending}
+            empty={emptySearches}
+            items={(data?.searches.topTerms ?? []).map((s) => ({
+              key: s.query,
+              label: (
+                <span className="font-mono text-xs" dir="auto">
+                  {s.query}
+                </span>
+              ),
+              value: s.count,
+            }))}
+          />
+        )}
       </div>
     </div>
   );

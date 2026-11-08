@@ -345,4 +345,46 @@ describe('dashboard request recovery', () => {
     expect(mocks.requested.size).toBe(0);
     expect(mocks.members).toHaveBeenLastCalledWith(undefined);
   });
+  const flatWeek = Array.from({ length: 7 }, (_, day) => ({ date: `2026-11-0${day + 1}`, views: 10 }));
+  const pageViewsCard = () =>
+    [...container.querySelectorAll('[data-slot="card"]')].find((card) => card.textContent?.includes('dashboard.stats.pageViews'));
+
+  it('compares page views with the previous equal window, never the two halves of this one', async () => {
+    // Seven flat days used to read "+33%" (days 4-7 vs days 1-3). Same total as before: flat.
+    mocks.analytics.mockReturnValue({
+      isPending: false,
+      data: { totalViews: 70, previousTotalViews: 70, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+    });
+    await act(async () => root.render(<DashboardPage />));
+    expect(pageViewsCard()?.textContent).toContain('analytics.delta.flatSpoken');
+    expect(pageViewsCard()?.textContent).not.toContain('33');
+
+    // A real doubling against the previous window.
+    mocks.analytics.mockReturnValue({
+      isPending: false,
+      data: { totalViews: 140, previousTotalViews: 70, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+    });
+    await act(async () => root.render(<DashboardPage />));
+    expect(pageViewsCard()?.textContent).toContain('analytics.delta.upSpoken');
+    expect(pageViewsCard()?.textContent).toContain('100%');
+  });
+
+  it('shows no comparison when the previous window is unknown', async () => {
+    mocks.analytics.mockReturnValue({
+      isPending: false,
+      data: { totalViews: 140, previousTotalViews: null, uniqueVisitors: 9, timeseries: flatWeek, byProject: [], availability: 'complete' },
+    });
+    await act(async () => root.render(<DashboardPage />));
+    expect(pageViewsCard()?.textContent).not.toContain('analytics.vsPrevious');
+    expect(pageViewsCard()?.querySelector('[data-slot="card-action"]')).toBeNull();
+  });
+
+  it('never shows a measured zero for a site while its views are still loading', async () => {
+    mocks.analytics.mockReturnValue({ isPending: true, data: undefined, refetch: mocks.refetch });
+    await act(async () => root.render(<DashboardPage />));
+    const row = container.querySelector('a[href="/app/projects/project-1"]')?.closest('tr');
+    const viewsCell = row?.querySelectorAll('td')[3];
+    expect(viewsCell?.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+    expect(viewsCell?.textContent).toBe('');
+  });
 });

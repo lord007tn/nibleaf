@@ -9,7 +9,20 @@ import { useFormatters } from '@/lib/format';
  * identical; unlike SectionCard it accepts `null` and shows "—" when a figure
  * is unknown (e.g. analytics unavailable).
  */
-export function StatCard({ label, value, icon, loading }: { label: string; value: number | null; icon?: ReactNode; loading?: boolean }) {
+export function StatCard({
+  label,
+  value,
+  display,
+  icon,
+  loading,
+}: {
+  label: string;
+  value: number | null;
+  /** Pre-formatted text for a non-count value (e.g. a currency); `value === null` still shows "—". */
+  display?: string;
+  icon?: ReactNode;
+  loading?: boolean;
+}) {
   const { number } = useFormatters();
   return (
     <Card className="@container/card">
@@ -22,7 +35,7 @@ export function StatCard({ label, value, icon, loading }: { label: string; value
           <Skeleton className="mt-1 h-8 w-20" />
         ) : (
           <CardTitle className="font-semibold text-2xl tabular-nums tracking-tight @[200px]/card:text-3xl">
-            {value === null ? '—' : number(value)}
+            {value === null ? '—' : (display ?? number(value))}
           </CardTitle>
         )}
       </CardHeader>
