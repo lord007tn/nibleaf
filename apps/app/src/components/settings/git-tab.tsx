@@ -681,12 +681,13 @@ export function GitTab({ projectId }: { projectId?: string }) {
 
   const legacyControls = (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-4">
+      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+        {/* Wraps on phones so the repository name keeps its own line. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-foreground/10 text-foreground">
             <ProviderGlyph className="size-6" />
           </span>
-          <div className="min-w-0 flex-1 leading-snug">
+          <div className="min-w-0 flex-1 basis-40 leading-snug">
             <div className="truncate font-mono font-semibold text-sm tracking-tight" dir="ltr">
               {git.provider === 'git' ? git.cloneUrl : git.repo}
             </div>
@@ -743,7 +744,11 @@ export function GitTab({ projectId }: { projectId?: string }) {
     if (approved) save({ connected: false }, t('settings.git.disconnectedToast'));
   };
   const legacySettings = connected ? (
-    <section aria-labelledby="git-legacy-title" className="rounded-xl border border-border border-dashed bg-muted/10 p-5" data-testid="git-legacy">
+    <section
+      aria-labelledby="git-legacy-title"
+      className="rounded-xl border border-border border-dashed bg-muted/10 p-3 sm:p-5"
+      data-testid="git-legacy"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-sm" id="git-legacy-title">
