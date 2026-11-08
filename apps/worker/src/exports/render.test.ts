@@ -286,7 +286,9 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
     // escaped again into `&amp;lt;` (#338).
     expect(full).toContain('&lt;scr');
     expect(full).not.toContain('&amp;lt;scr');
-    expect(full).toContain('&gt; **Portable guidance**');
+    // The callout is a real Markdown blockquote: its marker isn't escaped (#341).
+    expect(full).toContain('> **Portable guidance**');
+    expect(full).not.toContain('&gt; **Portable guidance**');
     expect(full).toContain('## Continue');
     expect(full).toContain('[Setup](/setup)');
     expect(full).toContain('Before expression  after expression.');
@@ -551,5 +553,47 @@ Before expression {globalThis.stolen({ nested: true })} after expression.
       expect(html).toContain('body');
       expect(html).toContain('Card');
     }
+  });
+});
+
+describe('exports share the public Markdown projection (#341)', () => {
+  const withContent = (content: string) => ({ ...required(snapshot.pages[0]), content });
+
+  it('renders a code block inside a callout as quoted code, and the prose after it as prose', () => {
+    const page = withContent('<Note>\nRun this:\n\n```html\n<div>hi</div>\nline2\n```\n\nafter\n</Note>\n\nnext para');
+    for (const html of [renderPageMarkdown(snapshot, page, assets), renderPdfHtml({ ...snapshot, pages: [page] }, assets)]) {
+      expect(html).toMatch(
+        /<blockquote[^>]*>[\s\S]*<pre><code class="language-html">&lt;div&gt;hi&lt;\/div&gt;\nline2\n<\/code><\/pre>[\s\S]*after[\s\S]*<\/blockquote>/,
+      );
+      expect(html).toContain('<p>next para</p>');
+      expect(html).not.toContain('```');
+    }
+  });
+
+  it('keeps component examples in code exactly as written', () => {
+    const page = withContent('````mdx\n<Callout title="Rotate">\nBody\n</Callout>\n````\n\nUse `<Tooltip tip="x">term</Tooltip>` inline.');
+    const html = renderPageMarkdown(snapshot, page, assets);
+    expect(html).toContain('&lt;Callout title=&quot;Rotate&quot;&gt;\nBody\n&lt;/Callout&gt;');
+    expect(html).toContain('<code>&lt;Tooltip tip=&quot;x&quot;&gt;term&lt;/Tooltip&gt;</code>');
+  });
+
+  it('renders only correctly nested formatting tags', () => {
+    const page = withContent('Crossed <u>a <sub>b</u> c</sub>, nested <u>d <sub>e</sub></u>, and 10<sup>-3</sup>.');
+    const pdf = renderPdfHtml({ ...snapshot, pages: [page] }, assets);
+    expect(pdf).toContain('nested <u>d <sub>e</sub></u>');
+    expect(pdf).toContain('10<sup>-3</sup>');
+    // Of crossed tags, only the pair that nests renders; the stray one stays text.
+    expect(pdf).toContain('Crossed &lt;u&gt;a <sub>b&lt;/u&gt; c</sub>');
+  });
+
+  it('keeps H2O one word in search text', () => {
+    const files = unzipSync(renderStaticHtml({ ...snapshot, pages: [withContent('Water is H<sub>2</sub>O.')] }, assets).bytes);
+    expect(text(required(files['theme/theme.js']))).toContain('H2O');
+  });
+
+  it('escapes "&" in a PDF link query once', () => {
+    const pdf = renderPdfHtml({ ...snapshot, pages: [withContent('[Search](https://example.com/find?a=1&b=2)')] }, assets);
+    expect(pdf).toContain('href="https://example.com/find?a=1&amp;b=2"');
+    expect(pdf).not.toContain('&amp;amp;');
   });
 });
