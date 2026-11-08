@@ -298,6 +298,31 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     ).toBeGreaterThan(Date.now());
   });
 
+  it('keeps an unfinished streak through cleanup, so the next burned code still starts the pause', async () => {
+    const { project, readerEmail, memberEmail } = await site('READERS');
+    const idle = `idle-${randomUUID()}@example.invalid`;
+    await db.prisma.siteSignInGuard.createMany({
+      data: [
+        { projectId: project.id, email: readerEmail, burnedCodes: 2 },
+        { projectId: project.id, email: idle, burnedCodes: 0 },
+      ],
+    });
+    // Both guards untouched for ten days.
+    await db.prisma.$executeRaw`UPDATE "site_sign_in_guard" SET "updatedAt" = now() - interval '10 days' WHERE "projectId" = ${project.id}`;
+    // Issuing a code for any address runs the cleanup.
+    await post(`sign-in/${project.id}/start`, { email: memberEmail });
+    await nextCode();
+    const idleGuard = () => db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: idle } } });
+    for (let i = 0; i < 50 && (await idleGuard()); i++) await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(await idleGuard()).toBeNull();
+    expect(
+      (await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } }))?.burnedCodes,
+    ).toBe(2);
+    await burnCode(project.id, readerEmail);
+    const guard = await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } });
+    expect(guard?.pausedUntil?.getTime() ?? 0).toBeGreaterThan(Date.now() + 23 * 60 * 60_000);
+  });
+
   it('starts the streak over after a successful sign-in', async () => {
     const { project, readerEmail } = await site('READERS');
     await burnCode(project.id, readerEmail);

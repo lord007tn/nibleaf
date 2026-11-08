@@ -36,7 +36,8 @@ const SIGN_IN_BURNED_CODES_LOCKOUT = 3;
 /** How long codes are kept: long enough for the day-long budgets above. The
  *  pause lives in `site_sign_in_guard`, so cleaning up codes never affects it. */
 const SIGN_IN_HISTORY_MS = SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
-/** Guards with no running pause are dropped after a week without activity. */
+/** Guards with no burned codes and no running pause are dropped after a week
+ *  without activity; a guard that still counts burned codes is kept. */
 const SIGN_IN_GUARD_RETENTION_MS = 7 * SIGN_IN_DAY_MS;
 
 /** Take the per-(site, address) lock for this transaction without waiting:
@@ -139,6 +140,7 @@ const issueCode = async (projectId: string, email: string, language?: string) =>
     .deleteMany({
       where: {
         updatedAt: { lt: new Date(Date.now() - SIGN_IN_GUARD_RETENTION_MS) },
+        burnedCodes: 0,
         OR: [{ pausedUntil: null }, { pausedUntil: { lt: new Date() } }],
       },
     })
@@ -186,7 +188,8 @@ export const verifySiteSignIn = async (ctx: Context<HonoEnv>, projectId: string,
         if (guard.burnedCodes >= SIGN_IN_BURNED_CODES_LOCKOUT) {
           await tx.siteSignInGuard.update({
             where: { projectId_email: { projectId, email } },
-            data: { burnedCodes: 0, pausedUntil: new Date(now.getTime() + SIGN_IN_DAY_MS) },
+            // A full day from the moment this burn is recorded.
+            data: { burnedCodes: 0, pausedUntil: new Date(Date.now() + SIGN_IN_DAY_MS) },
           });
         }
       }
