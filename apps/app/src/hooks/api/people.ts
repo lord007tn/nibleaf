@@ -1,5 +1,5 @@
 import type { AssignableMemberRole } from '@nibleaf/shared/rbac';
-import { keepPreviousData, skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
@@ -18,7 +18,7 @@ export const useInviteSuggestions = (projectId: string, query: string, options?:
       q && (options?.enabled ?? true)
         ? async () => getData(await api.app.projects[':projectId'].members.suggestions.$get({ param: { projectId }, query: { q } }), 'suggestions')
         : skipToken,
-    placeholderData: keepPreviousData,
+    // No placeholder data: a list for an older query must never be pickable.
     staleTime: 60_000,
   });
 };
@@ -34,6 +34,8 @@ export const usePeopleChanges = () => {
     Promise.all([
       qc.invalidateQueries({ queryKey: queryKeys.members.people() }),
       qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+      // Who can be suggested depends on every site's membership: drop all of them.
+      qc.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'members' && query.queryKey[2] === 'suggestions' }),
     ]);
   const invite = useMutation({
     mutationFn: async ({ projectId, email, role }: { projectId: string; email: string; role: AssignableMemberRole }) =>

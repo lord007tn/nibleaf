@@ -3806,5 +3806,6 @@
   "settings_members_tab_invites": "Invitations en attente ({count})",
   "settings_members_noinvites": "Aucune invitation en attente.",
   "members_suggestions_label": "Personnes de vos autres sites",
-  "members_suggestions_hint": "Saisissez un nom ou un e-mail. Des personnes de vos autres sites vous sont suggérées."
+  "members_suggestions_hint": "Saisissez un nom ou un e-mail. Des personnes de vos autres sites vous sont suggérées.",
+  "people_choosesite": "Choisissez un site"
 }

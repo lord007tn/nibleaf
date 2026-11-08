@@ -3804,5 +3804,6 @@
   "settings_members_tab_invites": "लंबित न्योते ({count})",
   "settings_members_noinvites": "कोई लंबित न्योता नहीं।",
   "members_suggestions_label": "आपकी दूसरी साइटों के लोग",
-  "members_suggestions_hint": "नाम या ईमेल लिखें। आपकी दूसरी साइटों के लोग सुझाए जाएँगे।"
+  "members_suggestions_hint": "नाम या ईमेल लिखें। आपकी दूसरी साइटों के लोग सुझाए जाएँगे।",
+  "people_choosesite": "साइट चुनें"
 }

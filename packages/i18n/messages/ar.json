@@ -3813,5 +3813,6 @@
   "settings_members_tab_invites": "الدعوات المعلّقة ({count})",
   "settings_members_noinvites": "لا توجد دعوات معلّقة.",
   "members_suggestions_label": "أشخاص من مواقعك الأخرى",
-  "members_suggestions_hint": "اكتب اسمًا أو بريدًا إلكترونيًا، وسنقترح أشخاصًا من مواقعك الأخرى."
+  "members_suggestions_hint": "اكتب اسمًا أو بريدًا إلكترونيًا، وسنقترح أشخاصًا من مواقعك الأخرى.",
+  "people_choosesite": "اختر موقعًا"
 }

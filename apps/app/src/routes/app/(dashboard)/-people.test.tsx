@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   invite: { mutate: vi.fn(), isPending: false, variables: undefined },
   changeRole: { mutate: vi.fn(), isPending: false, variables: undefined },
   remove: { mutate: vi.fn(), isPending: false, variables: undefined },
-  revoke: { mutate: vi.fn(), isPending: false, variables: undefined },
+  revoke: { mutate: vi.fn(), mutateAsync: vi.fn(() => new Promise(() => undefined)), isPending: false, variables: undefined },
   confirm: vi.fn(async () => true),
 }));
 
@@ -116,5 +116,17 @@ describe('People page', () => {
     mocks.people.mockReturnValue({ data: { sites: [], people: [], invitations: [] }, isPending: false, isError: false });
     await render();
     expect(container.textContent).toContain('people.empty.title');
+  });
+
+  it('sends one revoke per invitation and spins only that row', async () => {
+    await render();
+    const revoke = container.querySelector<HTMLButtonElement>('[aria-label="settings.members.revokeInvite"]');
+    await act(async () => {
+      revoke?.click();
+      revoke?.click();
+    });
+    expect(mocks.revoke.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(mocks.revoke.mutateAsync).toHaveBeenCalledWith({ projectId: 'help', invitationId: 'inv-1' });
+    expect(container.querySelector('[aria-label="settings.members.revokeInvite"]')?.hasAttribute('data-loading')).toBe(true);
   });
 });

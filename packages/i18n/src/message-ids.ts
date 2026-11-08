@@ -3781,6 +3781,7 @@ export const MESSAGE_IDS = {
   'settings.members.noInvites': 'settings_members_noinvites',
   'members.suggestions.label': 'members_suggestions_label',
   'members.suggestions.hint': 'members_suggestions_hint',
+  'people.chooseSite': 'people_choosesite',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

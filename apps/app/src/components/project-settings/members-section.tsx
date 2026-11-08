@@ -4,7 +4,7 @@ import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { useT } from '@nibleaf/i18n/react';
 import { type AssignableMemberRole, canAdminister } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
@@ -255,23 +255,21 @@ export function MembersSection({ projectId }: { projectId: string }) {
           <TabsTrigger value="invites">{t('settings.members.tab.invites', { count: invitations.length })}</TabsTrigger>
           {canManageMembers ? <TabsTrigger value="links">{t('settings.joinLinks.title')}</TabsTrigger> : null}
         </TabsList>
-      </Tabs>
-
-      {tab === 'links' && canManageMembers ? (
-        <JoinLinksSection projectId={projectId} />
-      ) : isPending ? (
-        <div aria-busy="true">
-          <p className="sr-only" role="status">
-            {t('common.loading')}
-          </p>
-          <SkeletonListRow />
-          <SkeletonListRow />
-          <SkeletonListRow />
-        </div>
-      ) : (
-        <>
-          {tab === 'members'
-            ? members.map((member) => (
+        {/* Each section is its tab's panel, so assistive tech and the keyboard
+            move between the tab and what it shows. */}
+        <TabsContent value="members">
+          {isPending ? (
+            <div aria-busy="true">
+              <p className="sr-only" role="status">
+                {t('common.loading')}
+              </p>
+              <SkeletonListRow />
+              <SkeletonListRow />
+              <SkeletonListRow />
+            </div>
+          ) : (
+            <>
+              {members.map((member) => (
                 <div className="flex items-center gap-3 border-border border-t py-3" key={member.id}>
                   <GradientAvatar className="size-8 text-[12px]" name={member.user.name} />
                   <div className="min-w-0 leading-tight">
@@ -356,49 +354,54 @@ export function MembersSection({ projectId }: { projectId: string }) {
                     )}
                   </div>
                 </div>
-              ))
-            : null}
-          {tab === 'members' && members.length === 0 ? (
-            <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.empty')}</p>
-          ) : null}
-
-          {tab === 'invites' && invitations.length === 0 ? (
+              ))}
+              {members.length === 0 ? (
+                <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.empty')}</p>
+              ) : null}
+            </>
+          )}
+        </TabsContent>
+        <TabsContent value="invites">
+          {!isPending && invitations.length === 0 ? (
             <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.noInvites')}</p>
           ) : null}
-          {tab === 'invites' && invitations.length > 0
-            ? invitations.map((inv) => (
-                <div className="flex items-center gap-3 border-border border-t py-3" key={inv.id}>
-                  <div className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground">
-                    <Mail className="size-4" />
-                  </div>
-                  <div className="min-w-0 leading-tight">
-                    <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
-                    <div className="text-[12px] text-muted-foreground">
-                      {t('settings.members.invitedAs', {
-                        role: t(roleLabelKey(inv.role)),
-                      })}
-                    </div>
-                  </div>
-                  {canManageMembers && (
-                    <div className="ms-auto flex items-center gap-1">
-                      <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
-                      <Button
-                        loading={actionRunning('revoke', inv.id)}
-                        onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={t('settings.members.revokeInvite')}
-                        title={t('settings.members.revokeInvite')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  )}
+          {invitations.map((inv) => (
+            <div className="flex items-center gap-3 border-border border-t py-3" key={inv.id}>
+              <div className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground">
+                <Mail className="size-4" />
+              </div>
+              <div className="min-w-0 leading-tight">
+                <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
+                <div className="text-[12px] text-muted-foreground">
+                  {t('settings.members.invitedAs', {
+                    role: t(roleLabelKey(inv.role)),
+                  })}
                 </div>
-              ))
-            : null}
-        </>
-      )}
+              </div>
+              {canManageMembers && (
+                <div className="ms-auto flex items-center gap-1">
+                  <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
+                  <Button
+                    loading={actionRunning('revoke', inv.id)}
+                    onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={t('settings.members.revokeInvite')}
+                    title={t('settings.members.revokeInvite')}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </TabsContent>
+        {canManageMembers ? (
+          <TabsContent value="links">
+            <JoinLinksSection projectId={projectId} />
+          </TabsContent>
+        ) : null}
+      </Tabs>
 
       <AlertDialog
         onOpenChange={(open) => {

@@ -27,7 +27,11 @@ export function InviteEmailField({
   const [query] = useDebouncedValue(value, { wait: 200 });
   // An address that is already complete needs no suggestions.
   const suggestions = useInviteSuggestions(projectId, query, { enabled: open && !query.includes('@') });
-  const people = open && value.trim() && !value.includes('@') ? (suggestions.data ?? []) : [];
+  // Only suggestions for exactly what is typed now: never a list left over
+  // from an earlier query (the debounce lags the input).
+  const current = value.trim().toLowerCase();
+  const people =
+    open && current && !current.includes('@') && query.trim().toLowerCase() === current && suggestions.isSuccess ? (suggestions.data ?? []) : [];
   const expanded = people.length > 0;
 
   const pick = (email: string) => {

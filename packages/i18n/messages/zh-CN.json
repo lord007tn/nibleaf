@@ -3804,5 +3804,6 @@
   "settings_members_tab_invites": "待处理邀请（{count}）",
   "settings_members_noinvites": "没有待处理的邀请。",
   "members_suggestions_label": "来自您其他站点的人员",
-  "members_suggestions_hint": "输入姓名或邮箱，系统会推荐您其他站点的人员。"
+  "members_suggestions_hint": "输入姓名或邮箱，系统会推荐您其他站点的人员。",
+  "people_choosesite": "选择站点"
 }

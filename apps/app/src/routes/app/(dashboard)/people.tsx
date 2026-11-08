@@ -8,7 +8,7 @@ import { MemberRole } from '@nibleaf/shared/constants';
 import type { AssignableMemberRole } from '@nibleaf/shared/rbac';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Crown, Mail, Plus, Search, Trash2, Users } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { RoleSelect } from '@/components/members/role-select';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -221,10 +221,13 @@ function PersonCard({ person, sites, siteById, isSelf }: { person: Person; sites
 function AddToSiteForm({ email, name, sites, onDone }: { email: string; name: string; sites: Site[]; onDone: () => void }) {
   const t = useT();
   const { invite } = usePeopleChanges();
-  const [projectId, setProjectId] = useState(sites[0]?.projectId ?? '');
+  const [chosen, setChosen] = useState(sites[0]?.projectId ?? '');
   const [role, setRole] = useState<AssignableMemberRole>(DEFAULT_INVITE_ROLE);
   const items = sites.map((site) => ({ value: site.projectId, label: site.name }));
-  const site = sites.find((candidate) => candidate.projectId === projectId);
+  // If the chosen site leaves the options (they joined it meanwhile, or you no
+  // longer administer it), the picker clears and asks again.
+  const site = sites.find((candidate) => candidate.projectId === chosen);
+  const projectId = site?.projectId ?? '';
   return (
     <form
       className="flex flex-col gap-2 border-border border-t bg-muted/30 px-4 py-3 sm:flex-row sm:items-center"
@@ -243,9 +246,9 @@ function AddToSiteForm({ email, name, sites, onDone }: { email: string; name: st
         );
       }}
     >
-      <Select items={items} onValueChange={(next) => next && setProjectId(next)} value={projectId}>
+      <Select items={items} onValueChange={(next) => next && setChosen(next)} value={projectId || null}>
         <SelectTrigger aria-label={t('people.site')} className="w-full bg-background sm:w-56">
-          <SelectValue />
+          <SelectValue placeholder={t('people.chooseSite')} />
         </SelectTrigger>
         <SelectContent>
           {items.map((item) => (
@@ -260,7 +263,7 @@ function AddToSiteForm({ email, name, sites, onDone }: { email: string; name: st
         <Button onClick={onDone} type="button" variant="ghost">
           {t('common.cancel')}
         </Button>
-        <Button loading={invite.isPending} type="submit">
+        <Button disabled={!site} loading={invite.isPending} type="submit">
           <Mail className="size-4" /> {t('people.sendInvite')}
         </Button>
       </div>
@@ -271,6 +274,23 @@ function AddToSiteForm({ email, name, sites, onDone }: { email: string; name: st
 function PendingInvitations({ invitations, siteById }: { invitations: PeopleOverview['invitations']; siteById: Map<string, Site> }) {
   const t = useT();
   const { revoke } = usePeopleChanges();
+  // One request per invitation: a row spins while its own revoke runs, and a
+  // second click on it does nothing (the ref closes the same-frame gap).
+  const [revoking, setRevoking] = useState<ReadonlySet<string>>(new Set());
+  const inFlight = useRef(new Set<string>());
+  const revokeInvitation = (invitation: PeopleOverview['invitations'][number]) => {
+    if (inFlight.current.has(invitation.id)) return;
+    inFlight.current.add(invitation.id);
+    setRevoking(new Set(inFlight.current));
+    revoke
+      .mutateAsync({ projectId: invitation.projectId, invitationId: invitation.id })
+      .then(() => toast.success(t('settings.members.toast.invitationRevoked')))
+      .catch((error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.members.toast.revokeError')))
+      .finally(() => {
+        inFlight.current.delete(invitation.id);
+        setRevoking(new Set(inFlight.current));
+      });
+  };
   return (
     <section aria-labelledby="pending-invitations" className="rounded-xl border border-border bg-card">
       <h2 className="border-border border-b px-4 py-3 font-semibold text-sm" id="pending-invitations">
@@ -290,16 +310,8 @@ function PendingInvitations({ invitations, siteById }: { invitations: PeopleOver
               </span>
               <Button
                 aria-label={t('settings.members.revokeInvite')}
-                loading={revoke.isPending && revoke.variables?.invitationId === invitation.id}
-                onClick={() =>
-                  revoke.mutate(
-                    { projectId: invitation.projectId, invitationId: invitation.id },
-                    {
-                      onSuccess: () => toast.success(t('settings.members.toast.invitationRevoked')),
-                      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.members.toast.revokeError')),
-                    },
-                  )
-                }
+                loading={revoking.has(invitation.id)}
+                onClick={() => revokeInvitation(invitation)}
                 size="icon-sm"
                 title={t('settings.members.revokeInvite')}
                 variant="ghost"

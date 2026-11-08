@@ -3804,5 +3804,6 @@
   "settings_members_tab_invites": "অপেক্ষমাণ আমন্ত্রণ ({count})",
   "settings_members_noinvites": "কোনো অপেক্ষমাণ আমন্ত্রণ নেই।",
   "members_suggestions_label": "আপনার অন্য সাইটের মানুষ",
-  "members_suggestions_hint": "নাম বা ইমেইল লিখুন। আপনার অন্য সাইটের মানুষদের প্রস্তাব করা হবে।"
+  "members_suggestions_hint": "নাম বা ইমেইল লিখুন। আপনার অন্য সাইটের মানুষদের প্রস্তাব করা হবে।",
+  "people_choosesite": "একটি সাইট বেছে নিন"
 }

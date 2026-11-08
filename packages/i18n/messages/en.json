@@ -3806,5 +3806,6 @@
   "settings_members_tab_invites": "Pending invites ({count})",
   "settings_members_noinvites": "No pending invites.",
   "members_suggestions_label": "People from your other sites",
-  "members_suggestions_hint": "Type a name or email. People from your other sites are suggested."
+  "members_suggestions_hint": "Type a name or email. People from your other sites are suggested.",
+  "people_choosesite": "Choose a site"
 }

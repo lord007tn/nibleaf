@@ -3806,5 +3806,6 @@
   "settings_members_tab_invites": "Offene Einladungen ({count})",
   "settings_members_noinvites": "Keine offenen Einladungen.",
   "members_suggestions_label": "Personen von Ihren anderen Websites",
-  "members_suggestions_hint": "Geben Sie einen Namen oder eine E-Mail ein. Personen von Ihren anderen Websites werden vorgeschlagen."
+  "members_suggestions_hint": "Geben Sie einen Namen oder eine E-Mail ein. Personen von Ihren anderen Websites werden vorgeschlagen.",
+  "people_choosesite": "Website auswählen"
 }
