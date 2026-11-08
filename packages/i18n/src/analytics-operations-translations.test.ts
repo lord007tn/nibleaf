@@ -2,6 +2,17 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 
 const ids = [
+  'analytics_drafting_title',
+  'analytics_drafting_description',
+  'analytics_drafting_total',
+  'analytics_drafting_connection',
+  'analytics_drafting_workspace',
+  'analytics_drafting_instance',
+  'analytics_drafting_unknown',
+  'analytics_drafting_models',
+  'analytics_drafting_events',
+  'analytics_drafting_share',
+  'analytics_drafting_empty',
   'analytics_status_readsdisabled_title',
   'analytics_status_readsdisabled_body',
   'publish_reviewchanged',

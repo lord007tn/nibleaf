@@ -557,6 +557,42 @@ describe('Search', () => {
 });
 
 describe('Feedback, AI visibility and performance', () => {
+  it.each(['en', 'ar'] as const)('shows drafting connections, totals, shares, and models in %s even without crawler traffic', async (locale) => {
+    mocks.locale = locale;
+    const data = aiFixture();
+    data.bots = [];
+    data.assistantReferrals = [];
+    data.kpis.aiCrawlerRequests.value = 0;
+    data.drafting = {
+      total: 4,
+      connections: [
+        { connection: 'workspace', events: 3, share: 0.75, models: [['openai', 'fictional-model']] },
+        { connection: 'instance', events: 1, share: 0.25, models: [['openrouter', 'fictional-fallback']] },
+      ],
+    };
+    mocks.ai.mockReturnValue(ready(data));
+    const view = await render(<AiSection />);
+    expect(text(view)).toContain(locale === 'en' ? 'Workspace key' : 'مفتاح مساحة العمل');
+    expect(text(view)).toContain(locale === 'en' ? 'Instance (Nibleaf) key' : 'مفتاح المثيل (Nibleaf)');
+    expect(text(view)).toContain('openai / fictional-model');
+    expect(text(view)).toContain('openrouter / fictional-fallback');
+    const table = view.querySelector('table');
+    const numberLocale = locale === 'ar' ? 'ar-u-nu-latn' : locale;
+    expect(table?.textContent).toContain(new Intl.NumberFormat(numberLocale, { style: 'percent', maximumFractionDigits: 1 }).format(0.75));
+    expect(table?.textContent).toContain(new Intl.NumberFormat(numberLocale, { style: 'percent', maximumFractionDigits: 1 }).format(0.25));
+    expect(text(view)).toContain(locale === 'en' ? 'Total events: 4' : 'إجمالي الأحداث: 4');
+  });
+
+  it('shows an empty drafting state and keeps unavailable totals unknown', async () => {
+    mocks.ai.mockReturnValue(ready(aiFixture()));
+    const empty = await render(<AiSection />);
+    expect(text(empty)).toContain('No drafting events in this period.');
+    mocks.ai.mockReturnValue(failed);
+    const unavailable = await render(<AiSection />);
+    expect(text(unavailable)).not.toContain('Total events: 0');
+    expect(text(unavailable)).not.toContain('No drafting events in this period.');
+  });
+
   it('lists pages worst first', async () => {
     mocks.feedback.mockReturnValue(ready(feedbackFixture()));
     const view = await render(<FeedbackSection />);
@@ -620,7 +656,7 @@ describe('First load', () => {
     ],
     ['search', () => mocks.search_.mockReturnValue(loading), () => <SearchSection />, { tiles: 6, charts: 1, lists: 0, tables: [5, 4, 2] }],
     ['feedback', () => mocks.feedback.mockReturnValue(loading), () => <FeedbackSection />, { tiles: 4, charts: 1, lists: 0, tables: [5] }],
-    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [6, 4] }],
+    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [4, 6, 4] }],
     [
       'performance',
       () => mocks.performance.mockReturnValue(loading),

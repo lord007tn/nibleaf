@@ -4,6 +4,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { BookOpen, Bot, MessageCircleQuestion, ShieldCheck, Sparkles } from 'lucide-react';
 import { type AiVisibilityInsights, useAiVisibilityInsights } from '@/hooks/api/analytics';
 import { SimpleTable } from './data-table';
+import { DraftingConnections } from './drafting-connections';
 import type { InsightsSearch } from './filters';
 import { InsightCard, PageLabel, RankedList } from './insight-card';
 import { CHART_GROUPS, groupCrawlerSeries, insightsState, mergeSeries } from './insights-data';
@@ -81,6 +82,7 @@ function AiView({
   return (
     <InsightsRegion loading={loading}>
       <InsightsStatus projectId={projectId} retry={retry} state={state} />
+      <DraftingConnections data={data?.drafting} loading={loading} unknown={unknown} />
       {nothing ? (
         <>
           <InsightsEmpty body={t('analytics.ai.empty.body')} icon={<Bot aria-hidden className="size-5" />} title={t('analytics.ai.empty.title')} />

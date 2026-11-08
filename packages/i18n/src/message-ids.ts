@@ -1,5 +1,16 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'analytics.drafting.title': 'analytics_drafting_title',
+  'analytics.drafting.description': 'analytics_drafting_description',
+  'analytics.drafting.total': 'analytics_drafting_total',
+  'analytics.drafting.connection': 'analytics_drafting_connection',
+  'analytics.drafting.workspace': 'analytics_drafting_workspace',
+  'analytics.drafting.instance': 'analytics_drafting_instance',
+  'analytics.drafting.unknown': 'analytics_drafting_unknown',
+  'analytics.drafting.models': 'analytics_drafting_models',
+  'analytics.drafting.events': 'analytics_drafting_events',
+  'analytics.drafting.share': 'analytics_drafting_share',
+  'analytics.drafting.empty': 'analytics_drafting_empty',
   'analytics.status.readsDisabled.title': 'analytics_status_readsdisabled_title',
   'analytics.status.readsDisabled.body': 'analytics_status_readsdisabled_body',
   'publish.reviewChanged': 'publish_reviewchanged',

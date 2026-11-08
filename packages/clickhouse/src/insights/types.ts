@@ -280,6 +280,17 @@ export type CrawledResource = 'page' | 'markdown' | 'llms_txt' | 'llms_full_txt'
 
 export interface AiVisibilityInsights {
   meta: InsightsMeta;
+  drafting: {
+    /** All started/completed/failed dashboard drafting events in the selected period; null outside raw coverage. */
+    total: number | null;
+    connections: Array<{
+      connection: 'workspace' | 'instance' | 'unknown';
+      events: number;
+      share: number;
+      /** Up to ten distinct stored provider/model pairs. No credentials. */
+      models: Array<[string, string]>;
+    }>;
+  };
   kpis: {
     aiCrawlerRequests: Compared;
     aiAssistantFetches: Compared;

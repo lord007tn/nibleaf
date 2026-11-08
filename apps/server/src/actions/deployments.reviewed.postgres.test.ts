@@ -8,14 +8,21 @@ vi.mock('../../../worker/src/lib/notify', () => ({ notifyDeployment: vi.fn(async
 describe.skipIf(process.env.REVIEWED_PUBLISH_POSTGRES !== '1')('reviewed publish input in PostgreSQL', () => {
   let db: typeof import('@nibleaf/database');
   let actions: typeof import('./deployments');
-  let worker: typeof import('../../../worker/src/processors/publish');
+  let worker: {
+    handlePublishJobs: (job: {
+      data: { deploymentId: string; projectId: string; auto: false };
+      opts: { attempts: number };
+      attemptsMade: number;
+    }) => Promise<{ pages: number }>;
+  };
   const id = `reviewed-${randomUUID()}`;
   let pageId: string;
   beforeAll(async () => {
     vi.stubEnv('ANALYTICS_MODE', 'disabled');
     db = await import('@nibleaf/database');
     actions = await import('./deployments');
-    worker = await import('../../../worker/src/processors/publish');
+    // Resolve at runtime: server declaration builds must not emit worker declarations beside its sources.
+    worker = await import(new URL('../../../worker/src/processors/publish.ts', import.meta.url).href);
     await db.prisma.user.create({ data: { id, name: 'Synthetic reviewer', email: `${id}@example.invalid` } });
     await db.prisma.organization.create({ data: { id, name: id } });
     await db.prisma.project.create({ data: { id, name: id, slug: id, organizationId: id } });

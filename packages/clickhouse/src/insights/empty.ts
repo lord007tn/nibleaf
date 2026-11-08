@@ -105,6 +105,7 @@ export const emptyFeedbackInsights = (meta: InsightsMeta): FeedbackInsights => (
 
 export const emptyAiVisibilityInsights = (meta: InsightsMeta): AiVisibilityInsights => ({
   meta,
+  drafting: { total: null, connections: [] },
   kpis: {
     aiCrawlerRequests: unknown,
     aiAssistantFetches: unknown,
