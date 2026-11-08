@@ -151,7 +151,8 @@ const blind: {
   outputs: { A?: Output; B?: Output };
 }[] = [];
 const key: Record<string, { A: string; B: string }> = {};
-for (const item of items) {
+// EVAL_LIMIT runs the first items only, for a smoke run.
+for (const item of items.slice(0, Number(process.env.EVAL_LIMIT ?? items.length))) {
   const outputs = await Promise.all(models.map((model) => run(model, item.body)));
   // Seeded per item, so a rerun keeps the same order.
   const swap = (createHash('sha256').update(`${seed}:${item.id}`).digest()[0] ?? 0) % 2 === 1;

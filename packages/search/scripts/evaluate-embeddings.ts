@@ -78,7 +78,8 @@ const corpusBytes = corpusTexts.reduce((sum, text) => sum + Buffer.byteLength(te
 const fixtures = (JSON.parse(await readFile(resolve(here, '../eval/nibleaf-docs-fixtures.json'), 'utf8')) as Fixture[]).filter(
   (f) => f.expectedSourceHeadings?.length,
 );
-const queries = fixtures.map((f) => {
+// EVAL_LIMIT keeps the first queries only, for a smoke run; corpus vectors stay cached for the full run.
+const queries = fixtures.slice(0, Number(process.env.EVAL_LIMIT ?? fixtures.length)).map((f) => {
   const expected = new Set(f.expectedSourceHeadings);
   const pages = new Set(f.sources.filter((s) => expected.has(s.heading)).map((s) => s.path));
   const relevant = (chunk: SearchChunk) => pages.has(chunk.path) && chunk.headingPath.some((heading) => expected.has(heading));
