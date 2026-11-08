@@ -15,7 +15,9 @@ WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
 # Chromium needs an Arabic font for readable RTL PDF exports.
-RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corepack enable && corepack prepare pnpm@10.34.9 --activate
+# Node 26 no longer bundles Corepack. Install the same pinned package manager
+# used by contributors; runtime migrations still use pnpm's workspace filters.
+RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && npm install --global pnpm@10.34.9
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
