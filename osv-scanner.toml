@@ -1,2 +1,12 @@
 # All dependency findings are enforced. Temporary exceptions require a tracked
 # removal issue, an expiry date, and a documented exposure analysis.
+
+[[IgnoredVulns]]
+# deepmerge <= 4.3.1 prototype poisoning; no patched version exists.
+# Exposure: none in shipped code. deepmerge comes only from the dev-only
+# `ultracite` lint CLI (also in its latest release), which merges our own
+# checked-in config files: never user input, never in app/server/worker images.
+# Removal tracked in https://github.com/lord007tn/nibleaf/issues/361
+id = "GHSA-gcqx-w48m-w2h4"
+ignoreUntil = 2027-02-08T00:00:00Z
+reason = "Dev-only transitive dependency of ultracite with no patched release; no runtime exposure. Tracked in #361."
