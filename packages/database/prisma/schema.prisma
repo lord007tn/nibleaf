@@ -123,8 +123,22 @@ model Organization {
   usagePlan          OrganizationUsagePlan?
   usageStorageMarker UsageStorageMarker?
   usageIngestCheckpoints UsageIngestCheckpoint[]
+  gitWebhookSecret       OrganizationGitWebhookSecret?
 
   @@map("organization")
+}
+
+/// Server-only shared secret that authenticates one-way push-to-deploy webhooks.
+/// It is kept out of `organization.metadata`, which the auth organization
+/// endpoints return to every member; only the API reads this table.
+model OrganizationGitWebhookSecret {
+  organizationId String       @id
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  secret         String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("organization_git_webhook_secret")
 }
 
 /// Provider-neutral commercial configuration. These rows express product

@@ -7,7 +7,14 @@ const ok = { 200: { description: 'ok' }, ...errorResponses };
 const admin = [isAuthenticated, requireRole(MemberRole.ADMIN)] as const;
 
 const membersRoutes = {
-  list: createRouteConfig({ guard: isAuthenticated, tags: ['members'], description: 'List members and pending invitations.', responses: ok }),
+  // Membership is re-read for the active workspace: the session's active
+  // organization alone doesn't prove the caller still belongs to it.
+  list: createRouteConfig({
+    guard: [isAuthenticated, requireRole(MemberRole.MEMBER)],
+    tags: ['members'],
+    description: 'List members and pending invitations.',
+    responses: ok,
+  }),
   invite: createRouteConfig({
     guard: [...admin],
     tags: ['members'],

@@ -1,5 +1,3 @@
-import { MemberRole } from '@nibleaf/shared/constants';
-import { roleAtLeast } from '@nibleaf/shared/rbac';
 import {
   saveWorkspaceAiConnectionBody,
   searchIndexDiagnosticsQuery,
@@ -9,9 +7,8 @@ import {
   workspaceAiSelectionBody,
 } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { z } from 'zod';
 import { importFromGitProvider } from '@/actions/git-import';
-import { rotateGitWebhookSecret } from '@/actions/git-webhook';
+import { rotateGitWebhookSecret } from '@/actions/git-webhook-secret';
 import { createNotificationsForOrgMembers } from '@/actions/notifications';
 import {
   createProjectSearchReindex,
@@ -20,7 +17,7 @@ import {
   updateProjectSearchConfiguration,
 } from '@/actions/search';
 import { getProjectUsageSummary } from '@/actions/usage';
-import { getWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
+import { getScopedWorkspaceSettings, updateWorkspaceSettings } from '@/actions/workspace';
 import { getWorkspaceAi, getWorkspaceAiModels, saveWorkspaceAiConnection, selectWorkspaceAi } from '@/actions/workspace-ai';
 import { getContextMembership, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -30,21 +27,15 @@ import projectSettingsRoutes from './routes';
 // guards), so these reuse the org-scoped settings actions but operate per-site.
 const app = new Hono<HonoEnv>()
   .get('/', ...projectSettingsRoutes.get, async (ctx) => {
+    // Same scoped DTO as the workspace settings GET: the webhook secret is
+    // ADMIN material, and this GET is member-level.
     const organizationId = getContextOrganizationIdOrThrow();
-    const settings = await getWorkspaceSettings(organizationId);
-    // The push-webhook secret is admin material (it authenticates deploy
-    // triggers); the GET is member-level, so strip it below ADMIN. The UI
-    // hides the webhook card for those members anyway.
-    const parsedGit = z.record(z.string(), z.unknown()).safeParse(settings.git);
-    if (!roleAtLeast(getContextMembership()?.role ?? '', MemberRole.ADMIN) && parsedGit.success) {
-      const { webhookSecret: _webhookSecret, ...git } = parsedGit.data;
-      settings.git = git;
-    }
-    return ctx.json({ data: settings }, 200);
+    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '') }, 200);
   })
   .patch('/', ...projectSettingsRoutes.update, validator('json', updateWorkspaceSettingsBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await updateWorkspaceSettings(organizationId, ctx.req.valid('json')) }, 200);
+    await updateWorkspaceSettings(organizationId, ctx.req.valid('json'));
+    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '') }, 200);
   })
   .get('/ai', ...projectSettingsRoutes.update, async (ctx) => ctx.json({ data: await getWorkspaceAi(ctx, ctx.req.param('projectId') ?? '') }, 200))
   .post('/ai/models', ...projectSettingsRoutes.update, validator('json', workspaceAiModelsBody), async (ctx) =>

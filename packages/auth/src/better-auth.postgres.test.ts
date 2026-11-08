@@ -278,6 +278,75 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(await prisma.invitation.count({ where: { email } })).toBe(0);
   });
 
+  it('never returns the Git webhook secret from the organization endpoints', async () => {
+    const owner = await signInAsOwner();
+    const secret = `webhook-secret-${randomUUID()}`;
+    await prisma.organizationGitWebhookSecret.create({ data: { organizationId: owner.organizationId, secret } });
+    await prisma.organization.update({
+      where: { id: owner.organizationId },
+      data: { metadata: JSON.stringify({ plan: 'free', git: { repo: 'acme/docs' } }) },
+    });
+    const memberEmail = addressFor(`member-${randomUUID()}`);
+    const memberCookie = sessionCookie(await signInWithCode(memberEmail));
+    const memberId = (await readSession(memberCookie))?.user.id as string;
+    await prisma.member.create({ data: { organizationId: owner.organizationId, userId: memberId, role: 'member' } });
+
+    // An organization update cannot put a copy back into member-readable metadata.
+    const updated = await send('/organization/update', {
+      body: { organizationId: owner.organizationId, data: { metadata: { plan: 'free', git: { repo: 'acme/docs', webhookSecret: secret } } } },
+      cookie: owner.cookie,
+    });
+    expect(updated.status).toBe(200);
+    expect(await updated.text()).not.toContain(secret);
+    const stored = await prisma.organization.findUniqueOrThrow({ where: { id: owner.organizationId }, select: { metadata: true } });
+    expect(stored.metadata).toContain('acme/docs');
+    expect(stored.metadata).not.toContain(secret);
+
+    const reads = [
+      send('/organization/list', { cookie: memberCookie }),
+      send(`/organization/get-full-organization?organizationId=${encodeURIComponent(owner.organizationId)}`, { cookie: memberCookie }),
+      send('/organization/set-active', { body: { organizationId: owner.organizationId }, cookie: memberCookie }),
+    ];
+    for (const response of await Promise.all(reads)) {
+      expect(response.status, response.url).toBe(200);
+      const text = await response.text();
+      expect(text).toContain(owner.organizationId);
+      expect(text).not.toContain(secret);
+    }
+  });
+
+  it('never returns a webhook secret still stored in metadata the migration skipped', async () => {
+    const owner = await signInAsOwner();
+    const secret = `webhook-secret-${randomUUID()}`;
+    // Valid JSON that PostgreSQL cannot read as jsonb (a NUL escape and a lone
+    // surrogate), so the data migration leaves its copy in place.
+    const skipped = `{"plan":"free","note":"a\\u0000b","label":"\\ud800","git":{"repo":"acme/docs","webhookSecret":"${secret}"}}`;
+    await prisma.organization.update({ where: { id: owner.organizationId }, data: { metadata: skipped } });
+    const memberCookie = sessionCookie(await signInWithCode(addressFor(`member-${randomUUID()}`)));
+    const memberId = (await readSession(memberCookie))?.user.id as string;
+    await prisma.member.create({ data: { organizationId: owner.organizationId, userId: memberId, role: 'member' } });
+
+    // No settings request has run, so nothing has cleaned this row up.
+    const organizationId = encodeURIComponent(owner.organizationId);
+    const reads = [
+      () => send('/organization/list', { cookie: memberCookie }),
+      () => send(`/organization/get-full-organization?organizationId=${organizationId}`, { cookie: memberCookie }),
+      () => send(`/organization/get-organization?organizationId=${organizationId}`, { cookie: memberCookie }),
+      () => send('/organization/set-active', { body: { organizationId: owner.organizationId }, cookie: memberCookie }),
+      // With the organization active, the same reads without an explicit id.
+      () => send('/organization/get-full-organization', { cookie: memberCookie }),
+    ];
+    for (const read of reads) {
+      const response = await read();
+      expect(response.status, response.url).toBe(200);
+      const text = await response.text();
+      expect(text, response.url).toContain(owner.organizationId);
+      expect(text, response.url).not.toContain(secret);
+    }
+    const stored = await prisma.organization.findUniqueOrThrow({ where: { id: owner.organizationId }, select: { metadata: true } });
+    expect(stored.metadata).toBe(skipped);
+  });
+
   it('signs in with an email code, provisions a workspace, reads the session, and signs out', async () => {
     const email = addressFor('code');
     const response = await signInWithCode(email);

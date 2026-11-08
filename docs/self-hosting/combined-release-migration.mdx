@@ -160,3 +160,5 @@ CLI with `POSTGRES_URL`, ClickHouse writer settings and the intended retention
 settings exported in its process environment. It does not load the root `.env`
 automatically. A migration success is schema evidence, not provider or restore
 acceptance. Preserve existing salts and encryption keys.
+
+After upgrading, rotate your Git push webhook secret in **Settings → Git** and paste the new value into the repository's webhook settings.
