@@ -257,65 +257,86 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     for (let i = 0; i < 5; i++) expect((await post(`sign-in/${projectId}/verify`, { email, code: wrong })).status).toBe(400);
   };
 
-  it('pauses an address for a day from the moment its third code in a row runs out of guesses', async () => {
+  it('pauses an address for a day from the moment its third burned code runs out of guesses', async () => {
     const { project, readerEmail } = await site('READERS');
     await burnCode(project.id, readerEmail);
     await burnCode(project.id, readerEmail);
     // Two burned codes don't pause the address.
-    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail, pausedUntil: { not: null } } })).toBe(0);
+    expect(
+      (await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } }))?.pausedUntil ??
+        null,
+    ).toBeNull();
     const before = Date.now();
     await burnCode(project.id, readerEmail);
-    const paused = await db.prisma.siteSignInCode.findFirstOrThrow({
-      where: { projectId: project.id, email: readerEmail, pausedUntil: { not: null } },
-    });
-    expect(paused.pausedUntil?.getTime()).toBeGreaterThanOrEqual(before + 24 * 60 * 60_000);
+    const paused = await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } });
+    expect(paused?.pausedUntil?.getTime()).toBeGreaterThanOrEqual(before + 24 * 60 * 60_000);
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await noCodeSent();
-    // The earlier codes leaving the look-back (or being cleaned up) doesn't end it.
-    await db.prisma.siteSignInCode.deleteMany({ where: { projectId: project.id, email: readerEmail, id: { not: paused.id } } });
+    // Cleaning up every code (as the hourly cleanup eventually does) doesn't end it.
+    await db.prisma.siteSignInCode.deleteMany({ where: { projectId: project.id, email: readerEmail } });
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await noCodeSent();
     // Once the pause ends, the address gets a code again.
-    await db.prisma.siteSignInCode.update({ where: { id: paused.id }, data: { pausedUntil: new Date(Date.now() - 1000) } });
+    await db.prisma.siteSignInGuard.update({
+      where: { projectId_email: { projectId: project.id, email: readerEmail } },
+      data: { pausedUntil: new Date(Date.now() - 1000) },
+    });
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await nextCode();
   });
 
-  it('keeps a running pause through cleanup of old codes', async () => {
-    const { project, readerEmail, memberEmail } = await site('READERS');
-    const old = new Date(Date.now() - 3 * 24 * 60 * 60_000);
-    const pausedRow = await db.prisma.siteSignInCode.create({
-      data: {
-        projectId: project.id,
-        email: readerEmail,
-        codeHash: 'spent',
-        attempts: 5,
-        createdAt: old,
-        expiresAt: old,
-        pausedUntil: new Date(Date.now() + 60 * 60_000),
-      },
-    });
-    const expiredRow = await db.prisma.siteSignInCode.create({
-      data: {
-        projectId: project.id,
-        email: readerEmail,
-        codeHash: 'spent',
-        attempts: 5,
-        createdAt: old,
-        expiresAt: old,
-        pausedUntil: new Date(Date.now() - 1000),
-      },
-    });
-    // Issuing a code for any address runs the cleanup.
-    await post(`sign-in/${project.id}/start`, { email: memberEmail });
-    await nextCode();
-    for (let i = 0; i < 50 && (await db.prisma.siteSignInCode.count({ where: { id: expiredRow.id } })) > 0; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
+  it('still pauses when the earlier burned codes were cleaned up before the third ran out', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await burnCode(project.id, readerEmail);
+    await burnCode(project.id, readerEmail);
+    await db.prisma.siteSignInCode.deleteMany({ where: { projectId: project.id, email: readerEmail } });
+    await burnCode(project.id, readerEmail);
+    expect(
+      (
+        await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } })
+      )?.pausedUntil?.getTime() ?? 0,
+    ).toBeGreaterThan(Date.now());
+  });
+
+  it('starts the streak over after a successful sign-in', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await burnCode(project.id, readerEmail);
+    await burnCode(project.id, readerEmail);
+    await signIn(project.id, readerEmail);
+    expect(
+      (await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } }))?.burnedCodes,
+    ).toBe(0);
+    await burnCode(project.id, readerEmail);
+    expect(
+      (await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } }))?.pausedUntil ??
+        null,
+    ).toBeNull();
+  });
+
+  it('never issues a code between the guess that burns the third code and the pause it starts', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await burnCode(project.id, readerEmail);
+    await burnCode(project.id, readerEmail);
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    const code = await nextCode();
+    const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+    for (let i = 0; i < 4; i++) await post(`sign-in/${project.id}/verify`, { email: readerEmail, code: wrong });
+    // The fifth wrong guess and a new start race.
+    await Promise.all([
+      post(`sign-in/${project.id}/verify`, { email: readerEmail, code: wrong }),
+      post(`sign-in/${project.id}/start`, { email: readerEmail }),
+    ]);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const state = await db.prisma.siteSignInGuard.findUnique({ where: { projectId_email: { projectId: project.id, email: readerEmail } } });
+    const codes = await db.prisma.siteSignInCode.findMany({ where: { projectId: project.id, email: readerEmail }, orderBy: { createdAt: 'desc' } });
+    if (state?.pausedUntil) {
+      // The guess won: the third code burned, the pause started, and no code followed it.
+      expect(codes[0]?.attempts).toBe(5);
+    } else {
+      // The start won: a new code exists, and the fifth guess was never counted against the old one.
+      expect(codes[1]?.attempts).toBe(4);
+      expect(codes[0]?.attempts).toBeLessThanOrEqual(1);
     }
-    expect(await db.prisma.siteSignInCode.count({ where: { id: expiredRow.id } })).toBe(0);
-    expect(await db.prisma.siteSignInCode.count({ where: { id: pausedRow.id } })).toBe(1);
-    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
-    await noCodeSent();
   });
 
   it('accepts only the newest code, so an earlier code stays dead after the newest is used', async () => {
@@ -406,15 +427,19 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     expect(row.codeHash).not.toContain(code);
   });
 
-  it('burns a code after five wrong guesses, even when they arrive at once', async () => {
+  it('never counts more than five guesses on a code, even when they arrive at once', async () => {
     const { project, readerEmail } = await site('READERS');
     await post(`sign-in/${project.id}/start`, { email: readerEmail });
     const code = await nextCode();
     const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0');
     const guesses = await Promise.all(Array.from({ length: 8 }, () => post(`sign-in/${project.id}/verify`, { email: readerEmail, code: wrong })));
     expect(guesses.map((response) => response.status)).toEqual(new Array(8).fill(400));
-    const row = await db.prisma.siteSignInCode.findFirstOrThrow({ where: { projectId: project.id } });
-    expect(row.attempts).toBe(5);
+    // Guesses that find another guess in progress are refused without being counted or checked.
+    const counted = (await db.prisma.siteSignInCode.findFirstOrThrow({ where: { projectId: project.id } })).attempts;
+    expect(counted).toBeGreaterThanOrEqual(1);
+    expect(counted).toBeLessThanOrEqual(5);
+    for (let i = counted; i < 5; i++) await post(`sign-in/${project.id}/verify`, { email: readerEmail, code: wrong });
+    expect((await db.prisma.siteSignInCode.findFirstOrThrow({ where: { projectId: project.id } })).attempts).toBe(5);
     expect((await post(`sign-in/${project.id}/verify`, { email: readerEmail, code })).status).toBe(400);
   });
 

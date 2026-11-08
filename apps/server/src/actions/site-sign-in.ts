@@ -33,9 +33,20 @@ const SIGN_IN_CODES_PER_DAY = 10;
 const SIGN_IN_DAY_MS = 24 * 60 * 60_000;
 /** Consecutive codes that ran out of guesses before an address is paused for a day. */
 const SIGN_IN_BURNED_CODES_LOCKOUT = 3;
-/** How long codes are kept: long enough for the day-long budgets above. A row
- *  that carries a running pause is kept until the pause ends. */
+/** How long codes are kept: long enough for the day-long budgets above. The
+ *  pause lives in `site_sign_in_guard`, so cleaning up codes never affects it. */
 const SIGN_IN_HISTORY_MS = SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
+/** Guards with no running pause are dropped after a week without activity. */
+const SIGN_IN_GUARD_RETENTION_MS = 7 * SIGN_IN_DAY_MS;
+
+/** Take the per-(site, address) lock for this transaction without waiting:
+ *  issuance and guesses for one address run one at a time, and a request that
+ *  finds the lock taken gives up at once rather than holding a pooled connection. */
+const tryLockAddress = async (tx: Prisma.TransactionClient, projectId: string, email: string): Promise<boolean> => {
+  const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+    SELECT pg_try_advisory_xact_lock(hashtextextended(${`site-sign-in:${projectId}:${email}`}, 0)) AS "locked"`;
+  return Boolean(lock?.locked);
+};
 const SITE_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 
 /** The row id salts the hash, so equal codes never share a hash. */
@@ -74,8 +85,9 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
  * stop a distributed attacker, so every budget is per (site, address):
  * - 5 codes per 15 minutes and 10 per rolling 24 hours, so at most 50 guesses
  *   a day and a bounded number of emails to any one inbox;
- * - after 3 consecutive codes that each ran out of guesses, none for 24 hours
- *   from the moment the third ran out (`pausedUntil`, set in verifySiteSignIn).
+ * - after 3 codes that each ran out of guesses since the last successful sign-in,
+ *   none for 24 hours from the moment the third ran out (the address's
+ *   `site_sign_in_guard`, updated in verifySiteSignIn).
  * Codes are kept for these look-backs (see SIGN_IN_HISTORY_MS).
  */
 const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, email: string, now: number): Promise<boolean> => {
@@ -86,22 +98,8 @@ const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, ema
   });
   if (recent.length >= SIGN_IN_CODES_PER_DAY) return false;
   if (recent.filter((row) => row.createdAt.getTime() > now - SIGN_IN_WINDOW_MS).length >= SIGN_IN_CODES_PER_WINDOW) return false;
-  const paused = await tx.siteSignInCode.findFirst({ where: { projectId, email, pausedUntil: { gt: new Date(now) } }, select: { id: true } });
-  return !paused;
-};
-
-/** After a wrong guess: when it used up the third code in a row, pause the
- *  address for a day, recorded on that code so cleanup can't shorten it. */
-const pauseAfterBurnedCodes = async (projectId: string, email: string, codeId: string) => {
-  const latest = await prisma.siteSignInCode.findMany({
-    where: { projectId, email },
-    orderBy: { createdAt: 'desc' },
-    take: SIGN_IN_BURNED_CODES_LOCKOUT,
-    select: { id: true, attempts: true },
-  });
-  if (latest[0]?.id !== codeId || latest.length < SIGN_IN_BURNED_CODES_LOCKOUT) return;
-  if (!latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS)) return;
-  await prisma.siteSignInCode.updateMany({ where: { id: codeId, pausedUntil: null }, data: { pausedUntil: new Date(Date.now() + SIGN_IN_DAY_MS) } });
+  const guard = await tx.siteSignInGuard.findUnique({ where: { projectId_email: { projectId, email } }, select: { pausedUntil: true } });
+  return !(guard?.pausedUntil && guard.pausedUntil.getTime() > now);
 };
 
 const issueCode = async (projectId: string, email: string, language?: string) => {
@@ -111,9 +109,7 @@ const issueCode = async (projectId: string, email: string, language?: string) =>
   // finds another issuance in progress sends nothing rather than waiting for the
   // lock, so a burst for one address never holds pooled connections.
   const row = await prisma.$transaction(async (tx) => {
-    const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
-      SELECT pg_try_advisory_xact_lock(hashtextextended(${`site-sign-in:${projectId}:${email}`}, 0)) AS "locked"`;
-    if (!lock?.locked) return null;
+    if (!(await tryLockAddress(tx, projectId, email))) return null;
     if (!(await mayIssueCode(tx, projectId, email, Date.now()))) return null;
     const created = await tx.siteSignInCode.create({
       data: { projectId, email, codeHash: 'pending', expiresAt: new Date(Date.now() + SIGN_IN_CODE_TTL_MS) },
@@ -138,9 +134,13 @@ const issueCode = async (projectId: string, email: string, language?: string) =>
     name: 'send-email',
     data: { to: email, ...message, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } },
   });
-  void prisma.siteSignInCode
+  void prisma.siteSignInCode.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) } } }).catch(() => undefined);
+  void prisma.siteSignInGuard
     .deleteMany({
-      where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) }, OR: [{ pausedUntil: null }, { pausedUntil: { lt: new Date() } }] },
+      where: {
+        updatedAt: { lt: new Date(Date.now() - SIGN_IN_GUARD_RETENTION_MS) },
+        OR: [{ pausedUntil: null }, { pausedUntil: { lt: new Date() } }],
+      },
     })
     .catch(() => undefined);
 };
@@ -157,27 +157,47 @@ export const startSiteSignIn = async (projectId: string, body: SiteSignInStartBo
 /** Exchange a code for a site session cookie. */
 export const verifySiteSignIn = async (ctx: Context<HonoEnv>, projectId: string, body: SiteSignInVerifyBody) => {
   const now = new Date();
-  // Only the newest code counts. Once it is used or has expired, every earlier
-  // code stays superseded.
-  const latest = await prisma.siteSignInCode.findFirst({
-    where: { projectId, email: body.email },
-    orderBy: { createdAt: 'desc' },
-    select: { id: true, codeHash: true, consumedAt: true, expiresAt: true },
+  const email = body.email;
+  // One transaction under the address lock: counting the guess, recording a
+  // burned code (and the pause it may start) and using the code all happen
+  // together, so no code can be issued in between. It returns instead of
+  // throwing so a counted guess is committed.
+  const accepted = await prisma.$transaction(async (tx) => {
+    if (!(await tryLockAddress(tx, projectId, email))) return false;
+    // Only the newest code counts. Once it is used or has expired, every
+    // earlier code stays superseded.
+    const latest = await tx.siteSignInCode.findFirst({
+      where: { projectId, email },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, codeHash: true, consumedAt: true, expiresAt: true, attempts: true },
+    });
+    if (!latest || latest.consumedAt || latest.expiresAt <= now || latest.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS) return false;
+    const attempts = latest.attempts + 1;
+    await tx.siteSignInCode.update({ where: { id: latest.id }, data: { attempts } });
+    if (!sameHash(latest.codeHash, codeHash(latest.id, body.code))) {
+      if (attempts >= SIGN_IN_CODE_MAX_ATTEMPTS) {
+        // This guess used the code up: one more burned code for the address.
+        const guard = await tx.siteSignInGuard.upsert({
+          where: { projectId_email: { projectId, email } },
+          create: { projectId, email, burnedCodes: 1 },
+          update: { burnedCodes: { increment: 1 } },
+          select: { burnedCodes: true },
+        });
+        if (guard.burnedCodes >= SIGN_IN_BURNED_CODES_LOCKOUT) {
+          await tx.siteSignInGuard.update({
+            where: { projectId_email: { projectId, email } },
+            data: { burnedCodes: 0, pausedUntil: new Date(now.getTime() + SIGN_IN_DAY_MS) },
+          });
+        }
+      }
+      return false;
+    }
+    await tx.siteSignInCode.update({ where: { id: latest.id }, data: { consumedAt: now } });
+    // A successful sign-in ends the streak of burned codes.
+    await tx.siteSignInGuard.updateMany({ where: { projectId, email }, data: { burnedCodes: 0 } });
+    return true;
   });
-  if (!latest || latest.consumedAt || latest.expiresAt <= now) throw invalidCode();
-  // Count the guess before checking it, atomically, so parallel guesses can't
-  // exceed the allowance.
-  const counted = await prisma.siteSignInCode.updateMany({
-    where: { id: latest.id, consumedAt: null, attempts: { lt: SIGN_IN_CODE_MAX_ATTEMPTS } },
-    data: { attempts: { increment: 1 } },
-  });
-  if (counted.count !== 1) throw invalidCode();
-  if (!sameHash(latest.codeHash, codeHash(latest.id, body.code))) {
-    await pauseAfterBurnedCodes(projectId, body.email, latest.id);
-    throw invalidCode();
-  }
-  const consumed = await prisma.siteSignInCode.updateMany({ where: { id: latest.id, consumedAt: null }, data: { consumedAt: now } });
-  if (consumed.count !== 1) throw invalidCode();
+  if (!accepted) throw invalidCode();
   // Eligibility can change between the code and its use (a revocation, a member removed).
   const identity = await signInIdentity(projectId, body.email);
   if (!identity) throw invalidCode();

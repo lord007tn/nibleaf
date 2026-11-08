@@ -682,6 +682,7 @@ model Project {
   jwtReplays      JwtReplay[]
   readerAuditLogs ReaderAuditLog[]
   siteSignInCodes SiteSignInCode[]
+  siteSignInGuards SiteSignInGuard[]
   siteMemberSessions SiteMemberSession[]
   exportSnapshots ExportSnapshot[]
   exportJobs      ExportJob[]
@@ -1362,14 +1363,27 @@ model SiteSignInCode {
   attempts   Int       @default(0)
   expiresAt  DateTime
   consumedAt DateTime?
-  /// Set on the third code in a row that ran out of guesses: the address gets
-  /// no codes until then, however old the earlier codes are.
-  pausedUntil DateTime?
   createdAt  DateTime  @default(now())
 
   @@index([projectId, email, createdAt])
   @@index([expiresAt])
   @@map("site_sign_in_code")
+}
+
+/// Per-address sign-in guard for a site: how many codes in a row ran out of
+/// guesses since the last successful sign-in, and the pause that three of them
+/// start. Kept apart from the code rows so cleaning up old codes can't lose it.
+model SiteSignInGuard {
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  email       String
+  burnedCodes Int       @default(0)
+  pausedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@id([projectId, email])
+  @@index([updatedAt])
+  @@map("site_sign_in_guard")
 }
 
 /// A team member signed in on the published site itself. The dashboard session
