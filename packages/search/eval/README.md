@@ -9,9 +9,9 @@ It evaluates answer generation against supplied passages, not retrieval quality.
 
 ## Fixtures
 
-`nibleaf-docs-fixtures.json` holds 36 cases built from real sections of `docs/`:
-12 English, 12 Arabic and 12 mixed Arabic/English questions, including 6
-follow-ups with history, 6 out-of-scope questions that must be refused, and 3
+`nibleaf-docs-fixtures.json` holds 37 cases built from real sections of `docs/`:
+13 English, 12 Arabic and 12 mixed Arabic/English questions, including 7
+follow-ups with history, 7 out-of-scope questions that must be refused, and 3
 vague questions that should get one clarifying question. Each case supplies the
 relevant section plus distractor sections, and names the headings a good answer
 cites. Regenerate them after editing the docs they quote:
@@ -110,3 +110,12 @@ previous default on every measure at less than half its answer cost. Terra
 scored slightly higher with the judge at about ten times the cost. `medium` added
 latency without a clear quality gain, and cut off two of nine follow-up rewrites
 at their 120-token cap.
+
+The provider-free indexed-site regression suite is
+`apps/server/src/lib/ai-search/retrieval.integration.test.ts`. Set
+`QDRANT_INTEGRATION_URL` to an isolated Qdrant and run it with Vitest. It indexes
+real EN/AR documentation in default and named versions, runs hybrid retrieval
+and reranking, and checks citation generation with a deterministic adapter.
+It measures retrieval contracts, not live model quality or entailment.
+The support-response-time follow-up is also part of `eval:rag`; it must refuse
+an unstated guarantee. Live provider evals are separate, optional paid runs.

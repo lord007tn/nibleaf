@@ -487,6 +487,30 @@ describe('published reader search', () => {
     window.history.replaceState(null, '', '/');
   });
 
+  it.each([
+    ['الإعدادات', 'إعداد الحساب', 'إعداد'],
+    ['المستخدمين', 'مُستخدِم جديد', 'مُستخدِم'],
+    ['API الإعدادات إعداد', 'API إِعداد الحساب', 'إِعداد'],
+  ])('highlights stemmed Arabic matches for %s while preserving original text', async (query, title, marked) => {
+    mocks.search.mockReturnValue({ data: [{ ...hit, title, snippet: title, language: 'ar' }], isFetching: false });
+    await render({ lang: 'ar' });
+    await typeQuery(query);
+    expect([...document.querySelectorAll('mark')].map((node) => node.textContent)).toContain(marked);
+    expect(option(title)?.textContent).toContain(title);
+  });
+
+  it.each([
+    ['الرياض', 'رياض'],
+    ['عمان', 'عام'],
+    ['المستخدمين', 'API_مستخدم'],
+  ])('does not invent morphological matches for %s in %s', async (query, title) => {
+    mocks.search.mockReturnValue({ data: [{ ...hit, title, snippet: '', language: 'ar' }], isFetching: false });
+    await render({ lang: 'ar' });
+    await typeQuery(query);
+    expect(document.querySelectorAll('mark')).toHaveLength(0);
+    expect(option(title)?.textContent).toContain(title);
+  });
+
   it('highlights Arabic matches the way search folds them (alef forms, diacritics)', async () => {
     mocks.search.mockReturnValue({
       data: [{ ...hit, title: 'إِلْغَاء الاشتراك', language: 'ar' }],

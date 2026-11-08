@@ -61,6 +61,12 @@ const collect = async (deltas: AsyncIterable<string>) => {
 };
 
 describe('chat citation policy', () => {
+  it.each(['a', 'ع'])('cuts off a provider ignoring output caps, including %s text without usage', async (letter) => {
+    const generation = run(`${letter.repeat(1500)} [S1]`);
+    const output = (await collect(generation.deltas)).join('');
+    expect(new TextEncoder().encode(output).length).toBeLessThanOrEqual(CHAT_OUTPUT_TOKEN_LIMITS.answer);
+    expect(await generation.result).toMatchObject({ status: 'no_answer', noAnswerReason: 'unverified', truncated: true });
+  });
   it.each(['[S1, S2]', '[S1,S2]', '[S1; S2]', '[S1، S2]', '[S1،S2]', '[S1؛ S2]'])('normalizes %s and preserves first appearance', (marker) => {
     expect(validate(`Use s3 ${marker}`)).toMatchObject({ status: 'answered', answer: 'Use s3 [S1][S2]', citations: [{ id: 'S1' }, { id: 'S2' }] });
   });
@@ -447,6 +453,9 @@ describe('reply language', () => {
 });
 
 describe('follow-up suggestions', () => {
+  it('retains a valid first suggestions list before a later empty list', () => {
+    expect(parseFollowUpQuestions('["Export"] []', 'How?')).toEqual({ questions: ['Export'], unreadable: false });
+  });
   it('returns up to three sanitized, deduplicated questions from a JSON array', async () => {
     const adapter = fakeText();
     adapter.setResponses([

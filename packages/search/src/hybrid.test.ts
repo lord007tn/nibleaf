@@ -23,6 +23,29 @@ const scope = (projectId: string, pages: string[] | null = null): SearchScope =>
 });
 
 describe('hybrid multilingual retrieval primitives', () => {
+  it('ranks an upgrade title matching a partial version above unrelated dense candidates', () => {
+    const make = (id: string, title: string, score: number) => {
+      const [chunk] = chunkSearchDocument(scope('tenant-a'), {
+        id,
+        title,
+        path: id,
+        description: '',
+        headings: [],
+        content: title,
+        language: 'en',
+        visible: true,
+      });
+      if (!chunk) throw new Error('missing fixture chunk');
+      return { chunk, score };
+    };
+    const unrelated = Array.from({ length: 12 }, (_, index) => make(`unrelated-${index}`, 'API reference for v0.2.9', 0.1));
+    const guide = make('self-hosting/upgrade-v0-2', 'Upgrade from v0.1.2 to v0.2.1', 0.04);
+    const ranked = rerankHybridChunks('upgrade v0.2', [...unrelated, guide]);
+    expect(ranked.slice(0, 3).map((hit) => hit.chunk.path)).toContain('self-hosting/upgrade-v0-2');
+    // A component prefix is bounded by a dot: v0.2 must never match v0.20.
+    const wrong = make('wrong', 'Upgrade v0.20', 0.04);
+    expect(rerankHybridChunks('upgrade v0.2', [wrong, guide])[0]?.chunk.path).toBe('self-hosting/upgrade-v0-2');
+  });
   it('normalizes Arabic morphology, stems English, and preserves mixed technical identifiers', () => {
     const tokens = hybridTokens('إعدادات users API_URL v2.1');
     expect(tokens).toContain('اعداد');

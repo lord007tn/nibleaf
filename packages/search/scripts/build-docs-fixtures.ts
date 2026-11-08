@@ -317,6 +317,16 @@ const cases: Intent[] = [
     heading: 'أنشئ تصديرًا لمرة واحدة',
     noAnswer: true,
   },
+  {
+    id: 'response-time-followup',
+    language: 'en',
+    question: 'And what guaranteed support response time do I get?',
+    prior: 'Can I get help with my documentation site?',
+    doc: 'reference/known-limitations',
+    heading: 'Identity and service commitments',
+    noAnswer: true,
+    forbidden: ['within 24 hours', 'within one hour', 'guaranteed response'],
+  },
 ];
 const here = dirname(fileURLToPath(import.meta.url));
 async function section(doc: string, heading: string) {

@@ -198,6 +198,9 @@ importers:
       '@nibleaf/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@nibleaf/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       '@nibleaf/server':
         specifier: workspace:*
         version: link:../server

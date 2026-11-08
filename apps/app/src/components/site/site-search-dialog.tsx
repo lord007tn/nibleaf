@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteSearchT } from '@nibleaf/i18n/site-search';
+import { lightStemArabicToken } from '@nibleaf/search/arabic';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Loader2, RotateCcw, Search, Sparkles } from 'lucide-react';
@@ -78,6 +79,13 @@ function Highlight({ text, query }: { text: string; query: string }) {
     }
   }
   const ranges: Array<[number, number]> = [];
+  // Match whole prose words through the same conservative stemmer used by
+  // retrieval, retaining their original UTF-16 offsets and diacritics.
+  const stems = new Set(tokens.map(lightStemArabicToken));
+  for (const word of text.matchAll(/[\p{L}\p{M}\p{N}_+.#@:/\\-]+/gu)) {
+    if (!/^[\u0621-\u063a\u0641-\u064a\u0671\u0610-\u061a\u064b-\u065f\u0670\u06d6-\u06ed\u0640]+$/u.test(word[0])) continue;
+    if (stems.has(lightStemArabicToken(word[0]))) ranges.push([word.index, word.index + word[0].length]);
+  }
   for (const token of tokens) {
     for (let at = folded.indexOf(token); at !== -1; at = folded.indexOf(token, at + token.length)) {
       let start = origin[at] ?? 0;

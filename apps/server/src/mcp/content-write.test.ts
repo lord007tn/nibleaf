@@ -583,7 +583,8 @@ describe('write audit durability', () => {
       expect.anything(),
       expect.objectContaining({ operation: 'create_page_draft', capability: 'pages:write' }),
     );
-    expect(JSON.stringify(response)).toContain('was saved but could not be recorded');
+    expect(response.isError).not.toBe(true);
+    expect(response.structuredContent).toMatchObject({ ok: true, meta: { auditPending: true } });
     await client.close();
   });
 });

@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { MAX_THEME_TEMPLATE_NODES } from '@nibleaf/shared/themes';
 import type { Context } from 'hono';
 import type { HonoEnv } from '@/lib/hono/context';
+import { version } from '../../package.json';
 import { registerAddonSurface } from './addons';
 import { registerAiConversationSurface } from './ai-conversations';
 import { registerCapabilitySurface } from './capabilities';
@@ -24,7 +25,7 @@ export const MAX_MCP_TOOL_INPUT_ELEMENTS = MAX_THEME_TEMPLATE_NODES + 8;
 
 export const createNibleafMcpServer = (ctx: Context<HonoEnv>, principal: McpPrincipal) => {
   const server = new McpServer(
-    { name: 'nibleaf', version: '0.1.0' },
+    { name: 'nibleaf', version },
     {
       maxToolInputElements: MAX_MCP_TOOL_INPUT_ELEMENTS,
       instructions: [

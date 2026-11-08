@@ -313,6 +313,24 @@ describe('searchSite multilingual scope', () => {
     ]);
   });
 
+  it('reports the runtime of the language that actually returned hits', async () => {
+    mocks.runPublishedSearch.mockImplementation(async (scope: { language: string }) => ({
+      hits: scope.language === 'ar' ? [{ id: 'page-ar', title: 'المصادقة', path: 'authentication', description: '', snippet: '', score: 1 }] : [],
+      runtime: scope.language === 'ar' ? 'hybrid' : 'legacy-fallback',
+    }));
+    expect((await searchSite('project-1', 'المصادقة')).runtime).toBe('hybrid');
+  });
+
+  it('reports mixed for returned hybrid and fallback hits, and fallback when all scopes fall back', async () => {
+    mocks.runPublishedSearch.mockImplementation(async (scope: { language: string }) => ({
+      hits: [{ id: `page-${scope.language}`, title: 'Token', path: 'authentication', description: '', snippet: '', score: 1 }],
+      runtime: scope.language === 'ar' ? 'hybrid' : 'legacy-fallback',
+    }));
+    expect((await searchSite('project-1', 'token')).runtime).toBe('mixed');
+    mocks.runPublishedSearch.mockResolvedValue({ hits: [], runtime: 'legacy-fallback' });
+    expect((await searchSite('project-1', 'missing')).runtime).toBe('legacy-fallback');
+  });
+
   it('keeps an Arabic reader’s result at a one-result limit on an English-default site, still searching every language', async () => {
     const result = await searchSite('project-1', 'token', undefined, 1, undefined, {}, 'ar');
     expect(mocks.getCachedIndex.mock.calls.map((call) => call[2])).toEqual(['en', 'ar']);

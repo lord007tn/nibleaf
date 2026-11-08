@@ -75,6 +75,12 @@ const internalHeaders = { 'x-nibleaf-internal': 'synthetic-health-secret' };
 const details = (app: Awaited<ReturnType<typeof boot>>) => app.request('/health/details', { headers: internalHeaders });
 
 describe('public and internal health contracts', () => {
+  it('advertises the package build version in OpenAPI', async () => {
+    const app = await boot();
+    const { version } = await import('../package.json');
+    const response = await app.request('/openapi.json');
+    expect(await response.json()).toMatchObject({ info: { version } });
+  });
   it('publishes only status and the existing revision, without invoking detailed diagnostics', async () => {
     mocks.ensureBucket.mockRejectedValue(new Error('private bucket at internal.example.test'));
     mocks.configureUploadCors.mockRejectedValue(new Error('private provider details'));

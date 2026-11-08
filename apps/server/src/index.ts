@@ -8,6 +8,7 @@ import { logger } from '@nibleaf/logger';
 import { configureUploadCors, ensureBucket } from '@nibleaf/storage';
 import { Scalar } from '@scalar/hono-api-reference';
 import { openAPIRouteHandler } from 'hono-openapi';
+import { version } from '../package.json';
 import { env } from './env';
 import { chatBudgetWarning } from './lib/ai-search/chat-budget';
 import app from './routes';
@@ -62,7 +63,7 @@ app.get(
     // Validation is mapped to Nibleaf's documented 422 AppError envelope.
     defaultValidationErrorResponse: false,
     documentation: {
-      info: { title: 'Nibleaf API', version: '0.1.1', description: 'Open-source documentation platform.' },
+      info: { title: 'Nibleaf API', version, description: 'Open-source documentation platform.' },
       servers: [{ url: env.API_URL, description: 'Nibleaf API' }],
     },
   }),

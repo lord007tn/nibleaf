@@ -4,6 +4,7 @@ import {
   deleteAiConversation,
   queryAiChatEngagement,
   queryAiContentGaps,
+  queryAiConversation,
   queryAiConversationSummary,
   queryAiConversations,
   refreshAiUsageDaily,
@@ -36,6 +37,38 @@ beforeEach(() => {
   mocks.query.mockResolvedValue(reply([]));
 });
 describe('AI archive', () => {
+  it('returns saved citation sections and the turn version for transcript links', async () => {
+    mocks.query.mockResolvedValueOnce(
+      reply([
+        {
+          turn_id: 'turn',
+          turn_index: 0,
+          occurred_at: '2026-11-01T00:00:00Z',
+          version_slug: 'v2',
+          language: 'ar',
+          visibility: 'public',
+          content_captured: 1,
+          question: 'How?',
+          answer: 'Use settings [S1]',
+          rewritten_query: '',
+          status: 'answered',
+          no_answer_reason: '',
+          citations: JSON.stringify([{ id: 'S1', pageId: 'setup', title: 'Setup', path: 'setup', heading: 'Users', anchor: 'users' }]),
+          suggestions: '[]',
+          page_path: 'setup',
+          provider: 'fixture',
+          model: 'fixture',
+          tokens_known: 0,
+          cost_known: 0,
+          latency_ms: null,
+        },
+      ]),
+    );
+    mocks.query.mockResolvedValueOnce(reply([]));
+    expect(await queryAiConversation(scope, 'conversation')).toMatchObject({
+      turns: [{ version: 'v2', citations: [{ id: 'S1', heading: 'Users', anchor: 'users' }] }],
+    });
+  });
   it.each([
     'email me at reader@example.com',
     'Arabic \u0660\u0665\u0665\u0661\u0662\u0663\u0664\u0665\u0666\u0667',

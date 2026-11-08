@@ -23,7 +23,10 @@ export const handleAiConversationJob = async (data: unknown, client?: ReturnType
     const archiveKey = resolveAiConversationKey(env);
     const key = resolveAiConversationTransportKey({ ...env, ANALYTICS_HASH_SALT: keys().ANALYTICS_HASH_SALT });
     phase = 'open';
-    const decoded = openAiConversation(job.sealed, job.tenantId, job.projectId, key);
+    const previousKey = env.AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS
+      ? resolveAiConversationKey({ AI_CONVERSATION_ENCRYPTION_KEY: env.AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS })
+      : null;
+    const decoded = openAiConversation(job.sealed, job.tenantId, job.projectId, key, previousKey ?? undefined);
     const row = job.kind === 'ai-conversation-turn' ? aiTurnRowSchema.parse(decoded) : aiFeedbackRowSchema.parse(decoded);
     if (row.tenant_id !== job.tenantId || row.project_id !== job.projectId) throw new Error('scope');
     if (

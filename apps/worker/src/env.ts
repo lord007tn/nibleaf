@@ -14,6 +14,10 @@ const parsedEnv = createEnv({
       .string()
       .refine((value) => Buffer.from(value, 'base64').length === 32)
       .optional(),
+    AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS: z
+      .string()
+      .refine((value) => Buffer.from(value, 'base64').length === 32)
+      .optional(),
     AI_CONVERSATION_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(90),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     WORKER_PORT: z.coerce.number().default(4312),

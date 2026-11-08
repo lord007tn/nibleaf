@@ -233,13 +233,13 @@ chat; `quota_exhausted` is the daily answer quota; `budget_exhausted` is the
 project token budget; `rate_limited` is the caller’s short-term limit.
 `unavailable` can mean provider/index configuration or unavailable quota storage.
 Check the safe API request ID and startup budget warning. The current search
-overlay’s 60000-token cap differs from the schema default of 150000 and can
-refuse a large turn before a provider call.
+overlay uses the schema default of 150000 tokens. Existing explicit overrides
+may still refuse a large turn before a provider call.
 
 If history is empty while chat works, check analytics mode, the `analytics`
 worker queue, ClickHouse schema/health, `ANALYTICS_HASH_SALT`, the transcript
 setting and consent. API and worker must resolve the same conversation transport
-key. Do not change that key while sealed queue jobs are pending. A healthy
+key. Keep the old resolved key in `AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS` on the worker until pending and retried jobs have drained. See the [rotation procedure](/self-hosting/search-ai#rotate-the-conversation-key). A healthy
 ClickHouse schema does not prove a turn was captured.
 
 For MCP failures, use the [MCP error guide](/self-hosting/mcp). If an audit-settle
@@ -306,3 +306,7 @@ forged entry, letting them change their rate-limit identity. Do not tune this va
 **Verify:** confirm the selected address with the actual header chain, including
 a deliberately forged leftmost entry, then open a few pages from two different
 networks. Neither should see `429`.
+
+For an MCP write with `ok: true` and `meta.auditPending: true`, the change has
+applied and its started audit row awaits settlement. Do not repeat the write
+because of the audit warning. Read the saved result or re-read the target.

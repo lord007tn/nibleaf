@@ -254,7 +254,16 @@ export const queryAiConversations = async (s: AiConversationScope, q: AiReadQuer
     nextCursor: rows.length > limit && last ? Buffer.from(`${last.lastActivityAt}|${last.conversationId}`).toString('base64url') : null,
   };
 };
-const sourceSchema = z.array(z.object({ id: z.string().optional(), pageId: z.string(), title: z.string(), path: z.string() }));
+const sourceSchema = z.array(
+  z.object({
+    id: z.string().optional(),
+    pageId: z.string(),
+    title: z.string(),
+    path: z.string(),
+    heading: z.string().optional(),
+    anchor: z.string().optional(),
+  }),
+);
 export const queryAiConversation = async (s: AiConversationScope, conversationId: string) => {
   const { turns, feedback } = await read(s, {}, conversationId);
   turns.sort((a, b) => a.turn_index - b.turn_index);
@@ -276,10 +285,13 @@ export const queryAiConversation = async (s: AiConversationScope, conversationId
         answer: t.content_captured ? t.answer || null : null,
         status: t.status,
         noAnswerReason: t.no_answer_reason || null,
-        citations: sourceSchema.parse(JSON.parse(t.citations)).map((c) => ({ id: c.id ?? '', title: c.title, path: c.path })),
+        citations: sourceSchema
+          .parse(JSON.parse(t.citations))
+          .map((c) => ({ id: c.id ?? '', title: c.title, path: c.path, heading: c.heading, anchor: c.anchor })),
         suggestions: sourceSchema.parse(JSON.parse(t.suggestions)).map((c) => ({ title: c.title, path: c.path })),
         pagePath: t.page_path || null,
         language: t.language,
+        version: t.version_slug,
         provider: t.provider || null,
         model: t.model || null,
         // A turn's totals are known when every model's are.

@@ -34,7 +34,7 @@ export interface ChatTurnCapture extends CapturePolicy {
   question: string;
   rewrittenQuery?: string;
   answer?: string;
-  citations: { id: string; pageId: string; title: string; path: string }[];
+  citations: { id: string; pageId: string; title: string; path: string; heading?: string; anchor?: string }[];
   suggestions: { pageId: string; title: string; path: string }[];
   provider?: string;
   model?: string;
@@ -101,9 +101,14 @@ export const buildAiTurnRow = (c: ChatTurnCapture) => {
   const redact = (v?: string, limit?: number) => (allowed ? redactConversationText(v ?? '', limit) : '');
   // What people type loses links and long numbers too, as search terms do.
   const redactTyped = (v?: string, limit?: number) => (allowed ? redactReaderText(v ?? '', limit) : '');
-  const sources = (items: { id?: string; pageId: string; title: string; path: string }[]) =>
+  const sources = (items: { id?: string; pageId: string; title: string; path: string; heading?: string; anchor?: string }[]) =>
     JSON.stringify(
-      items.map((i) => ({ ...i, title: allowed ? redactConversationText(i.title) : '', path: redactConversationText(i.path).split(/[?#]/u)[0] })),
+      items.map((i) => ({
+        ...i,
+        title: allowed ? redactConversationText(i.title) : '',
+        ...(i.heading ? { heading: allowed ? redactConversationText(i.heading) : '' } : {}),
+        path: redactConversationText(i.path).split(/[?#]/u)[0],
+      })),
     );
   return aiTurnRowSchema.parse({
     ...scope(c),

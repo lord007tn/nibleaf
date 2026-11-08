@@ -134,7 +134,10 @@ describe('hybrid index recovery', () => {
     const legacy = vi.fn().mockResolvedValue([result]);
     await expect(runPublishedSearch(scope, 'حجز جديد', 12, legacy)).resolves.toEqual({ hits: [result], runtime: 'legacy-fallback' });
     expect(legacy).toHaveBeenCalledOnce();
-    expect(doubles.queryHybrid).toHaveBeenCalledWith(expect.objectContaining({ denseScoreThreshold: 0.35 }), undefined);
+    expect(doubles.queryHybrid).toHaveBeenCalledWith(
+      expect.objectContaining({ denseScoreThreshold: 0.35, limit: 48, candidateLimit: 48 }),
+      undefined,
+    );
   });
 
   it('falls back when the provider is unavailable', async () => {

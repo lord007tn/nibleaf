@@ -9,6 +9,17 @@ describe('archive envelopes', () => {
     expect(openAiConversation(sealAiConversation({ content_captured: 0 }, 't', 'p', key), 't', 'p', key)).toEqual({ content_captured: 0 });
   });
   const key = Buffer.alloc(32, 7);
+  it('reads queued jobs with the previous key during rotation without weakening scope or integrity', () => {
+    const current = Buffer.alloc(32, 9);
+    const sealed = sealAiConversation({ question: 'old queued turn' }, 'tenant', 'project', key);
+    expect(openAiConversation(sealed, 'tenant', 'project', current, key)).toEqual({ question: 'old queued turn' });
+    expect(() => openAiConversation(sealed, 'other', 'project', current, key)).toThrow();
+    expect(() => openAiConversation(sealed, 'tenant', 'other', current, key)).toThrow();
+    expect(() => openAiConversation(sealed, 'tenant', 'project', current, Buffer.alloc(32, 2))).toThrow();
+    const fresh = sealAiConversation({ fresh: true }, 'tenant', 'project', current);
+    expect(() => openAiConversation(fresh, 'tenant', 'project', key)).toThrow();
+    expect(openAiConversation(fresh, 'tenant', 'project', current, key)).toEqual({ fresh: true });
+  });
   it('round trips with authenticated tenant and project', () => {
     const value = { question: 'redacted text' };
     const sealed = sealAiConversation(value, 'tenant', 'project', key);

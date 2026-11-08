@@ -28,13 +28,21 @@ export const sealAiConversation = (value: unknown, tenantId: string, projectId: 
   const data = Buffer.concat([cipher.update(JSON.stringify(value), 'utf8'), cipher.final()]);
   return ['v1', iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), data.toString('base64url')].join('.');
 };
-export const openAiConversation = (sealed: string, tenantId: string, projectId: string, key: Buffer): unknown => {
+export const openAiConversation = (sealed: string, tenantId: string, projectId: string, key: Buffer, previousKey?: Buffer): unknown => {
   const [v, iv, tag, data, extra] = sealed.split('.');
   if (v !== 'v1' || !iv || !tag || !data || extra !== undefined) throw new Error('archive envelope');
-  const cipher = createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
-  cipher.setAAD(Buffer.from(`${tenantId}:${projectId}`));
-  cipher.setAuthTag(Buffer.from(tag, 'base64url'));
-  return JSON.parse(Buffer.concat([cipher.update(Buffer.from(data, 'base64url')), cipher.final()]).toString('utf8'));
+  for (const candidate of previousKey ? [key, previousKey] : [key]) {
+    try {
+      const cipher = createDecipheriv('aes-256-gcm', candidate, Buffer.from(iv, 'base64url'));
+      cipher.setAAD(Buffer.from(`${tenantId}:${projectId}`));
+      cipher.setAuthTag(Buffer.from(tag, 'base64url'));
+      return JSON.parse(Buffer.concat([cipher.update(Buffer.from(data, 'base64url')), cipher.final()]).toString('utf8'));
+    } catch {
+      // Both keys must authenticate this tenant and project; never return a
+      // partially decrypted payload or expose crypto/provider error details.
+    }
+  }
+  throw new Error('archive envelope authentication failed');
 };
 
 /** Metadata still needs queue encryption when transcript capture has no archive key. */

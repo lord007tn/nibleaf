@@ -209,7 +209,7 @@ repeat the workflow checks in [production readiness](/self-hosting/production).
 | `SEARCH_ANSWER_RATE_LIMIT_PER_MIN` | `10` | Per-IP minute limit, 1–1000; separate buckets for answer and chat routes. |
 | `SEARCH_ANSWER_MIN_CONFIDENCE` | `0.2` | Minimum retrieval confidence for an answer, 0–1. |
 | `SEARCH_CHAT_MAX_TURNS` | `20` | Questions per conversation, 1–200. |
-| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `150000` | Conversation token budget, 1000–10000000. The current search overlay and production example set 60000 instead; set 150000 explicitly for the schema default. |
+| `SEARCH_CHAT_MAX_CONVERSATION_TOKENS` | `150000` | Conversation token budget, 1000–10000000. Current-source Compose files and the production example use this default. |
 | `SEARCH_CHAT_DAILY_TOKENS_PER_PROJECT` | `2000000` | UTC-day project token budget, 0–1000000000; 0 disables this budget. |
 | `SEARCH_CHAT_HISTORY_MESSAGES` | `6` | Prior messages supplied per turn, 0–12. |
 | `SEARCH_CHAT_HISTORY_MAX_TOKENS` | `1500` | Estimated history token cap, 0–16000. |
@@ -238,6 +238,7 @@ repeat the workflow checks in [production readiness](/self-hosting/production).
 | `CLICKHOUSE_SENSITIVE_RETENTION_DAYS` | `30` | Opted-in public search-text retention, 1–90 days. |
 | `CLICKHOUSE_MIGRATE_ON_BOOT` | `true` | Worker retries schema migrations in the background; false needs a migration operator. |
 | `AI_CONVERSATION_ENCRYPTION_KEY` | `unset` | Optional 32-byte base64 queue-encryption key on API and worker; otherwise derived from the integration key. With neither key, no conversation text is saved. |
+| `AI_CONVERSATION_ENCRYPTION_KEY_PREVIOUS` | `unset` | Previous resolved 32-byte base64 key; worker read-only fallback while queued jobs drain during rotation. |
 | `AI_CONVERSATION_RETENTION_DAYS` | `90` | Conversation turns and feedback TTL, 1–365 days; same value on API, worker and migration CLI. |
 
 ## Connections, processes, and queues
@@ -322,7 +323,7 @@ API and worker. It does not configure authentication on the Qdrant service when
 you set only the client-side `QDRANT_API_KEY`. Provision the server key too before
 exposing Qdrant. `SEARCH_CHAT_SUGGESTIONS_TIMEOUT_MS` and several advanced search
 knobs are not passed by that overlay; add explicit environment mappings if you
-change them. Its 60000-token cap differs from the schema default above.
+change them. Its conversation token cap matches the schema default above.
 
 Source quickstart (`docker-compose.yml`) and Coolify include ClickHouse, backup
 disk configuration and the `analytics-tools` profile. Their bootstrap settings

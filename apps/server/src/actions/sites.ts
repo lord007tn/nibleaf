@@ -764,13 +764,13 @@ export const searchSite = async (
     const match = page ? matchedSearchSection(page, query, `${deploymentId}:${page.id}`) : undefined;
     return match ? { ...hit, section: match.section, snippet: match.snippet || hit.snippet } : hit;
   });
-  const runtime = perLanguage.some(({ result }) => result.runtime === 'legacy-fallback')
-    ? 'legacy-fallback'
-    : perLanguage.some(({ result }) => result.runtime === 'hybrid')
-      ? 'hybrid'
-      : perLanguage.some(({ result }) => result.runtime === 'shadow')
-        ? 'shadow'
-        : 'legacy';
+  // Empty or trimmed-out scopes did not produce these results. When there are
+  // no hits, report the runtimes of every attempted scope instead.
+  const returnedLanguages = new Set(hits.map((hit) => hit.language));
+  const runtimes = new Set(
+    perLanguage.filter(({ language }) => hits.length === 0 || returnedLanguages.has(language)).map(({ result }) => result.runtime),
+  );
+  const runtime = runtimes.size > 1 ? 'mixed' : ([...runtimes][0] ?? 'legacy');
   const analyticsLanguage = lang ? request.language : 'all';
   const latencyMs = Math.max(0, Math.round(performance.now() - analyticsStartedAt));
   const payloads: AnalyticsPayload[] = [
