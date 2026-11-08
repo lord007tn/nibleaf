@@ -211,7 +211,7 @@ export const landingEn: LandingCopy = {
       name: 'Nibleaf Cloud',
       price: 'Free during the beta',
       priceNote: 'No credit card at sign-up',
-      points: ['Nothing to install or maintain', 'Visual editor, docs site, search and team roles', 'Newer AI features arrive as they roll out'],
+      points: ['Nothing to install or maintain', 'Visual editor, docs site, search and team roles', 'Ask AI, insights and AI-assistant connections'],
       cta: { label: 'Create a free account', href: '/sign-up' },
       footnote: 'No paid cloud plan is offered today.',
     },
@@ -261,7 +261,7 @@ export const landingEn: LandingCopy = {
       },
       {
         q: 'What’s the difference between Cloud and self-hosting?',
-        a: 'It’s one open-source codebase. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups. New features reach self-hosters with the next release that includes them.',
+        a: 'It’s one open-source codebase. On Nibleaf Cloud, we run it for you. Self-hosted, you install it on your own servers with Docker Compose, choose your storage and optional services, and look after updates and backups. New features reach self-hosters in the published release that includes them.',
       },
       {
         q: 'What do I need for Ask AI, and who pays for the AI?',

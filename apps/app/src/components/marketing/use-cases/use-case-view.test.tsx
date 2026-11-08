@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { MARKETING_SITEMAP } from '@/lib/marketing-sitemap';
-import { availabilityNote, heroAvailabilityNote } from '../copy/availability';
+import { availabilityNote, heroAvailabilityNote, isRollingOut, ROLLOUT_WORDING } from '../copy/availability';
 import { shellAr } from '../copy/shell.ar';
 import type { UseCaseSlug } from '../copy/types';
 import { USE_CASE_SLUGS } from '../copy/use-case-meta';
@@ -89,7 +89,7 @@ describe.each(pages)('%s use-case pages', (lang, Page, copies, alternate, altern
       expect(image.getAttribute('alt')?.length).toBeGreaterThan(0);
     }
 
-    expect(root.textContent).not.toMatch(/v0\.2|trusted by thousands|10,000 teams/i);
+    expect(root.textContent).not.toMatch(/v0\.2\.0|next self-hosted release|trusted by thousands|10,000 teams/i);
   });
 });
 
@@ -133,12 +133,13 @@ describe('use-cases teaser', () => {
 });
 
 describe('use-case availability honesty', () => {
-  it.each(pages)('captions the %s support hero and AI answers while those capabilities roll out', (lang, Page, copies) => {
+  it.each(pages)('captions the %s support hero only while its AI capabilities roll out', (lang, Page, copies) => {
     const copy = copies['support-teams'];
     expect(copy.hero.availabilityNote).toBe(heroAvailabilityNote(lang));
     const root = markup(renderToStaticMarkup(<Page slug="support-teams" stars={0} />));
     const hero = root.querySelector('h1')?.closest('div');
-    expect(hero?.textContent).toContain(copy.hero.availabilityNote);
+    if (copy.hero.availabilityNote) expect(hero?.textContent).toContain(copy.hero.availabilityNote);
+    else expect(root.textContent).not.toMatch(ROLLOUT_WORDING);
     const answers = copy.faq.items.map((item) => item.a).join('\n');
     expect(answers).toContain(availabilityNote('askAi', lang));
     expect(answers).toContain(availabilityNote('docsInsights', lang));
@@ -159,9 +160,9 @@ describe('use-case release honesty', () => {
   it.each(pages)('qualifies %s features newer than the latest self-hosted release', (lang, Page, copies) => {
     const themes = copies['product-docs'].solutions.find((solution) => solution.id === 'themes');
     expect(themes?.note).toBe(availabilityNote('readerThemes', lang));
-    expect(copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.note).toContain(
-      availabilityNote('readerThemes', lang),
-    );
+    const openApiNote = copies['api-docs'].solutions.find((solution) => solution.id === 'openapi-reference')?.note;
+    if (isRollingOut('readerThemes')) expect(openApiNote).toContain(availabilityNote('readerThemes', lang));
+    else expect(openApiNote).toBeUndefined();
     for (const copy of Object.values(copies)) {
       for (const step of copy.workflow.steps) expect(step.body).not.toContain('GitBook');
     }
@@ -176,7 +177,11 @@ describe('use-case copy qualifies every feature newer than the latest self-hoste
     ar: /اسأل المساعد|MCP|مساعد الذكاء|مساعدي الذكاء|مساعدك الذكي|Qdrant|ClickHouse|Signal|قالب|قوالب|التحليلات|⌘K|ابدأ من هنا/,
   } as const;
 
-  it.each(pages)('%s sections, workflows and answers carry the availability note', (lang, _Page, copies) => {
+  it.each(pages)('%s sections, workflows and answers carry the availability note while Ask AI rolls out', (lang, _Page, copies) => {
+    if (!isRollingOut('askAi')) {
+      expect(JSON.stringify(copies)).not.toMatch(ROLLOUT_WORDING);
+      return;
+    }
     const note = availabilityNote('askAi', lang);
     for (const copy of Object.values(copies)) {
       for (const solution of copy.solutions) {
