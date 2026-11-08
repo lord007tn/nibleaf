@@ -6,6 +6,7 @@ import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { MemberRole } from '@nibleaf/shared/constants';
 import type { AssignableMemberRole } from '@nibleaf/shared/rbac';
+import { useDebouncedValue } from '@tanstack/react-pacer';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { Crown, Mail, Plus, Search, Trash2, Users } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
@@ -15,12 +16,14 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { GradientAvatar } from '@/components/settings/section';
 import { friendlyErrorMessage, type PeopleOverview, usePeople, usePeopleChanges } from '@/hooks/api';
 import { peopleQueryOptions } from '@/hooks/api/query-options';
-import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { DEFAULT_INVITE_ROLE, roleLabelKey } from '@/lib/member-roles';
 import { useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/app/(dashboard)/people')({
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, peopleQueryOptions()),
+  // Start the first page with the route; a failure shows through the page's own query.
+  loader: ({ context: { queryClient } }) => {
+    if (typeof window !== 'undefined') void queryClient.prefetchInfiniteQuery(peopleQueryOptions()).catch(() => undefined);
+  },
   component: PeoplePage,
 });
 
@@ -34,16 +37,18 @@ type Site = PeopleOverview['sites'][number];
  */
 function PeoplePage() {
   const t = useT();
-  const people = usePeople();
   const { data: session } = useSession();
   const [filter, setFilter] = useState('');
-  const data = people.data;
+  // Searched on the server, so an account with thousands of people never loads them all.
+  const [query] = useDebouncedValue(filter.trim(), { wait: 250 });
+  const people = usePeople(query);
+  const pages = people.data?.pages;
+  // Sites, totals and invitations come with the first page; people accumulate page by page.
+  const data = pages?.[0];
+  const visible = useMemo(() => pages?.flatMap((page) => page.people) ?? [], [pages]);
   const siteById = useMemo(() => new Map((data?.sites ?? []).map((site) => [site.projectId, site])), [data?.sites]);
-  const visible = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    const list = data?.people ?? [];
-    return q ? list.filter(({ user }) => `${user.name} ${user.email}`.toLowerCase().includes(q)) : list;
-  }, [data?.people, filter]);
+  // A new search keeps the previous results on screen until its own arrive.
+  const searching = people.isPlaceholderData || filter.trim() !== query;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,17 +91,35 @@ function PeoplePage() {
                 value={filter}
               />
             </div>
-            <p className="text-muted-foreground text-sm">{t('people.summary', { people: data.people.length, sites: data.sites.length })}</p>
+            <p className="text-muted-foreground text-sm">{t('people.summary', { people: data.total, sites: data.sites.length })}</p>
           </div>
 
-          <ul className="flex flex-col gap-3" data-testid="people-list">
+          <ul aria-busy={searching || undefined} className="flex flex-col gap-3" data-testid="people-list">
             {visible.map((person) => (
               <PersonCard isSelf={person.user.id === session?.user.id} key={person.user.id} person={person} siteById={siteById} sites={data.sites} />
             ))}
             {visible.length === 0 ? <li className="py-6 text-center text-muted-foreground text-sm">{t('people.noMatch')}</li> : null}
           </ul>
+          {visible.length > 0 && data.total > visible.length ? (
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <p className="text-muted-foreground text-sm">{t('people.showing', { shown: visible.length, total: data.total })}</p>
+              {people.hasNextPage ? (
+                <Button
+                  loading={people.isFetchingNextPage}
+                  loadingText={t('common.loading')}
+                  onClick={() => void people.fetchNextPage()}
+                  variant="outline"
+                >
+                  {t('people.loadMore')}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+          {people.isFetchNextPageError ? <QueryErrorState onRetry={() => void people.fetchNextPage()} retrying={people.isFetchingNextPage} /> : null}
 
-          {data.invitations.length > 0 ? <PendingInvitations invitations={data.invitations} siteById={siteById} /> : null}
+          {data.invitations.length > 0 ? (
+            <PendingInvitations invitations={data.invitations} siteById={siteById} total={data.invitationsTotal} />
+          ) : null}
         </>
       )}
     </div>
@@ -271,7 +294,15 @@ function AddToSiteForm({ email, name, sites, onDone }: { email: string; name: st
   );
 }
 
-function PendingInvitations({ invitations, siteById }: { invitations: PeopleOverview['invitations']; siteById: Map<string, Site> }) {
+function PendingInvitations({
+  invitations,
+  siteById,
+  total,
+}: {
+  invitations: PeopleOverview['invitations'];
+  siteById: Map<string, Site>;
+  total: number;
+}) {
   const t = useT();
   const { revoke } = usePeopleChanges();
   // One request per invitation: a row spins while its own revoke runs, and a
@@ -296,6 +327,11 @@ function PendingInvitations({ invitations, siteById }: { invitations: PeopleOver
       <h2 className="border-border border-b px-4 py-3 font-semibold text-sm" id="pending-invitations">
         {t('settings.members.pendingInvitations')}
       </h2>
+      {total > invitations.length ? (
+        <p className="border-border border-b px-4 py-2 text-muted-foreground text-xs">
+          {t('people.invitationsLimited', { shown: invitations.length, total })}
+        </p>
+      ) : null}
       <ul className="divide-y divide-border">
         {invitations.map((invitation) => {
           const site = siteById.get(invitation.projectId);

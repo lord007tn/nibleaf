@@ -56,6 +56,31 @@ describe('Paraglide message catalogs', () => {
     }
   });
 
+  it.each(INTERFACE_LOCALES.filter(({ code }) => code !== 'en').map(({ code }) => code))(
+    '%s translates the rollback and upload-limit messages that predate the Viewer role',
+    (locale) => {
+      const catalog = loadCatalog(locale);
+      for (const key of ['deploy_rollback_supersededtitle', 'deploy_rollback_superseded', 'editor_pendinguploadlimit']) {
+        expect(catalog[key]?.trim()).toBeTruthy();
+        expect(catalog[key]).not.toBe(english[key]);
+      }
+    },
+  );
+
+  it('says Smart AI settings apply to this site, as they are stored per site', () => {
+    const arabic = loadCatalog('ar');
+    const smartAi = orderedKeys.filter((key) => key.startsWith('settings_smartai_'));
+    expect(smartAi.filter((key) => /workspace/i.test(english[key] ?? ''))).toEqual([]);
+    expect(smartAi.filter((key) => (arabic[key] ?? '').includes('مساحة العمل'))).toEqual([]);
+    expect(english.settings_smartai_scope).toContain('this site');
+  });
+
+  it('points to the real place to turn on search terms, and drops the contradicted two-way Git note', () => {
+    expect(english.analytics_search_hidden_disabled).toContain('Settings → Integrations → Analytics');
+    expect(english.analytics_search_enable_offlater).toContain('Settings → Integrations → Analytics');
+    expect(english).not.toHaveProperty('settings_git_twowaysync_description');
+  });
+
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s is key-complete with compatible variables', (locale) => {
     const catalog = loadCatalog(locale);
     expect(

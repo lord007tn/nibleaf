@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { Link } from '@tanstack/react-router';
 import {
   Badge,
   Braces,
@@ -21,7 +22,6 @@ import { BrandingSection } from '@/components/project-settings/branding-section'
 import { FooterSection } from '@/components/project-settings/footer-section';
 import { NavbarSection } from '@/components/project-settings/navbar-section';
 import { RedirectsSection } from '@/components/project-settings/redirects-section';
-import { SearchSection } from '@/components/project-settings/search-section';
 import { SeoSection } from '@/components/project-settings/seo-section';
 import { StylingSection } from '@/components/project-settings/styling-section';
 import { ThemeSection } from '@/components/project-settings/theme-section';
@@ -108,7 +108,8 @@ export function ConfigSection({ project, section }: { project: Project; section:
     case 'seo':
       return <SeoSection key={`seo-${project.id}`} project={project} />;
     case 'search':
-      return <SearchSection key={`search-${project.id}`} project={project} />;
+      // One home for search settings (Settings → Search); this entry points there.
+      return <SearchSettingsLink projectId={project.id} />;
     case 'variables':
       return <VariablesSection key={`variables-${project.id}`} project={project} />;
     case 'redirects':
@@ -116,4 +117,22 @@ export function ConfigSection({ project, section }: { project: Project; section:
     default:
       return null;
   }
+}
+
+function SearchSettingsLink({ projectId }: { projectId: string }) {
+  const t = useT();
+  return (
+    <div className="rounded-xl border border-border bg-card p-5" data-testid="search-settings-link">
+      <h2 className="font-semibold">{t('settings.search')}</h2>
+      <p className="mt-1 text-muted-foreground text-sm">{t('settings.search.movedHint')}</p>
+      <Button
+        className="mt-4"
+        nativeButton={false}
+        render={<Link params={{ projectId }} search={{ section: 'search' }} to="/app/projects/$projectId/settings" />}
+        variant="outline"
+      >
+        {t('settings.search.openSettings')}
+      </Button>
+    </div>
+  );
 }

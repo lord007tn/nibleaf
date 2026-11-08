@@ -24,6 +24,8 @@ export const Route = createFileRoute('/(auth)/sign-up')({
     z
       .object({
         invite: z.string().optional().catch(undefined),
+        // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
+        next: z.string().optional().catch(undefined),
         email: z.string().optional().catch(undefined),
         intent: z.literal('first-publish').optional().catch(undefined),
       })
@@ -171,7 +173,7 @@ function SignUpPage() {
         </p>
         <p className="mt-5 text-center text-muted-foreground text-sm">
           {t('auth.signUp.haveAccount')}{' '}
-          <Link className="text-primary hover:underline" to="/sign-in">
+          <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
             {t('auth.signIn.submit')}
           </Link>
         </p>
@@ -337,7 +339,7 @@ function SignUpPage() {
       {!codeSent ? (
         <p className="mt-5 text-center text-muted-foreground text-sm">
           {t('auth.signUp.haveAccount')}{' '}
-          <Link className="text-primary hover:underline" to="/sign-in">
+          <Link className="text-primary hover:underline" search={search.next ? { next: search.next } : {}} to="/sign-in">
             {t('auth.signIn.submit')}
           </Link>
         </p>

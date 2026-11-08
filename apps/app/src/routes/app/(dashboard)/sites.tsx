@@ -3,7 +3,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { ArrowUpRight, FileText, Plus, Search } from 'lucide-react';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
@@ -35,9 +35,8 @@ function SitesPage() {
   );
   const [query, setQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(Boolean(newSite));
-  const navigate = useNavigate();
   const t = useT();
-  const { number } = useFormatters();
+  const { count } = useFormatters();
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return normalized ? (projects ?? []).filter((project) => `${project.name} ${project.slug}`.toLowerCase().includes(normalized)) : (projects ?? []);
@@ -88,11 +87,12 @@ function SitesPage() {
       ) : isError && !projects ? null : filtered.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((project) => (
-            <button
-              type="button"
+            // A real link: middle-click, open in a new tab and copy link all work, and it is announced as a link.
+            <Link
               key={project.id}
-              onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: project.id } })}
-              className="group cursor-pointer rounded-xl border border-border bg-card p-5 text-start transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+              params={{ projectId: project.id }}
+              to="/app/projects/$projectId"
+              className="group block rounded-xl border border-border bg-card p-5 text-start outline-none transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             >
               <div className="flex items-start gap-3">
                 <span className="grid size-11 place-items-center rounded-xl border border-border bg-muted/50">
@@ -106,12 +106,12 @@ function SitesPage() {
                     <bdi dir="ltr">/{project.slug}</bdi>
                   </span>
                 </span>
-                <ArrowUpRight className="size-4.5 text-muted-foreground transition group-hover:text-primary rtl:-scale-x-100" />
+                <ArrowUpRight aria-hidden className="size-4.5 text-muted-foreground transition group-hover:text-primary rtl:-scale-x-100" />
               </div>
               <div className="mt-8 flex items-center gap-2 text-muted-foreground text-sm">
-                <FileText className="size-4" /> {t('dashboard.pages', { count: number(project._count?.pages ?? 0) })}
+                <FileText aria-hidden className="size-4" /> {t('dashboard.pages', count(project._count?.pages ?? 0))}
               </div>
-            </button>
+            </Link>
           ))}
         </div>
       ) : (

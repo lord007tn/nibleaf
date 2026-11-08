@@ -26,7 +26,7 @@ import {
   useUpdateReaderAccessMode,
   useUpdateReaderJwt,
 } from '@/hooks/api';
-import { localeTag } from '@/lib/format';
+import { countVariables, localeTag } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter, Field, SectionHeader, Segmented } from './shared';
 
@@ -314,7 +314,7 @@ export function AuthenticationSection({ project }: { project: Project }) {
                     <div className="text-muted-foreground text-xs">
                       {audience.grants.some((grant) => !grant.pageId)
                         ? t('settings.authentication.reader.entireSite')
-                        : t('settings.authentication.reader.pageCount', { count: audience.grants.length })}{' '}
+                        : t('settings.authentication.reader.pageCount', countVariables(locale, audience.grants.length))}{' '}
                       · {t('settings.authentication.reader.readerCount', { count: audience._count.readers })}
                     </div>
                   </div>

@@ -18,8 +18,12 @@ export const ROLE_PICKER_ORDER: readonly AssignableMemberRole[] = [MemberRole.VI
 /** Invitations default to Editor, as before the Viewer role existed. */
 export const DEFAULT_INVITE_ROLE: AssignableMemberRole = MemberRole.MEMBER;
 
-const isKnownRole = (role: string): role is MemberRole => Object.hasOwn(ROLE_COPY, role);
+export const isKnownRole = (role: string): role is MemberRole => Object.hasOwn(ROLE_COPY, role);
 
-/** Label key for any stored role. An unrecognised value reads as the least
- *  privileged role, which is also how every server guard ranks it. */
-export const roleLabelKey = (role: string | null | undefined): MessageKey => ROLE_COPY[role && isKnownRole(role) ? role : MemberRole.VIEWER].label;
+/** Label key for any stored role. A value this version doesn't know says so
+ *  ("Unknown role") instead of passing for Viewer; every server guard ranks it
+ *  as the least privileged. A missing role reads as Viewer, as before. */
+export const roleLabelKey = (role: string | null | undefined): MessageKey => {
+  if (!role) return ROLE_COPY[MemberRole.VIEWER].label;
+  return isKnownRole(role) ? ROLE_COPY[role].label : 'roles.unknown';
+};

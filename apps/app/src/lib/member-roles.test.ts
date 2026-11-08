@@ -10,8 +10,8 @@ describe('member role copy', () => {
     expect(roleLabelKey('viewer')).toBe('roles.viewer');
   });
 
-  it('reads an unknown or missing role as the least privileged one', () => {
-    expect(roleLabelKey('superuser')).toBe('roles.viewer');
+  it('labels an unrecognised stored role as unknown, and a missing one as Viewer', () => {
+    expect(roleLabelKey('superuser')).toBe('roles.unknown');
     expect(roleLabelKey(null)).toBe('roles.viewer');
     expect(roleLabelKey(undefined)).toBe('roles.viewer');
   });
@@ -32,7 +32,7 @@ describe('member role copy', () => {
 });
 
 describe('roleLabelKey ignores inherited object keys', () => {
-  it.each(['constructor', 'toString', '__proto__'])('treats %s as unknown (Viewer)', (role) => {
-    expect(roleLabelKey(role)).toBe('roles.viewer');
+  it.each(['constructor', 'toString', '__proto__'])('treats %s as an unknown role', (role) => {
+    expect(roleLabelKey(role)).toBe('roles.unknown');
   });
 });

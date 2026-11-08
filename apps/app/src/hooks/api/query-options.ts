@@ -1,5 +1,5 @@
 import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
-import { queryOptions, skipToken } from '@tanstack/react-query';
+import { infiniteQueryOptions, keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
 import { syncPublishReceipt } from './deployment-cache';
@@ -305,11 +305,23 @@ export const getPublicMetaQueryOptions = () =>
     staleTime: 5 * 60 * 1000,
   });
 
-/** The People page: everyone on the sites you administer, with their roles. */
-export const peopleQueryOptions = () =>
-  queryOptions({
-    queryKey: queryKeys.members.people(),
-    queryFn: async () => getData(await api.app.people.$get(), 'people'),
+/** People per page on the People page; the server caps it too. */
+const PEOPLE_PAGE_SIZE = 25;
+
+/** The People page: everyone on the sites you administer, with their roles, a
+ *  page at a time and searched on the server. Earlier results stay on screen
+ *  while a new search or the next page loads. */
+export const peopleQueryOptions = (q = '') =>
+  infiniteQueryOptions({
+    queryKey: [...queryKeys.members.people(), q.trim()] as const,
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) =>
+      getData(
+        await api.app.people.$get({ query: { q: q.trim(), limit: String(PEOPLE_PAGE_SIZE), ...(pageParam ? { cursor: pageParam } : {}) } }),
+        'people',
+      ),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    placeholderData: keepPreviousData,
   });
 
 /** What a join link offers. A bad, revoked, expired or used-up link is one 404. */

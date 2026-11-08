@@ -35,7 +35,7 @@ import {
 } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
-import { DEFAULT_INVITE_ROLE, roleLabelKey } from '@/lib/member-roles';
+import { DEFAULT_INVITE_ROLE, isKnownRole, roleLabelKey } from '@/lib/member-roles';
 import { useSession } from '@/services/auth-client';
 import { JoinLinksSection } from './join-links-section';
 import { DirtyStateReporter, SectionHeader } from './shared';
@@ -322,6 +322,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
                             <Crown className="size-4" />
                           </Button>
                         ) : null}
+                        {/* A role this version doesn't know: say so, rather than an empty picker. */}
+                        {isKnownRole(member.role) ? null : <span className="text-muted-foreground text-sm">{t('roles.unknown')}</span>}
                         <RoleSelect
                           ariaLabel={t('settings.members.roleLabel')}
                           className="w-28"
