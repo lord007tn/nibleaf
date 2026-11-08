@@ -58,7 +58,11 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
   /** Run a guard the way Hono does, against the real database. */
   const runGuard = async (middleware: ReturnType<typeof guard.requireProjectRole>, userId: string, projectId: string) => {
     const values = new Map<string, unknown>([['user', { id: userId }]]);
-    const ctx = { get: (key: string) => values.get(key), set: (key: string, value: unknown) => values.set(key, value), req: { param: () => projectId } };
+    const ctx = {
+      get: (key: string) => values.get(key),
+      set: (key: string, value: unknown) => values.set(key, value),
+      req: { param: () => projectId },
+    };
     let passed = false;
     await middleware(ctx as never, async () => {
       passed = true;
@@ -109,10 +113,14 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
         { sendEmail: false },
       ),
     ).rejects.toMatchObject({ code: 'auth:insufficient_role' });
-    await expect(members.updateMemberRole(organization.id, team.viewer.memberId, team.viewer.userId, { role: MemberRole.ADMIN })).rejects.toMatchObject({
+    await expect(
+      members.updateMemberRole(organization.id, team.viewer.memberId, team.viewer.userId, { role: MemberRole.ADMIN }),
+    ).rejects.toMatchObject({
       code: 'auth:insufficient_role',
     });
-    await expect(members.updateMemberRole(organization.id, team.editor.memberId, team.viewer.userId, { role: MemberRole.VIEWER })).rejects.toMatchObject({
+    await expect(
+      members.updateMemberRole(organization.id, team.editor.memberId, team.viewer.userId, { role: MemberRole.VIEWER }),
+    ).rejects.toMatchObject({
       code: 'auth:insufficient_role',
     });
     await expect(members.removeMember(organization.id, team.editor.memberId, team.viewer.userId)).rejects.toMatchObject({
@@ -127,8 +135,8 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
     await expect(
       members.updateMemberRole(organization.id, team.viewer.memberId, team.owner.userId, { role: MemberRole.OWNER as never }),
     ).rejects.toMatchObject({ code: 'auth:insufficient_role' });
-    await expect(
-      members.transferOwnership(organization.id, team.owner.userId, team.viewer.memberId),
-    ).rejects.toMatchObject({ code: 'database:conflict' });
+    await expect(members.transferOwnership(organization.id, team.owner.userId, team.viewer.memberId)).rejects.toMatchObject({
+      code: 'database:conflict',
+    });
   });
 });

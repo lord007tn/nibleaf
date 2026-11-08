@@ -41,7 +41,7 @@ vi.mock('@nibleaf/database', async (importOriginal) => {
   };
   const prisma = new Proxy(models, {
     get: (target, key) => {
-      if (key === 'then') return undefined;
+      if (key === 'then') return;
       if (typeof key === 'string' && key.startsWith('$')) return unavailable;
       return target[key as string] ?? model();
     },
@@ -71,7 +71,9 @@ harness.onError((error, ctx) =>
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-const routes = [...new Map(appRoutes.routes.filter((route) => route.method !== 'ALL').map((route) => [`${route.method} ${route.path}`, route])).values()]
+const routes = [
+  ...new Map(appRoutes.routes.filter((route) => route.method !== 'ALL').map((route) => [`${route.method} ${route.path}`, route])).values(),
+]
   .map(({ method, path }) => ({ method, path }))
   .sort((a, b) => `${a.path} ${a.method}`.localeCompare(`${b.path} ${b.method}`));
 
@@ -157,10 +159,7 @@ describe('dashboard API permission matrix', () => {
     expect(result, `${method} ${path} must hide the site from non-members`).toMatchObject({ status: 404 });
   });
 
-  it.each([
-    MemberRole.MEMBER,
-    MemberRole.ADMIN,
-  ])('an Editor-level write still admits role %s past its guard', async (role) => {
+  it.each([MemberRole.MEMBER, MemberRole.ADMIN])('an Editor-level write still admits role %s past its guard', async (role) => {
     state.role = role;
     // Publishing is an Editor action: the guard lets the role through, and the
     // stubbed database then stops the handler.

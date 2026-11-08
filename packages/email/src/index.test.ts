@@ -43,6 +43,6 @@ describe('localized transactional email rendering', () => {
       role,
     });
     expect(email.text).toContain(phrase);
-    expect(email.text).not.toMatch(/(viewer|member)/);
+    expect(email.text).not.toMatch(/\b(viewer|member)\b/);
   });
 });
