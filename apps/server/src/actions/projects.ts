@@ -88,7 +88,9 @@ const nonStarterPublishWhere: Prisma.DeploymentWhereInput = {
  *  Each site also says how many publishes on it went live (`livePublishes`: any
  *  member's, the sign-up starter publish excluded)
  *  and whether one is queued or running now (`publishing`), so the dashboard's
- *  first-run checklist is decided by this one request for any number of sites. */
+ *  first-run checklist is decided by this one request for any number of sites.
+ *  `live`/`lastPublishedAt` describe what readers can open now (starter included),
+ *  for the site status shown on the overview and the sites list. */
 export const listProjects = async (userId: string) => {
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
   const organizationIds = memberships.map((m) => m.organizationId);
@@ -97,24 +99,34 @@ export const listProjects = async (userId: string) => {
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
   });
-  const activity =
+  const projectIds = projects.map((project) => project.id);
+  const [activity, lastLive] =
     projects.length === 0
-      ? []
-      : await prisma.deployment.groupBy({
-          by: ['projectId', 'status'],
-          where: {
-            projectId: { in: projects.map((project) => project.id) },
-            status: { in: ['READY', 'PENDING', 'BUILDING'] },
-            ...nonStarterPublishWhere,
-          },
-          _count: { _all: true },
-        });
+      ? [[], []]
+      : await Promise.all([
+          prisma.deployment.groupBy({
+            by: ['projectId', 'status'],
+            where: { projectId: { in: projectIds }, status: { in: ['READY', 'PENDING', 'BUILDING'] }, ...nonStarterPublishWhere },
+            _count: { _all: true },
+          }),
+          // Any successful publish, the starter one included: what readers can open right now.
+          prisma.deployment.groupBy({
+            by: ['projectId'],
+            where: { projectId: { in: projectIds }, status: 'READY' },
+            _max: { completedAt: true, createdAt: true },
+          }),
+        ]);
   return projects.map((project) => {
     const rows = activity.filter((row) => row.projectId === project.id);
+    const live = lastLive.find((row) => row.projectId === project.id);
     return {
       ...project,
       livePublishes: rows.filter((row) => row.status === 'READY').reduce((sum, row) => sum + row._count._all, 0),
       publishing: rows.some((row) => row.status !== 'READY' && row._count._all > 0),
+      /** The site has a published version readers can open (the starter publish counts). */
+      live: Boolean(live),
+      /** When the version readers see went live; null before the first publish. */
+      lastPublishedAt: live ? (live._max.completedAt ?? live._max.createdAt) : null,
     };
   });
 };

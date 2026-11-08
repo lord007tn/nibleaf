@@ -9,9 +9,9 @@ import { compareDelta } from '@/components/analytics/insights/metrics';
 import { TermsEmptyState } from '@/components/analytics/insights/search-terms';
 import { ListCard } from '@/components/analytics/list-card';
 import { RangeTabs } from '@/components/analytics/range-tabs';
-import { SectionCard } from '@/components/analytics/section-card';
-import { StatCard } from '@/components/analytics/stat-card';
+import { STAT_GRID, StatCard } from '@/components/analytics/stat-card';
 import { ViewsTimeseriesChart } from '@/components/analytics/views-timeseries-chart';
+import { PageHeader } from '@/components/app/page-header';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { AnalyticsRange } from '@/hooks/api';
 import { useWorkspaceAnalytics } from '@/hooks/api/analytics';
@@ -85,13 +85,7 @@ function WorkspaceAnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-semibold text-2xl tracking-tight">{t('analytics.title')}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{t('analytics.subtitle')}</p>
-        </div>
-        <RangeTabs value={range} onValueChange={setRange} />
-      </div>
+      <PageHeader actions={<RangeTabs onValueChange={setRange} value={range} />} description={t('analytics.subtitle')} title={t('analytics.title')} />
 
       {/* A failed request and an analytics outage (a successful response saying "unavailable") both retry in place. */}
       {isError ? <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} /> : null}
@@ -112,8 +106,8 @@ function WorkspaceAnalyticsPage() {
       ) : null}
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SectionCard
+      <div className={STAT_GRID}>
+        <StatCard
           label={t('analytics.kpi.pageViews')}
           value={unavailable ? null : (data?.totalViews ?? null)}
           icon={<BarChart3 className="size-4" />}
@@ -133,11 +127,11 @@ function WorkspaceAnalyticsPage() {
 
       {/* Pageviews chart */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 font-medium text-sm">{t('analytics.chart.pageviewsAllProjects')}</div>
+        <div className="mb-4 font-medium text-sm">{t('analytics.chart.pageviewsAllSites')}</div>
         <ViewsTimeseriesChart data={data?.timeseries ?? []} loading={isPending} unknown={unavailable} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className={STAT_GRID}>
         <StatCard label={t('analytics.kpi.zeroResults')} value={zeroResults ?? null} icon={<Search className="size-4" />} loading={isPending} />
         <StatCard label={t('analytics.kpi.resultClicks')} value={clickedResults ?? null} icon={<Search className="size-4" />} loading={isPending} />
         <StatCard
@@ -160,7 +154,7 @@ function WorkspaceAnalyticsPage() {
       {/* By project + referrers */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-3 font-medium text-sm">{t('analytics.section.byProject')}</div>
+          <div className="mb-3 font-medium text-sm">{t('analytics.section.bySite')}</div>
           {isPending ? (
             <div className="space-y-2.5">
               {[0, 1, 2, 3].map((i) => (
