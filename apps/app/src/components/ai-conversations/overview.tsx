@@ -48,6 +48,8 @@ export function Overview({ data }: { data: AiConversationSummary }) {
   const f = useFormatters();
   const totalRated = data.feedback.up + data.feedback.down;
   const daily = useMemo(() => fillDailyGaps(data.timeseries), [data.timeseries]);
+  // Decided from the real buckets: zero-filled quiet days must not turn "cost unknown" into "$0".
+  const costKnown = data.timeseries.some((point) => point.costUsd !== null);
   const cards = [
     { label: t('dashboard.ai.questions'), value: f.number(data.totals.questions) },
     {
@@ -90,7 +92,7 @@ export function Overview({ data }: { data: AiConversationSummary }) {
       <Engagement data={data.engagement} />
       <div className="grid gap-4 lg:grid-cols-2">
         <Series data={daily} kind="questions" />
-        <Series data={daily} kind="cost" />
+        <Series costKnown={costKnown} data={daily} kind="cost" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border bg-card p-5">
@@ -117,7 +119,16 @@ export function Overview({ data }: { data: AiConversationSummary }) {
     </div>
   );
 }
-function Series({ data, kind }: { data: AiConversationSummary['timeseries']; kind: 'questions' | 'cost' }) {
+function Series({
+  data,
+  kind,
+  costKnown = true,
+}: {
+  data: AiConversationSummary['timeseries'];
+  kind: 'questions' | 'cost';
+  /** At least one real day reported its cost (quiet, zero-filled days don't count). */
+  costKnown?: boolean;
+}) {
   const t = useT();
   const summarize = useSeriesSummary();
   const title = t(kind === 'questions' ? 'dashboard.ai.overTime' : 'dashboard.ai.costOverTime');
@@ -135,7 +146,10 @@ function Series({ data, kind }: { data: AiConversationSummary['timeseries']; kin
   // Screen-reader summaries describe the totals the stacked areas add up to.
   const questionTotals = data.map((point) => ({ bucket: point.date, value: point.answered + point.noAnswer }));
   const tokenTotals = data.map((point) => ({ bucket: point.date, value: point.inputTokens + point.outputTokens }));
-  const unknownCost = kind === 'cost' && data.length > 0 && data.every((point) => point.costUsd === null);
+  const costTotals = data.map((point) => ({ bucket: point.date, value: point.costUsd ?? 0 }));
+  const unknownCost = kind === 'cost' && data.length > 0 && !costKnown;
+  // Questions were asked but cost nothing: a flat $0 line is the truthful picture, not "no questions yet".
+  const hadQuestions = data.some((point) => point.answered + point.noAnswer > 0);
   return (
     <section className="min-w-0 rounded-xl border bg-card p-5">
       <h2 className="mb-4 font-medium text-sm">{title}</h2>
@@ -145,7 +159,8 @@ function Series({ data, kind }: { data: AiConversationSummary['timeseries']; kin
         rows={data}
         series={series}
         stacked={kind === 'questions'}
-        summary={kind === 'questions' ? summarize(title, questionTotals, 'day') : title}
+        showZeros={kind === 'cost' && hadQuestions}
+        summary={kind === 'questions' ? summarize(title, questionTotals, 'day') : summarize(title, costTotals, 'day', 'usd')}
         unknown={unknownCost}
         valueKind={kind === 'cost' ? 'usd' : 'count'}
         xKey="date"

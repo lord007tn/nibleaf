@@ -23,8 +23,8 @@ export type ChartRow = Record<string, string | number | null>;
 /** What the values measure: counts, durations (ms) or AI spend (USD). */
 export type TrendValueKind = 'count' | 'ms' | 'usd';
 
-const hasValues = (rows: readonly ChartRow[], series: readonly TrendSeries[]) =>
-  rows.some((row) => series.some((item) => typeof row[item.key] === 'number' && (row[item.key] as number) > 0));
+const hasValues = (rows: readonly ChartRow[], series: readonly TrendSeries[], zerosCount: boolean) =>
+  rows.some((row) => series.some((item) => typeof row[item.key] === 'number' && (zerosCount || (row[item.key] as number) > 0)));
 
 /** Daily buckets are "YYYY-MM-DD"; hourly ones carry a time ("YYYY-MM-DDTHH:00"). */
 export const granularityOf = (rows: readonly ChartRow[], xKey = 'bucket'): 'hour' | 'day' =>
@@ -48,6 +48,7 @@ export function TrendChart({
   stacked,
   loading,
   unknown,
+  showZeros = false,
   empty,
   valueKind = 'count',
   xKey = 'bucket',
@@ -62,6 +63,8 @@ export function TrendChart({
   stacked?: boolean;
   loading?: boolean;
   unknown?: boolean;
+  /** Draw a series that is known to be all zero (e.g. AI spend of $0) instead of the empty message. */
+  showZeros?: boolean;
   empty: string;
   valueKind?: TrendValueKind;
   /** The row field holding the bucket (`YYYY-MM-DD` or `YYYY-MM-DDTHH:00`). */
@@ -89,7 +92,7 @@ export function TrendChart({
       </div>
     );
   }
-  if (unknown || !hasValues(rows, series)) {
+  if (unknown || !hasValues(rows, series, showZeros)) {
     return (
       <div className={cn('grid place-items-center px-4 text-center text-muted-foreground text-sm', height, className)} data-chart-empty="">
         {unknown ? t('analytics.state.unknown') : empty}
@@ -191,14 +194,15 @@ export function TrendChart({
 export function useSeriesSummary() {
   const t = useT();
   const format = useInsightFormat();
-  return (label: string, points: readonly SeriesPoint[], granularity: 'hour' | 'day') => {
+  return (label: string, points: readonly SeriesPoint[], granularity: 'hour' | 'day', valueKind: 'count' | 'usd' = 'count') => {
     if (points.length === 0) return t('analytics.chart.summaryEmpty', { label });
     const total = points.reduce((sum, point) => sum + point.value, 0);
     const peak = points.reduce((best, point) => (point.value > best.value ? point : best), points[0] as SeriesPoint);
+    const value = (amount: number) => (valueKind === 'usd' ? format.usd(amount) : format.count(amount));
     return t('analytics.chart.summary', {
       label,
-      total: format.count(total),
-      peak: format.count(peak.value),
+      total: value(total),
+      peak: value(peak.value),
       date: format.bucket(peak.bucket, granularity),
     });
   };
