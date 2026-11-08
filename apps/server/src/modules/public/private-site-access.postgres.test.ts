@@ -41,15 +41,36 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 const SECRET_TITLES = ['Secret onboarding guide', 'Internal pricing runbook'];
 
 type Mode = 'PUBLIC' | 'WORKSPACE' | 'READERS';
-type Viewer = 'anonymous' | 'member' | 'outsider' | 'reader' | 'revoked reader' | 'other-site reader' | 'other-site reader cookie replay';
+type Viewer =
+  | 'anonymous'
+  | 'member'
+  | 'member signed in on the site'
+  | 'removed member signed in on the site'
+  | 'outsider'
+  | 'reader'
+  | 'revoked reader'
+  | 'other-site reader'
+  | 'other-site reader cookie replay';
 
 /** Who may read the published site in each mode. */
 const allowed: Record<Mode, Viewer[]> = {
-  PUBLIC: ['anonymous', 'member', 'outsider', 'reader', 'revoked reader', 'other-site reader', 'other-site reader cookie replay'],
-  WORKSPACE: ['member'],
-  READERS: ['member', 'reader'],
+  PUBLIC: [
+    'anonymous',
+    'member',
+    'member signed in on the site',
+    'removed member signed in on the site',
+    'outsider',
+    'reader',
+    'revoked reader',
+    'other-site reader',
+    'other-site reader cookie replay',
+  ],
+  // A member signed in with an email code reads like a dashboard member: the
+  // only way in on a custom domain, where the dashboard cookie never arrives.
+  WORKSPACE: ['member', 'member signed in on the site'],
+  READERS: ['member', 'member signed in on the site', 'reader'],
 };
-const viewers: Viewer[] = ['anonymous', 'member', 'outsider', 'reader', 'revoked reader', 'other-site reader', 'other-site reader cookie replay'];
+const viewers = allowed.PUBLIC;
 const modes: Mode[] = ['PUBLIC', 'WORKSPACE', 'READERS'];
 
 describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site access matrix in PostgreSQL', () => {
@@ -147,6 +168,13 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     return { readerId: reader.id, token };
   };
 
+  /** A live session of a team member signed in on the site; returns its token. */
+  const memberSiteSession = async (projectId: string, userId: string) => {
+    const token = randomBytes(32).toString('base64url');
+    await db.prisma.siteMemberSession.create({ data: { projectId, userId, tokenHash: sha256(token), expiresAt: new Date(Date.now() + 3_600_000) } });
+    return token;
+  };
+
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     sites = await import('@/actions/sites');
@@ -169,6 +197,14 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     const revoked = await activeReader(subject.project.id, subject.audienceId);
     await readerAccess.revokeReader(subject.project.id, revoked.readerId, subject.memberId);
     const otherReader = await activeReader(other.project.id, other.audienceId);
+    // Team members signed in on the site itself with an email code; the second
+    // one is then removed from the team.
+    const siteMember = await memberSiteSession(subject.project.id, subject.memberId);
+    const removed = await db.prisma.user.create({ data: { email: `removed-${randomUUID()}@nibleaf.test`, name: 'removed', emailVerified: true } });
+    userIds.push(removed.id);
+    await db.prisma.member.create({ data: { organizationId: subject.organization.id, userId: removed.id, role: 'member' } });
+    const removedSession = await memberSiteSession(subject.project.id, removed.id);
+    await db.prisma.member.deleteMany({ where: { organizationId: subject.organization.id, userId: removed.id } });
 
     const connection = await db.prisma.gitConnection.create({
       data: { projectId: subject.project.id, repository: 'acme/docs', headBranch: 'nibleaf', createdById: subject.memberId },
@@ -195,6 +231,8 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
         anonymous: {},
         member: { 'x-test-user': subject.memberId },
         // Signed in to Nibleaf, but a member of another site only.
+        'member signed in on the site': { cookie: `${subjectCookie}=${siteMember}` },
+        'removed member signed in on the site': { cookie: `${subjectCookie}=${removedSession}` },
         outsider: { 'x-test-user': other.memberId },
         reader: { cookie: `${subjectCookie}=${reader.token}` },
         'revoked reader': { cookie: `${subjectCookie}=${revoked.token}` },
@@ -289,6 +327,26 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     expect((await request(`/api/public/sites/${site.projectId}/page?path=guide`, 'anonymous')).status).toBe(200);
     await setMode('WORKSPACE');
     expect((await request(`/api/public/sites/${site.projectId}/page?path=guide`, 'anonymous')).status).toBe(404);
+  });
+
+  it('lets the sign-in screen show the private site’s configured logo, and no other asset', async () => {
+    const logoKey = `projects/${site.projectId}/assets/${randomUUID()}.png`;
+    await db.prisma.asset.create({
+      data: { projectId: site.projectId, key: logoKey, url: `/api/public/assets/${logoKey}`, contentType: 'image/png', size: 11 },
+    });
+    await db.prisma.project.update({
+      where: { id: site.projectId },
+      data: { config: { branding: { logoLight: `https://docs.example.invalid/api/public/assets/${logoKey}` } }, accessMode: 'READERS' },
+    });
+    sites.invalidatePublishedSiteConfig(site.projectId);
+    const logo = await request(`/api/public/assets/${logoKey}`, 'anonymous');
+    expect(logo.status).toBe(200);
+    expect(logo.headers.get('cache-control')).toBe('private, no-store');
+    expect((await request(`/api/public/assets/${site.assetKey}`, 'anonymous')).status).toBe(404);
+    // Once it is no longer the configured logo, it is private again.
+    await db.prisma.project.update({ where: { id: site.projectId }, data: { config: {} } });
+    sites.invalidatePublishedSiteConfig(site.projectId);
+    expect((await request(`/api/public/assets/${logoKey}`, 'anonymous')).status).toBe(404);
   });
 
   it('does not tell an anonymous visitor which pages exist on a private site', async () => {

@@ -53,12 +53,27 @@ describe('published reader route input', () => {
     expect(mocks.getSite).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' }, query: { lang: 'ar', version: '%E0%A4' } });
   });
 
-  it('marks a private site so the reader can offer a way in', async () => {
+  it('marks a private site and keeps its sign-in branding so the reader can offer a way in', async () => {
+    const gate = { projectId: 'qa-site', name: 'Acme', mode: 'READERS', language: { code: 'ar', direction: 'RTL' }, config: null };
     mocks.getSite.mockResolvedValueOnce(
-      Response.json({ error: { code: 'database:not_found', message: 'site not found', details: { reason: 'private' } } }, { status: 404 }),
+      Response.json({ error: { code: 'database:not_found', message: 'site not found', details: { reason: 'private', gate } } }, { status: 404 }),
     );
 
-    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'private' });
+    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'private', gate });
+    // The tab title follows the site's own language when the URL names none.
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+      meta?: Array<{ title?: string }>;
+    };
+    expect(head({ loaderData: { site: null, unavailable: 'private', gate }, match: { search: {} }, matches: [] }).meta?.[0]).toEqual({
+      title: 'هذا التوثيق خاص',
+    });
+  });
+
+  it('keeps an unpublished site on the not-published screen', async () => {
+    mocks.getSite.mockResolvedValueOnce(
+      Response.json({ error: { code: 'database:not_found', message: 'site not found', details: { reason: 'not_published' } } }, { status: 404 }),
+    );
+    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: undefined });
   });
 
   it('retains the real server function validator before reaching the API', async () => {

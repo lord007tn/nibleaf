@@ -1,7 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { renderEmailVerificationEmail, renderMemberInvitationEmail, renderNewSignInEmail, renderVerificationCodeEmail } from './index';
+import {
+  renderEmailVerificationEmail,
+  renderMemberInvitationEmail,
+  renderNewSignInEmail,
+  renderReaderInvitationEmail,
+  renderSiteSignInCodeEmail,
+  renderVerificationCodeEmail,
+} from './index';
 
 describe('localized transactional email rendering', () => {
+  it('sends a private site sign-in code in the site name, in Arabic too', async () => {
+    const english = await renderSiteSignInCodeEmail({ code: '482913', projectName: 'Acme Docs' });
+    expect(english.subject).toBe('Your sign-in code for Acme Docs');
+    expect(english.text).toContain('482913');
+    expect(english.text).toContain('Acme Docs');
+    const arabic = await renderSiteSignInCodeEmail({ code: '482913', projectName: 'Acme Docs', language: 'ar' });
+    expect(arabic.subject).toBe('رمز تسجيل الدخول إلى Acme Docs');
+    expect(arabic.html).toContain('dir="rtl"');
+  });
+
+  it('tells an invited reader how to get back in after the invitation link is used', async () => {
+    const email = await renderReaderInvitationEmail({ activationUrl: 'https://docs.example.com/x', days: 7, projectName: 'Acme Docs' });
+    expect(email.text).toContain('sign in with this email address');
+  });
+
   it('renders an English verification code with a plain-text body', async () => {
     const email = await renderVerificationCodeEmail({ code: '123456', purpose: 'sign-in' });
 

@@ -1,24 +1,53 @@
 import { resolveLocale } from './locales';
-import { site_privatebody } from './paraglide/messages/site_privatebody.js';
-import { site_privatemembers } from './paraglide/messages/site_privatemembers.js';
+import type { MessageFn, MessageVariables } from './message-types';
+import { site_privatecodelabel } from './paraglide/messages/site_privatecodelabel.js';
+import { site_privatecodesent } from './paraglide/messages/site_privatecodesent.js';
+import { site_privateemaillabel } from './paraglide/messages/site_privateemaillabel.js';
+import { site_privatefailed } from './paraglide/messages/site_privatefailed.js';
+import { site_privateinvalidcode } from './paraglide/messages/site_privateinvalidcode.js';
+import { site_privateinviteaccept } from './paraglide/messages/site_privateinviteaccept.js';
+import { site_privateinvitebody } from './paraglide/messages/site_privateinvitebody.js';
+import { site_privateinvitetitle } from './paraglide/messages/site_privateinvitetitle.js';
+import { site_privateinviteused } from './paraglide/messages/site_privateinviteused.js';
+import { site_privateotheremail } from './paraglide/messages/site_privateotheremail.js';
+import { site_privatereadersbody } from './paraglide/messages/site_privatereadersbody.js';
+import { site_privateresend } from './paraglide/messages/site_privateresend.js';
+import { site_privatesendcode } from './paraglide/messages/site_privatesendcode.js';
 import { site_privatesignin } from './paraglide/messages/site_privatesignin.js';
+import { site_privatesignintitle } from './paraglide/messages/site_privatesignintitle.js';
+import { site_privateteambody } from './paraglide/messages/site_privateteambody.js';
+import { site_privatetoomany } from './paraglide/messages/site_privatetoomany.js';
 
 /*
- * Messages only the private-site screen shows. That screen loads on demand, so
- * its strings (in every locale) stay out of every published page's first load;
- * apps/app/vite.config.ts keeps these message files out of the shared
- * `public-site-i18n` chunk. Its title comes from `siteT` for the page head.
+ * Messages only the private-site sign-in screen shows. That screen loads on
+ * demand, so its strings (in every locale) stay out of every published page's
+ * first load; apps/app/vite.config.ts keeps these message files out of the
+ * shared `public-site-i18n` chunk. Its title comes from `siteT` for the page head.
  */
 const accessMessages = {
-  privateBody: site_privatebody,
-  privateMembers: site_privatemembers,
   privateSignIn: site_privatesignin,
+  privateSignInTitle: site_privatesignintitle,
+  privateReadersBody: site_privatereadersbody,
+  privateTeamBody: site_privateteambody,
+  privateEmailLabel: site_privateemaillabel,
+  privateSendCode: site_privatesendcode,
+  privateCodeSent: site_privatecodesent,
+  privateCodeLabel: site_privatecodelabel,
+  privateOtherEmail: site_privateotheremail,
+  privateResend: site_privateresend,
+  privateInvalidCode: site_privateinvalidcode,
+  privateTooMany: site_privatetoomany,
+  privateFailed: site_privatefailed,
+  privateInviteTitle: site_privateinvitetitle,
+  privateInviteBody: site_privateinvitebody,
+  privateInviteAccept: site_privateinviteaccept,
+  privateInviteUsed: site_privateinviteused,
 };
 
 export type SiteAccessMessageKey = keyof typeof accessMessages;
 
 /** Translates the private-site screen's own keys. */
-export function siteAccessT(language?: string): (key: SiteAccessMessageKey) => string {
+export function siteAccessT(language?: string): (key: SiteAccessMessageKey, variables?: MessageVariables) => string {
   const locale = resolveLocale(language) ?? 'en';
-  return (key) => accessMessages[key](undefined, { locale });
+  return (key, variables) => (accessMessages[key] as unknown as MessageFn)(variables, { locale });
 }

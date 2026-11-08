@@ -343,6 +343,23 @@ const findLiveDeploymentAfterMiss = (projectId: string, deploymentId: string) =>
  *  the project. A page-scoped reader may load only an asset referenced by the
  *  site chrome or by a page they are allowed to read in the live deployment; a
  *  reader without any effective grant may load none. */
+/** Whether `key` is the logo or favicon a private site's sign-in screen shows
+ *  to visitors who can't read the site yet. Only those exact configured
+ *  branding files qualify; every other asset of the site stays private. */
+export const isPrivateSiteBrandingAsset = async (projectId: string, key: string): Promise<boolean> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  if (!live || live.takedownAt || live.accessMode === 'PUBLIC') return false;
+  const branding = ((live.config ?? {}) as { branding?: Record<string, unknown> }).branding ?? {};
+  return [branding.logoLight, branding.logoDark, branding.favicon].some((value) => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+      return decodeURIComponent(new URL(value, 'http://branding.invalid').pathname) === `/api/public/assets/${key}`;
+    } catch {
+      return false;
+    }
+  });
+};
+
 export const getProjectAssetAccess = async (projectId: string, key: string, headers: Headers): Promise<ViewerAccess | null> => {
   const live = await getLiveChrome(projectId).catch(() => null);
   if (!live || live.takedownAt) return null;
@@ -377,6 +394,26 @@ export const getProjectAssetAccess = async (projectId: string, key: string, head
   } catch {
     return null;
   }
+};
+
+/** What the sign-in screen of a private site may show a visitor who can't read
+ *  it yet: the site's own name, logo and colours, its default language, and who
+ *  can sign in. Never a page, title or anything else from its content. */
+const privateSiteGate = (projectId: string, project: PublicSnapshotProject) => {
+  const config = (project.config ?? {}) as { branding?: Record<string, unknown>; styling?: Record<string, unknown> };
+  const branding = config.branding ?? {};
+  const pick = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+  const language = project.languages.find((item) => item.isDefault) ?? project.languages[0];
+  return {
+    projectId,
+    name: project.name,
+    mode: project.accessMode,
+    language: language ? { code: language.code, direction: language.direction } : null,
+    config: {
+      branding: { logoLight: pick(branding.logoLight), logoDark: pick(branding.logoDark), favicon: pick(branding.favicon) },
+      styling: config.styling ?? null,
+    },
+  };
 };
 
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
@@ -420,7 +457,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   };
   const viewer = await resolveViewerAccess(projectId, live.accessMode, getContext<HonoEnv>().req.raw.headers);
   if (!viewer) {
-    throw notFound('site', { identifier: projectId, reason: 'private' });
+    throw notFound('site', { identifier: projectId, reason: 'private', gate: privateSiteGate(projectId, project) });
   }
   const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
   // No page grant covers the API reference, so only site-wide viewers get it.
@@ -477,7 +514,7 @@ const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): Snap
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
-  const { snapshot, deploymentId, version: deploymentVersion } = await getPublished(identifier);
+  const { snapshot, deploymentId, version: deploymentVersion, viewer } = await getPublished(identifier);
   const docsVersion = activeVersion(snapshot, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const versionPages = pagesForVersion(snapshot, docsVersion);
@@ -516,6 +553,8 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
       : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
+    // Signed in on the site itself (never on a public site, whose shell is shared-cacheable).
+    signedIn: viewer.siteSession === true,
     capabilities: {
       answer:
         resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers &&

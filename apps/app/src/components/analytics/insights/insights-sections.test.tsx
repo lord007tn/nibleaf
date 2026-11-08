@@ -786,7 +786,7 @@ describe('Filter bar', () => {
     const onChange = vi.fn();
     const view = await render(<InsightsFilterBar filters={{}} onChange={onChange} timezone="Asia/Riyadh" />);
     expect(text(view)).toContain('Times shown in Asia/Riyadh');
-    await act(async () => view.querySelectorAll<HTMLElement>('[role="tab"]')[1]?.click());
+    await act(async () => view.querySelectorAll<HTMLElement>('[role="group"] button')[1]?.click());
     expect(onChange).toHaveBeenLastCalledWith({ range: '7d' });
     await act(async () => view.querySelector<HTMLElement>('[role="switch"]')?.click());
     expect(onChange).toHaveBeenLastCalledWith({ compare: 'none' });
@@ -796,7 +796,7 @@ describe('Filter bar', () => {
     const view = await render(
       <InsightsFilterBar filters={{ range: 'custom', from: '2026-10-01', to: '2026-10-31' }} onChange={vi.fn()} timezone="UTC" />,
     );
-    expect([...view.querySelectorAll('[role="tab"]')].every((tab) => tab.getAttribute('aria-selected') === 'false')).toBe(true);
+    expect([...view.querySelectorAll('[role="group"] button')].every((tab) => tab.getAttribute('aria-pressed') === 'false')).toBe(true);
     expect(view.querySelector('button[aria-pressed="true"]')?.textContent).toContain('Oct');
   });
 });

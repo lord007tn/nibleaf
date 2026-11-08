@@ -1,7 +1,6 @@
 import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { useSyncExternalStore } from 'react';
-import { localeTag, useFormatters } from '@/lib/format';
-import { parseSeriesDate } from '../chart-format';
+import { localeTag, parseCalendarDate, useFormatters } from '@/lib/format';
 import type { Delta, MetricKind } from './metrics';
 
 /** Shown for every unknown (`null`) value: unknown is never rendered as zero. */
@@ -56,17 +55,27 @@ export function useInsightFormat() {
 
   /** Axis / tooltip label for a series bucket (`YYYY-MM-DD` or `YYYY-MM-DDTHH:00`). */
   const bucket = (value: string, granularity: 'hour' | 'day') => {
-    const date = parseSeriesDate(value);
+    const date = parseCalendarDate(value);
     if (Number.isNaN(date.getTime())) return value;
     if (granularity === 'hour') return new Intl.DateTimeFormat(tag, { hour: 'numeric', minute: '2-digit' }).format(date);
     return base.shortDate(date);
   };
 
+  /** Tooltip heading for a series bucket: hourly buckets also say which day. */
+  const bucketLong = (value: string, granularity: 'hour' | 'day') => {
+    const date = parseCalendarDate(value);
+    if (Number.isNaN(date.getTime())) return value;
+    if (granularity === 'hour')
+      return new Intl.DateTimeFormat(tag, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date);
+    // Month by name ("21 أكتوبر 2026", "Oct 21, 2026"): the medium date style is all digits in Arabic.
+    return new Intl.DateTimeFormat(tag, { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
+  };
+
   /** A full calendar day, for range summaries ("Oct 1, 2026"). */
   const day = (value: string) => {
-    const date = parseSeriesDate(value);
+    const date = parseCalendarDate(value);
     return Number.isNaN(date.getTime()) ? value : base.date(date);
   };
 
-  return { ...base, count, rate, duration, ms, position, decimal, metric, delta, bucket, day };
+  return { ...base, count, rate, duration, ms, position, decimal, metric, delta, bucket, bucketLong, day };
 }
