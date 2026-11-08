@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Popover, PopoverContent, PopoverDescription, PopoverTitle, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -20,6 +21,25 @@ export function ViewOnlyBanner({ className }: { className?: string }) {
       <p className="min-w-0">
         <span className="font-semibold">{t('access.viewOnly.title')}</span> <span className="text-muted-foreground">{t('access.viewOnly.body')}</span>
       </p>
+    </div>
+  );
+}
+
+/** The team (and so the person's role) could not be loaded: editing waits, with a retry. */
+export function AccessUnknownBanner({ onRetry, retrying, className }: { onRetry: () => void; retrying: boolean; className?: string }) {
+  const t = useT();
+  return (
+    <div
+      className={cn('flex flex-wrap items-center gap-x-3 gap-y-2 border-border border-b bg-muted/50 px-4 py-2.5 text-[13px] leading-snug', className)}
+      data-testid="access-unknown-banner"
+      role="alert"
+    >
+      <p className="min-w-0 flex-1">
+        <span className="font-semibold">{t('access.unknown.title')}</span> <span className="text-muted-foreground">{t('access.unknown.body')}</span>
+      </p>
+      <Button loading={retrying} onClick={onRetry} size="sm" variant="outline">
+        {t('common.retry')}
+      </Button>
     </div>
   );
 }

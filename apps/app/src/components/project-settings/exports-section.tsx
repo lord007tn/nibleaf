@@ -309,7 +309,7 @@ export function ExportsSection({
           </a>
           {' · '}
           <a className="underline" download href={`/api/app/projects/${projectId}/theme-repository`}>
-            {t('settings.theme.export')}
+            {t('settings.exports.downloadRepository')}
           </a>
           .
         </p>

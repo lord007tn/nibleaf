@@ -343,3 +343,26 @@ describe('aiAssistPageId', () => {
     expect(aiAssistPageId({ ...ready, ...change })).toBeNull();
   });
 });
+
+describe('which AI drafts here', () => {
+  const session = { pending: false, running: null, preview: null, run: vi.fn(), busyElsewhere: false, trackCard: () => undefined } as never;
+  const render = async (source: Parameters<typeof AiAssist>[0]['source']) => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root.render(<AiAssist session={session} source={source} />));
+    return container.querySelector('[data-testid="ai-source"]')?.textContent ?? null;
+  };
+
+  it('says it uses the site’s own Smart AI connection, naming the provider', async () => {
+    expect(await render({ source: 'workspace', provider: 'openai' })).toBe('editor.ai.source.site');
+  });
+
+  it('says it uses the server’s AI when the site has no connection of its own', async () => {
+    expect(await render({ source: 'instance', provider: 'openrouter' })).toBe('editor.ai.source.instance');
+  });
+
+  it('says nothing while the source is unknown', async () => {
+    expect(await render(undefined)).toBeNull();
+  });
+});

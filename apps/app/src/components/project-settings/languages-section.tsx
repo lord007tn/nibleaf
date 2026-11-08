@@ -7,6 +7,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
+import { AccessUnknownBanner } from '@/components/project/view-only-notice';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
 import { useDeleteLanguage, useLanguages, useUpdateLanguage } from '@/hooks/api';
@@ -44,7 +45,10 @@ export function LanguagesSection({ project }: { project: Project }) {
   const remove = useDeleteLanguage(project.id);
   const [addOpen, setAddOpen] = useState(false);
   // Viewers see the site's languages and coverage; changing them is for Editors.
-  const readOnly = useProjectAdminStatus(project.id).edit === 'viewOnly';
+  const access = useProjectAdminStatus(project.id);
+  const editAccess = access.edit;
+  // A Viewer, or a role that couldn't be read: no writes until it is known.
+  const readOnly = editAccess === 'viewOnly' || editAccess === 'unknown';
 
   // Default language always first, then by configured position.
   const rows = sortLanguagesDefaultFirst(languages ?? []);
@@ -183,7 +187,9 @@ export function LanguagesSection({ project }: { project: Project }) {
         </div>
       ) : null}
 
-      {readOnly ? (
+      {editAccess === 'unknown' ? (
+        <AccessUnknownBanner className="mt-2 rounded-lg border" onRetry={() => void access.retry()} retrying={access.retrying} />
+      ) : readOnly ? (
         <p className="mt-2 text-[12px] text-muted-foreground leading-snug">{t('access.viewOnly.action')}</p>
       ) : (
         <>

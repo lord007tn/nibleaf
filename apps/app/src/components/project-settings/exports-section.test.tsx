@@ -93,6 +93,12 @@ describe('export schedule permissions', () => {
     expect(mocks.scheduleMutation).not.toHaveBeenCalled();
   });
 
+  it('names the repository download as such, not as a theme export', async () => {
+    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    const link = container.querySelector('a[href="/api/app/projects/project-1/theme-repository"]');
+    expect(link?.textContent).toBe('settings.exports.downloadRepository');
+  });
+
   it('shows a plain export failure and keeps the raw error in closed details', async () => {
     mocks.runs = [
       {

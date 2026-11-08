@@ -4,13 +4,16 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { aiStarterQuestionsSchema, aiSupportUrlSchema } from '@nibleaf/validators';
 import { useForm } from '@tanstack/react-form';
+import { Link } from '@tanstack/react-router';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Language, Project } from '@/hooks/api';
-import { useGetPublicMeta, useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
+import { useLanguages, useProjectSearchConfiguration, useUpdateLanguage, useUpdateProjectSearchConfiguration } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
+import { useWorkspaceAi } from '@/hooks/api/workspace-ai';
+import { groundedAnswersState } from '@/lib/grounded-answers';
 import { SearchIndexDiagnostics } from './search-index-diagnostics';
 import {
   DirtyStateReporter,
@@ -161,7 +164,8 @@ function ProjectSearchConfigurationForm({
   const supportValid = !support.trim() || aiSupportUrlSchema.safeParse(support).success;
   const [hotkey, setHotkey] = useState<Hotkey>(configuration.hotkey);
   const [aiAnswers, setAiAnswers] = useState(configuration.aiAnswers ? 'enabled' : 'disabled');
-  const { data: publicMeta } = useGetPublicMeta();
+  // The site's own Smart AI connection decides, not only the server's key.
+  const answersState = groundedAnswersState(useWorkspaceAi(projectId).data);
   const [versionFilterEnabled, setVersionFilterEnabled] = useState(configuration.versionFilterEnabled);
   // The hotkey control lives outside the form, so its dirtiness is tracked by value.
   const controlsDirty =
@@ -261,7 +265,7 @@ function ProjectSearchConfigurationForm({
         />
       </div>
 
-      {publicMeta?.ai?.answers ? (
+      {answersState === 'available' || configuration.aiAnswers ? (
         <Field hint={t('settings.search.aiAnswers.hint')} label={t('settings.search.aiAnswers.label')}>
           <Segmented
             className="max-w-[240px]"
@@ -272,6 +276,23 @@ function ProjectSearchConfigurationForm({
             ]}
             value={aiAnswers}
           />
+        </Field>
+      ) : null}
+      {answersState === 'needsConnection' || answersState === 'needsServer' ? (
+        <Field label={t('settings.search.aiAnswers.label')}>
+          <p className="text-muted-foreground text-sm" data-testid="grounded-answers-missing">
+            {t(answersState === 'needsServer' ? 'settings.search.aiAnswers.needsServer' : 'settings.search.aiAnswers.needsConnection')}{' '}
+            {answersState === 'needsConnection' ? (
+              <Link
+                className="text-primary underline-offset-4 hover:underline"
+                params={{ projectId }}
+                search={{ section: 'smartAi' }}
+                to="/app/projects/$projectId/settings"
+              >
+                {t('settings.search.aiAnswers.openSmartAi')}
+              </Link>
+            ) : null}
+          </p>
         </Field>
       ) : null}
 

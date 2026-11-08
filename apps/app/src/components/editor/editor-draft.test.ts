@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { type DraftState, isDirty, nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft, snapshotOf } from './editor-draft';
+import {
+  aiAssistState,
+  type DraftState,
+  draftUnsavable,
+  isDirty,
+  nextHydration,
+  type ServerSnapshot,
+  shouldAutosave,
+  shouldFlushDraft,
+  snapshotOf,
+} from './editor-draft';
 
 const pageA: ServerSnapshot = { id: 'a', title: 'Getting started', content: '# Hello\n\n- one\n- two', updatedAt: '2026-09-01T10:00:00.000Z' };
 const pageB: ServerSnapshot = { id: 'b', title: 'Authentication', content: 'Use a bearer token.', updatedAt: '2026-09-01T11:00:00.000Z' };
@@ -144,5 +154,43 @@ describe('isDirty', () => {
   it('is dirty on a title or content change', () => {
     expect(isDirty({ synced: snapshotOf(pageA), draft: { title: 'x', content: pageA.content } })).toBe(true);
     expect(isDirty({ synced: snapshotOf(pageA), draft: { title: pageA.title, content: 'x' } })).toBe(true);
+  });
+});
+
+describe('draftUnsavable', () => {
+  const dirty: DraftState = {
+    synced: snapshotOf(pageA),
+    draft: {
+      title: pageA.title,
+      content: `${pageA.content}
+
+more`,
+    },
+  };
+
+  it('asks before leaving only when a Viewer still has unsaved changes', () => {
+    expect(draftUnsavable(true, dirty, pageA)).toBe(true);
+    expect(draftUnsavable(false, dirty, pageA)).toBe(false);
+    expect(draftUnsavable(true, cleanState(pageA), pageA)).toBe(false);
+  });
+});
+
+describe('aiAssistState', () => {
+  const settled = { isPending: false, isError: false };
+
+  it('hides AI assist for Viewers and sites with no way to draft', () => {
+    expect(aiAssistState(true, { ...settled, data: { reason: null } })).toBe('hidden');
+    expect(aiAssistState(false, { ...settled, data: { reason: 'not_configured' } })).toBe('hidden');
+    expect(aiAssistState(false, { ...settled, data: { reason: 'quota' } })).toBe('shown');
+  });
+
+  it('keeps a placeholder while loading', () => {
+    expect(aiAssistState(false, { isPending: true, isError: false })).toBe('loading');
+  });
+
+  it('treats a 403 from the capability request as unavailable, other failures as unknown', () => {
+    expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 403 } })).toBe('hidden');
+    expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 503 } })).toBe('shown');
+    expect(aiAssistState(false, { isPending: false, isError: true, error: new TypeError('Failed to fetch') })).toBe('shown');
   });
 });

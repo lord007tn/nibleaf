@@ -17,10 +17,14 @@ const WORKING: Record<AiAction, MessageKey> = {
 
 interface AiAssistProps {
   session: AiAssistSession;
+  /** Whose AI drafts here: the site's own Smart AI connection, or the server's key. */
+  source?: { source: 'workspace' | 'instance' | null; provider: 'openai' | 'openrouter' | null } | null;
 }
 
+const PROVIDER_NAMES = { openai: 'OpenAI', openrouter: 'OpenRouter' } as const;
+
 /** The route owns requests and previews; this card can unmount with the rail. */
-export function AiAssist({ session }: AiAssistProps) {
+export function AiAssist({ session, source }: AiAssistProps) {
   const t = useT();
   const [instruction, setInstruction] = useState('');
   const { pending, running, preview, run, busyElsewhere, trackCard } = session;
@@ -38,6 +42,15 @@ export function AiAssist({ session }: AiAssistProps) {
 
       <div className="space-y-3 p-4">
         <p className="text-muted-foreground text-sm leading-relaxed">{t('editor.ai.intro')}</p>
+        {source?.source === 'workspace' && source.provider ? (
+          <p className="text-muted-foreground text-xs" data-testid="ai-source">
+            {t('editor.ai.source.site', { provider: PROVIDER_NAMES[source.provider] })}
+          </p>
+        ) : source?.source === 'instance' ? (
+          <p className="text-muted-foreground text-xs" data-testid="ai-source">
+            {t('editor.ai.source.instance')}
+          </p>
+        ) : null}
         {busyElsewhere ? (
           <p aria-hidden="true" className="text-muted-foreground text-sm">
             {t('editor.ai.busyOtherPage')}

@@ -45,10 +45,14 @@ export function PublishControl({
   const [preparing, setPreparing] = useState(false);
   const t = useT();
   const countId = useId();
-  // Viewers cannot publish: the button stays visible but disabled, with the
-  // reason on hover, and a deep link (?publish=true) never opens the dialog.
-  // While the role is still loading the button stays usable; the server decides.
-  const viewOnly = useProjectAdminStatus(project.id).edit === 'viewOnly';
+  // Only someone known to be able to edit can publish. Viewers see the button
+  // disabled with the reason on hover; while the role loads or can't be read it
+  // stays disabled too. A deep link (?publish=true) waits for edit access, and a
+  // Viewer's request is dropped so a later role change never opens it by surprise.
+  const editAccess = useProjectAdminStatus(project.id).edit;
+  const canPublish = editAccess === 'edit';
+  const viewOnly = editAccess === 'viewOnly';
+  if (publishOpen && viewOnly) setPublishOpen(false);
 
   const deployments = useDeployments(project.id, { pollIntervalMs: 1500 });
   const pending = usePendingChanges(project.id);
@@ -64,9 +68,15 @@ export function PublishControl({
       <Button
         aria-describedby={countLabel ? countId : undefined}
         aria-label={building ? t('project.publishing') : t('project.publish')}
-        disabled={building || viewOnly}
+        disabled={building || !canPublish}
         loading={preparing}
-        title={viewOnly ? t('access.viewOnly.publish') : countLabel}
+        title={
+          viewOnly
+            ? t('access.viewOnly.publish')
+            : editAccess === 'edit'
+              ? countLabel
+              : t(editAccess === 'unknown' ? 'access.unknown.title' : 'access.checking.publish')
+        }
         onClick={async () => {
           setPreparing(true);
           try {
@@ -102,7 +112,7 @@ export function PublishControl({
           setPublishedDeploymentId(deployment.id);
           setDeployOpen(true);
         }}
-        open={publishOpen && !viewOnly}
+        open={publishOpen && canPublish}
         project={project}
       />
       <DeployPipeline
