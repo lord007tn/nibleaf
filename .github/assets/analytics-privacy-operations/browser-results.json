@@ -1,0 +1,19 @@
+{
+  "policyKeyboardFocus": true,
+  "returningPrompt": 0,
+  "touchTargets": [
+    {
+      "label": "Privacy policy",
+      "height": 44
+    },
+    {
+      "label": "Decline",
+      "height": 44
+    },
+    {
+      "label": "Accept analytics",
+      "height": 44
+    }
+  ],
+  "errors": []
+}

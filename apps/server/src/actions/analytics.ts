@@ -15,75 +15,56 @@ import {
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { AnalyticsRange, ProjectConfig } from '@nibleaf/validators';
+import { relationalInterval, relationalViewSummary } from '@/lib/relational-analytics';
 import { enqueueAnalyticsEvent } from '@/lib/usage-ingest';
 import { assertProjectInOrg } from './projects';
 
 const log = createLogger({ action: 'analytics' });
 
-const RANGE_DAYS: Record<AnalyticsRange, number> = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 };
-
-const rangeStart = (range: AnalyticsRange): Date => new Date(Date.now() - RANGE_DAYS[range] * 24 * 60 * 60 * 1000);
-
-const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
-
 const getRelationalAnalyticsOverview = async (organizationId: string, projectId: string, range: AnalyticsRange, timezone: string) => {
   await assertProjectInOrg(organizationId, projectId);
-  const since = rangeStart(range);
+  const interval = relationalInterval(range, timezone);
+  const { since, until } = interval;
 
-  const [totalViews, sessionGroups, topPages, topSearches, referrerGroups, languageGroups, events] = await Promise.all([
-    prisma.analyticsEvent.count({ where: { projectId, type: 'pageview', createdAt: { gte: since } } }),
-    prisma.analyticsEvent.groupBy({ by: ['sessionId'], where: { projectId, type: 'pageview', createdAt: { gte: since }, sessionId: { not: null } } }),
+  const [summary, topPages, topSearches, referrerGroups, languageGroups, searchTotal] = await Promise.all([
+    relationalViewSummary([projectId], interval),
     prisma.analyticsEvent.groupBy({
       by: ['path'],
-      where: { projectId, type: 'pageview', createdAt: { gte: since }, path: { not: null } },
+      where: { projectId, type: 'pageview', createdAt: { gte: since, lt: until }, path: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { path: 'desc' } },
       take: 10,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['query'],
-      where: { projectId, type: 'search', createdAt: { gte: since }, query: { not: null } },
+      where: { projectId, type: 'search', createdAt: { gte: since, lt: until }, query: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { query: 'desc' } },
       take: 10,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['referrer'],
-      where: { projectId, type: 'pageview', createdAt: { gte: since }, referrer: { not: null } },
+      where: { projectId, type: 'pageview', createdAt: { gte: since, lt: until }, referrer: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { referrer: 'desc' } },
       take: 8,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['language'],
-      where: { projectId, type: 'pageview', createdAt: { gte: since }, language: { not: null } },
+      where: { projectId, type: 'pageview', createdAt: { gte: since, lt: until }, language: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { language: 'desc' } },
       take: 12,
     }),
-    prisma.analyticsEvent.findMany({ where: { projectId, type: 'pageview', createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.analyticsEvent.count({ where: { projectId, type: 'search', createdAt: { gte: since, lt: until } } }),
   ]);
-
-  // Bucket pageviews per day for the chart.
-  const buckets = new Map<string, number>();
-  for (let i = RANGE_DAYS[range] - 1; i >= 0; i -= 1) {
-    buckets.set(dayKey(new Date(Date.now() - i * 24 * 60 * 60 * 1000)), 0);
-  }
-  for (const event of events) {
-    const key = dayKey(event.createdAt);
-    if (buckets.has(key)) {
-      buckets.set(key, (buckets.get(key) ?? 0) + 1);
-    }
-  }
 
   return {
     availability: 'complete' as const,
     source: 'relational' as const,
     range,
-    timezone,
-    totalViews,
-    uniqueVisitors: sessionGroups.length,
-    timeseries: Array.from(buckets, ([date, views]) => ({ date, views })),
+    timezone: interval.timezone,
+    ...summary,
     topPages: topPages.map((p) => ({ path: p.path ?? '', views: p._count._all })),
     topSearches: topSearches.map((s) => ({ query: s.query ?? '', count: s._count._all })),
     referrers: referrerGroups.map((r) => ({ referrer: r.referrer ?? '', views: r._count._all })),
@@ -91,7 +72,7 @@ const getRelationalAnalyticsOverview = async (organizationId: string, projectId:
     devices: [] as Array<{ device: string; count: number }>,
     engagement: { engagedViews: null, averageEngagementMs: null },
     searches: {
-      total: topSearches.reduce((sum, item) => sum + item._count._all, 0),
+      total: searchTotal,
       zeroResults: null,
       clickedResults: null,
       averageLatencyMs: null,
@@ -114,7 +95,8 @@ const getRelationalAnalyticsOverview = async (organizationId: string, projectId:
  *  is the correct scope for the multi-site "Your sites" overview; scoping to a
  *  single active org would show zeros for anyone with more than one site. */
 const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone: string) => {
-  const since = rangeStart(range);
+  const interval = relationalInterval(range, timezone);
+  const { since, until } = interval;
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
   const organizationIds = memberships.map((m) => m.organizationId);
   const projects = await prisma.project.findMany({
@@ -133,7 +115,7 @@ const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsR
       timezone,
       totalViews: 0,
       uniqueVisitors: 0,
-      timeseries: Array.from(buildEmptyBuckets(range), ([date, views]) => ({ date, views })),
+      timeseries: interval.dates.map((date) => ({ date, views: 0 })),
       byProject: [] as Array<{ projectId: string; name: string; color: string; views: number }>,
       topPages: [] as Array<{ path: string; project: string; views: number }>,
       referrers: [] as Array<{ referrer: string; views: number }>,
@@ -150,68 +132,50 @@ const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsR
     };
   }
 
-  const [totalViews, sessionGroups, projectGroups, pageGroups, referrerGroups, deviceGroups, searchTotal, searchGroups, events] = await Promise.all([
-    prisma.analyticsEvent.count({ where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } } }),
-    prisma.analyticsEvent.groupBy({
-      by: ['sessionId'],
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, sessionId: { not: null } },
-    }),
+  const [summary, projectGroups, pageGroups, referrerGroups, deviceGroups, searchTotal, searchGroups] = await Promise.all([
+    relationalViewSummary(projectIds, interval),
     prisma.analyticsEvent.groupBy({
       by: ['projectId'],
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } },
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since, lt: until } },
       _count: { _all: true },
       orderBy: { _count: { projectId: 'desc' } },
     }),
     prisma.analyticsEvent.groupBy({
       by: ['path', 'projectId'],
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, path: { not: null } },
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since, lt: until }, path: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { path: 'desc' } },
       take: 10,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['referrer'],
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, referrer: { not: null } },
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since, lt: until }, referrer: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { referrer: 'desc' } },
       take: 8,
     }),
     prisma.analyticsEvent.groupBy({
       by: ['device'],
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since }, device: { not: null } },
+      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since, lt: until }, device: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { device: 'desc' } },
     }),
-    prisma.analyticsEvent.count({ where: { projectId: { in: projectIds }, type: 'search', createdAt: { gte: since } } }),
+    prisma.analyticsEvent.count({ where: { projectId: { in: projectIds }, type: 'search', createdAt: { gte: since, lt: until } } }),
     prisma.analyticsEvent.groupBy({
       by: ['query'],
-      where: { projectId: { in: projectIds }, type: 'search', createdAt: { gte: since }, query: { not: null } },
+      where: { projectId: { in: projectIds }, type: 'search', createdAt: { gte: since, lt: until }, query: { not: null } },
       _count: { _all: true },
       orderBy: { _count: { query: 'desc' } },
       take: 10,
     }),
-    prisma.analyticsEvent.findMany({
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: since } },
-      select: { createdAt: true },
-    }),
   ]);
-
-  const buckets = buildEmptyBuckets(range);
-  for (const event of events) {
-    const key = dayKey(event.createdAt);
-    if (buckets.has(key)) {
-      buckets.set(key, (buckets.get(key) ?? 0) + 1);
-    }
-  }
 
   return {
     availability: 'complete' as const,
     source: 'relational' as const,
     range,
-    timezone,
-    totalViews,
-    uniqueVisitors: sessionGroups.length,
-    timeseries: Array.from(buckets, ([date, views]) => ({ date, views })),
+    timezone: interval.timezone,
+    ...summary,
     byProject: projectGroups.map((g) => ({
       projectId: g.projectId,
       name: nameById.get(g.projectId) ?? 'Unknown',
@@ -299,15 +263,6 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
 export const getProjectAnalyticsExport = async (organizationId: string, projectId: string, before?: string, limit?: number) => {
   const project = await assertProjectInOrg(organizationId, projectId);
   return exportProjectAnalytics(project.organizationId, project.id, { before, limit });
-};
-
-/** Build a zeroed per-day bucket map covering the range, oldest → newest. */
-const buildEmptyBuckets = (range: AnalyticsRange): Map<string, number> => {
-  const buckets = new Map<string, number>();
-  for (let i = RANGE_DAYS[range] - 1; i >= 0; i -= 1) {
-    buckets.set(dayKey(new Date(Date.now() - i * 24 * 60 * 60 * 1000)), 0);
-  }
-  return buckets;
 };
 
 /** How long the hot path waits for the queue before falling back to a direct

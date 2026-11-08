@@ -33,7 +33,7 @@
     "build": "tsdown",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "prepublishOnly": "pnpm test && pnpm typecheck && pnpm build",
-    "test": "vitest run",
+    "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

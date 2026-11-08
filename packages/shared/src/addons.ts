@@ -38,6 +38,7 @@ export interface AddonConfigById {
     placement: 'bottom-start' | 'bottom-center' | 'bottom-end';
     presentation: 'compact' | 'comfortable';
     buttonLayout: 'inline' | 'stacked';
+    privacyPolicyUrl?: string;
   };
   'ci-checks': Record<never, never>;
   'broken-links': Record<never, never>;
@@ -100,6 +101,10 @@ export const addonConfigSchemas = {
       placement: z.enum(['bottom-start', 'bottom-center', 'bottom-end']).default('bottom-end'),
       presentation: z.enum(['compact', 'comfortable']).default('comfortable'),
       buttonLayout: z.enum(['inline', 'stacked']).default('inline'),
+      privacyPolicyUrl: z
+        .url()
+        .refine((url) => ['http:', 'https:'].includes(new URL(url).protocol))
+        .optional(),
     })
     .strict(),
   'ci-checks': emptyConfigSchema,

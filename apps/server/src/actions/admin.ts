@@ -3,6 +3,7 @@ import { slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
+import { type AdminListInput, adminSitePage } from '@/lib/admin-lists';
 import { inviteMember } from './members';
 import { getProjectUsage } from './usage';
 import { parseWorkspaceMetadata } from './workspace';
@@ -114,6 +115,7 @@ export async function getAdminOverview() {
     expiredOwnerInvites,
     failedExports7d,
     gitIssues,
+    signupDaily,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: 'admin' } }),
@@ -132,8 +134,12 @@ export async function getAdminOverview() {
     prisma.invitation.count({ where: { role: 'owner', status: 'pending', expiresAt: { lt: new Date() } } }),
     prisma.exportJob.count({ where: { status: 'FAILED', createdAt: { gte: weekAgo } } }),
     prisma.gitConnection.count({ where: { lastSyncStatus: { in: ['FAILED', 'CONFLICT'] } } }),
+    prisma.$queryRaw<
+      Array<{ date: string; signups: bigint }>
+    >`SELECT to_char("createdAt", 'YYYY-MM-DD') AS date, count(*) AS signups FROM "user" WHERE "createdAt" >= NOW() - interval '15 days' GROUP BY 1 ORDER BY 1`,
   ]);
   return {
+    signupDaily: signupDaily.map((row) => ({ date: row.date, signups: Number(row.signups) })),
     users,
     admins,
     sites,
@@ -155,7 +161,21 @@ export async function getAdminOverview() {
 }
 
 /** Every user on the instance, newest first, with workspace-membership count. */
-export async function listAdminUsers() {
+export async function listAdminUsers(input: AdminListInput = {}) {
+  const { search = '', filter = 'all', cursor } = input;
+  const where: Prisma.UserWhereInput = {
+    ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search, mode: 'insensitive' } }] } : {}),
+    ...(filter === 'active'
+      ? { suspendedAt: null }
+      : filter === 'unverified'
+        ? { emailVerified: false }
+        : filter === 'suspended'
+          ? { suspendedAt: { not: null } }
+          : filter === 'admin'
+            ? { role: 'admin' }
+            : {}),
+  };
+  const total = await prisma.user.count({ where });
   const now = new Date();
   const users = await prisma.user.findMany({
     select: {
@@ -170,22 +190,28 @@ export async function listAdminUsers() {
       sessions: { orderBy: { updatedAt: 'desc' }, take: 1, select: { updatedAt: true } },
       _count: { select: { members: true, sessions: { where: { expiresAt: { gt: now } } } } },
     },
-    orderBy: { createdAt: 'desc' },
-    take: 500,
+    where,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    take: 51,
   });
-  return users.map((u) => ({
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    emailVerified: u.emailVerified,
-    suspendedAt: u.suspendedAt?.toISOString() ?? null,
-    workspaces: u._count.members,
-    providers: [...new Set(u.accounts.map((account) => account.providerId))].sort(),
-    activeSessions: u._count.sessions,
-    lastActiveAt: u.sessions[0]?.updatedAt.toISOString() ?? null,
-    createdAt: u.createdAt.toISOString(),
-  }));
+  return {
+    total,
+    nextCursor: users.length > 50 ? (users[49]?.id ?? null) : null,
+    items: users.slice(0, 50).map((u) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      emailVerified: u.emailVerified,
+      suspendedAt: u.suspendedAt?.toISOString() ?? null,
+      workspaces: u._count.members,
+      providers: [...new Set(u.accounts.map((account) => account.providerId))].sort(),
+      activeSessions: u._count.sessions,
+      lastActiveAt: u.sessions[0]?.updatedAt.toISOString() ?? null,
+      createdAt: u.createdAt.toISOString(),
+    })),
+  };
 }
 
 /** One customer account with privacy-minimized authentication, workspace, and
@@ -346,8 +372,10 @@ export async function setUserRole(userId: string, role: 'user' | 'admin') {
 }
 
 /** Every documentation site (Project) on the instance with owner + counts. */
-export async function listAdminSites() {
+export async function listAdminSites(input: AdminListInput = {}) {
+  const page = await adminSitePage(input);
   const sites = await prisma.project.findMany({
+    where: { id: { in: page.ids } },
     select: {
       id: true,
       name: true,
@@ -357,7 +385,11 @@ export async function listAdminSites() {
       takedownReason: true,
       createdAt: true,
       updatedAt: true,
-      deployments: { orderBy: { createdAt: 'desc' }, take: 1, select: { version: true, status: true, createdAt: true, completedAt: true } },
+      deployments: {
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 1,
+        select: { version: true, status: true, createdAt: true, completedAt: true },
+      },
       domains: { select: { dnsStatus: true, sslStatus: true } },
       _count: { select: { pages: true, deployments: true, languages: true } },
       organization: {
@@ -371,41 +403,44 @@ export async function listAdminSites() {
         },
       },
     },
-    orderBy: { createdAt: 'desc' },
-    take: 500,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
   });
-  return sites.map((s) => {
-    const latestDeployment = s.deployments[0];
-    return {
-      latestDeployment: latestDeployment
-        ? {
-            version: latestDeployment.version,
-            status: latestDeployment.status,
-            at: (latestDeployment.completedAt ?? latestDeployment.createdAt).toISOString(),
-          }
-        : null,
-      id: s.id,
-      name: s.name,
-      slug: s.slug,
-      org: s.organization?.name ?? '—',
-      organizationId: s.organization?.id ?? null,
-      plan: parseWorkspaceMetadata(s.organization?.metadata ?? null).plan,
-      owner: s.organization?.members[0]?.user.email ?? s.organization?.invitations[0]?.email ?? '—',
-      ownerStatus: s.organization?.members[0] ? ('active' as const) : s.organization?.invitations[0] ? ('invited' as const) : ('missing' as const),
-      ownerInvitationId: s.organization?.invitations[0]?.id ?? null,
-      pages: s._count.pages,
-      deployments: s._count.deployments,
-      languages: s._count.languages,
-      members: s.organization?._count.members ?? 0,
-      domains: s.domains.length,
-      domainIssues: s.domains.filter((domain) => domain.dnsStatus === 'ERROR' || domain.sslStatus === 'ERROR').length,
-      accessMode: s.accessMode,
-      takedownAt: s.takedownAt?.toISOString() ?? null,
-      takedownReason: s.takedownReason,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-    };
-  });
+  return {
+    total: page.total,
+    nextCursor: page.nextCursor,
+    items: sites.map((s) => {
+      const latestDeployment = s.deployments[0];
+      return {
+        latestDeployment: latestDeployment
+          ? {
+              version: latestDeployment.version,
+              status: latestDeployment.status,
+              at: (latestDeployment.completedAt ?? latestDeployment.createdAt).toISOString(),
+            }
+          : null,
+        id: s.id,
+        name: s.name,
+        slug: s.slug,
+        org: s.organization?.name ?? '—',
+        organizationId: s.organization?.id ?? null,
+        plan: parseWorkspaceMetadata(s.organization?.metadata ?? null).plan,
+        owner: s.organization?.members[0]?.user.email ?? s.organization?.invitations[0]?.email ?? '—',
+        ownerStatus: s.organization?.members[0] ? ('active' as const) : s.organization?.invitations[0] ? ('invited' as const) : ('missing' as const),
+        ownerInvitationId: s.organization?.invitations[0]?.id ?? null,
+        pages: s._count.pages,
+        deployments: s._count.deployments,
+        languages: s._count.languages,
+        members: s.organization?._count.members ?? 0,
+        domains: s.domains.length,
+        domainIssues: s.domains.filter((domain) => domain.dnsStatus === 'ERROR' || domain.sslStatus === 'ERROR').length,
+        accessMode: s.accessMode,
+        takedownAt: s.takedownAt?.toISOString() ?? null,
+        takedownReason: s.takedownReason,
+        createdAt: s.createdAt.toISOString(),
+        updatedAt: s.updatedAt.toISOString(),
+      };
+    }),
+  };
 }
 
 /** Full operational context for one site/workspace. Sensitive document content,
@@ -594,11 +629,44 @@ export async function getAdminSite(projectId: string) {
 /** Cross-product queues and provider health for support triage. Raw error text
  * is intentionally represented only as a boolean to avoid leaking customer
  * content, repository URLs, provider payloads, or credentials. */
-export async function getAdminOperations() {
+export async function getAdminOperations(input: { search?: string; onlyIssues?: boolean; queue?: string; cursor?: string } = {}) {
+  const projectSearch: Prisma.ProjectWhereInput = input.search ? { name: { contains: input.search, mode: 'insensitive' } } : {};
+  const deploymentIssue: Prisma.DeploymentWhereInput = { status: { in: ['FAILED', 'BUILDING', 'PENDING'] } };
+  const domainIssue: Prisma.DomainWhereInput = { OR: [{ dnsStatus: 'ERROR' }, { sslStatus: 'ERROR' }] };
+  const exportIssue: Prisma.ExportJobWhereInput = { status: 'FAILED' };
+  const gitIssue: Prisma.GitSyncOperationWhereInput = { status: { in: ['FAILED', 'CONFLICT'] } };
+  const deploymentWhere: Prisma.DeploymentWhereInput = { project: projectSearch, ...(input.onlyIssues ? deploymentIssue : {}) };
+  const domainWhere: Prisma.DomainWhereInput = {
+    AND: [
+      input.search ? { OR: [{ project: projectSearch }, { domain: { contains: input.search, mode: 'insensitive' } }] } : {},
+      input.onlyIssues ? domainIssue : {},
+    ],
+  };
+  const exportWhere: Prisma.ExportJobWhereInput = { project: projectSearch, ...(input.onlyIssues ? exportIssue : {}) };
+  const gitWhere: Prisma.GitSyncOperationWhereInput = { connection: { project: projectSearch }, ...(input.onlyIssues ? gitIssue : {}) };
+  const paging = (queue: string) => ({
+    orderBy: [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
+    take: 51,
+    ...(input.cursor && input.queue === queue ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+  });
+  const [totals, issueCounts] = await Promise.all([
+    Promise.all([
+      prisma.deployment.count({ where: deploymentWhere }),
+      prisma.domain.count({ where: domainWhere }),
+      prisma.exportJob.count({ where: exportWhere }),
+      prisma.gitSyncOperation.count({ where: gitWhere }),
+    ]),
+    Promise.all([
+      prisma.deployment.count({ where: { project: projectSearch, ...deploymentIssue } }),
+      prisma.domain.count({ where: { AND: [domainWhere, domainIssue] } }),
+      prisma.exportJob.count({ where: { project: projectSearch, ...exportIssue } }),
+      prisma.gitSyncOperation.count({ where: { connection: { project: projectSearch }, ...gitIssue } }),
+    ]),
+  ]);
   const [deployments, domains, exports, gitOperations] = await Promise.all([
     prisma.deployment.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      where: deploymentWhere,
+      ...paging('deployments'),
       select: {
         id: true,
         version: true,
@@ -611,8 +679,8 @@ export async function getAdminOperations() {
       },
     }),
     prisma.domain.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      where: domainWhere,
+      ...paging('domains'),
       select: {
         id: true,
         domain: true,
@@ -627,8 +695,8 @@ export async function getAdminOperations() {
       },
     }),
     prisma.exportJob.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      where: exportWhere,
+      ...paging('exports'),
       select: {
         id: true,
         status: true,
@@ -641,8 +709,8 @@ export async function getAdminOperations() {
       },
     }),
     prisma.gitSyncOperation.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+      where: gitWhere,
+      ...paging('git'),
       select: {
         id: true,
         kind: true,
@@ -655,8 +723,17 @@ export async function getAdminOperations() {
     }),
   ]);
 
+  const queues = ['deployments', 'domains', 'exports', 'git'] as const;
   return {
-    deployments: deployments.map((deployment) => ({
+    totals: Object.fromEntries(queues.map((queue, index) => [queue, totals[index]])) as Record<(typeof queues)[number], number>,
+    issueCounts: { deploymentIssues: issueCounts[0], domainIssues: issueCounts[1], exportIssues: issueCounts[2], gitIssues: issueCounts[3] },
+    nextCursor: {
+      deployments: deployments.length > 50 ? (deployments[49]?.id ?? null) : null,
+      domains: domains.length > 50 ? (domains[49]?.id ?? null) : null,
+      exports: exports.length > 50 ? (exports[49]?.id ?? null) : null,
+      git: gitOperations.length > 50 ? (gitOperations[49]?.id ?? null) : null,
+    },
+    deployments: deployments.slice(0, 50).map((deployment) => ({
       id: deployment.id,
       projectId: deployment.project.id,
       projectName: deployment.project.name,
@@ -667,7 +744,7 @@ export async function getAdminOperations() {
       createdAt: deployment.createdAt.toISOString(),
       completedAt: deployment.completedAt?.toISOString() ?? null,
     })),
-    domains: domains.map((domain) => ({
+    domains: domains.slice(0, 50).map((domain) => ({
       id: domain.id,
       projectId: domain.project.id,
       projectName: domain.project.name,
@@ -680,7 +757,7 @@ export async function getAdminOperations() {
       lastCheckedAt: domain.lastCheckedAt?.toISOString() ?? null,
       createdAt: domain.createdAt.toISOString(),
     })),
-    exports: exports.map((job) => ({
+    exports: exports.slice(0, 50).map((job) => ({
       id: job.id,
       projectId: job.project.id,
       projectName: job.project.name,
@@ -691,7 +768,7 @@ export async function getAdminOperations() {
       createdAt: job.createdAt.toISOString(),
       completedAt: job.completedAt?.toISOString() ?? null,
     })),
-    git: gitOperations.map((operation) => ({
+    git: gitOperations.slice(0, 50).map((operation) => ({
       id: operation.id,
       projectId: operation.connection.project.id,
       projectName: operation.connection.project.name,

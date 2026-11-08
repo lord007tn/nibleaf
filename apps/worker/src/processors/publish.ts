@@ -11,7 +11,7 @@ import { type Deployment, Prisma, type Project, prisma } from '@nibleaf/database
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
-import { buildSnapshot } from '@nibleaf/shared/site';
+import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import type { Job } from 'bullmq';
 import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
@@ -92,6 +92,8 @@ interface PublishIssue {
   pagePath: string;
   detail: string;
 }
+
+class PublishReviewRequiredError extends Error {}
 
 /** A check failure that blocks the publish, carrying the structured issues. */
 class PublishChecksError extends Error {
@@ -439,23 +441,35 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     // Publish every branch as an addressable docs version. This keeps v1 live
     // while v2 is being authored, and visitors can switch versions on the site.
     const branchIds = project.branches.map((branch) => branch.id);
-    const pages = await prisma.page.findMany({
-      where: { projectId, branchId: { in: branchIds } },
-      orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-      include: { language: { select: { code: true } } },
-    });
+    const approved = deployment.approvedSnapshot as unknown as SiteSnapshot | null;
+    if (!approved && !auto) {
+      throw new PublishReviewRequiredError('Your site needs a fresh review before publishing. Review the changes again and publish.');
+    }
+    const pages = approved
+      ? []
+      : await prisma.page.findMany({
+          where: { projectId, branchId: { in: branchIds } },
+          orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+          include: { language: { select: { code: true } } },
+        });
     const pageRows = pages.map(({ language, createdAt, updatedAt, ...page }) => ({
       ...page,
       languageCode: language.code,
       createdAt: createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
     }));
-    const draftSnapshot = buildSnapshot(
-      { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
-      pageRows,
-      new Date().toISOString(),
+    const draftSnapshot =
+      approved ??
+      buildSnapshot(
+        { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan) },
+        pageRows,
+        new Date().toISOString(),
+      );
+    const issues = collectPublishIssues(
+      draftSnapshot.project,
+      draftSnapshot.pages.map((page) => ({ ...page, branchId: page.versionId })),
+      { skipGrammarChecks: skipGrammarChecks === true },
     );
-    const issues = collectPublishIssues(draftSnapshot.project, pageRows, { skipGrammarChecks: skipGrammarChecks === true });
     if (issues.length > 0) {
       throw new PublishChecksError(summarizeIssues(issues), issues);
     }
@@ -465,13 +479,14 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     }
     const snapshot = redirectValidation.snapshot;
     const references = await buildDeploymentAssetReferences(snapshot);
-    const pageCount = pages.filter((page) => page.kind === 'PAGE').length;
+    const pageCount = draftSnapshot.pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({
       where: { id: deploymentId, projectId, status: 'BUILDING' },
       data: {
         status: 'READY',
         snapshot: snapshot as unknown as object,
+        approvedSnapshot: Prisma.DbNull,
         assetReferenceIndex: references as unknown as Prisma.InputJsonValue,
         assetReferenceBytes: references.weight,
         pagesCount: pageCount,
@@ -501,7 +516,12 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
         // infra error (after attempt 1 recorded check issues) must clear the
         // stale grammar/link list, or the dashboard offers "Publish anyway" for
         // a connection failure.
-        errorDetails: error instanceof PublishChecksError ? (capIssues(error.issues) as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
+        errorDetails:
+          error instanceof PublishChecksError
+            ? (capIssues(error.issues) as unknown as Prisma.InputJsonValue)
+            : error instanceof PublishReviewRequiredError
+              ? { reason: 'review_stale' }
+              : Prisma.DbNull,
       },
     });
     const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });

@@ -59,9 +59,9 @@ describe('clientIpFromForwardedFor', () => {
   it('returns the single hop when there is only one', () => {
     expect(clientIpFromForwardedFor('203.0.113.7')).toBe('203.0.113.7');
   });
-  it('takes the RIGHTMOST public hop, skipping our own private proxy hops', () => {
+  it('counts private proxies explicitly before selecting the client boundary', () => {
     // Traefik → nitro proxy → API: the real client is the rightmost public hop.
-    expect(clientIpFromForwardedFor('203.0.113.7, 10.0.0.5, 172.18.0.2')).toBe('203.0.113.7');
+    expect(clientIpFromForwardedFor('203.0.113.7, 10.0.0.5, 172.18.0.2', 2)).toBe('203.0.113.7');
   });
   it('IGNORES a client-spoofed leftmost hop (proxies append, so the left is attacker-controlled)', () => {
     // Attacker sends "X-Forwarded-For: 9.9.9.9"; nginx appends the real peer.
@@ -82,7 +82,7 @@ describe('clientIpFromForwardedFor', () => {
   });
   it('normalizes ports and brackets before matching', () => {
     expect(clientIpFromForwardedFor('203.0.113.7:5301')).toBe('203.0.113.7');
-    expect(clientIpFromForwardedFor('[2001:db8::1]:443, 10.0.0.1')).toBe('2001:db8::1');
+    expect(clientIpFromForwardedFor('[2001:db8::1]:443, 10.0.0.1', 1)).toBe('2001:db8::1');
   });
   it('skips invalid hops without giving up on the rest', () => {
     expect(clientIpFromForwardedFor('203.0.113.7, unknown')).toBe('203.0.113.7');

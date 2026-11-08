@@ -311,6 +311,52 @@ describe('analyzePromote: plan', () => {
     );
   });
 
+  it('says where a merged or replaced page lands when its folder also goes away (#348)', () => {
+    const atFork = [page('folder', { kind: 'GROUP' }), page('article')];
+    // After the fork, main moves Article into Folder and edits it; the version
+    // edits Article's title and deletes Folder.
+    const now = [at(atFork, 0), page('article', { parentId: 'folder', path: 'folder/article', title: 'Main title', updatedAt: AFTER })];
+    const replaced = analyze(now, [copyOf(at(atFork, 1), { title: 'Version title' })], forkOf(atFork));
+    expect(replaced.plan.deleteMainIds).toEqual(['folder']);
+    expect(replaced.plan.mainUpdates).toEqual([{ id: 'article', data: { title: 'Version title', parentId: null } }]);
+    expect(replaced.preview.changedOnMainSinceFork.filter((c) => c.pageId === 'article')).toEqual([
+      {
+        pageId: 'article',
+        title: 'Main title',
+        path: 'folder/article',
+        languageCode: 'en',
+        change: 'modified',
+        onPromote: 'replaced',
+        replacedFields: ['title'],
+        newParentPath: null,
+        updatedAt: AFTER.toISOString(),
+      },
+    ]);
+
+    const nowIcon = [at(atFork, 0), page('article', { parentId: 'folder', path: 'folder/article', icon: 'star', updatedAt: AFTER })];
+    const merged = analyze(nowIcon, [copyOf(at(atFork, 1), { title: 'Version title' })], forkOf(atFork));
+    expect(merged.preview.changedOnMainSinceFork.filter((c) => c.pageId === 'article')).toEqual([
+      {
+        pageId: 'article',
+        title: 'article',
+        path: 'folder/article',
+        languageCode: 'en',
+        change: 'modified',
+        onPromote: 'merged',
+        newParentPath: null,
+        updatedAt: AFTER.toISOString(),
+      },
+    ]);
+
+    // A kept folder deeper up: the page lands under it, by its final address.
+    const deep = [page('root', { kind: 'GROUP' }), page('folder', { kind: 'GROUP', parentId: 'root', path: 'root/folder' }), page('article')];
+    const deepNow = [at(deep, 0), at(deep, 1), page('article', { parentId: 'folder', path: 'root/folder/article', icon: 'star', updatedAt: AFTER })];
+    const deepMerged = analyze(deepNow, [copyOf(at(deep, 0)), copyOf(at(deep, 2), { title: 'Version title' })], forkOf(deep));
+    expect(deepMerged.preview.changedOnMainSinceFork).toContainEqual(
+      expect.objectContaining({ pageId: 'article', onPromote: 'merged', newParentPath: 'root' }),
+    );
+  });
+
   it('gives a re-homed page a numbered address when its new place is taken', () => {
     const atFork = [page('billing'), page('guide', { kind: 'GROUP' })];
     // Main added guide/billing; the version deleted the guide folder.

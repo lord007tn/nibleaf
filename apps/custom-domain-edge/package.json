@@ -8,7 +8,7 @@
     "dev": "cf dev",
     "upload": "cf workers versions create --prebuilt --mode production",
     "deploy": "cf workers deployments create --worker nibleaf-custom-domain-edge --strategy percentage",
-    "test": "vitest run --config vitest.config.ts",
+    "test": "vitest run --config vitest.config.ts --fsModuleCachePath node_modules/.vitest-cache",
     "typecheck": "cf workers types && tsc --noEmit"
   },
   "devDependencies": {

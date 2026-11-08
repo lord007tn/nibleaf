@@ -399,6 +399,15 @@ describe('clickhouse search insights', () => {
       hint: expect.stringContaining('private'),
     });
   });
+  it('reports collection with disabled reads consistently with dashboard insights', async () => {
+    mocks.searchInsights.mockResolvedValue(
+      searchInsights({ meta: meta('reads_disabled'), kpis: { ...searchInsights().kpis, searches: compared(null) }, topTerms: [], failedTerms: [] }),
+    );
+    const result = await getSupportAnalytics(principal, 'get_top_searches', {});
+    expect(result).toMatchObject({ available: false, availability: 'reads_disabled' });
+    expect(JSON.stringify(result)).toContain('ANALYTICS_MODE=clickhouse');
+  });
+
   it('reports an analytics outage as unavailable, not as zero searches', async () => {
     mocks.searchInsights.mockResolvedValue(
       searchInsights({ meta: meta('unavailable'), kpis: { ...searchInsights().kpis, searches: compared(null) }, topTerms: [], failedTerms: [] }),

@@ -1454,6 +1454,8 @@ model Deployment {
   status        DeploymentStatus @default(PENDING)
   /// { project: {...}, pages: [...] } captured at publish time.
   snapshot      Json?
+  /// Immutable input approved by the caller; cleared after building the final snapshot.
+  approvedSnapshot Json?
   assetReferenceIndex Json?
   assetReferenceBytes Int?
   assetSourceBytes Int?

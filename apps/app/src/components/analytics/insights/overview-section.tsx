@@ -46,7 +46,8 @@ function OverviewView({
   const compare = Boolean(data?.meta.previous);
   const kpis = data?.kpis;
 
-  if (state.availability === 'not_configured') return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled')
+    return <InsightsStatus projectId={projectId} retry={retry} state={state} />;
   if (data && !unknown && isOverviewEmpty(data)) {
     return (
       <div className="flex flex-col gap-4">

@@ -5,10 +5,12 @@ import { ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, isLegacyImageSource } from './html-safety';
 import { imageAttributeNames, safeImageTag, setupImageSource, snapshotImageSource, sourceImageAttribute } from './image-source';
-import { canEditImages } from './image-upload';
+import { canEditImages, editorImageUploader, uploadEditorImage } from './image-upload';
 import { sourceMetadataAttributes } from './mdx-roundtrip';
+import { fileFromPastedImage } from './pasted-image';
 
 export const imagePromptKey = new PluginKey<number>('image-description-prompt');
+let legacyNoticeIds = 0;
 
 /** Block boundaries and dimensions must survive both Markdown and HTML image syntax. */
 export const BlockImage = Image.extend({
@@ -40,6 +42,37 @@ export const BlockImage = Image.extend({
       const hint = document.createElement('span');
       hint.className = 'image-description-hint block text-xs text-muted-foreground';
       dom.append(hint);
+      // An inline (base64) image is kept in the source but the published site drops it.
+      // Say so, and offer to move it to an uploaded file in one step.
+      const legacy = current.type.name === 'legacyImage';
+      let legacyUploading = false;
+      const legacyRow = document.createElement('span');
+      legacyRow.className = 'editor-image-legacy flex flex-wrap items-center gap-2';
+      const notice = document.createElement('span');
+      notice.id = `editor-image-legacy-${++legacyNoticeIds}`;
+      notice.className = 'inline-flex items-center rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 text-xs text-warning';
+      notice.textContent = translateFn('editor.image.legacyNotShown');
+      const uploadLegacy = document.createElement('button');
+      uploadLegacy.type = 'button';
+      uploadLegacy.className = 'min-h-11 px-2 text-sm focus-visible:outline-2';
+      uploadLegacy.textContent = translateFn('editor.image.legacyUpload');
+      uploadLegacy.setAttribute('aria-describedby', notice.id);
+      uploadLegacy.onclick = () => {
+        const pos = getPos();
+        const upload = editorImageUploader(editor);
+        if (pos === undefined || !upload || legacyUploading || !canEditImages(editor)) return;
+        const source = String(current.attrs.src ?? '');
+        const file = fileFromPastedImage(source);
+        if (!file) return;
+        legacyUploading = true;
+        sync();
+        void uploadEditorImage(editor, file, upload, pos, {}, source).finally(() => {
+          legacyUploading = false;
+          sync();
+        });
+      };
+      legacyRow.append(notice, uploadLegacy);
+      if (legacy) dom.append(legacyRow);
       const sync = () => {
         for (const key of ['src', 'alt', 'title']) {
           if (key === 'alt' || current.attrs[key] != null) image.setAttribute(key, String(current.attrs[key] ?? ''));
@@ -62,6 +95,7 @@ export const BlockImage = Image.extend({
         describe.hidden = current.type.name !== 'image' || (!!current.attrs.alt && !current.attrs.descriptionPending) || !canEditImages(editor);
         hint.textContent = current.attrs.descriptionPending ? translateFn('editor.image.descriptionHint') : '';
         hint.hidden = !current.attrs.descriptionPending || !canEditImages(editor);
+        uploadLegacy.hidden = !legacy || legacyUploading || !canEditImages(editor) || !editorImageUploader(editor);
       };
       sync();
       let cancelDrag: (() => void) | undefined;
@@ -126,7 +160,9 @@ export const BlockImage = Image.extend({
           dom.classList.remove('ProseMirror-selectednode');
         },
         stopEvent: (event) =>
-          event.target === describe || (event.target instanceof HTMLElement && event.target.classList.contains('editor-image-handle')),
+          event.target === describe ||
+          event.target === uploadLegacy ||
+          (event.target instanceof HTMLElement && event.target.classList.contains('editor-image-handle')),
         ignoreMutation: () => true,
         destroy() {
           cancelDrag?.();

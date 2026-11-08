@@ -92,6 +92,40 @@ const COMPONENT_LINE = new RegExp(`^\\s*</?(?:${BLOCK_TAGS})\\b${ATTRIBUTE_PART}
 const ONE_LINE_BLOCK = new RegExp(`^(\\s*)<(${BLOCK_TAGS})\\b(${OPENING_ATTRIBUTES})>(.*\\S.*)</\\2>\\s*$`, 'i');
 // Inline code spans (`<Frame>` written as an example) are code too.
 const INLINE_CODE = /(`+)[\s\S]*?\1/g;
+// The start of a block opener whose attributes go on to later lines.
+const OPENER_START = new RegExp(`^\\s*<(?:${BLOCK_TAGS})(?:\\s|$)`, 'i');
+const MAX_OPENER_LINES = 32;
+
+/** Join an opening block tag written over several lines (`<Card\n  title="x"\n>`)
+ *  onto one line, so the steps below see it as a tag. Line by line, its lone
+ *  `>` would otherwise start a blockquote and the tag would render as text. Only
+ *  a run of non-blank prose lines that forms a whole opener is joined. */
+const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean[]): { lines: string[]; fenced: boolean[] } => {
+  const out: string[] = [];
+  const outFenced: boolean[] = [];
+  const openerEnd = (i: number): number => {
+    const line = lines[i] ?? '';
+    if (fenced[i] || !OPENER_START.test(line) || OPEN_TAG.test(line) || ONE_LINE_BLOCK.test(line)) return -1;
+    let joined = line.trimEnd();
+    for (let j = i + 1; j < lines.length && j - i < MAX_OPENER_LINES && !fenced[j] && (lines[j] ?? '').trim() !== ''; j++) {
+      joined += ` ${(lines[j] ?? '').trim()}`;
+      if (OPEN_TAG.test(joined)) return j;
+    }
+    return -1;
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const end = openerEnd(i);
+    if (end < 0) {
+      out.push(lines[i] ?? '');
+      outFenced.push(Boolean(fenced[i]));
+      continue;
+    }
+    out.push([(lines[i] ?? '').trimEnd(), ...lines.slice(i + 1, end + 1).map((part) => part.trim())].join(' '));
+    outFenced.push(false);
+    i = end;
+  }
+  return { lines: out, fenced: outFenced };
+};
 
 /** Ensure block component tags are separated from their inner content by a blank
  *  line, so CommonMark parses the children as Markdown. Without this, content
@@ -112,8 +146,8 @@ export function normalizeMdxBlocks(src: string): string {
     return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
   };
   // Code samples are never rewritten: every step below skips fenced lines.
-  const authored = src.split('\n');
-  const authoredFences = fencedMarkdownLines(authored);
+  const source = src.split('\n');
+  const { lines: authored, fenced: authoredFences } = joinMultilineOpeners(source, fencedMarkdownLines(source));
   const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
   const fenced = fencedMarkdownLines(lines);
   const out: string[] = [];

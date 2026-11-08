@@ -231,6 +231,16 @@ function AddonCard({ addon, projectId }: { addon: ProjectAddon; projectId: strin
                   value={stringConfig(config, 'buttonLayout', 'inline')}
                 />
               </div>
+              <ConfigurationField label={t('site.analyticsConsentPrivacy')}>
+                <Input
+                  type="url"
+                  value={stringConfig(config, 'privacyPolicyUrl', '')}
+                  onChange={(event) => {
+                    const { privacyPolicyUrl: _previous, ...rest } = config;
+                    setDraftConfig(event.target.value ? { ...rest, privacyPolicyUrl: event.target.value } : rest);
+                  }}
+                />
+              </ConfigurationField>
               <div className="rounded-lg border border-dashed border-border bg-muted/30 p-3">
                 <div className="font-medium text-xs uppercase tracking-wide">{t('settings.addons.consent.preview')}</div>
                 <p className="mt-1 text-muted-foreground text-sm">{t('settings.addons.consent.previewDescription')}</p>

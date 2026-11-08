@@ -21,7 +21,12 @@ export function insightsState(query: {
   if (query.isError && !query.data) return { loading: false, availability: 'unavailable', unknown: true };
   if (query.isPending || !query.data) return { loading: true, availability: null, unknown: false };
   const { availability, lastEventAt } = query.data.meta;
-  return { loading: false, availability, unknown: availability === 'unavailable' || availability === 'not_configured', lastEventAt };
+  return {
+    loading: false,
+    availability,
+    unknown: availability === 'unavailable' || availability === 'not_configured' || availability === 'reads_disabled',
+    lastEventAt,
+  };
 }
 
 const STALE_AFTER_MS = 24 * 60 * 60 * 1000;

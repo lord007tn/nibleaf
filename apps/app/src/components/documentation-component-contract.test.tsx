@@ -29,12 +29,8 @@ import { MDX_BLOCK_TAGS, sanitizeSchema } from './site/mdx-config';
  * below with the reason.
  */
 const KNOWN_GAPS = {
-  portableMarkdown: {
-    // The public machine representations keep `<Update>` as authored text
-    // (normalizePublicMarkdownContent HTML-escapes it). Projecting it is a
-    // separate, output-changing fix.
-    Update: 'portablePublicMdxMarkdown has no Update projection yet',
-  } as Readonly<Record<string, string>>,
+  // Every registered component is projected (#338 added `Update`).
+  portableMarkdown: {} as Readonly<Record<string, string>>,
   /** Props that intentionally change nothing in the sample render, with the reason.
    *  The wiring test fails both for an unlisted inert prop and for a listed one
    *  that does render, so this list cannot go stale. */
@@ -79,7 +75,8 @@ const sampleValue = (component: MdxComponent, attribute: DocumentationComponentA
     case 'icon':
       return attribute.name === 'icon' ? 'rocket' : 'book-open';
     case 'color':
-      return '#0ea5e9';
+      // A Badge takes one of Mintlify's color names; an Icon a CSS color.
+      return component.tag === 'Badge' ? 'purple' : '#0ea5e9';
     default:
       return `Sample-${component.tag}-${attribute.name}`;
   }
@@ -255,7 +252,10 @@ describe('documentation component contract', () => {
       it('lets only a plain color value reach an inline style', () => {
         for (const attribute of colorAttributes) {
           const sample = inContainer(component, sampleUsage(component)).markdown;
-          const hostile = sample.replace(`${attribute.name}="#0ea5e9"`, `${attribute.name}="red;position:fixed;inset:0"`);
+          const hostile = sample.replace(
+            `${attribute.name}="${sampleValue(component, attribute)}"`,
+            `${attribute.name}="red;position:fixed;inset:0"`,
+          );
           expect(hostile, `${attribute.name} sample`).not.toBe(sample);
           expect(renderRich(hostile, SITE), attribute.name).not.toMatch(/style="[^"]*(?:position|inset)/);
         }
@@ -405,4 +405,47 @@ describe('exported theme repository templates', () => {
     );
     expect(sorted(keys)).toEqual(sorted(READER_TAGS));
   });
+});
+
+describe('multi-line component openers in the reader (#338)', () => {
+  it('renders a Card whose opening tag spans several lines as a card, not as text and a blockquote', () => {
+    const html = renderRich('<Card\n  title="Multi"\n  href="/x"\n>\nBody text\n</Card>');
+    expect(html).not.toContain('&lt;Card');
+    expect(html).not.toContain('<blockquote');
+    expect(html).toContain('Multi');
+    expect(html).toContain('Body text');
+  });
+});
+
+describe('Badge colors (#338)', () => {
+  const badge = (color: string) => renderRich(`A <Badge color="${color}">New</Badge> badge.`);
+  it.each([
+    ['gray', 'bg-muted'],
+    ['blue', 'text-info'],
+    ['green', 'text-success'],
+    ['yellow', 'text-warning'],
+    ['orange', 'text-badge-orange'],
+    ['red', 'text-destructive'],
+    ['purple', 'text-badge-purple'],
+    ['white', 'bg-background'],
+    ['surface', 'bg-card'],
+    ['white-destructive', 'bg-background text-destructive'],
+    ['surface-destructive', 'bg-card text-destructive'],
+    [' Blue ', 'text-info'],
+  ])('draws %j with design-system tokens', (color, classes) => {
+    const html = badge(color);
+    expect(html).toContain(`data-color="${color.trim().toLowerCase()}"`);
+    for (const token of classes.split(' ')) expect(html).toContain(token);
+  });
+
+  it.each(['#ff0000', 'red;position:fixed;inset:0', 'bg-red-500', 'unknown', ''])(
+    'falls back to gray for %j and never passes it through',
+    (color) => {
+      const html = badge(color);
+      expect(html).toContain('data-color="gray"');
+      expect(html).toContain('bg-muted');
+      if (color) expect(html).not.toContain(color);
+      expect(html).not.toMatch(/style=/);
+    },
+  );
 });

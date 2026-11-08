@@ -273,6 +273,8 @@ describe('Paraglide message catalogs', () => {
     const viteConfig = readFileSync(resolve(import.meta.dirname, '../../../apps/app/vite.config.ts'), 'utf8');
     expect(packageJson.scripts.setup).toContain('--output-structure message-modules');
     expect(viteConfig).toContain("outputStructure: 'message-modules'");
+    const adminViteConfig = readFileSync(resolve(import.meta.dirname, '../../../apps/admin/vite.config.ts'), 'utf8');
+    expect(adminViteConfig).toContain("outputStructure: 'message-modules'");
   });
 });
 

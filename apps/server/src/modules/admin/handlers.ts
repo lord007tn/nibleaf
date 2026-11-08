@@ -42,22 +42,39 @@ const adminInviteOrganizationBody = z
   })
   .strict();
 
+const listQuery = z.object({ search: z.string().trim().max(200).default(''), cursor: z.string().max(200).optional() });
+const userListQuery = listQuery.extend({ filter: z.enum(['all', 'active', 'unverified', 'suspended', 'admin']).default('all') });
+const siteListQuery = listQuery.extend({ filter: z.enum(['all', 'healthy', 'attention', 'unpublished', 'taken-down']).default('all') });
+const operationQuery = listQuery.extend({
+  onlyIssues: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  queue: z.enum(['deployments', 'domains', 'exports', 'git']).default('deployments'),
+});
+
 const app = new Hono<HonoEnv>()
   .get('/overview', ...adminRoutes.overview, async (ctx) => ctx.json({ data: await getAdminOverview() }, 200))
   .get('/funnel', ...adminRoutes.funnel, async (ctx) => {
     ctx.header('Cache-Control', 'private, no-store');
     return ctx.json({ data: await getActivationFunnel() }, 200);
   })
-  .get('/users', ...adminRoutes.users, async (ctx) => ctx.json({ data: await listAdminUsers() }, 200))
+  .get('/users', ...adminRoutes.users, validator('query', userListQuery), async (ctx) =>
+    ctx.json({ data: await listAdminUsers(ctx.req.valid('query')) }, 200),
+  )
   .get('/users/:id', ...adminRoutes.user, async (ctx) => ctx.json({ data: await getAdminUser(ctx.req.param('id')) }, 200))
   .post('/users/:id/role', ...adminRoutes.setRole, validator('json', adminSetRoleBody), async (ctx) =>
     ctx.json({ data: await setUserRole(ctx.req.param('id'), ctx.req.valid('json').role) }, 200),
   )
   .post('/users/:id/suspend', ...adminRoutes.suspendUser, async (ctx) => ctx.json({ data: await suspendUser(ctx.req.param('id')) }, 200))
   .post('/users/:id/unsuspend', ...adminRoutes.unsuspendUser, async (ctx) => ctx.json({ data: await unsuspendUser(ctx.req.param('id')) }, 200))
-  .get('/sites', ...adminRoutes.sites, async (ctx) => ctx.json({ data: await listAdminSites() }, 200))
+  .get('/sites', ...adminRoutes.sites, validator('query', siteListQuery), async (ctx) =>
+    ctx.json({ data: await listAdminSites(ctx.req.valid('query')) }, 200),
+  )
   .get('/sites/:id', ...adminRoutes.site, async (ctx) => ctx.json({ data: await getAdminSite(ctx.req.param('id')) }, 200))
-  .get('/operations', ...adminRoutes.operations, async (ctx) => ctx.json({ data: await getAdminOperations() }, 200))
+  .get('/operations', ...adminRoutes.operations, validator('query', operationQuery), async (ctx) =>
+    ctx.json({ data: await getAdminOperations(ctx.req.valid('query')) }, 200),
+  )
   .post('/organizations/invite', ...adminRoutes.inviteOrganization, validator('json', adminInviteOrganizationBody), async (ctx) => {
     const user = getContextUserOrThrow();
     return ctx.json({ data: await inviteOrganizationOwner(user.id, ctx.req.valid('json')) }, 201);

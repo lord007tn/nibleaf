@@ -233,21 +233,33 @@ export const Update = ({ children, label }: MdxProps) => (
 );
 `;
 
-export const mdxFieldsTemplate = (): string => `import { authoredName, type MdxProps, stringAttr, truthy } from './shared';
+export const mdxFieldsTemplate = (): string => `import * as m from '../../paraglide/messages.js';
+import { authoredName, type MdxProps, stringAttr, truthy } from './shared';
 
-// Like the reader, a location prop (path, query, header, body) names the field.
-const Field = ({ children, required, type, ...props }: MdxProps) => (
-  <section className="mdx-field">
-    <code dir="ltr">
-      {stringAttr(props.path) ?? stringAttr(props.query) ?? stringAttr(props.header) ?? stringAttr(props.body) ?? authoredName(props)}
-    </code>
-    <span className="mdx-field-type">
-      {stringAttr(type)}
-      {truthy(required) ? ' · required' : ''}
-    </span>
-    <div>{children}</div>
-  </section>
-);
+// Like the reader, a location prop (path, query, header, body) names the field,
+// and the field says when it is required or deprecated and what its default is.
+const Field = ({ children, required, type, deprecated, ...props }: MdxProps) => {
+  const defaultValue = stringAttr(props.default);
+  return (
+    <section className="mdx-field">
+      <code dir="ltr">
+        {stringAttr(props.path) ?? stringAttr(props.query) ?? stringAttr(props.header) ?? stringAttr(props.body) ?? authoredName(props)}
+      </code>
+      <span className="mdx-field-type">
+        {stringAttr(type)}
+        {truthy(required) ? ' · ' + m.fieldRequired() : ''}
+        {truthy(deprecated) ? ' · ' + m.fieldDeprecated() : ''}
+        {defaultValue ? (
+          <>
+            {' · ' + m.fieldDefault() + ': '}
+            <code dir="ltr">{defaultValue}</code>
+          </>
+        ) : null}
+      </span>
+      <div>{children}</div>
+    </section>
+  );
+};
 
 export const ParamField = Field;
 export const ResponseField = Field;

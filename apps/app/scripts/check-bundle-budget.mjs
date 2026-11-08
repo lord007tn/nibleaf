@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { forbiddenModuleIds, nonReaderRouteBytes } from './bundle-boundaries.mjs';
+import { forbiddenModuleIds, marketingSharedReaderIcons, nonReaderRouteBytes } from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
 const publicRoot = join(appRoot, '.output', 'public');
@@ -34,9 +34,12 @@ const profiles = {
 // from a lazy import, and every non-reader route's loader loads with its route,
 // about 7.1 KiB less. The margin is ~2 KiB over the 347,620 bytes measured
 // after #336's use-case routes.
+// 349_700 → 348_200 (#345): marketing pages moved to their own route table,
+// dispatched by nine thin router routes, about 2.3 KiB less. The margin is ~2 KiB
+// over the 346,122 bytes measured.
 const gzipBudgets = {
-  'public-docs': 349_700,
-  'public-docs-index': 349_700,
+  'public-docs': 348_200,
+  'public-docs-index': 348_200,
 };
 
 // A size budget catches overall growth; these signatures make accidental
@@ -64,14 +67,13 @@ if (forbiddenPublicCopy.length < 50) {
 }
 
 const analysisFile = join(appRoot, '.bundle-analysis', 'client-modules.json');
-const moduleReport = existsSync(analysisFile)
-  ? new Map(
-      JSON.parse(readFileSync(analysisFile, 'utf8')).chunks.map((chunk) => [
-        chunk.fileName,
-        chunk.modules.map((module) => ({ id: module.id.replaceAll('\\', '/'), renderedLength: module.renderedLength })),
-      ]),
-    )
+const chunkReport = existsSync(analysisFile)
+  ? JSON.parse(readFileSync(analysisFile, 'utf8')).chunks.map((chunk) => ({
+      ...chunk,
+      modules: chunk.modules.map((module) => ({ id: module.id.replaceAll('\\', '/'), renderedLength: module.renderedLength })),
+    }))
   : null;
+const moduleReport = chunkReport ? new Map(chunkReport.map((chunk) => [chunk.fileName, chunk.modules])) : null;
 
 const formatBytes = (bytes) => `${(bytes / 1024).toFixed(2)} KiB`;
 
@@ -230,6 +232,13 @@ if (process.argv.includes('--check')) {
           invalid = true;
         }
       }
+    }
+    const publicFiles = new Set(publicAssets.map((asset) => asset.url.replace(/^\//, '')));
+    for (const icon of marketingSharedReaderIcons(chunkReport, publicFiles)) {
+      console.error(
+        `\nBUNDLE BOUNDARY FAILED: marketing code imports the reader's ${icon} icon, which re-splits the reader's icon chunks. Use a copy in components/marketing/site/marketing-icons.ts.`,
+      );
+      invalid = true;
     }
   } else if (process.env.CI) {
     console.error('\nBUNDLE BOUNDARY FAILED: no module report for this build. Build with BUNDLE_ANALYZE=true before this check.');

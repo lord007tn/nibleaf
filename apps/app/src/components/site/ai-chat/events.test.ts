@@ -42,3 +42,16 @@ it('flushes when the page becomes hidden', async () => {
   expect(send).toHaveBeenCalledOnce();
   state.mockRestore();
 });
+
+it('starts an unload send synchronously and does not duplicate it for hidden plus pagehide', () => {
+  const send = vi.fn(async (_body: { consent: string }) => undefined);
+  const q = createChatEventQueue(send);
+  q.track(event, { consent: 'denied' });
+  const state = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
+  document.dispatchEvent(new Event('visibilitychange'));
+  expect(send).toHaveBeenCalledOnce();
+  window.dispatchEvent(new Event('pagehide'));
+  expect(send).toHaveBeenCalledOnce();
+  expect(send.mock.calls[0]?.[0]).toMatchObject({ consent: 'denied' });
+  state.mockRestore();
+});

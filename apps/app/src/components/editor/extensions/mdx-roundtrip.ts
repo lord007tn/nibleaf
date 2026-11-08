@@ -66,6 +66,12 @@ export const SUPPORTED_MDX_COMPONENTS: Readonly<Record<string, SupportedDefiniti
   ),
 );
 
+/** All-caps names of HTML elements the editor handles itself. MDX reads `<IMG>` as a
+ *  component, yet the reader renders it as an HTML image, so the editor treats it as
+ *  `<img>`: the image attribute allow-list applies and it saves as `<img …>`. Mixed-case
+ *  names such as `<Img>` stay components. */
+const HTML_ELEMENT_ALIASES: ReadonlyMap<string, string> = new Map([['IMG', 'img']]);
+
 interface TagToken {
   start: number;
   end: number;
@@ -144,36 +150,91 @@ const lineIsFence = (line: string): { marker: string; length: number } | null =>
   return match?.[1] ? { marker: match[1][0] ?? '`', length: match[1].length } : null;
 };
 
+// Lines that start a block of their own, so an inline code span can't run
+// into them (CommonMark: they interrupt a paragraph). HTML blocks of types 1–6
+// interrupt too; a component tag (type 7) doesn't.
+const HTML_BLOCK_NAMES =
+  'address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul';
+const INTERRUPTS_PARAGRAPH = new RegExp(
+  [
+    '^ {0,3}#{1,6}(?:\\s|$)',
+    '^ {0,3}([-*_])(?:[ \\t]*\\1){2,}[ \\t]*$',
+    '^ {0,3}>',
+    '^ {0,3}(?:[-+*]|1[.)])[ \\t]+\\S',
+    '^ {0,3}<(?:script|pre|style|textarea)(?:\\s|>|$)',
+    '^ {0,3}<(?:!--|\\?|![A-Za-z]|!\\[CDATA\\[)',
+    `^ {0,3}</?(?:${HTML_BLOCK_NAMES})(?:\\s|/?>|$)`,
+  ].join('|'),
+  'i',
+);
+const ATX_HEADING = /^ {0,3}#{1,6}(?:\s|$)/;
+
+/** Mark the inline code spans of one paragraph, `text` starting at `offset`.
+ *  A span may cross the paragraph's line breaks, as in Markdown, but never
+ *  its end. A run of backticks closes only at a run of the same length. */
+function maskInlineCode(mask: Uint8Array, text: string, offset: number): void {
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text[cursor] !== '`') {
+      cursor++;
+      continue;
+    }
+    let count = 1;
+    while (text[cursor + count] === '`') count++;
+    let closer = -1;
+    for (let at = text.indexOf('`', cursor + count); at >= 0; at = text.indexOf('`', at)) {
+      let run = 1;
+      while (text[at + run] === '`') run++;
+      if (run === count) {
+        closer = at;
+        break;
+      }
+      at += run;
+    }
+    if (closer < 0) {
+      // An unmatched run is literal backticks; spans can still open after it.
+      cursor += count;
+      continue;
+    }
+    mask.fill(1, offset + cursor, offset + closer + count);
+    cursor = closer + count;
+  }
+}
+
 /** True for positions in fenced or inline code, where JSX-looking text is literal. */
 function codeMask(source: string): Uint8Array {
   const mask = new Uint8Array(source.length);
   let offset = 0;
   let fence: { marker: string; length: number } | null = null;
+  // The paragraph being collected: where it starts, and how far it goes.
+  let paragraphStart = -1;
+  let paragraphEnd = -1;
+  const flush = () => {
+    if (paragraphStart >= 0) maskInlineCode(mask, source.slice(paragraphStart, paragraphEnd), paragraphStart);
+    paragraphStart = -1;
+  };
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
     if (!lineWithBreak) continue;
     const line = lineWithBreak.endsWith('\n') ? lineWithBreak.slice(0, -1) : lineWithBreak;
     const candidate = lineIsFence(line);
     if (fence || candidate) {
+      flush();
       mask.fill(1, offset, offset + lineWithBreak.length);
       if (!fence && candidate) fence = candidate;
       else if (fence && candidate?.marker === fence.marker && candidate.length >= fence.length) fence = null;
+    } else if (line.trim() === '') {
+      flush();
     } else {
-      let cursor = 0;
-      while (cursor < line.length) {
-        if (line[cursor] !== '`') {
-          cursor++;
-          continue;
-        }
-        let count = 1;
-        while (line[cursor + count] === '`') count++;
-        const closer = line.indexOf('`'.repeat(count), cursor + count);
-        if (closer < 0) break;
-        mask.fill(1, offset + cursor, offset + closer + count);
-        cursor = closer + count;
-      }
+      // A block-starting line opens a new paragraph-like block; a heading is
+      // one line on its own, so nothing continues from it either.
+      if (INTERRUPTS_PARAGRAPH.test(line)) flush();
+      if (paragraphStart < 0) paragraphStart = offset;
+      paragraphEnd = offset + line.length;
+      if (ATX_HEADING.test(line)) flush();
     }
     offset += lineWithBreak.length;
   }
+  flush();
   return mask;
 }
 
@@ -274,7 +335,7 @@ function unsupportedRanges(source: string, tokens: TagToken[], pairs: Map<number
   let coveredUntil = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || token.start < coveredUntil || SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()]) continue;
+    if (!token || token.start < coveredUntil || SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()] || HTML_ELEMENT_ALIASES.has(token.name)) continue;
     if (token.closing) {
       ranges.push({ start: token.start, end: token.end, source: token.raw, name: token.name, block: isWholeLine(source, token.start, token.end) });
       continue;
@@ -414,6 +475,12 @@ function prepareMdxForEditor(source: string): string {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || opaqueCoverage(token.start)) continue;
+    const element = HTML_ELEMENT_ALIASES.get(token.name);
+    if (element) {
+      // img is a void element: a stray closing tag has nothing to close.
+      replacements.push({ start: token.start, end: token.end, value: token.closing ? '' : `<${element}${token.raw.slice(token.name.length + 1)}` });
+      continue;
+    }
     const definition = SUPPORTED_MDX_COMPONENTS[token.name.toLowerCase()];
     if (!definition) continue;
     if (token.closing) {
@@ -453,7 +520,7 @@ export function findUnsupportedMdxComponents(source: string): string[] {
   const seen = new Set<string>();
   for (const token of tokens) {
     const lower = token.name.toLowerCase();
-    if (!SUPPORTED_MDX_COMPONENTS[lower] && !seen.has(lower)) {
+    if (!SUPPORTED_MDX_COMPONENTS[lower] && !HTML_ELEMENT_ALIASES.has(token.name) && !seen.has(lower)) {
       seen.add(lower);
       result.push(token.name);
     }

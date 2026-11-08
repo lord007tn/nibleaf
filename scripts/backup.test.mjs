@@ -43,8 +43,8 @@ set -eu
 printf '%s\\n' "$*" >> "$CALL_LOG"
 case "$*" in
   *'ps -q postgres') echo pg-selected ;;
-  *'ps -q server') echo server-selected ;;
-  *'ps -q maxio') if [[ "$SCENARIO" != missing-container ]]; then echo maxio-selected; fi ;;
+  *'ps --all -q server') echo server-selected ;;
+  *'ps --all -q maxio') if [[ "$SCENARIO" != missing-container ]]; then echo maxio-selected; fi ;;
   inspect*.Config.Env*)
     if [[ "$SCENARIO" = external || "$SCENARIO" = external-with-bundled-maxio ]]; then echo 'STORAGE_ENDPOINT=https://external-storage.example.test';
     elif [[ "$SCENARIO" != unset-endpoint ]]; then echo 'STORAGE_ENDPOINT=http://maxio:9000'; fi ;;

@@ -547,7 +547,7 @@ function PublishFailureCard({
 
   const publishAnyway = usePublishAnyway(projectId);
   const publishAnywayWithFeedback = () => {
-    publishAnyway.mutate(undefined, {
+    publishAnyway.mutate(deployment.id, {
       onSuccess: () => {
         toast.success(t('overview.publishFailed.queued'));
       },
@@ -571,7 +571,11 @@ function PublishFailureCard({
         <div className="min-w-0 flex-1 leading-snug">
           <div className="font-semibold text-sm">{t('overview.publishFailed.title', { version: deployment.version })}</div>
           <p className="mt-0.5 text-muted-foreground text-sm">
-            {grammarOnly ? t('overview.publishFailed.grammarOnly') : t('overview.publishFailed.body')}
+            {deployment.errorDetails && !Array.isArray(deployment.errorDetails) && deployment.errorDetails.reason === 'review_stale'
+              ? t('publish.reviewChanged')
+              : grammarOnly
+                ? t('overview.publishFailed.grammarOnly')
+                : t('overview.publishFailed.body')}
           </p>
         </div>
         {grammarOnly ? (

@@ -9,6 +9,12 @@ export type PromoteGroup = 'blocked' | 'lost' | 'moves' | 'stays';
 
 const GROUP_ORDER: readonly PromoteGroup[] = ['blocked', 'lost', 'moves', 'stays'];
 
+/** A merged or replaced page whose folder goes away also moves: the preview
+ *  then carries its new parent's address (`newParentPath`, null for the top
+ *  level) on the same entry. */
+const alsoMoves = (entry: PromoteChange): boolean =>
+  (entry.onPromote === 'merged' || entry.onPromote === 'replaced') && entry.newParentPath !== undefined;
+
 const promoteGroupOf = (entry: PromoteChange): PromoteGroup => {
   switch (entry.onPromote) {
     case 'blocked':
@@ -22,6 +28,9 @@ const promoteGroupOf = (entry: PromoteChange): PromoteGroup => {
     case 'moved':
     case 'restored':
       return 'moves';
+    // Both sides' edits are kept, but the page lands somewhere else.
+    case 'merged':
+      return alsoMoves(entry) ? 'moves' : 'stays';
     default:
       return 'stays';
   }
@@ -68,8 +77,7 @@ const FIELD_LABELS = new Map<string, MessageKey>([
 
 type Translate = (key: MessageKey, variables?: MessageVariables) => string;
 
-/** One plain sentence on what promoting does to this page. */
-export const promoteOutcome = (t: Translate, entry: PromoteChange, locale?: string): string => {
+const promoteEditOutcome = (t: Translate, entry: PromoteChange, locale?: string): string => {
   switch (entry.onPromote) {
     case 'replaced': {
       const labels = (entry.replacedFields ?? []).map((field) => {
@@ -94,4 +102,13 @@ export const promoteOutcome = (t: Translate, entry: PromoteChange, locale?: stri
     default:
       return t('editor.promote.kept');
   }
+};
+
+/** One plain sentence on what promoting does to this page, plus one on where
+ *  it lands when it also moves. */
+export const promoteOutcome = (t: Translate, entry: PromoteChange, locale?: string): string => {
+  const outcome = promoteEditOutcome(t, entry, locale);
+  if (!alsoMoves(entry)) return outcome;
+  const move = entry.newParentPath ? t('editor.promote.alsoMoved', { path: entry.newParentPath }) : t('editor.promote.alsoMovedTop');
+  return `${outcome} ${move}`;
 };

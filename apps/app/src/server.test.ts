@@ -49,6 +49,22 @@ describe('published Markdown edge routing', () => {
     });
   });
 
+  it.each(['/', '/ar', '/pricing', '/sign-in', '/dashboard', '/sites/project-1/intro'])(
+    'keeps nonce HTML private on %s, even when credentials are present',
+    async (path) => {
+      const responses: Response[] = [];
+      for (const cookie of ['', 'better-auth.session_token=fixture']) {
+        mocks.startHandler.mockResolvedValueOnce(new Response('<!doctype html><title>Page</title>', { headers: { 'content-type': 'text/html' } }));
+        responses.push(await server.fetch(new Request(`http://localhost:4310${path}`, { headers: { accept: 'text/html', cookie } })));
+      }
+      for (const response of responses) {
+        expect(response.headers.get('cache-control')).toBe('private, no-store');
+        expect(response.headers.get('content-security-policy')).toContain("'nonce-");
+      }
+      expect(responses[0]?.headers.get('content-security-policy')).not.toBe(responses[1]?.headers.get('content-security-policy'));
+    },
+  );
+
   it('decodes an Arabic pathname once before proxying and keeps its discovery URL singly encoded', async () => {
     const response = await server.fetch(
       new Request('http://localhost:4310/sites/project-1/%D8%A7%D9%84%D9%85%D9%82%D8%AF%D9%85%D8%A9?lang=ar', {

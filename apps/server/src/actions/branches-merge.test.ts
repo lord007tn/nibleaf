@@ -33,7 +33,7 @@ const db = vi.hoisted(() => ({
   page: { findMany: vi.fn(), createMany: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
   comment: { groupBy: vi.fn(), updateMany: vi.fn() },
   audienceGrant: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  pageGitImportSource: { findMany: vi.fn(), createMany: vi.fn() },
+  pageGitImportSource: { findMany: vi.fn(), createMany: vi.fn(), updateMany: vi.fn() },
   language: { findMany: vi.fn() },
   $queryRaw: vi.fn(),
   $transaction: vi.fn(),
@@ -236,6 +236,42 @@ describe('mergeBranch', () => {
     );
     await expect(attempt()).resolves.toMatchObject({ status: 409, details: { reason: 'promote_raced' } });
     expect(db.page.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("re-scopes a moved page's Git import identity to main, unless main already holds that file (#349)", async () => {
+    const copyOf = await forkMain();
+    state.rows.push(row('v-new', 'v2', { slug: 'refunds', path: 'refunds' }), row('v-dup', 'v2', { slug: 'faq', path: 'faq' }));
+    type Source = { pageId: string; branchId: string; languageId: string; path: string };
+    const sources: Source[] = [
+      { pageId: 'billing', branchId: 'main', languageId: 'lang-en', path: 'docs/billing.md' },
+      { pageId: copyOf('billing'), branchId: 'v2', languageId: 'lang-en', path: 'docs/billing.md' },
+      { pageId: 'v-new', branchId: 'v2', languageId: 'lang-en', path: 'docs/refunds.md' },
+      // Imported in the version from a file main's billing page already holds.
+      { pageId: 'v-dup', branchId: 'v2', languageId: 'lang-en', path: 'docs/billing.md' },
+    ];
+    db.pageGitImportSource.findMany.mockImplementation(
+      async ({ where }: { where: { pageId?: { in: string[] }; branchId: string | { not: string }; OR?: { languageId: string; path: string }[] } }) =>
+        sources.filter(
+          (s) =>
+            (!where.pageId || where.pageId.in.includes(s.pageId)) &&
+            (typeof where.branchId === 'string' ? s.branchId === where.branchId : s.branchId !== where.branchId.not) &&
+            (!where.OR || where.OR.some((o) => o.languageId === s.languageId && o.path === s.path)),
+        ),
+    );
+    await mergeBranch('project', 'v2');
+    expect(db.pageGitImportSource.updateMany).toHaveBeenCalledTimes(1);
+    expect(db.pageGitImportSource.updateMany).toHaveBeenCalledWith({
+      where: { projectId: 'project', pageId: { in: ['v-new'] } },
+      data: { branchId: 'main' },
+    });
+    // After the copies are gone, so a main page the version deleted frees its file.
+    expect(db.pageGitImportSource.updateMany.mock.invocationCallOrder[0]).toBeGreaterThan(db.page.deleteMany.mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it('writes no import identity when no page moved onto main', async () => {
+    await forkMain();
+    await mergeBranch('project', 'v2');
+    expect(db.pageGitImportSource.updateMany).not.toHaveBeenCalled();
   });
 
   it("moves a consumed copy's reader grants to the main page, dropping duplicates", async () => {

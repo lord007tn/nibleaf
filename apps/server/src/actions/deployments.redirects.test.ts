@@ -28,6 +28,7 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 
+import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
 import { createDeployment, getCurrentSnapshot, rollbackDeployment } from './deployments';
 
 const project = (redirects: Array<{ from: string; to: string }>) => ({
@@ -143,6 +144,21 @@ describe('createDeployment redirect preflight', () => {
       },
       { jobId: 'publish-deployment-3' },
     );
+  });
+
+  it('rejects dashboard content edited after review and captures the reviewed input before enqueue', async () => {
+    mocks.projectFindFirst.mockResolvedValue(project([]));
+    mocks.projectFindUnique.mockResolvedValue(project([]));
+    const reviewed = await getCurrentSnapshot('project-1');
+    const reviewedStateHash = reviewedSnapshotDigest(reviewed);
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Unreviewed late edit' }]);
+    await expect(createDeployment('org-1', 'project-1', 'user-1', { reviewedStateHash })).rejects.toMatchObject({ code: 'mcp:preview_stale' });
+    expect(mocks.deploymentCreate).not.toHaveBeenCalled();
+    // MCP's already verified input is passed directly; a late database edit cannot replace it.
+    await createDeployment('org-1', 'project-1', 'user-1', {}, 'en', reviewed);
+    expect(mocks.deploymentCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({ approvedSnapshot: expect.objectContaining({ pages: [expect.objectContaining({ content: page.content })] }) }),
+    });
   });
 
   it('removes enabled add-ons from preflight delivery when the entitlement is disabled', async () => {

@@ -54,13 +54,113 @@ const openBlock = new RegExp('^\\s*<(?:' + blockTags + ')\\b(?:[^>]*[^/>])?>\\s*
 const closeBlock = new RegExp('^\\s*</(?:' + blockTags + ')>\\s*$', 'i');
 const componentLine = new RegExp('^\\s*</?(?:' + blockTags + ')\\b[^>]*>\\s*$', 'i');
 
+const BACKTICK = String.fromCharCode(96);
+// A fence may sit inside quotes or a list item: its marker can follow quote markers and indentation.
+const fenceMarker = new RegExp('^(?:\\s*>)*\\s*(' + BACKTICK + '{3,}|~{3,})(.*)$');
+const atxHeading = /^ {0,3}#{1,6}(?:\s|$)/;
+
+/** Positions inside fenced or inline code, where component examples are
+ * literal text. Inline code may cross line breaks, but never a paragraph's end. */
+const codeMask = (source: string): Uint8Array => {
+  const mask = new Uint8Array(source.length);
+  const markInline = (start: number, end: number) => {
+    const text = source.slice(start, end);
+    let cursor = 0;
+    while (cursor < text.length) {
+      if (text[cursor] !== BACKTICK) {
+        cursor += 1;
+        continue;
+      }
+      let count = 1;
+      while (text[cursor + count] === BACKTICK) count += 1;
+      let closer = -1;
+      for (let at = text.indexOf(BACKTICK, cursor + count); at >= 0; ) {
+        let run = 1;
+        while (text[at + run] === BACKTICK) run += 1;
+        if (run === count) {
+          closer = at;
+          break;
+        }
+        at = text.indexOf(BACKTICK, at + run);
+      }
+      if (closer < 0) {
+        cursor += count;
+        continue;
+      }
+      mask.fill(1, start + cursor, start + closer + count);
+      cursor = closer + count;
+    }
+  };
+  let fence: string | null = null;
+  let offset = 0;
+  let paragraph = -1;
+  let paragraphEnd = -1;
+  const flush = () => {
+    if (paragraph >= 0) markInline(paragraph, paragraphEnd);
+    paragraph = -1;
+  };
+  for (const line of source.split('\n')) {
+    const marker = fenceMarker.exec(line);
+    if (fence) {
+      // A closing fence repeats the opening character at least as many times, with nothing after it.
+      if (marker?.[1] && marker[1][0] === fence[0] && marker[1].length >= fence.length && !marker[2]?.trim()) fence = null;
+      mask.fill(1, offset, offset + line.length);
+    } else if (marker?.[1] && !(marker[1][0] === BACKTICK && marker[2]?.includes(BACKTICK))) {
+      flush();
+      fence = marker[1];
+      mask.fill(1, offset, offset + line.length);
+    } else if (!line.trim()) {
+      flush();
+    } else {
+      if (atxHeading.test(line)) flush();
+      if (paragraph < 0) paragraph = offset;
+      paragraphEnd = offset + line.length;
+      if (atxHeading.test(line)) flush();
+    }
+    offset += line.length + 1;
+  }
+  flush();
+  return mask;
+};
+
+/** Apply the rewrite to the text outside code only. */
+const outsideCode = (source: string, mask: Uint8Array, rewrite: (text: string) => string): string => {
+  let output = '';
+  let start = 0;
+  for (let index = 1; index <= source.length; index += 1) {
+    if (index === source.length || mask[index] !== mask[start]) {
+      const text = source.slice(start, index);
+      output += mask[start] ? text : rewrite(text);
+      start = index;
+    }
+  }
+  return output;
+};
+
 /** Give component tags the blank lines CommonMark needs so their Markdown
- * children still render, and map tags that collide with HTML names. */
+ * children still render, and map tags that collide with HTML names. Code
+ * samples, fenced or inline, stay exactly as written. */
 export const normalizeMarkdown = (source: string): string => {
-  const lines = source.split('\n');
+  const mask = codeMask(source);
+  // Renames keep every line break, so line numbers still match the mask.
+  const renamed = outsideCode(source, mask, (text) =>
+    text.replace(/<(\/?)Frame\b/gi, '<$1mdxframe').replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>'),
+  );
+  const inCode: boolean[] = [];
+  let offset = 0;
+  for (const line of source.split('\n')) {
+    const first = line.search(/\S/);
+    inCode.push(first >= 0 && mask[offset + first] === 1);
+    offset += line.length + 1;
+  }
+  const lines = renamed.split('\n');
   const output: string[] = [];
   for (let index = 0; index < lines.length; index += 1) {
     const authored = lines[index] ?? '';
+    if (inCode[index]) {
+      output.push(authored);
+      continue;
+    }
     const line = componentLine.test(authored) ? authored.trim() : authored;
     if (openBlock.test(line)) {
       output.push(line);
@@ -72,10 +172,7 @@ export const normalizeMarkdown = (source: string): string => {
       output.push(line);
     }
   }
-  return output
-    .join('\n')
-    .replace(/<(\/?)Frame\b/gi, '<$1mdxframe')
-    .replace(/<(File|RelatedCard|Icon)\b([^>]*)\/>/gi, '<$1$2></$1>');
+  return output.join('\n');
 };
 
 type HastNode = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: HastNode[] };
@@ -167,6 +264,15 @@ describe('Markdown renderer', () => {
     const html = renderToStaticMarkup(<Markdown body={'## Setup\n\ntext\n\n## Setup'} />);
     expect(html).toContain('id="setup"');
     expect(html).toContain('id="setup-1"');
+  });
+
+  it('shows when a field is required or deprecated, and its default', () => {
+    const html = renderToStaticMarkup(
+      <Markdown body={'<ParamField query="limit" type="number" default="20" deprecated>\n\nPage size.\n\n</ParamField>'} />,
+    );
+    expect(html).toContain('limit');
+    expect(html).toContain('deprecated');
+    expect(html).toContain('<code dir="ltr">20</code>');
   });
 
   it('adds the blank lines block components need', () => {

@@ -59,6 +59,7 @@ import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { MarkdownBlockquote } from './extensions/quote';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
@@ -166,10 +167,21 @@ const CodeBlock = CodeBlockLowlight.extend({
             if (fenceParsers.has(markdownit)) return;
             markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => {
               const lines = state.src.split('\n');
+              // A fence inside a quote keeps its source line without the quote's
+              // `>` markers: the quote's serializer writes them again on save, and
+              // keeping them saved `> ```js` as `> > ```js`.
+              let quoteDepth = 0;
+              const withoutQuotes = (line: string) => {
+                let inner = line;
+                for (let depth = 0; depth < quoteDepth; depth += 1) inner = inner.replace(/^ {0,3}> ?/, '');
+                return inner;
+              };
               for (const token of state.tokens) {
+                if (token.type === 'blockquote_open') quoteDepth += 1;
+                if (token.type === 'blockquote_close') quoteDepth = Math.max(0, quoteDepth - 1);
                 if (token.type !== 'fence' || !token.map) continue;
-                const open = lines[token.map[0]] ?? '';
-                const close = lines[Math.max(token.map[0], token.map[1] - 1)] ?? '';
+                const open = withoutQuotes(lines[token.map[0]] ?? '');
+                const close = withoutQuotes(lines[Math.max(token.map[0], token.map[1] - 1)] ?? '');
                 const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
                 token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
                 token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
@@ -326,11 +338,14 @@ export function buildEditorExtensions({
     StarterKit.configure({
       // CodeBlockLowlight replaces StarterKit's plain code block.
       codeBlock: false,
+      // MarkdownBlockquote replaces it, saving bold at a quote paragraph's start intact.
+      blockquote: false,
       undoRedo: { newGroupDelay: 300 },
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
+    MarkdownBlockquote,
     AutomaticBlockDirection.configure({ dir }),
-    ImageUpload.configure({ canEdit }),
+    ImageUpload.configure({ canEdit, getUpload: getUpload ?? (() => onUpload) }),
     CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.

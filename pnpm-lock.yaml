@@ -249,6 +249,9 @@ importers:
       '@tiptap/core':
         specifier: 3.32.2
         version: 3.32.2(@tiptap/pm@3.32.2)
+      '@tiptap/extension-blockquote':
+        specifier: 3.32.2
+        version: 3.32.2(@tiptap/core@3.32.2(@tiptap/pm@3.32.2))(@tiptap/pm@3.32.2)
       '@tiptap/extension-character-count':
         specifier: 3.32.2
         version: 3.32.2(@tiptap/extensions@3.32.2(@tiptap/core@3.32.2(@tiptap/pm@3.32.2))(@tiptap/pm@3.32.2))
@@ -330,9 +333,6 @@ importers:
       nitro:
         specifier: 3.0.260903-beta
         version: 3.0.260903-beta
-      octokit:
-        specifier: 5.0.5
-        version: 5.0.5
       react:
         specifier: ^19.3.1
         version: 19.3.1

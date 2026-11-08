@@ -91,3 +91,94 @@ describe('projected link destinations', () => {
     expect(portablePublicMdxMarkdown('<Button href="/a b">Go</Button>')).toBe('[Go](/a%C2%A0b)');
   });
 });
+
+describe('#338 follow-ups', () => {
+  it.each([
+    ['an inline link', '[x](javascript:alert(1)) and [ok](/a)', '[x](#) and [ok](/a)'],
+    ['an image', '![x](  vbscript:x )', '![x](  # )'],
+    ['an angle-bracket destination', '[x](<javascript:alert(1)>)', '[x](#)'],
+    ['a destination on the next line', '[x](\njavascript:alert(1))', '[x](\n#)'],
+    ['a reference definition', '[r]: javascript:alert(1)\n\n[x][r]', '[r]: #\n\n[x][r]'],
+    ['an encoded scheme', '[x](&#106;avascript:alert(1))', '[x](#)'],
+  ])('points %s with an unsafe destination at #', (_label, source, expected) => {
+    expect(normalizePublicMarkdownContent(source)).toBe(expected);
+  });
+
+  it('keeps safe and escaped destinations, and code, as written', () => {
+    const source = ['[a](https://example.com/a_(b)) [b](mailto:team@example.com) [c\\](javascript:x)', '`[d](javascript:x)`'].join('\n');
+    expect(normalizePublicMarkdownContent(source)).toBe(source);
+  });
+
+  it("neutralizes a link a Button's body carries", () => {
+    expect(normalizePublicMarkdownContent('<Button href="/ok">x](javascript:alert(1)) [y</Button>')).toBe('[x](#) [y](/ok)');
+  });
+
+  it('leaves character references already written in prose and titles as they are', () => {
+    expect(normalizePublicMarkdownContent('a &amp; b &#65; &#x42; &copy; & c &nope')).toBe('a &amp; b &#65; &#x42; &copy; &amp; c &amp;nope');
+    expect(normalizePublicMarkdownContent('<Card title="A &#65; &amp; B">\n\nBody\n\n</Card>')).toBe('### A &#65; &amp; B\n\nBody');
+  });
+
+  it.each([
+    ['inline', '<Note><Warning>inner</Warning></Note>', '> > inner'],
+    ['on their own lines', '<Note>\n\n<Warning>\n\ninner\n\n</Warning>\n\n</Note>', '> > inner'],
+    ['after outer text', '<Note>\nouter\n\n<Tip>\ninner\n</Tip>\n</Note>', '> outer\n>\n> > inner'],
+    ['of the same tag', '<Note>\n<Note>\ninner\n</Note>\n</Note>', '> > inner'],
+  ])('quotes nested callouts once per level (%s)', (_label, source, expected) => {
+    expect(portablePublicMdxMarkdown(source)).toBe(expected);
+  });
+
+  it('keeps a title whose line break is followed by > whole', () => {
+    expect(portablePublicMdxMarkdown('<Card title="Line one\n> two" href="/x">\n\nBody\n\n</Card>')).toBe('### [Line one &gt; two](/x)\n\nBody');
+    expect(normalizePublicMarkdownContent('<Card title="a < b > c">\n\nBody\n\n</Card>')).toBe('### a &lt; b &gt; c\n\nBody');
+  });
+
+  it('projects an Update as its label, description and body', () => {
+    expect(portablePublicMdxMarkdown('<Update label="v1.2" description="March release">\n\nNew stuff\n\n</Update>')).toBe(
+      '## v1.2\n\nMarch release\n\nNew stuff',
+    );
+    expect(portablePublicMdxMarkdown('<Update label="v1.3">\n\nOnly a body\n\n</Update>')).toBe('## v1.3\n\nOnly a body');
+  });
+});
+
+// Safety cases from #320's reviews (#341). The container projection redesign is
+// tracked in #341; until then these pin that the .md projection never lets an
+// active tag through and never breaks code out of its block.
+describe('public Markdown projection safety (#341)', () => {
+  const md = (source: string) => normalizePublicMarkdownContent(source);
+  const fence = ['```js', 'const tag = "<script>kept as code</script>";', '```'].join('\n');
+
+  it.each([
+    ['nested Folders', `<Folder name="a">\n<Folder name="b">\n\n${fence}\n\n</Folder>\n</Folder>`],
+    ['nested callouts', `<Note>\n<Note>\n\n${fence}\n\n</Note>\n</Note>`],
+    ['a Folder inside a callout', `<Note>\n<Folder name="a">\n\n${fence}\n\n</Folder>\n</Note>`],
+  ])('removes a script after %s around a fenced block and keeps the code literal', (_label, around) => {
+    const output = md(`${around}\n\n<script>alert(1)</script>\n\nAfter`);
+    expect(output.replace(fence, '')).not.toMatch(/<\/?script/i);
+    expect(output).toContain(fence);
+    expect(output).toContain('After');
+  });
+
+  it.each([
+    ['a tilde fence', ['~~~html', '<script>literal()</script>', '~~~']],
+    ['a fence closed by a longer one', ['```html', '<script>literal()</script>', '`````']],
+  ])('keeps code literal in a callout around %s and removes scripts from the prose after it', (_label, lines) => {
+    const code = lines.join('\n');
+    const output = md(`<Note>\n\n${code}\n\n</Note>\n\nProse <script>alert(1)</script> continues`);
+    expect(output).toContain(code);
+    expect(output.replace(code, '')).not.toMatch(/<\/?script/i);
+    expect(output).toContain('Prose');
+    expect(output).toContain('continues');
+  });
+
+  it('lets an unclosed <style> hide at most its own stretch of prose, never later code', () => {
+    const output = md(`Text <style>\nhidden\n\n${fence}\n\nAfter`);
+    expect(output).toContain(fence);
+    expect(output).not.toMatch(/<\/?style/i);
+  });
+
+  it('never leaks a private placeholder', () => {
+    const output = md(`<Card title="Use \`<Note>\` here">body</Card>\n\nInline \`<script>\` and ${fence}`);
+    expect(output).not.toMatch(/[]/);
+    expect(output).toContain('`<script>`');
+  });
+});

@@ -131,6 +131,19 @@ describe('normalizeMdxBlocks', () => {
     // A quoted "/>" doesn't close the tag either.
     expect(normalizeMdxBlocks('<FileTree>\n<File name="a/>b" />\n</FileTree>')).toContain('<File name="a/>b" ></File>');
   });
+
+  it('joins an opening tag written over several lines, so its lone ">" never starts a blockquote (#338)', () => {
+    expect(normalizeMdxBlocks('<Card\n  title="Multi"\n  href="/x"\n>\nBody\n</Card>')).toBe('<Card title="Multi" href="/x" >\n\nBody\n\n</Card>');
+    expect(normalizeMdxBlocks('  <Accordion title="a > b"\n    defaultOpen>\n\nBody\n\n</Accordion>')).toBe(
+      '<Accordion title="a > b" defaultOpen>\n\nBody\n\n</Accordion>',
+    );
+    // Left as authored: a run broken by a blank line, a fenced sample, and plain prose.
+    const samples = ['<Card\n  title="x"\n\n>', '```mdx\n<Card\n  title="x"\n>\n```', 'A <Card that is prose\nand more text.'];
+    for (const sample of samples) expect(normalizeMdxBlocks(sample)).toBe(sample);
+    expect(normalizeMdxBlocks(normalizeMdxBlocks('<Card\n  title="Multi"\n>\nBody\n</Card>'))).toBe(
+      normalizeMdxBlocks('<Card\n  title="Multi"\n>\nBody\n</Card>'),
+    );
+  });
 });
 
 // Literal values from before the reader config was derived from the component
