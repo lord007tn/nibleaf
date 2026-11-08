@@ -188,11 +188,19 @@ const mount = async (data: SiteSnapshot) => {
 };
 const navButtons = (container: ParentNode, label = 'Preview pages') =>
   [...container.querySelectorAll<HTMLButtonElement>(`nav[aria-label="${label}"] button`)].map((button) => button.textContent);
-const choose = async (select: HTMLSelectElement | null | undefined, value: string) => {
-  if (!select) throw new Error('Missing scope picker');
+/** Picks an option of a design-system Select by its visible label. */
+const choose = async (trigger: Element | null | undefined, label: string) => {
+  if (!trigger) throw new Error('Missing scope picker');
   await act(async () => {
-    select.value = value;
-    select.dispatchEvent(new Event('change', { bubbles: true }));
+    for (const type of ['pointerdown', 'mousedown', 'mouseup']) trigger.dispatchEvent(new MouseEvent(type, { bubbles: true, button: 0 }));
+    (trigger as HTMLElement).click();
+  });
+  const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((node) => node.textContent?.trim() === label);
+  if (!option) throw new Error(`No option ${label}`);
+  await act(async () => {
+    option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+    option.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+    option.click();
   });
 };
 
@@ -203,13 +211,14 @@ it('shows one language and version at a time, with the scope named on the page',
   expect(container.querySelector('article')?.textContent).toContain('Main setup.');
   expect(container.querySelector('article')?.textContent).toContain('English · main');
 
-  const [language, version] = container.querySelectorAll('select');
-  await choose(version, 'branch_next');
+  const language = container.querySelector('[data-testid="git-preview-language"]');
+  const version = container.querySelector('[data-testid="git-preview-version"]');
+  await choose(version, 'next');
   expect(container.querySelector('article')?.textContent).toContain('Next setup.');
   expect(container.querySelector('article')?.textContent).toContain('English · next');
 
   // Switching language keeps the same page, in that language and version.
-  await choose(language, 'ar');
+  await choose(language, 'العربية');
   expect(navButtons(container, 'صفحات المعاينة')).toEqual(['الإعداد']);
   expect(container.querySelector('article h1')?.textContent).toBe('الإعداد');
   expect(container.querySelector('article')?.textContent).toContain('إعداد التالي.');
@@ -223,7 +232,7 @@ it('sets the page language and direction, and speaks the shell in that language'
   expect(shell?.getAttribute('dir')).toBe('ltr');
   expect(container.textContent).toContain('Pull request preview');
 
-  await choose(container.querySelector('select'), 'ar');
+  await choose(container.querySelector('[data-testid="git-preview-language"]'), 'العربية');
   expect(shell?.getAttribute('lang')).toBe('ar');
   expect(shell?.getAttribute('dir')).toBe('rtl');
   expect(container.textContent).toContain('معاينة طلب الدمج');

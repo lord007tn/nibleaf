@@ -1,5 +1,6 @@
 import { Button, buttonVariants } from '@nibleaf/design-system/components/ui/button';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Sheet, SheetContent, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
 import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { isRtl, type Locale, resolveLocale } from '@nibleaf/i18n/locales';
@@ -42,9 +43,6 @@ export const Route = createFileRoute('/git-preview/$token')({
   component: GitPreviewRoute,
   errorComponent: GitPreviewUnavailable,
 });
-
-const SELECT_CLASS =
-  'h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 /** A bad, expired or replaced preview link, in the visitor's own interface language. */
 function GitPreviewUnavailable() {
@@ -187,28 +185,50 @@ function GitPreviewPage({ snapshot }: { snapshot: SiteSnapshot }) {
       {scope.languages.length > 1 || scope.versions.length > 1 ? (
         <div className="grid gap-2 border-border border-b p-3">
           {scope.languages.length > 1 ? (
-            <label className="grid gap-1 text-muted-foreground text-xs">
-              {gitpreview_language({}, { locale })}
-              <select className={SELECT_CLASS} onChange={(event) => changeScope({ language: event.target.value })} value={language?.code}>
-                {scope.languages.map((item) => (
-                  <option key={item.code} lang={item.code} value={item.code}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="grid gap-1">
+              <span className="text-muted-foreground text-xs" id="git-preview-language">
+                {gitpreview_language({}, { locale })}
+              </span>
+              <Select
+                items={scope.languages.map((item) => ({ value: item.code, label: item.label }))}
+                onValueChange={(next) => next && changeScope({ language: next })}
+                value={language?.code ?? null}
+              >
+                <SelectTrigger aria-labelledby="git-preview-language" className="w-full" data-testid="git-preview-language">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {scope.languages.map((item) => (
+                    <SelectItem key={item.code} lang={item.code} value={item.code}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : null}
           {scope.versions.length > 1 ? (
-            <label className="grid gap-1 text-muted-foreground text-xs">
-              {gitpreview_version({}, { locale })}
-              <select className={SELECT_CLASS} onChange={(event) => changeScope({ versionId: event.target.value })} value={version?.id}>
-                {scope.versions.map((item) => (
-                  <option dir="auto" key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="grid gap-1">
+              <span className="text-muted-foreground text-xs" id="git-preview-version">
+                {gitpreview_version({}, { locale })}
+              </span>
+              <Select
+                items={scope.versions.map((item) => ({ value: item.id, label: item.name }))}
+                onValueChange={(next) => next && changeScope({ versionId: next })}
+                value={version?.id ?? null}
+              >
+                <SelectTrigger aria-labelledby="git-preview-version" className="w-full" data-testid="git-preview-version">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {scope.versions.map((item) => (
+                    <SelectItem dir="auto" key={item.id} value={item.id}>
+                      {item.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ) : null}
         </div>
       ) : null}
