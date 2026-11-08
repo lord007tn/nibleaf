@@ -77,7 +77,7 @@ function UsersPage() {
           <span className="sr-only">{t('admin.users.search')}</span>
           <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            className="min-h-11 ps-9"
+            className="min-h-11 pointer-coarse:min-h-11 ps-9"
             id="customer-search"
             onChange={(event) => {
               setCursor(undefined);
@@ -265,12 +265,17 @@ function UsersPage() {
       ) : null}
       <div className="flex gap-2">
         {cursor && (
-          <Button className="min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(undefined)}>
+          <Button className="min-h-11 pointer-coarse:min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(undefined)}>
             {t('admin.pagination.first')}
           </Button>
         )}
         {query.data?.nextCursor && (
-          <Button className="min-h-11" variant="outline" disabled={query.isFetching} onClick={() => setCursor(query.data?.nextCursor ?? undefined)}>
+          <Button
+            className="min-h-11 pointer-coarse:min-h-11"
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => setCursor(query.data?.nextCursor ?? undefined)}
+          >
             {t('admin.pagination.next')}
           </Button>
         )}

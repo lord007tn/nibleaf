@@ -183,12 +183,13 @@ jobs:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ANALYTICS_POSTGRES: "1"
           ADMIN_POSTGRES: "1"
+          REVIEWED_PUBLISH_POSTGRES: "1"
           ANALYTICS_MODE: shadow_read
           CLICKHOUSE_URL: http://127.0.0.1:8123
           CLICKHOUSE_DATABASE: nibleaf_analytics
           CLICKHOUSE_READER_USERNAME: nibleaf
           CLICKHOUSE_READER_PASSWORD: nibleaf
-        run: pnpm --filter @nibleaf/server exec vitest run src/lib/relational-analytics.postgres.test.ts src/actions/admin.postgres.test.ts
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/relational-analytics.postgres.test.ts src/actions/admin.postgres.test.ts src/actions/deployments.reviewed.postgres.test.ts
 
       - name: Check documentation
         run: pnpm docs:check

@@ -96,7 +96,7 @@ export function SiteAnalyticsConsent({
   if (choice !== 'pending') {
     return (
       <Button
-        className="fixed end-4 bottom-4 z-40 min-h-11 shadow-lg"
+        className="fixed end-4 bottom-4 z-40 min-h-11 pointer-coarse:min-h-11 shadow-lg"
         onClick={() => {
           acceptedBeforeManage.current = choice === 'accepted';
           setChoice('pending');
@@ -128,15 +128,18 @@ export function SiteAnalyticsConsent({
       <h2 className="font-semibold text-base">{t('analyticsConsentTitle')}</h2>
       <p className="text-sm leading-relaxed">{t('analyticsConsentBody')}</p>
       {settings?.privacyPolicyUrl && (
-        <a className="inline-flex min-h-11 items-center text-sm underline underline-offset-4" href={settings.privacyPolicyUrl}>
+        <a
+          className="inline-flex min-h-11 pointer-coarse:min-h-11 items-center text-sm underline underline-offset-4"
+          href={settings.privacyPolicyUrl}
+        >
           {t('analyticsConsentPrivacy')}
         </a>
       )}
       <div className={cn('mt-4 flex gap-2', buttonLayout === 'stacked' ? 'flex-col' : 'flex-col sm:flex-row sm:justify-end')}>
-        <Button className="min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('declined')}>
+        <Button className="min-h-11 pointer-coarse:min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('declined')}>
           {t('analyticsConsentDecline')}
         </Button>
-        <Button className="min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('accepted')}>
+        <Button className="min-h-11 pointer-coarse:min-h-11 w-full sm:w-auto" type="button" variant="outline" onClick={() => persist('accepted')}>
           {t('analyticsConsentAccept')}
         </Button>
       </div>
