@@ -35,7 +35,12 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   ];
 
   return (
-    <Sidebar side={direction === 'rtl' ? 'right' : 'left'} variant="inset">
+    <Sidebar
+      mobileTitle={t('nav.sidebarTitle')}
+      mobileDescription={t('nav.sidebarDescription')}
+      side={direction === 'rtl' ? 'right' : 'left'}
+      variant="inset"
+    >
       <SidebarHeader>
         <SiteSwitcher projectId={projectId} />
       </SidebarHeader>

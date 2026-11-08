@@ -3969,5 +3969,12 @@
   "analytics_status_readsdisabled_body": "Сервер собирает данные аналитики. Когда миграция будет готова, администратор сервера сможет включить отчёты с помощью ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Сайт изменился после проверки. Перед публикацией проверьте изменения ещё раз.",
   "admin_pagination_first": "Первая страница",
-  "admin_pagination_next": "Следующая страница"
+  "admin_pagination_next": "Следующая страница",
+  "nav_sidebartitle": "Навигация",
+  "nav_sidebardescription": "Переключайтесь между сайтами и разделами рабочего пространства.",
+  "nav_breadcrumb": "Навигационная цепочка",
+  "nav_sitesloaderror": "Не удалось обновить сайты",
+  "command_pagesloaderror": "Не удалось обновить страницы",
+  "notifications_bellunreadlabel": "Открыть уведомления. Непрочитанных: {count}",
+  "notifications_unread": "Не прочитано"
 }

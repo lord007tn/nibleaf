@@ -25,6 +25,23 @@ describe('Paraglide message catalogs', () => {
   const orderedKeys = Object.keys(english).filter((key) => key !== '$schema');
   const expectedKeys = [...orderedKeys].sort();
 
+  it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s localizes shell recovery and accessible names', (locale) => {
+    const catalog = loadCatalog(locale);
+    for (const key of [
+      'nav_sidebartitle',
+      'nav_sidebardescription',
+      'nav_breadcrumb',
+      'nav_sitesloaderror',
+      'command_pagesloaderror',
+      'notifications_bellunreadlabel',
+      'notifications_unread',
+    ]) {
+      expect(catalog[key]?.trim()).toBeTruthy();
+      if (locale !== 'en' && key !== 'nav_sidebartitle') expect(catalog[key]).not.toBe(english[key]);
+    }
+    expect(catalog.notifications_bellunreadlabel).toContain('{count}');
+  });
+
   it('distinguishes server administrators from site Admins in failure instructions', () => {
     const arabic = loadCatalog('ar');
     for (const key of ['failures_toolarge', 'failures_connection', 'failures_unavailable', 'failures_publish', 'failures_export']) {

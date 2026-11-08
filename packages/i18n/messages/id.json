@@ -3883,5 +3883,12 @@
   "analytics_status_readsdisabled_body": "Server sedang mengumpulkan data analitik. Setelah migrasi siap, administrator server dapat mengaktifkan laporan dengan ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Situs Anda berubah sejak ditinjau. Tinjau kembali perubahan sebelum menerbitkan.",
   "admin_pagination_first": "Halaman pertama",
-  "admin_pagination_next": "Halaman berikutnya"
+  "admin_pagination_next": "Halaman berikutnya",
+  "nav_sidebartitle": "Navigasi",
+  "nav_sidebardescription": "Beralih situs dan jelajahi ruang kerja Anda.",
+  "nav_breadcrumb": "Jejak navigasi",
+  "nav_sitesloaderror": "Tidak dapat memperbarui situs",
+  "command_pagesloaderror": "Tidak dapat memperbarui halaman",
+  "notifications_bellunreadlabel": "Buka notifikasi. Belum dibaca: {count}",
+  "notifications_unread": "Belum dibaca"
 }

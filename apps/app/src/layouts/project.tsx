@@ -12,10 +12,10 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Eye, Rocket, Search } from 'lucide-react';
-import { type CSSProperties, type ReactNode, useId, useState } from 'react';
+import { Eye, Rocket } from 'lucide-react';
+import { type CSSProperties, Fragment, type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
-import { useOpenCommandPalette } from '@/components/app/command-palette';
+import { ShellSearchButton } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
@@ -131,12 +131,25 @@ export function PublishControl({
   );
 }
 
-/** Breadcrumb label for the site section being viewed (none on the site overview). */
-function sectionKeyFromPathname(pathname: string): MessageKey | null {
-  if (/\/settings\/?$/.test(pathname)) return 'project.settings';
-  if (/\/analytics\/?$/.test(pathname)) return 'project.analytics';
-  if (/\/preview\/?$/.test(pathname)) return 'project.preview';
-  return null;
+/** Every non-editor project route, including each analytics child. */
+const ANALYTICS_SECTIONS: Record<string, MessageKey> = {
+  pages: 'analytics.tab.pages',
+  search: 'analytics.tab.search',
+  feedback: 'analytics.tab.feedback',
+  ai: 'analytics.tab.ai',
+  performance: 'analytics.tab.performance',
+};
+
+function sectionKeysFromPathname(pathname: string): MessageKey[] {
+  const [, section, child] = pathname.match(/^\/app\/projects\/[^/]+(?:\/([^/]+))?(?:\/([^/]+))?\/?$/) ?? [];
+  if (section === 'analytics') {
+    const childKey = child ? ANALYTICS_SECTIONS[child] : undefined;
+    return childKey ? ['project.analytics', childKey] : ['project.analytics'];
+  }
+  if (section === 'ai') return ['dashboard.ai.title'];
+  if (section === 'settings') return ['project.settings'];
+  if (section === 'preview') return ['project.preview'];
+  return [];
 }
 
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
@@ -149,8 +162,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const openPalette = useOpenCommandPalette();
-  const sectionKey = sectionKeyFromPathname(pathname);
+  const sectionKeys = sectionKeysFromPathname(pathname);
   // The draft preview marks its own article area as the skip target, past its page list.
   const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
   if (pathname.endsWith('/editor')) {
@@ -161,20 +173,24 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
       <ProjectSidebar projectId={projectId} />
       <SidebarInset>
-        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-border border-b bg-background/85 px-4 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
           {/* Where am I: Sites › <site> › <section>, each step a way back. */}
-          <Breadcrumb className="min-w-0">
+          <Breadcrumb aria-label={t('nav.breadcrumb')} className="min-w-0 flex-1">
             <BreadcrumbList className="flex-nowrap">
-              <BreadcrumbItem className="hidden sm:inline-flex">
-                <BreadcrumbLink render={<Link to="/app/sites" />}>{t('nav.sites')}</BreadcrumbLink>
+              <BreadcrumbItem className="hidden shrink-0 lg:inline-flex">
+                <BreadcrumbLink render={<Link activeOptions={{ exact: true }} to="/app/sites" />}>{t('nav.sites')}</BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden sm:inline-flex" />
-              <BreadcrumbItem className="min-w-0">
+              <BreadcrumbSeparator className="hidden shrink-0 lg:inline-flex" />
+              <BreadcrumbItem className="min-w-0 max-w-40">
                 {!project?.name ? (
-                  <Skeleton aria-hidden className="h-4 w-28" />
-                ) : sectionKey ? (
-                  <BreadcrumbLink className="truncate" dir="auto" render={<Link params={{ projectId }} to="/app/projects/$projectId" />}>
+                  <Skeleton aria-hidden className="h-4 w-16 sm:w-28" />
+                ) : sectionKeys.length > 0 ? (
+                  <BreadcrumbLink
+                    className="truncate"
+                    dir="auto"
+                    render={<Link activeOptions={{ exact: true }} params={{ projectId }} to="/app/projects/$projectId" />}
+                  >
                     {project.name}
                   </BreadcrumbLink>
                 ) : (
@@ -183,20 +199,29 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
                   </BreadcrumbPage>
                 )}
               </BreadcrumbItem>
-              {sectionKey ? (
-                <>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
-                    <BreadcrumbPage className="font-medium">{t(sectionKey)}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
-              ) : null}
+              {sectionKeys.map((key, index) => {
+                const current = index === sectionKeys.length - 1;
+                return (
+                  <Fragment key={key}>
+                    <BreadcrumbSeparator className={current ? 'shrink-0' : 'hidden lg:inline-flex'} />
+                    <BreadcrumbItem className={current ? 'min-w-0' : 'hidden min-w-0 shrink-0 lg:inline-flex'}>
+                      {current ? (
+                        <BreadcrumbPage className="truncate font-medium">{t(key)}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink
+                          render={<Link activeOptions={{ exact: true }} params={{ projectId }} to="/app/projects/$projectId/analytics" />}
+                        >
+                          {t(key)}
+                        </BreadcrumbLink>
+                      )}
+                    </BreadcrumbItem>
+                  </Fragment>
+                );
+              })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ms-auto flex items-center gap-2">
-            <Button aria-label={t('command.dialog.title')} onClick={() => openPalette?.()} size="icon-sm" variant="ghost">
-              <Search aria-hidden className="size-4" />
-            </Button>
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <ShellSearchButton />
             <NotificationsPopover />
             <Button
               nativeButton={false}
@@ -211,7 +236,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               size="sm"
               variant="outline"
             >
-              <Eye className="size-3.5" /> {t('project.preview')}
+              <Eye aria-hidden className="size-3.5" /> <span className="hidden sm:inline">{t('project.preview')}</span>
             </Button>
           </div>
         </header>

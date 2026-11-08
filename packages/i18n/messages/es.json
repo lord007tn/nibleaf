@@ -3948,5 +3948,12 @@
   "analytics_status_readsdisabled_body": "El servidor está recopilando analíticas. Cuando la migración esté lista, el administrador puede activar los informes con ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Tu sitio ha cambiado desde que lo revisaste. Revisa los cambios antes de publicar.",
   "admin_pagination_first": "Primera página",
-  "admin_pagination_next": "Página siguiente"
+  "admin_pagination_next": "Página siguiente",
+  "nav_sidebartitle": "Navegación",
+  "nav_sidebardescription": "Cambia de sitio y navega por tu espacio de trabajo.",
+  "nav_breadcrumb": "Ruta de navegación",
+  "nav_sitesloaderror": "No se pudieron actualizar los sitios",
+  "command_pagesloaderror": "No se pudieron actualizar las páginas",
+  "notifications_bellunreadlabel": "Abrir notificaciones. Sin leer: {count}",
+  "notifications_unread": "Sin leer"
 }

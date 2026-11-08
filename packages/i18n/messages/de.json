@@ -3948,5 +3948,12 @@
   "analytics_status_readsdisabled_body": "Der Server erfasst Analysedaten. Sobald die Migration bereit ist, kann die Serververwaltung Berichte mit ANALYTICS_MODE=clickhouse aktivieren.",
   "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",
   "admin_pagination_first": "Erste Seite",
-  "admin_pagination_next": "Nächste Seite"
+  "admin_pagination_next": "Nächste Seite",
+  "nav_sidebartitle": "Navigation",
+  "nav_sidebardescription": "Wechseln Sie Websites und navigieren Sie in Ihrem Arbeitsbereich.",
+  "nav_breadcrumb": "Brotkrümelnavigation",
+  "nav_sitesloaderror": "Websites konnten nicht aktualisiert werden",
+  "command_pagesloaderror": "Seiten konnten nicht aktualisiert werden",
+  "notifications_bellunreadlabel": "Benachrichtigungen öffnen. Ungelesen: {count}",
+  "notifications_unread": "Ungelesen"
 }

@@ -3983,5 +3983,12 @@
   "analytics_status_readsdisabled_body": "يجمع الخادم بيانات التحليلات. عند اكتمال الترحيل، يمكن لمسؤول الخادم تفعيل التقارير عبر ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "تغيّر موقعك منذ مراجعته. راجع التغييرات مجددًا قبل النشر.",
   "admin_pagination_first": "الصفحة الأولى",
-  "admin_pagination_next": "الصفحة التالية"
+  "admin_pagination_next": "الصفحة التالية",
+  "nav_sidebartitle": "التنقل",
+  "nav_sidebardescription": "بدّل المواقع وتنقّل في مساحة عملك.",
+  "nav_breadcrumb": "مسار التنقل",
+  "nav_sitesloaderror": "تعذّر تحديث المواقع",
+  "command_pagesloaderror": "تعذّر تحديث الصفحات",
+  "notifications_bellunreadlabel": "فتح الإشعارات. غير المقروءة: {count}",
+  "notifications_unread": "غير مقروء"
 }

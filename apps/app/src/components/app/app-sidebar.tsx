@@ -35,7 +35,12 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar side={direction === 'rtl' ? 'right' : 'left'} variant="inset">
+    <Sidebar
+      mobileTitle={t('nav.sidebarTitle')}
+      mobileDescription={t('nav.sidebarDescription')}
+      side={direction === 'rtl' ? 'right' : 'left'}
+      variant="inset"
+    >
       <SidebarHeader>
         <SiteSwitcher />
       </SidebarHeader>

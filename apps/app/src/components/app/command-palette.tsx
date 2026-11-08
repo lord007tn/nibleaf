@@ -1,3 +1,4 @@
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
@@ -16,6 +17,7 @@ import {
   Moon,
   PenLine,
   Plus,
+  Search,
   Settings,
   SlidersHorizontal,
   Sun,
@@ -24,7 +26,9 @@ import {
 } from 'lucide-react';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
+import { QueryErrorState } from '@/components/query-error-state';
 import { usePages, useProjects } from '@/hooks/api';
+import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 /** Site-settings destinations people look for most, with English aliases so
  *  "domain", "team" or "language" find them whatever the label says. */
@@ -40,8 +44,33 @@ const RECENT_PAGE_LIMIT = 6;
 
 const CommandPaletteContext = createContext<(() => void) | null>(null);
 
-/** Opens the app-wide palette; null outside the signed-in app shell. */
-export const useOpenCommandPalette = () => useContext(CommandPaletteContext);
+/** The same search affordance in the workspace and per-site headers. */
+export function ShellSearchButton() {
+  const t = useT();
+  const openPalette = useContext(CommandPaletteContext);
+  const searchShortcut = useSearchShortcutLabel();
+  return (
+    <Button
+      aria-label={t('command.dialog.title')}
+      className="ms-auto h-8 shrink-0 gap-2 px-2.5 text-muted-foreground md:w-40 md:px-3 xl:w-56 pointer-coarse:h-10 pointer-coarse:min-w-10"
+      onClick={() => openPalette?.()}
+      size="sm"
+      variant="outline"
+    >
+      <Search aria-hidden className="size-3.5" />
+      <span aria-hidden className="hidden flex-1 text-start md:inline">
+        {t('dashboard.search.placeholder')}
+      </span>
+      <kbd
+        aria-hidden
+        className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] xl:inline pointer-coarse:hidden"
+        dir="ltr"
+      >
+        {searchShortcut}
+      </kbd>
+    </Button>
+  );
+}
 
 /**
  * Mounted once for the whole signed-in app (routes/app/route.tsx), so Ctrl/⌘+K
@@ -84,9 +113,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const navigate = useNavigate();
   // Mounted above the site routes, so read the site from the deepest match.
   const projectId = useRouterState({ select: (state) => (state.matches.at(-1)?.params as { projectId?: string } | undefined)?.projectId });
-  const { data: projects, isPending: projectsPending } = useProjects();
+  const projectsQuery = useProjects();
+  const { data: projects, isPending: projectsPending } = projectsQuery;
   // Only fetch the current site's pages once the palette is actually open.
-  const { data: pages, isPending: pagesQueryPending } = usePages(open ? projectId : undefined);
+  const pagesQuery = usePages(open ? projectId : undefined);
+  const { data: pages, isPending: pagesQueryPending } = pagesQuery;
   // A disabled query (no site, palette closed) is also "pending"; only a real first load counts.
   const pagesPending = Boolean(open && projectId) && pagesQueryPending;
   const { resolvedTheme, setTheme } = useTheme();
@@ -129,9 +160,21 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     <>
       <CommandDialog description={t('command.dialog.description')} onOpenChange={changeOpen} open={open} title={t('command.dialog.title')}>
         <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
+        {projectsQuery.isError ? (
+          <div className="p-2">
+            <QueryErrorState title={t('nav.sitesLoadError')} onRetry={() => void projectsQuery.refetch()} retrying={projectsQuery.isFetching} />
+          </div>
+        ) : null}
+        {projectId && pagesQuery.isError ? (
+          <div className="p-2">
+            <QueryErrorState title={t('command.pagesLoadError')} onRetry={() => void pagesQuery.refetch()} retrying={pagesQuery.isFetching} />
+          </div>
+        ) : null}
         <CommandList>
           {/* While sites or pages are still loading, a miss isn't "no results" yet. */}
-          {projectsPending || pagesPending ? null : <CommandEmpty>{t('command.noResults')}</CommandEmpty>}
+          {projectsPending || pagesPending || projectsQuery.isError || (projectId && pagesQuery.isError) ? null : (
+            <CommandEmpty>{t('command.noResults')}</CommandEmpty>
+          )}
           {pagesPending ? <PaletteLoadingRows heading={t('command.group.pages')} /> : null}
           {projectsPending ? <PaletteLoadingRows heading={t('command.group.projects')} /> : null}
           {projectId && pageItems.length > 0 ? (
