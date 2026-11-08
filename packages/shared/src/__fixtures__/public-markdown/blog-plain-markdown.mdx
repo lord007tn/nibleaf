@@ -1,0 +1,106 @@
+
+There is one question that tells you almost everything about a documentation platform: **if you leave next year, what do you walk away with?**
+
+Some platforms answer with a folder of Markdown files you can open in any editor, commit to any repo, and feed to any static site generator. Others answer with a JSON export of proprietary blocks, an API you have to crawl before your contract lapses, or a support ticket. The difference is not cosmetic. It determines whether your documentation is an asset you own or a liability you rent.
+
+Our position is simple: docs should be stored as plain Markdown, full stop — and this is true *even when* the authoring experience is a visual editor. The two are not in tension. A WYSIWYG editor is a view; Markdown is the contract.
+
+## Two ways a platform can store your writing
+
+Every documentation tool sits in one of two camps, whatever its editor looks like.
+
+| | Markdown files | Database of blocks |
+|---|---|---|
+| Canonical storage | Plain text on disk (or in a column, but as text) | Proprietary JSON/XML rows |
+| Export | Copy the files | Vendor exporter, fidelity varies |
+| Diff and review | `git diff`, line-by-line | Opaque or vendor-specific |
+| Search your own content | `grep`, ripgrep, any indexer | Vendor API |
+| Feed to an LLM | Directly | Extraction pipeline first |
+| Migration cost | Usually lower, but components, metadata, links, and assets still need work | A project with a deadline |
+
+Block-database platforms are not built by malicious people. A database of structured blocks is genuinely easier to build real-time collaboration and granular permissions on top of. But the storage choice quietly becomes a switching cost, and switching costs quietly become pricing power. When your 2,000-page knowledge base exists only as rows in someone else's database, every renewal negotiation starts from a weaker position.
+
+## What "WYSIWYG over Markdown" means technically
+
+The common objection is that visual editors *require* a richer document model than Markdown can express, so lock-in is the price of a good editor. That is half true and fully avoidable.
+
+Modern block editors (TipTap, ProseMirror, Lexical and friends) do maintain an internal document tree — that is how they give you slash menus, drag handles, and inline formatting. The lock-in question is not whether that tree exists. It is **whether the tree is ever persisted**.
+
+A Markdown-native editor treats the internal model as ephemeral:
+
+1. **On load:** parse the stored Markdown into the editor's document tree.
+2. **While editing:** operate on the tree — blocks, slash commands, keyboard shortcuts, all of it.
+3. **On save:** serialize the tree back to Markdown. The tree is discarded. Nothing editor-internal ever touches storage.
+
+This is a round-trip invariant, and it is a real engineering constraint: any feature that cannot serialize to Markdown (plus a documented component vocabulary — more on that below) does not ship. What lands in storage looks like this, always:
+
+````markdown
+## Configure the webhook
+
+Set the endpoint URL in your dashboard, then verify the signature
+on every request:
+
+```ts
+const valid = verifySignature(payload, header, secret);
+```
+
+<Callout title="Rotate your secrets">
+Webhook secrets should rotate on the same schedule as API keys.
+</Callout>
+````
+
+Contrast this with editors that persist their internal JSON and offer Markdown only as an *export*. Export-to-Markdown is a one-way, best-effort conversion that runs when you ask for it. Round-tripping Markdown means Markdown *is* the record, every save, verifiable by opening the file.
+
+## What you gain when Markdown is the storage format
+
+**Separate file-based storage from Markdown storage.** A docs-as-code project can make its repository the live source, so copying the directory is the migration. Nibleaf instead stores Markdown in PostgreSQL and exports pages as a Markdown ZIP. That still requires an export, but it avoids converting a proprietary block schema before another Markdown tool can read the content.
+
+**Your existing tools work after export or in a file-based workflow.** `git diff` and `grep` apply directly when Markdown lives in a repository. With Nibleaf, export the Markdown ZIP and commit it before using those repository tools. Do not confuse a portable serialization format with a live Git source of truth.
+
+**LLMs read it natively.** This matters more every quarter. The llms.txt convention exists specifically to serve Markdown to models. RAG pipelines chunk Markdown cleanly along heading boundaries with no HTML-stripping or block-JSON flattening step. Coding agents can read, cite, and patch your docs the same way they handle source files. Content trapped in a block database needs an extraction pipeline before any of this works — and extraction pipelines lose structure, drift out of date, and break silently.
+
+**Portability disciplines the vendor.** This is the underrated one. When leaving is cheap, the platform has to win your renewal on merit — editor quality, search, hosting, collaboration — rather than on the cost of getting your content back out.
+
+## The trade-offs, stated honestly
+
+Markdown-as-storage is not free. Two costs are worth naming rather than hand-waving.
+
+**Rich layouts need MDX components.** Tabs, multi-language code groups, and callouts exceed CommonMark. The honest solution is MDX: component tags with documented, human-readable semantics living inside the text file. `<Tabs>` in a plain-text file is still greppable and diffable, and its *meaning* is obvious — but if you migrate to a renderer without an equivalent component, you will map or rewrite those tags. That is a real cost. It is also bounded and visible in a way a proprietary block schema never is: you can find every component usage with one grep.
+
+**Conflict resolution is per-page, not per-character.** Block databases with CRDTs can merge two people editing the same paragraph live, Google-Docs-style. Plain-file storage generally resolves at page granularity — last write wins, or an explicit conflict to reconcile. For documentation, where pages have natural owners and edits flow through review anyway, this is usually the right trade. Anchored review comments cover the collaboration case that actually matters: feedback on specific blocks before publishing. But if your team routinely has five people typing in the same paragraph simultaneously, a CRDT-based editor genuinely serves you better, and you should weigh that.
+
+## Where the popular platforms land
+
+Credit where due — several platforms get this right, each with different trade-offs.
+
+**Mintlify** stores docs as MDX in your own git repository, and its web editor commits changes back to the repo. It passes the plain-text test; the differences are elsewhere. Enterprise customers can now [self-host a custom frontend](https://www.mintlify.com/blog/custom-frontends-on-mintlify), while Mintlify continues to operate the content engine, editor, search, and AI services. See our [Mintlify alternatives breakdown](/alternatives/mintlify) for the full picture.
+
+**Docusaurus** is Markdown/MDX files all the way down, fully open source, and a strong fit if your whole team is comfortable in git and React. What it does not ship is a hosted editor, search infrastructure, or a publishing workflow for non-developers — you assemble those. Our [Nibleaf vs Docusaurus comparison](/compare/nibleaf-vs-docusaurus) goes deeper.
+
+**GitBook** is editor-first: content lives in the platform, and its bi-directional Git Sync feature can mirror content to Markdown files in a repo. That is meaningfully better than no bridge at all, though the platform remains the primary residence and some block types map imperfectly onto files. The [Nibleaf vs GitBook comparison](/compare/nibleaf-vs-gitbook) covers where the models diverge.
+
+**Notion-style workspaces and Confluence** sit furthest toward the block database. Both can export to Markdown or HTML, but export is a conversion event, not the storage format, and fidelity depends on which blocks you used.
+
+## How Nibleaf implements the contract
+
+Nibleaf is an AGPL-3.0 codebase built around this invariant. The editor uses blocks and a slash menu, then stores the result as Markdown in the database. MDX components such as callouts, tabs, and code groups cover layouts that Markdown alone cannot express. Teams can export the content as Markdown, but the live source is not a folder in Git unless they export and commit it.
+
+Because storage is Markdown, the rest of the system composes on top of it: the built-in Orama full-text/fuzzy path and the optional tenant-filtered Qdrant hybrid path index the same published source, publishing produces immutable snapshots so readers never see half-written pages and you can roll back to any previous snapshot, and per-language page trees keep translations as parallel Markdown, including Arabic and RTL layout. The hybrid path ships in v0.2.1, needs a Qdrant service and an AI provider key, and starts in shadow mode.
+
+The managed cloud is in [free beta](/sign-up). The public AGPL-3.0 release also includes a pinned container and guided [Docker Compose installation](/self-hosting) for teams that operate their own infrastructure.
+
+## The test to run before you commit
+
+Download the deterministic [Markdown/MDX round-trip fixture](/guides/fixtures/markdown-round-trip.mdx). Import it, edit only the marked sentence in the visual mode, export it, and compare the parsed structure. The test includes frontmatter, mixed Arabic/English direction, code, a table, a relative link, and a supported component. A serializer may normalize insignificant whitespace; it must preserve meaning, links, code, and component attributes.
+
+Add a semantic-loss manifest to the test output. For every unsupported block or MDX component, record its source location, intended meaning, target representation, severity, and owner. Do the same for embedded files, generated diagrams, and large binaries stored through Git LFS: an exported pointer without its object is not a portable asset. Resolve relative asset paths from the exported file and confirm every required LFS object can be fetched from a clean account.
+
+Make warnings publish-blocking when the transform would drop executable examples, security notices, link targets, component attributes, language metadata, or an asset required to understand the page. Cosmetic normalization may remain a reviewed warning. A green export count that silently substitutes an empty box for an unsupported block is failure, not graceful degradation.
+
+Record which representation is authoritative, how conflicts are surfaced, and which release produced the export. For GitBook, Mintlify, Docusaurus, Starlight, or Nibleaf, test the current product rather than relying on category assumptions. Browser editing is valuable only when its output remains reviewable and recoverable.
+
+Ask any documentation vendor two questions. First: *what exactly is written to storage when I press save?* Second: *if I export everything today, will the files render somewhere else tomorrow?*
+
+If the answers are "Markdown" and "yes," the platform is competing for your renewal on quality. Any other answer, and part of what you are paying for — now or eventually — is the difficulty of leaving.
+
+<Note>Platform details for Mintlify, GitBook, and Docusaurus reflect their public documentation as reviewed on August 17, 2026 and may change.</Note>
