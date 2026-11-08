@@ -1,20 +1,23 @@
 ---
-title: 'Upgrade from v0.1.2 to v0.2.0'
-description: 'Move a self-hosted Nibleaf v0.1.2 installation to v0.2.0 in two hops, migrating recurring job schedules before the new release starts.'
+title: 'Upgrade from v0.1.2 to v0.2.1'
+description: 'Move a self-hosted Nibleaf v0.1.2 installation to v0.2.1 in two hops, migrating recurring job schedules before the new release starts.'
 audience: 'self-hosted Nibleaf operators running v0.1.2'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
+last_reviewed: '2026-11-08'
 verified_against: 'packages/bullmq/src/schedules.ts, packages/bullmq/scripts/migrate-schedules.ts at 33cb198, packages/database/prisma/schema.prisma, docker-compose.prod.yml, scripts/self-host-release.mjs, and apps/worker/src/modules/system/handlers.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/upgrade-v0-2'
 ---
 
-You cannot reach v0.2.0 from v0.1.2 by changing the image tag. v0.1.2 stores its
-recurring jobs as BullMQ 5 repeat definitions, and v0.2.0 runs BullMQ 6, which
+You cannot reach v0.2.1 from v0.1.2 by changing the image tag. v0.1.2 stores its
+recurring jobs as BullMQ 5 repeat definitions, and v0.2.1 runs BullMQ 6, which
 refuses them. The upgrade is two hops: migrate the schedules from a staged image,
-then move to v0.2.0. When you finish, your data, Compose project name, encryption
+then move to v0.2.1. When you finish, your data, Compose project name, encryption
 keys, and volumes are unchanged, and all four recurring jobs run as Job Schedulers.
+
+v0.2.0 was built as an image but never published as a release, so a v0.1.2
+installation goes straight to v0.2.1 with this guide.
 
 ## Who needs this guide
 
@@ -24,11 +27,15 @@ Follow this guide if you self-host v0.1.2 with the guided installer or
 - **New installation:** you need none of this. Use the
   [self-hosted quickstart](/getting-started/self-hosted).
 - **Older than v0.1.2:** reach v0.1.2 first. This path starts from v0.1.2.
+- **Already on the v0.2.0 image:** skip the staged steps. Back up, then follow
+  [back up and upgrade](/self-hosting/backups-upgrades) to move to v0.2.1. If you
+  run hybrid search, also rebuild the index as described in
+  [hybrid search and grounded answers](/self-hosting/search-ai).
 - **Other deployments**, such as `docker-compose.coolify.yml` or a source build:
   the order is the same, but service and volume names differ. Adapt the commands
   and rehearse on a copy first.
 
-Start only after v0.2.0 appears on the
+Start only after v0.2.1 appears on the
 [releases page](https://github.com/lord007tn/nibleaf/releases). Never re-run the
 installer over existing volumes, and never regenerate credentials. Keep the Compose
 project name, `.env`, encryption keys, and volumes.
@@ -38,13 +45,13 @@ project name, `.env`, encryption keys, and volumes.
 | Area | Change | What you do |
 | --- | --- | --- |
 | Recurring jobs | BullMQ 5 repeat definitions become BullMQ 6 Job Schedulers. | Run the staged migration. |
-| Database | Eight Prisma migrations run through the `migrate` service. They are forward-only. | Take a backup. Step 11 runs the migrations. |
+| Database | Nineteen Prisma migrations run through the `migrate` service. They are forward-only. | Take a backup. Step 11 runs the migrations. |
 | Compose file | New `MCP_*` and `INTEGRATION_*` passthroughs. Changing only the version misses them. | Replace the file with the release's verified copy. |
 | Integrations | Stored credentials use a dedicated encryption key. | Add `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` before you use integrations. See [After the upgrade](#after-the-upgrade). |
-| AI writing assist | v0.2.0 reads `OPENROUTER_API_KEY`, not `OPENAI_API_KEY`. | See [After the upgrade](#after-the-upgrade) if you use it. |
+| AI writing assist | v0.2.1 reads `OPENROUTER_API_KEY`, not `OPENAI_API_KEY`. | See [After the upgrade](#after-the-upgrade) if you use it. |
 | Platform | Prisma 7, Vite 8, and TypeScript 7 are inside the image. | Nothing. |
 
-The eight migrations are:
+The first eight are the v0.2.0 migrations:
 
 1. `20260823120000_add_git_file_ownership`
 2. `20260823143000_native_better_auth_admin`
@@ -54,6 +61,9 @@ The eight migrations are:
 6. `20260823230000_add_project_integrations`
 7. `20260823240000_mcp_control_plane`
 8. `20261030120000_invitation_created_at`
+
+The other eleven were added in November 2026. The release tag's
+`packages/database/prisma/migrations` directory lists all of them.
 
 ## Before you start
 
@@ -69,14 +79,14 @@ Confirm each of these first:
   archive. The upgrade uses three images. A fresh test host used about 10.2 GiB in
   total, including v0.1.2, but peak extraction was not measured. Check with `df -h .`
   and `docker system df`.
-- **The amd64 architecture.** v0.2.0 is `linux/amd64` only. `uname -m` must print
+- **The amd64 architecture.** v0.2.1 is `linux/amd64` only. `uname -m` must print
   `x86_64`.
 - **A sign-in path.** Sign-in uses email codes, or Google when configured. `.env`
   needs a value for `POSTMARK_API_KEY` or `SMTP_URL`. If you only use Google
   sign-in, also set `EMAIL_DELIVERY_REQUIRED=false`. Otherwise the worker reports
   unhealthy: its health check returns 503 when required email delivery has no
   provider.
-- **No duplicate linked accounts.** Better Auth in v0.2.0 refuses a sign-in when two
+- **No duplicate linked accounts.** Better Auth in v0.2.1 refuses a sign-in when two
   `account` rows share the same provider and account ID, and the table has no unique
   index on that pair. Run this read-only check from the deployment directory. In a
   repository checkout, run `export COMPOSE_FILE=docker-compose.prod.yml` first:
@@ -255,7 +265,7 @@ docker compose run --rm --no-deps -T worker \
 
 **Expected:** JSON with `"applied": false` and these four entries. This command
 changes nothing. v0.1.2 creates three legacy repeats; the fourth schedule is new in
-v0.2.0, so both of its values are `false`:
+v0.2, so both of its values are `false`:
 
 | Schedule | `legacy` | `scheduler` |
 | --- | --- | --- |
@@ -277,7 +287,7 @@ docker compose run --rm --no-deps -T worker \
 **Expected:** JSON with `"applied": true`. The tool creates and verifies every new
 schedule before it removes any old one, so you can safely run it again after a
 failure. Keep the queues paused while you do. Finish the migration under the staged
-image, and never copy its script into v0.2.0.
+image, and never copy its script into v0.2.1.
 
 ### 8. Verify the schedules
 
@@ -295,32 +305,32 @@ Download the release's Compose file and verify it:
 
 ```bash
 d=$(mktemp -d)
-curl -fsSLo "$d/docker-compose.yml" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/docker-compose.yml
-curl -fsSLo "$d/SHA256SUMS" https://github.com/lord007tn/nibleaf/releases/download/v0.2.0/SHA256SUMS
+curl -fsSLo "$d/docker-compose.yml" https://github.com/lord007tn/nibleaf/releases/download/v0.2.1/docker-compose.yml
+curl -fsSLo "$d/SHA256SUMS" https://github.com/lord007tn/nibleaf/releases/download/v0.2.1/SHA256SUMS
 (cd "$d" && grep '  docker-compose.yml$' SHA256SUMS | sha256sum -c -)
 cp "$d/docker-compose.yml" "${COMPOSE_FILE:-docker-compose.yml}"
 ```
 
 **Expected:** `docker-compose.yml: OK`. Stop if the check fails.
 
-### 10. Pin v0.2.0 in `.env`
+### 10. Pin v0.2.1 in `.env`
 
 Back up `.env` and change only the `NIBLEAF_VERSION` line. Then clear the staged tag
 from the shell, because an exported value overrides `.env`:
 
 ```bash
 cp -p .env "backups/env-before-version-$STAMP"
-sed -i "s/^NIBLEAF_VERSION=.*/NIBLEAF_VERSION='v0.2.0'/" .env
+sed -i "s/^NIBLEAF_VERSION=.*/NIBLEAF_VERSION='v0.2.1'/" .env
 unset NIBLEAF_VERSION
 grep '^NIBLEAF_VERSION=' .env
 docker compose config --images
 ```
 
-**Expected:** `NIBLEAF_VERSION` is `v0.2.0` and every Nibleaf image in the list ends
-with `:v0.2.0`. Do not skip this step. Without it, a later Compose command from a new
+**Expected:** `NIBLEAF_VERSION` is `v0.2.1` and every Nibleaf image in the list ends
+with `:v0.2.1`. Do not skip this step. Without it, a later Compose command from a new
 shell picks up the old tag and restarts legacy producers.
 
-### 11. Start v0.2.0
+### 11. Start v0.2.1
 
 ```bash
 docker compose pull
@@ -337,14 +347,14 @@ until all three report `healthy`:
 for svc in server worker app; do
   docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")"
 done
-docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc 'SELECT migration_name FROM _prisma_migrations ORDER BY migration_name DESC LIMIT 8'
+docker compose exec -T postgres psql -U nibleaf -d nibleaf -Atc "SELECT count(*) FROM _prisma_migrations WHERE migration_name >= '20260823' AND finished_at IS NOT NULL AND rolled_back_at IS NULL"
 ```
 
 **Expected:**
 
 - the `migrate` command ends with `[nibleaf] migrate complete`;
 - `server`, `worker`, and `app` all report `healthy`;
-- the query lists the eight migrations above.
+- the query prints `19`, the number of migrations applied since v0.1.2.
 
 ### 12. Check the schedules and resume the queues
 
@@ -378,14 +388,14 @@ public page, and download one export. Then record the image digest with your upg
 notes:
 
 ```bash
-docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.0
+docker image inspect --format '{{json .RepoDigests}}' ghcr.io/lord007tn/nibleaf:v0.2.1
 ```
 
 Keep the staged image and the backup until you no longer need to roll back.
 
 ## If you skip the staged step
 
-If v0.2.0 starts on the old schedules, scheduling is refused. `server` and `worker`
+If v0.2.1 starts on the old schedules, scheduling is refused. `server` and `worker`
 do not become ready, and `app` waits for the API. The logs show:
 
 ```text
@@ -393,7 +403,7 @@ Unknown recurring configuration in analytics; complete the migration using the r
 ```
 
 The worker reports the same error for the `export` queue. The `migrate` service has
-already run by this point, so the database is on v0.2.0.
+already run by this point, so the database is on v0.2.1.
 
 Do not delete the Dragonfly volume, remove jobs, re-run the installer, or regenerate
 credentials. Your data is intact. Set up the shell and the helper from step 1, then
@@ -405,9 +415,9 @@ docker compose stop server worker
 
 Run only the staged `operator pause` command from step 4. Recovery can continue only
 if both queues have no active or waiting work. If the command fails, stop, and do not
-use the worker restart from step 4: that container is already v0.2.0, so it is not a
+use the worker restart from step 4: that container is already v0.2.1, so it is not a
 retry under v0.1.2. Keep the queues paused and the services stopped, and do not bypass
-the check. This guide does not cover recovery from busy queues after a failed v0.2.0
+the check. This guide does not cover recovery from busy queues after a failed v0.2.1
 start, so [open an issue](https://github.com/lord007tn/nibleaf/issues) before you go
 further.
 
@@ -423,7 +433,7 @@ and `backups/compose-$STAMP.yml`, because the rollback restores them from there.
 
 ## Roll back
 
-There are no down migrations, so rolling back v0.2.0 means restoring the pre-upgrade
+There are no down migrations, so rolling back v0.2.1 means restoring the pre-upgrade
 backup. Rolling back the schedules alone is not enough. Restoring Postgres alone is
 not enough either, because the schedules live in Dragonfly, which the backup does not
 include. Never start v0.1.2 directly on migrated schedules. Do both, in this order.
@@ -448,7 +458,7 @@ NIBLEAF_VERSION="$STAGED" operator pause
 
 **Expected:** `queues pause: PASS`. If it reports `FAIL`, stop the rollback with all
 application services stopped and the queues paused. Do not use the retry from step 4
-here: it starts the existing worker, which may be v0.2.0. Do not restore the database
+here: it starts the existing worker, which may be v0.2.1. Do not restore the database
 or resume queues until the waiting or active work has a reviewed recovery procedure.
 
 Move the schedules back, then check them:
@@ -515,7 +525,7 @@ Keep `nibleaf_failed_upgrade` until you have finished investigating.
 
 ## After the upgrade
 
-v0.2.0 does not turn these on by itself.
+v0.2.1 does not turn these on by itself.
 
 - **Integrations.** Add the dedicated key before you use integrations. The command
   adds it to `.env` if it is missing or empty, and never prints it. It then checks that
@@ -562,10 +572,10 @@ v0.2.0 does not turn these on by itself.
 
 ## Keep this release procedure separate from current source
 
-This is the historical v0.1.2 → v0.2.0 procedure. Do not substitute a current
+This is the v0.1.2 → v0.2.1 procedure. Do not substitute a current
 source image for its retained staged image or its verified release artifacts.
 The pinned production Compose file does not pass `WORKER_QUEUES`, export tuning,
-analytics variables, or the later MCP write-limit variables. If you customize
+analytics variables, or the MCP write-limit variables. If you customize
 those on an image that supports them, pass them explicitly in an operator
 override; adding them only to `.env` has no effect. Preserve that override in
 all upgrade, backup and restore commands. See the

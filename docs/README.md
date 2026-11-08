@@ -50,7 +50,7 @@ publishing, also follow the review and visual checks in
 [`contributing/documentation.mdx`](contributing/documentation.mdx).
 
 Record whether a claim describes the pinned self-host release or the current
-source. `release/self-host.json` pins v0.2.0 and the hash of
+source. `release/self-host.json` pins v0.2.1 and the hash of
 `docker-compose.prod.yml`; that file has no ClickHouse service. The source
 quickstart and Coolify files have a different service inventory. A variable in
 `.env.production.example` reaches a container only if its Compose environment

@@ -121,7 +121,7 @@ With full Git history and an authenticated `gh` session (CI uses its existing
 `GITHUB_TOKEN`), preview without publishing:
 
 ```bash
-pnpm release:notes:dry -- --from v0.1.2 --to origin/main --version v0.2.0
+pnpm release:notes:dry -- --from v0.1.2 --to origin/main --version v0.2.1
 ```
 
 Use `--output notes.md` to save the composed Markdown. The same command runs in

@@ -1,0 +1,124 @@
+---
+title: 'Nibleaf v0.2.1 release notes'
+description: 'See what ships in Nibleaf v0.2.1, which capabilities need configuration, and how to install it or upgrade from v0.1.2.'
+audience: 'self-hosted operators, evaluators, and documentation teams choosing a Nibleaf release'
+content_type: 'reference'
+last_reviewed: '2026-11-08'
+verified_against: 'CHANGELOG.md v0.2.1, release/self-host.json, docker-compose.prod.yml, docker-compose.search.yml, .env.production.example, and scripts/install.sh'
+lang: 'en'
+dir: 'ltr'
+translation_key: 'releases/v0-2-1'
+---
+
+v0.2.1 is the self-host release pinned in the committed manifest. The guided
+installer, the production Compose file, and the pinned
+`ghcr.io/lord007tn/nibleaf:v0.2.1` image all point to it. It is the first
+published release since v0.1.2. v0.2.0 was built as an image but never published
+as a release, so v0.2.1 includes everything in the
+[v0.2.0 notes](/releases/v0-2-0) and supersedes them. The full list of changes,
+with pull request numbers, is in the repository's `CHANGELOG.md` and on the
+GitHub release page.
+
+v0.2.1 also includes security hardening. All self-hosted installations should
+upgrade.
+
+## What ships in v0.2.1
+
+Everything from v0.2.0:
+
+- **Hybrid search and grounded answers.** An optional tenant-filtered Qdrant
+  BM25 and dense-vector path for English, Arabic, and mixed content, with
+  privacy-safe index diagnostics and optional grounded AI answers. The built-in
+  Orama search stays the default. See [search and AI operations](/self-hosting/search-ai).
+- **Project add-ons** with entitlement-aware availability, consent controls,
+  reader actions, and publish checks. See [project add-ons](/product/add-ons).
+- **Documentation themes.** Harbor, Manuscript, and Signal, with safe template
+  exchange and runnable Git exports. See [documentation themes](/product/themes).
+- **Usage metering** with exact quantities and advisory entitlements. See
+  [usage metering](/self-hosting/usage-metering).
+- **Project integrations** with encrypted credentials, confirmations, audit,
+  and key rotation. See [integrations](/reference/integrations-engine).
+- **A project-bound MCP endpoint**, authenticated with expiring scoped keys.
+- **GitBook import.** Import a public GitBook Git Sync repository with its sections,
+  URLs, blocks, and images. See [migrate documentation](/product/migration).
+- **Faster published sites.** Readers move between pages without a full reload.
+
+New since v0.2.0:
+
+- **Ask AI chat.** Readers ask your published docs questions and get short
+  answers that link to the sections they came from. See [Ask AI](/product/ai-assistant).
+- **Your own AI provider.** Connect OpenAI or OpenRouter with your own key for
+  Ask AI and editor AI assist. See [connect your own AI provider](/product/smart-ai).
+- **AI assistants that can write.** Over MCP, an assistant can draft, edit,
+  translate, and publish after a confirmed preview, with sign-in or a personal
+  key. See [work on your docs with an AI assistant](/product/ai-assistants).
+- **Docs-owner insights.** Searches that found nothing, reader feedback, AI
+  crawler visits, and slow pages. See [documentation analytics](/product/analytics).
+- **New AI defaults.** AI answers and drafts default to GPT-6 Luna. A model you
+  pinned is kept, and no reindex is needed.
+- **Larger search embeddings.** Hybrid search defaults to
+  `openai/text-embedding-3-large` at 3072 dimensions, which finds Arabic and
+  mixed-language answers more often. An existing hybrid index needs a one-time
+  rebuild; see [install or upgrade](#install-or-upgrade).
+- **Invitations and Promote.** Accepting an invitation always ends in the invited
+  site, whatever the sign-in path. Promote shows what it will change on main's
+  pages before it happens.
+
+## What needs configuration
+
+Several capabilities ship in the image but stay off until you configure them:
+
+| Capability | Default | What it needs |
+| --- | --- | --- |
+| Hybrid search | Off; built-in search serves readers | A Qdrant service through the optional search overlay, an AI provider for embeddings, and an evaluated `SEARCH_RUNTIME` cutover |
+| Grounded answers and Ask AI | Off | Qdrant through the optional search overlay, an AI provider (the instance provider also needs `SEARCH_ANSWER_ENABLED=true`), a READY published index, and opt-in for each site |
+| AI writing assist | Hidden without a provider | `OPENROUTER_API_KEY`, or the site's own AI provider connection |
+| Site AI provider connections | Not connected | `INTEGRATION_CREDENTIAL_ENCRYPTION_KEY` on the API and worker |
+| MCP endpoint | Off (`MCP_ENABLED=false`) | An operator to enable it. Sign-in for MCP clients also needs an HTTPS `BETTER_AUTH_URL` |
+| ClickHouse analytics and insights | Off | A ClickHouse service that you run, plus the credentials, migrations, and `ANALYTICS_MODE` rollout in the [ClickHouse guide](/self-hosting/clickhouse-analytics). `docker-compose.prod.yml` does not pass these settings, so add them yourself. |
+
+Usage metering does not enable billing or payments, and its entitlements remain
+advisory.
+
+## Platform and interface limits
+
+- The published image supports `linux/amd64` only. The installer stops on other
+  architectures.
+- `docker-compose.prod.yml` includes neither Qdrant nor ClickHouse.
+- The interface offers 12 locale options, with some strings still in English.
+
+See [known limitations](/reference/known-limitations) for the wider product
+boundaries.
+
+## Install or upgrade
+
+- **New installation:** follow [self-hosted installation](/getting-started/self-hosted).
+  Its command verifies the v0.2.1 installer's SHA-256 digest before it runs.
+- **From v0.1.2:** changing only the image tag does not work. Follow the
+  [upgrade guide](/self-hosting/upgrade-v0-2), which migrates recurring job
+  schedules in two steps and covers the backup, the Compose file, and the new
+  environment settings. Nineteen database migrations run, and they are
+  forward-only.
+- **From the v0.2.0 image:** no staged step is needed. Back up, replace the
+  Compose file, and pin v0.2.1, as in [back up and upgrade](/self-hosting/backups-upgrades).
+- **If you set `WORKER_QUEUES`:** add `erasure`; otherwise, files belonging to
+  projects deleted after the upgrade remain in storage.
+- **If you already run hybrid search:** v0.1.2 has no hybrid search, so this
+  applies only to an index built by the v0.2.0 image or a source build. After the
+  upgrade, readers get keyword results, and AI answers and Ask AI are paused,
+  until you rebuild the index and switch to the new collection. Queue the rebuild:
+
+  ```bash
+  docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+  ```
+
+  Wait until every site's index is READY with the new settings, then switch the
+  alias:
+
+  ```bash
+  docker compose exec -T -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 server pnpm --filter @nibleaf/qdrant alias:switch
+  ```
+
+  Keep `nibleaf_search_active_v1_1536` until you are satisfied. To stay on the
+  previous model or roll back, follow [search and AI operations](/self-hosting/search-ai).
+- **Something failed:** see [troubleshooting](/self-hosting/troubleshooting).

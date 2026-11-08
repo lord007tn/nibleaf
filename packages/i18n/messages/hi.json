@@ -2888,7 +2888,7 @@
   "settings_integrations_testmessage": "Nibleaf एकीकरण सत्यापन सफल रहा।",
   "marketing.release.searchPublishing": "हर प्रकाशन पर अंतर्निहित पूर्ण-पाठ और अनुमानित खोज",
   "marketing.release.searchCapability": "अंतर्निहित पूर्ण-पाठ और अनुमानित खोज",
-  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, अंतर्निहित खोज, S3-compatible storage और वैकल्पिक Qdrant व ClickHouse सेवाएँ deployment architecture बनाती हैं। Guided Docker Compose installer pinned public container से v0.2.0 इंस्टॉल करता है; यह container केवल linux/amd64 के लिए प्रकाशित है।",
+  "marketing.release.stack": "PostgreSQL, Hono, TanStack Start, BullMQ, अंतर्निहित खोज, S3-compatible storage और वैकल्पिक Qdrant व ClickHouse सेवाएँ deployment architecture बनाती हैं। Guided Docker Compose installer pinned public container से v0.2.1 इंस्टॉल करता है; यह container केवल linux/amd64 के लिए प्रकाशित है।",
   "marketing.release.mcpTitle": "केवल-पढ़ने योग्य MCP control plane",
   "marketing.release.mcpBody": "v0.2.0 में content, search diagnostics, usage, add-ons, integrations, operations और themes के लिए project-bound MCP resources और tools शामिल हैं। Self-hosted MCP तब तक बंद रहता है जब तक कोई operator उसे चालू न करे। Scoped keys की समय-सीमा समाप्त हो सकती है; write operations उपलब्ध नहीं हैं।",
   "marketing.release.mcpLabel": "MCP गाइड पढ़ें",
