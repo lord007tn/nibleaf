@@ -16,14 +16,14 @@ describe('machine-readable marketing copy', () => {
     expect(text).toContain('Read only / Support writer / Full admin');
     expect(text).toContain('OAuth sign-in or expiring personal keys');
     expect(text).toContain('off by default for self-hosters');
-    expect(text).toContain('are available in self-hosted v0.2.1, and on Nibleaf Cloud as it rolls out.');
+    expect(text).toContain('are available on Nibleaf Cloud and in self-hosted v0.2.1.');
     expect(text).toContain('key from the workspace or instance, per-site opt-in');
     expect(text).toContain('optional Qdrant service');
     expect(text).toContain('optional ClickHouse');
     expect(text).toContain('editor writing assistant separately uses the instance key');
     expect(text).toContain('Rollback creates a new ready deployment from an earlier published snapshot');
     expect(text).toContain('SEARCH_ANSWER_ENABLED=true');
-    expect(text).toContain('A guided dashboard home with a start-here checklist is available in self-hosted v0.2.1');
+    expect(text).toContain('A guided dashboard home with a start-here checklist is available on Nibleaf Cloud and in self-hosted v0.2.1');
     expect(text).toContain('No paid cloud plan is offered today');
     expect(text).toContain('no card at sign-up');
   });

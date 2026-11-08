@@ -33,22 +33,22 @@ const buildFeatureGroups = (searchCapability: string): { title: string; rows: { 
     title: 'Search, SEO & analytics',
     rows: [
       { label: searchCapability, cloud: true, self: true },
-      { label: 'Section links, recent searches, and cross-language results', cloud: 'Rolling out', self: 'In v0.2.1' },
+      { label: 'Section links, recent searches, and cross-language results', cloud: true, self: 'Included in v0.2.1' },
       { label: 'SSR, canonicals, JSON-LD, sitemaps; hreflang for linked indexable translations', cloud: true, self: true },
       { label: 'Product analytics', cloud: 'Included; Cloudflare also processes hosted traffic', self: true },
     ],
   },
   {
-    title: 'AI and support (rolling out)',
+    title: 'AI and support',
     rows: [
       {
         label: 'Ask AI reader chat with section citations',
-        cloud: 'Rolling out; per-site opt-in',
-        self: 'In v0.2.1; workspace or instance AI provider key, site opt-in, and the Qdrant service',
+        cloud: 'Included; per-site opt-in',
+        self: 'Included in v0.2.1; needs an AI provider key (workspace or instance), site opt-in and the Qdrant service',
       },
-      { label: 'Workspace OpenAI/OpenRouter keys', cloud: 'Rolling out', self: 'In v0.2.1; needs the credential encryption key' },
-      { label: 'Support MCP with Read only, Support writer, and Full admin presets', cloud: 'Rolling out', self: 'In v0.2.1; off by default' },
-      { label: 'Docs-owner insights', cloud: 'Rolling out', self: 'In v0.2.1; needs optional ClickHouse' },
+      { label: 'Workspace OpenAI/OpenRouter keys', cloud: true, self: 'Included in v0.2.1; needs the credential encryption key' },
+      { label: 'Support MCP with Read only, Support writer, and Full admin presets', cloud: true, self: 'Included in v0.2.1; off by default' },
+      { label: 'Docs-owner insights', cloud: true, self: 'Included in v0.2.1; needs optional ClickHouse' },
     ],
   },
   {
@@ -181,9 +181,9 @@ export function PricingPage({ stars = 0 }: { stars?: number }) {
             <h2 className="mt-4 font-semibold text-3xl tracking-tight">Same core product, different operations</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
               Writing, publishing, built-in search, custom domains, and Arabic/RTL are core capabilities in both. The AI and support rows are
-              available in self-hosted v0.2.1, and on Nibleaf Cloud as it rolls out. Reader themes, the newer search features, and hybrid retrieval
-              are available the same way. MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview, with OAuth
-              sign-in or expiring personal keys. The editor writing assistant uses the instance key.
+              available on Nibleaf Cloud and in self-hosted v0.2.1. Reader themes, the newer search features, and hybrid retrieval are available the
+              same way. MCP can draft, edit, move, translate, set visibility, and publish only after a confirmed preview, with OAuth sign-in or
+              expiring personal keys. The editor writing assistant uses the instance key.
             </p>
           </div>
           <div className="mt-12 overflow-hidden rounded-xl border border-border bg-card shadow-xs">

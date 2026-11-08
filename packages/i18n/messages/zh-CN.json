@@ -2884,7 +2884,7 @@
   "marketing.release.searchCapability": "内置全文搜索和模糊搜索",
   "marketing.release.stack": "PostgreSQL、Hono、TanStack Start、BullMQ、内置搜索、兼容 S3 的存储，以及可选的 Qdrant 和 ClickHouse 服务共同构成部署架构。引导式 Docker Compose 安装程序从固定的公共容器安装 v0.2.1，该镜像仅发布 linux/amd64 版本。",
   "marketing.release.mcpTitle": "用于排查与确认发布的支持 MCP",
-  "marketing.release.mcpBody": "与项目绑定的支持 MCP 可以创建草稿，编辑、移动和翻译页面，设置页面可见性，并且只有在预览得到确认后才能发布。它提供“只读”/“支持撰稿人”/“完全管理员”预设，支持 OAuth 登录或会过期的个人密钥。自托管时默认关闭。这些功能已在自托管 v0.2.1 中提供，并将在 Nibleaf Cloud 上逐步推出。",
+  "marketing.release.mcpBody": "与项目绑定的支持 MCP 可以创建草稿，编辑、移动和翻译页面，设置页面可见性，并且只有在预览得到确认后才能发布。它提供“只读”/“支持撰稿人”/“完全管理员”预设，支持 OAuth 登录或会过期的个人密钥。自托管时默认关闭。这些功能已在 Nibleaf Cloud 和自托管 v0.2.1 中提供。",
   "marketing.release.mcpLabel": "阅读 MCP 指南",
   "marketing.release.mcpBoundary": "MCP 是一个独立的、与项目绑定的接口，权限限定范围。写入只会更改工作副本；发布需要最新预览和明确确认，并会包含项目中所有待发布的更改。MCP 不能删除页面、回滚部署，也不能更改项目设置、成员、API 密钥、集成或附加组件；这些操作仍需在仪表板中完成。",
   "command_dialog_title": "命令面板",

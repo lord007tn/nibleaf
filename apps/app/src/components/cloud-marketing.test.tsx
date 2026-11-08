@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { BLOG_ENTRIES } from '@/lib/blog';
 import { GitHubStarLink } from './cloud-marketing';
 import { CloudPage } from './marketing/cloud-page';
-import { availabilityNote, heroAvailabilityNote, isRollingOut } from './marketing/copy/availability';
+import { availabilityNote, heroAvailabilityNote, isRollingOut, ROLLOUT_WORDING } from './marketing/copy/availability';
 import { landingAr } from './marketing/copy/landing.ar';
 import { landingEn } from './marketing/copy/landing.en';
 import { LANDING_META } from './marketing/copy/landing-meta';
@@ -98,7 +98,7 @@ describe('availability honesty', () => {
   it.each([
     ['en', landingEn, LandingPage],
     ['ar', landingAr, ArabicLandingPage],
-  ] as const)('qualifies every capability that is still rolling out (%s)', (lang, copy, Page) => {
+  ] as const)('words every new capability from its availability (%s)', (lang, copy, Page) => {
     for (const [id, capability] of Object.entries(rollingOut)) {
       const feature = copy.features.find((candidate) => candidate.id === id);
       expect(feature?.note, id).toContain(availabilityNote(capability, lang));
@@ -107,17 +107,24 @@ describe('availability honesty', () => {
     const root = markup(renderToStaticMarkup(<Page />));
     const caption = heroAvailabilityNote(lang);
     if (caption) expect(root.textContent).toContain(caption);
+    else expect(root.textContent).not.toMatch(ROLLOUT_WORDING);
     expect(root.textContent).toContain(availabilityNote('bringYourOwnKey', lang));
   });
 
   it.each([
     ['en', landingEn, LandingPage],
     ['ar', landingAr, ArabicLandingPage],
-  ] as const)('qualifies features merged after the latest self-hosted release (%s)', (lang, copy, Page) => {
+  ] as const)('words reader themes, GitBook import and reader analytics from their availability (%s)', (lang, copy, Page) => {
     expect(copy.more.items.find((item) => item.icon === 'themes')?.availability).toBe('readerThemes');
-    expect(copy.features.find((candidate) => candidate.id === 'arabic')?.note).toContain(availabilityNote('readerThemes', lang));
-    expect(copy.faq.items.find((item) => item.q.includes('GitBook'))?.a).toContain(availabilityNote('gitbookImport', lang));
-    expect(copy.faq.items.find((item) => /\bIP\b/.test(item.a))?.a).toContain(availabilityNote('readerAnalytics', lang));
+    const arabicNote = copy.features.find((candidate) => candidate.id === 'arabic')?.note;
+    if (isRollingOut('readerThemes') || isRollingOut('askAi')) expect(arabicNote).toContain(availabilityNote('readerThemes', lang));
+    else expect(arabicNote).toBeUndefined();
+    const expectCaption = (text: string | undefined, capability: 'gitbookImport' | 'readerAnalytics') => {
+      if (isRollingOut(capability)) expect(text).toContain(availabilityNote(capability, lang));
+      else expect(text).not.toMatch(ROLLOUT_WORDING);
+    };
+    expectCaption(copy.faq.items.find((item) => item.q.includes('GitBook'))?.a, 'gitbookImport');
+    expectCaption(copy.faq.items.find((item) => /\bIP\b/.test(item.a))?.a, 'readerAnalytics');
     expect(copy.howItWorks.steps[0]?.body).not.toContain('GitBook');
     const text = markup(renderToStaticMarkup(<Page />)).textContent ?? '';
     expect(text).toContain(availabilityNote('readerThemes', lang));
@@ -133,22 +140,25 @@ describe('availability honesty', () => {
 });
 
 describe('previews and secondary copy stay qualified', () => {
-  it('qualifies AI answers in the search and social preview text', () => {
+  it('describes AI answers in the search and social preview text without rollout wording', () => {
     expect(LANDING_META.en.title).not.toMatch(/AI answers/);
-    expect(LANDING_META.en.description).toMatch(/AI answers that cite your docs are rolling out/);
-    expect(LANDING_META.ar.description).toContain('تصل تدريجيًا');
+    expect(LANDING_META.en.description).toContain('with AI answers that cite your docs');
+    for (const meta of Object.values(LANDING_META)) expect(meta.description).not.toMatch(ROLLOUT_WORDING);
   });
 
   it.each([
     ['en', landingEn, LandingPage],
     ['ar', landingAr, ArabicLandingPage],
-  ] as const)('captions the AI steps and answers that are still rolling out (%s)', (lang, copy, Page) => {
-    expect(copy.howItWorks.note).toContain(availabilityNote('askAi', lang));
+  ] as const)('captions the AI steps only while Ask AI is rolling out (%s)', (lang, copy, Page) => {
+    if (isRollingOut('askAi')) expect(copy.howItWorks.note).toContain(availabilityNote('askAi', lang));
+    else expect(copy.howItWorks.note).toBeUndefined();
     const arabicAnswer = copy.faq.items.find((item) => item.q.includes(lang === 'ar' ? 'العربية' : 'Arabic'));
-    expect(arabicAnswer?.a).toContain(availabilityNote('askAi', lang));
+    if (isRollingOut('askAi')) expect(arabicAnswer?.a).toContain(availabilityNote('askAi', lang));
+    else expect(arabicAnswer?.a).not.toMatch(ROLLOUT_WORDING);
     expect(copy.more.items.find((item) => item.icon === 'llms')?.body).toContain('llms-full.txt');
     const text = markup(renderToStaticMarkup(<Page />)).textContent ?? '';
-    expect(text).toContain(copy.howItWorks.note);
+    if (copy.howItWorks.note) expect(text).toContain(copy.howItWorks.note);
+    else expect(text).not.toMatch(ROLLOUT_WORDING);
   });
 
   it('keeps unverified Cloud claims off the Cloud page', () => {
