@@ -116,7 +116,7 @@ function ProjectsPage() {
   const dismissed = storedDismissed || dismissedNow;
   const t = useT();
   const navigate = useNavigate();
-  const { number, relativeTime } = useFormatters();
+  const { dateTime, number, relativeTime } = useFormatters();
   // The New site dialog follows the URL (?newSite=true), so the palette and the
   // site switcher can open it again while this page is already showing.
   const newProjectOpen = Boolean(newSite);
@@ -295,7 +295,7 @@ function ProjectsPage() {
                   <TableCell className="hidden text-end tabular-nums md:table-cell">{number(project._count?.pages ?? 0)}</TableCell>
                   <TableCell className="hidden text-end text-muted-foreground text-sm md:table-cell">
                     {project.lastPublishedAt ? (
-                      <time dateTime={String(project.lastPublishedAt)} title={String(project.lastPublishedAt)}>
+                      <time dateTime={String(project.lastPublishedAt)} title={dateTime(project.lastPublishedAt)}>
                         {relativeTime(project.lastPublishedAt)}
                       </time>
                     ) : (

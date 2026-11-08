@@ -198,6 +198,18 @@ describe('SitesPage', () => {
     expect(cardText('project-1')).not.toContain(': 0');
   });
 
+  it('keeps polling while a site is publishing, so the badge does not stay on "Publishing…"', async () => {
+    await render();
+    expect(mocks.useProjects).toHaveBeenCalledWith({ pollWhilePublishing: true });
+  });
+
+  it('marks the publish date up as a machine-readable time', async () => {
+    mocks.useProjects.mockReturnValue({ ...mocks.useProjects(), data: sites });
+    await render();
+    const time = container.querySelector('a[href="/app/projects/live"] time');
+    expect(time?.getAttribute('datetime')).toBe(sites[0]?.lastPublishedAt);
+  });
+
   it('opens New site from the URL, so the palette and switcher can open it again on this page', async () => {
     await render();
     expect(container.querySelector('[data-testid="new-site-dialog"]')).toBeNull();

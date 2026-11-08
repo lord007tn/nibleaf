@@ -35,9 +35,10 @@ export function StatCard({
   return (
     <Card className="@container/card min-w-0 gap-3">
       <CardHeader>
-        <CardDescription className="flex min-w-0 items-center gap-1.5">
-          {icon ? <span className="shrink-0 [&_svg]:size-4">{icon}</span> : null}
-          <span className="truncate">{label}</span>
+        <CardDescription className="flex min-w-0 items-start gap-1.5">
+          {icon ? <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span> : null}
+          {/* Long labels ("AI answers completed", Arabic) wrap instead of hiding behind an ellipsis. */}
+          <span className="min-w-0 text-pretty leading-snug">{label}</span>
         </CardDescription>
         {loading ? (
           <Skeleton className="mt-1 h-8 w-20" />

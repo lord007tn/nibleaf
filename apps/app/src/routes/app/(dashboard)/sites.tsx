@@ -36,7 +36,8 @@ type Sort = (typeof SORTS)[number];
 function SitesPage() {
   const { newSite } = Route.useSearch();
   const navigate = useNavigate();
-  const { data: projects, isPending, isError, isFetching, refetch } = useProjects();
+  // Polls while a site is publishing, so its badge and date update without a reload.
+  const { data: projects, isPending, isError, isFetching, refetch } = useProjects({ pollWhilePublishing: true });
   // Optional context on each card; the list never waits for it.
   const analytics = useWorkspaceAnalytics(VIEWS_RANGE);
   // The shared project query can resolve before this streamed route hydrates.
@@ -50,7 +51,7 @@ function SitesPage() {
   const [sort, setSort] = useState<Sort>('updated');
   const sortId = useId();
   const t = useT();
-  const { count, number, relativeTime } = useFormatters();
+  const { count, dateTime, number, relativeTime } = useFormatters();
   // The dialog follows the URL (?newSite=true), so the palette and the site
   // switcher can open it again while this page is already showing.
   const setCreateOpen = (open: boolean) =>
@@ -165,7 +166,11 @@ function SitesPage() {
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
                   <SiteStatusBadge site={project} />
-                  {project.lastPublishedAt ? <span>{t('sites.lastPublished', { when: relativeTime(project.lastPublishedAt) })}</span> : null}
+                  {project.lastPublishedAt ? (
+                    <time dateTime={project.lastPublishedAt} title={dateTime(project.lastPublishedAt)}>
+                      {t('sites.lastPublished', { when: relativeTime(project.lastPublishedAt) })}
+                    </time>
+                  ) : null}
                 </div>
                 <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1 pt-5 text-muted-foreground text-sm">
                   <span className="flex items-center gap-1.5">
