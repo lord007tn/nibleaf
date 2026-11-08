@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   findDeployment: vi.fn(),
   findRun: vi.fn(),
   findProject: vi.fn(),
+  findProjects: vi.fn(),
   createRun: vi.fn(),
   updateManyRun: vi.fn(),
   createJob: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     deployment: { findFirst: mocks.findDeployment },
     searchIndexRun: { findFirst: mocks.findRun, create: mocks.createRun, updateMany: mocks.updateManyRun },
-    project: { findFirst: mocks.findProject },
+    project: { findFirst: mocks.findProject, findMany: mocks.findProjects },
     $transaction: vi.fn(),
   },
 }));
@@ -70,6 +71,7 @@ import {
   createProjectSearchReindex,
   getProjectSearchConfiguration,
   getProjectSearchIndexDiagnostics,
+  queueSearchReindexForAllProjects,
   updateProjectSearchConfiguration,
 } from './search';
 
@@ -247,6 +249,33 @@ describe('tenant-safe search actions', () => {
       latestRun: { id: 'run-a', errorCode: 'embedding_failed' },
     });
     expect(JSON.stringify(result)).not.toMatch(/"(?:content|hash|vector|title|path|providerPayload)":/i);
+  });
+
+  it('queues every published site for the operator rebuild and reports the ones it skips', async () => {
+    // project-b has never been published; it is reported, not silently dropped.
+    mocks.findProjects.mockResolvedValue([
+      { id: 'project-a', deployments: [{ id: 'deployment-a' }] },
+      { id: 'project-b', deployments: [] },
+    ]);
+    await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
+      queued: ['project-a'],
+      skipped: [{ projectId: 'project-b', reason: 'not_published' }],
+      failed: [],
+    });
+    expect(mocks.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ projectId: 'project-a', requestedById: null, vectorSize: 1536 }) }),
+    );
+    expect(mocks.createJob).toHaveBeenCalledOnce();
+  });
+
+  it('reports a site whose rebuild could not be queued as failed, not as an intentional skip', async () => {
+    mocks.findProjects.mockResolvedValue([{ id: 'project-a', deployments: [{ id: 'deployment-a' }] }]);
+    mocks.createJob.mockRejectedValueOnce(new Error('redis down'));
+    await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
+      queued: [],
+      skipped: [],
+      failed: [{ projectId: 'project-a', reason: 'queue_unavailable' }],
+    });
   });
 
   it('returns opaque no-READY and distinct active-run conflict errors', async () => {

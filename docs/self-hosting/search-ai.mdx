@@ -82,7 +82,7 @@ Start from `.env.production.example`. Keep `SEARCH_RUNTIME=shadow`. Set a
 Qdrant API key when Qdrant is reachable outside a private container network.
 Set `OPENROUTER_API_KEY` and pin `SEARCH_EMBEDDING_MODEL`. Embeddings use
 OpenRouter's official TypeScript SDK and default to
-`openai/text-embedding-3-small`. The configured dimension must match
+`openai/text-embedding-3-large` at 3072 dimensions. The configured dimension must match
 `QDRANT_VECTOR_SIZE`; changing the embedding model, dimension, or embedding-input
 format requires a new collection version.
 
@@ -129,12 +129,92 @@ instead of placeholder text.
 run at low reasoning effort.
 
 - If you set either variable, nothing changes: Nibleaf keeps using your model.
-- You don't need to reindex. The embedding model is unchanged
-  (`openai/text-embedding-3-small`, 1536 dimensions).
+- Changing these models doesn't touch the search index, so it needs no reindex.
+  The embedding model changes separately; see
+  [Change the embedding model](#change-the-embedding-model).
 - Workspace Smart AI connections keep the model they saved. For direct OpenAI
   keys, the model list now offers GPT-6 models and newer.
 - On Nibleaf's own documentation, answers cost less than half as much as with
   the previous default and arrive about as fast.
+
+## Change the embedding model
+
+Search now embeds documentation with `openai/text-embedding-3-large` at 3072
+dimensions instead of `openai/text-embedding-3-small` at 1536. The defaults
+change together: `SEARCH_EMBEDDING_MODEL=openai/text-embedding-3-large`,
+`SEARCH_EMBEDDING_DIMENSIONS=3072`, `QDRANT_VECTOR_SIZE=3072` and
+`QDRANT_COLLECTION_VERSION=v2`. The new settings use a new collection,
+`nibleaf_search_active_v2_3072`, built next to the one readers use today.
+
+On Nibleaf's own documentation the larger model found the right section more
+often, most of all for Arabic questions:
+
+| Model | English Hit@5 / MRR@10 | Arabic Hit@5 / MRR@10 | Mixed Hit@5 / MRR@10 |
+| --- | --- | --- | --- |
+| `text-embedding-3-small`, 1536 | 0.9 / 0.67 | 0.5 / 0.41 | 0.4 / 0.32 |
+| `text-embedding-3-large`, 3072 | 0.9 / 0.73 | 0.8 / 0.58 | 0.7 / 0.47 |
+
+The test had 10 questions per language and measured dense retrieval only. The
+English gain is smaller than one question's worth, so read it as no worse in
+English and clearly better in Arabic.
+
+**Cost and time.** OpenRouter charges $0.13 per million tokens for
+`text-embedding-3-large`, against $0.02 for `text-embedding-3-small`.
+Reindexing Nibleaf's documentation (70 pages, about 335,000 tokens) cost about
+$0.04 and took about 40 seconds. A 200-page site of similar pages is about one
+million tokens: roughly $0.13 and two minutes.
+
+**Storage.** Each chunk stores 3072 numbers instead of 1536, so the dense part
+of the Qdrant collection roughly doubles. Both collections exist until you
+delete the old one.
+
+**Stay on the previous model.** Set these three variables on the API and worker
+before you deploy:
+
+```bash
+SEARCH_EMBEDDING_MODEL=openai/text-embedding-3-small
+SEARCH_EMBEDDING_DIMENSIONS=1536
+QDRANT_COLLECTION_VERSION=v1
+```
+
+`QDRANT_VECTOR_SIZE` follows `SEARCH_EMBEDDING_DIMENSIONS` unless you set it.
+If you started from `.env.example` or `.env.production.example`, these values
+are already set, and nothing changes.
+
+**Upgrade.**
+
+1. Deploy. Until the switch in step 4, your sites keep working: readers get
+   keyword search results (the same results `SEARCH_RUNTIME=shadow` always
+   shows), and AI answers and Ask AI are hidden.
+   Editor AI drafting is not affected. The API logs once that hybrid search and
+   AI answers are paused, with both collection names.
+2. Queue a rebuild of every published site:
+
+   ```bash
+   docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+   ```
+
+   It prints how many sites it queued and which it skipped, and why. You can also
+   choose **Reindex** in one site's search settings; publishing a site indexes it
+   too. Running it again costs nothing extra.
+3. A site that uses its own Smart AI connection is skipped until an administrator
+   opens **Site settings → Workspace → Smart AI**, chooses **Verify key and load
+   models** and saves the connection, which records the new embedding model.
+   Then choose **Reindex** for that site.
+4. When the sites' search settings show the index as READY, switch the alias:
+
+   ```bash
+   docker compose exec -T \
+     -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
+     -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
+     server pnpm --filter @nibleaf/qdrant alias:switch
+   ```
+
+   Within 30 seconds, hybrid search and AI answers return for every site whose
+   index was rebuilt. A site that is not rebuilt yet keeps keyword results, and
+   its AI answers stay hidden until its index is READY.
+5. Keep `nibleaf_search_active_v1_1536` until you are satisfied. To roll back,
+   set the three variables above and switch the alias back.
 
 ## Run the AI chat assistant
 
@@ -403,11 +483,11 @@ rather than creating a second search analytics store.
    languages. Confirm private chunks, facets, counts, citations, caches, and
    analytics context never cross scope.
 4. Switch the alias explicitly, confirming both collection names. For example,
-   after configuring `QDRANT_COLLECTION_VERSION=v2` and a 1536-dimension index:
+   after configuring `QDRANT_COLLECTION_VERSION=v2` and a 3072-dimension index:
 
    ```bash
    QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
-   QDRANT_SWITCH_TO=nibleaf_search_active_v2_1536 \
+   QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
    pnpm --filter @nibleaf/qdrant alias:switch
    ```
 

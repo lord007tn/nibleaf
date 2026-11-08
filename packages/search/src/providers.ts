@@ -25,8 +25,8 @@ abstract class BatchedEmbeddingProvider {
   private readonly maxBatchBytes: number;
 
   constructor(options: OpenRouterEmbeddingOptions) {
-    this.model = options.model ?? 'openai/text-embedding-3-small';
-    this.dimensions = options.dimensions ?? 1536;
+    this.model = options.model ?? 'openai/text-embedding-3-large';
+    this.dimensions = options.dimensions ?? 3072;
     this.maxBatchSize = options.maxBatchSize ?? 96;
     this.maxInputBytes = options.maxInputBytes ?? 8191;
     this.maxBatchBytes = options.maxBatchBytes ?? 100_000;
@@ -140,7 +140,7 @@ export class OpenAIEmbeddingProvider extends BatchedEmbeddingProvider {
   private readonly client: OpenAI;
 
   constructor(options: OpenRouterEmbeddingOptions) {
-    super({ ...options, model: options.model ?? 'text-embedding-3-small' });
+    super({ ...options, model: options.model ?? 'text-embedding-3-large' });
     this.client = new OpenAI({ apiKey: options.apiKey, timeout: options.timeoutMs ?? 20_000, maxRetries: 0, fetch: options.fetch });
   }
 

@@ -21,8 +21,8 @@ export const keys = () =>
       /** legacy returns Orama, shadow returns Orama while evaluating Qdrant,
        * hybrid makes Qdrant authoritative. Cutover is always reversible. */
       SEARCH_RUNTIME: z.enum(['legacy', 'shadow', 'hybrid']).default('shadow'),
-      SEARCH_EMBEDDING_MODEL: z.string().default('openai/text-embedding-3-small'),
-      SEARCH_EMBEDDING_DIMENSIONS: z.coerce.number().int().min(64).max(8192).default(1536),
+      SEARCH_EMBEDDING_MODEL: z.string().default('openai/text-embedding-3-large'),
+      SEARCH_EMBEDDING_DIMENSIONS: z.coerce.number().int().min(64).max(8192).default(3072),
       SEARCH_EMBEDDING_TIMEOUT_MS: z.coerce.number().int().min(500).max(120_000).default(20_000),
       SEARCH_CANDIDATE_LIMIT: z.coerce.number().int().min(10).max(200).default(48),
       // Apply to cosine scores before RRF, whose rank scores do not measure

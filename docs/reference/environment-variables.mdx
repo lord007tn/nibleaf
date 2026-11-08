@@ -191,13 +191,13 @@ repeat the workflow checks in [production readiness](/self-hosting/production).
 | `QDRANT_URL` | `unset` | Required for hybrid retrieval; HTTP(S) Qdrant endpoint. |
 | `QDRANT_API_KEY` | `unset` | Optional client key; provision authentication on Qdrant itself too. |
 | `QDRANT_COLLECTION_ALIAS` | `nibleaf_search_active` | Stable read alias; letters, digits, underscore and hyphen only. |
-| `QDRANT_COLLECTION_VERSION` | `v1` | Physical collection generation; v followed by a positive integer. |
-| `QDRANT_VECTOR_SIZE` | `1536` | Dense-vector dimensions, 64–8192; must match embedding dimensions. |
+| `QDRANT_COLLECTION_VERSION` | `v2` | Physical collection generation; v followed by a positive integer. |
+| `QDRANT_VECTOR_SIZE` | `SEARCH_EMBEDDING_DIMENSIONS` (`3072`) | Dense-vector dimensions, 64–8192; must match embedding dimensions, and follows them when unset. |
 | `QDRANT_TIMEOUT_MS` | `8000` | Qdrant request timeout, 250–120000 ms. |
 | `SEARCH_RUNTIME` | `shadow` | legacy returns Orama; shadow returns Orama while evaluating hybrid; hybrid uses Qdrant. |
 | `SEARCH_FUZZY_TOLERANCE` | `2` | Typo tolerance, 0–3; shorter query tokens use less tolerance. |
-| `SEARCH_EMBEDDING_MODEL` | `openai/text-embedding-3-small` | Instance-owned model for API retrieval and worker indexing. |
-| `SEARCH_EMBEDDING_DIMENSIONS` | `1536` | Embedding width, 64–8192; changing it requires a compatible new collection. |
+| `SEARCH_EMBEDDING_MODEL` | `openai/text-embedding-3-large` | Instance-owned model for API retrieval and worker indexing. |
+| `SEARCH_EMBEDDING_DIMENSIONS` | `3072` | Embedding width, 64–8192; changing it requires a compatible new collection. |
 | `SEARCH_EMBEDDING_TIMEOUT_MS` | `20000` | Embedding provider timeout, 500–120000 ms. |
 | `SEARCH_CANDIDATE_LIMIT` | `48` | Retrieval candidates, 10–200. |
 | `SEARCH_DENSE_MIN_SCORE` | `0.35` | Cosine-score threshold before rank fusion, -1 to 1. |

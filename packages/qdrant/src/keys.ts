@@ -13,8 +13,15 @@ export const keys = () =>
       QDRANT_COLLECTION_VERSION: z
         .string()
         .regex(/^v[1-9][0-9]*$/)
-        .default('v1'),
-      QDRANT_VECTOR_SIZE: z.coerce.number().int().min(64).max(8192).default(1536),
+        .default('v2'),
+      // Follows the embedding width unless set, as the Compose files do, so
+      // pinning SEARCH_EMBEDDING_DIMENSIONS alone keeps the two in step.
+      QDRANT_VECTOR_SIZE: z.coerce
+        .number()
+        .int()
+        .min(64)
+        .max(8192)
+        .default(Number(process.env.SEARCH_EMBEDDING_DIMENSIONS) || 3072),
       QDRANT_TIMEOUT_MS: z.coerce.number().int().min(250).max(120_000).default(8000),
     },
     runtimeEnv: process.env,
