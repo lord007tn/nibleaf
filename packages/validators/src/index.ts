@@ -1,4 +1,5 @@
 import { aiSelectionSchema } from '@nibleaf/shared/ai';
+import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
 import { z } from 'zod';
@@ -829,11 +830,7 @@ export const presignAssetBody = z.object({
     .max(150)
     .transform((value) => normalizeAssetContentType(value))
     .refine((value) => isSafeInlineAssetContentType(value), { message: 'Only PNG, JPEG, GIF, WebP, AVIF, and ICO images can be uploaded.' }),
-  size: z
-    .number()
-    .int()
-    .min(1)
-    .max(50 * 1024 * 1024),
+  size: z.number().int().min(1).max(MAX_ASSET_UPLOAD_BYTES),
 });
 export type PresignAssetBody = z.infer<typeof presignAssetBody>;
 
@@ -846,7 +843,7 @@ export const confirmAssetBody = z.object({
     .max(150)
     .transform((value) => normalizeAssetContentType(value))
     .refine((value) => isSafeInlineAssetContentType(value), { message: 'Only PNG, JPEG, GIF, WebP, AVIF, and ICO images can be uploaded.' }),
-  size: z.number().int().min(1),
+  size: z.number().int().min(1).max(MAX_ASSET_UPLOAD_BYTES),
 });
 export type ConfirmAssetBody = z.infer<typeof confirmAssetBody>;
 

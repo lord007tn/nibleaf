@@ -9,9 +9,11 @@ const mocks = vi.hoisted(() => ({
   getProjectDeliveryAccess: vi.fn(),
   headObject: vi.fn(),
   isProjectTakenDown: vi.fn(),
+  findUnique: vi.fn(),
 }));
 
 vi.mock('@nibleaf/storage', () => ({ getObjectStream: mocks.getObjectStream, headObject: mocks.headObject }));
+vi.mock('@nibleaf/database', () => ({ prisma: { asset: { findUnique: mocks.findUnique } } }));
 vi.mock('@/actions/sites', () => ({ getProjectDeliveryAccess: mocks.getProjectDeliveryAccess, isProjectTakenDown: mocks.isProjectTakenDown }));
 
 import handlers from './handlers';
@@ -35,8 +37,24 @@ describe('public asset delivery', () => {
     vi.clearAllMocks();
     mocks.isProjectTakenDown.mockResolvedValue(false);
     mocks.getProjectDeliveryAccess.mockResolvedValue({ kind: 'public', allowedPageIds: null });
+    mocks.findUnique.mockResolvedValue({ projectId: 'project-a' });
     mocks.headObject.mockResolvedValue({ ContentType: 'image/png' });
     mocks.getObjectStream.mockImplementation(async () => Readable.from([Buffer.from('image-bytes')]));
+  });
+
+  it('does not serve an upload without a confirmed row', async () => {
+    mocks.findUnique.mockResolvedValue(null);
+    const response = await assetRequest('projects/project-a/assets/pending.png');
+    expect(response.status).toBe(404);
+    expectNoStorageCall();
+    expect(mocks.getProjectDeliveryAccess).not.toHaveBeenCalled();
+    expect(mocks.isProjectTakenDown).not.toHaveBeenCalled();
+  });
+
+  it('requires the confirmation row to belong to the key project', async () => {
+    mocks.findUnique.mockResolvedValue({ projectId: 'project-b' });
+    expect((await assetRequest('projects/project-a/assets/logo.png')).status).toBe(404);
+    expectNoStorageCall();
   });
 
   it('streams an asset of a public project with the shared cache policy', async () => {

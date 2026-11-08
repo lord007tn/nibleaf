@@ -54,6 +54,8 @@ export const getS3Client = (target?: StorageTarget): S3Client => {
     endpoint: resolved.endpoint,
     region: resolved.region,
     forcePathStyle: resolved.forcePathStyle,
+    // Presigned browser uploads supply their body after signing.
+    requestChecksumCalculation: 'WHEN_REQUIRED',
     credentials: { accessKeyId: resolved.accessKeyId, secretAccessKey: resolved.secretAccessKey },
   });
   clientCache.set(key, client);

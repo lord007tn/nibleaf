@@ -1,5 +1,6 @@
 import { posix } from 'node:path';
 import { Readable } from 'node:stream';
+import { prisma } from '@nibleaf/database';
 import { getObjectStream, headObject } from '@nibleaf/storage';
 import { Hono } from 'hono';
 import { getProjectDeliveryAccess, isProjectTakenDown } from '@/actions/sites';
@@ -26,6 +27,7 @@ const PROJECT_SCOPED_KEY = /^projects\/[^/]+\//;
  *  normalize it, so a check and the read could reach different objects. Refuse any
  *  such key that could touch `projects/`; other keys stay as they were. */
 const isAmbiguousProjectKey = (key: string): boolean => {
+  if (key.includes('\\')) return true;
   const normalized = posix.normalize(key).replace(/^(?:\.{0,2}\/)+/, '');
   return normalized !== key && (key.startsWith('projects/') || normalized.startsWith('projects/'));
 };
@@ -40,6 +42,10 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   const projectId = PROJECT_KEY.exec(key)?.[1];
   if (isAmbiguousProjectKey(key) || (!projectId && PROJECT_SCOPED_KEY.test(key))) {
     throw notFound('asset', { key });
+  }
+  if (projectId) {
+    const asset = await prisma.asset.findUnique({ where: { key }, select: { projectId: true } });
+    if (asset?.projectId !== projectId) throw notFound('asset', { key });
   }
   // Moderation: a taken-down project's hosted files (the usual phishing/DMCA
   // payload) must stop being served, not just its pages.

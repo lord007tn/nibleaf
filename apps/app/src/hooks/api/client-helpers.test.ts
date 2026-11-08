@@ -1,5 +1,22 @@
 import { expect, it } from 'vitest';
-import { ApiResponseError, getData, mutateData } from './client-helpers';
+import { ApiResponseError, assetUploadErrorMessage, getData, mutateData } from './client-helpers';
+
+it('shows the pending-upload refusal while retaining localized fallbacks for other failures', () => {
+  const error = new ApiResponseError(
+    'Pending uploads are full. Try again after cleanup.',
+    429,
+    'http:rate_limited',
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { reason: 'pending_asset_upload_limit' },
+  );
+  expect(assetUploadErrorMessage(error, 'Localized upload failure', 'Localized pending limit')).toBe('Localized pending limit');
+  expect(assetUploadErrorMessage(new ApiResponseError('Internal failure', 500), 'Localized upload failure', 'Localized pending limit')).toBe(
+    'Localized upload failure',
+  );
+});
 
 it('preserves the missing source path and including page from the app error envelope', async () => {
   const response = new Response(

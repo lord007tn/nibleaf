@@ -618,6 +618,7 @@ export const MESSAGE_IDS = {
   'editor.table.alignCenter': 'editor_table_aligncenter',
   'editor.table.alignEnd': 'editor_table_alignend',
   'editor.table.alignDefault': 'editor_table_aligndefault',
+  'editor.pendingUploadLimit': 'editor_pendinguploadlimit',
   'editor.createFailed': 'editor_createfailed',
   'editor.newGroup': 'editor_newgroup',
   'editor.newPage': 'editor_newpage',

@@ -32,7 +32,7 @@ function Probe() {
 beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.clearAllMocks();
-  mocks.presign.mockImplementation(() => response(200, { data: { key: asset.key, uploadUrl: '/storage/signed' } }));
+  mocks.presign.mockImplementation(() => response(200, { data: { key: asset.key, uploadUrl: '/storage/signed', contentType: 'image/png' } }));
   mocks.put.mockResolvedValue(undefined);
   mocks.list.mockResolvedValue(response(200, { data: [] }));
   client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -111,5 +111,17 @@ describe('asset identity across editor Retry (4)', () => {
     expect(mocks.presign).toHaveBeenCalledOnce();
     expect(mocks.put).toHaveBeenCalledTimes(2);
     expect(mocks.confirm).toHaveBeenCalledOnce();
+  });
+});
+describe('signed upload media type', () => {
+  it('uses the normalized signed media type for both the storage PUT and confirmation', async () => {
+    mocks.confirm.mockResolvedValue(response(201, { data: asset }));
+    const file = new File(['image'], 'one.png', { type: 'image/x-png' });
+    await act(async () => {
+      await expect(hook.mutateAsync(file)).resolves.toMatchObject(asset);
+    });
+    expect(mocks.presign.mock.calls[0]?.[0].json.contentType).toBe('image/x-png');
+    expect(mocks.put).toHaveBeenCalledExactlyOnceWith('/storage/signed', file, 'image/png', undefined, undefined);
+    expect(mocks.confirm.mock.calls[0]?.[0].json).toEqual({ key: asset.key, contentType: 'image/png', size: file.size });
   });
 });

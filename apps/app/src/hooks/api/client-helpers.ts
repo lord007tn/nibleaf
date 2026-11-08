@@ -66,6 +66,10 @@ export class ApiResponseError extends Error {
   }
 }
 
+/** Map the server reason to localized copy and retain the ordinary failure fallback. */
+export const assetUploadErrorMessage = (error: unknown, fallback: string, pendingLimitMessage: string): string =>
+  error instanceof ApiResponseError && error.reason === 'pending_asset_upload_limit' ? pendingLimitMessage : fallback;
+
 export async function getData<TData = never, TResponse extends Response = Response>(res: TResponse, what: string, fallback?: string) {
   if (!res.ok) {
     const error = await readApiError(res, fallback ?? `Failed to load ${what}.`);

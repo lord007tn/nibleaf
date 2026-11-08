@@ -26,3 +26,18 @@ export const DeploymentStatus = {
 export type DeploymentStatus = (typeof DeploymentStatus)[keyof typeof DeploymentStatus];
 
 export const API_KEY_PREFIX = 'plm';
+
+export const MAX_ASSET_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const ASSET_UPLOAD_CLOCK_SKEW_MS = 60_000;
+export const ASSET_UPLOAD_FIRST_RECHECK_MS = 30 * 60 * 1000;
+// Providers/proxies must terminate accepted PUTs within this shared upload/erasure allowance.
+export const MAX_ACCEPTED_PUT_DURATION_MS = 23 * 60 * 60 * 1000;
+export const PENDING_ASSET_UPLOAD_GRACE_MS = 10 * 60 * 1000 + ASSET_UPLOAD_CLOCK_SKEW_MS + ASSET_UPLOAD_FIRST_RECHECK_MS;
+// Outstanding reservations remain counted while the cleanup worker is down; uploads pause at these caps until space is freed.
+export const MAX_PENDING_ASSET_UPLOAD_BYTES = 500 * 1024 * 1024;
+export const MAX_PENDING_ASSET_UPLOADS = 20;
+// Active and retained reservations bound declared unconfirmed bytes to 500 MiB + 2 GiB (2.48828125 GiB).
+// This covers current object bodies; versioned buckets also retain noncurrent versions.
+// Retained bytes stay reserved through URL expiry, clock skew and MAX_ACCEPTED_PUT_DURATION_MS.
+export const MAX_RETAINED_ASSET_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
+export const MAX_RETAINED_ASSET_UPLOADS = 500;
