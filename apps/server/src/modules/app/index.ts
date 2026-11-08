@@ -24,6 +24,7 @@ import members from './members/handlers';
 import notifications from './notifications/handlers';
 import openapi from './openapi/handlers';
 import pages from './pages/handlers';
+import people from './people/handlers';
 import projectMembers from './project-members/handlers';
 import projectSettings from './project-settings/handlers';
 import projects from './projects/handlers';
@@ -64,6 +65,7 @@ const app = new Hono<HonoEnv>()
   .route('/workspace', workspace)
   .route('/mcp-oauth', mcpOAuth)
   .route('/members', members)
+  .route('/people', people)
   .route('/join', join)
   .route('/notifications', notifications);
 

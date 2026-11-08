@@ -12,9 +12,7 @@ import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 /** Derive the header title key from the current dashboard route. */
 function titleKeyFromPathname(pathname: string): MessageKey {
-  if (pathname.startsWith('/app/members')) {
-    return 'dashboard.header.members';
-  }
+  if (pathname.startsWith('/app/people') || pathname.startsWith('/app/members')) return 'nav.people';
   if (pathname.startsWith('/app/settings')) {
     return 'dashboard.header.settings';
   }

@@ -250,6 +250,9 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             <CommandItem value="sites" keywords={[t('nav.sites')]} onSelect={() => go('/app/sites')}>
               <BookOpen className="size-4" /> {t('nav.sites')}
             </CommandItem>
+            <CommandItem value="people" keywords={[t('nav.people'), 'members team invite roles']} onSelect={() => go('/app/people')}>
+              <Users className="size-4" /> {t('nav.people')}
+            </CommandItem>
             <CommandItem value="analytics" keywords={[t('command.analytics')]} onSelect={() => go('/app/analytics')}>
               <BarChart3 className="size-4" /> {t('command.analytics')}
             </CommandItem>
