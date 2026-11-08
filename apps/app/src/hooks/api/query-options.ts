@@ -237,12 +237,6 @@ export const workspaceSettingsQueryOptions = (projectId?: string) =>
         : getData<WorkspaceSettings>(await api.app.workspace.$get(), 'workspace settings'),
   });
 
-export const membersQueryOptions = () =>
-  queryOptions({
-    queryKey: queryKeys.members.all(),
-    queryFn: async () => getData(await api.app.members.$get(), 'members'),
-  });
-
 /** Members + pending invitations for a single site (its own organization). */
 export const projectMembersQueryOptions = (projectId: string | undefined) =>
   queryOptions({
@@ -309,6 +303,13 @@ export const getPublicMetaQueryOptions = () =>
     queryKey: queryKeys.public.meta(),
     queryFn: async () => getData(await api.public.meta.$get(), 'public instance metadata'),
     staleTime: 5 * 60 * 1000,
+  });
+
+/** The People page: everyone on the sites you administer, with their roles. */
+export const peopleQueryOptions = () =>
+  queryOptions({
+    queryKey: queryKeys.members.people(),
+    queryFn: async () => getData(await api.app.people.$get(), 'people'),
   });
 
 /** What a join link offers. A bad, revoked, expired or used-up link is one 404. */

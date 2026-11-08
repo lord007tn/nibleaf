@@ -10,6 +10,7 @@ export * from './join-links';
 export * from './mcp-oauth';
 export * from './mutations';
 export * from './page-cache';
+export * from './people';
 export * from './project-search';
 export * from './public';
 export * from './queries';

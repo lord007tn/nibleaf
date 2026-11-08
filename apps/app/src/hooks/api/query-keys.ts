@@ -80,6 +80,9 @@ export const queryKeys = {
     /** Per-site members + invitations (each site owns its own member list). */
     forProject: (projectId: string) => ['members', projectId] as const,
     joinLinks: (projectId: string) => ['members', projectId, 'join-links'] as const,
+    suggestions: (projectId: string, query: string) => ['members', projectId, 'suggestions', query] as const,
+    /** Everyone on the sites the signed-in person administers (the People page). */
+    people: () => ['members', 'people'] as const,
   },
   readerAccess: {
     detail: (projectId: string) => ['reader-access', projectId] as const,

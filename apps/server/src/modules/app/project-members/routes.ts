@@ -16,6 +16,12 @@ const projectMembersRoutes = {
     description: "List a site's members and pending invitations.",
     responses: ok,
   }),
+  suggestions: createRouteConfig({
+    guard: [...admin],
+    tags: ['members'],
+    description: "People from the caller's other administered sites whose name or email starts with `q` (invite suggestions).",
+    responses: ok,
+  }),
   invite: createRouteConfig({
     guard: [...admin],
     tags: ['members'],

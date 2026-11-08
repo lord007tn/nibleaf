@@ -15,6 +15,11 @@ const translations: Record<string, string> = {
 };
 
 const mutation = { isPending: false, mutate: vi.fn() };
+/** Open one of the Members / Pending invites / Join links tabs. */
+const openTab = async (key: string) => {
+  const tab = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find((item) => item.textContent?.startsWith(key));
+  await act(async () => tab?.click());
+};
 let currentUserId = 'u-owner';
 const members = [
   { id: 'm-owner', role: 'owner', user: { id: 'u-owner', name: 'Owner', email: 'owner@example.com' } },
@@ -45,6 +50,7 @@ vi.mock('@/hooks/api', async () => ({
   useUpdateProjectMemberRole: () => mutation,
   useCancelProjectInvitation: () => mutation,
   useTransferProjectOwnership: () => mutation,
+  useInviteSuggestions: () => ({ data: [] }),
 }));
 
 describe('MembersSection role selects', () => {
@@ -110,10 +116,13 @@ describe('MembersSection role selects', () => {
     const root = createRoot(container);
     await act(async () => root.render(<MembersSection projectId="project-a" />));
     expect(container.querySelector('form')).not.toBeNull();
-    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(4);
+    // The email box (with suggestions), the invite role, and the three non-owner rows.
+    expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(5);
     expect(container.querySelector('[aria-label="settings.members.remove"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="settings.members.transferOwnership"]')).toBeNull();
+    await openTab('settings.members.tab.invites');
+    expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).not.toBeNull();
+    await openTab('settings.joinLinks.title');
     expect(container.querySelector('[data-testid="join-links-stub"]')).not.toBeNull();
     act(() => root.unmount());
   });
@@ -205,8 +214,8 @@ describe('MembersSection destructive confirmations', () => {
     const rowButtons = [
       ...container.querySelectorAll<HTMLButtonElement>('[aria-label="settings.members.remove"], [aria-label="settings.members.revokeInvite"]'),
     ];
-    // Admin row, member row, then the invitation.
-    expect(rowButtons.map((button) => button.hasAttribute('data-loading'))).toEqual([true, false, false, false]);
+    // Admin, editor and viewer rows (invitations live on their own tab).
+    expect(rowButtons.map((button) => button.hasAttribute('data-loading'))).toEqual([true, false, false]);
     const settled = mutation.mutate.mock.calls[0]?.[1];
     await act(async () => {
       settled.onSuccess();
@@ -218,6 +227,7 @@ describe('MembersSection destructive confirmations', () => {
     // The clipboard write is still in flight while the button is checked.
     const writeText = vi.fn(() => new Promise<void>(() => undefined));
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    await openTab('settings.members.tab.invites');
     const copy = container.querySelector<HTMLButtonElement>('[aria-label="settings.members.copyInviteLink"]');
     await act(async () => copy?.click());
 
@@ -228,6 +238,7 @@ describe('MembersSection destructive confirmations', () => {
   });
 
   it('requires an explicit action before revoking the named invitation', async () => {
+    await openTab('settings.members.tab.invites');
     await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="settings.members.revokeInvite"]')?.click());
 
     expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain('invitee@example.com');
