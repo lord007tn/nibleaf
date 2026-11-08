@@ -60,21 +60,17 @@
     },
     "imageRoles": {
       "passed": true,
-      "roles": [
-        "server",
-        "worker",
-        "app",
-        "admin"
-      ]
+      "roles": ["server", "worker", "app", "admin"]
     },
     "imageMigrations": {
       "passed": true,
-      "modes": [
-        "migrate",
-        "clickhouse-migrate"
-      ],
+      "modes": ["migrate", "clickhouse-migrate"],
       "repeatIdempotent": true,
       "productionSeedExcluded": true
+    },
+    "alpineGitBookPerformance": {
+      "passed": true,
+      "tests": 29
     }
   },
   "published": false,

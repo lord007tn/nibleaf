@@ -49,6 +49,7 @@ possible Ghost document/card shape.
   and five worker tests passed.
 - Inside the exact Alpine image: **148 ClickHouse tests / 18 files passed**,
   with ClickHouse integration and real PostgreSQL initialization-lock flags.
+- Inside the exact Alpine image: **29 GitBook importer timing tests passed**.
 - Inside the exact Alpine image: **four real Dragonfly/Postgres/ClickHouse
   pipeline tests passed**, including retained-job recovery and erasure fencing.
 
