@@ -256,4 +256,66 @@ describe.skipIf(process.env.JOIN_LINKS_INTEGRATION !== '1')('join links in Postg
     // The new owner's Admin link still works; the former owner (now Admin) had none above Admin.
     await expect(joinLinks.getJoinLinkPreview(adminLink.token)).resolves.toMatchObject({ role: MemberRole.ADMIN });
   });
+
+  /** Run `between` after joinWithLink's lookup, just before its reservation transaction. */
+  const betweenLookupAndReserve = (between: () => Promise<unknown>) => {
+    const original = db.prisma.$transaction.bind(db.prisma) as typeof db.prisma.$transaction;
+    return vi.spyOn(db.prisma, '$transaction').mockImplementationOnce((async (...args: Parameters<typeof db.prisma.$transaction>) => {
+      await between();
+      return (original as (...a: unknown[]) => unknown)(...args);
+    }) as never);
+  };
+
+  it('refuses an in-flight join when the link is regenerated between lookup and reservation', async () => {
+    const { organization, admin } = await site();
+    const { token, link } = await joinLinks.createJoinLink(organization.id, admin, { role: MemberRole.VIEWER });
+    const spy = betweenLookupAndReserve(() => joinLinks.regenerateJoinLink(organization.id, link.id, admin));
+    const joiner = await person('in-flight');
+    await expect(joinLinks.joinWithLink(token, joiner.id)).rejects.toMatchObject({ code: 'join:invalid', status: 404 });
+    spy.mockRestore();
+    expect(await db.prisma.member.count({ where: { organizationId: organization.id, userId: joiner.id } })).toBe(0);
+    expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).useCount).toBe(0);
+  });
+
+  it.each([
+    [
+      'demoted',
+      (organizationId: string, userId: string) =>
+        db.prisma.member.update({ where: { organizationId_userId: { organizationId, userId } }, data: { role: MemberRole.VIEWER } }),
+    ],
+    ['suspended', (_organizationId: string, userId: string) => db.prisma.user.update({ where: { id: userId }, data: { suspendedAt: new Date() } })],
+    [
+      'removed',
+      (organizationId: string, userId: string) => db.prisma.member.delete({ where: { organizationId_userId: { organizationId, userId } } }),
+    ],
+  ])('re-checks the creator inside the reservation: a creator %s mid-join grants nothing', async (_label, change) => {
+    const { organization, admin } = await site();
+    const { token, link } = await joinLinks.createJoinLink(organization.id, admin, { role: MemberRole.ADMIN });
+    const spy = betweenLookupAndReserve(() => change(organization.id, admin.id));
+    const joiner = await person('mid-join');
+    await expect(joinLinks.joinWithLink(token, joiner.id)).rejects.toMatchObject({ code: 'join:invalid' });
+    spy.mockRestore();
+    expect(await db.prisma.member.count({ where: { organizationId: organization.id, userId: joiner.id } })).toBe(0);
+    expect((await db.prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).useCount).toBe(0);
+  });
+
+  it('uses up a pending invitation to the same address (any case) when someone joins by link', async () => {
+    const { organization, admin } = await site();
+    const joiner = await person('invited-too');
+    const pending = await db.prisma.invitation.create({
+      data: {
+        organizationId: organization.id,
+        email: joiner.email.toUpperCase(),
+        role: MemberRole.MEMBER,
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 86_400_000),
+        inviterId: admin.id,
+      },
+    });
+    const { token } = await joinLinks.createJoinLink(organization.id, admin, { role: MemberRole.VIEWER });
+    await expect(joinLinks.joinWithLink(token, joiner.id)).resolves.toMatchObject({ status: 'joined' });
+    expect((await db.prisma.invitation.findUniqueOrThrow({ where: { id: pending.id } })).status).toBe('accepted');
+    const { getInvitationInfo } = await import('./members');
+    expect((await getInvitationInfo(pending.id)).status).toBe('accepted');
+  });
 });

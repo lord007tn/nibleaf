@@ -8,7 +8,6 @@ import {
   deploymentsQueryOptions,
   domainsQueryOptions,
   languagesQueryOptions,
-  membersQueryOptions,
   notificationsQueryOptions,
   openApiConfigurationQueryOptions,
   pageQueryOptions,
@@ -100,8 +99,6 @@ export const useComments = (projectId: string | undefined, pageId?: string) => u
 /** Workspace/site operational settings. Pass a projectId to read the SITE's own
  *  org settings (each site is its own workspace); omit it for the account view. */
 export const useWorkspaceSettings = (projectId?: string) => useQuery(workspaceSettingsQueryOptions(projectId));
-
-export const useMembers = () => useQuery(membersQueryOptions());
 
 /** Members + pending invitations for a single site (its own organization). */
 export const useProjectMembers = (projectId: string | undefined) => useQuery(projectMembersQueryOptions(projectId));

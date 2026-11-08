@@ -183,11 +183,24 @@ export const joinWithLink = async (token: string, userId: string): Promise<JoinR
   }
 
   const now = new Date();
+  const tokenHash = hashJoinLinkToken(token);
   try {
     await prisma.$transaction(async (tx) => {
+      // Hold the creator's member and account rows until commit, so a demote,
+      // removal or suspension can't interleave with this join; then re-check
+      // their authority on the locked, current rows.
+      if (!link.createdById) throw invalidLink();
+      await tx.$queryRaw`SELECT member."id" FROM "member" AS member
+        INNER JOIN "user" AS account ON account."id" = member."userId"
+        WHERE member."organizationId" = ${link.organizationId} AND member."userId" = ${link.createdById}
+        FOR SHARE`;
+      if (!(await joinLinkCreatorAuthorizes(tx, link))) throw invalidLink();
       const taken = await tx.joinLink.updateMany({
         where: {
           id: link.id,
+          // A regenerate between the lookup and here changed the hash: this
+          // (now old) token no longer reserves anything.
+          tokenHash,
           revokedAt: null,
           OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
           AND: [{ OR: [{ maxUses: null }, { useCount: { lt: tx.joinLink.fields.maxUses } }] }],
@@ -197,6 +210,12 @@ export const joinWithLink = async (token: string, userId: string): Promise<JoinR
       if (taken.count !== 1) throw invalidLink();
       await tx.member.create({ data: { organizationId: link.organizationId, userId, role: link.role } });
       await tx.joinLinkUse.create({ data: { joinLinkId: link.id, userId, email: user.email, role: link.role } });
+      // They're in: any pending invitation to this site for this address is
+      // used up (its accept page then says so) instead of lingering.
+      await tx.invitation.updateMany({
+        where: { organizationId: link.organizationId, status: 'pending', email: { equals: user.email, mode: 'insensitive' } },
+        data: { status: 'accepted' },
+      });
     });
   } catch (error) {
     // Joined in parallel (another tab, a double click): the unique member row

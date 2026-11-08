@@ -87,7 +87,7 @@ export function JoinLinksSection({ projectId }: { projectId: string }) {
   };
 
   return (
-    <section aria-labelledby="join-links-heading" className="mt-10" data-testid="join-links">
+    <section aria-labelledby="join-links-heading" className="mt-4" data-testid="join-links">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-2 font-semibold text-[15px]" id="join-links-heading">

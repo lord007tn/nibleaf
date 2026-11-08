@@ -63,8 +63,10 @@ function JoinContent() {
   const navigate = useNavigate();
   const [error, setError] = useState<{ kind: 'domain' | 'unverified' | 'other'; domain?: string } | null>(null);
   const [switching, setSwitching] = useState(false);
-  const info = preview.data ?? null;
   const invalid = preview.error instanceof ApiResponseError && preview.error.status === 404;
+  // A refetch that 404s (revoked, regenerated or used up meanwhile) wins over
+  // the preview fetched earlier: show the invalid state, never a stale offer.
+  const info = invalid ? null : (preview.data ?? null);
 
   // A signed-out visitor goes to sign-in or sign-up and comes straight back here
   // (the (auth) pages honour the pending destination). A dead link is forgotten.

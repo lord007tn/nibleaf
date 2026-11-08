@@ -4,12 +4,14 @@ import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { useT } from '@nibleaf/i18n/react';
 import { type AssignableMemberRole, canAdminister } from '@nibleaf/shared/rbac';
 import { useForm } from '@tanstack/react-form';
 import { Check, Copy, Crown, Link2, Mail, Trash2, Users } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { InviteEmailField } from '@/components/members/invite-email-field';
 import { RoleSelect } from '@/components/members/role-select';
 import {
   AlertDialog,
@@ -65,6 +67,7 @@ function CopyLinkButton({ link, label }: { link: string; label: string }) {
   );
 }
 
+type MembersTab = 'members' | 'invites' | 'links';
 type MemberAction = { kind: 'remove'; id: string; name: string } | { kind: 'revoke'; id: string; email: string };
 
 export function MembersSection({ projectId }: { projectId: string }) {
@@ -87,6 +90,7 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const canManageMembers = canAdminister(currentMember?.role ?? '');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string; role: AssignableMemberRole } | null>(null);
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
+  const [tab, setTab] = useState<MembersTab>('members');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionPending, setActionPending] = useState(false);
   /** Only the row whose remove/revoke is being confirmed spins. */
@@ -165,23 +169,27 @@ export function MembersSection({ projectId }: { projectId: string }) {
           }}
         >
           <form.Subscribe selector={(state) => !state.isDefaultValue}>{(dirty) => <DirtyStateReporter dirty={dirty} />}</form.Subscribe>
-          <form.Field name="email" validators={{ onChange: ({ value }) => validateEmail(value, t) }}>
+          <form.Field name="email" validators={{ onBlur: ({ value }) => validateEmail(value, t), onSubmit: ({ value }) => validateEmail(value, t) }}>
             {(field) => (
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <Label className="font-medium text-[13px]" htmlFor="project-member-email">
                   {t('settings.members.inviteByEmail')}
                 </Label>
-                <Input
+                <InviteEmailField
+                  aria-describedby={field.state.meta.errors.length ? 'project-member-email-error' : 'project-member-email-hint'}
+                  aria-invalid={field.state.meta.errors.length > 0}
                   className="bg-background"
                   id="project-member-email"
-                  aria-invalid={field.state.meta.errors.length > 0}
-                  aria-describedby={field.state.meta.errors.length ? 'project-member-email-error' : undefined}
                   onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
+                  onChange={field.handleChange}
                   placeholder="teammate@company.com"
+                  projectId={projectId}
                   type="email"
                   value={field.state.value}
                 />
+                <p className="sr-only" id="project-member-email-hint">
+                  {t('members.suggestions.hint')}
+                </p>
                 <FieldError id="project-member-email-error" errors={field.state.meta.errors} />
               </div>
             )}
@@ -241,150 +249,159 @@ export function MembersSection({ projectId }: { projectId: string }) {
         </div>
       ) : null}
 
-      <div className="mb-3 font-mono text-[12px] text-muted-foreground">
-        {members.length === 1
-          ? t('settings.members.count.one', { count: members.length })
-          : t('settings.members.count.other', { count: members.length })}
-      </div>
-
-      {isPending ? (
-        <div aria-busy="true">
-          <p className="sr-only" role="status">
-            {t('common.loading')}
-          </p>
-          <SkeletonListRow />
-          <SkeletonListRow />
-          <SkeletonListRow />
-        </div>
-      ) : (
-        <>
-          {members.map((member) => (
-            <div className="flex items-center gap-3 border-border border-t py-3" key={member.id}>
-              <GradientAvatar className="size-8 text-[12px]" name={member.user.name} />
-              <div className="min-w-0 leading-tight">
-                <div className="truncate font-medium text-[13.5px]">{member.user.name}</div>
-                <div className="truncate text-[12px] text-muted-foreground">{member.user.email}</div>
-              </div>
-              <div className="ms-auto flex items-center gap-1.5">
-                {member.role === 'owner' ? (
-                  // The single owner: a badge, never a role select — ownership
-                  // only moves via the explicit transfer action below.
-                  <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-[12px] text-primary">
-                    <Crown className="size-3.5" />
-                    {t('roles.owner')}
-                  </span>
-                ) : !canManageMembers ? (
-                  <span className="text-muted-foreground text-sm">{t(roleLabelKey(member.role))}</span>
-                ) : (
-                  <>
-                    {isCurrentOwner && member.role === 'admin' ? (
-                      <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={t('settings.members.transferOwnership')}
-                        title={t('settings.members.transferOwnership')}
-                        loading={transfer.isPending && transfer.variables?.memberId === member.id}
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: t('settings.members.transferOwnership'),
-                            description: t('settings.members.transferConfirm', { name: member.user.name || member.user.email }),
-                            confirmLabel: t('settings.members.transferOwnership'),
-                            destructive: true,
-                          });
-                          if (!ok) {
-                            return;
-                          }
-                          transfer.mutate(
-                            { memberId: member.id },
-                            {
-                              onSuccess: () => toast.success(t('settings.members.toast.ownershipTransferred')),
-                              onError: (error) =>
-                                toast.error(
-                                  friendlyErrorMessage(t, error, 'settings.members.toast.transferError', {
-                                    409: 'settings.members.toast.transferError',
-                                  }),
-                                ),
-                            },
-                          );
-                        }}
-                      >
-                        <Crown className="size-4" />
-                      </Button>
-                    ) : null}
-                    <RoleSelect
-                      ariaLabel={t('settings.members.roleLabel')}
-                      className="w-28"
-                      size="sm"
-                      value={member.role as AssignableMemberRole}
-                      onValueChange={(role) =>
-                        updateRole.mutate(
-                          { id: member.id, body: { role } },
-                          {
-                            onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
-                            onError: (error) =>
-                              toast.error(
-                                friendlyErrorMessage(t, error, 'settings.members.toast.roleError', { 409: 'settings.members.toast.roleError' }),
-                              ),
-                          },
-                        )
-                      }
-                    />
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label={t('settings.members.remove')}
-                      title={t('settings.members.remove')}
-                      loading={actionRunning('remove', member.id)}
-                      onClick={() => requestMemberAction({ kind: 'remove', id: member.id, name: member.user.name || member.user.email })}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
+      <Tabs className="mb-1" onValueChange={(value) => setTab(value as MembersTab)} value={tab}>
+        <TabsList className="max-w-full overflow-x-auto">
+          <TabsTrigger value="members">{t('settings.members.tab.members', { count: members.length })}</TabsTrigger>
+          <TabsTrigger value="invites">{t('settings.members.tab.invites', { count: invitations.length })}</TabsTrigger>
+          {canManageMembers ? <TabsTrigger value="links">{t('settings.joinLinks.title')}</TabsTrigger> : null}
+        </TabsList>
+        {/* Each section is its tab's panel, so assistive tech and the keyboard
+            move between the tab and what it shows. */}
+        <TabsContent value="members">
+          {isPending ? (
+            <div aria-busy="true">
+              <p className="sr-only" role="status">
+                {t('common.loading')}
+              </p>
+              <SkeletonListRow />
+              <SkeletonListRow />
+              <SkeletonListRow />
             </div>
-          ))}
-          {members.length === 0 ? <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.empty')}</p> : null}
-
-          {invitations.length > 0 ? (
+          ) : (
             <>
-              <div className="mt-6 mb-1 font-mono text-[12px] text-muted-foreground">{t('settings.members.pendingInvitations')}</div>
-              {invitations.map((inv) => (
-                <div className="flex items-center gap-3 border-border border-t py-3" key={inv.id}>
-                  <div className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground">
-                    <Mail className="size-4" />
-                  </div>
+              {members.map((member) => (
+                <div className="flex items-center gap-3 border-border border-t py-3" key={member.id}>
+                  <GradientAvatar className="size-8 text-[12px]" name={member.user.name} />
                   <div className="min-w-0 leading-tight">
-                    <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
-                    <div className="text-[12px] text-muted-foreground">
-                      {t('settings.members.invitedAs', {
-                        role: t(roleLabelKey(inv.role)),
-                      })}
-                    </div>
+                    <div className="truncate font-medium text-[13.5px]">{member.user.name}</div>
+                    <div className="truncate text-[12px] text-muted-foreground">{member.user.email}</div>
                   </div>
-                  {canManageMembers && (
-                    <div className="ms-auto flex items-center gap-1">
-                      <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
-                      <Button
-                        loading={actionRunning('revoke', inv.id)}
-                        onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={t('settings.members.revokeInvite')}
-                        title={t('settings.members.revokeInvite')}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  )}
+                  <div className="ms-auto flex items-center gap-1.5">
+                    {member.role === 'owner' ? (
+                      // The single owner: a badge, never a role select — ownership
+                      // only moves via the explicit transfer action below.
+                      <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-[12px] text-primary">
+                        <Crown className="size-3.5" />
+                        {t('roles.owner')}
+                      </span>
+                    ) : !canManageMembers ? (
+                      <span className="text-muted-foreground text-sm">{t(roleLabelKey(member.role))}</span>
+                    ) : (
+                      <>
+                        {isCurrentOwner && member.role === 'admin' ? (
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            aria-label={t('settings.members.transferOwnership')}
+                            title={t('settings.members.transferOwnership')}
+                            loading={transfer.isPending && transfer.variables?.memberId === member.id}
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: t('settings.members.transferOwnership'),
+                                description: t('settings.members.transferConfirm', { name: member.user.name || member.user.email }),
+                                confirmLabel: t('settings.members.transferOwnership'),
+                                destructive: true,
+                              });
+                              if (!ok) {
+                                return;
+                              }
+                              transfer.mutate(
+                                { memberId: member.id },
+                                {
+                                  onSuccess: () => toast.success(t('settings.members.toast.ownershipTransferred')),
+                                  onError: (error) =>
+                                    toast.error(
+                                      friendlyErrorMessage(t, error, 'settings.members.toast.transferError', {
+                                        409: 'settings.members.toast.transferError',
+                                      }),
+                                    ),
+                                },
+                              );
+                            }}
+                          >
+                            <Crown className="size-4" />
+                          </Button>
+                        ) : null}
+                        <RoleSelect
+                          ariaLabel={t('settings.members.roleLabel')}
+                          className="w-28"
+                          size="sm"
+                          value={member.role as AssignableMemberRole}
+                          onValueChange={(role) =>
+                            updateRole.mutate(
+                              { id: member.id, body: { role } },
+                              {
+                                onSuccess: () => toast.success(t('settings.members.toast.roleUpdated')),
+                                onError: (error) =>
+                                  toast.error(
+                                    friendlyErrorMessage(t, error, 'settings.members.toast.roleError', { 409: 'settings.members.toast.roleError' }),
+                                  ),
+                              },
+                            )
+                          }
+                        />
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={t('settings.members.remove')}
+                          title={t('settings.members.remove')}
+                          loading={actionRunning('remove', member.id)}
+                          onClick={() => requestMemberAction({ kind: 'remove', id: member.id, name: member.user.name || member.user.email })}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
+              {members.length === 0 ? (
+                <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.empty')}</p>
+              ) : null}
             </>
+          )}
+        </TabsContent>
+        <TabsContent value="invites">
+          {!isPending && invitations.length === 0 ? (
+            <p className="border-border border-t py-3 text-muted-foreground text-sm">{t('settings.members.noInvites')}</p>
           ) : null}
-        </>
-      )}
-
-      {canManageMembers ? <JoinLinksSection projectId={projectId} /> : null}
+          {invitations.map((inv) => (
+            <div className="flex items-center gap-3 border-border border-t py-3" key={inv.id}>
+              <div className="grid size-8 place-items-center rounded-full bg-muted text-muted-foreground">
+                <Mail className="size-4" />
+              </div>
+              <div className="min-w-0 leading-tight">
+                <div className="truncate font-medium text-[13.5px]">{inv.email}</div>
+                <div className="text-[12px] text-muted-foreground">
+                  {t('settings.members.invitedAs', {
+                    role: t(roleLabelKey(inv.role)),
+                  })}
+                </div>
+              </div>
+              {canManageMembers && (
+                <div className="ms-auto flex items-center gap-1">
+                  <CopyLinkButton label={t('settings.members.copyInviteLink')} link={inviteAcceptUrl(inv.id)} />
+                  <Button
+                    loading={actionRunning('revoke', inv.id)}
+                    onClick={() => requestMemberAction({ kind: 'revoke', id: inv.id, email: inv.email })}
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={t('settings.members.revokeInvite')}
+                    title={t('settings.members.revokeInvite')}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </TabsContent>
+        {canManageMembers ? (
+          <TabsContent value="links">
+            <JoinLinksSection projectId={projectId} />
+          </TabsContent>
+        ) : null}
+      </Tabs>
 
       <AlertDialog
         onOpenChange={(open) => {
