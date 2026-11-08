@@ -33,7 +33,8 @@ const judgeModel = process.env.EVAL_JUDGE_MODEL ?? 'openai/gpt-6.1-sol';
 if (models.includes(judgeModel)) throw new Error('EVAL_JUDGE_MODEL must not be one of EVAL_MODELS.');
 const EFFORTS: readonly string[] = ['none', 'low', 'medium', 'high'] satisfies ReasoningEffort[];
 const efforts = list(process.env.EVAL_REASONING_EFFORTS ?? AI_REASONING_EFFORT.answer) as ReasoningEffort[];
-if (efforts.some((effort) => !EFFORTS.includes(effort))) throw new Error(`EVAL_REASONING_EFFORTS must list ${EFFORTS.join(', ')}`);
+if (efforts.length === 0 || efforts.some((effort) => !EFFORTS.includes(effort)))
+  throw new Error(`EVAL_REASONING_EFFORTS must list at least one of ${EFFORTS.join(', ')}`);
 for (const id of [...models, ...condenseModels, judgeModel])
   if (!catalog.some((m) => m.id === id)) throw new Error(`Requested model absent from live catalog: ${id}`);
 const pricing = (id: string) => catalog.find((m) => m.id === id)?.pricing;
@@ -217,6 +218,7 @@ async function rewrite(model: string, effort: ReasoningEffort, f: Fixture): Prom
 // A reasoning judge's thinking counts against its cap; at low effort it used
 // under 200 tokens in smoke runs, so this leaves ample room.
 const JUDGE_MAX_TOKENS = 1000;
+const JUDGE_TRUNCATED = 'judge_truncated';
 async function judge(f: Fixture, answer: string) {
   const input = JSON.stringify({
     question: f.question,
@@ -240,6 +242,7 @@ async function judge(f: Fixture, answer: string) {
       responseFormat: { type: 'json_object' },
     },
   });
+  if (response.choices[0]?.finishReason === 'length') throw new Error(JUDGE_TRUNCATED);
   const content = response.choices[0]?.message.content;
   if (typeof content !== 'string') throw new Error('Judge returned no text');
   const scores = judgeSchema.parse(JSON.parse(content));
@@ -340,8 +343,11 @@ async function evaluate(model: string, effort: ReasoningEffort, mode: 'strict' |
       const judged = await judge(f, answer.answer);
       row.judge = judged.scores;
       row.judgeSpend = judged.spend;
-    } catch {
-      row.judgeError = 'Judge request or strict JSON validation failed';
+    } catch (error) {
+      row.judgeError =
+        error instanceof Error && error.message === JUDGE_TRUNCATED
+          ? 'Judge stopped at its output cap; raise JUDGE_MAX_TOKENS'
+          : 'Judge request or strict JSON validation failed';
     }
   } catch (error) {
     // The strict provider refuses a reply cut off at its output cap.

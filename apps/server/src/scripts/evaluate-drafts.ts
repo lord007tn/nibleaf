@@ -5,13 +5,13 @@
  *   OPENROUTER_API_KEY=… EVAL_DRAFT_OUTPUT_DIR=/private/dir \
  *     pnpm --filter @nibleaf/server eval:drafts
  *
- * Writes `drafts-blind.json` (outputs labelled A/B in a seeded order per item),
- * `drafts-key.json` (which model each label is; keep it from whoever judges) and
- * `drafts-summary.json` (latency and cost per model). Per-output latency and cost
- * are in the blind file too; strip them before judging, since price alone
- * identifies a model.
+ * Writes `drafts-blind.json` (the judge's file: output text only, labelled A/B in a
+ * seeded order per item), `drafts-key.json` (the seed, which model each label is,
+ * and each output's latency, tokens and cost; keep it from whoever judges) and
+ * `drafts-summary.json` (latency and cost per model). The seed is random unless
+ * `EVAL_SEED` is set, and only the key file records it.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { AiDraftBody } from '@nibleaf/validators';
@@ -28,7 +28,7 @@ const { AI_REASONING_EFFORT } = await import('@nibleaf/search');
 const models = (process.env.EVAL_DRAFT_MODELS ?? 'openai/gpt-6-luna,openai/gpt-6.1-terra').split(',').map((id) => id.trim());
 if (models.length !== 2) throw new Error('EVAL_DRAFT_MODELS must name exactly two models.');
 const effort = (process.env.EVAL_DRAFT_EFFORT ?? AI_REASONING_EFFORT.draft) as typeof AI_REASONING_EFFORT.draft;
-const seed = process.env.EVAL_SEED ?? 'nibleaf-drafts-v1';
+const seed = process.env.EVAL_SEED ?? randomBytes(16).toString('hex');
 const budget = Number(process.env.EVAL_MAX_COST_USD ?? 1);
 if (!Number.isFinite(budget) || budget <= 0) throw new Error('EVAL_MAX_COST_USD must be a positive number.');
 /** Every request is capped here, and the spend reservation assumes the full cap. */
@@ -148,6 +148,7 @@ const run = async (model: string, body: AiDraftBody) => {
 };
 
 type Output = Awaited<ReturnType<typeof run>>;
+// The judge's file holds output text only: latency, tokens or cost would identify a model.
 const blind: {
   id: string;
   language: string;
@@ -155,16 +156,20 @@ const blind: {
   instruction: string | null;
   input: string;
   prompt: unknown;
-  outputs: { A?: Output; B?: Output };
+  outputs: { A: { text: string }; B: { text: string } };
 }[] = [];
 const key: Record<string, { A: string; B: string }> = {};
+const measured: Record<string, { A: Output; B: Output }> = {};
 // EVAL_LIMIT runs the first items only, for a smoke run.
 for (const item of items.slice(0, Number(process.env.EVAL_LIMIT ?? items.length))) {
   const outputs = await Promise.all(models.map((model) => run(model, item.body)));
-  // Seeded per item, so a rerun keeps the same order.
+  // Seeded per item, so a rerun with the same EVAL_SEED keeps the same order.
   const swap = (createHash('sha256').update(`${seed}:${item.id}`).digest()[0] ?? 0) % 2 === 1;
   const [first, second] = swap ? [1, 0] : [0, 1];
+  const A = outputs[first] as Output;
+  const B = outputs[second] as Output;
   key[item.id] = { A: models[first] as string, B: models[second] as string };
+  measured[item.id] = { A, B };
   blind.push({
     id: item.id,
     language: item.language,
@@ -172,13 +177,13 @@ for (const item of items.slice(0, Number(process.env.EVAL_LIMIT ?? items.length)
     instruction: item.body.instruction ?? null,
     input: item.body.content,
     prompt: draftMessages(item.body),
-    outputs: { A: outputs[first], B: outputs[second] },
+    outputs: { A: { text: A.text }, B: { text: B.text } },
   });
   console.log(`${item.id}: done`);
 }
 
 const summary = models.map((model) => {
-  const runs = blind.map((item) => (key[item.id]?.A === model ? item.outputs.A : item.outputs.B));
+  const runs = blind.map((item) => (key[item.id]?.A === model ? measured[item.id]?.A : measured[item.id]?.B));
   const latencies = runs.map((r) => r?.latencyMs ?? 0).sort((a, b) => a - b);
   return {
     model,
@@ -192,10 +197,10 @@ const summary = models.map((model) => {
 await mkdir(outputDir, { recursive: true });
 await writeFile(
   resolve(outputDir, 'drafts-blind.json'),
-  `${JSON.stringify({ generatedAt: new Date().toISOString(), seed, effort, items: blind }, null, 2)}\n`,
+  `${JSON.stringify({ generatedAt: new Date().toISOString(), effort, items: blind }, null, 2)}\n`,
 );
-await writeFile(resolve(outputDir, 'drafts-key.json'), `${JSON.stringify({ seed, effort, key }, null, 2)}\n`);
+await writeFile(resolve(outputDir, 'drafts-key.json'), `${JSON.stringify({ seed, effort, key, measured }, null, 2)}\n`);
 // Per-model speed and cost only; it does not say which label is which.
-await writeFile(resolve(outputDir, 'drafts-summary.json'), `${JSON.stringify({ seed, effort, summary }, null, 2)}\n`);
+await writeFile(resolve(outputDir, 'drafts-summary.json'), `${JSON.stringify({ effort, summary }, null, 2)}\n`);
 console.log(JSON.stringify(summary, null, 2));
 console.log(`Wrote drafts-blind.json, drafts-key.json and drafts-summary.json to ${outputDir}`);

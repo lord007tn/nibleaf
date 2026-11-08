@@ -170,12 +170,21 @@ interface Row {
   corpusTokens?: number;
   corpusCostUsd?: number;
   reindexMs?: number;
-  byLanguage?: Record<string, { n: number; recallAt5: number; mrrAt10: number }>;
+  byLanguage?: Record<string, { n: number; hitAt5: number; recallAt5: number; mrrAt10: number }>;
   queries?: unknown[];
 }
 const rows: Row[] = [];
 for (const model of models) {
-  const native = await nativeDimensions(model);
+  let native: number;
+  try {
+    native = await nativeDimensions(model);
+  } catch (error) {
+    // One model's failed probe never stops the others or loses their rows.
+    const message = error instanceof Error ? error.message : 'failed';
+    rows.push({ label: `${model} (probe failed)`, model, dimensions: 0, native: false, nativeDimensions: 0, error: message });
+    console.log(`${model}: probe failed (${message})`);
+    continue;
+  }
   for (const dimensions of [...new Set([native, PRODUCT_DIMENSIONS])]) {
     const label = `${model} @ ${dimensions}${dimensions === native ? ' (native)' : ''}`;
     try {
@@ -197,10 +206,14 @@ for (const model of models) {
           }))
           .sort((left, right) => right.score - left.score);
         const firstRelevant = ranked.findIndex(({ chunk }) => query.relevant(chunk));
+        const relevantTotal = ranked.filter(({ chunk }) => query.relevant(chunk)).length;
+        const relevantInTop5 = ranked.slice(0, 5).filter(({ chunk }) => query.relevant(chunk)).length;
         return {
           id: query.id,
           language: query.language,
-          recallAt5: Number(firstRelevant >= 0 && firstRelevant < 5),
+          // Hit@5: any relevant chunk in the top five. Recall@5: the share of relevant chunks there.
+          hitAt5: Number(firstRelevant >= 0 && firstRelevant < 5),
+          recallAt5: relevantTotal ? relevantInTop5 / relevantTotal : 0,
           mrrAt10: firstRelevant >= 0 && firstRelevant < 10 ? 1 / (firstRelevant + 1) : 0,
           firstRelevantRank: firstRelevant + 1,
         };
@@ -208,8 +221,8 @@ for (const model of models) {
       const byLanguage = Object.fromEntries(
         ['en', 'ar', 'mixed'].map((language) => {
           const subset = scored.filter((s) => s.language === language);
-          const mean = (key: 'recallAt5' | 'mrrAt10') => subset.reduce((sum, s) => sum + s[key], 0) / (subset.length || 1);
-          return [language, { n: subset.length, recallAt5: mean('recallAt5'), mrrAt10: mean('mrrAt10') }];
+          const mean = (key: 'hitAt5' | 'recallAt5' | 'mrrAt10') => subset.reduce((sum, s) => sum + s[key], 0) / (subset.length || 1);
+          return [language, { n: subset.length, hitAt5: mean('hitAt5'), recallAt5: mean('recallAt5'), mrrAt10: mean('mrrAt10') }];
         }),
       );
       const tokens = index.promptTokens;
@@ -246,15 +259,15 @@ const cell = (value: number | undefined, digits = 3) => (value === undefined ? '
 const markdown = [
   `Corpus: ${files.length} pages, ${corpus.length} chunks, ${corpusBytes} UTF-8 bytes. Queries: ${['en', 'ar', 'mixed'].map((l) => `${l} ${queries.filter((q) => q.language === l).length}`).join(', ')}.`,
   '',
-  '| Model @ dimensions | EN R@5 / MRR@10 | AR R@5 / MRR@10 | Mixed R@5 / MRR@10 | $ / 1M | Corpus tokens | Corpus $ | Reindex s |',
+  '| Model @ dimensions | EN Hit@5 / R@5 / MRR@10 | AR Hit@5 / R@5 / MRR@10 | Mixed Hit@5 / R@5 / MRR@10 | $ / 1M | Corpus tokens | Corpus $ | Reindex s |',
   '|---|---|---|---|---:|---:|---:|---:|',
   ...rows.map((row) =>
     row.error
       ? `| ${row.label} | failed: ${row.error} | | | | | | |`
-      : `| ${row.label} | ${['en', 'ar', 'mixed'].map((l) => `${cell(row.byLanguage?.[l]?.recallAt5)} / ${cell(row.byLanguage?.[l]?.mrrAt10)}`).join(' | ')} | ${cell(row.pricePerMillion, 2)} | ${row.corpusTokens ?? '—'} | ${cell(row.corpusCostUsd, 4)} | ${cell(row.reindexMs === undefined ? undefined : row.reindexMs / 1000, 1)} |`,
+      : `| ${row.label} | ${['en', 'ar', 'mixed'].map((l) => `${cell(row.byLanguage?.[l]?.hitAt5)} / ${cell(row.byLanguage?.[l]?.recallAt5)} / ${cell(row.byLanguage?.[l]?.mrrAt10)}`).join(' | ')} | ${cell(row.pricePerMillion, 2)} | ${row.corpusTokens ?? '—'} | ${cell(row.corpusCostUsd, 4)} | ${cell(row.reindexMs === undefined ? undefined : row.reindexMs / 1000, 1)} |`,
   ),
   '',
-  'Dense cosine retrieval only (the product fuses this with BM25). Reindex = wall-clock to embed the whole corpus in sequential batches of 64, as the worker does. Small samples: one query moves a language mean by 0.1.',
+  'Dense cosine retrieval only (the product fuses this with BM25). Hit@5 = any relevant chunk in the top five; R@5 = the share of relevant chunks in the top five. Reindex = wall-clock to embed the whole corpus in sequential batches of 64, as the worker does. Small samples: one query moves a language mean by 0.1.',
 ].join('\n');
 await mkdir(outputDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');

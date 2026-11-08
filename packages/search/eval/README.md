@@ -83,15 +83,17 @@ the product's own request options (`workspaceChatModelOptions` and
 `pnpm --filter @nibleaf/server eval:drafts` runs the editor's writing actions
 (continue, rephrase, outline, summarize) in English and Arabic on two models
 (`EVAL_DRAFT_MODELS`, default `openai/gpt-6-luna,openai/gpt-6.1-terra`) with the
-real prompts and request path. It writes `drafts-blind.json` (outputs labelled A
-and B in a seeded order per item), `drafts-key.json` and `drafts-summary.json`
-to `EVAL_DRAFT_OUTPUT_DIR`. Give a judge only the blind file, without its
-latency and cost fields.
+real prompts and request path. It writes `drafts-blind.json` (output text only,
+labelled A and B in a random order per item), `drafts-key.json` (the seed, the
+labels and each output's latency and cost) and `drafts-summary.json` to
+`EVAL_DRAFT_OUTPUT_DIR`. Give a judge only the blind file.
 
 `pnpm --filter @nibleaf/search eval:embeddings` chunks every page in `docs/`
 with the product's chunker and embedding text, embeds it with each model in
-`EVAL_EMBED_MODELS` at its native size and at 1536, and reports recall@5 and
-MRR@10 for the docs fixtures' questions by language, cost and reindex time.
+`EVAL_EMBED_MODELS` at its native size and at 1536, and reports Hit@5 (any
+relevant chunk in the top five), recall@5 (the share of relevant chunks in the
+top five) and MRR@10 for the docs fixtures' questions by language, cost and
+reindex time.
 Results go to `EVAL_EMBED_OUTPUT_DIR`; corpus vectors are cached in
 `EVAL_EMBED_CACHE_DIR`, so a rerun does not pay again. Retrieval is dense-only,
 without the BM25 half of hybrid search.
