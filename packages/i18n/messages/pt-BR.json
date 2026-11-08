@@ -3969,5 +3969,7 @@
   "analytics_status_readsdisabled_body": "O servidor está coletando dados analíticos. Quando a migração estiver pronta, o administrador poderá ativar os relatórios com ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Seu site mudou desde a revisão. Revise as alterações novamente antes de publicar.",
   "admin_pagination_first": "Primeira página",
-  "admin_pagination_next": "Próxima página"
+  "admin_pagination_next": "Próxima página",
+  "dashboard_ai_inputtokens": "Unidades de texto nas perguntas",
+  "dashboard_ai_outputtokens": "Unidades de texto nas respostas"
 }

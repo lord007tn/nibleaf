@@ -3903,5 +3903,7 @@
   "analytics_status_readsdisabled_body": "Server sedang mengumpulkan data analitik. Setelah migrasi siap, administrator server dapat mengaktifkan laporan dengan ANALYTICS_MODE=clickhouse.",
   "publish_reviewchanged": "Situs Anda berubah sejak ditinjau. Tinjau kembali perubahan sebelum menerbitkan.",
   "admin_pagination_first": "Halaman pertama",
-  "admin_pagination_next": "Halaman berikutnya"
+  "admin_pagination_next": "Halaman berikutnya",
+  "dashboard_ai_inputtokens": "Unit teks dalam pertanyaan",
+  "dashboard_ai_outputtokens": "Unit teks dalam jawaban"
 }

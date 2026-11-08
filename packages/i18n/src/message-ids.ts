@@ -3865,6 +3865,8 @@ export const MESSAGE_IDS = {
   'site.privateInviteUsed': 'site_privateinviteused',
   'site.signOut': 'site_signout',
   'site.signOutFailed': 'site_signoutfailed',
+  'dashboard.ai.inputTokens': 'dashboard_ai_inputtokens',
+  'dashboard.ai.outputTokens': 'dashboard_ai_outputtokens',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

@@ -3968,5 +3968,7 @@
   "analytics_status_readsdisabled_body": "Der Server erfasst Analysedaten. Sobald die Migration bereit ist, kann die Serververwaltung Berichte mit ANALYTICS_MODE=clickhouse aktivieren.",
   "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",
   "admin_pagination_first": "Erste Seite",
-  "admin_pagination_next": "Nächste Seite"
+  "admin_pagination_next": "Nächste Seite",
+  "dashboard_ai_inputtokens": "Texteinheiten in Fragen",
+  "dashboard_ai_outputtokens": "Texteinheiten in Antworten"
 }
