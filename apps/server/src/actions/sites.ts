@@ -343,6 +343,23 @@ const findLiveDeploymentAfterMiss = (projectId: string, deploymentId: string) =>
  *  the project. A page-scoped reader may load only an asset referenced by the
  *  site chrome or by a page they are allowed to read in the live deployment; a
  *  reader without any effective grant may load none. */
+/** Whether `key` is the logo or favicon a private site's sign-in screen shows
+ *  to visitors who can't read the site yet. Only those exact configured
+ *  branding files qualify; every other asset of the site stays private. */
+export const isPrivateSiteBrandingAsset = async (projectId: string, key: string): Promise<boolean> => {
+  const live = await getLiveChrome(projectId).catch(() => null);
+  if (!live || live.takedownAt || live.accessMode === 'PUBLIC') return false;
+  const branding = ((live.config ?? {}) as { branding?: Record<string, unknown> }).branding ?? {};
+  return [branding.logoLight, branding.logoDark, branding.favicon].some((value) => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+      return decodeURIComponent(new URL(value, 'http://branding.invalid').pathname) === `/api/public/assets/${key}`;
+    } catch {
+      return false;
+    }
+  });
+};
+
 export const getProjectAssetAccess = async (projectId: string, key: string, headers: Headers): Promise<ViewerAccess | null> => {
   const live = await getLiveChrome(projectId).catch(() => null);
   if (!live || live.takedownAt) return null;

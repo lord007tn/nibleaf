@@ -2184,6 +2184,7 @@
   "site_privateinviteaccept": "افتح التوثيق",
   "site_privateinviteused": "استُخدم رابط الدعوة هذا من قبل أو انتهت صلاحيته. أدخل بريدك لتحصل على رمز دخول بدلًا منه.",
   "site_signout": "تسجيل الخروج",
+  "site_signoutfailed": "تعذّر تسجيل الخروج. تحقّق من اتصالك ثم حاول مرة أخرى.",
   "site_pageunavailable": "هذه الصفحة غير متاحة.",
   "site_changelogsubtitle": "كل تحديث صدر لهذه الوثائق.",
   "site_changelogempty": "لا توجد إصدارات بعد.",

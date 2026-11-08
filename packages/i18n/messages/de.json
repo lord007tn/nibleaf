@@ -2111,6 +2111,7 @@
   "site_privateinviteaccept": "Dokumentation öffnen",
   "site_privateinviteused": "Dieser Einladungslink wurde bereits verwendet oder ist abgelaufen. Geben Sie Ihre E-Mail-Adresse ein, um stattdessen einen Anmeldecode zu erhalten.",
   "site_signout": "Abmelden",
+  "site_signoutfailed": "Abmelden fehlgeschlagen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "site_pageunavailable": "Diese Seite ist nicht verfügbar.",
   "site_changelogsubtitle": "Jedes an diese Dokumente gelieferte Update.",
   "site_changelogempty": "Noch keine Veröffentlichungen.",

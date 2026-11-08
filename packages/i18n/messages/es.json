@@ -2111,6 +2111,7 @@
   "site_privateinviteaccept": "Abrir la documentación",
   "site_privateinviteused": "Este enlace de invitación ya se usó o caducó. Escribe tu correo para recibir un código.",
   "site_signout": "Cerrar sesión",
+  "site_signoutfailed": "No se pudo cerrar la sesión. Revisa tu conexión y vuelve a intentarlo.",
   "site_pageunavailable": "Esta página no está disponible.",
   "site_changelogsubtitle": "Cada actualización enviada a estos documentos.",
   "site_changelogempty": "Aún no hay lanzamientos.",

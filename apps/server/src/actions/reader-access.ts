@@ -108,9 +108,16 @@ const SESSION_TOUCH_MS = 5 * 60_000;
 const siteMemberViewer = async (projectId: string, tokenHash: string): Promise<ViewerAccess | null> => {
   const session = await prisma.siteMemberSession.findFirst({
     where: { projectId, tokenHash, revokedAt: null, expiresAt: { gt: new Date() } },
-    select: { id: true, userId: true, lastUsedAt: true, project: { select: { organizationId: true } } },
+    select: {
+      id: true,
+      userId: true,
+      lastUsedAt: true,
+      project: { select: { organizationId: true } },
+      user: { select: { banned: true, suspendedAt: true } },
+    },
   });
-  if (!session) return null;
+  // A suspended account loses site access with its existing sessions too.
+  if (!session || session.user.banned || session.user.suspendedAt) return null;
   const member = await prisma.member.findUnique({
     where: { organizationId_userId: { organizationId: session.project.organizationId, userId: session.userId } },
     select: { id: true },
@@ -145,9 +152,12 @@ export const resolveViewerAccess = async (
   headers: Headers,
 ): Promise<ViewerAccess | null> => {
   if (accessMode === 'PUBLIC') return { kind: 'public', allowedPageIds: null };
-  if (await isSiteMemberRequest(projectId, headers)) return { kind: 'workspace', allowedPageIds: null };
-
   const rawCookie = headers.get('cookie') ?? '';
+  const hasSiteCookie = new RegExp(`(?:^|;\\s*)${cookieName(projectId)}=`).test(rawCookie);
+  // A dashboard member who also signed in on the site can still sign out of it there.
+  if (await isSiteMemberRequest(projectId, headers))
+    return { kind: 'workspace', allowedPageIds: null, ...(hasSiteCookie ? { siteSession: true } : {}) };
+
   const match = rawCookie.match(new RegExp(`(?:^|;\\s*)${cookieName(projectId)}=([^;]+)`));
   let token: string | null = null;
   try {

@@ -2047,6 +2047,7 @@
   "site_privateinviteaccept": "Buka dokumentasi",
   "site_privateinviteused": "Tautan undangan ini sudah dipakai atau kedaluwarsa. Masukkan email Anda untuk mendapatkan kode masuk.",
   "site_signout": "Keluar",
+  "site_signoutfailed": "Tidak dapat keluar. Periksa koneksi Anda, lalu coba lagi.",
   "site_pageunavailable": "Halaman ini tidak tersedia.",
   "site_changelogsubtitle": "Setiap pembaruan dikirimkan ke dokumen ini.",
   "site_changelogempty": "Belum ada rilis.",

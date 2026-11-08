@@ -21,6 +21,7 @@ import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } fro
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
 import { preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
+import { SiteSignOut } from '@/components/site/site-sign-out';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -758,25 +759,8 @@ function SiteChrome() {
                       <MadeWithBadge lang={activeLanguage?.code} />
                     </div>
                   ) : null}
-                  {site.signedIn ? (
-                    // Signed in on the site itself (a reader, or a team member on a custom domain).
-                    <div className="mx-auto flex max-w-[90rem] justify-center px-6 pb-5">
-                      <button
-                        className="text-muted-foreground text-xs underline-offset-4 hover:text-foreground hover:underline"
-                        onClick={() => {
-                          void fetch(`/api/public/reader-access/logout/${encodeURIComponent(projectId)}`, {
-                            method: 'POST',
-                            credentials: 'same-origin',
-                          })
-                            .catch(() => undefined)
-                            .then(() => window.location.reload());
-                        }}
-                        type="button"
-                      >
-                        {t('signOut')}
-                      </button>
-                    </div>
-                  ) : null}
+                  {/* Signed in on the site itself (a reader, or a team member on a custom domain). */}
+                  {site.signedIn ? <SiteSignOut lang={activeLanguage?.code} projectId={projectId} /> : null}
                 </footer>
               ) : null
             }

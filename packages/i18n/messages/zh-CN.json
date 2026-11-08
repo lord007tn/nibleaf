@@ -2047,6 +2047,7 @@
   "site_privateinviteaccept": "打开文档",
   "site_privateinviteused": "此邀请链接已被使用或已过期。请输入你的邮箱以获取登录验证码。",
   "site_signout": "退出登录",
+  "site_signoutfailed": "无法退出登录。请检查网络连接后重试。",
   "site_pageunavailable": "该页面不可用。",
   "site_changelogsubtitle": "每个更新都会发送到这些文档。",
   "site_changelogempty": "暂无发布记录。",

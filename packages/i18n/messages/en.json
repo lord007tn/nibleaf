@@ -2151,6 +2151,7 @@
   "site_privateinviteaccept": "Open the documentation",
   "site_privateinviteused": "This invitation link was already used or has expired. Enter your email to get a sign-in code instead.",
   "site_signout": "Sign out",
+  "site_signoutfailed": "Couldn't sign out. Check your connection and try again.",
   "site_pageunavailable": "This page is not available.",
   "site_changelogsubtitle": "Every update shipped to these docs.",
   "site_changelogempty": "No releases yet.",

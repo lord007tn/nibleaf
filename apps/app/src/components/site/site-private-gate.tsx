@@ -41,7 +41,18 @@ const problemFor = (status: number): Problem => (status === 429 ? 'privateTooMan
  * code; a reader who opens an invitation link accepts it with a click. Signing
  * in reloads the same URL, so the visitor lands on the page they asked for.
  */
-export default function SitePrivateGate({ gate, lang, projectId }: { gate?: PrivateSiteGate; lang?: string; projectId: string }) {
+export default function SitePrivateGate({
+  gate,
+  lang,
+  projectId,
+  onSignedIn = () => window.location.reload(),
+}: {
+  gate?: PrivateSiteGate;
+  lang?: string;
+  projectId: string;
+  /** Runs once signed in; reloading the same URL lands on the page asked for. */
+  onSignedIn?: () => void;
+}) {
   const locale = resolveLocale(lang ?? gate?.language?.code) ?? 'en';
   const t = siteAccessT(locale);
   const ids = useId();
@@ -56,7 +67,12 @@ export default function SitePrivateGate({ gate, lang, projectId }: { gate?: Priv
     if (!token) return;
     // Drop the one-time token from the address bar and history.
     window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`);
-    setStep({ kind: 'invite', token: decodeURIComponent(token) });
+    try {
+      setStep({ kind: 'invite', token: decodeURIComponent(token) });
+    } catch {
+      // A damaged link: offer the email code instead.
+      setStep({ kind: 'email', notice: 'inviteUsed' });
+    }
   }, []);
 
   const run = async (action: () => Promise<void>) => {
@@ -83,14 +99,17 @@ export default function SitePrivateGate({ gate, lang, projectId }: { gate?: Priv
     run(async () => {
       const response = await post(`sign-in/${encodeURIComponent(projectId)}/verify`, { email: address, code });
       if (!response.ok) return setProblem(problemFor(response.status));
-      window.location.reload();
+      onSignedIn();
     });
 
   const accept = (token: string) =>
     run(async () => {
       const response = await post('accept', { token });
-      if (response.ok) return window.location.reload();
+      if (response.ok) return onSignedIn();
       if (response.status === 429) return setProblem('privateTooMany');
+      // A server failure keeps the invitation so the reader can try again; only
+      // a refused invitation (used, expired, revoked) falls back to the email code.
+      if (response.status >= 500) return setProblem('privateFailed');
       setStep({ kind: 'email', notice: 'inviteUsed' });
     });
 

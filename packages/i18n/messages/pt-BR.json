@@ -2112,6 +2112,7 @@
   "site_privateinviteaccept": "Abrir a documentação",
   "site_privateinviteused": "Este link de convite já foi usado ou expirou. Digite seu e-mail para receber um código.",
   "site_signout": "Sair",
+  "site_signoutfailed": "Não foi possível sair. Verifique sua conexão e tente de novo.",
   "site_pageunavailable": "Esta página não está disponível.",
   "site_changelogsubtitle": "Cada atualização enviada para esses documentos.",
   "site_changelogempty": "Ainda não há lançamentos.",

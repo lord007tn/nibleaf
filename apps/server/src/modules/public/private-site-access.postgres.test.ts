@@ -329,6 +329,26 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     expect((await request(`/api/public/sites/${site.projectId}/page?path=guide`, 'anonymous')).status).toBe(404);
   });
 
+  it('lets the sign-in screen show the private site’s configured logo, and no other asset', async () => {
+    const logoKey = `projects/${site.projectId}/assets/${randomUUID()}.png`;
+    await db.prisma.asset.create({
+      data: { projectId: site.projectId, key: logoKey, url: `/api/public/assets/${logoKey}`, contentType: 'image/png', size: 11 },
+    });
+    await db.prisma.project.update({
+      where: { id: site.projectId },
+      data: { config: { branding: { logoLight: `https://docs.example.invalid/api/public/assets/${logoKey}` } }, accessMode: 'READERS' },
+    });
+    sites.invalidatePublishedSiteConfig(site.projectId);
+    const logo = await request(`/api/public/assets/${logoKey}`, 'anonymous');
+    expect(logo.status).toBe(200);
+    expect(logo.headers.get('cache-control')).toBe('private, no-store');
+    expect((await request(`/api/public/assets/${site.assetKey}`, 'anonymous')).status).toBe(404);
+    // Once it is no longer the configured logo, it is private again.
+    await db.prisma.project.update({ where: { id: site.projectId }, data: { config: {} } });
+    sites.invalidatePublishedSiteConfig(site.projectId);
+    expect((await request(`/api/public/assets/${logoKey}`, 'anonymous')).status).toBe(404);
+  });
+
   it('does not tell an anonymous visitor which pages exist on a private site', async () => {
     await setMode('READERS');
     const existing = await request(`/api/public/sites/${site.projectId}/page?path=guide`, 'anonymous');

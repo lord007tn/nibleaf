@@ -33,8 +33,9 @@ const SIGN_IN_CODES_PER_DAY = 10;
 const SIGN_IN_DAY_MS = 24 * 60 * 60_000;
 /** Consecutive codes that ran out of guesses before an address is paused for a day. */
 const SIGN_IN_BURNED_CODES_LOCKOUT = 3;
-/** How long codes are kept: long enough for the day-long budgets above. */
-const SIGN_IN_HISTORY_MS = SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
+/** How long codes are kept: long enough for the day-long budgets above, and
+ *  for a pause that starts from the third burned code, not the first. */
+const SIGN_IN_HISTORY_MS = 2 * SIGN_IN_DAY_MS + SIGN_IN_WINDOW_MS;
 const SITE_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 
 /** The row id salts the hash, so equal codes never share a hash. */
@@ -56,7 +57,8 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
   });
   if (!project || project.accessMode === 'PUBLIC' || project.takedownAt) return null;
   const member = await prisma.member.findFirst({
-    where: { organizationId: project.organizationId, user: { email } },
+    // A suspended account gets no code and no session, as on the dashboard.
+    where: { organizationId: project.organizationId, user: { email, banned: false, suspendedAt: null } },
     select: { userId: true },
   });
   if (member) return { kind: 'member', userId: member.userId };
@@ -70,8 +72,9 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
  * stop a distributed attacker, so every budget is per (site, address):
  * - 5 codes per 15 minutes and 10 per rolling 24 hours, so at most 50 guesses
  *   a day and a bounded number of emails to any one inbox;
- * - after 3 consecutive codes that each ran out of guesses, none for 24 hours.
- * Codes are kept for the 24-hour look-back (see SIGN_IN_HISTORY_MS).
+ * - after 3 consecutive codes that each ran out of guesses, none for 24 hours
+ *   counted from the last of them.
+ * Codes are kept for these look-backs (see SIGN_IN_HISTORY_MS).
  */
 const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, email: string, now: number): Promise<boolean> => {
   const recent = await tx.siteSignInCode.findMany({
@@ -81,27 +84,52 @@ const mayIssueCode = async (tx: Prisma.TransactionClient, projectId: string, ema
   });
   if (recent.length >= SIGN_IN_CODES_PER_DAY) return false;
   if (recent.filter((row) => row.createdAt.getTime() > now - SIGN_IN_WINDOW_MS).length >= SIGN_IN_CODES_PER_WINDOW) return false;
-  const latest = recent.slice(0, SIGN_IN_BURNED_CODES_LOCKOUT);
-  return !(latest.length === SIGN_IN_BURNED_CODES_LOCKOUT && latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS));
+  // The last codes regardless of age: three burned in a row pause the address
+  // until a day after the newest of them could last be used.
+  const latest = await tx.siteSignInCode.findMany({
+    where: { projectId, email },
+    orderBy: { createdAt: 'desc' },
+    take: SIGN_IN_BURNED_CODES_LOCKOUT,
+    select: { expiresAt: true, attempts: true },
+  });
+  const paused =
+    latest.length === SIGN_IN_BURNED_CODES_LOCKOUT &&
+    latest.every((row) => row.attempts >= SIGN_IN_CODE_MAX_ATTEMPTS) &&
+    (latest[0]?.expiresAt.getTime() ?? 0) > now - SIGN_IN_DAY_MS;
+  return !paused;
 };
 
 const issueCode = async (projectId: string, email: string, language?: string) => {
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-  // One issuance per (site, address) at a time, so parallel requests can't
-  // all pass the budget check before any of them records a code.
+  // One issuance per (site, address) at a time, so parallel requests can't all
+  // pass the budget check before any of them records a code. A request that
+  // finds another issuance in progress sends nothing rather than waiting for the
+  // lock, so a burst for one address never holds pooled connections.
   const row = await prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`site-sign-in:${projectId}:${email}`}, 0))`;
+    const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
+      SELECT pg_try_advisory_xact_lock(hashtextextended(${`site-sign-in:${projectId}:${email}`}, 0)) AS "locked"`;
+    if (!lock?.locked) return null;
     if (!(await mayIssueCode(tx, projectId, email, Date.now()))) return null;
     const created = await tx.siteSignInCode.create({
       data: { projectId, email, codeHash: 'pending', expiresAt: new Date(Date.now() + SIGN_IN_CODE_TTL_MS) },
-      select: { id: true, project: { select: { name: true } } },
+      select: { id: true, expiresAt: true, project: { select: { name: true } } },
     });
     await tx.siteSignInCode.update({ where: { id: created.id }, data: { codeHash: codeHash(created.id, code) } });
     return created;
   });
   if (!row) return;
-  const message = await renderSiteSignInCodeEmail({ code, projectName: row.project.name, language: resolveEmailLanguage(language) });
-  await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: email, ...message } });
+  try {
+    const message = await renderSiteSignInCodeEmail({ code, projectName: row.project.name, language: resolveEmailLanguage(language) });
+    // The worker discards the email once the code has expired.
+    await createJob(QueueNames.EMAIL, {
+      name: 'send-email',
+      data: { to: email, ...message, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } },
+    });
+  } catch (error) {
+    // A code that was never sent doesn't count against the address's budget.
+    await prisma.siteSignInCode.deleteMany({ where: { id: row.id, consumedAt: null, attempts: 0 } }).catch(() => undefined);
+    throw error;
+  }
   void prisma.siteSignInCode.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - SIGN_IN_HISTORY_MS) } } }).catch(() => undefined);
 };
 
@@ -117,12 +145,14 @@ export const startSiteSignIn = async (projectId: string, body: SiteSignInStartBo
 /** Exchange a code for a site session cookie. */
 export const verifySiteSignIn = async (ctx: Context<HonoEnv>, projectId: string, body: SiteSignInVerifyBody) => {
   const now = new Date();
+  // Only the newest code counts. Once it is used or has expired, every earlier
+  // code stays superseded.
   const latest = await prisma.siteSignInCode.findFirst({
-    where: { projectId, email: body.email, consumedAt: null, expiresAt: { gt: now } },
+    where: { projectId, email: body.email },
     orderBy: { createdAt: 'desc' },
-    select: { id: true, codeHash: true },
+    select: { id: true, codeHash: true, consumedAt: true, expiresAt: true },
   });
-  if (!latest) throw invalidCode();
+  if (!latest || latest.consumedAt || latest.expiresAt <= now) throw invalidCode();
   // Count the guess before checking it, atomically, so parallel guesses can't
   // exceed the allowance.
   const counted = await prisma.siteSignInCode.updateMany({

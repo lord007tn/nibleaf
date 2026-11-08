@@ -47,7 +47,8 @@ describe('resolveViewerAccess', () => {
   });
 
   it('lets a team member signed in on the site read in both private modes while they remain a member', async () => {
-    mocks.memberSessionFind.mockResolvedValue({ id: 'site-session', userId: 'user', lastUsedAt: new Date(), project: { organizationId: 'org' } });
+    const session = { id: 'site-session', userId: 'user', lastUsedAt: new Date(), project: { organizationId: 'org' } };
+    mocks.memberSessionFind.mockResolvedValue({ ...session, user: { banned: false, suspendedAt: null } });
     mocks.memberFind.mockResolvedValue({ id: 'member' });
     for (const mode of ['WORKSPACE', 'READERS'] as const) {
       await expect(resolveViewerAccess('project', mode, headers('nibleaf_reader_project=opaque'))).resolves.toEqual({
@@ -61,6 +62,27 @@ describe('resolveViewerAccess', () => {
     );
     mocks.memberFind.mockResolvedValue(null);
     await expect(resolveViewerAccess('project', 'WORKSPACE', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
+    // A suspended account's existing site sessions stop working.
+    mocks.memberFind.mockResolvedValue({ id: 'member' });
+    for (const user of [
+      { banned: true, suspendedAt: null },
+      { banned: false, suspendedAt: new Date() },
+    ]) {
+      mocks.memberSessionFind.mockResolvedValue({ ...session, user });
+      await expect(resolveViewerAccess('project', 'READERS', headers('nibleaf_reader_project=opaque'))).resolves.toBeNull();
+    }
+  });
+
+  it('offers a dashboard member Sign out on the site when they also signed in there', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'user' } });
+    mocks.projectFind.mockResolvedValue({ organizationId: 'org' });
+    mocks.memberFind.mockResolvedValue({ id: 'member' });
+    await expect(resolveViewerAccess('project', 'READERS', headers('nibleaf_reader_project=opaque'))).resolves.toEqual({
+      kind: 'workspace',
+      allowedPageIds: null,
+      siteSession: true,
+    });
+    await expect(resolveViewerAccess('project', 'READERS', headers('other=1'))).resolves.toEqual({ kind: 'workspace', allowedPageIds: null });
   });
 
   it('grants full private access to an owning workspace member', async () => {

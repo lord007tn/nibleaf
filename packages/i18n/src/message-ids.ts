@@ -3864,6 +3864,7 @@ export const MESSAGE_IDS = {
   'site.privateInviteAccept': 'site_privateinviteaccept',
   'site.privateInviteUsed': 'site_privateinviteused',
   'site.signOut': 'site_signout',
+  'site.signOutFailed': 'site_signoutfailed',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

@@ -12,6 +12,7 @@ import type { HonoEnv } from '@/lib/hono/context';
  * revocation and membership checks) is real.
  */
 const sent = vi.hoisted(() => [] as Array<{ code: string; projectName: string }>);
+const failures = vi.hoisted(() => ({ renderEmail: 0 }));
 vi.mock('@nibleaf/auth/server', () => ({ auth: { api: { getSession: vi.fn(async () => null) } } }));
 vi.mock('@nibleaf/bullmq', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nibleaf/bullmq')>()),
@@ -20,6 +21,10 @@ vi.mock('@nibleaf/bullmq', async (importOriginal) => ({
 vi.mock('@nibleaf/email', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nibleaf/email')>()),
   renderSiteSignInCodeEmail: vi.fn(async (input: { code: string; projectName: string }) => {
+    if (failures.renderEmail > 0) {
+      failures.renderEmail -= 1;
+      throw new Error('email rendering is down');
+    }
     sent.push(input);
     return { subject: 'code', html: '', text: '' };
   }),
@@ -241,22 +246,86 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     ]);
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await noCodeSent();
-    // Two burned codes, or three spread beyond a day, don't pause the address.
+    // Once the newest of the three was not burned, the address isn't paused.
     await db.prisma.siteSignInCode.updateMany({
-      where: { projectId: project.id, email: readerEmail, createdAt: { lt: new Date(Date.now() - 150 * 60_000) } },
-      data: { createdAt: new Date(Date.now() - 25 * 60 * 60_000) },
+      where: { projectId: project.id, email: readerEmail, createdAt: { gt: new Date(Date.now() - 90 * 60_000) } },
+      data: { attempts: 2 },
     });
     expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
     await nextCode();
   });
 
-  it('keeps the budget exact when many requests arrive at once', async () => {
+  it('never exceeds the budget when many requests arrive at once, without queueing them on a lock', async () => {
     const { project, readerEmail } = await site('READERS');
     const answers = await Promise.all(Array.from({ length: 20 }, () => startAnswer(project.id, readerEmail)));
     for (const answer of answers) expect(answer).toEqual({ status: 200, body: { data: { sent: true } } });
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } })).toBe(5);
-    expect(sent).toHaveLength(5);
+    // Requests that find another issuance in progress send nothing instead of waiting.
+    const issued = await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } });
+    expect(issued).toBeGreaterThanOrEqual(1);
+    expect(issued).toBeLessThanOrEqual(5);
+    expect(sent).toHaveLength(issued);
+  });
+
+  it('keeps the pause for a day after the third burned code, even when the first is older than a day', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await pastCodes(project.id, readerEmail, [
+      { minutesAgo: 60, attempts: 5 },
+      { minutesAgo: 20 * 60, attempts: 5 },
+      { minutesAgo: 30 * 60, attempts: 5 },
+    ]);
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+  });
+
+  it('accepts only the newest code, so an earlier code stays dead after the newest is used', async () => {
+    const { project, readerEmail } = await site('READERS');
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    const first = await nextCode();
+    // Outside the 15-minute window only matters for timing; a second code now.
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    const second = await nextCode();
+    expect((await post(`sign-in/${project.id}/verify`, { email: readerEmail, code: first })).status).toBe(400);
+    expect((await post(`sign-in/${project.id}/verify`, { email: readerEmail, code: second })).status).toBe(200);
+    expect((await post(`sign-in/${project.id}/verify`, { email: readerEmail, code: first })).status).toBe(400);
+  });
+
+  it('does not count a code that could not be sent, and tells the email worker when the code expires', async () => {
+    const { project, readerEmail } = await site('READERS');
+    const { createJob } = await import('@nibleaf/bullmq');
+    vi.mocked(createJob).mockClear();
+    failures.renderEmail = 1;
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(await db.prisma.siteSignInCode.count({ where: { projectId: project.id, email: readerEmail } })).toBe(0);
+    await post(`sign-in/${project.id}/start`, { email: readerEmail });
+    await nextCode();
+    const row = await db.prisma.siteSignInCode.findFirstOrThrow({ where: { projectId: project.id, email: readerEmail } });
+    expect(vi.mocked(createJob)).toHaveBeenCalledWith('email', {
+      name: 'send-email',
+      data: expect.objectContaining({ to: readerEmail, auth: { purpose: 'otp', expiresAt: row.expiresAt.getTime() } }),
+    });
+  });
+
+  it('gives a suspended team member no code and ends their existing site session', async () => {
+    const { project, user, memberEmail } = await site('WORKSPACE');
+    const { cookie } = await signIn(project.id, memberEmail);
+    expect((await readPage(project.id, cookie)).status).toBe(200);
+    await db.prisma.user.update({ where: { id: user.id }, data: { suspendedAt: new Date() } });
+    expect((await readPage(project.id, cookie)).status).toBe(404);
+    expect(await startAnswer(project.id, memberEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+  });
+
+  it('refuses a code when the team member was suspended after it was sent', async () => {
+    const { project, user, memberEmail } = await site('READERS');
+    await post(`sign-in/${project.id}/start`, { email: memberEmail });
+    const code = await nextCode();
+    await db.prisma.user.update({ where: { id: user.id }, data: { banned: true } });
+    const response = await post(`sign-in/${project.id}/verify`, { email: memberEmail, code });
+    expect(response.status).toBe(400);
+    expect(response.headers.getSetCookie()).toEqual([]);
+    expect(await db.prisma.siteMemberSession.count({ where: { projectId: project.id } })).toBe(0);
   });
 
   it('never sends a code for a public site', async () => {

@@ -2111,6 +2111,7 @@
   "site_privateinviteaccept": "Ouvrir la documentation",
   "site_privateinviteused": "Ce lien d'invitation a déjà été utilisé ou a expiré. Saisissez votre e-mail pour recevoir un code de connexion.",
   "site_signout": "Se déconnecter",
+  "site_signoutfailed": "Impossible de vous déconnecter. Vérifiez votre connexion et réessayez.",
   "site_pageunavailable": "Cette page n'est pas disponible.",
   "site_changelogsubtitle": "Chaque mise à jour envoyée à ces documents.",
   "site_changelogempty": "Aucune version pour le moment.",

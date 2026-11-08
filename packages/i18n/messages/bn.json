@@ -2047,6 +2047,7 @@
   "site_privateinviteaccept": "ডকুমেন্টেশন খুলুন",
   "site_privateinviteused": "এই আমন্ত্রণ লিঙ্কটি আগেই ব্যবহার হয়েছে বা মেয়াদোত্তীর্ণ। বদলে সাইন-ইন কোড পেতে আপনার ইমেল লিখুন।",
   "site_signout": "সাইন আউট",
+  "site_signoutfailed": "সাইন আউট করা যায়নি। আপনার সংযোগ দেখে আবার চেষ্টা করুন।",
   "site_pageunavailable": "এই পৃষ্ঠাটি উপলব্ধ নয়।",
   "site_changelogsubtitle": "প্রতিটি আপডেট এই ডক্সে পাঠানো হয়।",
   "site_changelogempty": "এখনও কোন রিলিজ.",

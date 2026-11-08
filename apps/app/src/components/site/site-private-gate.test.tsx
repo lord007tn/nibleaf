@@ -112,4 +112,47 @@ describe('private site sign-in screen', () => {
     expect(container.querySelector('[role="status"]')?.textContent).toContain('already used');
     expect(container.querySelector('input[type="email"]')).not.toBeNull();
   });
+
+  it('signs in with a code and returns to the requested page with its query', async () => {
+    window.history.replaceState(null, '', '/sites/site-1/guide?lang=ar');
+    const onSignedIn = vi.fn();
+    fetchMock.mockResolvedValueOnce(answer(200, { data: { sent: true } })).mockResolvedValueOnce(answer(200, { data: { ok: true } }));
+    await render({ onSignedIn });
+    await type('input[type="email"]', 'reader@example.com');
+    await submit();
+    await type('input[autocomplete="one-time-code"]', '123456');
+    await submit();
+    expect(onSignedIn).toHaveBeenCalledOnce();
+    // Nothing navigated away: reloading this URL is the return to the page.
+    expect(`${window.location.pathname}${window.location.search}`).toBe('/sites/site-1/guide?lang=ar');
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('accepts an invitation and opens the documentation at the same address', async () => {
+    window.history.replaceState(null, '', '/sites/site-1?lang=ar#reader-invite=invite-token-1234567890');
+    const onSignedIn = vi.fn();
+    fetchMock.mockResolvedValueOnce(answer(200, { data: { ok: true } }));
+    await render({ onSignedIn });
+    await submit();
+    expect(onSignedIn).toHaveBeenCalledOnce();
+    expect(`${window.location.pathname}${window.location.search}${window.location.hash}`).toBe('/sites/site-1?lang=ar');
+  });
+
+  it('keeps the invitation after a server error so the reader can try again', async () => {
+    window.history.replaceState(null, '', '/sites/site-1#reader-invite=invite-token-1234567890');
+    fetchMock.mockResolvedValueOnce(answer(503));
+    await render();
+    await submit();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Something went wrong');
+    expect(container.querySelector('input[type="email"]')).toBeNull();
+    expect(container.textContent).toContain("You're invited to read Acme Docs");
+  });
+
+  it('offers the email code for a damaged invitation link instead of failing', async () => {
+    window.history.replaceState(null, '', '/sites/site-1#reader-invite=%E0%A4');
+    await render();
+    expect(window.location.hash).toBe('');
+    expect(container.querySelector('input[type="email"]')).not.toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
