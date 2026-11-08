@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "Undangan ini telah dikirim ke {email}. Masuk dengan alamat itu untuk menerimanya.",
   "auth_invite_expirederror": "Undangan ini telah kedaluwarsa. Minta pengundang untuk mengirimkan yang baru.",
   "auth_invite_notfound": "Undangan ini tidak dapat ditemukan. Tautan mungkin tidak valid atau sudah digunakan.",
+  "auth_invite_alreadyused": "Undangan ini sudah digunakan. Jika Anda masih memerlukan akses, minta undangan baru kepada orang yang mengundang Anda.",
   "auth_invite_createaccounttojoin": "Buat akun Anda untuk bergabung",
   "auth_invite_signintojoin": "Masuk untuk bergabung",
   "auth_invite_gotoapp": "Buka situs saya",

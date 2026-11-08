@@ -9,12 +9,14 @@ import { AuthProviders } from '@/components/auth-providers';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useGetInvitationInfo } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { getInvitationInfoQueryOptions } from '@/hooks/api/query-options';
+import { getInvitationInfoQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { AuthLayout } from '@/layouts/auth';
 import { clearPendingInvitation, readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
+import { rememberActiveProject } from '@/stores/active-project';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   loader: ({ context: { queryClient }, params: { invitationId } }) => prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId)),
@@ -47,21 +49,23 @@ function AcceptInviteContent() {
   const invitation = useGetInvitationInfo(invitationId);
   const info = invitation.data ?? null;
   const missingInvitation = invitation.error instanceof ApiResponseError && invitation.error.status === 404;
+  // Accepted (or otherwise closed) invitations can't be accepted again.
+  const used = Boolean(info && info.status !== 'pending');
 
   // Stash the invitation so sign-in/up can route back here afterwards.
   useEffect(() => {
-    if (info?.expired || missingInvitation || (invitation.isSuccess && !info)) {
+    if (info?.expired || used || missingInvitation || (invitation.isSuccess && !info)) {
       if (readPendingInvitation() === invitationId) clearPendingInvitation();
     } else if (!isPending && !session && info) {
       setPendingInvitation(invitationId);
     }
-  }, [isPending, session, invitationId, info, invitation.isSuccess, missingInvitation]);
+  }, [isPending, session, invitationId, info, used, invitation.isSuccess, missingInvitation]);
 
   const accept = async () => {
     setError(null);
     setAccepting(true);
     try {
-      const { error: acceptError } = await authClient.organization.acceptInvitation({ invitationId });
+      const { data: accepted, error: acceptError } = await authClient.organization.acceptInvitation({ invitationId });
       if (acceptError) {
         const blob = `${acceptError.code ?? ''} ${acceptError.message ?? ''}`.toUpperCase();
         if (blob.includes('RECIPIENT') && info) {
@@ -77,7 +81,23 @@ function AcceptInviteContent() {
       }
       clearPendingInvitation();
       toast.success(t('auth.invite.acceptedToast'));
-      await navigate({ to: '/app' });
+      // Open the site they just joined, selected, instead of whichever site the
+      // dashboard last had open (an existing user's own site). The site list is
+      // refetched so it includes the new site.
+      const organizationId = accepted?.invitation?.organizationId;
+      // Bind the dashboard cache to this account first: after "Log in with the
+      // invited account", /app would otherwise see a new user and clear the
+      // selection made below.
+      if (session) syncDashboardSession(queryClient, session.user.id);
+      await queryClient.invalidateQueries({ queryKey: projectsQueryOptions().queryKey });
+      const sites = organizationId ? await queryClient.fetchQuery(projectsQueryOptions()).catch(() => []) : [];
+      const joined = sites.find((site) => site.organizationId === organizationId);
+      if (joined) {
+        rememberActiveProject(joined.id);
+        await navigate({ to: '/app/projects/$projectId', params: { projectId: joined.id } });
+      } else {
+        await navigate({ to: '/app' });
+      }
     } catch {
       setError(t('auth.invite.error'));
     } finally {
@@ -144,11 +164,11 @@ function AcceptInviteContent() {
     );
   }
 
-  if (info.expired) {
+  if (used || info.expired) {
     return (
       <AuthLayout subtitle={subtitle}>
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-center text-destructive text-sm">
-          {t('auth.invite.expiredError')}
+          {used ? t('auth.invite.alreadyUsed') : t('auth.invite.expiredError')}
         </p>
         {nextStep}
       </AuthLayout>

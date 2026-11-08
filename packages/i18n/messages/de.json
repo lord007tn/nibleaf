@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "Diese Einladung wurde an {email} gesendet. Melden Sie sich mit dieser Adresse an, um es zu akzeptieren.",
   "auth_invite_expirederror": "Diese Einladung ist abgelaufen. Bitten Sie den Einladenden, ein neues zu senden.",
   "auth_invite_notfound": "Diese Einladung konnte nicht gefunden werden. Der Link ist möglicherweise ungültig oder wurde bereits verwendet.",
+  "auth_invite_alreadyused": "Diese Einladung wurde bereits verwendet. Wenn Sie weiterhin Zugriff benötigen, bitten Sie die einladende Person um eine neue Einladung.",
   "auth_invite_createaccounttojoin": "Erstellen Sie Ihr Konto, um beizutreten",
   "auth_invite_signintojoin": "Melden Sie sich an, um beizutreten",
   "auth_invite_gotoapp": "Zu meinen Websites",

@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "此邀请已发送至 {email}。使用该地址登录以接受它。",
   "auth_invite_expirederror": "此邀请已过期。请邀请者发送一份新的。",
   "auth_invite_notfound": "找不到此邀请。该链接可能无效或已被使用。",
+  "auth_invite_alreadyused": "此邀请已被使用。如果你仍需要访问权限，请向邀请你的人索取新的邀请。",
   "auth_invite_createaccounttojoin": "创建您的帐户以加入",
   "auth_invite_signintojoin": "登录加入",
   "auth_invite_gotoapp": "前往我的网站",

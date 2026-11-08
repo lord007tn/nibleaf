@@ -5,7 +5,7 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
@@ -16,7 +16,7 @@ import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
-import { readPendingInvitation } from '@/lib/invitations';
+import { afterAuthDestination } from '@/lib/invitations';
 import { authClient, signIn } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-up')({
@@ -39,6 +39,7 @@ const SIGN_UP_SKELETON_FIELDS = ['name', 'email'];
 function SignUpPage() {
   const t = useT();
   const navigate = useNavigate();
+  const router = useRouter();
   const search = Route.useSearch();
   const lockedEmail = Boolean(search.email);
   const [name, setName] = useState('');
@@ -59,16 +60,14 @@ function SignUpPage() {
   const signupDisabled = publicMeta?.signupDisabled ?? true;
 
   const normalizedEmail = email.trim().toLowerCase();
-  const invitationId = search.invite ?? readPendingInvitation() ?? undefined;
+  // The invitation (or other page) that sent the visitor here; the (auth) guard uses the same answer.
+  const destination = afterAuthDestination(search);
   const firstPublish = search.intent === 'first-publish';
-  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : firstPublish ? '/app?firstPublish=true' : '/app';
+  const afterAuthPath = destination ?? (firstPublish ? '/app?firstPublish=true' : '/app');
 
   const finishSignUp = async () => {
-    if (invitationId) {
-      await navigate({ to: '/accept-invite/$invitationId', params: { invitationId } });
-    } else {
-      await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
-    }
+    if (destination) router.history.push(destination);
+    else await navigate({ to: '/app', search: firstPublish ? { firstPublish: true } : {} });
   };
 
   const requestCode = async (kind: 'send' | 'resend' = 'send') => {
