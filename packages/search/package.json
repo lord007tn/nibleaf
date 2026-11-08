@@ -23,6 +23,7 @@
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "bench": "vitest bench --run src/arabic.bench.ts",
     "eval:rag": "tsx scripts/evaluate-openrouter.ts",
+    "eval:embeddings": "tsx scripts/evaluate-embeddings.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

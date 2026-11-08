@@ -100,7 +100,7 @@ Both variables must be present and non-blank after trimming surrounding whitespa
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `OPENROUTER_API_KEY` | For editor drafting or instance-managed AI | Empty | Instance OpenRouter credential for drafting, embeddings and answers. A selected workspace search connection uses its own saved key. |
-| `AI_DRAFT_MODEL` | No | `openai/gpt-4o-mini` | OpenRouter model used for explicit editor writing actions. |
+| `AI_DRAFT_MODEL` | No | `openai/gpt-6-luna` | OpenRouter model used for explicit editor writing actions. |
 | `AI_DAILY_LIMIT` | No | `50` | Per-workspace daily editor-drafting request limit; `0` disables drafting. |
 | `MARKETING_GTM_ID` | No | Empty | Preferred GTM container ID for public instance marketing pages. It is public metadata and loads only after explicit visitor consent. Configure the GA4 Google tag in GTM with automatic pageviews disabled; Nibleaf pushes one manual `page_view` per accepted route plus allowlisted events. This variable takes precedence over `MARKETING_GA4_ID`. |
 | `MARKETING_GA4_ID` | No | Empty | Legacy direct-GA4 fallback for existing self-hosters. It loads only after explicit consent and is ignored when `MARKETING_GTM_ID` is configured. |
@@ -203,7 +203,7 @@ repeat the workflow checks in [production readiness](/self-hosting/production).
 | `SEARCH_DENSE_MIN_SCORE` | `0.35` | Cosine-score threshold before rank fusion, -1 to 1. |
 | `SEARCH_CACHE_TTL_MS` | `60000` | Search cache lifetime, 0–3600000 ms. |
 | `SEARCH_ANSWER_ENABLED` | `false` | Enables instance-managed answers; workspace selection and site opt-in are separate. |
-| `SEARCH_ANSWER_MODEL` | `openai/gpt-5.6-luna` | Instance answer model; a selected workspace connection has its own model. |
+| `SEARCH_ANSWER_MODEL` | `openai/gpt-6-luna` | Instance answer model; a selected workspace connection has its own model. |
 | `SEARCH_ANSWER_TIMEOUT_MS` | `30000` | Answer provider timeout, 1000–120000 ms. |
 | `SEARCH_ANSWER_DAILY_PER_PROJECT` | `200` | Daily project answer quota, 0–100000; each chat question also counts. |
 | `SEARCH_ANSWER_RATE_LIMIT_PER_MIN` | `10` | Per-IP minute limit, 1–1000; separate buckets for answer and chat routes. |

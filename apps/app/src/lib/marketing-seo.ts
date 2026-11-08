@@ -4,13 +4,21 @@ import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
 /**
  * SEO helpers for the marketing + legal routes served from the cloud app
  * (nibleaf.com): /, /cloud, /pricing, /terms, /privacy, /self-hosting, /about,
- * and the /compare and /alternatives pages. Typical usage in a route:
+ * and the /compare and /alternatives pages. Routes import this module lazily
+ * from their loader and pass the finished head through loader data, so it stays
+ * out of every published docs page (BUNDLE_BUDGET.md):
  *
- *   head: () => ({
+ *   const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
  *     meta: pageMeta({ title: 'Pricing — Nibleaf', description: '…', path: '/pricing' }),
  *     links: [{ rel: 'canonical', href: canonicalHref('/pricing') }],
- *     scripts: [marketingLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }])],
- *   }),
+ *     scripts: [breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }])],
+ *   });
+ *
+ *   loader: async () => {
+ *     const seo = await import('@/lib/marketing-seo');
+ *     return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+ *   },
+ *   head: ({ loaderData }) => loaderData?.head ?? {},
  */
 
 const SITE_NAME = 'Nibleaf';
@@ -150,3 +158,6 @@ export function marketingLd() {
 }
 
 export { getGithubStarsFn } from '@/functions/marketing';
+
+/** This module's helpers, for head builders that receive them from a loader's lazy import. */
+export type MarketingSeo = typeof import('./marketing-seo');

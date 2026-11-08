@@ -56,7 +56,9 @@ export const analyticsEventNameSchema = z.enum(analyticsEventNames);
 export type AnalyticsEventName = z.infer<typeof analyticsEventNameSchema>;
 
 const path = z.string().trim().max(512);
-const boundedDimension = z.string().trim().max(120);
+/** Longest free-text dimension an event accepts; a longer value rejects the whole event. */
+export const ANALYTICS_DIMENSION_MAX_LENGTH = 120;
+const boundedDimension = z.string().trim().max(ANALYTICS_DIMENSION_MAX_LENGTH);
 const lifecyclePayload = z
   .object({
     name: z.enum([
@@ -122,6 +124,7 @@ const aiPayload = z
   .object({
     name: z.enum(['answer_started', 'answer_completed', 'answer_failed', 'answer_cancelled', 'citation_shown', 'citation_clicked']),
     provider: boundedDimension.optional(),
+    connectionSource: z.enum(['workspace', 'instance']).optional(),
     model: boundedDimension.optional(),
     latencyMs: z.number().int().min(0).max(3_600_000).optional(),
     promptTokens: z.number().int().min(0).max(100_000_000).optional(),

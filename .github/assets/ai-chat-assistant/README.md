@@ -5,9 +5,9 @@ its own PostgreSQL database, Redis namespace, ClickHouse database and Qdrant
 collection. Everything shown is real: the reader site, the Start server function,
 the Hono chat endpoint, hybrid retrieval, worker indexing, ClickHouse records and
 the dashboard. Answers were generated **live** through OpenRouter
-(`openai/gpt-5.6-luna` for answers, `openai/gpt-6-luna` for rewriting and
-suggestions, embeddings `openai/text-embedding-3-small`) with a dedicated low-limit
-test key. The site content ("Acme Notes") and the demo account are fictional.
+(the then-default models for answers, rewriting, suggestions and embeddings)
+with a dedicated low-limit test key. The site content ("Acme Notes") and the demo
+account are fictional.
 
 The reader and dashboard captures were refreshed on 7 November 2026 at 6d98ec3d
 (prompt `chat-v5`). The search hand-off, search settings, theme cards, typing

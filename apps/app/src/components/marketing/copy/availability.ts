@@ -24,7 +24,8 @@ export type RolloutCapability =
   | 'bringYourOwnKey'
   | 'readerThemes'
   | 'gitbookImport'
-  | 'readerAnalytics';
+  | 'readerAnalytics'
+  | 'dashboardOnboarding';
 
 // Typed as the full union, not narrowed literals, so moving a value forward needs no other change.
 const AVAILABILITY: Record<RolloutCapability, Availability> = {
@@ -40,6 +41,8 @@ const AVAILABILITY: Record<RolloutCapability, Availability> = {
   gitbookImport: 'in-source',
   /** The ClickHouse reader-analytics pipeline (#97): consent linking, no IP storage, the two-visit search-term threshold. */
   readerAnalytics: 'in-source',
+  /** The start-here checklist and page, setting and action search in the command palette (#283). */
+  dashboardOnboarding: 'in-source',
 };
 
 const NOTES: Record<Availability, Record<MarketingLang, string>> = {

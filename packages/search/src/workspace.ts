@@ -1,32 +1,45 @@
 import { prisma } from '@nibleaf/database';
 import { aiConnectionConfigSchema, aiCredentialSchema, type aiProviderIdSchema, aiSelectionSchema } from '@nibleaf/shared/ai';
 import { decodeEncryptionKey, decryptSecret } from '@nibleaf/shared/crypto';
+import { OpenRouter } from '@openrouter/sdk';
 import { openaiCompatibleText } from '@tanstack/ai-openai/compatible';
+import OpenAI from 'openai';
 import { z } from 'zod';
 import { keys } from './keys';
-import { OpenAIChatProvider, OpenAIEmbeddingProvider, OpenRouterChatProvider, OpenRouterEmbeddingProvider } from './providers';
+import {
+  AI_REASONING_EFFORT,
+  OpenAIChatProvider,
+  OpenAIEmbeddingProvider,
+  OpenRouterChatProvider,
+  OpenRouterEmbeddingProvider,
+  openaiReasoningEffort,
+  type ReasoningEffort,
+} from './providers';
 
 const configurationSchema = z.object({
   search: z.object({ aiProvider: aiSelectionSchema.optional(), aiAnswers: z.boolean().optional() }).optional(),
 });
 
-/** Resolve live project state for every operation. An explicit workspace selection
- * never falls back to another tenant's or the instance's paid credentials. */
-export const resolveWorkspaceAi = async (projectId: string) => {
+/** Resolve live project state and credential ownership once per operation.
+ * Only drafting opts into an instance fallback; explicit disable always wins.
+ * `textOnly` is for drafting too: it never queries the search index, so only the
+ * embedding-model checks are skipped. Status, health, credential and
+ * project/provider binding are checked for every purpose. */
+export const resolveWorkspaceAiConfiguration = async (projectId: string, options: { instanceFallback?: boolean; textOnly?: boolean } = {}) => {
   const env = keys();
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { config: true } });
-  if (!project) return null;
+  if (!project) return { runtime: null, reason: 'not_configured' as const };
   const configuration = configurationSchema.safeParse(project.config ?? {});
-  if (!configuration.success) return null;
+  if (!configuration.success) return { runtime: null, reason: 'not_configured' as const };
   const selection = configuration.data.search?.aiProvider ?? 'instance';
   // Read the live switch here so a replica with cached site config cannot keep
   // spending the workspace key after answers are turned off.
   const answersSwitchedOn = configuration.data.search?.aiAnswers === true;
-  if (selection === 'disabled') return null;
-  if (selection === 'instance') {
-    return env.OPENROUTER_API_KEY
+  if (selection === 'disabled') return { runtime: null, reason: 'disabled' as const };
+  const instance = (): WorkspaceAiRuntime | null =>
+    env.OPENROUTER_API_KEY
       ? {
-          providerId: 'openrouter' as const,
+          providerId: 'openrouter',
           apiKey: env.OPENROUTER_API_KEY,
           answerModel: env.SEARCH_ANSWER_MODEL,
           embeddingModel: env.SEARCH_EMBEDDING_MODEL,
@@ -34,28 +47,38 @@ export const resolveWorkspaceAi = async (projectId: string) => {
           answersEnabled: env.SEARCH_ANSWER_ENABLED && answersSwitchedOn,
         }
       : null;
-  }
-  const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId: selection } } });
-  if (connection?.status !== 'ACTIVE' || connection.lastVerificationStatus !== 'HEALTHY') return null;
-  const config = aiConnectionConfigSchema.safeParse(connection.config);
-  if (!config.success || config.data.embeddingModel !== env.SEARCH_EMBEDDING_MODEL) return null;
-  try {
-    if (!env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY) return null;
-    const keyring = [env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY, ...env.INTEGRATION_CREDENTIAL_PREVIOUS_KEYS].map(decodeEncryptionKey);
-    const credential = aiCredentialSchema.parse(JSON.parse(decryptSecret(connection.credentialEncrypted, keyring)));
-    if (credential.projectId !== projectId || credential.providerId !== selection) return null;
-    if (selection === 'openai' && !config.data.embeddingModel.startsWith('openai/')) return null;
-    return {
-      providerId: selection,
-      apiKey: credential.apiKey,
-      ...config.data,
-      revision: `${connection.id}:${connection.revision}`,
-      answersEnabled: answersSwitchedOn,
-    };
-  } catch {
-    return null;
-  }
+  const resolveConnection = async (providerId: z.infer<typeof aiProviderIdSchema>): Promise<WorkspaceAiRuntime | null> => {
+    const connection = await prisma.projectIntegration.findUnique({ where: { projectId_providerId: { projectId, providerId } } });
+    if (connection?.status !== 'ACTIVE' || connection.lastVerificationStatus !== 'HEALTHY') return null;
+    const config = aiConnectionConfigSchema.safeParse(connection.config);
+    if (!config.success) return null;
+    // Search and answers query the instance's index, so they need its embedding model.
+    const embeddingCompatible =
+      config.data.embeddingModel === env.SEARCH_EMBEDDING_MODEL && (providerId !== 'openai' || config.data.embeddingModel.startsWith('openai/'));
+    if (!options.textOnly && !embeddingCompatible) return null;
+    try {
+      if (!env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY) return null;
+      const keyring = [env.INTEGRATION_CREDENTIAL_ENCRYPTION_KEY, ...env.INTEGRATION_CREDENTIAL_PREVIOUS_KEYS].map(decodeEncryptionKey);
+      const credential = aiCredentialSchema.parse(JSON.parse(decryptSecret(connection.credentialEncrypted, keyring)));
+      if (credential.projectId !== projectId || credential.providerId !== providerId) return null;
+      return {
+        providerId,
+        apiKey: credential.apiKey,
+        ...config.data,
+        revision: `${connection.id}:${connection.revision}`,
+        answersEnabled: answersSwitchedOn,
+      };
+    } catch {
+      return null;
+    }
+  };
+  const runtime = selection === 'instance' ? instance() : await resolveConnection(selection);
+  const resolved = runtime ?? (options.instanceFallback ? instance() : null);
+  return { runtime: resolved, reason: resolved ? null : ('not_configured' as const) };
 };
+
+/** Search and chat never fall back from an explicitly selected workspace key. */
+export const resolveWorkspaceAi = async (projectId: string) => (await resolveWorkspaceAiConfiguration(projectId)).runtime;
 
 export interface WorkspaceAiRuntime {
   providerId: z.infer<typeof aiProviderIdSchema>;
@@ -65,6 +88,46 @@ export interface WorkspaceAiRuntime {
   revision: string;
   answersEnabled: boolean;
 }
+
+/** Plain Markdown generation with the same provider credentials as search/chat.
+ * Drafting keeps the SDK timeouts: OpenRouter has no SDK deadline; direct OpenAI
+ * defaults to ten minutes. Search's short answer timeout must not truncate drafts.
+ * No sampling settings: reasoning models reject or ignore them. The product sends no
+ * output cap; `maxTokens` exists so a benchmark can bound its spend. */
+export const completeWorkspaceText = async (
+  runtime: WorkspaceAiRuntime,
+  messages: Array<{ role: 'system' | 'user'; content: string }>,
+  attribution?: { siteUrl: string; title: string },
+  effort: ReasoningEffort = AI_REASONING_EFFORT.draft,
+  maxTokens?: number,
+) => {
+  if (runtime.providerId === 'openai') {
+    const completion = await new OpenAI({ apiKey: runtime.apiKey, maxRetries: 0 }).chat.completions.create({
+      model: runtime.answerModel,
+      messages,
+      ...openaiReasoningEffort(runtime.answerModel, effort),
+      ...(maxTokens ? { max_completion_tokens: maxTokens } : {}),
+    });
+    return {
+      text: completion.choices[0]?.message.content ?? '',
+      promptTokens: completion.usage?.prompt_tokens,
+      completionTokens: completion.usage?.completion_tokens,
+    };
+  }
+  const completion = await new OpenRouter({
+    apiKey: runtime.apiKey,
+    httpReferer: attribution?.siteUrl,
+    appTitle: attribution?.title,
+  }).chat.send({
+    chatRequest: { model: runtime.answerModel, messages, reasoning: { effort }, stream: false, ...(maxTokens ? { maxTokens } : {}) },
+  });
+  if (!('choices' in completion)) throw new Error('OpenRouter returned an unexpected streaming completion.');
+  return {
+    text: String(completion.choices[0]?.message.content ?? ''),
+    promptTokens: completion.usage?.promptTokens,
+    completionTokens: completion.usage?.completionTokens,
+  };
+};
 
 export const workspaceEmbeddingProvider = (runtime: WorkspaceAiRuntime) => {
   const env = keys();
@@ -80,7 +143,7 @@ export const workspaceEmbeddingProvider = (runtime: WorkspaceAiRuntime) => {
 };
 
 export const workspaceAnswerProvider = (runtime: WorkspaceAiRuntime) => {
-  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS, temperature: 0 };
+  const options = { apiKey: runtime.apiKey, model: runtime.answerModel, timeoutMs: keys().SEARCH_ANSWER_TIMEOUT_MS };
   return runtime.providerId === 'openai' ? new OpenAIChatProvider(options) : new OpenRouterChatProvider(options);
 };
 
@@ -143,9 +206,14 @@ export const costReportingFetch =
     return new Response(forward, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
 
-/** Direct OpenAI mirrors OpenAIChatProvider (no temperature, completion-token cap);
- * OpenRouter mirrors OpenRouterChatProvider (deterministic temperature). */
+/** Wire fields for the chat adapter, which sends them as they are. Direct OpenAI
+ * mirrors OpenAIChatProvider (completion-token cap, `reasoning_effort` only for
+ * models that accept it). OpenRouter takes `reasoning.effort` and is asked to
+ * leave the reasoning text out of the reply; the adapter would keep it apart
+ * from the answer text anyway. Either cap counts reasoning tokens. */
 export const workspaceChatModelOptions =
-  (runtime: Pick<WorkspaceAiRuntime, 'providerId'>) =>
+  (runtime: Pick<WorkspaceAiRuntime, 'providerId' | 'answerModel'>, effort: ReasoningEffort = AI_REASONING_EFFORT.answer) =>
   (maxTokens: number): Record<string, unknown> =>
-    runtime.providerId === 'openai' ? { max_completion_tokens: maxTokens } : { temperature: 0, max_tokens: maxTokens };
+    runtime.providerId === 'openai'
+      ? { max_completion_tokens: maxTokens, ...openaiReasoningEffort(runtime.answerModel, effort) }
+      : { max_tokens: maxTokens, reasoning: { effort, exclude: true } };

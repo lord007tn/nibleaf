@@ -30,8 +30,8 @@ Use a provider key with a spending cap; never commit or print it.
 
 ```bash
 OPENROUTER_API_KEY=… \
-EVAL_MODELS=openai/gpt-6-luna,openai/gpt-6.1-terra \
-EVAL_FIXTURES=docs EVAL_MODE=chat EVAL_JUDGE_MODEL=openai/gpt-6.1-terra \
+EVAL_MODELS=openai/gpt-6-luna,openai/gpt-6.1-terra EVAL_REASONING_EFFORTS=low,medium \
+EVAL_FIXTURES=docs EVAL_MODE=chat \
 EVAL_MAX_COST_USD=3 pnpm --filter @nibleaf/search eval:rag
 ```
 
@@ -41,14 +41,15 @@ that does not exist fails rather than being guessed.
 
 | Variable | Meaning |
 | --- | --- |
-| `EVAL_MODELS` | Comma-separated exact model IDs. Without it, every live Luna and Terra match is used. |
+| `EVAL_MODELS` | Comma-separated exact model IDs (default `openai/gpt-6-luna,openai/gpt-6-luna-pro,openai/gpt-6.1-terra`). |
+| `EVAL_REASONING_EFFORTS` | Comma-separated efforts (`none`, `low`, `medium`, `high`); each model runs at each. Default: the product's answer effort. |
 | `EVAL_FIXTURES` | `docs`, `legacy` or `all` (default). |
 | `EVAL_MODE` | `chat` (the assistant's policy), `strict` (one-shot answers) or `both` (default). |
 | `EVAL_LIMIT` | Cases per model and mode, for smoke runs. |
-| `EVAL_JUDGE_MODEL` | Model that scores answers against [`judge-rubric.md`](./judge-rubric.md). |
+| `EVAL_JUDGE_MODEL` | Model that scores answers against [`judge-rubric.md`](./judge-rubric.md) (default `openai/gpt-6.1-sol`; never one of `EVAL_MODELS`). |
 | `EVAL_CONDENSE_MODELS` | Extra models to compare for follow-up rewriting only. |
 | `EVAL_CONCURRENCY` | Parallel requests (default 2). |
-| `EVAL_MAX_COST_USD` | Conservative spending ceiling, reserved from catalog prices before each call. |
+| `EVAL_MAX_COST_USD` | Conservative spending ceiling, reserved from catalog prices before each call and never released, so set it above the expected spend. |
 
 `scripts/smoke-openrouter.sh <key-file>` runs four cases on two models.
 
@@ -67,9 +68,45 @@ code 1 after saving partial results.
   quality from the rubric. The judge sees only the supplied excerpts.
 - **Arabic:** Arabic-letter share of Arabic answers and whether mixed questions
   get Arabic prose with product names kept.
-- **Speed and cost:** time to first token and turn latency (median and p90),
+- **Speed and cost:** time to first token and turn latency (p50, p90 and p95),
   tokens in and out, and answer cost per 1,000 answers from provider-reported
   cost. Rewrite and judge costs are reported separately.
+- **Truncation:** calls that stopped at their output cap. Reasoning tokens count
+  against the cap, so a higher effort can cut answers short.
+
+Each row is one model at one reasoning effort in one mode. Requests go through
+the product's own request options (`workspaceChatModelOptions` and
+`OpenRouterChatProvider`), so the effort measured is the effort sent.
+
+## Drafting and embeddings
+
+`pnpm --filter @nibleaf/server eval:drafts` runs the editor's writing actions
+(continue, rephrase, outline, summarize) in English and Arabic on two models
+(`EVAL_DRAFT_MODELS`, default `openai/gpt-6-luna,openai/gpt-6.1-terra`) with the
+real prompts and request path. It writes `drafts-blind.json` (output text only,
+labelled A and B in a random order per item), `drafts-key.json` (the seed, the
+labels and each output's latency and cost) and `drafts-summary.json` to
+`EVAL_DRAFT_OUTPUT_DIR`. Give a judge only the blind file.
+
+`pnpm --filter @nibleaf/search eval:embeddings` chunks every page in `docs/`
+with the product's chunker and embedding text, embeds it with each model in
+`EVAL_EMBED_MODELS` at its native size and at 1536, and reports Hit@5 (any
+relevant chunk in the top five), recall@5 (the share of relevant chunks in the
+top five) and MRR@10 for the docs fixtures' questions by language, cost and
+reindex time.
+Results go to `EVAL_EMBED_OUTPUT_DIR`; corpus vectors are cached in
+`EVAL_EMBED_CACHE_DIR`, so a rerun does not pay again. Retrieval is dense-only,
+without the BM25 half of hybrid search.
 
 A heuristic or LLM judge is a signal, not a verdict: spot-check answers in the
 Markdown receipt before changing a default.
+
+## Current defaults
+
+Answers and drafts use `openai/gpt-6-luna` at `low` reasoning effort
+(`AI_REASONING_EFFORT` in `src/providers.ts`). On the full fixture set
+(November 2026, judge `openai/gpt-6.1-sol`), Luna at `low` matched or beat the
+previous default on every measure at less than half its answer cost. Terra
+scored slightly higher with the judge at about ten times the cost. `medium` added
+latency without a clear quality gain, and cut off two of nine follow-up rewrites
+at their 120-token cap.

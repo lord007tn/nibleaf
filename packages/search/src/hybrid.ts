@@ -285,6 +285,12 @@ export const chunkSearchDocument = (
   );
 };
 
+/** The text indexing embeds for a chunk: title, heading path, description and content. */
+export const searchEmbeddingText = (chunk: SearchChunk): string =>
+  [`# ${chunk.title}`, chunk.headingPath.length > 0 ? chunk.headingPath.join(' > ') : '', chunk.description, chunk.content]
+    .filter(Boolean)
+    .join('\n\n');
+
 export const authorizationScopeKey = (allowedPageIds: ReadonlySet<string> | null): string => {
   if (allowedPageIds === null) return 'full';
   return `pages-${sha256(

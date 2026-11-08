@@ -1,12 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { LandingPage } from '@/components/marketing/landing/landing-page';
-import { getGithubStarsFn } from '@/lib/marketing-seo';
 
 export const Route = createFileRoute('/')({
-  // The head is built in a lazily imported module, not in every page's route tree.
+  // The head and the SEO helpers load with this page, not with every page's route tree.
   loader: async () => {
-    const [stars, { landingHead }] = await Promise.all([getGithubStarsFn(), import('@/components/marketing/copy/landing-head')]);
-    return { stars, head: landingHead('en') };
+    const [{ getGithubStarsFn }, { landingHead }] = await Promise.all([
+      import('@/lib/marketing-seo'),
+      import('@/components/marketing/copy/landing-head'),
+    ]);
+    return { stars: await getGithubStarsFn(), head: landingHead('en') };
   },
   head: ({ loaderData }) => loaderData?.head ?? {},
   component: Landing,

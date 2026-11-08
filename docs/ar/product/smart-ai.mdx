@@ -1,17 +1,18 @@
 ---
 title: 'اربط مزوّد الذكاء الاصطناعي الخاص بك'
-description: 'استخدم مفتاحك الخاص من OpenAI أو OpenRouter لتشغيل إجابات «اسأل المساعد» في وثائقك المنشورة، واختر النموذج، وأبقِ فهرس البحث جاهزًا.'
+description: 'استخدم مفتاحك الخاص من OpenAI أو OpenRouter لتشغيل إجابات «اسأل المساعد» في وثائقك المنشورة ومساعد الذكاء الاصطناعي في المحرّر، واختر النموذج، وأبقِ فهرس البحث جاهزًا.'
 audience: 'مالكو المواقع والمشرفون'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/smart-ai-section.tsx, apps/app/src/hooks/api/workspace-ai.ts, apps/server/src/actions/workspace-ai.ts, apps/server/src/lib/ai-search/runtime.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
+verified_against: 'apps/app/src/components/project-settings/smart-ai-section.tsx, apps/app/src/hooks/api/workspace-ai.ts, apps/server/src/actions/workspace-ai.ts, apps/server/src/actions/ai.ts, apps/server/src/lib/ai-quota.ts, apps/server/src/lib/ai-search/runtime.ts, packages/search/src/workspace.ts, apps/worker/src/processors/publish.ts, and packages/i18n/messages'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'product/smart-ai'
 ---
 
 يربط قسم **الذكاء الاصطناعي** في الإعدادات موقعك بمزوّد ذكاء اصطناعي، ليتمكن
-القرّاء من استخدام [اسأل المساعد](/ar/product/ai-assistant) في وثائقك المنشورة.
+القرّاء من استخدام [اسأل المساعد](/ar/product/ai-assistant) في وثائقك المنشورة،
+ويتمكن الكتّاب من استخدام **مساعد الذكاء الاصطناعي** في المحرّر.
 يمكنك استخدام مفتاحك الخاص فيُحتسب الاستخدام على حسابك لدى المزوّد، أو استخدام
 المزوّد الذي أعدّه مستضيف Nibleaf لديك.
 
@@ -79,9 +80,16 @@ translation_key: 'product/smart-ai'
 لا يتوفر بعد تسجيل الدخول بحساب OpenAI أو ChatGPT، فاستخدم مفتاح OpenAI API بدلًا
 من ذلك.
 
-يشغّل هذا القسم «اسأل المساعد» للقرّاء. أما **مساعد الذكاء الاصطناعي** في المحرّر
-فلا يستخدم إلا خدمة الذكاء الاصطناعي التي أعدّها مستضيف Nibleaf، ولا يستخدم أبدًا
-المفتاح الذي تربطه هنا.
+## استخدم مساعد الذكاء الاصطناعي في المحرّر
+
+يستخدم **مساعد الذكاء الاصطناعي** في المحرّر الاتصال المختار لموقعك عندما يكون
+صالحًا للاستخدام، فتُرسل مسودتك وتعليماتك إلى ذلك المزوّد لكتابة النص. وإذا لم
+يتوفر للموقع اتصال صالح، يستخدم المساعد المزوّد الذي أعدّه مستضيف Nibleaf، إن
+وُجد. ويؤدي اختيار **إيقاف ذكاء مساحة العمل** إلى إيقاف مساعد الذكاء الاصطناعي
+أيضًا.
+
+تخضع كتابة المسودات لحدّ يومي مشترك لمساحة العمل، بما في ذلك الطلبات التي
+تستخدم مفتاحك الخاص. إذا بلغت الحد، فانتظر حتى يُعاد تعيينه.
 
 ## استكشاف الأخطاء وإصلاحها
 

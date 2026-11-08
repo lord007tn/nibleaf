@@ -30,7 +30,7 @@ export const keys = () =>
       SEARCH_DENSE_MIN_SCORE: z.coerce.number().min(-1).max(1).default(0.35),
       SEARCH_CACHE_TTL_MS: z.coerce.number().int().min(0).max(3_600_000).default(60_000),
       SEARCH_ANSWER_ENABLED: z.stringbool().default(false),
-      SEARCH_ANSWER_MODEL: z.string().default('openai/gpt-5.6-luna'),
+      SEARCH_ANSWER_MODEL: z.string().default('openai/gpt-6-luna'),
       SEARCH_ANSWER_TIMEOUT_MS: z.coerce.number().int().min(1000).max(120_000).default(30_000),
       SEARCH_ANSWER_DAILY_PER_PROJECT: z.coerce.number().int().min(0).max(100_000).default(200),
       SEARCH_ANSWER_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),

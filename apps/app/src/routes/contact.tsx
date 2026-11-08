@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AlertTriangle, ArrowRight, BookOpenCheck, LifeBuoy, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Eyebrow, iconTile, MarketingShell, primaryButton } from '@/components/cloud-marketing';
-import { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { NIBLEAF_ORGANIZATION } from '@/lib/marketing-organization';
+import type { MarketingSeo } from '@/lib/marketing-seo';
 
 const CONTACTS = [
   {
@@ -35,44 +35,50 @@ const CONTACTS = [
   },
 ] as const;
 
-export const Route = createFileRoute('/contact')({
-  loader: async () => ({ stars: await getGithubStarsFn() }),
-  head: () => ({
-    meta: pageMeta({
-      title: 'Contact Nibleaf: support, privacy, security, and corrections',
-      description:
-        'Contact Nibleaf for product support, privacy requests, security disclosures, abuse reports, or corrections to our documentation articles.',
-      path: '/contact',
-    }),
-    links: [{ rel: 'canonical', href: canonicalHref('/contact') }],
-    scripts: [
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'Contact', path: '/contact' },
-      ]),
-      {
-        type: 'application/ld+json',
-        children: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'ContactPage',
-          name: 'Contact Nibleaf',
-          url: canonicalHref('/contact'),
-          mainEntity: {
-            '@type': 'Organization',
-            name: NIBLEAF_ORGANIZATION.name,
-            url: canonicalHref('/'),
-            address: NIBLEAF_ORGANIZATION.address,
-            contactPoint: CONTACTS.map((contact) => ({
-              '@type': 'ContactPoint',
-              contactType: contact.title,
-              email: contact.address,
-              availableLanguage: ['English', 'Arabic'],
-            })),
-          },
-        }),
-      },
-    ],
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo, organization: typeof NIBLEAF_ORGANIZATION) => ({
+  meta: pageMeta({
+    title: 'Contact Nibleaf: support, privacy, security, and corrections',
+    description:
+      'Contact Nibleaf for product support, privacy requests, security disclosures, abuse reports, or corrections to our documentation articles.',
+    path: '/contact',
   }),
+  links: [{ rel: 'canonical', href: canonicalHref('/contact') }],
+  scripts: [
+    breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: 'Contact', path: '/contact' },
+    ]),
+    {
+      type: 'application/ld+json',
+      children: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'ContactPage',
+        name: 'Contact Nibleaf',
+        url: canonicalHref('/contact'),
+        mainEntity: {
+          '@type': 'Organization',
+          name: organization.name,
+          url: canonicalHref('/'),
+          address: organization.address,
+          contactPoint: CONTACTS.map((contact) => ({
+            '@type': 'ContactPoint',
+            contactType: contact.title,
+            email: contact.address,
+            availableLanguage: ['English', 'Arabic'],
+          })),
+        },
+      }),
+    },
+  ],
+});
+
+export const Route = createFileRoute('/contact')({
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const [seo, { NIBLEAF_ORGANIZATION }] = await Promise.all([import('@/lib/marketing-seo'), import('@/lib/marketing-organization')]);
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo, NIBLEAF_ORGANIZATION) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: ContactPage,
 });
 

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Eyebrow, MarketingShell, outlineButton, primaryButton } from '@/components/cloud-marketing';
 import { trackFirstPublishCta } from '@/lib/first-publish-activation';
 import { trackMarketingEvent } from '@/lib/marketing-events';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
 import { parseAndGradeRtlHtml, RTL_RUBRIC_VERSION, type RtlReadinessResult } from '@/lib/rtl-readiness';
 
 const TOOL_PATH = '/tools/rtl-documentation-readiness';
@@ -18,23 +18,29 @@ const RESULT_EVENT_TYPES = {
   'work remaining': 'work_remaining',
 } as const;
 
-export const Route = createFileRoute('/tools/rtl-documentation-readiness')({
-  loader: async () => ({ stars: await getGithubStarsFn() }),
-  head: () => ({
-    meta: pageMeta({
-      title: 'Free RTL documentation readiness grader | Nibleaf',
-      description:
-        'Paste HTML and get a private, browser-only RTL documentation readiness report with transparent checks, unknowns, and reproduction steps.',
-      path: TOOL_PATH,
-    }),
-    links: [{ rel: 'canonical', href: canonicalHref(TOOL_PATH) }],
-    scripts: [
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'RTL documentation readiness grader', path: TOOL_PATH },
-      ]),
-    ],
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
+  meta: pageMeta({
+    title: 'Free RTL documentation readiness grader | Nibleaf',
+    description:
+      'Paste HTML and get a private, browser-only RTL documentation readiness report with transparent checks, unknowns, and reproduction steps.',
+    path: TOOL_PATH,
   }),
+  links: [{ rel: 'canonical', href: canonicalHref(TOOL_PATH) }],
+  scripts: [
+    breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: 'RTL documentation readiness grader', path: TOOL_PATH },
+    ]),
+  ],
+});
+
+export const Route = createFileRoute('/tools/rtl-documentation-readiness')({
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const seo = await import('@/lib/marketing-seo');
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: RtlDocumentationReadinessPage,
 });
 

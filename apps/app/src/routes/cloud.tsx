@@ -1,24 +1,30 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { CloudPage } from '@/components/marketing/cloud-page';
-import { breadcrumbLd, canonicalHref, getGithubStarsFn, pageMeta } from '@/lib/marketing-seo';
+import type { MarketingSeo } from '@/lib/marketing-seo';
+
+const pageHead = ({ breadcrumbLd, canonicalHref, pageMeta }: MarketingSeo) => ({
+  meta: pageMeta({
+    title: 'Nibleaf Cloud — hosted documentation sites',
+    description:
+      'Managed Nibleaf hosting: dashboard, database, storage and upgrades handled for you. Free during the beta, with no credit card at sign-up.',
+    path: '/cloud',
+  }),
+  links: [{ rel: 'canonical', href: canonicalHref('/cloud') }],
+  scripts: [
+    breadcrumbLd([
+      { name: 'Home', path: '/' },
+      { name: 'Cloud', path: '/cloud' },
+    ]),
+  ],
+});
 
 export const Route = createFileRoute('/cloud')({
-  loader: async () => ({ stars: await getGithubStarsFn() }),
-  head: () => ({
-    meta: pageMeta({
-      title: 'Nibleaf Cloud — hosted documentation sites',
-      description:
-        'Managed Nibleaf hosting: dashboard, database, storage and upgrades handled for you. Free during the beta, with no credit card at sign-up.',
-      path: '/cloud',
-    }),
-    links: [{ rel: 'canonical', href: canonicalHref('/cloud') }],
-    scripts: [
-      breadcrumbLd([
-        { name: 'Home', path: '/' },
-        { name: 'Cloud', path: '/cloud' },
-      ]),
-    ],
-  }),
+  // The SEO helpers load with this page, not with every page's route tree (BUNDLE_BUDGET.md).
+  loader: async () => {
+    const seo = await import('@/lib/marketing-seo');
+    return { stars: await seo.getGithubStarsFn(), head: pageHead(seo) };
+  },
+  head: ({ loaderData }) => loaderData?.head ?? {},
   component: CloudRoute,
 });
 

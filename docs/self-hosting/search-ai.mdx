@@ -123,6 +123,19 @@ answers additionally require `SEARCH_ANSWER_ENABLED=true`; a verified workspace
 connection uses the administrator's explicit Smart AI selection. If the provider fails, drafting returns an error
 instead of placeholder text.
 
+## Upgrade to the GPT-6 defaults
+
+`SEARCH_ANSWER_MODEL` and `AI_DRAFT_MODEL` now default to `openai/gpt-6-luna`,
+run at low reasoning effort.
+
+- If you set either variable, nothing changes: Nibleaf keeps using your model.
+- You don't need to reindex. The embedding model is unchanged
+  (`openai/text-embedding-3-small`, 1536 dimensions).
+- Workspace Smart AI connections keep the model they saved. For direct OpenAI
+  keys, the model list now offers GPT-6 models and newer.
+- On Nibleaf's own documentation, answers cost less than half as much as with
+  the previous default and arrive about as fast.
+
 ## Run the AI chat assistant
 
 The chat assistant uses the same switches as grounded answers: the site's

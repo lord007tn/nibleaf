@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { boundChatHistory, condenseFollowUp, streamGroundedChat } from '../src/answer-chat';
 import { validateCitedAnswer } from '../src/answer-validation';
 import { generateGroundedAnswer, type SearchChunk } from '../src/index';
-import { type ChatUsage, OpenRouterChatProvider } from '../src/providers';
+import { AI_REASONING_EFFORT, type ChatUsage, OpenRouterChatProvider, type ReasoningEffort } from '../src/providers';
 import { type ChatCostSink, workspaceChatAdapter, workspaceChatModelOptions } from '../src/workspace';
 import type { Fixture } from './build-docs-fixtures';
 
@@ -26,18 +26,19 @@ const list = (value: string) => [
       .filter(Boolean),
   ),
 ];
-const defaults = [...new Set([...catalog.filter((m) => /luna|terra/i.test(m.id)).map((m) => m.id), 'openai/gpt-5.6-luna'])];
-const models = list(process.env.EVAL_MODELS ?? process.env.OPENROUTER_EVAL_MODELS ?? defaults.join(','));
+const models = list(process.env.EVAL_MODELS ?? process.env.OPENROUTER_EVAL_MODELS ?? 'openai/gpt-6-luna,openai/gpt-6-luna-pro,openai/gpt-6.1-terra');
 const condenseModels = list(process.env.EVAL_CONDENSE_MODELS ?? '');
-const judgeModel =
-  process.env.EVAL_JUDGE_MODEL ??
-  catalog.find((m) => m.id === 'openai/gpt-6.1-terra')?.id ??
-  catalog.find((m) => m.id.includes('terra') && !m.id.includes(':'))?.id;
-if (!judgeModel) throw new Error('No default terra judge found; set EVAL_JUDGE_MODEL to a live catalog ID.');
+// The judge is never one of the candidates it scores.
+const judgeModel = process.env.EVAL_JUDGE_MODEL ?? 'openai/gpt-6.1-sol';
+if (models.includes(judgeModel)) throw new Error('EVAL_JUDGE_MODEL must not be one of EVAL_MODELS.');
+const EFFORTS: readonly string[] = ['none', 'low', 'medium', 'high'] satisfies ReasoningEffort[];
+const efforts = list(process.env.EVAL_REASONING_EFFORTS ?? AI_REASONING_EFFORT.answer) as ReasoningEffort[];
+if (efforts.length === 0 || efforts.some((effort) => !EFFORTS.includes(effort)))
+  throw new Error(`EVAL_REASONING_EFFORTS must list at least one of ${EFFORTS.join(', ')}`);
 for (const id of [...models, ...condenseModels, judgeModel])
   if (!catalog.some((m) => m.id === id)) throw new Error(`Requested model absent from live catalog: ${id}`);
 const pricing = (id: string) => catalog.find((m) => m.id === id)?.pricing;
-console.log(JSON.stringify({ resolvedModels: models.map((id) => ({ id, pricing: pricing(id) })), judgeModel, condenseModels }, null, 2));
+console.log(JSON.stringify({ resolvedModels: models.map((id) => ({ id, pricing: pricing(id) })), efforts, judgeModel, condenseModels }, null, 2));
 if (process.env.EVAL_CATALOG_ONLY === '1') process.exit(0);
 const positiveInt = (name: string, fallback: number) => {
   const v = Number(process.env[name] ?? fallback);
@@ -66,6 +67,7 @@ const evidenceHashes = Object.fromEntries(
     [
       '../src/answer-chat.ts',
       '../src/answer-validation.ts',
+      '../src/providers.ts',
       '../src/workspace.ts',
       '../eval/judge-rubric.md',
       ...fixtureFiles.map((f) => `../eval/${f}`),
@@ -77,13 +79,7 @@ const evidenceHashes = Object.fromEntries(
     ]),
   ),
 );
-const normalize = (s: string) =>
-  s
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[\u064b-\u065f\u0670\u0640]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+const normalize = (s: string) => s.normalize('NFKC').toLowerCase().replace(/[ً-ٰٟـ]/g, '').replace(/\s+/g, ' ').trim();
 const chunks = (f: Fixture): SearchChunk[] =>
   f.sources.map((s, i) => ({
     ...s,
@@ -151,14 +147,17 @@ const judgeSchema = z
 type Judge = z.infer<typeof judgeSchema>;
 interface Rewrite extends Spend {
   model: string;
+  effort: ReasoningEffort;
   fixture: string;
   query: string;
   rewritten: boolean;
+  truncated: boolean;
   topicMatch?: boolean;
   latencyMs: number;
 }
 interface RecordRow extends Spend {
   model: string;
+  effort: ReasoningEffort;
   mode: 'chat' | 'strict';
   fixture: string;
   language: string;
@@ -166,6 +165,8 @@ interface RecordRow extends Spend {
   expectClarifying: boolean;
   error?: string;
   status?: string;
+  /** The answer call stopped at its output cap, which counts reasoning tokens. */
+  truncated?: boolean;
   answer?: string;
   citationIds?: string[];
   citationValidity?: number;
@@ -188,15 +189,15 @@ interface RecordRow extends Spend {
 }
 const records: RecordRow[] = [];
 const rewrites: Rewrite[] = [];
-const rewriteErrors: { model: string; fixture: string }[] = [];
-async function rewrite(model: string, f: Fixture): Promise<Rewrite> {
+const rewriteErrors: { model: string; effort: ReasoningEffort; fixture: string }[] = [];
+async function rewrite(model: string, effort: ReasoningEffort, f: Fixture): Promise<Rewrite> {
   const history = boundChatHistory(f.history ?? [], { maxMessages: 6, maxTokens: 1500 });
   reserve(model, JSON.stringify({ history, question: f.question }), 120);
   const sink: ChatCostSink = {};
   const start = performance.now();
   const result = await condenseFollowUp({
     adapter: workspaceChatAdapter(runtime(model), sink),
-    modelOptions: workspaceChatModelOptions(runtime(model)),
+    modelOptions: workspaceChatModelOptions(runtime(model), effort),
     question: f.question,
     history,
     language: f.language === 'mixed' ? 'ar' : f.language,
@@ -204,14 +205,20 @@ async function rewrite(model: string, f: Fixture): Promise<Rewrite> {
   await Promise.all(sink.pending ?? []);
   return {
     model,
+    effort,
     fixture: f.id,
     query: result.query,
     rewritten: result.rewritten,
+    truncated: Boolean(result.truncated),
     topicMatch: f.rewriteTopicTerms?.length ? f.rewriteTopicTerms.some((t) => normalize(result.query).includes(normalize(t))) : undefined,
     latencyMs: performance.now() - start,
     ...spend(model, result.usage, sink),
   };
 }
+// A reasoning judge's thinking counts against its cap; at low effort it used
+// under 200 tokens in smoke runs, so this leaves ample room.
+const JUDGE_MAX_TOKENS = 1000;
+const JUDGE_TRUNCATED = 'judge_truncated';
 async function judge(f: Fixture, answer: string) {
   const input = JSON.stringify({
     question: f.question,
@@ -222,19 +229,20 @@ async function judge(f: Fixture, answer: string) {
     expectClarifying: f.expectClarifying ?? false,
     answer,
   });
-  reserve(judgeModel as string, rubric + input, 500);
+  reserve(judgeModel, rubric + input, JUDGE_MAX_TOKENS);
   const response = await client.chat.send({
     chatRequest: {
-      model: judgeModel as string,
+      model: judgeModel,
       messages: [
         { role: 'system', content: rubric },
         { role: 'user', content: input },
       ],
-      temperature: 0,
-      maxTokens: 500,
+      reasoning: { effort: 'low' },
+      maxTokens: JUDGE_MAX_TOKENS,
       responseFormat: { type: 'json_object' },
     },
   });
+  if (response.choices[0]?.finishReason === 'length') throw new Error(JUDGE_TRUNCATED);
   const content = response.choices[0]?.message.content;
   if (typeof content !== 'string') throw new Error('Judge returned no text');
   const scores = judgeSchema.parse(JSON.parse(content));
@@ -242,14 +250,15 @@ async function judge(f: Fixture, answer: string) {
   return {
     scores,
     spend: spend(
-      judgeModel as string,
+      judgeModel,
       u ? { inputTokens: u.promptTokens, outputTokens: u.completionTokens, totalTokens: u.totalTokens, costUsd: u.cost ?? undefined } : undefined,
     ),
   };
 }
-async function evaluate(model: string, mode: 'strict' | 'chat', f: Fixture) {
+async function evaluate(model: string, effort: ReasoningEffort, mode: 'strict' | 'chat', f: Fixture) {
   const row: RecordRow = {
     model,
+    effort,
     mode,
     fixture: f.id,
     language: f.language,
@@ -263,12 +272,12 @@ async function evaluate(model: string, mode: 'strict' | 'chat', f: Fixture) {
     const sink: ChatCostSink = {};
     let raw = '';
     let ttft: number | undefined;
-    if (mode === 'chat' && f.history?.length) row.rewrite = await rewrite(model, f);
+    if (mode === 'chat' && f.history?.length) row.rewrite = await rewrite(model, effort, f);
     reserve(model, JSON.stringify(f), 1200);
     const answer =
       mode === 'strict'
         ? await generateGroundedAnswer(
-            new OpenRouterChatProvider({ apiKey: apiKey as string, model, timeoutMs: 60_000, temperature: 0 }),
+            new OpenRouterChatProvider({ apiKey: apiKey as string, model, timeoutMs: 60_000, reasoningEffort: effort }),
             f.question,
             sourceChunks,
             0.85,
@@ -278,7 +287,7 @@ async function evaluate(model: string, mode: 'strict' | 'chat', f: Fixture) {
             const streamStart = performance.now();
             const stream = streamGroundedChat({
               adapter: workspaceChatAdapter(runtime(model), sink),
-              modelOptions: workspaceChatModelOptions(runtime(model)),
+              modelOptions: workspaceChatModelOptions(runtime(model), effort),
               model,
               question: f.question,
               history: f.history ?? [],
@@ -295,6 +304,7 @@ async function evaluate(model: string, mode: 'strict' | 'chat', f: Fixture) {
     await Promise.all(sink.pending ?? []);
     Object.assign(row, spend(model, answer.usage, sink));
     row.status = answer.status;
+    row.truncated = 'truncated' in answer && Boolean(answer.truncated);
     row.answer = answer.answer;
     row.latencyMs = performance.now() - start;
     row.ttftMs = ttft;
@@ -333,26 +343,38 @@ async function evaluate(model: string, mode: 'strict' | 'chat', f: Fixture) {
       const judged = await judge(f, answer.answer);
       row.judge = judged.scores;
       row.judgeSpend = judged.spend;
-    } catch {
-      row.judgeError = 'Judge request or strict JSON validation failed';
+    } catch (error) {
+      row.judgeError =
+        error instanceof Error && error.message === JUDGE_TRUNCATED
+          ? 'Judge stopped at its output cap; raise JUDGE_MAX_TOKENS'
+          : 'Judge request or strict JSON validation failed';
     }
-  } catch {
+  } catch (error) {
+    // The strict provider refuses a reply cut off at its output cap.
+    if (error instanceof Error && error.message.includes('output token limit')) row.truncated = true;
     row.error = 'Evaluation failed (provider, validation, or spend cap); no successful answer recorded';
   }
   records.push(row);
-  console.log(`${mode} ${model} ${f.id}: ${row.error ?? row.status}${row.judgeError ? ' (judge failed)' : ''}`);
+  console.log(
+    `${mode} ${model} ${effort} ${f.id}: ${row.error ?? row.status}${row.truncated ? ' (truncated)' : ''}${row.judgeError ? ' (judge failed)' : ''}`,
+  );
 }
-const jobs = models.flatMap((model) => modes.flatMap((mode) => fixtures.map((f) => () => evaluate(model, mode, f))));
+/** A result row's identity is model × reasoning effort × mode. */
+const variants = models.flatMap((model) => efforts.map((effort) => ({ model, effort })));
+const same = (row: { model: string; effort: string }, variant: { model: string; effort: string }) =>
+  row.model === variant.model && row.effort === variant.effort;
+const jobs = variants.flatMap(({ model, effort }) => modes.flatMap((mode) => fixtures.map((f) => () => evaluate(model, effort, mode, f))));
 for (const model of condenseModels)
-  for (const f of fixtures.filter((f) => f.history?.length))
-    jobs.push(async () => {
-      try {
-        rewrites.push(await rewrite(model, f));
-      } catch {
-        rewriteErrors.push({ model, fixture: f.id });
-        console.error(`Rewrite failed: ${model} ${f.id}`);
-      }
-    });
+  for (const effort of efforts)
+    for (const f of fixtures.filter((f) => f.history?.length))
+      jobs.push(async () => {
+        try {
+          rewrites.push(await rewrite(model, effort, f));
+        } catch {
+          rewriteErrors.push({ model, effort, fixture: f.id });
+          console.error(`Rewrite failed: ${model} ${effort} ${f.id}`);
+        }
+      });
 let next = 0;
 await Promise.all(
   Array.from({ length: Math.min(concurrency, jobs.length) }, async () => {
@@ -371,9 +393,12 @@ const percentile = (v: (number | undefined)[], p: number) => {
   return known.length ? known[Math.ceil(p * known.length) - 1] : undefined;
 };
 function summarize(rows: RecordRow[]) {
+  const ttft = rows.map((r) => r.ttftMs);
+  const latency = rows.map((r) => r.latencyMs);
   return {
     cases: rows.length,
     errors: rows.filter((r) => r.error).length,
+    truncated: rows.filter((r) => r.truncated).length,
     answerRate: mean(rows.filter((r) => !r.expectedNoAnswer).map((r) => Number(r.status === 'answered'))),
     noAnswerAccuracy: mean(rows.filter((r) => r.expectedNoAnswer).map((r) => Number(r.noAnswerCorrect ?? false))),
     clarifyingAccuracy: mean(rows.filter((r) => r.expectClarifying).map((r) => r.clarifyingAccuracy ?? 0)),
@@ -382,48 +407,45 @@ function summarize(rows: RecordRow[]) {
     citationAccuracy: mean(rows.map((r) => r.citationAccuracy)),
     claimCoverage: mean(rows.map((r) => r.requiredClaimCoverage)),
     forbiddenClaimViolations: rows.reduce((n, r) => n + (r.forbiddenClaims?.length ?? 0), 0),
+    judgeCorrectness: mean(rows.map((r) => r.judge?.correctness)),
     judgeHelpfulness: mean(rows.map((r) => r.judge?.helpfulness)),
+    judgeLanguageQuality: mean(rows.map((r) => r.judge?.languageQuality)),
     judgeCount: rows.filter((r) => r.judge).length,
     arabicQuality: mean(rows.filter((r) => r.language !== 'en').map((r) => r.arabicLetterShare)),
     languageMatch: mean(rows.map((r) => r.languageMatch)),
-    medianTtftMs: percentile(
-      rows.map((r) => r.ttftMs),
-      0.5,
-    ),
-    p90TtftMs: percentile(
-      rows.map((r) => r.ttftMs),
-      0.9,
-    ),
-    medianLatencyMs: percentile(
-      rows.map((r) => r.latencyMs),
-      0.5,
-    ),
+    medianTtftMs: percentile(ttft, 0.5),
+    p90TtftMs: percentile(ttft, 0.9),
+    p95TtftMs: percentile(ttft, 0.95),
+    medianLatencyMs: percentile(latency, 0.5),
+    p90LatencyMs: percentile(latency, 0.9),
+    p95LatencyMs: percentile(latency, 0.95),
     meanInputTokens: mean(rows.map((r) => r.inputTokens)),
     meanOutputTokens: mean(rows.map((r) => r.outputTokens)),
     costPer1000: rows.every((r) => r.costUsd !== undefined) ? (mean(rows.map((r) => r.costUsd)) ?? 0) * 1000 : undefined,
+    judgeCostPer1000: rows.every((r) => r.judgeSpend?.costUsd !== undefined) ? (mean(rows.map((r) => r.judgeSpend?.costUsd)) ?? 0) * 1000 : undefined,
     costSource: [...new Set(rows.map((r) => r.costSource))].join('+'),
   };
 }
-const summary = models.flatMap((model) =>
-  modes.map((mode) => ({ model, mode, ...summarize(records.filter((r) => r.model === model && r.mode === mode)) })),
-);
-const languages = models.flatMap((model) =>
+const summary = variants.flatMap((v) => modes.map((mode) => ({ ...v, mode, ...summarize(records.filter((r) => same(r, v) && r.mode === mode)) })));
+const languages = variants.flatMap((v) =>
   modes.flatMap((mode) =>
     ['en', 'ar', 'mixed'].map((language) => ({
-      model,
+      ...v,
       mode,
       language,
-      ...summarize(records.filter((r) => r.model === model && r.mode === mode && r.language === language)),
+      ...summarize(records.filter((r) => same(r, v) && r.mode === mode && r.language === language)),
     })),
   ),
 );
 const cell = (n: number | undefined) => (n === undefined ? '—' : n.toFixed(3));
 const allRewrites = [...rewrites, ...records.flatMap((r) => (r.rewrite ? [r.rewrite] : []))];
-const rewriteSummary = [...new Set(allRewrites.map((r) => r.model))].map((model) => {
-  const rows = allRewrites.filter((r) => r.model === model);
+const rewriteVariants = [...new Map(allRewrites.map((r) => [`${r.model} ${r.effort}`, { model: r.model, effort: r.effort }])).values()];
+const rewriteSummary = rewriteVariants.map((v) => {
+  const rows = allRewrites.filter((r) => same(r, v));
   return {
-    model,
+    ...v,
     cases: rows.length,
+    truncated: rows.filter((r) => r.truncated).length,
     topicMatch: mean(rows.map((r) => (r.topicMatch === undefined ? undefined : Number(r.topicMatch)))),
     rewrittenRate: mean(rows.map((r) => Number(r.rewritten))),
     meanInputTokens: mean(rows.map((r) => r.inputTokens)),
@@ -439,30 +461,30 @@ const measuredCosts = [...records.map((r) => r.costUsd), ...records.map((r) => r
 const knownSpendUsd = measuredCosts.reduce<number>((sum, cost) => sum + (cost ?? 0), 0);
 function table(rows: typeof summary) {
   return [
-    '| Model / mode | N / errors | Answer | Refusal | Clarify | Cite valid / hit / precision | Claims | Judge (n) | Arabic | TTFT p50 / p90 ms | Latency ms | Tokens in / out | $ / 1k | Cost |',
-    '|---|---:|---:|---:|---:|---|---:|---|---:|---|---:|---|---:|---|',
+    '| Model / effort / mode | N / errors / truncated | Answer | Refusal | Clarify | Cite valid / hit / precision | Claims | Forbidden | Judge correct / helpful / language (n) | Arabic | TTFT p50 / p90 / p95 ms | Latency p50 / p90 / p95 ms | Tokens in / out | $ / 1k | Judge $ / 1k | Cost |',
+    '|---|---|---:|---:|---:|---|---:|---:|---|---:|---|---|---|---:|---:|---|',
     ...rows.map(
       (r) =>
-        `| ${r.model} / ${r.mode} | ${r.cases} / ${r.errors} | ${cell(r.answerRate)} | ${cell(r.noAnswerAccuracy)} | ${cell(r.clarifyingAccuracy)} | ${cell(r.citationValidity)} / ${cell(r.citationHit)} / ${cell(r.citationAccuracy)} | ${cell(r.claimCoverage)} | ${cell(r.judgeHelpfulness)} (${r.judgeCount}) | ${cell(r.arabicQuality)} | ${cell(r.medianTtftMs)} / ${cell(r.p90TtftMs)} | ${cell(r.medianLatencyMs)} | ${cell(r.meanInputTokens)} / ${cell(r.meanOutputTokens)} | ${cell(r.costPer1000)} | ${r.costSource} |`,
+        `| ${r.model} / ${r.effort} / ${r.mode} | ${r.cases} / ${r.errors} / ${r.truncated} | ${cell(r.answerRate)} | ${cell(r.noAnswerAccuracy)} | ${cell(r.clarifyingAccuracy)} | ${cell(r.citationValidity)} / ${cell(r.citationHit)} / ${cell(r.citationAccuracy)} | ${cell(r.claimCoverage)} | ${r.forbiddenClaimViolations} | ${cell(r.judgeCorrectness)} / ${cell(r.judgeHelpfulness)} / ${cell(r.judgeLanguageQuality)} (${r.judgeCount}) | ${cell(r.arabicQuality)} | ${cell(r.medianTtftMs)} / ${cell(r.p90TtftMs)} / ${cell(r.p95TtftMs)} | ${cell(r.medianLatencyMs)} / ${cell(r.p90LatencyMs)} / ${cell(r.p95LatencyMs)} | ${cell(r.meanInputTokens)} / ${cell(r.meanOutputTokens)} | ${cell(r.costPer1000)} | ${cell(r.judgeCostPer1000)} | ${r.costSource} |`,
     ),
   ].join('\n');
 }
 const markdown = [
   table(summary),
   `\nKnown answer + rewrite + judge spend: $${knownSpendUsd.toFixed(6)} (missing cost remains unknown).`,
-  '\nRewrite models (same-model and independent calls):\n\n| Model | N | Topic match | Changed query | Tokens in / out | Mean cost $ | Median ms |\n|---|---:|---:|---:|---|---:|---:|',
+  '\nRewrite models (same-model and independent calls):\n\n| Model / effort | N / truncated | Topic match | Changed query | Tokens in / out | Mean cost $ | Median ms |\n|---|---|---:|---:|---|---:|---:|',
   ...rewriteSummary.map(
     (r) =>
-      `| ${r.model} | ${r.cases} | ${cell(r.topicMatch)} | ${cell(r.rewrittenRate)} | ${cell(r.meanInputTokens)} / ${cell(r.meanOutputTokens)} | ${r.meanCostUsd?.toFixed(6) ?? '—'} | ${cell(r.medianLatencyMs)} |`,
+      `| ${r.model} / ${r.effort} | ${r.cases} / ${r.truncated} | ${cell(r.topicMatch)} | ${cell(r.rewrittenRate)} | ${cell(r.meanInputTokens)} / ${cell(r.meanOutputTokens)} | ${r.meanCostUsd?.toFixed(6) ?? '—'} | ${cell(r.medianLatencyMs)} |`,
   ),
   ...['en', 'ar', 'mixed'].map((l) => `\nLanguage: ${l}\n\n${table(languages.filter((r) => r.language === l))}`),
-  '\nRates are 0–1; — means no observations. Citation hit = at least one expected heading; precision = share of cited headings expected. Legacy fixtures without expected headings are excluded from citation accuracy. Claims use normalized phrase matches; empty claim lists are unscored. Arabic is a prose letter-share heuristic, not a fluency judgment. TTFT measures the first public streamed delta; declines have no public delta. Latency includes same-model rewriting, excludes judge. Cost per 1k covers answer calls only; rewrite and judge costs are recorded separately. Errors count against answer/refusal/clarifying/validity rates; other missing measurements remain unknown. A smoke run does not establish a winning model.',
+  '\nRates are 0–1; — means no observations. Citation hit = at least one expected heading; precision = share of cited headings expected. Legacy fixtures without expected headings are excluded from citation accuracy. Claims use normalized phrase matches; empty claim lists are unscored. Forbidden = forbidden-claim matches. Arabic is a prose letter-share heuristic; the judge language score grades fluency. TTFT measures the first public streamed delta; declines have no public delta. Latency includes same-model rewriting, excludes judge. Truncated = the call stopped at its output cap, which counts reasoning tokens (a truncated strict answer is also an error). Cost per 1k covers answer calls only; rewrite and judge costs are recorded separately. Errors count against answer/refusal/clarifying/validity rates; other missing measurements remain unknown. A smoke run does not establish a winning model.',
 ].join('\n');
 const output = resolve(here, '../../../output/search-eval', `${new Date().toISOString().replace(/[:.]/g, '-')}.json`);
 await mkdir(dirname(output), { recursive: true });
 await writeFile(
   output,
-  `${JSON.stringify({ generatedAt: new Date().toISOString(), evidenceHashes, models: models.map((id) => ({ id, pricing: pricing(id) })), judgeModel, condenseModels, fixtureFiles, fixtures: fixtures.map((f) => f.id), reservedUsd, knownSpendUsd, summary, languages, records, rewrites, rewriteSummary, rewriteErrors }, null, 2)}\n`,
+  `${JSON.stringify({ generatedAt: new Date().toISOString(), evidenceHashes, models: models.map((id) => ({ id, pricing: pricing(id) })), efforts, judgeModel, condenseModels, fixtureFiles, fixtures: fixtures.map((f) => f.id), reservedUsd, knownSpendUsd, summary, languages, records, rewrites, rewriteSummary, rewriteErrors }, null, 2)}\n`,
 );
 await writeFile(output.replace(/\.json$/, '.md'), `${markdown}\n`);
 console.log(markdown);
