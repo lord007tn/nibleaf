@@ -23,6 +23,11 @@ optional dependencies, including sharp and Prisma, remain installed. The runner
 also omits npm/npx, pnpm and Corepack, including Corepack's cached pnpm bundle.
 Migrations invoke the installed Prisma CLI and Node/tsx directly from their
 workspace directories; the optional seed retains its existing explicit opt-in.
+Container operators use `docker compose exec -T server /app/docker-entrypoint.sh search-reindex-all` and `docker compose exec -T server /app/docker-entrypoint.sh search-alias-switch` (with the documented Qdrant confirmation environment). Both
+exec Node/tsx directly, preserving signals and exit codes. The docs guard rejects
+unavailable container executables; the exact-image audit resolves every
+documented runtime executable and checks both operator scripts.
+
 Contributor and builder installs still use pnpm 10.34.9. Root dependency
 overrides cannot update its separately bundled glob/minimatch copies.
 

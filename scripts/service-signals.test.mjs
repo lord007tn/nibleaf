@@ -3,7 +3,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { delimiter, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +14,8 @@ test('migration modes run without a package manager and stop before seeding on f
   const directory = await mkdtemp(join(tmpdir(), 'nibleaf-migration-entrypoint-'));
   const receipt = join(directory, 'commands.log');
   try {
-    for (const path of ['bin', 'packages/database', 'packages/clickhouse', 'apps/server']) await mkdir(join(directory, path), { recursive: true });
+    for (const path of ['bin', 'packages/database', 'packages/clickhouse', 'packages/qdrant', 'apps/server'])
+      await mkdir(join(directory, path), { recursive: true });
     await writeFile(
       join(directory, 'bin/node'),
       `#!/bin/sh
@@ -52,6 +53,14 @@ exit "\${FIXTURE_EXIT:-0}"
     await writeFile(receipt, '');
     assert.equal(run('clickhouse-migrate').status, 0);
     assert.equal(await readFile(receipt, 'utf8'), `${directory}/packages/clickhouse|--import tsx scripts/migrate.ts|\n`);
+    await writeFile(receipt, '');
+    assert.equal(run('search-reindex-all').status, 0);
+    assert.equal(await readFile(receipt, 'utf8'), `${directory}/apps/server|--import tsx src/scripts/reindex-search.ts|\n`);
+    assert.equal(run('search-reindex-all', { FIXTURE_EXIT: '42' }).status, 42);
+    await writeFile(receipt, '');
+    assert.equal(run('search-alias-switch').status, 0);
+    assert.equal(await readFile(receipt, 'utf8'), `${directory}/packages/qdrant|--import tsx scripts/switch-alias.ts|\n`);
+    assert.equal(run('search-alias-switch', { FIXTURE_EXIT: '42' }).status, 42);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -114,17 +123,22 @@ function stopFixture(pid) {
   }
 }
 
-for (const service of ['server', 'worker']) {
+for (const { command: service, workspace, file } of [
+  { command: 'server', workspace: 'apps/server', file: 'src/index.ts' },
+  { command: 'worker', workspace: 'apps/worker', file: 'src/index.ts' },
+  { command: 'search-reindex-all', workspace: 'apps/server', file: 'src/scripts/reindex-search.ts' },
+  { command: 'search-alias-switch', workspace: 'packages/qdrant', file: 'scripts/switch-alias.ts' },
+]) {
   test(`${service} entrypoint delivers SIGTERM to its TypeScript process`, { skip: process.platform === 'win32', timeout: 15_000 }, async () => {
     const directory = await mkdtemp(join(tmpdir(), 'nibleaf-service-signals-'));
-    const serviceDirectory = join(directory, 'apps', service);
-    await mkdir(join(serviceDirectory, 'src'), { recursive: true });
+    const serviceDirectory = join(directory, workspace);
+    await mkdir(dirname(join(serviceDirectory, file)), { recursive: true });
     await writeFile(join(directory, 'package.json'), JSON.stringify({ private: true, packageManager: 'pnpm@10.30.3' }));
     await writeFile(join(directory, 'pnpm-workspace.yaml'), 'packages:\n  - apps/*\n');
     await writeFile(join(serviceDirectory, 'package.json'), JSON.stringify({ name: `@nibleaf/${service}`, type: 'module' }));
     await symlink(modules, join(directory, 'node_modules'), 'dir');
     await writeFile(
-      join(serviceDirectory, 'src', 'index.ts'),
+      join(serviceDirectory, file),
       `import { writeFileSync } from 'node:fs';
 const service: string = ${JSON.stringify(service)};
 process.on('SIGTERM', () => {

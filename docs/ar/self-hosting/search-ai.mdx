@@ -3,12 +3,15 @@ title: 'تشغيل البحث الهجين والإجابات الموثّقة'
 description: 'فهرسة التوثيق المنشور في Qdrant، وتقييم حركة الظل، والانتقال الآمن، وتشغيل إجابات الذكاء الاصطناعي الموثّقة اختيارياً.'
 audience: 'مشغلو Nibleaf بالاستضافة الذاتية'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
-verified_against: 'packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
+last_reviewed: '2026-11-09'
+verified_against: 'docker-entrypoint.sh, packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'self-hosting/search-ai'
 ---
+
+أوامر الحاويات أدناه للصور اللاحقة لـ v0.2.1 التي لا تتضمن pnpm.
+للصورة المنشورة v0.2.1، استخدم [أوامر ذلك الإصدار](/ar/releases/v0-2-1).
 
 يدعم Nibleaf v0.2 البحث الهجين في المحتوى العربي والإنجليزي والمختلط باستخدام
 BM25 والمتجهات الكثيفة، مع فرض نطاق المستأجر والصلاحيات في الخادم. يبقى وضع
@@ -172,7 +175,7 @@ QDRANT_COLLECTION_VERSION=v1
 2. أضف كل موقع منشور إلى طابور إعادة الفهرسة:
 
    ```bash
-   docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+   docker compose exec -T server /app/docker-entrypoint.sh search-reindex-all
    ```
 
    يعرض الأمر عدد المواقع التي أضافها، والمواقع التي تخطّاها وسبب ذلك. ويمكنك
@@ -186,13 +189,13 @@ QDRANT_COLLECTION_VERSION=v1
    `openai/text-embedding-3-large`، و3072 بُعدًا، وإصدار المجموعة `v2`. ولا يُحتسب
    فهرس أعاد بناءه عامل (worker) ما زال يعمل بالإعدادات القديمة، إذ يسجّل العامل أن
    هذا التشغيل "was queued with other embedding settings". اختر **Reindex** لذلك
-   الموقع، أو شغّل `search:reindex-all` مرة أخرى. ثم بدّل الاسم المستعار:
+   الموقع، أو شغّل `search-reindex-all` مرة أخرى. ثم بدّل الاسم المستعار:
 
    ```bash
    docker compose exec -T \
      -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
      -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
-     server pnpm --filter @nibleaf/qdrant alias:switch
+     server /app/docker-entrypoint.sh search-alias-switch
    ```
 
    خلال 30 ثانية يعود البحث الهجين وإجابات الذكاء الاصطناعي لكل موقع أُعيدت
@@ -445,9 +448,10 @@ pnpm --filter @nibleaf/search eval:rag
    `QDRANT_COLLECTION_VERSION=v2` وأبعاد 3072:
 
    ```bash
-   QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
-   QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
-   pnpm --filter @nibleaf/qdrant alias:switch
+   docker compose exec -T \
+     -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
+     -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
+     server /app/docker-entrypoint.sh search-alias-switch
    ```
 
    ثم اضبط `SEARCH_RUNTIME=hybrid` وراقب الأخطاء والمهلة وجودة الإجابات.

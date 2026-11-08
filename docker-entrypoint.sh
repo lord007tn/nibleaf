@@ -57,6 +57,17 @@ case "$cmd" in
     cd packages/clickhouse
     exec node --import tsx scripts/migrate.ts
     ;;
+  search-reindex-all)
+    require_prod_secret
+    shift
+    cd apps/server
+    exec node --import tsx src/scripts/reindex-search.ts "$@"
+    ;;
+  search-alias-switch)
+    shift
+    cd packages/qdrant
+    exec node --import tsx scripts/switch-alias.ts "$@"
+    ;;
   server)
     require_prod_secret
     echo "[nibleaf] starting API server on :${API_PORT:-4311}"

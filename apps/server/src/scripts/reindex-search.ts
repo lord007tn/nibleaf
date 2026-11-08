@@ -3,7 +3,7 @@
  * collection. Run it after changing the embedding settings and before switching
  * the search alias (docs: self-hosting/search-ai, "Change the embedding model").
  *
- *   docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+ *   docker compose exec -T server /app/docker-entrypoint.sh search-reindex-all
  *
  * From a source checkout: pnpm --filter @nibleaf/server with-env tsx src/scripts/reindex-search.ts
  */

@@ -202,6 +202,22 @@ production; Mailpit captures messages locally and does not deliver them external
 
 </details>
 
+### Container operator commands after v0.2.1
+
+Later images omit pnpm. Invoke the installed operator entrypoints directly:
+
+```bash
+docker compose exec -T server /app/docker-entrypoint.sh search-reindex-all
+docker compose exec -T \
+  -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
+  -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
+  server /app/docker-entrypoint.sh search-alias-switch
+```
+
+Reindexing queues each published site; wait for READY before switching a search
+alias. Keep the previous collection for rollback. The published v0.2.1 image
+still uses [its original pnpm commands](https://docs.nibleaf.com/releases/v0-2-1).
+
 ## 🐳 Deploy to production
 
 - **Docker Compose (recommended)** — the quick start above *is* the production

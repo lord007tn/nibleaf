@@ -2,18 +2,33 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { checkContainerCommands } from './check-container-commands.mjs';
 
 const [image, output] = process.argv.slice(2);
 assert.ok(image && !image.startsWith('-'), 'Usage: node scripts/runtime-image-audit.mjs <image> [report.json]');
+const documented = checkContainerCommands();
+assert.deepEqual(documented.errors, [], 'Documented container commands must match the runtime contract');
 
 // Runs inside the final image without forwarding any host env or credentials.
 const probe = `
 const fs = require('node:fs');
 const path = require('node:path');
 const { createRequire } = require('node:module');
+const { spawnSync } = require('node:child_process');
+const documentedCommands = ${JSON.stringify(documented.runtimeCommands)};
+const documentedSubcommands = ${JSON.stringify(documented.documentedSubcommands)};
+const imageSubcommands = new Set([...fs.readFileSync('/app/docker-entrypoint.sh', 'utf8').matchAll(/^  ([a-z][a-z-]*)\\)/gm)].map(match => match[1]));
+for (const command of documentedSubcommands) {
+  if (!imageSubcommands.has(command)) throw new Error('Documented entrypoint subcommand is absent from the image: ' + command);
+}
+for (const command of documentedCommands) {
+  const result = spawnSync('/bin/sh', ['-c', 'command -v "$1"', 'sh', command], { encoding: 'utf8' });
+  if (result.status !== 0) throw new Error('Documented executable is absent from the image: ' + command);
+}
 const app = '/app';
 const artifacts = [
   'apps/server/src/index.ts', 'apps/worker/src/index.ts',
+  'apps/server/src/scripts/reindex-search.ts', 'packages/qdrant/scripts/switch-alias.ts',
   'apps/server/tsconfig.json', 'apps/worker/tsconfig.json',
   'packages/database/prisma.config.ts', 'packages/database/prisma/schema.prisma',
   'packages/database/prisma/migrations/migration_lock.toml',
@@ -69,7 +84,7 @@ for (const file of ['/usr/local/bin/npm', '/usr/local/bin/npx', '/usr/local/bin/
   if (fs.existsSync(file)) throw new Error('Build-only package manager remains installed: ' + file);
 }
 if (!inventory.some(({ name }) => name === '@modelcontextprotocol/server')) throw new Error('Missing MCP runtime');
-console.log(JSON.stringify({ revision: process.env.NIBLEAF_REVISION, artifacts, required, packageCount: inventory.length, forbidden, inventory }));
+console.log(JSON.stringify({ revision: process.env.NIBLEAF_REVISION, artifacts, required, documentedCommands, documentedSubcommands, packageCount: inventory.length, forbidden, inventory }));
 `;
 const result = spawnSync('docker', ['run', '--rm', '--entrypoint', 'node', image, '-e', probe], {
   encoding: 'utf8',
