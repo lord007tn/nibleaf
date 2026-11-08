@@ -66,9 +66,11 @@ describe('previous period', () => {
    * hour has `perHour` views, so the answer depends only on the bounds a
    * query passes, as it would in ClickHouse.
    */
-  const trafficClient = (perHour: number, calls: Array<{ query: string; query_params: Record<string, number> }> = []) =>
+  type WindowParams = Record<'display_start' | 'comparable_start' | 'comparable_end' | 'previous_start' | 'previous_end', number>;
+  type Call = { query: string; query_params: WindowParams };
+  const trafficClient = (perHour: number, calls: Call[] = []) =>
     ({
-      query: vi.fn(async (call: { query: string; query_params: Record<string, number> }) => {
+      query: vi.fn(async (call: Call) => {
         calls.push(call);
         const p = call.query_params;
         const hours = (from: number, to: number) => Math.max(0, Math.round((to - from) / 3600));
@@ -101,7 +103,7 @@ describe('previous period', () => {
   });
 
   it('reads one clock for every query of a request', async () => {
-    const calls: Array<{ query: string; query_params: Record<string, number> }> = [];
+    const calls: Call[] = [];
     await queryWorkspaceAnalytics([{ tenantId: 'tenant-1', projectId: 'project-1' }], '30d', 'UTC', trafficClient(1, calls));
     const anchors = new Set(calls.map((call) => `${call.query_params.display_start}/${call.query_params.comparable_end}`));
     expect(anchors.size).toBe(1);

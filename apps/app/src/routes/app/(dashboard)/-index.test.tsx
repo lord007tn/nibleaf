@@ -144,6 +144,8 @@ describe('dashboard request recovery', () => {
     mocks.analytics.mockReturnValue({
       isPending: false,
       data: { totalViews: 0, uniqueVisitors: 0, timeseries: [], byProject: [], availability: 'unavailable' },
+      isFetching: false,
+      refetch: mocks.refetch,
     });
     await act(async () => root.render(<DashboardPage />));
 
@@ -151,6 +153,12 @@ describe('dashboard request recovery', () => {
     expect(values.slice(2)).toEqual(['—', '—']);
     expect(container.textContent).toContain('overview.traffic.unavailable.title');
     expect(container.querySelector('[data-testid="views-chart"]')).toBeNull();
+    // An outage is retried in place, like a failed request.
+    const alert = [...container.querySelectorAll('[role="alert"]')].find((element) =>
+      element.textContent?.includes('overview.traffic.unavailable.title'),
+    );
+    await act(async () => alert?.querySelector<HTMLButtonElement>('button')?.click());
+    expect(mocks.refetch).toHaveBeenCalledOnce();
   });
 
   it('says which traffic figures are incomplete, not AI token or cost values, and keeps them unknown', async () => {

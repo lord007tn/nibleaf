@@ -289,12 +289,21 @@ function ProjectsPage() {
       {showAnalytics ? (
         <>
           {analyticsError ? <QueryErrorState onRetry={() => void retryAnalytics()} retrying={analyticsFetching} /> : null}
-          {!analyticsError && (analyticsUnavailable || analytics?.availability === 'partial') ? (
+          {/* An outage (a successful "unavailable" response) retries in place, like a failed request. */}
+          {!analyticsError && analyticsUnavailable ? (
+            <QueryErrorState
+              description={t('overview.traffic.unavailable.body')}
+              onRetry={() => void retryAnalytics()}
+              retrying={analyticsFetching}
+              title={t('overview.traffic.unavailable.title')}
+            />
+          ) : null}
+          {!analyticsError && !analyticsUnavailable && analytics?.availability === 'partial' ? (
             <Alert variant="warning">
               <AlertTriangle />
               {/* About traffic, the only figures here that can be missing; not AI token or cost values. */}
-              <AlertTitle>{t(analyticsUnavailable ? 'overview.traffic.unavailable.title' : 'overview.traffic.partial.title')}</AlertTitle>
-              <AlertDescription>{t(analyticsUnavailable ? 'overview.traffic.unavailable.body' : 'overview.traffic.partial.body')}</AlertDescription>
+              <AlertTitle>{t('overview.traffic.partial.title')}</AlertTitle>
+              <AlertDescription>{t('overview.traffic.partial.body')}</AlertDescription>
             </Alert>
           ) : null}
 
