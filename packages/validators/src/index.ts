@@ -1022,6 +1022,24 @@ export type JwtAccessConfigBody = z.infer<typeof jwtAccessConfigBody>;
 
 export const readerActivationQuery = z.object({ token: z.string().min(32).max(512) }).strict();
 export const readerJwtHandoffBody = z.object({ token: z.string().min(32).max(32_768), redirect: z.string().max(2048).optional() }).strict();
+/** Accept a reader invitation from the site page (a click, so mail scanners that open links can't use it up). */
+export const readerInvitationAcceptBody = z.object({ token: z.string().min(32).max(512) }).strict();
+/** Ask for a one-time sign-in code for a private published site. */
+export const siteSignInStartBody = z
+  .object({ email: z.string().trim().toLowerCase().email().max(320), lang: z.string().trim().min(2).max(35).optional() })
+  .strict();
+export type SiteSignInStartBody = z.infer<typeof siteSignInStartBody>;
+/** Exchange the emailed code for a session on the published site. */
+export const siteSignInVerifyBody = z
+  .object({
+    email: z.string().trim().toLowerCase().email().max(320),
+    code: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/),
+  })
+  .strict();
+export type SiteSignInVerifyBody = z.infer<typeof siteSignInVerifyBody>;
 
 // ─── Comments ────────────────────────────────────────────────────────────────
 

@@ -379,6 +379,26 @@ export const getProjectAssetAccess = async (projectId: string, key: string, head
   }
 };
 
+/** What the sign-in screen of a private site may show a visitor who can't read
+ *  it yet: the site's own name, logo and colours, its default language, and who
+ *  can sign in. Never a page, title or anything else from its content. */
+const privateSiteGate = (projectId: string, project: PublicSnapshotProject) => {
+  const config = (project.config ?? {}) as { branding?: Record<string, unknown>; styling?: Record<string, unknown> };
+  const branding = config.branding ?? {};
+  const pick = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+  const language = project.languages.find((item) => item.isDefault) ?? project.languages[0];
+  return {
+    projectId,
+    name: project.name,
+    mode: project.accessMode,
+    language: language ? { code: language.code, direction: language.direction } : null,
+    config: {
+      branding: { logoLight: pick(branding.logoLight), logoDark: pick(branding.logoDark), favicon: pick(branding.favicon) },
+      styling: config.styling ?? null,
+    },
+  };
+};
+
 const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const projectId = await resolveProjectId(identifier);
   // Live chrome doubles as the moderation gate: a taken-down project stops
@@ -420,7 +440,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   };
   const viewer = await resolveViewerAccess(projectId, live.accessMode, getContext<HonoEnv>().req.raw.headers);
   if (!viewer) {
-    throw notFound('site', { identifier: projectId, reason: 'private' });
+    throw notFound('site', { identifier: projectId, reason: 'private', gate: privateSiteGate(projectId, project) });
   }
   const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
   // No page grant covers the API reference, so only site-wide viewers get it.
@@ -477,7 +497,7 @@ const pagesForVersion = (snapshot: SiteSnapshot, version: SnapshotVersion): Snap
 
 /** The published site shell: project branding + navigation tree (per language). */
 export const getSite = async (identifier: string, lang?: string, version?: string) => {
-  const { snapshot, deploymentId, version: deploymentVersion } = await getPublished(identifier);
+  const { snapshot, deploymentId, version: deploymentVersion, viewer } = await getPublished(identifier);
   const docsVersion = activeVersion(snapshot, version);
   const activeLanguage = activeLanguageCode(snapshot, lang);
   const versionPages = pagesForVersion(snapshot, docsVersion);
@@ -516,6 +536,8 @@ export const getSite = async (identifier: string, lang?: string, version?: strin
       : null,
     version: deploymentVersion,
     generatedAt: snapshot.generatedAt,
+    // Signed in on the site itself (never on a public site, whose shell is shared-cacheable).
+    signedIn: viewer.siteSession === true,
     capabilities: {
       answer:
         resolvePublishedSearchRequest(snapshot.project.config, {}).configuration.aiAnswers &&

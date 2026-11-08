@@ -50,6 +50,7 @@ model User {
   oauthAccessTokens  OauthAccessToken[]
   oauthConsents      OauthConsent[]
   mcpOAuthGrants     McpOAuthGrant[]
+  siteMemberSessions SiteMemberSession[]
 
   @@map("user")
 }
@@ -680,6 +681,8 @@ model Project {
   jwtAccess       JwtAccessProvider?
   jwtReplays      JwtReplay[]
   readerAuditLogs ReaderAuditLog[]
+  siteSignInCodes SiteSignInCode[]
+  siteMemberSessions SiteMemberSession[]
   exportSnapshots ExportSnapshot[]
   exportJobs      ExportJob[]
   exportSchedules ExportSchedule[]
@@ -1346,6 +1349,44 @@ model ReaderSession {
   @@index([projectId, expiresAt])
   @@index([readerId, revokedAt])
   @@map("reader_session")
+}
+
+/// A one-time email code for signing in on a private published site. Only a
+/// hash of the code is kept; the row id salts it.
+model SiteSignInCode {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  email      String
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId, email, createdAt])
+  @@index([expiresAt])
+  @@map("site_sign_in_code")
+}
+
+/// A team member signed in on the published site itself. The dashboard session
+/// cookie never reaches a custom domain, so a member of a Team only or Invited
+/// readers site signs in there with an email code. Access is re-checked against
+/// the membership on every request.
+model SiteMemberSession {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime  @default(now())
+  createdAt  DateTime  @default(now())
+
+  @@index([projectId, userId])
+  @@map("site_member_session")
 }
 
 /// Per-site OIDC/JWT handoff configuration. Only public verification material

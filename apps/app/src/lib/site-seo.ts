@@ -263,6 +263,20 @@ export function siteHead(site: SiteShell | null | undefined, requestOrigin?: str
 export const siteRobotsHeaders = (site: SiteShell | null | undefined): Record<string, string> | undefined =>
   !site || site.project.config?.visibility === 'private' ? { 'X-Robots-Tag': 'noindex, nofollow' } : undefined;
 
+type UnavailableShell = { site?: SiteShell | null; unavailable?: 'private'; gate?: { language?: { code: string } | null } };
+
+/** A child route's <head> when the site shell itself was refused (a private or
+ *  unpublished site): the same title as the site's own screen, in the visitor's
+ *  `?lang=` or the site's default language, rather than "page not found". */
+export const unavailableSiteHeadFromMatches = (
+  matches: ReadonlyArray<{ routeId: string; loaderData?: unknown; search?: unknown }> = [],
+): Head | undefined => {
+  const parent = matches.find((match) => match.routeId === '/sites/$projectId');
+  const data = parent?.loaderData as UnavailableShell | undefined;
+  if (!data || data.site) return undefined;
+  return unavailableSiteHead(data.unavailable, (parent?.search as { lang?: string } | undefined)?.lang ?? data.gate?.language?.code);
+};
+
 /** <head> for a site whose shell the API refused: a private site, or one
  *  that is not published. No Nibleaf branding, never indexed. */
 export function unavailableSiteHead(reason: 'private' | undefined, lang?: string): Head {
