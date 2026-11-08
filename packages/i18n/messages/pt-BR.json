@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "Este convite foi enviado para {email}. Faça login com esse endereço para aceitá-lo.",
   "auth_invite_expirederror": "Este convite expirou. Peça ao autor do convite para enviar um novo.",
   "auth_invite_notfound": "Este convite não foi encontrado. O link pode ser inválido ou já utilizado.",
+  "auth_invite_alreadyused": "Este convite já foi usado. Se você ainda precisa de acesso, peça um novo à pessoa que convidou você.",
   "auth_invite_createaccounttojoin": "Crie sua conta para participar",
   "auth_invite_signintojoin": "Faça login para participar",
   "auth_invite_gotoapp": "Ir para meus sites",

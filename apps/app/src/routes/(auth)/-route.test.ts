@@ -43,6 +43,13 @@ describe('(auth) beforeLoad', () => {
     await expect(beforeLoad({ location: { pathname: '/sign-in', searchStr: '' } })).rejects.toEqual({ redirect: { to: '/app', search: {} } });
   });
 
+  it('sends a signed-in visitor opening an invitation sign-in link to that invitation', async () => {
+    mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
+    await expect(beforeLoad({ location: { pathname: '/sign-in', searchStr: '?invite=inv-1&email=a%40b.c' } })).rejects.toEqual({
+      redirect: { href: '/accept-invite/inv-1' },
+    });
+  });
+
   it('keeps the first-publish intent when a signed-in visitor opens sign-up', async () => {
     mocks.getSession.mockResolvedValue({ user: { id: 'user-1' } });
     await expect(beforeLoad({ location: { pathname: '/sign-up', searchStr: '?intent=first-publish' } })).rejects.toEqual({

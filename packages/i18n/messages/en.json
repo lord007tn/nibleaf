@@ -1325,6 +1325,7 @@
   "auth_invite_wrongaccount": "This invitation was sent to {email}. Log in with that address to accept it.",
   "auth_invite_expirederror": "This invitation has expired. Ask the inviter to send a new one.",
   "auth_invite_notfound": "This invitation could not be found. The link may be invalid or already used.",
+  "auth_invite_alreadyused": "This invitation has already been used. If you still need access, ask the person who invited you for a new one.",
   "auth_invite_createaccounttojoin": "Create your account to join",
   "auth_invite_signintojoin": "Log in to join",
   "auth_invite_gotoapp": "Go to my sites",

@@ -2,14 +2,14 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/components/ui/input-otp';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
-import { readPendingInvitation } from '@/lib/invitations';
+import { afterAuthDestination } from '@/lib/invitations';
 import { authClient, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/verify-email')({
@@ -28,6 +28,7 @@ export const Route = createFileRoute('/(auth)/verify-email')({
 function VerifyEmailPage() {
   const t = useT();
   const navigate = useNavigate();
+  const router = useRouter();
   const search = Route.useSearch();
   const { data: session } = useSession();
   const email = search.email || session?.user?.email || '';
@@ -38,13 +39,10 @@ function VerifyEmailPage() {
   const [verified, setVerified] = useState(false);
 
   const continueAfterVerification = useCallback(() => {
-    const inviteId = search.invite ?? readPendingInvitation() ?? undefined;
-    if (inviteId) {
-      navigate({ to: '/accept-invite/$invitationId', params: { invitationId: inviteId } });
-      return;
-    }
-    navigate({ to: '/app' });
-  }, [navigate, search.invite]);
+    const destination = afterAuthDestination({ invite: search.invite });
+    if (destination) router.history.push(destination);
+    else navigate({ to: '/app' });
+  }, [navigate, router, search.invite]);
 
   // Keep old link-based verification emails valid while new signups use OTP.
   useEffect(() => {

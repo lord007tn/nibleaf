@@ -1513,6 +1513,7 @@ export const MESSAGE_IDS = {
   'auth.invite.wrongAccount': 'auth_invite_wrongaccount',
   'auth.invite.expiredError': 'auth_invite_expirederror',
   'auth.invite.notFound': 'auth_invite_notfound',
+  'auth.invite.alreadyUsed': 'auth_invite_alreadyused',
   'auth.invite.createAccountToJoin': 'auth_invite_createaccounttojoin',
   'auth.invite.signInToJoin': 'auth_invite_signintojoin',
   'auth.invite.goToApp': 'auth_invite_gotoapp',

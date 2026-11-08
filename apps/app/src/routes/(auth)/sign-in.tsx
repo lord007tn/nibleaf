@@ -4,7 +4,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@nibleaf/design-system/co
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useOtpResendCountdown } from '@nibleaf/design-system/hooks/use-otp-resend-countdown';
 import { useT } from '@nibleaf/i18n/react';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -14,7 +14,7 @@ import { getPublicMetaQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError } from '@/lib/auth-errors';
-import { readPendingInvitation } from '@/lib/invitations';
+import { afterAuthDestination } from '@/lib/invitations';
 import { currentOAuthQuery } from '@/lib/mcp-oauth';
 import { authClient, signIn } from '@/services/auth-client';
 
@@ -43,6 +43,7 @@ const isRedirect = (value: unknown) =>
 function SignInPage() {
   const t = useT();
   const navigate = useNavigate();
+  const router = useRouter();
   const search = Route.useSearch();
   const [email, setEmail] = useState(search.email ?? '');
   const [otp, setOtp] = useState('');
@@ -62,18 +63,16 @@ function SignInPage() {
   useEffect(() => setOauthQuery(currentOAuthQuery()), []);
   const connectingApp = oauthQuery !== null;
   const oauthBody = oauthQuery ? { oauth_query: oauthQuery } : {};
-  const invitationId = search.invite ?? readPendingInvitation() ?? undefined;
-  const afterAuthPath = invitationId ? `/accept-invite/${invitationId}` : '/app';
+  // The invitation (or other page) that sent the visitor here; the (auth) guard uses the same answer.
+  const destination = afterAuthDestination(search);
+  const afterAuthPath = destination ?? '/app';
 
   const finishSignIn = async (result: unknown) => {
     // During an MCP OAuth request Better Auth answers sign-in with the next
     // step ({ redirect, url }) and the auth client follows it.
     if (isRedirect(result)) return;
-    if (invitationId) {
-      await navigate({ to: '/accept-invite/$invitationId', params: { invitationId } });
-    } else {
-      await navigate({ to: '/app' });
-    }
+    if (destination) router.history.push(destination);
+    else await navigate({ to: '/app' });
   };
 
   const requestCode = async (kind: 'send' | 'resend' = 'send') => {

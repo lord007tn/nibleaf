@@ -25,6 +25,7 @@ vi.mock('@nibleaf/i18n/react', async () => {
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => mocks.search }),
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 vi.mock('@/hooks/api/public', () => ({
@@ -38,7 +39,7 @@ vi.mock('@/services/auth-client', () => ({
   signIn: {},
   useSession: () => ({ data: null }),
 }));
-vi.mock('@/lib/invitations', () => ({ readPendingInvitation: () => null }));
+vi.mock('@/lib/invitations', () => ({ afterAuthDestination: () => null }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 
 import { Route as SignInRoute } from './sign-in';

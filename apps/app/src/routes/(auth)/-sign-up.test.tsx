@@ -9,6 +9,7 @@ vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
   useNavigate: () => mocks.navigate,
+  useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 vi.mock('@/hooks/api/public', () => ({ useGetPublicMeta: mocks.publicMeta }));
@@ -16,7 +17,7 @@ vi.mock('@/hooks/api/query-options', () => ({ getPublicMetaQueryOptions: () => (
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
 vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
 vi.mock('@/services/auth-client', () => ({ authClient: { emailOtp: { sendVerificationOtp: mocks.send } }, signIn: { social: mocks.social } }));
-vi.mock('@/lib/invitations', () => ({ readPendingInvitation: () => null }));
+vi.mock('@/lib/invitations', () => ({ afterAuthDestination: () => null }));
 
 import { Route } from './sign-up';
 

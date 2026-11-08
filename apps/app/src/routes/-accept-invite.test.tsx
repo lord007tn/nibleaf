@@ -5,6 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
 
 const mocks = vi.hoisted(() => ({
@@ -16,12 +17,14 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   refetch: vi.fn(),
   prefetchRouteData: vi.fn(),
+  projects: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/hooks/api', () => ({ useGetInvitationInfo: mocks.invitation }));
 vi.mock('@/hooks/api/query-options', () => ({
   getInvitationInfoQueryOptions: (invitationId: string) => ({ queryKey: ['public', 'invitations', invitationId] }),
+  projectsQueryOptions: () => ({ queryKey: ['projects'], queryFn: mocks.projects }),
 }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetchRouteData }));
 vi.mock('@/services/auth-client', () => ({
@@ -58,14 +61,14 @@ const Page = () => (
     <PageComponent />
   </QueryClientProvider>
 );
-const info = { email: 'recipient@example.com', organizationName: 'Example workspace', expired: false };
+const info = { email: 'recipient@example.com', organizationName: 'Example workspace', status: 'pending', expired: false };
 
 describe('invitation recovery', () => {
   let container: HTMLDivElement;
   let root: Root;
 
   beforeEach(() => {
-    mocks.session.mockReturnValue({ data: { user: { email: info.email } }, isPending: false });
+    mocks.session.mockReturnValue({ data: { user: { id: 'recipient', email: info.email } }, isPending: false });
     mocks.invitation.mockReturnValue({
       data: info,
       error: null,
@@ -87,6 +90,7 @@ describe('invitation recovery', () => {
     await act(async () => root.unmount());
     container.remove();
     window.localStorage.clear();
+    queryClient.clear();
     vi.clearAllMocks();
   });
 
@@ -253,5 +257,43 @@ describe('invitation recovery', () => {
     expect(container.textContent).toContain('auth.invite.expiredError');
     expect(button()).toBeNull();
     expect(readPendingInvitation()).toBe(storedId === 'invite-1' ? null : storedId);
+  });
+
+  it('opens the site the user just joined, selected, instead of the site the dashboard had open', async () => {
+    // The dashboard last belonged to another account (the user chose "Log in with the invited account").
+    syncDashboardSession(queryClient, 'previous-account');
+    window.localStorage.setItem('nibleaf.activeProjectId', 'own-site');
+    mocks.accept.mockResolvedValueOnce({ data: { invitation: { organizationId: 'org-joined' } }, error: null });
+    mocks.projects.mockResolvedValue([
+      { id: 'own-site', organizationId: 'org-own' },
+      { id: 'joined-site', organizationId: 'org-joined' },
+    ]);
+    await render();
+    await act(async () => button()?.click());
+    expect(mocks.projects).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem('nibleaf.activeProjectId')).toBe('joined-site');
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId', params: { projectId: 'joined-site' } });
+    // What /app's session check does next must keep that selection.
+    syncDashboardSession(queryClient, 'recipient');
+    expect(window.localStorage.getItem('nibleaf.activeProjectId')).toBe('joined-site');
+  });
+
+  it('says an already-accepted invitation was used instead of offering to accept it again', async () => {
+    setPendingInvitation('invite-1');
+    mocks.invitation.mockReturnValue({
+      data: { ...info, status: 'accepted' },
+      error: null,
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      isFetching: false,
+      refetch: mocks.refetch,
+    });
+    await render();
+    expect(container.textContent).toContain('auth.invite.alreadyUsed');
+    expect(container.textContent).not.toContain('auth.invite.accept');
+    expect(button()).toBeNull();
+    expect(readPendingInvitation()).toBeNull();
+    expect(mocks.accept).not.toHaveBeenCalled();
   });
 });

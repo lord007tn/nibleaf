@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "Cette invitation a été envoyée à {email}. Connectez-vous avec cette adresse pour l'accepter.",
   "auth_invite_expirederror": "Cette invitation a expiré. Demandez à l'invitant d'en envoyer un nouveau.",
   "auth_invite_notfound": "Cette invitation est introuvable. Le lien est peut-être invalide ou déjà utilisé.",
+  "auth_invite_alreadyused": "Cette invitation a déjà été utilisée. Si vous avez encore besoin d'un accès, demandez-en une nouvelle à la personne qui vous a invité.",
   "auth_invite_createaccounttojoin": "Créez votre compte pour adhérer",
   "auth_invite_signintojoin": "Connectez-vous pour rejoindre",
   "auth_invite_gotoapp": "Aller à mes sites",

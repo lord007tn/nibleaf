@@ -26,6 +26,15 @@ const readStored = (): string | null => {
   }
 };
 
+/** Select a site for the next time the dashboard opens (e.g. right after joining it from an invitation). */
+export function rememberActiveProject(projectId: string): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, projectId);
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { data: projects, isPending, isError } = useProjects();
   const [selectedId, setSelectedId] = useState<string | null>(() => readStored());

@@ -1307,6 +1307,7 @@
   "auth_invite_wrongaccount": "Esta invitación fue enviada a {email}. Inicia sesión con esa dirección para aceptarla.",
   "auth_invite_expirederror": "Esta invitación ha caducado. Pídale al invitado que envíe uno nuevo.",
   "auth_invite_notfound": "No se pudo encontrar esta invitación. Es posible que el enlace no sea válido o que ya esté utilizado.",
+  "auth_invite_alreadyused": "Esta invitación ya se ha usado. Si todavía necesitas acceso, pide una nueva a la persona que te invitó.",
   "auth_invite_createaccounttojoin": "Crea tu cuenta para unirte",
   "auth_invite_signintojoin": "Inicia sesión para unirte",
   "auth_invite_gotoapp": "Ir a mis sitios",
