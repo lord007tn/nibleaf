@@ -174,6 +174,14 @@ export class QdrantClient {
     return { alias: this.alias, collection: this.collection, created: !collectionState.exists };
   }
 
+  /** The physical collection the read alias serves, or null before one exists.
+   * Queries read the alias, so they need it to serve `collection`: a collection
+   * built for another embedding size or version cannot answer this client. */
+  async servedCollection(): Promise<string | null> {
+    const { aliases } = await this.sdk.getAliases();
+    return aliases.find((item) => item.alias_name === this.alias)?.collection_name ?? null;
+  }
+
   async switchAlias(previousCollection?: string): Promise<void> {
     if (previousCollection) {
       await this.sdk.updateCollectionAliases({

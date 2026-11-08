@@ -5,10 +5,19 @@ const doubles = vi.hoisted(() => ({
   queryHybrid: vi.fn(),
   embed: vi.fn(),
   resolveWorkspaceAi: vi.fn(),
+  servedCollection: vi.fn(),
+  latestRun: vi.fn(),
 }));
 vi.mock('@nibleaf/qdrant', () => ({
-  getQdrantClient: () => ({ vectorSize: 2, queryHybrid: doubles.queryHybrid }),
+  getQdrantClient: () => ({
+    alias: 'search_active',
+    collection: 'search_active_v1_2',
+    vectorSize: 2,
+    queryHybrid: doubles.queryHybrid,
+    servedCollection: doubles.servedCollection,
+  }),
 }));
+vi.mock('@nibleaf/database', () => ({ prisma: { searchIndexRun: { findFirst: doubles.latestRun } } }));
 vi.mock('@/env', () => ({
   env: {
     SEARCH_RUNTIME: 'hybrid',
@@ -39,9 +48,18 @@ const scope: SearchScope = {
 };
 const result = { id: 'booking', title: 'إضافة حجز', path: 'booking', description: '', snippet: 'حجز', score: 1 };
 
+// Each test reads the alias afresh: the server trusts one reading for 30 seconds.
+let clock = Date.parse('2026-11-08T00:00:00Z');
+const readyRun = { status: 'READY', indexedChunks: 4, schemaVersion: 'v1', embeddingModel: 'test', vectorSize: 2 };
+
 describe('hybrid index recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ toFake: ['Date'] });
+    clock += 60_000;
+    vi.setSystemTime(clock);
+    doubles.servedCollection.mockResolvedValue('search_active_v1_2');
+    doubles.latestRun.mockResolvedValue(readyRun);
     doubles.embed.mockResolvedValue({ vectors: [[1, 0]] });
     doubles.resolveWorkspaceAi.mockResolvedValue({
       providerId: 'openrouter',
@@ -55,6 +73,21 @@ describe('hybrid index recovery', () => {
 
   it('reports AI answers unavailable instead of failing the site when readiness cannot be read', async () => {
     doubles.resolveWorkspaceAi.mockRejectedValueOnce(new Error('database unavailable'));
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
+  });
+
+  it('keeps keyword search, without embedding the query, and pauses AI answers while the alias serves an earlier collection', async () => {
+    doubles.servedCollection.mockResolvedValue('search_active_v1_1');
+    const legacy = vi.fn().mockResolvedValue([result]);
+    await expect(runPublishedSearch(scope, 'حجز', 12, legacy)).resolves.toEqual({ hits: [result], runtime: 'legacy-fallback' });
+    expect(doubles.embed).not.toHaveBeenCalled();
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
+    await expect(answerPublishedSearch(scope, 'حجز')).rejects.toThrow('AI answers are not configured.');
+  });
+
+  it('offers AI answers only from an index built with the current embedding settings', async () => {
+    await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(true);
+    doubles.latestRun.mockResolvedValue({ ...readyRun, embeddingModel: 'earlier-model', vectorSize: 1 });
     await expect(answerSearchAvailable('project', 'deployment')).resolves.toBe(false);
   });
 

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   findDeployment: vi.fn(),
   findRun: vi.fn(),
   findProject: vi.fn(),
+  findProjects: vi.fn(),
   createRun: vi.fn(),
   updateManyRun: vi.fn(),
   createJob: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     deployment: { findFirst: mocks.findDeployment },
     searchIndexRun: { findFirst: mocks.findRun, create: mocks.createRun, updateMany: mocks.updateManyRun },
-    project: { findFirst: mocks.findProject },
+    project: { findFirst: mocks.findProject, findMany: mocks.findProjects },
     $transaction: vi.fn(),
   },
 }));
@@ -70,6 +71,7 @@ import {
   createProjectSearchReindex,
   getProjectSearchConfiguration,
   getProjectSearchIndexDiagnostics,
+  queueSearchReindexForAllProjects,
   updateProjectSearchConfiguration,
 } from './search';
 
@@ -247,6 +249,21 @@ describe('tenant-safe search actions', () => {
       latestRun: { id: 'run-a', errorCode: 'embedding_failed' },
     });
     expect(JSON.stringify(result)).not.toMatch(/"(?:content|hash|vector|title|path|providerPayload)":/i);
+  });
+
+  it('queues every published site for the operator rebuild and reports the ones it skips', async () => {
+    mocks.findProjects.mockResolvedValue([{ id: 'project-a' }, { id: 'project-b' }]);
+    mocks.findDeployment.mockImplementation(async ({ where }: { where: { projectId: string } }) =>
+      where.projectId === 'project-a' ? mocks.deployment : null,
+    );
+    await expect(queueSearchReindexForAllProjects()).resolves.toEqual({
+      queued: ['project-a'],
+      skipped: [{ projectId: 'project-b', reason: 'database:not_found' }],
+    });
+    expect(mocks.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ projectId: 'project-a', requestedById: null, vectorSize: 1536 }) }),
+    );
+    expect(mocks.createJob).toHaveBeenCalledOnce();
   });
 
   it('returns opaque no-READY and distinct active-run conflict errors', async () => {

@@ -310,6 +310,12 @@ export const getProjectSearchIndexDiagnostics = async (ctx: Context<HonoEnv>, pr
 
 export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectId: string) => {
   const { actorId } = await authorizeProjectSearch(ctx, projectId, 'search:reindex', true);
+  return queueProjectSearchReindex(projectId, actorId);
+};
+
+/** Rebuild a project's latest READY deployment into the configured collection.
+ * `requestedById` is the administrator who asked; operator commands have none. */
+const queueProjectSearchReindex = async (projectId: string, requestedById: string | null = null) => {
   if (!(getQdrantClient() && (await resolveWorkspaceAi(projectId)))) {
     throw new AppError({ code: 'search:unavailable', message: 'Search indexing is not configured.' });
   }
@@ -347,7 +353,7 @@ export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectI
           revisionId: deployment.id,
           embeddingModel: env.SEARCH_EMBEDDING_MODEL,
           vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
-          requestedById: actorId,
+          requestedById,
         },
         select: { id: true, deploymentId: true, jobId: true, status: true, createdAt: true },
       });
@@ -379,4 +385,28 @@ export const createProjectSearchReindex = async (ctx: Context<HonoEnv>, projectI
   }
 
   return { id: run.id, status: run.status, createdAt: run.createdAt.toISOString(), deploymentVersion: deployment.version };
+};
+
+/** After an embedding-settings change, queue a rebuild of every published site
+ * into the newly configured collection (src/scripts/reindex-search.ts). A site
+ * with no usable embedding provider, no READY deployment or a run already in
+ * progress is skipped with its reason. Chunks already in the configured
+ * collection are not embedded again, so running it twice costs nothing extra. */
+export const queueSearchReindexForAllProjects = async () => {
+  const projects = await prisma.project.findMany({
+    where: { deployments: { some: { status: 'READY' } } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true },
+  });
+  const queued: string[] = [];
+  const skipped: Array<{ projectId: string; reason: string }> = [];
+  for (const { id } of projects) {
+    try {
+      await queueProjectSearchReindex(id);
+      queued.push(id);
+    } catch (error) {
+      skipped.push({ projectId: id, reason: error instanceof AppError ? error.code : 'unexpected_error' });
+    }
+  }
+  return { queued, skipped };
 };
