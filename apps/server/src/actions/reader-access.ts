@@ -18,6 +18,28 @@ import { badRequest, conflict, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { assertPublicJwksUrl, claimAt, claimStrings, isJwtVerificationError, jwtReplayHash, verifyReaderJwt } from '@/lib/reader-jwt';
 
+/**
+ * Lock order. Every transaction that grants or revokes reader access takes row
+ * locks in this order, so no two of them can deadlock:
+ *
+ *   JWT provider → reader → invitations → sessions
+ *
+ * - JWT exchange: provider (shared, enabled = true) → reader → new session.
+ * - Invitation activation: reader → invitation → new session.
+ * - Reader revocation: reader → invitations → sessions.
+ * - Emergency revocation: provider (committed on its own) → invitations →
+ *   sessions.
+ *
+ * Within one table, a revocation that updates several rows first locks them
+ * with `ORDER BY "id" FOR UPDATE`, so two revocations over overlapping rows
+ * acquire them in the same order. A revocation that still loses a deadlock or
+ * write conflict is retried once.
+ *
+ * A grant writes conditionally on current state, and a revocation writes the
+ * row a grant locks before it revokes sessions. Whichever commits first, the
+ * revocation wins: either the grant's conditional write matches nothing, or the
+ * revocation waits for the grant to commit and then revokes the new session.
+ */
 const INVITE_TTL_MS = 7 * 24 * 60 * 60_000;
 const DEFAULT_SESSION_TTL_MS = 7 * 24 * 60 * 60_000;
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
@@ -143,16 +165,6 @@ const setSessionCookie = (ctx: Context<HonoEnv>, projectId: string, token: strin
     expires: expiresAt,
   });
   ctx.header('Cache-Control', 'private, no-store');
-};
-
-const issueSession = async (ctx: Context<HonoEnv>, projectId: string, readerId: string, source: string, ttlMs: number) => {
-  const token = newSecret();
-  const expiresAt = new Date(Date.now() + ttlMs);
-  await prisma.readerSession.create({
-    data: { projectId, readerId, tokenHash: sha256(token), source, expiresAt, ...requestFingerprint(ctx) },
-  });
-  setSessionCookie(ctx, projectId, token, expiresAt);
-  return expiresAt;
 };
 
 export const listReaderAccess = async (projectId: string) => {
@@ -302,26 +314,84 @@ export const updateReader = async (projectId: string, readerId: string, actorUse
   return reader;
 };
 
+/**
+ * A transaction PostgreSQL rolled back as a deadlock victim (40P01) or for a
+ * serialization failure (40001). The pg driver adapter reports both as a
+ * transaction write conflict, which Prisma raises as P2034.
+ */
+export const isRetryableConflict = (error: unknown): boolean => (error as { code?: unknown } | null)?.code === 'P2034';
+
+/** Revocation sweeps can touch every session of a project: allow them time. */
+const SWEEP_TRANSACTION = { timeout: 60_000, maxWait: 10_000 } as const;
+
+/** Run a revocation transaction, retrying it once after a deadlock or write conflict. */
+const withConflictRetry = async <T>(run: () => Promise<T>): Promise<T> => {
+  try {
+    return await run();
+  } catch (error) {
+    if (!isRetryableConflict(error)) throw error;
+    return run();
+  }
+};
+
 export const revokeReader = async (projectId: string, readerId: string, actorUserId: string) => {
   const reader = await prisma.reader.findFirst({ where: { id: readerId, projectId } });
   if (!reader) throw notFound('reader', { id: readerId });
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.reader.update({ where: { id: readerId }, data: { status: 'REVOKED', revokedAt: now } }),
-    prisma.readerSession.updateMany({ where: { projectId, readerId, revokedAt: null }, data: { revokedAt: now } }),
-    prisma.readerInvitation.updateMany({ where: { projectId, readerId, acceptedAt: null, revokedAt: null }, data: { revokedAt: now } }),
-  ]);
+  // Lock order: reader → invitations → sessions, rows by id (see the top of
+  // this file). The row locks return only a count, not the rows.
+  await withConflictRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const now = new Date();
+      await tx.reader.update({ where: { id: readerId }, data: { status: 'REVOKED', revokedAt: now } });
+      await tx.$queryRaw`
+        SELECT count(*)::int AS "locked" FROM (
+          SELECT 1 FROM "reader_invitation"
+          WHERE "projectId" = ${projectId} AND "readerId" = ${readerId} AND "acceptedAt" IS NULL AND "revokedAt" IS NULL
+          ORDER BY "id" FOR UPDATE
+        ) AS "locked_rows"`;
+      await tx.readerInvitation.updateMany({ where: { projectId, readerId, acceptedAt: null, revokedAt: null }, data: { revokedAt: now } });
+      await tx.$queryRaw`
+        SELECT count(*)::int AS "locked" FROM (
+          SELECT 1 FROM "reader_session"
+          WHERE "projectId" = ${projectId} AND "readerId" = ${readerId} AND "revokedAt" IS NULL
+          ORDER BY "id" FOR UPDATE
+        ) AS "locked_rows"`;
+      await tx.readerSession.updateMany({ where: { projectId, readerId, revokedAt: null }, data: { revokedAt: now } });
+    }, SWEEP_TRANSACTION),
+  );
   await logAudit({ projectId, readerId, actorUserId, action: 'READER_REVOKED' });
   return { id: readerId };
 };
 
 export const emergencyRevoke = async (projectId: string, actorUserId: string) => {
-  const now = new Date();
-  const [sessions, invitations] = await prisma.$transaction([
-    prisma.readerSession.updateMany({ where: { projectId, revokedAt: null }, data: { revokedAt: now } }),
-    prisma.readerInvitation.updateMany({ where: { projectId, acceptedAt: null, revokedAt: null }, data: { revokedAt: now } }),
-    prisma.jwtAccessProvider.updateMany({ where: { projectId }, data: { enabled: false } }),
-  ]);
+  // Lock order: provider → invitations → sessions, rows by id (see the top of
+  // this file). The JWT provider is disabled first, in its own statement, so
+  // the switch stays off even if the sweep below fails. A JWT exchange holding
+  // the provider row commits before the disable proceeds, and an activation
+  // holding an invitation row commits before the invitation fence proceeds, so
+  // every session they issued is visible to, and revoked by, the sweep.
+  await withConflictRetry(() => prisma.jwtAccessProvider.updateMany({ where: { projectId }, data: { enabled: false } }));
+  const { invitations, sessions } = await withConflictRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const now = new Date();
+      await tx.$queryRaw`
+        SELECT count(*)::int AS "locked" FROM (
+          SELECT 1 FROM "reader_invitation"
+          WHERE "projectId" = ${projectId} AND "acceptedAt" IS NULL AND "revokedAt" IS NULL
+          ORDER BY "id" FOR UPDATE
+        ) AS "locked_rows"`;
+      const fencedInvitations = await tx.readerInvitation.updateMany({
+        where: { projectId, acceptedAt: null, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await tx.$queryRaw`
+        SELECT count(*)::int AS "locked" FROM (
+          SELECT 1 FROM "reader_session" WHERE "projectId" = ${projectId} AND "revokedAt" IS NULL ORDER BY "id" FOR UPDATE
+        ) AS "locked_rows"`;
+      const revokedSessions = await tx.readerSession.updateMany({ where: { projectId, revokedAt: null }, data: { revokedAt: now } });
+      return { invitations: fencedInvitations, sessions: revokedSessions };
+    }, SWEEP_TRANSACTION),
+  );
   await logAudit({ projectId, actorUserId, action: 'EMERGENCY_REVOKE', metadata: { sessions: sessions.count, invitations: invitations.count } });
   return { sessions: sessions.count, invitations: invitations.count, jwtDisabled: true };
 };
@@ -378,13 +448,38 @@ export const activateReaderInvitation = async (ctx: Context<HonoEnv>, token: str
   if (!invitation || invitation.acceptedAt || invitation.revokedAt || invitation.expiresAt <= new Date() || invitation.reader.revokedAt) {
     throw notFound('reader invitation');
   }
-  const accepted = await prisma.readerInvitation.updateMany({
-    where: { id: invitation.id, acceptedAt: null, revokedAt: null, expiresAt: { gt: new Date() } },
-    data: { acceptedAt: new Date() },
+  const now = new Date();
+  const sessionToken = newSecret();
+  const expiresAt = new Date(now.getTime() + DEFAULT_SESSION_TTL_MS);
+  // Activation is one transaction whose every write is conditional on current
+  // state, so a revocation always wins. Lock order: reader → invitation →
+  // session (see the top of this file). A concurrent revocation either commits
+  // first (the conditional update then matches nothing) or waits for this
+  // commit and then revokes the session created here. Activation never clears
+  // revokedAt.
+  await prisma.$transaction(async (tx) => {
+    const activated = await tx.reader.updateMany({
+      where: { id: invitation.readerId, projectId: invitation.projectId, revokedAt: null },
+      data: { status: 'ACTIVE', activatedAt: now },
+    });
+    if (activated.count !== 1) throw notFound('reader invitation');
+    const accepted = await tx.readerInvitation.updateMany({
+      where: { id: invitation.id, acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
+      data: { acceptedAt: now },
+    });
+    if (accepted.count !== 1) throw conflict('This reader invitation has already been used.');
+    await tx.readerSession.create({
+      data: {
+        projectId: invitation.projectId,
+        readerId: invitation.readerId,
+        tokenHash: sha256(sessionToken),
+        source: 'INVITATION',
+        expiresAt,
+        ...requestFingerprint(ctx),
+      },
+    });
   });
-  if (accepted.count !== 1) throw conflict('This reader invitation has already been used.');
-  await prisma.reader.update({ where: { id: invitation.readerId }, data: { status: 'ACTIVE', activatedAt: new Date(), revokedAt: null } });
-  await issueSession(ctx, invitation.projectId, invitation.readerId, 'INVITATION', DEFAULT_SESSION_TTL_MS);
+  setSessionCookie(ctx, invitation.projectId, sessionToken, expiresAt);
   await logAudit({
     projectId: invitation.projectId,
     readerId: invitation.readerId,
@@ -434,37 +529,64 @@ export const jwtReaderHandoff = async (ctx: Context<HonoEnv>, projectId: string,
   // Merge an invited email identity with its first SSO handoff instead of
   // creating a duplicate. An explicit per-reader revocation is sticky: SSO
   // cannot silently reactivate that identity; an admin must re-invite it.
-  const existing = await prisma.reader.findFirst({
-    where: { projectId, OR: [{ externalSubject }, ...(email ? [{ email }] : [])] },
-    select: { id: true, revokedAt: true },
-  });
-  if (existing?.revokedAt) throw badRequest('This reader identity has been revoked.');
-  const reader = existing
-    ? await prisma.reader.update({
+  const sessionToken = newSecret();
+  const expiresAt = new Date(Date.now() + configuration.sessionTtlMinutes * 60_000);
+  const fingerprint = requestFingerprint(ctx);
+  // The exchange is one transaction. Lock order: provider → reader → session
+  // (see the top of this file). It starts with a shared lock on the provider
+  // row while it is still enabled, so an emergency revocation either commits
+  // first (no enabled row: the exchange fails) or waits for this commit and
+  // then revokes the session created here. The locked row must also be the
+  // configuration the assertion was verified against: any change to it (keys,
+  // claim mapping, issuer) fails the exchange.
+  const readerId = await prisma.$transaction(async (tx) => {
+    const [enabled] = await tx.$queryRaw<Array<{ id: string; updatedAt: Date }>>`
+      SELECT "id", "updatedAt" FROM "jwt_access_provider" WHERE "projectId" = ${projectId} AND "enabled" = true FOR SHARE`;
+    if (!enabled) throw notFound('JWT reader access');
+    if (enabled.id !== configuration.id || new Date(enabled.updatedAt).getTime() !== configuration.updatedAt.getTime()) {
+      throw conflict('The JWT reader access configuration changed during sign-in. Sign in again.');
+    }
+    const now = new Date();
+    const existing = await tx.reader.findFirst({
+      where: { projectId, OR: [{ externalSubject }, ...(email ? [{ email }] : [])] },
+      select: { id: true, revokedAt: true },
+    });
+    if (existing?.revokedAt) throw badRequest('This reader identity has been revoked.');
+    let id: string;
+    if (existing) {
+      const activated = await tx.reader.updateMany({
+        where: { id: existing.id, projectId, revokedAt: null },
+        data: { externalSubject, email, name, status: 'ACTIVE', activatedAt: now },
+      });
+      if (activated.count !== 1) throw badRequest('This reader identity has been revoked.');
+      await tx.reader.update({
         where: { id: existing.id },
-        data: {
-          externalSubject,
-          email,
-          name,
-          status: 'ACTIVE',
-          activatedAt: new Date(),
-          audiences: { deleteMany: {}, create: audienceIds.map((audienceId) => ({ audienceId })) },
-        },
-      })
-    : await prisma.reader.create({
+        data: { audiences: { deleteMany: {}, create: audienceIds.map((audienceId) => ({ audienceId })) } },
+      });
+      id = existing.id;
+    } else {
+      const created = await tx.reader.create({
         data: {
           projectId,
           externalSubject,
           email,
           name,
           status: 'ACTIVE',
-          activatedAt: new Date(),
+          activatedAt: now,
           audiences: { create: audienceIds.map((audienceId) => ({ audienceId })) },
         },
+        select: { id: true },
       });
-  await issueSession(ctx, projectId, reader.id, 'JWT', configuration.sessionTtlMinutes * 60_000);
-  await logAudit({ projectId, readerId: reader.id, action: 'JWT_SESSION_CREATED', ipHash: requestFingerprint(ctx).ipHash });
-  return { readerId: reader.id, expiresIn: configuration.sessionTtlMinutes * 60 };
+      id = created.id;
+    }
+    await tx.readerSession.create({
+      data: { projectId, readerId: id, tokenHash: sha256(sessionToken), source: 'JWT', expiresAt, ...fingerprint },
+    });
+    return id;
+  });
+  setSessionCookie(ctx, projectId, sessionToken, expiresAt);
+  await logAudit({ projectId, readerId, action: 'JWT_SESSION_CREATED', ipHash: fingerprint.ipHash });
+  return { readerId, expiresIn: configuration.sessionTtlMinutes * 60 };
 };
 
 export const logoutReader = async (ctx: Context<HonoEnv>, projectId: string) => {
