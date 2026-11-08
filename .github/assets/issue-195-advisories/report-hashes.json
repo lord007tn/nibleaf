@@ -1,0 +1,14 @@
+{
+  "before.trivy.json.gz": {
+    "rawSha256": "abb944f32fef0e1a200e350bc2b265597f12b6f8189d952b45f4689e6cbf6059",
+    "rawBytes": 1398266
+  },
+  "after.trivy.json.gz": {
+    "rawSha256": "6ecf0628c4782cdcb0912fc43ef6e12623a9d74467456392f32d0bdedf9085b3",
+    "rawBytes": 1284087
+  },
+  "runtime-inventory.json.gz": {
+    "rawSha256": "d9c07cc31a10a84b5760242d16e32a808b3807de438c4ac4e9e29e58c03241f5",
+    "rawBytes": 175010
+  }
+}

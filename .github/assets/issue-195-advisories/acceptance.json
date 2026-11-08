@@ -1,0 +1,92 @@
+{
+  "image": "nibleaf-runtime:195",
+  "services": {
+    "server": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "revision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb"
+      }
+    },
+    "worker": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "service": "worker",
+        "revision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb",
+        "queues": {
+          "status": "ok",
+          "workers": [
+            {
+              "queue": "publish",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "search",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "email",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "analytics",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "export",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "git",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "erasure",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            }
+          ]
+        },
+        "email": {
+          "status": "disabled",
+          "provider": "none",
+          "required": false
+        },
+        "analytics": {
+          "configured": true,
+          "latencyMs": 21,
+          "status": "ok"
+        }
+      }
+    },
+    "app": {
+      "status": 200
+    },
+    "admin": {
+      "status": 200
+    }
+  },
+  "imageId": "sha256:35ee8c5dbd39289f14f8c9be85a2effda528fc8e917931dcca5b2fc3dea31b94",
+  "sourceRevision": "7f6333e1f67245c7a0925fa8d45598d9bf03c6cb"
+}
