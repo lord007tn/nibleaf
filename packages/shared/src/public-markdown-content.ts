@@ -279,7 +279,7 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
       // `.md` escapes it with the prose; the exports write it as references, so `marked` never
       // sees an unpaired formatting tag.
       case 'stray':
-        return target === 'markdown' ? [{ kind: 'text', value: node.value }] : [markup(node.value.replace('<', '&lt;').replace('>', '&gt;'))];
+        return target === 'markdown' ? [{ kind: 'text', value: node.value }] : [markup(node.value.replaceAll('<', '&lt;').replaceAll('>', '&gt;'))];
       // `.md` drops what would run or import; the exports show it as source, escaped by `marked`.
       case 'active':
       case 'expression':
@@ -307,22 +307,33 @@ export const portablePublicMdxMarkdown = (source: string): string =>
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
  *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
 export const normalizePublicMarkdownContent = (markdown: string): string => {
-  let output = '';
+  const parts: string[] = [];
+  // Whether the current output line holds only spaces and quote markers so far, so prose that
+  // follows starts the line. (Unambiguous patterns: nothing backtracks on long lines.)
+  let atLineStart = true;
+  const onlyMarkers = (value: string) => /^[ >]*$/.test(value);
+  const append = (value: string) => {
+    parts.push(value);
+    const newline = value.lastIndexOf('\n');
+    atLineStart = newline < 0 ? atLineStart && onlyMarkers(value) : onlyMarkers(value.slice(newline + 1));
+  };
   for (const segment of projectMdx(markdown, 'markdown')) {
     if (segment.kind === 'code' || segment.kind === 'markup') {
-      output += segment.value;
+      append(segment.value);
       continue;
     }
     // Prose is escaped once. An authored blockquote marker at the start of a line stays Markdown:
     // `>` there quotes text, it never opens a tag.
-    const lineStart = output === '' || output.endsWith('\n') || /\n(?: {0,3}> ?)+$/.test(output) || /^(?: {0,3}> ?)+$/.test(output);
-    output += segment.value
-      .split('\n')
-      .map((line, index) => {
-        const marker = segment.kind === 'text' && (index > 0 || lineStart) ? (/^(?: {0,3}> ?)+/.exec(line)?.[0] ?? '') : '';
-        return marker + escapeHtml(line.slice(marker.length));
-      })
-      .join('\n');
+    const lineStart = atLineStart;
+    append(
+      segment.value
+        .split('\n')
+        .map((line, index) => {
+          const marker = segment.kind === 'text' && (index > 0 || lineStart) ? (/^[ >]*>(?: (?! ))?/.exec(line)?.[0] ?? '') : '';
+          return marker + escapeHtml(line.slice(marker.length));
+        })
+        .join('\n'),
+    );
   }
-  return output.trim();
+  return parts.join('').trim();
 };

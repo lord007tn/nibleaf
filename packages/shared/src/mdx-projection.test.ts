@@ -172,3 +172,26 @@ describe("regression cases from #320's reviews (#341)", () => {
     expect(output).not.toContain('unclosed');
   });
 });
+
+describe('projection robustness (#341)', () => {
+  it('reads tags nested deeper than the cap as text instead of running out of stack', () => {
+    const output = portable(`${'<Note>'.repeat(5000)}x${'</Note>'.repeat(5000)}`);
+    expect(output.startsWith('> '.repeat(32))).toBe(true);
+    expect(output).not.toMatch(/^(?:> ){33}/);
+  });
+
+  it.each([
+    ['unmatched backticks', 'a ` b '.repeat(40_000)],
+    ['unclosed tags', '<Note title="x" '.repeat(20_000)],
+    ['unclosed quotes', '<Card title="'.repeat(20_000)],
+    ['unbalanced braces', 'x { y '.repeat(40_000)],
+    ['deep quote markers', `${'> '.repeat(20_000)}x`],
+    ['deep nesting', `${'<Note>'.repeat(20_000)}x${'</Note>'.repeat(20_000)}`],
+  ])('stays fast on %s', (_label, source) => {
+    const started = performance.now();
+    md(source);
+    portable(source);
+    // Linear work takes well under a second here; quadratic work took tens of seconds.
+    expect(performance.now() - started).toBeLessThan(5000);
+  });
+});

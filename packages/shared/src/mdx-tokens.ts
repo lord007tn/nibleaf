@@ -39,6 +39,15 @@ const CONTAINER_PREFIX = /^ {0,3}(?:> ?)*(?: {0,3}(?:[-*+]|\d{1,9}[.)]) {1,4})?/
 const ACTIVE_OPEN = /^<(script|style|iframe|object|embed)\b/i;
 const ACTIVE_TAG = /<(\/?)(script|style|iframe|object|embed)\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
 const ESM_LINE = /^\s*(?:import|export)(?:\s|\{|\*)/;
+/** A component tag or expression longer than this reads as text. */
+const MAX_TAG_LENGTH = 8192;
+const MAX_EXPRESSION_LENGTH = 16_384;
+/** Tags nested deeper than this read as text, so rendering never runs out of stack. */
+const MAX_DEPTH = 32;
+/** Characters the tag and expression scans may read per document, in proportion to its length:
+ *  text full of unclosed tags or braces stays linear, and once spent, what is left reads as text. */
+let scanBudget = 0;
+const scanLimit = (source: string, start: number, length: number): number => Math.min(source.length, start + length, start + Math.max(0, scanBudget));
 
 /** The fence a line opens, read after any blockquote or list prefix and at any indentation:
  *  authors indent code inside components. */
@@ -52,7 +61,12 @@ const fenceCloses = (line: string, fence: MarkdownFence): boolean =>
 const tagEnd = (source: string, start: number): number => {
   let index = start;
   let braces = 0;
-  while (index < source.length) {
+  // Scans are bounded, so authored text full of unclosed tags stays linear.
+  const limit = scanLimit(source, start, MAX_TAG_LENGTH);
+  const spend = (end: number) => {
+    scanBudget -= end - start;
+  };
+  while (index < limit) {
     const character = source[index] as string;
     if (braces > 0) {
       if (character === '{') braces += 1;
@@ -60,15 +74,22 @@ const tagEnd = (source: string, start: number): number => {
       index += 1;
       continue;
     }
-    if (character === '>') return index + 1;
+    if (character === '>') {
+      spend(index);
+      return index + 1;
+    }
     if (character === '{') braces += 1;
     else if ((character === '"' || character === "'") && /[=]\s*$/.test(source.slice(Math.max(start, index - 8), index))) {
       const close = source.indexOf(character, index + 1);
-      if (close < 0) return -1;
+      if (close < 0 || close >= limit) {
+        spend(limit);
+        return -1;
+      }
       index = close;
     }
     index += 1;
   }
+  spend(limit);
   return -1;
 };
 
@@ -88,22 +109,48 @@ const activeEnd = (source: string, start: number, limit: number): number => {
   return limit;
 };
 
-/** The end of a balanced `{…}` expression at `start`, or -1 (an unbalanced brace is text). */
-const expressionEnd = (source: string, start: number, limit: number): number => {
+/** The end of a balanced `{…}` expression at `start`, or -1: an unbalanced brace is text. */
+const expressionEnd = (source: string, start: number): number => {
   let depth = 0;
-  let quote = '';
+  const limit = scanLimit(source, start, MAX_EXPRESSION_LENGTH);
   for (let index = start; index < limit; index += 1) {
     const character = source[index] as string;
-    if (quote) {
-      if (character === '\\') index += 1;
-      else if (character === quote) quote = '';
-      continue;
+    if (character === '{') depth += 1;
+    else if (character === '}' && --depth === 0) {
+      scanBudget -= index - start;
+      return index + 1;
     }
-    if (character === '"' || character === "'" || character === '`') quote = character;
-    else if (character === '{') depth += 1;
-    else if (character === '}' && --depth === 0) return index + 1;
   }
+  scanBudget -= limit - start;
   return -1;
+};
+
+/** For each backtick run, the index of the next run of the same length (or -1), found in one
+ *  backward pass so a page of unmatched backticks stays linear. */
+const backtickRuns = (source: string): Map<number, { length: number; next: number }> => {
+  const runs: { index: number; length: number }[] = [];
+  for (const match of source.matchAll(/`+/g)) runs.push({ index: match.index, length: match[0].length });
+  const nextByLength = new Map<number, number>();
+  const result = new Map<number, { length: number; next: number }>();
+  for (let i = runs.length - 1; i >= 0; i -= 1) {
+    const run = runs[i] as { index: number; length: number };
+    result.set(run.index, { length: run.length, next: nextByLength.get(run.length) ?? -1 });
+    nextByLength.set(run.length, run.index);
+  }
+  return result;
+};
+
+/** Where the paragraph holding `index` ends: the start of the next blank line, or the end. */
+const paragraphEnds = (source: string): number[] => [...source.matchAll(/\n[ \t]*(?=\n)/g)].map((match) => match.index);
+const firstAfter = (sorted: readonly number[], index: number, fallback: number): number => {
+  let low = 0;
+  let high = sorted.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if ((sorted[middle] as number) < index) low = middle + 1;
+    else high = middle;
+  }
+  return sorted[low] ?? fallback;
 };
 
 const escapedAt = (source: string, index: number): boolean => {
@@ -120,6 +167,8 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
     if (text) tokens.push({ kind: 'text', value: text });
     text = '';
   };
+  const runs = backtickRuns(source);
+  const blankLines = paragraphEnds(source);
   let index = 0;
   let lineStart = true;
   while (index < source.length) {
@@ -136,22 +185,10 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
     }
     lineStart = character === '\n';
     if (character === '`' && !escapedAt(source, index)) {
-      let run = 1;
-      while (source[index + run] === '`') run += 1;
+      const { length: run, next: close } = runs.get(index) ?? { length: 1, next: -1 };
       const fence = '`'.repeat(run);
       // An inline code span stays within its paragraph: it never crosses a blank line.
-      const paragraphEnd = (() => {
-        const blank = /\n[ \t]*\n/g;
-        blank.lastIndex = index;
-        return blank.exec(source)?.index ?? source.length;
-      })();
-      let close = source.indexOf(fence, index + run);
-      while (close >= 0 && close < paragraphEnd && source[close + run] === '`') {
-        let after = close;
-        while (source[after] === '`') after += 1;
-        close = source.indexOf(fence, after);
-      }
-      if (close >= 0 && close < paragraphEnd) {
+      if (close >= 0 && close < firstAfter(blankLines, index, source.length)) {
         flush();
         tokens.push({ kind: 'code', value: source.slice(index, close + run), block: false });
         index = close + run;
@@ -189,7 +226,7 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
       }
     }
     if (character === '{' && !escapedAt(source, index)) {
-      const end = expressionEnd(source, index, source.length);
+      const end = expressionEnd(source, index);
       if (end > 0) {
         flush();
         tokens.push({ kind: 'expression', value: source.slice(index, end) });
@@ -206,6 +243,7 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
 /** Read authored MDX into tokens. Fences (backtick or tilde, any length, inside containers too)
  *  are found first, line by line; an unclosed fence runs to the end, as in CommonMark. */
 export const tokenizeMdx = (source: string, components: ReadonlySet<string>): MdxToken[] => {
+  scanBudget = 64 * source.length + 65_536;
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
   let prose: string[] = [];
@@ -249,6 +287,7 @@ export const buildMdxTree = (tokens: readonly MdxToken[]): MdxNode[] => {
     if (token.kind === 'open') {
       if (token.selfClosing)
         target().push({ kind: 'element', name: token.name, attributes: token.attributes, raw: token.raw, closeRaw: '', children: [] });
+      else if (stack.length >= MAX_DEPTH) target().push(asText(token.name, token.raw));
       else stack.push({ open: token, children: [] });
       continue;
     }
