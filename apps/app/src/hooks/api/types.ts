@@ -219,7 +219,7 @@ export interface Deployment {
   commitMessage: string | null;
   error: string | null;
   /** Per-page publish-check failures on FAILED deployments. */
-  errorDetails?: DeploymentIssue[] | null;
+  errorDetails?: DeploymentIssue[] | { reason: 'review_stale' } | null;
   createdAt: string;
   completedAt: string | null;
 }

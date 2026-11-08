@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "খসড়া সংযোগ",
+  "analytics_drafting_description": "নির্বাচিত সময়ে খসড়া শুরু, সম্পন্ন ও ব্যর্থ হওয়ার ঘটনা।",
+  "analytics_drafting_total": "মোট ঘটনা: {total}",
+  "analytics_drafting_connection": "সংযোগ",
+  "analytics_drafting_workspace": "ওয়ার্কস্পেস কী",
+  "analytics_drafting_instance": "ইনস্ট্যান্স (Nibleaf) কী",
+  "analytics_drafting_unknown": "অজানা (পুরোনো তথ্য)",
+  "analytics_drafting_models": "প্রদানকারী / মডেল (সর্বোচ্চ 10)",
+  "analytics_drafting_events": "ঘটনা",
+  "analytics_drafting_share": "অংশ",
+  "analytics_drafting_empty": "এই সময়ে কোনো খসড়ার ঘটনা নেই।",
   "brand_oss": "ওএসএস",
   "common_cancel": "বাতিল করুন",
   "common_save": "পরিবর্তনগুলি সংরক্ষণ করুন",
@@ -3811,5 +3822,10 @@
   "settings_members_noinvites": "কোনো অপেক্ষমাণ আমন্ত্রণ নেই।",
   "members_suggestions_label": "আপনার অন্য সাইটের মানুষ",
   "members_suggestions_hint": "নাম বা ইমেইল লিখুন। আপনার অন্য সাইটের মানুষদের প্রস্তাব করা হবে।",
-  "people_choosesite": "একটি সাইট বেছে নিন"
+  "people_choosesite": "একটি সাইট বেছে নিন",
+  "analytics_status_readsdisabled_title": "অ্যানালিটিক্স সংগ্রহ করা হচ্ছে",
+  "analytics_status_readsdisabled_body": "সার্ভার অ্যানালিটিক্স সংগ্রহ করছে। স্থানান্তর প্রস্তুত হলে প্রশাসক ANALYTICS_MODE=clickhouse দিয়ে প্রতিবেদন চালু করতে পারেন।",
+  "publish_reviewchanged": "পর্যালোচনার পর আপনার সাইট বদলেছে। প্রকাশের আগে পরিবর্তনগুলো আবার পর্যালোচনা করুন।",
+  "admin_pagination_first": "প্রথম পৃষ্ঠা",
+  "admin_pagination_next": "পরের পৃষ্ঠা"
 }

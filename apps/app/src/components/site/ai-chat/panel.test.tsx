@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type Message = { id: string; role: 'user' | 'assistant'; parts: Array<{ type: 'text'; content: string }> };
 const mocks = vi.hoisted(() => ({
+  postEvents: vi.fn(async () => undefined),
   // The options the panel gave useChat, to deliver its custom events.
   options: undefined as undefined | { onCustomEvent: (name: string, value: unknown) => void },
   chat: {
@@ -25,6 +26,7 @@ vi.mock('@tanstack/ai-react', () => ({
     return mocks.chat;
   },
 }));
+vi.mock('@/services/api', () => ({ api: { public: { sites: { ':id': { chat: { events: { $post: mocks.postEvents } } } } } } }));
 vi.mock('@/functions/site-chat', () => ({ chatSiteFn: vi.fn(), trackChatEventsFn: vi.fn(async () => undefined) }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 Element.prototype.scrollIntoView = vi.fn();
@@ -47,11 +49,17 @@ const text = (id: string, role: Message['role'], content: string): Message => ({
 const roots: Array<() => Promise<void>> = [];
 // The docs version on screen; a test switches it between renders.
 let siteVersion: string | undefined;
+let requiresConsent = false;
+let projectId = 'docs';
 afterEach(async () => {
   for (const unmount of roots.splice(0)) await unmount();
   document.body.replaceChildren();
   mocks.chat.isLoading = false;
   siteVersion = undefined;
+  requiresConsent = false;
+  projectId = 'docs';
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.clearAllMocks();
   vi.mocked(window.matchMedia).mockImplementation(desktop);
 });
@@ -66,14 +74,14 @@ const mount = async (request?: { id: number; question?: string; source: 'deep_li
       root.render(
         <QueryClientProvider client={client}>
           <Panel
-            projectId="docs"
+            projectId={projectId}
             lang="en"
             version={siteVersion}
             direction="ltr"
             config={null}
             open={open}
             onOpenChange={vi.fn()}
-            requiresConsent={false}
+            requiresConsent={requiresConsent}
             request={request}
           />
         </QueryClientProvider>,
@@ -323,4 +331,48 @@ describe('chat panel', () => {
     expect(document.body.textContent).toContain('Run acme export. Then');
     expect(document.body.textContent).not.toMatch(/\[S/);
   });
+});
+
+it('omits identity until consent allows it, and scopes approved sessions by project', async () => {
+  mocks.chat.messages = [];
+  requiresConsent = true;
+  const render = await mount();
+  await askStarter();
+  expect((mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }])?.[1]?.body).toMatchObject({
+    consent: 'unknown',
+    sessionId: undefined,
+  });
+  expect(window.sessionStorage.length).toBe(0);
+  window.localStorage.setItem('nibleaf.analytics.consent.docs', 'declined');
+  await askStarter();
+  expect((mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }])?.[1]?.body).toMatchObject({
+    consent: 'denied',
+    sessionId: undefined,
+  });
+  expect(window.sessionStorage.length).toBe(0);
+  window.localStorage.setItem('nibleaf.analytics.consent.docs', 'accepted');
+  await askStarter();
+  const first = window.sessionStorage.getItem('nibleaf.chat.session.docs');
+  expect(first).toBeTruthy();
+  expect((mocks.chat.sendMessage.mock.calls.at(-1) as unknown as [string, { body: Record<string, unknown> }])?.[1]?.body).toMatchObject({
+    consent: 'granted',
+    sessionId: first,
+  });
+  projectId = 'another-project';
+  requiresConsent = false;
+  await render();
+  await askStarter();
+  expect(window.sessionStorage.getItem('nibleaf.chat.session.another-project')).not.toBe(first);
+});
+
+it('flushes capture-time consent through the authenticated keepalive endpoint on pagehide', async () => {
+  mocks.chat.messages = [];
+  requiresConsent = true;
+  await mount({ id: 901, source: 'search_handoff' });
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+  await act(async () => window.dispatchEvent(new Event('pagehide')));
+  expect(mocks.postEvents).toHaveBeenCalledWith(
+    { param: { id: 'docs' }, json: expect.objectContaining({ consent: 'unknown', events: [expect.objectContaining({ name: 'chat_opened' })] }) },
+    { init: { keepalive: true } },
+  );
 });

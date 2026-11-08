@@ -128,7 +128,7 @@ test('manual workflow invokes the guard before publishing with header-only crede
   assert.match(workflow, /workflow_dispatch:/u);
   assert.doesNotMatch(workflow, /^\s+(?:pull_request|push):\s*$/mu);
   const guard = workflow.indexOf('node scripts/reject-existing-immutable-tags.mjs');
-  assert.ok(guard > 0 && guard < workflow.indexOf('- name: Build and publish'));
+  assert.ok(guard > workflow.indexOf('- name: Build image archive') && guard < workflow.indexOf('- name: Publish the checked image archive'));
   assert.match(workflow, /GHCR_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/u);
 });
 

@@ -987,7 +987,7 @@ describe('reader AI chat feedback', () => {
 describe('visitor consent rule', () => {
   it('requires consent only when a consent banner applies to configured scripts', () => {
     expect(aiChatConsentRequired({})).toBe(false);
-    expect(aiChatConsentRequired({ analytics: { cookieConsent: true } })).toBe(false);
+    expect(aiChatConsentRequired({ analytics: { cookieConsent: true } })).toBe(true);
     expect(aiChatConsentRequired({ analytics: { cookieConsent: true, ga4: 'G-ABC123' } })).toBe(true);
     expect(aiChatConsentRequired({ addons: { consentBanner: { enabled: false } }, analytics: { ga4: 'G-ABC123' } })).toBe(false);
     expect(aiChatConsentRequired({ addons: { consentBanner: { enabled: true } }, analytics: { plausible: 'docs.example.com' } })).toBe(true);

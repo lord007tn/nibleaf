@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "Verbindungen für Entwürfe",
+  "analytics_drafting_description": "Gestartete, abgeschlossene und fehlgeschlagene Entwurfsereignisse im gewählten Zeitraum.",
+  "analytics_drafting_total": "Ereignisse insgesamt: {total}",
+  "analytics_drafting_connection": "Verbindung",
+  "analytics_drafting_workspace": "Arbeitsbereichsschlüssel",
+  "analytics_drafting_instance": "Instanzschlüssel (Nibleaf)",
+  "analytics_drafting_unknown": "Unbekannt (Altdaten)",
+  "analytics_drafting_models": "Anbieter / Modell (bis zu 10)",
+  "analytics_drafting_events": "Ereignisse",
+  "analytics_drafting_share": "Anteil",
+  "analytics_drafting_empty": "Keine Entwurfsereignisse in diesem Zeitraum.",
   "brand_oss": "OSS",
   "common_cancel": "Abbrechen",
   "common_save": "Änderungen speichern",
@@ -3813,5 +3824,10 @@
   "settings_members_noinvites": "Keine offenen Einladungen.",
   "members_suggestions_label": "Personen von Ihren anderen Websites",
   "members_suggestions_hint": "Geben Sie einen Namen oder eine E-Mail ein. Personen von Ihren anderen Websites werden vorgeschlagen.",
-  "people_choosesite": "Website auswählen"
+  "people_choosesite": "Website auswählen",
+  "analytics_status_readsdisabled_title": "Analysedaten werden erfasst",
+  "analytics_status_readsdisabled_body": "Der Server erfasst Analysedaten. Sobald die Migration bereit ist, kann die Serververwaltung Berichte mit ANALYTICS_MODE=clickhouse aktivieren.",
+  "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",
+  "admin_pagination_first": "Erste Seite",
+  "admin_pagination_next": "Nächste Seite"
 }

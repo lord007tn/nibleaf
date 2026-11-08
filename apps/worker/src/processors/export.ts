@@ -65,6 +65,20 @@ const rendererFor = async (format: ExportFormat, snapshot: SiteSnapshot, assets:
 
 const fileLabel = (format: ExportFormat): string => (format === 'MARKDOWN' ? 'markdown' : format === 'STATIC_HTML' ? 'static-html' : 'pdf');
 
+/** Preserve the artifact manifest until every idempotent object deletion succeeds.
+ * Expire first so partially deleted runs cannot be downloaded and the expiry
+ * sweep retries schedule-retention failures even if that schedule stops running. */
+const deleteExportRun = async (job: { id: string; artifacts: { storageKey: string }[] }): Promise<boolean> => {
+  await prisma.exportJob.update({ where: { id: job.id }, data: { expiresAt: new Date() } });
+  const results = await Promise.allSettled(job.artifacts.map((artifact) => deleteObject(artifact.storageKey)));
+  if (results.some((result) => result.status === 'rejected')) {
+    log.warn({ exportJobId: job.id }, 'export deletion pending; manifest retained for retry');
+    return false;
+  }
+  await prisma.exportJob.deleteMany({ where: { id: job.id } });
+  return true;
+};
+
 const enforceScheduleRetention = async (scheduleId: string): Promise<void> => {
   const schedule = await prisma.exportSchedule.findUnique({ where: { id: scheduleId } });
   if (!schedule) return;
@@ -76,10 +90,11 @@ const enforceScheduleRetention = async (scheduleId: string): Promise<void> => {
   });
   const expiredIds = new Set(expiredRunIds(runs, schedule.retentionCount, schedule.retentionDays));
   const expired = runs.filter((run) => expiredIds.has(run.id));
+  let deleted = 0;
   for (const job of expired) {
-    await Promise.allSettled(job.artifacts.map((artifact) => deleteObject(artifact.storageKey)));
-    await prisma.exportJob.delete({ where: { id: job.id } });
+    if (await deleteExportRun(job)) deleted += 1;
   }
+  log.info({ scheduleId, deleted, pending: expired.length - deleted }, 'schedule export retention processed');
 };
 
 const renderExport = async (bullJob: Job<ExportJobData>): Promise<{ artifacts: number }> => {
@@ -269,18 +284,18 @@ const dispatchSchedules = async (): Promise<{ dispatched: number }> => {
   return { dispatched: schedules.length };
 };
 
-const cleanupExpired = async (): Promise<{ deleted: number }> => {
+const cleanupExpired = async (): Promise<{ deleted: number; pending: number }> => {
   const expired = await prisma.exportJob.findMany({
     where: { expiresAt: { lte: new Date() }, status: { in: ['SUCCEEDED', 'FAILED', 'CANCELLED'] } },
     include: { artifacts: true },
     take: 500,
   });
+  let deleted = 0;
   for (const job of expired) {
-    await Promise.allSettled(job.artifacts.map((artifact) => deleteObject(artifact.storageKey)));
-    await prisma.exportJob.delete({ where: { id: job.id } });
+    if (await deleteExportRun(job)) deleted += 1;
   }
   await prisma.exportSnapshot.deleteMany({ where: { jobs: { none: {} }, createdAt: { lt: new Date(Date.now() - 86_400_000) } } });
-  return { deleted: expired.length };
+  return { deleted, pending: expired.length - deleted };
 };
 
 export const handleExportJobs = async (job: Job<ExportJobData, unknown, ExportJobName>) => {

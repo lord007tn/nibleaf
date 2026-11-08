@@ -531,6 +531,11 @@ export const migrations: ClickHouseMigration[] = [
       'ALTER TABLE ai_conversation_turns ADD COLUMN IF NOT EXISTS utility_cost_known UInt8 DEFAULT 0',
     ],
   },
+  {
+    version: 2_026_110_801,
+    name: 'draft_connection_source',
+    statements: ["ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS connection_source LowCardinality(String) DEFAULT ''"],
+  },
 ];
 
 export interface MigrationOptions {

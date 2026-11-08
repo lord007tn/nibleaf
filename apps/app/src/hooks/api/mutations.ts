@@ -320,11 +320,19 @@ const listQueuedPublish = (qc: QueryClient, projectId: string, deployment: Deplo
 export const usePublish = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ message, firstPublishAttribution }: { message?: string; firstPublishAttribution?: FirstPublishAttribution }) =>
+    mutationFn: async ({
+      message,
+      firstPublishAttribution,
+      reviewedStateHash,
+    }: {
+      message?: string;
+      firstPublishAttribution?: FirstPublishAttribution;
+      reviewedStateHash?: string;
+    }) =>
       mutateData<Deployment>(
         await api.app.projects[':projectId'].deployments.$post({
           param: { projectId },
-          json: { ...(message ? { message } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
+          json: { reviewedStateHash, ...(message ? { message } : {}), ...(firstPublishAttribution ? { firstPublishAttribution } : {}) },
         }),
         'Could not publish.',
       ),
@@ -335,9 +343,9 @@ export const usePublish = (projectId: string) => {
 export const usePublishAnyway = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () =>
+    mutationFn: async (reviewedDeploymentId: string) =>
       mutateData<Deployment>(
-        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true } }),
+        await api.app.projects[':projectId'].deployments.$post({ param: { projectId }, json: { skipGrammarChecks: true, reviewedDeploymentId } }),
         'Could not publish.',
       ),
     onSuccess: (deployment) => listQueuedPublish(qc, projectId, deployment),

@@ -1,0 +1,45 @@
+{
+  "sourceHead": "3d49b2009738b641bb0146fa15425819372f3ee9",
+  "browser": "isolated headless Chromium",
+  "ownerSessionsUsed": false,
+  "externalAndApiRequests": "blocked",
+  "localApiTarget": "http://127.0.0.1:4451",
+  "results": [
+    {
+      "path": "/",
+      "language": "en",
+      "viewport": {
+        "width": 1280,
+        "height": 900
+      },
+      "status": 200,
+      "hydrationErrors": [],
+      "blockedZodJitFeatureProbe": [
+        {
+          "blocked": "eval",
+          "source": "http://nibleaf.com:4450/assets/schemas-csDcfP2D.js"
+        }
+      ],
+      "untrustedInline": "blocked",
+      "screenshot": "marketing-en.png"
+    },
+    {
+      "path": "/ar",
+      "language": "ar",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "status": 200,
+      "hydrationErrors": [],
+      "blockedZodJitFeatureProbe": [
+        {
+          "blocked": "eval",
+          "source": "http://nibleaf.com:4450/assets/schemas-csDcfP2D.js"
+        }
+      ],
+      "untrustedInline": "blocked",
+      "screenshot": "marketing-ar.png"
+    }
+  ]
+}

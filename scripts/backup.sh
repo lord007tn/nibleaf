@@ -25,16 +25,13 @@
 # the same disk as the database is not a backup.
 #
 # ── RESTORE ────────────────────────────────────────────────────────────────
-# Database (into a running stack; drops and recreates objects it restores):
-#   docker compose -f docker-compose.prod.yml exec -T postgres \
-#     pg_restore -U nibleaf -d nibleaf --clean --if-exists \
-#     < backups/nibleaf-db-<STAMP>.dump
-#
-# Object storage (stop the stack first so maxio isn't writing):
-#   docker compose -f docker-compose.prod.yml stop
-#   docker run --rm -v <volume-from-backup-manifest>:/data -v "$PWD/backups":/backup \
-#     alpine:3.22 sh -c "rm -rf /data/* && tar xzf /backup/nibleaf-storage-<STAMP>.tar.gz -C /data"
-#   docker compose -f docker-compose.prod.yml up -d
+# Follow the empty-database restore procedure, using a compatible application
+# revision and the matching database + object-storage recovery set:
+#   https://docs.nibleaf.com/self-hosting/backups-upgrades#test-a-restore
+#   https://docs.nibleaf.com/ar/self-hosting/backups-upgrades
+# Preserve the previous database and storage volume. Never restore over existing
+# tables or automatically restart application services after a restore failure.
+# Keep app, admin, server and worker stopped until schema and records are verified.
 #
 # TEST YOUR RESTORE. An untested backup is a hope, not a plan — restore into a
 # scratch database/volume at least once and after every major upgrade.
@@ -62,7 +59,7 @@ PG_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q postgres)"
 [[ -n "$PG_CONTAINER" && "$PG_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected postgres container"
 PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$PG_CONTAINER")"
 [[ "$PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fatal "could not identify the selected Compose project"
-SERVER_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q server)"
+SERVER_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps --all -q server)"
 [[ -n "$SERVER_CONTAINER" && "$SERVER_CONTAINER" != *$'\n'* ]] || fatal "expected exactly one selected server container to identify configured storage"
 SERVER_PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$SERVER_CONTAINER")"
 [[ "$SERVER_PROJECT" = "$PROJECT" ]] || fatal "server belongs to a different Compose project"
@@ -74,7 +71,7 @@ if [[ "$BACKUP_STORAGE" = bundled && ! "$STORAGE_ENDPOINT" =~ ^http://maxio(:900
 fi
 VOLUME=""
 if [[ "$BACKUP_STORAGE" = bundled ]]; then
-  STORAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps -q maxio)"
+  STORAGE_CONTAINER="$(docker compose -f "$COMPOSE_FILE" ps --all -q maxio)"
   [[ -n "$STORAGE_CONTAINER" && "$STORAGE_CONTAINER" != *$'\n'* ]] || fatal "bundled maxio container missing; use BACKUP_STORAGE=external only for external storage"
   STORAGE_PROJECT="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project" }}' "$STORAGE_CONTAINER")"
   [[ "$STORAGE_PROJECT" = "$PROJECT" ]] || fatal "maxio belongs to a different Compose project"

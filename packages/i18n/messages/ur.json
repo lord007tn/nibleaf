@@ -1,5 +1,16 @@
 {
   "$schema": "https://inlang.com/schema/inlang-message-format",
+  "analytics_drafting_title": "مسودہ سازی کے کنکشن",
+  "analytics_drafting_description": "منتخب مدت میں مسودہ سازی شروع ہونے، مکمل ہونے اور ناکام ہونے کے واقعات۔",
+  "analytics_drafting_total": "کل واقعات: {total}",
+  "analytics_drafting_connection": "کنکشن",
+  "analytics_drafting_workspace": "ورک اسپیس کی کلید",
+  "analytics_drafting_instance": "انسٹینس (Nibleaf) کی کلید",
+  "analytics_drafting_unknown": "نامعلوم (پرانا ڈیٹا)",
+  "analytics_drafting_models": "فراہم کنندہ / ماڈل (زیادہ سے زیادہ 10)",
+  "analytics_drafting_events": "واقعات",
+  "analytics_drafting_share": "حصہ",
+  "analytics_drafting_empty": "اس مدت میں مسودہ سازی کے کوئی واقعات نہیں ہیں۔",
   "brand_oss": "او ایس ایس",
   "common_cancel": "منسوخ کریں۔",
   "common_save": "تبدیلیاں محفوظ کریں۔",
@@ -3813,5 +3824,10 @@
   "settings_members_noinvites": "کوئی زیرِ التوا دعوت نہیں۔",
   "members_suggestions_label": "آپ کی دوسری سائٹس کے افراد",
   "members_suggestions_hint": "نام یا ای میل لکھیں۔ آپ کی دوسری سائٹس کے افراد تجویز کیے جائیں گے۔",
-  "people_choosesite": "سائٹ منتخب کریں"
+  "people_choosesite": "سائٹ منتخب کریں",
+  "analytics_status_readsdisabled_title": "تجزیاتی ڈیٹا جمع کیا جا رہا ہے",
+  "analytics_status_readsdisabled_body": "سرور تجزیاتی ڈیٹا جمع کر رہا ہے۔ منتقلی تیار ہونے پر منتظم ANALYTICS_MODE=clickhouse سے رپورٹس فعال کر سکتا ہے۔",
+  "publish_reviewchanged": "جائزے کے بعد آپ کی سائٹ بدل گئی ہے۔ شائع کرنے سے پہلے تبدیلیوں کا دوبارہ جائزہ لیں۔",
+  "admin_pagination_first": "پہلا صفحہ",
+  "admin_pagination_next": "اگلا صفحہ"
 }
