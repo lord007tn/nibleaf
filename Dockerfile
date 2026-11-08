@@ -19,6 +19,8 @@ RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && corep
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
 FROM base AS build
+ARG MARKETING_GITHUB_STARS=0
+ENV MARKETING_GITHUB_STARS=$MARKETING_GITHUB_STARS
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # Generate the Prisma client (musl engine for this Alpine image).

@@ -70,7 +70,6 @@
     "lucide-react": "^1.65.0",
     "mermaid": "^12.2.0",
     "nitro": "3.0.260903-beta",
-    "octokit": "5.0.5",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",

@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { clientIpFromForwardedFor } from '@nibleaf/shared/client-ip';
 import {
   canonicalPathFromMarkdownAlias,
   decodePublishedPathname,
@@ -16,8 +17,10 @@ import { z } from 'zod';
 import { serverEnv } from '@/env.server';
 import { contentSecurityPolicy } from '@/lib/content-security-policy';
 import { observeCrawlerResponse } from '@/lib/crawler-hits';
+import { marketingHashResponse } from '@/lib/marketing-csp.server';
 import { marketingLlms, marketingLlmsFull, marketingPricingMarkdown } from '@/lib/marketing-llms';
 import { agentFriendlyNotFoundMarkdown, marketingMarkdownResponse } from '@/lib/marketing-markdown';
+import { renderMarketing } from '@/lib/marketing-render.server';
 import { marketingSitemap, marketingSitemapEntries } from '@/lib/marketing-sitemap';
 import { nibleafPublicOpenApi } from '@/lib/nibleaf-openapi';
 import { encodePublicRouteManifestResponse } from '@/lib/public-route-manifest';
@@ -35,8 +38,8 @@ import { renderSelfHostInstaller } from '@/lib/self-host-release';
 import { SITE_MARKDOWN_ALTERNATE_HEADER } from '@/lib/site-seo';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { apiOrigin } from '@/services/api-origin';
-import PRODUCTION_COMPOSE from '../../../docker-compose.prod.yml?raw';
-import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
+import PRODUCTION_COMPOSE from '../../../release/published/docker-compose.yml?raw';
+import INSTALL_SCRIPT from '../../../release/published/install.sh?raw';
 
 /**
  * Custom server entry. Wraps TanStack Start's request handler to add
@@ -57,7 +60,7 @@ import INSTALL_SCRIPT from '../../../scripts/install.sh?raw';
 // errors inside that context before leaving it, preserving headers and cookies.
 const startHandler = createServerEntry({
   fetch: createStartHandler(async (context) => {
-    const result = await defaultStreamHandler(context);
+    const result = await (ssrNonce.getStore() === '' ? renderMarketing(context) : defaultStreamHandler(context));
     return readerRateLimitResponse(
       result,
       context.router.state.matches.map((match) => match.error),
@@ -125,79 +128,6 @@ function serveSelfHostingArtifact(pathname: string, bare: string): Response | nu
 // IP per request (AsyncLocalStorage) and stamp it as `x-nibleaf-client-ip` on
 // fetches to our own /api proxy; the API only honours the header when its direct
 // peer is a private address (see apps/server/src/middlewares/rate-limit.ts).
-
-// Compact copies of apps/server/src/lib/client-ip.ts (kept in sync manually —
-// this entry can't import from the server package).
-const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
-const IPV6 = /^[0-9a-f:]+$/i;
-
-const normalizeIp = (raw: string): string => {
-  let value = raw.trim().toLowerCase();
-  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(value);
-  if (bracketed?.[1]) {
-    value = bracketed[1];
-  } else if (/^\d{1,3}(\.\d{1,3}){3}:\d+$/.test(value)) {
-    value = value.slice(0, value.lastIndexOf(':'));
-  }
-  const zone = value.indexOf('%');
-  return zone === -1 ? value : value.slice(0, zone);
-};
-
-const isValidIp = (value: string): boolean => {
-  const v4 = IPV4.exec(value);
-  if (v4) {
-    return v4.slice(1).every((octet) => Number(octet) <= 255);
-  }
-  return value.includes(':') && IPV6.test(value);
-};
-
-const isPrivateIp = (ip: string): boolean => {
-  const value = ip.startsWith('::ffff:') ? ip.slice(7) : ip;
-  const v4 = IPV4.exec(value);
-  if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])];
-    return (
-      a === 10 ||
-      a === 127 ||
-      a === 0 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 169 && b === 254) ||
-      (a === 100 && b >= 64 && b <= 127)
-    );
-  }
-  return value === '::1' || value === '::' || value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe80');
-};
-
-/** Public edge hops appended by infrastructure the operator runs (e.g. 1 behind
- *  Cloudflare). Must match the API's TRUSTED_PROXY_HOPS. */
-const TRUSTED_PROXY_HOPS = serverEnv.TRUSTED_PROXY_HOPS;
-
-/** Rightmost-untrusted hop of an x-forwarded-for chain — mirrors the API's
- *  apps/server/src/lib/client-ip.ts (kept in sync manually; this entry cannot
- *  import from the server package). Leftmost hops are client-supplied because
- *  proxies APPEND, so trusting them would let a visitor forge a new identity
- *  per request. */
-const clientIpFromForwardedFor = (header: string | null): string | null => {
-  if (!header) {
-    return null;
-  }
-  const hops = header
-    .split(',')
-    .map((hop) => normalizeIp(hop))
-    .filter((hop) => hop.length > 0 && hop !== 'unknown' && isValidIp(hop));
-  if (hops.length === 0) {
-    return null;
-  }
-  const candidates = TRUSTED_PROXY_HOPS > 0 ? hops.slice(0, Math.max(1, hops.length - TRUSTED_PROXY_HOPS)) : hops;
-  for (let i = candidates.length - 1; i >= 0; i--) {
-    const hop = candidates[i] as string;
-    if (!isPrivateIp(hop)) {
-      return hop;
-    }
-  }
-  return (candidates[candidates.length - 1] as string) ?? null;
-};
 
 interface PublishedRequestAuth {
   ip: string | null;
@@ -692,6 +622,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
         res.headers.set('X-Robots-Tag', 'noindex, nofollow');
       }
       res.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(res));
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
       res.headers.set('cache-control', 'private, no-store');
@@ -711,6 +642,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
         wrapped.headers.set('X-Robots-Tag', 'noindex, nofollow');
       }
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+      if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(wrapped));
       wrapped.headers.set('cache-control', 'private, no-store');
       return encodePublicRouteManifestResponse(wrapped);
     }
@@ -941,7 +873,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
   // Run inside the visitor-IP context so SSR loader fetches are attributed to
   // the real client (see the fetch patch above).
   const requestAuth: PublishedRequestAuth = {
-    ip: clientIpFromForwardedFor(request.headers.get('x-forwarded-for')),
+    ip: clientIpFromForwardedFor(request.headers.get('x-forwarded-for'), serverEnv.TRUSTED_PROXY_HOPS),
     cookie: request.headers.get('cookie'),
     authorization: request.headers.get('authorization'),
     userAgent: request.headers.get('user-agent') ?? undefined,
@@ -982,17 +914,33 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
       );
     }
   }
-  const nonce = randomBytes(18).toString('base64');
-  return ssrNonce.run(nonce, () =>
-    withSecurityHeaders(
-      observeCrawlerResponse(
-        request,
-        // The page route's internal Markdown flag never leaves the server,
-        // whichever path rendered the page (cloud origin, dotted paths, …).
-        Promise.resolve(handleRequestInner(request, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
-        crawlerProjectForRequest,
+  const url = new URL(request.url);
+  // Allowlisted cloud marketing documents only. Conservatively bypass all
+  // cookies, Authorization and query strings, as the CDN rule must also do.
+  const marketing =
+    IS_CLOUD_MARKETING &&
+    effectiveRequestHost(request, url).split(':')[0] === MARKETING_HOST &&
+    ['GET', 'HEAD'].includes(request.method) &&
+    !url.search &&
+    !request.headers.has('cookie') &&
+    !request.headers.has('authorization') &&
+    acceptsHtml(request.headers.get('accept')) &&
+    marketingSitemapEntries().some((entry) => entry.path === url.pathname);
+  const nonce = marketing ? '' : randomBytes(18).toString('base64');
+  const renderRequest = marketing && request.method === 'HEAD' ? new Request(request.url, { method: 'GET', headers: request.headers }) : request;
+  return ssrNonce.run(nonce, async () =>
+    withoutHeadBody(
+      await withSecurityHeaders(
+        observeCrawlerResponse(
+          request,
+          // The page route's internal Markdown flag never leaves the server,
+          // whichever path rendered the page (cloud origin, dotted paths, …).
+          Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
+          crawlerProjectForRequest,
+        ),
+        nonce,
       ),
-      nonce,
+      request.method,
     ),
   );
 };

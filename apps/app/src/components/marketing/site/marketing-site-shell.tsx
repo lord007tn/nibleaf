@@ -3,6 +3,7 @@ import { useTheme } from '@nibleaf/design-system/theme';
 import { Moon, Sun } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { GITHUB_URL } from '@/lib/links';
+import { MARKETING_BUILD } from '@/lib/marketing-build';
 import type { MarketingLang, ShellCopy } from '../copy/types';
 import { MobileNavigation } from '../mobile-navigation';
 import { PrivacyChoices } from '../privacy-choices';
@@ -142,7 +143,7 @@ export function MarketingSiteShell({
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-border border-t py-6 text-muted-foreground text-xs leading-7">
-            <p>{copy.footer.legalLine(new Date().getFullYear())}</p>
+            <p>{copy.footer.legalLine(MARKETING_BUILD.year)}</p>
             <div className="flex flex-wrap items-center gap-x-5 [&>a]:inline-flex [&>a]:min-h-11 [&>a]:items-center [&>button]:min-h-11">
               <a href={`${GITHUB_URL}/blob/main/LICENSE`}>{copy.footer.licenseLabel}</a>
               <a href={GITHUB_URL}>{copy.footer.sourceLabel}</a>

@@ -52,9 +52,8 @@ export const envExtras = createEnv({
       .refine((value) => !/^G-X+$/i.test(value), 'Use the real GA4 measurement ID, not the G-XXXXXXXXXX placeholder.')
       .optional()
       .transform((value) => value?.toUpperCase()),
-    /** Number of PUBLIC proxy hops appended by edge infrastructure you operate
-     *  (e.g. 1 behind Cloudflare). Private-network hops (nginx/Traefik/the app's
-     *  own proxy) are always skipped and must NOT be counted. Raising this past
+    /** Count every address after the client in X-Forwarded-For, private ones included.
+     *  Use the same count on app and API. Raising this past
      *  your real proxy depth lets clients spoof their rate-limit identity. */
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(8).default(0),
     /** Shared secret between the app's SSR proxy and this API. When set, the
