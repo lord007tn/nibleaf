@@ -188,13 +188,13 @@ Compose عبر `environment` أو `env_file`. اقرأ ملاحظات تمرير
 | `QDRANT_URL` | `غير مضبوط` | مطلوب للبحث الهجين؛ عنوان Qdrant عبر HTTP(S). |
 | `QDRANT_API_KEY` | `غير مضبوط` | مفتاح عميل اختياري؛ يجب إعداد المصادقة على خادم Qdrant أيضاً. |
 | `QDRANT_COLLECTION_ALIAS` | `nibleaf_search_active` | اسم القراءة المستعار؛ حروف لاتينية وأرقام وشرطة وشرطة سفلية فقط. |
-| `QDRANT_COLLECTION_VERSION` | `v1` | جيل المجموعة الفعلية؛ الحرف v يليه عدد صحيح موجب. |
-| `QDRANT_VECTOR_SIZE` | `1536` | أبعاد المتجه، من 64 إلى 8192؛ يجب أن تطابق أبعاد التضمين. |
+| `QDRANT_COLLECTION_VERSION` | `v2` | جيل المجموعة الفعلية؛ الحرف v يليه عدد صحيح موجب. |
+| `QDRANT_VECTOR_SIZE` | `SEARCH_EMBEDDING_DIMENSIONS` (`3072`) | أبعاد المتجه، من 64 إلى 8192؛ يجب أن تطابق أبعاد التضمين، وتتبعها إذا لم تضبطها. |
 | `QDRANT_TIMEOUT_MS` | `8000` | مهلة طلب Qdrant، من 250 إلى 120000 مللي ثانية. |
 | `SEARCH_RUNTIME` | `shadow` | يعيد legacy نتائج Orama؛ ويقيّم shadow البحث الهجين مع إبقاء Orama؛ ويستخدم hybrid خدمة Qdrant. |
 | `SEARCH_FUZZY_TOLERANCE` | `2` | تسامح الأخطاء الإملائية، من 0 إلى 3؛ تستخدم الكلمات القصيرة تسامحاً أقل. |
-| `SEARCH_EMBEDDING_MODEL` | `openai/text-embedding-3-small` | نموذج التضمين الذي تديره النسخة للاسترجاع والفهرسة. |
-| `SEARCH_EMBEDDING_DIMENSIONS` | `1536` | أبعاد التضمين، من 64 إلى 8192؛ تغييرها يحتاج مجموعة جديدة متوافقة. |
+| `SEARCH_EMBEDDING_MODEL` | `openai/text-embedding-3-large` | نموذج التضمين الذي تديره النسخة للاسترجاع والفهرسة. |
+| `SEARCH_EMBEDDING_DIMENSIONS` | `3072` | أبعاد التضمين، من 64 إلى 8192؛ تغييرها يحتاج مجموعة جديدة متوافقة. |
 | `SEARCH_EMBEDDING_TIMEOUT_MS` | `20000` | مهلة مزوّد التضمين، من 500 إلى 120000 مللي ثانية. |
 | `SEARCH_CANDIDATE_LIMIT` | `48` | عدد مرشحي الاسترجاع، من 10 إلى 200. |
 | `SEARCH_DENSE_MIN_SCORE` | `0.35` | عتبة تشابه جيب التمام قبل دمج الترتيب، من ‎-1 إلى 1. |

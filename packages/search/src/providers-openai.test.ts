@@ -9,20 +9,20 @@ describe('direct OpenAI transport', () => {
       calls.push(new Request(input, init));
       return Response.json({
         data: [{ index: 0, embedding: [1, 2] }],
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
         usage: { prompt_tokens: 3, total_tokens: 3 },
       });
     };
     const provider = new OpenAIEmbeddingProvider({ apiKey: 'openai-test-only', dimensions: 2, fetch: transport });
     await expect(provider.embed(['published documentation'])).resolves.toEqual({
       vectors: [[1, 2]],
-      model: 'text-embedding-3-small',
+      model: 'text-embedding-3-large',
       usage: { promptTokens: 3, totalTokens: 3 },
     });
     expect(calls).toHaveLength(1);
     expect(calls[0]?.url).toBe('https://api.openai.com/v1/embeddings');
     expect(calls[0]?.headers.get('Authorization')).toBe('Bearer openai-test-only');
-    expect(await calls[0]?.json()).toMatchObject({ model: 'text-embedding-3-small', dimensions: 2, encoding_format: 'float' });
+    expect(await calls[0]?.json()).toMatchObject({ model: 'text-embedding-3-large', dimensions: 2, encoding_format: 'float' });
   });
 
   it('validates structured OpenAI answers without routing through OpenRouter', async () => {
