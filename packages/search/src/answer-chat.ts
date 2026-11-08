@@ -374,6 +374,8 @@ export const condenseFollowUp = async ({
       modelOptions: modelOptions(CHAT_OUTPUT_TOKEN_LIMITS.condense),
       middleware: [callObserver(seen)],
     });
+    // A rewrite cut off at the output cap may be half a query; the original question still retrieves.
+    if (seen.truncated) return { query: question, rewritten: false, ...seen };
     const query = stripMarkers(text)
       .replace(/["'“”‘’]/g, '')
       .replace(/\s+/g, ' ')
@@ -644,6 +646,8 @@ export const streamGroundedChat = ({
         ...metadata,
       });
       if (declined) return fallback('model_declined');
+      // An answer cut off at the output cap is incomplete, even when what arrived cites well.
+      if (seen.truncated) return fallback('unverified');
       const validation = validateCitedAnswer(fullText, chunks, question, policy);
       if (validation.status === 'no_answer') return fallback(validation.reason === 'empty' ? 'empty' : 'unverified', validation.reason);
       return { ...validation, ...metadata };
