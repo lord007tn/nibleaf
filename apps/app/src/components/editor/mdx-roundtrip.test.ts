@@ -277,6 +277,27 @@ describe('MDX round trips', () => {
     },
   );
 
+  it.each([
+    'Write `<Card\ntitle="Setup">` to open a card.',
+    // Indented four spaces, the `>` continues the paragraph instead of quoting.
+    'Close it with `</Card\n    >` after the body.',
+    'A pair: `<Note>\nbody</Note>` stays literal.',
+    '- In a list: `<Card\n  title="x">` here.',
+  ])('keeps a component tag in inline code that runs onto the next line literal (#338): %j', (source) => {
+    const saved = getMarkdown(createEditor(source));
+    expect(saved).not.toContain('data-mdx');
+    expect(saved.replace(/\s+/g, ' ')).toBe(source.replace(/\s+/g, ' '));
+    expect(getMarkdown(createEditor(saved))).toBe(saved);
+  });
+
+  it('does not let inline code run past the end of its paragraph', () => {
+    // The span would close after the heading; Markdown ends it at the heading.
+    const source = 'Before `open\n# Heading\n\n<CustomWidget value="keep" />\n\nafter` end\n';
+    const output = getMarkdown(createEditor(source));
+    expect(output).toContain('# Heading');
+    expect(output).toContain('<CustomWidget value="keep" />');
+  });
+
   it('keeps components after an unmatched backtick, across a heading', () => {
     // A backtick that isn't closed on its line must not hide the blocks after it.
     const source = 'Before `unmatched\n\n# Heading\n\n<CustomWidget value="keep" />\n\nend`\n';
