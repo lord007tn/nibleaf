@@ -1,0 +1,24 @@
+[
+  {
+    "language": "en",
+    "viewport": "390x844",
+    "marks": ["Setup"],
+    "keyboard": "page -> section -> page -> Enter",
+    "namedVersion": "v2 selected and preserved in navigation",
+    "transcript": "v2/users section link",
+    "noMatch": true,
+    "ratingSave": true,
+    "pageErrors": []
+  },
+  {
+    "language": "ar",
+    "viewport": "390x844",
+    "marks": ["إعداد", "الإعدادات"],
+    "keyboard": "page -> section -> page -> Enter",
+    "namedVersion": "v2 selected and preserved in navigation",
+    "transcript": "v2/users section link",
+    "noMatch": true,
+    "ratingSave": true,
+    "pageErrors": []
+  }
+]

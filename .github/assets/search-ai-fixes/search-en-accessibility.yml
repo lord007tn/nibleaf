@@ -1,0 +1,17 @@
+- dialog "Search documentation":
+  - heading "Search documentation" [level=2]
+  - paragraph: Full-text and fuzzy search across this site.
+  - text: Search documentation
+  - group:
+    - combobox "Search documentation" [expanded]: setup
+  - button "Cancel"
+  - status: "Results found: 1"
+  - listbox "Results":
+    - group:
+      - option "Ask AI about “setup” Get an answer written from these docs"
+    - group "Pages":
+      - option "Setup guide" [selected]:
+        - mark: Setup
+        - text: guide
+      - option "Users Configure the project and add users."
+  - combobox "Result version": main

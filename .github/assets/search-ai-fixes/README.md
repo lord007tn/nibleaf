@@ -1,26 +1,30 @@
 # Search and AI regression evidence
 
-Captured 2026-11-08 from the actual search, reader-chat and saved-transcript
-components in an isolated Vite fixture on port 4430. The fixture used fictional
-data, mocked network calls, English/Arabic and default/named version choices.
-It was not a deployed site or a live AI-provider evaluation. The screenshot
-shows original joined Arabic text highlighted through conservative stemming
-at a 390 CSS-pixel viewport. The recording shows the search interaction.
+Captured 2026-11-08 with headless `playwright-core` and a fresh, isolated
+Chromium context. No owner browser profile, desktop or shared browser session
+was used for these artifacts. The actual search, reader-chat and transcript
+components ran on an owned Vite fixture at port 4430, with fictional data and
+mocked network calls. The temporary harness is not shipped.
 
-Browser readback confirmed `الإعدادات` highlights `إعداد` and the original
-`الإعدادات`, and pressing Enter opens `/setup?lang=ar`. A second query,
-`المستخدمين`, highlighted `مُستخدِم` and `المستخدمون`. No horizontal overflow
-was observed. The temporary harness was not shipped.
+`checks.json` records successful English and Arabic checks at 390×844:
 
-Further recording attempts failed with `Preview automation recordingStart
-timed out` and `No preview automation host is available`. The owner then
-stopped native Computer Use with Escape. English screenshots, remaining live
-version switching, and a screen-reader pass were therefore not captured.
-Equivalent automated checks cover English/Arabic exact, folded and stemmed
-highlights, exclusions, keyboard selection, no-match states, version links,
-rating-save ordering, and numbered saved section links.
+- Original joined Arabic words and diacritics stay intact: `الإعدادات` highlights
+  `إعداد`, and `المستخدمين` highlights `مُستخدِم` and `المستخدمون`.
+- Arrow Down selects the section, Arrow Up returns to the page, and Enter opens
+  the page. The same flow works after selecting named version `v2`.
+- Saved transcript links retain `v2` and the exact `#users` section.
+- A no-match query produces no marked text. Neither language overflows sideways.
+- The rating-save status appears while details wait, then disappears when the
+  save completes and details become sendable. All new copy exists in 12 locales.
+- No browser page errors were recorded.
 
-Provider-free real-Qdrant tests index real English/Arabic docs in `main` and
-`v2`, retrieve the upgrade guide in the top three, and pass retrieved sources
-through the production citation pipeline with a deterministic text adapter.
-These checks do not measure live embedding or answer-model quality.
+Mobile search, no-match and feedback screenshots, desktop chat screenshots,
+English/Arabic accessibility-tree snapshots, and short interaction recordings
+are included. Accessibility-tree and keyboard checks are not a claim that an
+external screen-reader application was run.
+
+Provider-free real-Qdrant tests separately index real English/Arabic docs in
+`main` and `v2`, retrieve the upgrade guide in the top three, and pass retrieved
+sources through the production citation pipeline with a deterministic adapter.
+These are component/browser and indexed-fixture checks, not a deployed-site or
+live embedding/answer-model quality measurement.
