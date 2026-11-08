@@ -52,6 +52,7 @@ import { ConfigCanvas, EmptyCanvas, GroupCanvas, PageCanvasSkeleton, PageLoadFai
 import { nextHydration, type ServerSnapshot, shouldAutosave, shouldFlushDraft } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
+import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
@@ -77,6 +78,7 @@ import {
   useBranches,
   useComments,
   useCreatePage,
+  useDeleteAsset,
   useLanguages,
   usePage,
   usePages,
@@ -192,6 +194,7 @@ function EditorPage() {
   const createPage = useCreatePage(projectId);
   const updatePage = useUpdatePage(projectId);
   const uploadAsset = useUploadAsset(projectId);
+  const deleteAsset = useDeleteAsset(projectId);
   const reorderPages = useReorderPages(projectId);
   const deletePageFlow = useDeletePageFlow(projectId, allPages);
   // What the next publish would change. Shared with the Publish button (same
@@ -221,14 +224,17 @@ function EditorPage() {
   };
 
   // Upload an image (paste/drop/pick) and return its hosted URL for the editor.
+  // `discard` lets the upload card delete the recorded file when it is removed
+  // before the image was placed; the server keeps it if saved content uses it.
   const onUploadImage = async (
     file: File,
     onProgress?: (percent: number) => void,
     signal?: AbortSignal,
     onFinishing?: () => void,
-  ): Promise<string | null> => {
+  ): Promise<UploadedImage> => {
     try {
-      return (await uploadAsset.mutateAsync({ file, onProgress, signal, onFinishing })).url;
+      const asset = await uploadAsset.mutateAsync({ file, onProgress, signal, onFinishing });
+      return { url: asset.url, discard: () => deleteAsset.mutateAsync(asset.id) };
     } catch (error) {
       // The upload card shows the generic failure; also say when the pending-upload limit refused it.
       const pendingLimit = assetUploadErrorMessage(error, '', t('editor.pendingUploadLimit'));

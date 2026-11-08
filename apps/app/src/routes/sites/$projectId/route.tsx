@@ -29,7 +29,7 @@ import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
 import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { readerFallbackHead, siteHead, siteIconHref, unavailableSiteHead } from '@/lib/site-seo';
+import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
@@ -63,6 +63,7 @@ export const Route = createFileRoute('/sites/$projectId')({
       return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'private' ? ('private' as const) : undefined };
     }
   },
+  headers: ({ loaderData }) => (loaderData ? siteRobotsHeaders(loaderData.site) : undefined),
   head: ({ loaderData, match, matches }) => {
     const lang = (match.search as { lang?: string }).lang;
     // The shell failed to load (not a 404): still give the tab a title.

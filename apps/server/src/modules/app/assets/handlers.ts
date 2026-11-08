@@ -1,6 +1,6 @@
 import { confirmAssetBody, presignAssetBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { confirmAsset, listAssets, presignAsset } from '@/actions/assets';
+import { confirmAsset, deleteAsset, listAssets, presignAsset } from '@/actions/assets';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -26,6 +26,10 @@ const app = new Hono<HonoEnv>()
     const { organizationId, projectId } = await scope(ctx);
     const user = getContextUserOrThrow();
     return ctx.json({ data: await confirmAsset(organizationId, projectId, user.id, ctx.req.valid('json')) }, 201);
+  })
+  .delete('/:assetId', ...assetsRoutes.remove, async (ctx) => {
+    const { organizationId, projectId } = await scope(ctx);
+    return ctx.json({ data: await deleteAsset(organizationId, projectId, ctx.req.param('assetId')) }, 200);
   });
 
 export default app;

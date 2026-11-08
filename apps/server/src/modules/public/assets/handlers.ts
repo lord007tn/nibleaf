@@ -75,9 +75,12 @@ const app = new Hono<HonoEnv>().get('/*', ...assetRoutes.get, async (ctx) => {
   // caches within a day rather than being pinned for a year.
   // Reader/workspace responses vary by a private session cookie and must never
   // enter a shared cache. Public assets retain the historical one-day policy.
-  for (const [name, value] of Object.entries(deliveryCacheHeaders(Boolean(viewer && viewer.kind !== 'public'), 'public, max-age=86400'))) {
+  const isPrivate = Boolean(viewer && viewer.kind !== 'public');
+  for (const [name, value] of Object.entries(deliveryCacheHeaders(isPrivate, 'public, max-age=86400'))) {
     ctx.header(name, value);
   }
+  // A private site's images and files stay out of image search too.
+  if (isPrivate) ctx.header('X-Robots-Tag', 'noindex, nofollow');
   return ctx.body(Readable.toWeb(stream) as ReadableStream);
 });
 

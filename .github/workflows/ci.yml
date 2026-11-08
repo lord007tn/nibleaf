@@ -167,6 +167,21 @@ jobs:
           PEOPLE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/people.postgres.test.ts
 
+      - name: Verify deleting an asset keeps files that saved content uses
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ASSET_DELETE_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/asset-delete.postgres.test.ts
+
+      - name: Verify private sites hide every published surface from visitors without access
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          PRIVATE_SITE_INTEGRATION: "1"
+          READER_ACCESS_POSTGRES: "1"
+        run: |
+          pnpm --filter @nibleaf/server exec vitest run src/modules/public/private-site-access.postgres.test.ts
+          pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access.postgres.test.ts
+
       - name: Exercise ClickHouse analytics migrations
         env:
           ANALYTICS_HASH_SALT: ci-analytics-hash-salt

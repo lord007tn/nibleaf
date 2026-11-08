@@ -3411,6 +3411,9 @@ export const MESSAGE_IDS = {
   'editor.image.uploading': 'editor_image_uploading',
   'editor.image.description': 'editor_image_description',
   'editor.image.descriptionHint': 'editor_image_descriptionhint',
+  'editor.image.legacyNotShown': 'editor_image_legacynotshown',
+  'editor.image.legacyUpload': 'editor_image_legacyupload',
+  'editor.image.legacyUploaded': 'editor_image_legacyuploaded',
   'editor.image.size': 'editor_image_size',
   'editor.image.customSize': 'editor_image_customsize',
   'editor.image.small': 'editor_image_small',
@@ -3801,6 +3804,8 @@ export const MESSAGE_IDS = {
   'members.suggestions.label': 'members_suggestions_label',
   'members.suggestions.hint': 'members_suggestions_hint',
   'people.chooseSite': 'people_choosesite',
+  'preview.privateTitle': 'preview_privatetitle',
+  'preview.privateBody': 'preview_privatebody',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

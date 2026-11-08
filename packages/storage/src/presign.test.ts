@@ -1,8 +1,10 @@
 import { S3ServiceException } from '@aws-sdk/client-s3';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const env = vi.hoisted(() => ({ provider: 's3' }));
 vi.mock('./keys', () => ({
   keys: () => ({
+    STORAGE_PROVIDER: env.provider,
     STORAGE_REGION: 'us-east-1',
     STORAGE_ENDPOINT: 'https://internal.example.test',
     STORAGE_PUBLIC_ENDPOINT: 'https://storage.example.test',
@@ -52,5 +54,46 @@ describe('upload signing', () => {
     } finally {
       send.mockRestore();
     }
+  });
+});
+
+/** The raw query value as maxio 0.4.2 reads it: split on `;` with no percent-decoding. */
+const maxioSignedHeaders = (url: string): string[] => (/[?&]X-Amz-SignedHeaders=([^&]*)/.exec(url)?.[1] ?? '').split(';');
+
+describe('upload signing for maxio (#377)', () => {
+  afterEach(() => {
+    env.provider = 's3';
+  });
+  const sign = () =>
+    presignPutUrl({
+      key: 'projects/a/assets/file.png',
+      contentType: 'image/png',
+      contentLength: 1024,
+      signingDate: new Date('2026-11-08T10:00:00Z'),
+    });
+
+  it('writes the signed header list so maxio reads every header, with the same signature', async () => {
+    const standard = await sign();
+    expect(maxioSignedHeaders(standard)).toEqual(['content-length%3Bcontent-type%3Bhost']);
+    env.provider = 'maxio';
+    const maxio = await sign();
+    expect(maxioSignedHeaders(maxio)).toEqual(['content-length', 'content-type', 'host']);
+    // SigV4 canonicalizes `;` and `%3B` alike, so nothing else in the URL changes.
+    expect(new URL(maxio).searchParams.get('X-Amz-Signature')).toBe(new URL(standard).searchParams.get('X-Amz-Signature'));
+    expect(maxio.replace(/;/g, '%3B')).toBe(standard);
+  });
+
+  it('leaves other providers and explicit targets as the SDK signed them', async () => {
+    for (const provider of ['s3', 'r2', 'b2', 'minio']) {
+      env.provider = provider;
+      expect(await sign()).toContain('X-Amz-SignedHeaders=content-length%3Bcontent-type%3Bhost');
+    }
+    env.provider = 'maxio';
+    const explicit = await presignPutUrl({
+      key: 'file.png',
+      contentLength: 1,
+      target: { endpoint: 'https://other.example.test', region: 'auto', forcePathStyle: true, accessKeyId: 'a', secretAccessKey: 'b', bucket: 'c' },
+    });
+    expect(explicit).toContain('%3B');
   });
 });

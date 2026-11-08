@@ -63,6 +63,7 @@ describe('public asset delivery', () => {
     expect(await response.text()).toBe('image-bytes');
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(response.headers.get('cache-control')).toBe('public, max-age=86400');
+    expect(response.headers.get('x-robots-tag')).toBeNull();
     expect(mocks.getProjectAssetAccess).toHaveBeenCalledWith('project-a', 'projects/project-a/assets/logo.png', expect.any(Headers));
     expect(mocks.headObject).toHaveBeenCalledWith('projects/project-a/assets/logo.png');
   });
@@ -72,6 +73,7 @@ describe('public asset delivery', () => {
     const response = await assetRequest('projects/project-a/assets/logo.png');
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
   });
 
   it('hides an asset of a private or unknown project from a visitor without access', async () => {

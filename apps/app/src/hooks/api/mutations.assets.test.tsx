@@ -3,12 +3,18 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useUploadAsset } from './mutations';
+import { useDeleteAsset, useUploadAsset } from './mutations';
 
-const mocks = vi.hoisted(() => ({ presign: vi.fn(), confirm: vi.fn(), list: vi.fn(), put: vi.fn() }));
+const mocks = vi.hoisted(() => ({ presign: vi.fn(), confirm: vi.fn(), list: vi.fn(), put: vi.fn(), remove: vi.fn() }));
 vi.mock('@/services/api', () => ({
   api: {
-    app: { projects: { ':projectId': { assets: { presign: { $post: mocks.presign }, confirm: { $post: mocks.confirm }, $get: mocks.list } } } },
+    app: {
+      projects: {
+        ':projectId': {
+          assets: { presign: { $post: mocks.presign }, confirm: { $post: mocks.confirm }, $get: mocks.list, ':assetId': { $delete: mocks.remove } },
+        },
+      },
+    },
   },
 }));
 vi.mock('@/lib/upload-asset-put', () => ({ putAsset: mocks.put }));
@@ -24,9 +30,11 @@ const asset = {
 let root: Root;
 let host: HTMLElement;
 let hook: ReturnType<typeof useUploadAsset>;
+let removeHook: ReturnType<typeof useDeleteAsset>;
 let client: QueryClient;
 function Probe() {
   hook = useUploadAsset('project-a');
+  removeHook = useDeleteAsset('project-a');
   return null;
 }
 beforeEach(async () => {
@@ -123,5 +131,20 @@ describe('signed upload media type', () => {
     expect(mocks.presign.mock.calls[0]?.[0].json.contentType).toBe('image/x-png');
     expect(mocks.put).toHaveBeenCalledExactlyOnceWith('/storage/signed', file, 'image/png', undefined, undefined);
     expect(mocks.confirm.mock.calls[0]?.[0].json).toEqual({ key: asset.key, contentType: 'image/png', size: file.size });
+  });
+});
+describe('deleting an unplaced upload', () => {
+  it('deletes that one asset of the project', async () => {
+    mocks.remove.mockResolvedValue(response(200, { data: { id: asset.id } }));
+    await act(async () => {
+      await expect(removeHook.mutateAsync(asset.id)).resolves.toEqual({ id: asset.id });
+    });
+    expect(mocks.remove).toHaveBeenCalledExactlyOnceWith({ param: { projectId: 'project-a', assetId: asset.id } });
+  });
+  it('rejects when the server keeps a file that saved content uses', async () => {
+    mocks.remove.mockResolvedValue(response(409, { error: { code: 'asset:in_use', message: 'kept' } }));
+    await act(async () => {
+      await expect(removeHook.mutateAsync(asset.id)).rejects.toBeDefined();
+    });
   });
 });
