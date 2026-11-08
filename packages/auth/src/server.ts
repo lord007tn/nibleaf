@@ -22,6 +22,7 @@ import { admin, emailOTP, organization } from 'better-auth/plugins';
 import { reassignOrDeleteOrgs } from './account-deletion';
 import { requireAuthEmailEnqueue, trackRequiredAuthEmail, withRequiredAuthEmailScope } from './auth-email-delivery';
 import { deliverAuthOtpEmail } from './auth-email-expiry';
+import { arrivingThroughJoinLink } from './join-links';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
 import { organizationMetadataResponseFilter, stripServerOnlyOrganizationMetadata } from './organization-metadata';
@@ -615,8 +616,73 @@ async function publishStarterSite(projectId: string, userId: string, locale?: st
   }
 }
 
+type JoinedOrganization = { id: string; name: string; metadata?: string | null };
+
+/**
+ * Someone joined a site (accepted an invitation, or used a join link). Every
+ * existing member sees it in the bell inbox; owners and admins also get an
+ * email. Honours the site's `member_joined` notification toggle and never
+ * throws: a join must not fail because a notification did.
+ */
+export async function notifyMemberJoined({
+  organization: org,
+  userId,
+  user,
+}: {
+  organization: JoinedOrganization;
+  userId: string;
+  user: { name?: string | null; email?: string | null };
+}): Promise<void> {
+  try {
+    if (!notificationEnabled(org.metadata, 'member_joined')) {
+      return;
+    }
+    const who = user.name || user.email || 'A new member';
+    const project = await prisma.project.findFirst({
+      where: { organizationId: org.id },
+      select: { id: true, languages: { where: { isDefault: true }, select: { code: true }, take: 1 } },
+    });
+    const language = resolveEmailLanguage(project?.languages[0]?.code);
+    // In-app bell: every existing member sees the join (the email below stays
+    // admin-only). Each site owns its org 1:1, so the org's project is the link target.
+    try {
+      const others = await prisma.member.findMany({
+        where: { organizationId: org.id, userId: { not: userId } },
+        select: { userId: true },
+      });
+      const notificationT = createEmailTranslator(language);
+      if (others.length > 0) {
+        await prisma.notification.createMany({
+          data: others.map((existing) => ({
+            userId: existing.userId,
+            projectId: project?.id ?? null,
+            type: 'member_joined',
+            title: notificationT('email.memberJoined.title', { memberName: who, organizationName: org.name }),
+            body: notificationT('email.memberJoined.message', { memberName: who, organizationName: org.name }),
+            href: project ? `/app/projects/${project.id}/settings?section=members` : null,
+          })),
+        });
+      }
+    } catch {
+      // in-app inbox is best-effort; fall through to the email
+    }
+    const admins = await prisma.member.findMany({
+      where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: userId } },
+      select: { user: { select: { email: true } } },
+    });
+    const email = await renderMemberJoinedEmail({
+      memberName: who,
+      organizationName: org.name,
+      language,
+    });
+    await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
+  } catch {
+    // never block the join
+  }
+}
+
 /** Auto-provision a workspace + starter project so a new user lands in a usable app. */
-async function provisionWorkspace(user: { id: string; name?: string | null; email: string }, locale?: string): Promise<void> {
+async function provisionWorkspace(user: { id: string; name?: string | null; email: string }, locale?: string, headers?: Headers): Promise<void> {
   try {
     const existing = await prisma.member.findFirst({ where: { userId: user.id } });
     if (existing) {
@@ -630,6 +696,12 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
       select: { id: true },
     });
     if (pendingInvitation) {
+      return;
+    }
+    // Someone signing up from a site's join link joins THAT site next; an
+    // unrelated starter workspace would leave them with two. Only a link that
+    // would actually admit this address counts (see arrivingThroughJoinLink).
+    if (await arrivingThroughJoinLink(user.email, headers)) {
       return;
     }
     const firstName = user.name?.split(' ')[0]?.trim();
@@ -773,52 +845,7 @@ const authInstance = betterAuth({
         // Someone accepted an invite (members added via the org API → joins). Tell the
         // workspace's existing owners/admins, unless `member_joined` is disabled.
         afterAddMember: async ({ member, user, organization: org }) => {
-          try {
-            if (!notificationEnabled((org as { metadata?: string | null }).metadata, 'member_joined')) {
-              return;
-            }
-            const who = user.name || user.email || 'A new member';
-            const project = await prisma.project.findFirst({
-              where: { organizationId: org.id },
-              select: { id: true, languages: { where: { isDefault: true }, select: { code: true }, take: 1 } },
-            });
-            const language = resolveEmailLanguage(project?.languages[0]?.code);
-            // In-app bell: every existing member sees the join (the email below stays
-            // admin-only). Each site owns its org 1:1, so the org's project is the link target.
-            try {
-              const others = await prisma.member.findMany({
-                where: { organizationId: org.id, userId: { not: member.userId } },
-                select: { userId: true },
-              });
-              const notificationT = createEmailTranslator(language);
-              if (others.length > 0) {
-                await prisma.notification.createMany({
-                  data: others.map((existing) => ({
-                    userId: existing.userId,
-                    projectId: project?.id ?? null,
-                    type: 'member_joined',
-                    title: notificationT('email.memberJoined.title', { memberName: who, organizationName: org.name }),
-                    body: notificationT('email.memberJoined.message', { memberName: who, organizationName: org.name }),
-                    href: project ? `/app/projects/${project.id}/settings?section=members` : null,
-                  })),
-                });
-              }
-            } catch {
-              // in-app inbox is best-effort; fall through to the email
-            }
-            const admins = await prisma.member.findMany({
-              where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: member.userId } },
-              select: { user: { select: { email: true } } },
-            });
-            const email = await renderMemberJoinedEmail({
-              memberName: who,
-              organizationName: org.name,
-              language,
-            });
-            await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
-          } catch {
-            // never block the join
-          }
+          await notifyMemberJoined({ organization: org as JoinedOrganization, userId: member.userId, user });
         },
       },
     }),
@@ -830,7 +857,7 @@ const authInstance = betterAuth({
   databaseHooks: {
     user: {
       create: {
-        after: (user, context) => provisionWorkspace(user, resolveRequestLocale(context?.headers)),
+        after: (user, context) => provisionWorkspace(user, resolveRequestLocale(context?.headers), context?.headers ?? undefined),
       },
     },
     // New sign-in alert — only on a sign-in from an IP we haven't seen for this user

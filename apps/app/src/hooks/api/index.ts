@@ -6,6 +6,7 @@ export * from './errors';
 export * from './exports';
 export * from './git-workflow';
 export * from './integrations';
+export * from './join-links';
 export * from './mcp-oauth';
 export * from './mutations';
 export * from './page-cache';

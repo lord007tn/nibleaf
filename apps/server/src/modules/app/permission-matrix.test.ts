@@ -83,6 +83,7 @@ const ACCOUNT_SCOPED_WRITES: Record<string, string> = {
   'POST /activation-events': 'records onboarding milestones for the caller only',
   'POST /notifications/read': "marks the caller's own inbox read",
   'POST /projects': 'creates a brand-new site the caller owns',
+  'POST /join/:token': 'joins the site the token belongs to, as the caller; the token is the authorization',
   'POST /mcp-oauth/grants': 'checked per site in createMcpOAuthGrant: a Viewer role offers no MCP preset (see shared mcp tests)',
 };
 
@@ -94,6 +95,7 @@ const VIEWER_DENIED_READS = [
   'GET /projects/:projectId/integrations',
   'GET /projects/:projectId/integrations/:providerId',
   'GET /projects/:projectId/reader-access',
+  'GET /projects/:projectId/join-links',
   'GET /projects/:projectId/settings/ai',
   'GET /projects/:projectId/ai/draft-capability',
   'GET /projects/:projectId/branches/:id/merge-preview',

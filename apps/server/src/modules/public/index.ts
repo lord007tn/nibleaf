@@ -7,6 +7,7 @@ import assets from './assets/handlers';
 import domains from './domains/handlers';
 import git from './git/handlers';
 import invitations from './invitations/handlers';
+import join from './join/handlers';
 import marketingEvents from './marketing-events/handlers';
 import meta from './meta/handlers';
 import readerAccess from './reader-access/handlers';
@@ -50,10 +51,13 @@ const app = new Hono<HonoEnv>()
   .use('/sites/:id/chat/events', rateLimit({ windowMs: 60_000, max: 60 }))
   .use('/sites/:id/chat/feedback', rateLimit({ windowMs: 60_000, max: 30 }))
   .use('/marketing-events/*', rateLimit({ windowMs: 60_000, max: 30 }))
+  // Join-link previews: a tight per-IP budget on top of 256-bit tokens.
+  .use('/join/*', rateLimit({ windowMs: 60_000, max: 30 }))
   .route('/sites', sites)
   .route('/domains', domains)
   .route('/git', git)
   .route('/invitations', invitations)
+  .route('/join', join)
   .route('/marketing-events', marketingEvents)
   .route('/assets', assets)
   .route('/reader-access', readerAccess)

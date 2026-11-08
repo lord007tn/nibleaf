@@ -79,6 +79,7 @@ export const queryKeys = {
     all: () => ['members'] as const,
     /** Per-site members + invitations (each site owns its own member list). */
     forProject: (projectId: string) => ['members', projectId] as const,
+    joinLinks: (projectId: string) => ['members', projectId, 'join-links'] as const,
   },
   readerAccess: {
     detail: (projectId: string) => ['reader-access', projectId] as const,
@@ -101,6 +102,7 @@ export const queryKeys = {
   public: {
     meta: () => ['public', 'meta'] as const,
     invitation: (invitationId: string) => ['public', 'invitations', invitationId] as const,
+    joinLink: (token: string) => ['public', 'join', token] as const,
   },
   site: {
     shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,

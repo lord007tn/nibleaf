@@ -40,3 +40,9 @@ export const safeEqual = (a: string, b: string): boolean => {
   const bufB = Buffer.from(b);
   return bufA.length === bufB.length && timingSafeEqual(bufA, bufB);
 };
+
+/** A fresh join-link token: `nlj_` + 32 random bytes (256 bits) in base64url. */
+export const generateJoinLinkToken = () => `nlj_${randomBytes(32).toString('base64url')}`;
+
+/** What is stored for a join-link token: its SHA-256, never the token itself. */
+export const hashJoinLinkToken = (token: string) => createHash('sha256').update(token, 'utf8').digest('hex');

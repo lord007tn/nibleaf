@@ -35,6 +35,7 @@ import { email as validateEmail } from '@/lib/form';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { DEFAULT_INVITE_ROLE, roleLabelKey } from '@/lib/member-roles';
 import { useSession } from '@/services/auth-client';
+import { JoinLinksSection } from './join-links-section';
 import { DirtyStateReporter, SectionHeader } from './shared';
 
 /** A small button that copies an invite link to the clipboard with feedback.
@@ -382,6 +383,8 @@ export function MembersSection({ projectId }: { projectId: string }) {
           ) : null}
         </>
       )}
+
+      {canManageMembers ? <JoinLinksSection projectId={projectId} /> : null}
 
       <AlertDialog
         onOpenChange={(open) => {

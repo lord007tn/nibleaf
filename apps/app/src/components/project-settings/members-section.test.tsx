@@ -31,6 +31,8 @@ vi.mock('@nibleaf/i18n/react', () => ({
   },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(async () => false) }));
+// Join links have their own tests; here only whether Admins get them matters.
+vi.mock('./join-links-section', () => ({ JoinLinksSection: () => <div data-testid="join-links-stub" /> }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: currentUserId } } }) }));
 vi.mock('@/hooks/api', async () => ({
   friendlyErrorMessage: (await vi.importActual<typeof import('@/hooks/api/errors')>('@/hooks/api/errors')).friendlyErrorMessage,
@@ -99,6 +101,7 @@ describe('MembersSection role selects', () => {
     expect(container.querySelector('[role="combobox"]')).toBeNull();
     expect(container.querySelector('[aria-label="settings.members.remove"]')).toBeNull();
     expect(container.textContent).toContain('مشاهد');
+    expect(container.querySelector('[data-testid="join-links-stub"]')).toBeNull();
     act(() => root.unmount());
   });
 
@@ -111,6 +114,7 @@ describe('MembersSection role selects', () => {
     expect(container.querySelector('[aria-label="settings.members.remove"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="settings.members.copyInviteLink"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="settings.members.transferOwnership"]')).toBeNull();
+    expect(container.querySelector('[data-testid="join-links-stub"]')).not.toBeNull();
     act(() => root.unmount());
   });
 
