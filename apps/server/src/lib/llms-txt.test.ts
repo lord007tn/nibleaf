@@ -64,6 +64,10 @@ describe('llmsIndexablePages', () => {
       },
     );
     expect(llmsIndexablePages(snap).map((p) => p.id)).toEqual(['keep']);
+    // Behind sign-in, search indexing rules don't apply: every readable page
+    // that isn't hidden is listed. Groups (including ungranted ancestors kept
+    // as navigation labels) still carry no body.
+    expect(llmsIndexablePages(snap, { privateSite: true }).map((p) => p.id)).toEqual(['keep', 'noindex', 'external-canonical', 'blocked-lang']);
   });
 });
 

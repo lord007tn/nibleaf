@@ -159,7 +159,7 @@ describe('getSitePage lede vs excerpt', () => {
     });
   });
 
-  it('fails closed for noindex and private-reader content even when the viewer is authorized', async () => {
+  it('fails closed for noindex, canonicalized and hidden public pages, and serves private pages only to their authorized viewer as private', async () => {
     mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-noindex-${Math.random()}`, version: 1 });
     mocks.deploymentFindUnique.mockResolvedValueOnce({
       snapshot: {
@@ -203,7 +203,9 @@ describe('getSitePage lede vs excerpt', () => {
     invalidatePublishedSiteConfig('project-1');
     mocks.deploymentFindFirst.mockResolvedValueOnce({ id: `deployment-private-${Math.random()}`, version: 1 });
     mocks.deploymentFindUnique.mockResolvedValueOnce({ snapshot });
-    await expect(getSitePageMarkdown('project-1', 'authentication')).rejects.toMatchObject({ status: 404 });
+    // The viewer passed the access gate, so a private page's Markdown is theirs,
+    // marked private (never shared-cached).
+    await expect(getSitePageMarkdown('project-1', 'authentication')).resolves.toMatchObject({ isPrivate: true });
   });
 
   it('fails closed when the resolved language disables indexing', async () => {

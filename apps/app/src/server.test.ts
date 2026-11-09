@@ -347,3 +347,45 @@ describe('machine files of a site the visitor cannot read', () => {
     }
   });
 });
+
+describe('machine files for a signed-in reader of a private site', () => {
+  const privateHeaders = { 'cache-control': 'private, no-store', vary: 'Cookie, Authorization', 'x-robots-tag': 'noindex, nofollow' };
+  const privateUpstream = (body: string) => ({ body, ok: true, statusCode: 200, headers: privateHeaders });
+
+  it('sends the reader’s session with a Markdown request and keeps the answer private', async () => {
+    mocks.got.mockImplementation(async (url: string) => {
+      if (url.endsWith('/api/public/sites/private-reader-project')) {
+        return upstream({ data: { project: { config: { visibility: 'private' }, primaryDomain: null } } });
+      }
+      if (url.includes('/api/public/sites/private-reader-project/markdown?')) return privateUpstream('# Confidential\n');
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    const response = await server.fetch(
+      new Request('http://localhost:4310/sites/private-reader-project/guide.md', {
+        headers: { cookie: 'nibleaf_reader_private-reader-project=token' },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('# Confidential\n');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('vary')).toContain('Cookie');
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+    const markdownCall = mocks.got.mock.calls.find(([url]) => String(url).includes('/markdown?'));
+    expect((markdownCall?.[1] as { headers?: Record<string, string> })?.headers?.cookie).toBe('nibleaf_reader_private-reader-project=token');
+  });
+
+  it('keeps llms.txt private for the reader', async () => {
+    mocks.got.mockImplementation(async (url: string) => {
+      if (url.includes('/api/public/sites/private-reader-project/llms.txt')) return privateUpstream('# Docs\n');
+      throw new Error(`Unexpected URL: ${url}`);
+    });
+    const response = await server.fetch(
+      new Request('http://localhost:4310/sites/private-reader-project/llms.txt', {
+        headers: { cookie: 'nibleaf_reader_private-reader-project=token' },
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow');
+  });
+});
