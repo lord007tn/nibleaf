@@ -3970,5 +3970,5 @@
   "dashboard_ai_inputtokens": "Unités de texte des questions",
   "dashboard_ai_outputtokens": "Unités de texte des réponses",
   "analytics_kpi_siteswithtraffic": "Sites avec du trafic",
-  "analytics_workspace_termspersite": "Les recherches des lecteurs figurent dans le rapport Recherche de chaque site, selon ses paramètres de confidentialité."
+  "analytics_workspace_termspersite": "Les termes recherchés peuvent apparaître dans le rapport Recherche de chaque site, selon ses paramètres de confidentialité et le seuil de visites."
 }

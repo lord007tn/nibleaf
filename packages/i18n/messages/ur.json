@@ -3961,5 +3961,5 @@
   "dashboard_ai_inputtokens": "سوالات میں متن کی اکائیاں",
   "dashboard_ai_outputtokens": "جوابات میں متن کی اکائیاں",
   "analytics_kpi_siteswithtraffic": "ٹریفک والی سائٹس",
-  "analytics_workspace_termspersite": "قارئین نے کیا تلاش کیا، یہ ہر سائٹ کی تلاش رپورٹ میں دکھایا جاتا ہے، جہاں اس سائٹ کی رازداری کی ترتیبات لاگو ہوتی ہیں۔"
+  "analytics_workspace_termspersite": "تلاش کے الفاظ ہر سائٹ کی تلاش رپورٹ میں دکھائے جا سکتے ہیں، اس کی رازداری کی ترتیبات اور وزٹ کی حد کے مطابق۔"
 }

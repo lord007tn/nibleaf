@@ -4005,5 +4005,5 @@
   "dashboard_ai_inputtokens": "وحدات النص في الأسئلة",
   "dashboard_ai_outputtokens": "وحدات النص في الإجابات",
   "analytics_kpi_siteswithtraffic": "مواقع لديها زيارات",
-  "analytics_workspace_termspersite": "تظهر عبارات البحث في تقرير «البحث» لكل موقع، حيث تُطبَّق إعدادات الخصوصية الخاصة به."
+  "analytics_workspace_termspersite": "قد تظهر عبارات البحث في تقرير «البحث» لكل موقع، بحسب إعدادات الخصوصية وحدّ الزيارات."
 }

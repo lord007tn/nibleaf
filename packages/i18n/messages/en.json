@@ -3970,5 +3970,5 @@
   "dashboard_ai_inputtokens": "Text units in questions",
   "dashboard_ai_outputtokens": "Text units in answers",
   "analytics_kpi_siteswithtraffic": "Sites with traffic",
-  "analytics_workspace_termspersite": "What readers searched for is shown in each site's Search report, where that site's privacy settings apply."
+  "analytics_workspace_termspersite": "Search terms may be shown in each site's Search report, subject to its privacy settings and the visit threshold."
 }

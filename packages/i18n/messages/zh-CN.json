@@ -3905,5 +3905,5 @@
   "dashboard_ai_inputtokens": "问题中的文本单位",
   "dashboard_ai_outputtokens": "回答中的文本单位",
   "analytics_kpi_siteswithtraffic": "有访问量的站点",
-  "analytics_workspace_termspersite": "读者搜索了什么会显示在各站点的搜索报告中，并遵循该站点的隐私设置。"
+  "analytics_workspace_termspersite": "搜索词可能会显示在各站点的搜索报告中，具体取决于其隐私设置和访问量门槛。"
 }

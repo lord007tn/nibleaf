@@ -29,22 +29,23 @@ export const relationalInterval = (range: AnalyticsRange, requestedTimezone: str
 
 /** One PostgreSQL snapshot returns a total row and at most 92 local-day rows (DST edges included). */
 export const relationalViewSummary = async (projectIds: string[], interval: ReturnType<typeof relationalInterval>) => {
-  const [rows, previousTotalViews] = await Promise.all([
-    prisma.$queryRaw<Array<{ date: string | null; views: bigint; visitors: bigint }>>(Prisma.sql`
+  // One statement over [previousSince, until), so the current window and the equal
+  // window before it (for "vs previous period") come from the same snapshot.
+  const rows = await prisma.$queryRaw<Array<{ date: string | null; views: bigint; visitors: bigint; previous: bigint }>>(Prisma.sql`
     WITH events AS (
-      SELECT to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${interval.timezone}, 'YYYY-MM-DD') AS date, "sessionId"
+      SELECT to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${interval.timezone}, 'YYYY-MM-DD') AS date, "sessionId",
+        "createdAt" >= ${interval.since} AS is_current
       FROM analytics_event WHERE "projectId" IN (${Prisma.join(projectIds)}) AND type = 'pageview'
-        AND "createdAt" >= ${interval.since} AND "createdAt" < ${interval.until}
+        AND "createdAt" >= ${interval.previousSince} AND "createdAt" < ${interval.until}
     )
-    SELECT date, count(*) AS views, count(DISTINCT "sessionId") AS visitors
-    FROM events GROUP BY GROUPING SETS ((date), ())`),
-    // The equal window right before this one, for "vs previous period".
-    prisma.analyticsEvent.count({
-      where: { projectId: { in: projectIds }, type: 'pageview', createdAt: { gte: interval.previousSince, lt: interval.since } },
-    }),
-  ]);
+    SELECT date,
+      count(*) FILTER (WHERE is_current) AS views,
+      count(DISTINCT "sessionId") FILTER (WHERE is_current) AS visitors,
+      count(*) FILTER (WHERE NOT is_current) AS previous
+    FROM events GROUP BY GROUPING SETS ((date), ())`);
   const totals = rows.find((row) => row.date === null);
   const counts = new Map(rows.map((row) => [row.date, Number(row.views)]));
+  const previousTotalViews = Number(totals?.previous ?? 0);
   return {
     totalViews: Number(totals?.views ?? 0),
     // Exact millisecond windows here, so the compared total is the displayed one.

@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from '@clickhouse/client';
 import { getClickHouseClient } from './client';
+import { keys } from './keys';
 
 export type AnalyticsAvailability = 'complete' | 'partial' | 'unavailable';
 export type AnalyticsRange = '24h' | '7d' | '30d' | '90d';
@@ -24,6 +25,24 @@ export const analyticsWindows = (days: number, now = new Date()) => {
     comparable: { start: anchor - span, end: anchor },
     previous: { start: anchor - 2 * span, end: anchor - span },
   };
+};
+
+/**
+ * True when rollups are still kept for the whole previous window. Hourly rollups
+ * older than CLICKHOUSE_ROLLUP_RETENTION_DAYS are dropped, so a previous window
+ * reaching past that would read low and inflate the change; a day of margin
+ * covers TTL merges that run late.
+ */
+export const previousWindowRetained = (days: number, retentionDays: number, now = new Date()) =>
+  analyticsWindows(days, now).previous.start >= now.getTime() - (retentionDays - 1) * 86_400_000;
+
+const rollupRetentionDays = () => {
+  try {
+    return keys().CLICKHOUSE_ROLLUP_RETENTION_DAYS;
+  } catch {
+    // Env not loaded (tests, scripts): the documented default.
+    return 730;
+  }
 };
 
 const windowParams = (days: number, now = new Date()) => {
@@ -163,6 +182,7 @@ export const queryProjectAnalytics = async (
 ): Promise<ProjectAnalyticsOverview> => {
   const tz = safeTimezone(timezone);
   const now = new Date();
+  const previousRetained = previousWindowRetained(RANGE_DAYS[range], rollupRetentionDays(), now);
   const params = { tenant_id: tenantId, project_id: projectId, days: RANGE_DAYS[range], timezone: tz, ...windowParams(RANGE_DAYS[range], now) };
   const scope =
     'tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND (tenant_id, project_id) NOT IN (SELECT tenant_id, project_id FROM analytics_deletion_tombstones FINAL)';
@@ -184,7 +204,7 @@ export const queryProjectAnalytics = async (
           client,
           `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY hour, path, language, device, referrer_domain)`,
           params,
-        ),
+        ).then((rows) => (previousRetained ? rows : null)),
         json<CountRow>(
           client,
           `SELECT uniqCombined64Merge(sessions) AS value FROM analytics_hourly WHERE ${common} AND event_name = 'page_view'`,
@@ -271,7 +291,8 @@ export const queryProjectAnalytics = async (
       timezone: tz,
       totalViews: num(totals[0]?.value),
       comparableTotalViews: num(comparableTotals[0]?.value),
-      previousTotalViews: num(previousTotals[0]?.value),
+      // Unknown (no badge) when retention may have trimmed the previous window.
+      previousTotalViews: previousTotals ? num(previousTotals[0]?.value) : null,
       uniqueVisitors: num(visitors[0]?.value),
       timeseries: fillDays(days, RANGE_DAYS[range], tz, now),
       topPages: pages.map((row) => ({ path: row.key, views: num(row.value) })),
@@ -337,6 +358,7 @@ export const queryWorkspaceAnalytics = async (
     };
   }
   const now = new Date();
+  const previousRetained = previousWindowRetained(RANGE_DAYS[range], rollupRetentionDays(), now);
   const params = {
     tenant_ids: authorizedProjects.map(({ tenantId }) => tenantId),
     project_ids: authorizedProjects.map(({ projectId }) => projectId),
@@ -363,7 +385,7 @@ export const queryWorkspaceAnalytics = async (
         client,
         `SELECT sum(c) AS value FROM (SELECT uniqCombined64Merge(event_ids) AS c FROM analytics_hourly WHERE ${scope} AND ${PREVIOUS_WINDOW} AND event_name = 'page_view' GROUP BY project_id, hour, path, language, device, referrer_domain)`,
         params,
-      ),
+      ).then((rows) => (previousRetained ? rows : null)),
       json<CountRow>(
         client,
         `SELECT uniqCombined64Merge(sessions) AS value FROM analytics_hourly WHERE ${common} AND event_name = 'page_view'`,
@@ -422,7 +444,8 @@ export const queryWorkspaceAnalytics = async (
       timezone: tz,
       totalViews: num(total[0]?.value),
       comparableTotalViews: num(comparableTotal[0]?.value),
-      previousTotalViews: num(previousTotal[0]?.value),
+      // Unknown (no badge) when retention may have trimmed the previous window.
+      previousTotalViews: previousTotal ? num(previousTotal[0]?.value) : null,
       uniqueVisitors: num(visitors[0]?.value),
       timeseries: fillDays(days, RANGE_DAYS[range], tz, now),
       byProject: byProject.map((row) => ({ projectId: row.key, views: num(row.value) })),

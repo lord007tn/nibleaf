@@ -3905,5 +3905,5 @@
   "dashboard_ai_inputtokens": "प्रश्नों में टेक्स्ट इकाइयाँ",
   "dashboard_ai_outputtokens": "उत्तरों में टेक्स्ट इकाइयाँ",
   "analytics_kpi_siteswithtraffic": "ट्रैफ़िक वाली साइटें",
-  "analytics_workspace_termspersite": "पाठकों ने क्या खोजा, यह हर साइट की खोज रिपोर्ट में दिखता है, जहाँ उस साइट की गोपनीयता सेटिंग लागू होती हैं।"
+  "analytics_workspace_termspersite": "खोज शब्द हर साइट की खोज रिपोर्ट में दिख सकते हैं, उसकी गोपनीयता सेटिंग और विज़िट सीमा के अधीन।"
 }

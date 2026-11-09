@@ -3970,5 +3970,5 @@
   "dashboard_ai_inputtokens": "Unidades de texto en preguntas",
   "dashboard_ai_outputtokens": "Unidades de texto en respuestas",
   "analytics_kpi_siteswithtraffic": "Sitios con tráfico",
-  "analytics_workspace_termspersite": "Lo que buscaron los lectores aparece en el informe de búsqueda de cada sitio, donde se aplica su configuración de privacidad."
+  "analytics_workspace_termspersite": "Los términos de búsqueda pueden aparecer en el informe de búsqueda de cada sitio, según su configuración de privacidad y el umbral de visitas."
 }

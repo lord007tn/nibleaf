@@ -3905,5 +3905,5 @@
   "dashboard_ai_inputtokens": "Unit teks dalam pertanyaan",
   "dashboard_ai_outputtokens": "Unit teks dalam jawaban",
   "analytics_kpi_siteswithtraffic": "Situs dengan kunjungan",
-  "analytics_workspace_termspersite": "Kata yang dicari pembaca ditampilkan di laporan Pencarian setiap situs, sesuai pengaturan privasi situs tersebut."
+  "analytics_workspace_termspersite": "Kata pencarian dapat ditampilkan di laporan Pencarian setiap situs, sesuai pengaturan privasinya dan ambang kunjungan."
 }

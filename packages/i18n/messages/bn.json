@@ -3905,5 +3905,5 @@
   "dashboard_ai_inputtokens": "প্রশ্নে টেক্সট ইউনিট",
   "dashboard_ai_outputtokens": "উত্তরে টেক্সট ইউনিট",
   "analytics_kpi_siteswithtraffic": "ট্রাফিক থাকা সাইট",
-  "analytics_workspace_termspersite": "পাঠকেরা কী খুঁজেছেন তা প্রতিটি সাইটের সার্চ রিপোর্টে দেখানো হয়, যেখানে সেই সাইটের গোপনীয়তা সেটিংস প্রযোজ্য।"
+  "analytics_workspace_termspersite": "প্রতিটি সাইটের সার্চ রিপোর্টে সার্চ শব্দ দেখানো হতে পারে, তার গোপনীয়তা সেটিংস ও ভিজিটের সীমা অনুযায়ী।"
 }

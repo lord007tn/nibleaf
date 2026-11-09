@@ -3970,5 +3970,5 @@
   "dashboard_ai_inputtokens": "Texteinheiten in Fragen",
   "dashboard_ai_outputtokens": "Texteinheiten in Antworten",
   "analytics_kpi_siteswithtraffic": "Websites mit Besuchen",
-  "analytics_workspace_termspersite": "Wonach gesucht wurde, zeigt der Suchbericht jeder Website – dort gelten ihre Datenschutzeinstellungen."
+  "analytics_workspace_termspersite": "Suchbegriffe können im Suchbericht jeder Website erscheinen – abhängig von ihren Datenschutzeinstellungen und der Mindestzahl an Besuchen."
 }
