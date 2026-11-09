@@ -11,6 +11,9 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
   // People read a plain sentence, never an exception's (usually English, technical) text.
   // Developers get the real message below in development, and in the console.
   const detail = import.meta.env.DEV && error instanceof Error ? error.message : null;
+  // Visitors never see the exception, so operators must: during server rendering
+  // (e.g. a published-site loader failing), log the original error with its stack.
+  if (import.meta.env.SSR) console.error('[route error]', error);
   return (
     <div className="grid min-h-screen place-items-center bg-background px-6 text-center">
       <div className="flex flex-col items-center gap-3">

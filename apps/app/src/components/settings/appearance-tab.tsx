@@ -60,8 +60,8 @@ function ThemeCard({ option, label, selected, onSelect }: { option: ThemeOption;
         <span className="mb-1.5 block h-2 rounded" style={{ width: '70%', background: option.bars[1] }} />
         <span className="block h-2 rounded" style={{ width: '55%', background: option.bars[2] }} />
       </span>
-      <span className="mt-3 flex items-center font-medium text-sm">
-        {label}
+      <span className="mt-3 flex items-center gap-2 font-medium text-sm">
+        <span className="min-w-0 [overflow-wrap:anywhere]">{label}</span>
         {selected ? <Check className="ms-auto size-4 text-primary" /> : null}
       </span>
     </button>
@@ -76,16 +76,20 @@ export function AppearanceTab() {
   return (
     <div className="flex flex-col gap-6">
       <SettingsSection title={t('settings.appearance.theme.title')} description={t('settings.appearance.theme.description')}>
-        <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-3">
-          {THEMES.map((option) => (
-            <ThemeCard
-              key={option.id}
-              label={t(option.labelKey)}
-              onSelect={() => setTheme(option.id)}
-              option={option}
-              selected={theme === option.id}
-            />
-          ))}
+        {/* Three across only when the section itself is wide enough for the
+            longest localized label (the settings nav takes room from sm up). */}
+        <div className="@container">
+          <div className="grid grid-cols-1 gap-4 @md:grid-cols-3">
+            {THEMES.map((option) => (
+              <ThemeCard
+                key={option.id}
+                label={t(option.labelKey)}
+                onSelect={() => setTheme(option.id)}
+                option={option}
+                selected={theme === option.id}
+              />
+            ))}
+          </div>
         </div>
       </SettingsSection>
 

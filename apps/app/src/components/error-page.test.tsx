@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ invalidate: vi.fn() }));
@@ -53,5 +54,25 @@ describe('error-page retry', () => {
     expect(container.querySelector('p')?.textContent).toBe('error.unexpected');
     // Development (this test run) keeps the technical message apart, below.
     expect(container.querySelector('pre')?.textContent).toContain('Cannot read properties');
+  });
+
+  it('logs the original error for operators when it renders on the server, and only there', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const error = new Error('loader exploded');
+    vi.stubEnv('SSR', true);
+    try {
+      const html = renderToString(<ErrorPage error={error} reset={vi.fn()} />);
+      expect(log).toHaveBeenCalledWith('[route error]', error);
+      expect(html).toContain('error.unexpected');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+    log.mockClear();
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root.render(<ErrorPage error={error} reset={vi.fn()} />));
+    expect(log).not.toHaveBeenCalledWith('[route error]', error);
+    log.mockRestore();
   });
 });
