@@ -6,8 +6,10 @@ import { type EmailLanguage, renderReaderInvitationEmail } from '@nibleaf/email'
 import type {
   CreateAudienceBody,
   InviteReaderBody,
+  InviteReadersBody,
   JwtAccessConfigBody,
   ProjectAccessModeBody,
+  ReaderEmailDomainsBody,
   UpdateAudienceBody,
   UpdateReaderBody,
 } from '@nibleaf/validators';
@@ -210,7 +212,7 @@ export const setSessionCookie = (ctx: Context<HonoEnv>, projectId: string, token
 };
 
 export const listReaderAccess = async (projectId: string) => {
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accessMode: true } });
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accessMode: true, readerEmailDomains: true } });
   if (!project) throw notFound('project', { id: projectId });
   const [readers, audiences, jwt, audit] = await Promise.all([
     prisma.reader.findMany({
@@ -237,7 +239,7 @@ export const listReaderAccess = async (projectId: string) => {
     prisma.jwtAccessProvider.findUnique({ where: { projectId } }),
     prisma.readerAuditLog.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 100 }),
   ]);
-  return { accessMode: project.accessMode, readers, audiences, jwt, audit };
+  return { accessMode: project.accessMode, readerEmailDomains: project.readerEmailDomains, readers, audiences, jwt, audit };
 };
 
 export const setProjectAccessMode = async (projectId: string, actorUserId: string, body: ProjectAccessModeBody) => {
@@ -300,23 +302,40 @@ export const deleteAudience = async (projectId: string, audienceId: string, acto
   return { id: audienceId };
 };
 
-export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody, language?: EmailLanguage) => {
-  await assertAudiences(projectId, body.audienceIds);
-  const reader = await prisma.reader.upsert({
-    where: { projectId_email: { projectId, email: body.email } },
-    create: {
-      projectId,
-      email: body.email,
-      name: body.name,
-      audiences: { create: [...new Set(body.audienceIds)].map((audienceId) => ({ audienceId })) },
-    },
-    update: {
-      name: body.name,
-      status: 'INVITED',
-      revokedAt: null,
-      audiences: { deleteMany: {}, create: [...new Set(body.audienceIds)].map((audienceId) => ({ audienceId })) },
-    },
+/** The audience that grants the whole site, created the first time a reader is
+ *  invited without choosing pages. Owners never need to set up audiences first. */
+export const ensureSiteAudience = async (projectId: string): Promise<string> => {
+  const find = () =>
+    prisma.audience.findFirst({
+      where: { projectId, grants: { some: { scopeKey: 'SITE' } } },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+  const existing = await find();
+  if (existing) return existing.id;
+  for (const name of ['Everyone', 'Everyone (whole site)']) {
+    try {
+      const created = await prisma.audience.create({
+        data: { projectId, name, grants: { create: [{ projectId, pageId: null, scopeKey: 'SITE' }] } },
+        select: { id: true },
+      });
+      return created.id;
+    } catch (error) {
+      if ((error as { code?: unknown }).code !== 'P2002') throw error;
+      // Taken: by a concurrent invite creating the same audience, or by a page-scoped one.
+      const raced = await find();
+      if (raced) return raced.id;
+    }
+  }
+  const fallback = await prisma.audience.create({
+    data: { projectId, name: `Everyone ${randomBytes(3).toString('hex')}`, grants: { create: [{ projectId, pageId: null, scopeKey: 'SITE' }] } },
+    select: { id: true },
   });
+  return fallback.id;
+};
+
+/** Send a reader a fresh invitation link (earlier unused links stop working). */
+const sendReaderInvitation = async (projectId: string, actorUserId: string, reader: { id: string; email: string }, language?: EmailLanguage) => {
   await prisma.readerInvitation.updateMany({ where: { readerId: reader.id, acceptedAt: null, revokedAt: null }, data: { revokedAt: new Date() } });
   const token = newSecret();
   const invitation = await prisma.readerInvitation.create({
@@ -336,9 +355,65 @@ export const inviteReader = async (projectId: string, actorUserId: string, body:
     projectName: project?.name ?? 'private documentation',
     language,
   });
-  await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: body.email, ...message } }).catch(() => undefined);
+  await createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: reader.email, ...message } }).catch(() => undefined);
   await logAudit({ projectId, readerId: reader.id, actorUserId, action: 'READER_INVITED' });
-  return { reader, invitation: { id: invitation.id, expiresAt: invitation.expiresAt }, activationUrl };
+  return { invitation: { id: invitation.id, expiresAt: invitation.expiresAt }, activationUrl };
+};
+
+export const inviteReader = async (projectId: string, actorUserId: string, body: InviteReaderBody, language?: EmailLanguage) => {
+  const audienceIds = body.audienceIds?.length ? [...new Set(body.audienceIds)] : [await ensureSiteAudience(projectId)];
+  await assertAudiences(projectId, audienceIds);
+  const reader = await prisma.reader.upsert({
+    where: { projectId_email: { projectId, email: body.email } },
+    create: {
+      projectId,
+      email: body.email,
+      name: body.name,
+      audiences: { create: audienceIds.map((audienceId) => ({ audienceId })) },
+    },
+    update: {
+      name: body.name,
+      status: 'INVITED',
+      revokedAt: null,
+      audiences: { deleteMany: {}, create: audienceIds.map((audienceId) => ({ audienceId })) },
+    },
+  });
+  const sent = await sendReaderInvitation(projectId, actorUserId, { id: reader.id, email: body.email }, language);
+  return { reader, ...sent };
+};
+
+/** Invite several readers at once (the dashboard's comma/newline-separated field). */
+export const inviteReaders = async (projectId: string, actorUserId: string, body: InviteReadersBody, language?: EmailLanguage) => {
+  const audienceIds = body.audienceIds?.length ? [...new Set(body.audienceIds)] : [await ensureSiteAudience(projectId)];
+  await assertAudiences(projectId, audienceIds);
+  const readers: Array<{ id: string; email: string | null }> = [];
+  for (const email of [...new Set(body.emails)]) {
+    const { reader } = await inviteReader(projectId, actorUserId, { email, audienceIds }, language);
+    readers.push({ id: reader.id, email: reader.email });
+  }
+  return { invited: readers.length, readers };
+};
+
+/** Email an invited or active reader a new invitation link, keeping their access as it is. */
+export const resendReaderInvitation = async (projectId: string, readerId: string, actorUserId: string, language?: EmailLanguage) => {
+  const reader = await prisma.reader.findFirst({ where: { id: readerId, projectId }, select: { id: true, email: true, revokedAt: true } });
+  if (!reader) throw notFound('reader', { id: readerId });
+  if (reader.revokedAt) throw badRequest('This reader was revoked. Invite them again to restore access.', { reason: 'reader_revoked' });
+  if (!reader.email)
+    throw badRequest('This reader signs in through your portal and has no email address to invite.', { reason: 'reader_without_email' });
+  return sendReaderInvitation(projectId, actorUserId, { id: reader.id, email: reader.email }, language);
+};
+
+/** Email domains whose addresses can sign in to an Invited readers site without an invitation. */
+export const setReaderEmailDomains = async (projectId: string, actorUserId: string, body: ReaderEmailDomainsBody) => {
+  const domains = [...new Set(body.domains)].sort();
+  const project = await prisma.project.update({
+    where: { id: projectId },
+    data: { readerEmailDomains: domains },
+    select: { readerEmailDomains: true },
+  });
+  await logAudit({ projectId, actorUserId, action: 'EMAIL_DOMAINS_UPDATED', metadata: { domains } });
+  return { domains: project.readerEmailDomains };
 };
 
 export const updateReader = async (projectId: string, readerId: string, actorUserId: string, body: UpdateReaderBody) => {

@@ -8,7 +8,7 @@ import type { Context } from 'hono';
 import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
-import { logAudit, newSecret, requestFingerprint, setSessionCookie, sha256 } from './reader-access';
+import { ensureSiteAudience, logAudit, newSecret, requestFingerprint, setSessionCookie, sha256 } from './reader-access';
 
 /**
  * Email-code sign-in on a private published site.
@@ -59,13 +59,15 @@ const sameHash = (left: string, right: string) => {
 };
 const invalidCode = () => badRequest('That code is wrong or has expired. Ask for a new one.', { reason: 'invalid_code' });
 
-type SignInIdentity = { kind: 'member'; userId: string } | { kind: 'reader'; readerId: string };
+/** A member, an invited reader, or an address at one of the site's allowed email
+ *  domains (who becomes a whole-site reader on their first sign-in). */
+type SignInIdentity = { kind: 'member'; userId: string } | { kind: 'reader'; readerId: string } | { kind: 'domain' };
 
 /** Who this address is on the site right now, or null when it may not read it. */
 const signInIdentity = async (projectId: string, email: string): Promise<SignInIdentity | null> => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { accessMode: true, organizationId: true, takedownAt: true },
+    select: { accessMode: true, organizationId: true, takedownAt: true, readerEmailDomains: true },
   });
   if (!project || project.accessMode === 'PUBLIC' || project.takedownAt) return null;
   const member = await prisma.member.findFirst({
@@ -78,7 +80,30 @@ const signInIdentity = async (projectId: string, email: string): Promise<SignInI
   if (member) return { kind: 'member', userId: member.userId };
   if (project.accessMode !== 'READERS') return null;
   const reader = await prisma.reader.findUnique({ where: { projectId_email: { projectId, email } }, select: { id: true, revokedAt: true } });
-  return reader && !reader.revokedAt ? { kind: 'reader', readerId: reader.id } : null;
+  // A revoked reader stays revoked, even at an allowed domain.
+  if (reader) return reader.revokedAt ? null : { kind: 'reader', readerId: reader.id };
+  const domain = email.slice(email.lastIndexOf('@') + 1);
+  return (project.readerEmailDomains ?? []).includes(domain) ? { kind: 'domain' } : null;
+};
+
+/** The reader record for an allowed-domain address on its first sign-in: a
+ *  whole-site reader, activated below like any invited reader. */
+const readerForAllowedDomain = async (projectId: string, email: string): Promise<string> => {
+  const audienceId = await ensureSiteAudience(projectId);
+  try {
+    const created = await prisma.reader.create({
+      data: { projectId, email, audiences: { create: [{ audienceId }] } },
+      select: { id: true },
+    });
+    await logAudit({ projectId, readerId: created.id, action: 'READER_ADDED_BY_DOMAIN' });
+    return created.id;
+  } catch (error) {
+    if ((error as { code?: unknown }).code !== 'P2002') throw error;
+    // Created concurrently, or invited meanwhile: the record decides, revocation included.
+    const existing = await prisma.reader.findUnique({ where: { projectId_email: { projectId, email } }, select: { id: true, revokedAt: true } });
+    if (!existing || existing.revokedAt) throw invalidCode();
+    return existing.id;
+  }
 };
 
 /**
@@ -212,18 +237,19 @@ export const verifySiteSignIn = async (ctx: Context<HonoEnv>, projectId: string,
     await prisma.siteMemberSession.create({ data: { projectId, userId: identity.userId, tokenHash: sha256(token), expiresAt } });
     await logAudit({ projectId, actorUserId: identity.userId, action: 'MEMBER_SIGNED_IN', ipHash: fingerprint.ipHash });
   } else {
+    const readerId = identity.kind === 'reader' ? identity.readerId : await readerForAllowedDomain(projectId, email);
     // Lock order reader → session, as everywhere that grants reader access. Every
     // write is conditional on the reader not being revoked, so a revocation that
     // commits first wins and one that commits after revokes this session too.
     await prisma.$transaction(async (tx) => {
-      await tx.reader.updateMany({ where: { id: identity.readerId, projectId, revokedAt: null, activatedAt: null }, data: { activatedAt: now } });
-      const activated = await tx.reader.updateMany({ where: { id: identity.readerId, projectId, revokedAt: null }, data: { status: 'ACTIVE' } });
+      await tx.reader.updateMany({ where: { id: readerId, projectId, revokedAt: null, activatedAt: null }, data: { activatedAt: now } });
+      const activated = await tx.reader.updateMany({ where: { id: readerId, projectId, revokedAt: null }, data: { status: 'ACTIVE' } });
       if (activated.count !== 1) throw invalidCode();
       await tx.readerSession.create({
-        data: { projectId, readerId: identity.readerId, tokenHash: sha256(token), source: 'EMAIL_CODE', expiresAt, ...fingerprint },
+        data: { projectId, readerId, tokenHash: sha256(token), source: 'EMAIL_CODE', expiresAt, ...fingerprint },
       });
     });
-    await logAudit({ projectId, readerId: identity.readerId, action: 'READER_SIGNED_IN', ipHash: fingerprint.ipHash });
+    await logAudit({ projectId, readerId, action: 'READER_SIGNED_IN', ipHash: fingerprint.ipHash });
   }
   setSessionCookie(ctx, projectId, token, expiresAt);
   return { ok: true };

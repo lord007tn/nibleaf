@@ -1,8 +1,10 @@
 import {
   createAudienceBody,
   inviteReaderBody,
+  inviteReadersBody,
   jwtAccessConfigBody,
   projectAccessModeBody,
+  readerEmailDomainsBody,
   readerJwtHandoffBody,
   updateAudienceBody,
   updateReaderBody,
@@ -14,9 +16,12 @@ import {
   deleteAudience,
   emergencyRevoke,
   inviteReader,
+  inviteReaders,
   listReaderAccess,
+  resendReaderInvitation,
   revokeReader,
   setProjectAccessMode,
+  setReaderEmailDomains,
   testJwtAccess,
   updateAudience,
   updateReader,
@@ -60,6 +65,28 @@ const app = new Hono<HonoEnv>()
       { data: await inviteReader(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json'), getContextLocale()) },
       201,
     ),
+  )
+  .post('/readers/invite-bulk', ...routes.inviteReaders, validator('json', inviteReadersBody), async (ctx) =>
+    ctx.json(
+      { data: await inviteReaders(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json'), getContextLocale()) },
+      201,
+    ),
+  )
+  .post('/readers/:readerId/resend', ...routes.resendInvitation, async (ctx) =>
+    ctx.json(
+      {
+        data: await resendReaderInvitation(
+          ctx.req.param('projectId') as string,
+          ctx.req.param('readerId'),
+          getContextUserOrThrow().id,
+          getContextLocale(),
+        ),
+      },
+      200,
+    ),
+  )
+  .put('/domains', ...routes.emailDomains, validator('json', readerEmailDomainsBody), async (ctx) =>
+    ctx.json({ data: await setReaderEmailDomains(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json')) }, 200),
   )
   .patch('/readers/:readerId', ...routes.updateReader, validator('json', updateReaderBody), async (ctx) =>
     ctx.json(
