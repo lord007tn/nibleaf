@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { type Asset, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import {
@@ -10,7 +11,8 @@ import {
 } from '@nibleaf/shared/constants';
 import { newId } from '@nibleaf/shared/ids';
 import { slugify } from '@nibleaf/shared/utils';
-import { deleteObject, headObject, isNotFound, presignPutUrl, putObject, UPLOAD_PRESIGN_EXPIRES_IN_SECONDS } from '@nibleaf/storage';
+import { deleteObject, headObject, isNotFound, presignPutUrl, putObject, putObjectStream, UPLOAD_PRESIGN_EXPIRES_IN_SECONDS } from '@nibleaf/storage';
+import { keys as storageKeys } from '@nibleaf/storage/keys';
 import { type ConfirmAssetBody, type PresignAssetBody, safeInlineAssetContentType } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
 import { assertProjectInOrg } from './projects';
@@ -81,6 +83,7 @@ export const presignAsset = async (organizationId: string, projectId: string, bo
   await assertProjectInOrg(organizationId, projectId);
   const key = assetKey(projectId, body.filename);
   const signingDate = new Date();
+  const token = storageKeys().STORAGE_PROVIDER === 'maxio' ? randomBytes(32).toString('base64url') : null;
   await prisma.$transaction(async (tx) => {
     // Serialize reservations against this project's outstanding upload budget; no storage I/O runs here.
     await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
@@ -111,13 +114,48 @@ export const presignAsset = async (organizationId: string, projectId: string, bo
         projectId,
         size: body.size,
         contentType: body.contentType,
+        uploadTokenHash: token ? createHash('sha256').update(token).digest('hex') : null,
         expiresAt: new Date(signingDate.getTime() + PENDING_ASSET_UPLOAD_GRACE_MS),
         urlExpiresAt: new Date(signingDate.getTime() + UPLOAD_PRESIGN_EXPIRES_IN_SECONDS * 1000 + ASSET_UPLOAD_CLOCK_SKEW_MS),
       },
     });
   });
-  const uploadUrl = await presignPutUrl({ key, contentType: body.contentType, contentLength: body.size, signingDate });
+  const uploadUrl = token
+    ? `/api/app/projects/${projectId}/assets/upload/${token}`
+    : await presignPutUrl({ key, contentType: body.contentType, contentLength: body.size, signingDate });
   return { key, uploadUrl, contentType: body.contentType };
+};
+
+/** Atomically spend a reservation's capability before touching storage. Failed PUTs
+ * retain their reservation for the existing rejection/reaper lifecycle. */
+export const uploadAsset = async (organizationId: string, projectId: string, token: string, request: Request): Promise<void> => {
+  await assertProjectInOrg(organizationId, projectId);
+  if (storageKeys().STORAGE_PROVIDER !== 'maxio' || !/^[A-Za-z0-9_-]{43}$/.test(token)) throw badRequest('Invalid upload token.');
+  const uploadTokenHash = createHash('sha256').update(token).digest('hex');
+  const pending = await prisma.pendingAssetUpload.findUnique({ where: { uploadTokenHash } });
+  const now = new Date();
+  // urlExpiresAt includes clock-skew allowance for cleanup, not for accepting PUTs.
+  if (!pending || pending.projectId !== projectId || pending.urlExpiresAt.getTime() - ASSET_UPLOAD_CLOCK_SKEW_MS <= now.getTime()) {
+    throw badRequest('Upload expired. Please upload the file again.');
+  }
+  if (
+    request.headers.get('content-length') !== String(pending.size) ||
+    request.headers.get('content-type') !== pending.contentType ||
+    !request.body
+  ) {
+    throw badRequest('Upload headers must match the reserved size and content type.');
+  }
+  const claimed = await prisma.pendingAssetUpload.updateMany({
+    where: { key: pending.key, projectId, uploadTokenHash, uploadClaimedAt: null, rejectedAt: null, cleanupStartedAt: null },
+    data: { uploadClaimedAt: now },
+  });
+  if (claimed.count !== 1) throw badRequest('Upload token has already been used or expired.');
+  try {
+    await putObjectStream(pending.key, request.body, pending.size, pending.contentType, request.signal);
+  } catch (error) {
+    await rejectUploadedAsset(projectId, pending.key);
+    throw error;
+  }
 };
 
 const confirmedAssetForRetry = (asset: Asset, projectId: string, body: ConfirmAssetBody): Asset => {

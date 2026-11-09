@@ -53,6 +53,8 @@
     }
   },
   "scripts": {
+    "test:upload:integration": "node --env-file=tests/integration/maxio-upload/fixture.env --import tsx tests/integration/maxio-upload/integration.ts",
+    "test:upload:browser": "node tests/integration/maxio-upload/browser.mjs",
     "build": "turbo run build",
     "build:server": "turbo run build -F @nibleaf/server...",
     "build:worker": "turbo run build -F @nibleaf/worker...",

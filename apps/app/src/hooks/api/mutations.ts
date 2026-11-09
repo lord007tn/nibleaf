@@ -402,7 +402,13 @@ export const useUploadAsset = (projectId: string) => {
         attempts.current.set(file, perProject);
       }
       if (!attempt.putComplete) {
-        await putAsset(attempt.uploadUrl, file, attempt.contentType, onProgress, signal);
+        try {
+          await putAsset(attempt.uploadUrl, file, attempt.contentType, onProgress, signal);
+        } catch (error) {
+          // API capabilities are single use, including interrupted attempts.
+          if (attempt.uploadUrl.startsWith('/api/')) perProject.delete(projectId);
+          throw error;
+        }
         attempt.putComplete = true;
       }
       if (!(input instanceof File)) input.onFinishing?.();

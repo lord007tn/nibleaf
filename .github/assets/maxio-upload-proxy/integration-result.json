@@ -1,0 +1,11 @@
+{
+  "maxio": "0.4.2",
+  "traefik": "v3.6",
+  "directViaTraefik": 403,
+  "directError": "SignatureDoesNotMatch",
+  "apiPut": 204,
+  "reusedToken": 400,
+  "confirm": 201,
+  "storedBytes": 68,
+  "maximumUploadBytes": 52428800
+}

@@ -1812,6 +1812,8 @@ model McpOAuthGrant {
 
 model PendingAssetUpload {
   key              String   @id
+  uploadTokenHash  String?  @unique
+  uploadClaimedAt  DateTime?
   projectId        String
   project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   size             Int

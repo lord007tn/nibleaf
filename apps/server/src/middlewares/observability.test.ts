@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { loggablePath } from './observability';
 
 describe('loggablePath', () => {
+  it('redacts asset upload capabilities', () => {
+    expect(loggablePath(`/api/app/projects/p1/assets/upload/${'a'.repeat(43)}`)).toBe('/api/app/projects/p1/assets/upload/[token]');
+  });
   it('never logs a join-link token', () => {
     const token = `nlj_${'Ab3_-'.repeat(8)}xyz`;
     expect(loggablePath(`/api/public/join/${token}`)).toBe('/api/public/join/[token]');

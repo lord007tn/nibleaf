@@ -1,6 +1,7 @@
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 
-/** Optional byte progress for editor uploads; existing asset callers keep the fetch path. */
+/** Relative API URLs use first-party session cookies in both fetch and XHR.
+ * Absolute storage URLs keep the browser's default credential policy. */
 export async function putAsset(
   url: string,
   file: File,

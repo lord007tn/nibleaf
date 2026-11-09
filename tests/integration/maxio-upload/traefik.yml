@@ -1,0 +1,12 @@
+http:
+  routers:
+    maxio:
+      rule: PathPrefix(`/`)
+      service: maxio
+      entryPoints: [web]
+  services:
+    maxio:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://maxio:9000
