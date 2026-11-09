@@ -120,10 +120,12 @@ function PipelineStep({
       >
         {icon}
       </span>
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pt-0.5">
+      {/* On a narrow screen the action drops below the text, and the detail wraps
+          instead of being cut off mid-word. */}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0 leading-snug">
           <div className="font-medium text-sm">{label}</div>
-          <div className="truncate text-muted-foreground text-xs">{detail}</div>
+          <div className="text-muted-foreground text-xs [overflow-wrap:anywhere] sm:truncate">{detail}</div>
         </div>
         {action}
       </div>
