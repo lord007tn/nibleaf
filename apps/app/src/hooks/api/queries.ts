@@ -8,6 +8,7 @@ import {
   deploymentsQueryOptions,
   domainsQueryOptions,
   languagesQueryOptions,
+  liveDeploymentsQueryOptions,
   notificationsQueryOptions,
   openApiConfigurationQueryOptions,
   pageQueryOptions,
@@ -66,6 +67,11 @@ export const usePage = (projectId: string | undefined, pageId: string | undefine
 // own instead of appearing stuck until a manual refresh. The factory's fetch
 // also checks whether a publish just went live, so published-state UI never
 // trusts the pre-publish answer (see syncPublishReceipt).
+/** Publishes that went live, newest first. Pair with {@link useDeployments}: a
+ *  publish that just went live reaches the polled list first. */
+export const useLiveDeployments = (projectId: string | undefined, options?: { enabled?: boolean }) =>
+  useQuery({ ...liveDeploymentsQueryOptions(projectId), enabled: options?.enabled ?? true });
+
 export const useDeployments = (
   projectId: string | undefined,
   options?: { enabled?: boolean; pollIntervalMs?: number; retryingDeploymentId?: string | null },

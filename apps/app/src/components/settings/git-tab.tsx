@@ -20,10 +20,12 @@ import {
   useGitWorkflow,
   useImportFromGit,
   useLanguages,
+  useLiveDeployments,
   useRotateGitWebhookSecret,
   useUpdateWorkspaceSettings,
   useWorkspaceSettings,
 } from '@/hooks/api';
+import { newestLiveDeployment } from '@/hooks/api/deployment-cache';
 import { useFormatters } from '@/lib/format';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
@@ -118,10 +120,12 @@ function PipelineStep({
       >
         {icon}
       </span>
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pt-0.5">
+      {/* On a narrow screen the action drops below the text, and the detail wraps
+          instead of being cut off mid-word. */}
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <div className="min-w-0 leading-snug">
           <div className="font-medium text-sm">{label}</div>
-          <div className="truncate text-muted-foreground text-xs">{detail}</div>
+          <div className="text-muted-foreground text-xs [overflow-wrap:anywhere] sm:truncate">{detail}</div>
         </div>
         {action}
       </div>
@@ -134,8 +138,11 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
   const t = useT();
   const { dateTime } = useFormatters();
   const { data: deployments } = useDeployments(projectId);
+  // What's live comes from the live-only list too: the attempts list is the
+  // newest 50, which a run of failures can fill.
+  const { data: liveDeployments } = useLiveDeployments(projectId);
   const latest: Deployment | undefined = deployments?.[0];
-  const latestReady = deployments?.find((d) => d.status === 'READY');
+  const latestReady = newestLiveDeployment(deployments, liveDeployments);
 
   const buildTone: StepTone =
     latest?.status === 'FAILED' ? 'failed' : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? 'active' : latest ? 'done' : 'idle';

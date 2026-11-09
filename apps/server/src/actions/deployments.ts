@@ -17,10 +17,14 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => Obje
  *  never shipped for all 50 rows. `errorDetails` IS included — the dashboard's
  *  failure card reads it off the latest deployment in this list — but it's
  *  bounded at publish time (see the worker's capIssues), so it can't bloat the
- *  payload. Fields mirror the app's `Deployment` type. */
-export const listDeployments = (projectId: string) =>
+ *  payload. Fields mirror the app's `Deployment` type.
+ *
+ *  `status: 'READY'` lists only publishes that went live, newest first: what's
+ *  live now and the versions a rollback can return to, however many failed
+ *  attempts came after them (the unfiltered list is the newest 50 attempts). */
+export const listDeployments = (projectId: string, filter: { status?: 'READY' } = {}) =>
   prisma.deployment.findMany({
-    where: { projectId },
+    where: { projectId, ...(filter.status ? { status: filter.status } : {}) },
     orderBy: { version: 'desc' },
     take: 50,
     select: {

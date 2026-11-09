@@ -30,10 +30,13 @@ const publishDeploymentBody = createDeploymentBody.extend({
   skipGrammarChecks: z.boolean().optional(),
 });
 
+// `status=READY`: only publishes that went live (see listDeployments).
+const listDeploymentsQuery = z.object({ status: z.literal('READY').optional() });
+
 const app = new Hono<HonoEnv>()
-  .get('/', ...deploymentsRoutes.list, async (ctx) => {
+  .get('/', ...deploymentsRoutes.list, validator('query', listDeploymentsQuery), async (ctx) => {
     const { projectId } = await scope(ctx);
-    return ctx.json({ data: await listDeployments(projectId) }, 200);
+    return ctx.json({ data: await listDeployments(projectId, ctx.req.valid('query')) }, 200);
   })
   .get('/latest', ...deploymentsRoutes.latest, async (ctx) => {
     const { projectId } = await scope(ctx);
