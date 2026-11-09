@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "রাত্রিকালীন আর্কাইভ",
   "settings_account_title": "হিসাব",
   "settings_account_description": "প্রতিটি কর্মক্ষেত্র জুড়ে আপনার ব্যক্তিগত প্রোফাইল।",
-  "settings_account_changeavatar": "অবতার পরিবর্তন করুন",
   "settings_account_profileupdated": "প্রোফাইল আপডেট করা হয়েছে",
   "settings_account_name_label": "নাম",
   "settings_account_name_error": "আপনার নাম সংরক্ষণ করা যায়নি",
@@ -3983,5 +3982,6 @@
   "analytics_section_bysite": "সাইট অনুযায়ী",
   "analytics_search_write_languageserror": "এই সাইটের ভাষাগুলো লোড করা যায়নি, তাই খসড়ার ভাষা এখনও বেছে নেওয়া যাচ্ছে না।",
   "dashboard_ai_sessionexpired": "আপনার সেশন শেষ হয়েছে। এই কথোপকথন দেখতে আবার সাইন ইন করুন।",
-  "dashboard_ai_signinagain": "আবার সাইন ইন করুন"
+  "dashboard_ai_signinagain": "আবার সাইন ইন করুন",
+  "settings_appearance_theme_system": "আমার ডিভাইসের মতো"
 }

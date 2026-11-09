@@ -386,9 +386,6 @@ export function AccountTab() {
     <SettingsSection title={t('settings.account.title')} description={t('settings.account.description')}>
       <div className="mb-5 flex items-center gap-4">
         <GradientAvatar className="size-12 text-base" name={name} />
-        <Button disabled size="sm" variant="outline">
-          {t('settings.account.changeAvatar')}
-        </Button>
       </div>
       <NameForm key={email} initialName={name} />
       <div className="mt-5">
