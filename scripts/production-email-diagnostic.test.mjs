@@ -341,7 +341,7 @@ test('workflow stays manual-only, defaults read-only, tests before secrets, and 
   assert.match(workflow, /on:\s+workflow_dispatch:/);
   assert.match(workflow, /repair_provider:[\s\S]*?default: false/);
   assert.match(workflow, /if: github.ref == 'refs\/heads\/main'/);
-  assert.match(workflow, /node-version: 22/);
+  assert.match(workflow, /node-version: 26/);
   assert.doesNotMatch(workflow, /\b(push|pull_request|schedule|workflow_call):|docker|upload-artifact|curl|add-mask/);
   assert.ok(workflow.indexOf('node --test scripts/production-email-diagnostic.test.mjs') < workflow.indexOf('secrets.COOLIFY_'));
   const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');

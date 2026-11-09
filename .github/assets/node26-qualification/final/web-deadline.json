@@ -1,0 +1,9 @@
+{
+  "image": "nibleaf-runtime:390-final",
+  "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+  "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+  "elapsedMs": 9318,
+  "exitCode": 1,
+  "logs": "FIXTURE_READY\n[nibleaf] SIGTERM: readiness disabled; draining for 1000ms\n[nibleaf] web service exceeded its shutdown deadline; sending SIGKILL\n[nibleaf] web service exited from SIGKILL",
+  "scope": "Exact shipped web wrapper with a synthetic SIGTERM-ignoring child. No source overlay or custom timeout environment."
+}

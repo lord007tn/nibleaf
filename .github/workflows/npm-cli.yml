@@ -73,7 +73,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: "22.18.0"
+          node-version: 26
 
       - name: Pin npm for trusted publishing
         run: npm install --global npm@11.6.2

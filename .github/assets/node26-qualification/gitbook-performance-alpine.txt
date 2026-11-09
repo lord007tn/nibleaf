@@ -1,0 +1,125 @@
+
+ RUN  v5.0.5 /app/apps/server
+
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: page heading
+page heading: 2 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: page heading 670ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: SUMMARY heading
+SUMMARY heading: 4 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: SUMMARY heading 282ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: step heading
+step heading: 10 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: step heading 297ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor absent
+heading anchor absent: 6 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor absent 283ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor present
+heading anchor present: 10 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor present 305ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unfinished Liquid
+unfinished Liquid: 13 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unfinished Liquid 302ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unfinished Liquid attributes
+unfinished Liquid attributes: 13 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unfinished Liquid attributes 281ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unclosed Liquid steps
+unclosed Liquid steps: 132 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unclosed Liquid steps 402ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: paired Liquid nesting
+paired Liquid nesting: 304 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: paired Liquid nesting 584ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: Liquid attribute word
+Liquid attribute word: 8 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: Liquid attribute word 285ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor attribute run
+heading anchor attribute run: 46 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: heading anchor attribute run 323ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unclosed HTML attributes
+unclosed HTML attributes: 15 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unclosed HTML attributes 305ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unterminated labels
+unterminated labels: 64 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unterminated labels 352ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: unterminated images
+unterminated images: 30 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: unterminated images 335ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: remote image labels
+remote image labels: 28 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: remote image labels 316ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: remote HTML attributes
+remote HTML attributes: 11 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: remote HTML attributes 290ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: include tokens
+include tokens: 5 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: include tokens 278ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: label comparisons
+label comparisons: 270 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: label comparisons 557ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle image destinations
+angle image destinations: 258 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle image destinations 554ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle link destinations
+angle link destinations: 174 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle link destinations 444ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle remote images
+angle remote images: 133 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: angle remote images 402ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: crossed destinations
+crossed destinations: 206 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: crossed destinations 478ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: crossed blank destinations
+crossed blank destinations: 154 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: crossed blank destinations 418ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: escaped image markers
+escaped image markers: 362 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: escaped image markers 637ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: nested image descriptions
+nested image descriptions: 350 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: nested image descriptions 629ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: icon class word
+icon class word: 12 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: icon class word 271ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: icon class run
+icon class run: 12 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: icon class run 282ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: shared code restore
+shared code restore: 967 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: shared code restore 1268ms
+stdout | src/actions/importers/gitbook-performance.test.ts > processes two MiB: pipeline code restore
+pipeline code restore: 590 ms
+
+ ✓ src/actions/importers/gitbook-performance.test.ts > processes two MiB: pipeline code restore 928ms
+
+ Test Files  1 passed (1)
+      Tests  29 passed (29)
+   Start at  23:11:16
+   Duration  12.95s (tests 99%)
+

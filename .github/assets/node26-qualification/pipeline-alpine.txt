@@ -1,0 +1,40 @@
+
+ RUN  v5.0.5 /app/apps/worker
+
+docker : (node:79) DeprecationWarning: Calling client.query() when the client is already executing a query is 
+deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+At line:2 char:1
++ docker run --rm --network nibleaf-runtime_default --env-file "$env:TE ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:79) Depre...hanism instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-deprecation ...` to show where the warning was created)
+stderr | src/analytics/pipeline.integration.test.ts > real Redis/Postgres/ClickHouse analytics 
+pipeline > retains an aged 60000 ms job across storage failure and drains only after replay
+{"timestamp":"2026-11-08T23:06:10.167Z","level":"warn","service":"nibleaf","environment":"production","proces
+sor":"analytics","jobId":"analytics-6609157e-3dc7-86fc-b6db-6a9888abfed1","error":{},"retryMs":30000,"queueAgeMs":60092
+,"message":"analytics job retained for storage recovery"}
+
+stderr | src/analytics/pipeline.integration.test.ts > real Redis/Postgres/ClickHouse analytics 
+pipeline > retains an aged 3600000 ms job across storage failure and drains only after replay
+{"timestamp":"2026-11-08T23:06:10.424Z","level":"warn","service":"nibleaf","environment":"production","proces
+sor":"analytics","jobId":"analytics-195de460-1192-8b32-9d06-7996cf93f5de","error":{},"retryMs":30000,"queueAgeMs":36000
+51,"message":"analytics job retained for storage recovery"}
+
+stderr | src/analytics/pipeline.integration.test.ts > real Redis/Postgres/ClickHouse analytics 
+pipeline > retains an aged 86400000 ms job across storage failure and drains only after replay
+{"timestamp":"2026-11-08T23:06:10.560Z","level":"warn","service":"nibleaf","environment":"production","proces
+sor":"analytics","jobId":"analytics-3871854f-617e-89ad-b180-c88889a0d95b","error":{},"retryMs":30000,"queueAgeMs":86400
+047,"message":"analytics job retained for storage recovery"}
+
+ ✓ src/analytics/pipeline.integration.test.ts (4 tests) 2359ms
+   ✓ real Redis/Postgres/ClickHouse analytics pipeline (4)
+     ✓ retains an aged 60000 ms job across storage failure and drains only after replay 301ms
+     ✓ retains an aged 86400000 ms job across storage failure and drains only after replay 306ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  23:06:08
+   Duration  3.54s (tests 70%, transform 19%, import 11%)
+

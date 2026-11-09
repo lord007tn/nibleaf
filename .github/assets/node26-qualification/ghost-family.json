@@ -1,0 +1,72 @@
+{
+  "node": "v26.13.0",
+  "scope": "Installed @tryghost package manifests; not a complete transitive SBOM",
+  "packages": [
+    {
+      "name": "@tryghost/color-utils",
+      "version": "0.2.19",
+      "node": null,
+      "admitsNode26": true
+    },
+    {
+      "name": "@tryghost/color-utils",
+      "version": "0.2.20",
+      "node": null,
+      "admitsNode26": true
+    },
+    {
+      "name": "@tryghost/kg-clean-basic-html",
+      "version": "4.3.5",
+      "node": "^22.13.1 || ^24.0.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-default-nodes",
+      "version": "2.1.5",
+      "node": "^22.13.1 || ^24.0.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-default-nodes",
+      "version": "2.2.0",
+      "node": "^22.22.2 || ^24.15.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-default-transforms",
+      "version": "1.3.5",
+      "node": null,
+      "admitsNode26": true
+    },
+    {
+      "name": "@tryghost/kg-lexical-html-renderer",
+      "version": "1.5.0",
+      "node": "^22.22.2 || ^24.15.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-markdown-html-renderer",
+      "version": "7.2.5",
+      "node": "^22.13.1 || ^24.0.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-mobiledoc-html-renderer",
+      "version": "7.2.3",
+      "node": "^22.13.1 || ^24.0.0",
+      "admitsNode26": false
+    },
+    {
+      "name": "@tryghost/kg-utils",
+      "version": "1.1.5",
+      "node": null,
+      "admitsNode26": true
+    },
+    {
+      "name": "@tryghost/kg-utils",
+      "version": "1.1.3",
+      "node": null,
+      "admitsNode26": true
+    }
+  ]
+}

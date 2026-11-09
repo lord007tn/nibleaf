@@ -19,7 +19,7 @@ requireMatch(workflow.includes('actions/attest@v4'), 'published images need sour
 requireMatch(workflow.includes('scripts/coolify-release.mjs'), 'deployment must use the fail-closed verifier and compensation path');
 requireMatch(workflow.includes('read:sensitive'), 'workflow must document the Coolify release token scopes');
 requireMatch(releaseScript.includes('requires read:sensitive'), 'release controller must diagnose masked provider state');
-requireMatch(dockerfile.includes('FROM node:22-alpine'), 'production must stay on Node 22');
+requireMatch(dockerfile.includes('FROM node:26-alpine'), 'production must use the qualified Node 26 runtime');
 requireMatch(dockerfile.includes('org.opencontainers.image.revision=$REVISION'), 'image must carry the exact source revision');
 
 for (const service of ['server', 'worker', 'app', 'admin']) {

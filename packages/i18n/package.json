@@ -36,7 +36,7 @@
     "@inlang/plugin-m-function-matcher": "2.4.0",
     "@inlang/plugin-message-format": "4.5.6",
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/node": "^22.20.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "react": "^19.3.1",
     "typescript": "^7.0.2",

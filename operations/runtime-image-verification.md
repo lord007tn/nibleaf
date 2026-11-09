@@ -1,6 +1,8 @@
 # Manual runtime image verification
 
-The builder installs development tools and builds the workspace. A separate
+The `build-tools` stage installs pinned standalone pnpm on the Node 26 base;
+the runner inherits the base directly and keeps no package manager. The builder
+installs development tools and builds the workspace. A separate
 `runtime-deps` stage installs the frozen production graph from a clean Docker
 context, then receives only the generated runtime artifacts. The final image
 keeps the existing workspace layout and all `docker-entrypoint.sh` service modes.
@@ -37,7 +39,7 @@ neither service needs that build-time tracer or its embedded glob at runtime.
 The image audit rejects Nitro/nf3 and package-manager artifacts in the final
 image, in addition to the previously excluded compiler/lint tooling.
 
-The base stays on digest-pinned Node 22 and Alpine 3.24. The runner upgrades all installed
+The base stays on digest-pinned, qualified Node 26 and Alpine 3.24. The runner upgrades all installed
 packages from that stable branch, including Chromium's native dependencies.
 The manual Docker workflow pulls the current base image and bypasses only the
 `runner` stage's layer cache, retaining the build/runtime-deps stages and pnpm

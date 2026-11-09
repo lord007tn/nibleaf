@@ -11,7 +11,7 @@ test('published v0.2.1 inputs remain checksum-identical while next-release templ
 
 test('Docker builds can supply the fixed marketing star snapshot', async () => {
   const dockerfile = await readFile('Dockerfile', 'utf8');
-  assert.match(dockerfile, /FROM base AS build\nARG MARKETING_GITHUB_STARS=0\nENV MARKETING_GITHUB_STARS=\$MARKETING_GITHUB_STARS/);
+  assert.match(dockerfile, /^FROM \S+ AS build\nARG MARKETING_GITHUB_STARS=0\nENV MARKETING_GITHUB_STARS=\$MARKETING_GITHUB_STARS/m);
   const turbo = JSON.parse(await readFile('turbo.json', 'utf8'));
   assert.ok(turbo.tasks.build.env.includes('MARKETING_GITHUB_STARS'));
   const workflow = await readFile('.github/workflows/docker.yml', 'utf8');

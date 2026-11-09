@@ -59,7 +59,8 @@ export function createQueryClient(): QueryClient {
         // what they touch, so 30 s of freshness avoids refetch storms on
         // navigation without showing stale data for long.
         staleTime: 30_000,
-        gcTime: 5 * 60_000,
+        // Server clients belong to one request; GC timers would keep SSR workers alive after shutdown.
+        gcTime: typeof window === 'undefined' ? Number.POSITIVE_INFINITY : 5 * 60_000,
         retry: shouldRetry,
         // Off by default: the editor keeps local drafts, and a focus refetch of a
         // page mid-edit would race them. Opt in per query for shared lists.

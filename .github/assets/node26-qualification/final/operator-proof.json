@@ -1,0 +1,33 @@
+{
+  "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+  "projectId": "runtime-390-final-operator-project",
+  "run": {
+    "id": "b2ddefd8-88a7-49e5-af0e-e92b62ddaa3a",
+    "status": "READY",
+    "deploymentId": "runtime-390-final-deployment-target",
+    "expectedChunks": 2,
+    "indexedChunks": 2,
+    "expectedPages": 2,
+    "indexedPages": 2,
+    "embeddedChunks": 0,
+    "reusedChunks": 2,
+    "failedChunks": 0
+  },
+  "indexedPoints": 2,
+  "languages": ["ar", "en"],
+  "alias": {
+    "alias_name": "nibleaf_runtime_390_final_alias_switch",
+    "collection_name": "nibleaf_runtime_390_final_alias_switch_v2_64"
+  },
+  "bothDummyCollectionsRetained": true,
+  "embeddingMode": "reused seeded synthetic vectors; no live-provider acceptance",
+  "providerTrafficBlockedByHosts": true,
+  "reindexCommandExit": 0,
+  "aliasSwitchCommandExit": 0,
+  "unconfirmedAliasSwitchExit": 1,
+  "reindexQueueResult": {
+    "queued": 1,
+    "skipped": [],
+    "failed": []
+  }
+}

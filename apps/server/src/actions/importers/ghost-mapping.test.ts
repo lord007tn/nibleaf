@@ -316,7 +316,75 @@ describe('ghostItemToMarkdown', () => {
   }, 120_000);
 
   it('uses Ghost official renderers for Lexical and legacy Mobiledoc exports', async () => {
-    await expect(ghostItemToMarkdown({ ...base, html: null, lexical })).resolves.toMatchObject({ markdown: 'Lexical body' });
-    await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc })).resolves.toMatchObject({ markdown: 'Mobiledoc body' });
+    await expect(ghostItemToMarkdown({ ...base, html: null, lexical })).resolves.toMatchObject({ markdown: 'Lexical body', usedFallback: false });
+    await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc })).resolves.toMatchObject({ markdown: 'Mobiledoc body', usedFallback: false });
+  });
+
+  it('preserves Arabic headings, formatting and links through the Lexical renderer', async () => {
+    const text = (value: string, format = 0) => ({ detail: 0, format, mode: 'normal', style: '', text: value, type: 'text', version: 1 });
+    const document = JSON.stringify({
+      root: {
+        children: [
+          { children: [text('مرحبا بالعالم')], direction: 'rtl', format: '', indent: 0, tag: 'h2', type: 'heading', version: 1 },
+          {
+            children: [
+              text('Bold', 1),
+              text(' and '),
+              {
+                children: [text('Guide')],
+                direction: null,
+                format: '',
+                indent: 0,
+                rel: null,
+                target: null,
+                title: null,
+                type: 'link',
+                url: 'https://docs.example.invalid/guide',
+                version: 1,
+              },
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            type: 'paragraph',
+            version: 1,
+          },
+        ],
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1,
+      },
+    });
+    await expect(ghostItemToMarkdown({ ...base, html: null, lexical: document })).resolves.toMatchObject({
+      markdown: '## مرحبا بالعالم\n\n**Bold** and [Guide](https://docs.example.invalid/guide)',
+      usedFallback: false,
+    });
+  });
+
+  it('preserves Arabic headings, formatting and links through the Mobiledoc renderer', async () => {
+    const document = JSON.stringify({
+      version: '0.3.1',
+      atoms: [],
+      cards: [],
+      markups: [['strong'], ['a', ['href', 'https://docs.example.invalid/guide']]],
+      sections: [
+        [1, 'h2', [[0, [], 0, 'مرحبا بالعالم']]],
+        [
+          1,
+          'p',
+          [
+            [0, [0], 1, 'Bold'],
+            [0, [], 0, ' and '],
+            [0, [1], 1, 'Guide'],
+          ],
+        ],
+      ],
+    });
+    await expect(ghostItemToMarkdown({ ...base, html: null, mobiledoc: document })).resolves.toMatchObject({
+      markdown: '## مرحبا بالعالم\n\n**Bold** and [Guide](https://docs.example.invalid/guide)',
+      usedFallback: false,
+    });
   });
 });
