@@ -36,11 +36,15 @@ describe.skipIf(process.env.ANALYTICS_POSTGRES !== '1')('relational analytics SQ
             { createdAt: new Date(interval.until.getTime() - 1), sessionId: 'one' },
             { createdAt: new Date(interval.until.getTime() - 1000), sessionId: null },
             { createdAt: new Date(interval.since.getTime() - 1), sessionId: 'outside' },
+            { createdAt: interval.previousSince, sessionId: 'previous-edge' },
+            { createdAt: new Date(interval.previousSince.getTime() - 1), sessionId: 'before-previous' },
             { createdAt: interval.until, sessionId: 'future' },
           ].map((event) => ({ ...event, projectId: id, type: 'pageview' })),
         });
         const result = await relationalViewSummary([id], interval);
         expect(result.totalViews).toBe(3);
+        // The equal window right before: both of its edges, nothing older.
+        expect(result.previousTotalViews).toBe(2);
         expect(result.uniqueVisitors).toBe(1);
         expect(result.timeseries.reduce((sum, row) => sum + row.views, 0)).toBe(3);
         expect(result.timeseries[0]).toMatchObject({ views: 1 });

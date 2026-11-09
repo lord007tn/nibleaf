@@ -1,23 +1,21 @@
-import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { cn } from '@nibleaf/design-system/lib/utils';
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useFormatters } from '@/lib/format';
-
-export type Trend = { pct: number; direction: 'up' | 'down' | 'flat' } | null;
+import { DeltaBadge } from './insights/kpi-card';
+import type { Delta } from './insights/metrics';
 
 /**
- * A dashboard-01-style KPI card: a label, a large number, an optional trend
- * badge in the corner, and a two-line footer. Used across the global and
- * per-site overviews.
+ * A dashboard-01-style KPI card: a label, a large number, an optional change
+ * badge in the corner (the shared insights DeltaBadge, so colour, arrow and
+ * the spoken text match every analytics page), and a two-line footer. Used
+ * across the global and per-site overviews.
  */
 export function SectionCard({
   label,
   value,
   icon,
-  trend,
+  delta,
   footer,
   hint,
   loading,
@@ -25,15 +23,13 @@ export function SectionCard({
   label: string;
   value: number | null;
   icon?: ReactNode;
-  trend?: Trend;
+  /** Change against the previous equal period; omit when it isn't known. */
+  delta?: Delta | null;
   footer?: string;
   hint?: string;
   loading?: boolean;
 }) {
-  const { number, percent } = useFormatters();
-  // Icon + colour by direction: up = green-ish (default), down = destructive,
-  // flat = neutral Minus — so a downtrend is visually distinct, not just an arrow.
-  const TrendIcon = trend?.direction === 'down' ? TrendingDown : trend?.direction === 'flat' ? Minus : TrendingUp;
+  const { number } = useFormatters();
 
   return (
     <Card className="@container/card">
@@ -49,26 +45,15 @@ export function SectionCard({
             {value === null ? '—' : number(value)}
           </CardTitle>
         )}
-        {trend ? (
+        {delta && !loading ? (
           <CardAction>
-            <Badge
-              variant={trend.direction === 'down' ? 'destructive' : 'outline'}
-              className={cn('gap-1', trend.direction === 'up' && 'text-emerald-600 dark:text-emerald-400')}
-            >
-              <TrendIcon className="size-3.5" />
-              {percent(trend.pct)}
-            </Badge>
+            <DeltaBadge delta={delta} polarity="higher_is_better" />
           </CardAction>
         ) : null}
       </CardHeader>
       {footer || hint ? (
         <CardFooter className="flex-col items-start gap-1 text-sm">
-          {footer ? (
-            <div className="flex items-center gap-1.5 font-medium">
-              {footer}
-              {trend ? <TrendIcon className="size-4 text-muted-foreground" /> : null}
-            </div>
-          ) : null}
+          {footer ? <div className="flex items-center gap-1.5 font-medium">{footer}</div> : null}
           {hint ? <div className="text-muted-foreground">{hint}</div> : null}
         </CardFooter>
       ) : null}

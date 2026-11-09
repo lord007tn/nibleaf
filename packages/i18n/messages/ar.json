@@ -540,7 +540,6 @@
   "analytics_kpi_pageviews": "مشاهدات الصفحة",
   "analytics_kpi_uniquevisitors": "الزوار الفريدون",
   "analytics_kpi_searches": "عمليات البحث",
-  "analytics_kpi_projectswithtraffic": "المشاريع التي بها زيارات",
   "analytics_chart_pageviewsallprojects": "مشاهدات الصفحة · جميع المشاريع",
   "analytics_section_byproject": "حسب المشروع",
   "analytics_section_referrers": "مصادر الإحالة",
@@ -578,7 +577,6 @@
   "analytics_kpi_resultclicks": "نقرات نتائج البحث",
   "analytics_kpi_averagelatencyms": "متوسط زمن الاستجابة (مللي ثانية)",
   "analytics_kpi_answerscompleted": "إجابات الذكاء الاصطناعي المكتملة",
-  "analytics_kpi_aicostmicros": "تكلفة الذكاء الاصطناعي (وحدات مصغرة)",
   "analytics_section_searchquality": "جودة البحث",
   "analytics_section_noanswerreasons": "أسباب عدم وجود إجابة",
   "analytics_empty_noanswers": "لا توجد أحداث لعدم وجود إجابة في هذه الفترة.",
@@ -4037,5 +4035,7 @@
   "admin_pagination_first": "الصفحة الأولى",
   "admin_pagination_next": "الصفحة التالية",
   "dashboard_ai_inputtokens": "وحدات النص في الأسئلة",
-  "dashboard_ai_outputtokens": "وحدات النص في الإجابات"
+  "dashboard_ai_outputtokens": "وحدات النص في الإجابات",
+  "analytics_kpi_siteswithtraffic": "مواقع لديها زيارات",
+  "analytics_workspace_termspersite": "قد تظهر عبارات البحث في تقرير «البحث» لكل موقع، بحسب إعدادات الخصوصية وحدّ الزيارات."
 }

@@ -698,7 +698,6 @@ export const MESSAGE_IDS = {
   'analytics.kpi.pageViews': 'analytics_kpi_pageviews',
   'analytics.kpi.uniqueVisitors': 'analytics_kpi_uniquevisitors',
   'analytics.kpi.searches': 'analytics_kpi_searches',
-  'analytics.kpi.projectsWithTraffic': 'analytics_kpi_projectswithtraffic',
   'analytics.chart.pageviewsAllProjects': 'analytics_chart_pageviewsallprojects',
   'analytics.section.byProject': 'analytics_section_byproject',
   'analytics.section.referrers': 'analytics_section_referrers',
@@ -736,7 +735,6 @@ export const MESSAGE_IDS = {
   'analytics.kpi.resultClicks': 'analytics_kpi_resultclicks',
   'analytics.kpi.averageLatencyMs': 'analytics_kpi_averagelatencyms',
   'analytics.kpi.answersCompleted': 'analytics_kpi_answerscompleted',
-  'analytics.kpi.aiCostMicros': 'analytics_kpi_aicostmicros',
   'analytics.section.searchQuality': 'analytics_section_searchquality',
   'analytics.section.noAnswerReasons': 'analytics_section_noanswerreasons',
   'analytics.empty.noAnswers': 'analytics_empty_noanswers',
@@ -3899,6 +3897,8 @@ export const MESSAGE_IDS = {
   'settings.visibility.audit.memberSignedIn': 'settings_visibility_audit_membersignedin',
   'settings.visibility.audit.readerAddedByDomain': 'settings_visibility_audit_readeraddedbydomain',
   'settings.visibility.audit.emailDomainsUpdated': 'settings_visibility_audit_emaildomainsupdated',
+  'analytics.kpi.sitesWithTraffic': 'analytics_kpi_siteswithtraffic',
+  'analytics.workspace.termsPerSite': 'analytics_workspace_termspersite',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

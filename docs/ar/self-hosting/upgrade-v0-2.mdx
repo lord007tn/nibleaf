@@ -260,7 +260,7 @@ ls -lh backups
 ```bash
 export NIBLEAF_VERSION="$STAGED"
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 ```
 
 **المتوقع:** مخرجات JSON تحمل `"applied": false` وهذه الإدخالات الأربعة. لا يغيّر هذا
@@ -280,7 +280,7 @@ docker compose run --rm --no-deps -T worker \
 
 ```bash
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --apply
 ```
 
 **المتوقع:** مخرجات JSON تحمل `"applied": true`. تنشئ الأداة كل جدول جديد وتتحقق منه
@@ -291,7 +291,7 @@ docker compose run --rm --no-deps -T worker \
 
 ```bash
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 ```
 
 **المتوقع:** تعرض الإدخالات الأربعة جميعها `"scheduler": true` و`"legacy": false`. لا
@@ -464,11 +464,11 @@ NIBLEAF_VERSION="$STAGED" operator pause
 ```bash
 export NIBLEAF_VERSION="$STAGED"
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 unset NIBLEAF_VERSION
 ```
 

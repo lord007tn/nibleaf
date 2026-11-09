@@ -8,6 +8,7 @@ import { useQueries } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { AlertTriangle, BarChart3, BookText, Check, FileText, Plus, Users, X } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { compareDelta } from '@/components/analytics/insights/metrics';
 import { SectionCard } from '@/components/analytics/section-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
@@ -18,7 +19,7 @@ import { analyticsTimezone, workspaceAnalyticsQueryOptions } from '@/hooks/api/a
 import { deploymentsQueryOptions, pagesQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
-import { useFormatters, viewsTrend } from '@/lib/format';
+import { useFormatters } from '@/lib/format';
 import { type SiteActivity, type StartHereProgress, startHereProgress, startHereRequests } from '@/lib/start-here';
 import { useSession } from '@/services/auth-client';
 
@@ -128,7 +129,10 @@ function ProjectsPage() {
 
   const totalPages = projects && !projectsError ? projects.reduce((sum, p) => sum + (p._count?.pages ?? 0), 0) : null;
   const analyticsUnavailable = analyticsError || analytics?.availability === 'unavailable';
-  const trend = useMemo(() => (analyticsUnavailable ? null : viewsTrend(analytics?.timeseries ?? [])), [analytics?.timeseries, analyticsUnavailable]);
+  // Against the equal window right before this one; hidden when either side isn't known.
+  const viewsDelta = analyticsUnavailable
+    ? null
+    : compareDelta({ value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null }, 'count');
   const viewsByProject = useMemo(() => new Map((analytics?.byProject ?? []).map((b) => [b.projectId, b.views])), [analytics?.byProject]);
   const hasSites = !projectsLoading && siteList.length > 0;
   // A brand-new user gets a "what to do next" path, not a wall of zeros:
@@ -265,7 +269,14 @@ function ProjectsPage() {
                   <TableCell className="text-end tabular-nums">{number(project._count?.deployments ?? 0)}</TableCell>
                   {showAnalytics ? (
                     <TableCell className="text-end tabular-nums">
-                      {analyticsUnavailable ? '—' : number(viewsByProject.get(project.id) ?? 0)}
+                      {/* A measured zero only once analytics answered; never while it's still loading. */}
+                      {analyticsPending ? (
+                        <Skeleton aria-hidden className="ms-auto h-4 w-10" />
+                      ) : analyticsUnavailable ? (
+                        '—'
+                      ) : (
+                        number(viewsByProject.get(project.id) ?? 0)
+                      )}
                     </TableCell>
                   ) : null}
                 </TableRow>
@@ -278,12 +289,21 @@ function ProjectsPage() {
       {showAnalytics ? (
         <>
           {analyticsError ? <QueryErrorState onRetry={() => void retryAnalytics()} retrying={analyticsFetching} /> : null}
-          {!analyticsError && (analyticsUnavailable || analytics?.availability === 'partial') ? (
+          {/* An outage (a successful "unavailable" response) retries in place, like a failed request. */}
+          {!analyticsError && analyticsUnavailable ? (
+            <QueryErrorState
+              description={t('overview.traffic.unavailable.body')}
+              onRetry={() => void retryAnalytics()}
+              retrying={analyticsFetching}
+              title={t('overview.traffic.unavailable.title')}
+            />
+          ) : null}
+          {!analyticsError && !analyticsUnavailable && analytics?.availability === 'partial' ? (
             <Alert variant="warning">
               <AlertTriangle />
               {/* About traffic, the only figures here that can be missing; not AI token or cost values. */}
-              <AlertTitle>{t(analyticsUnavailable ? 'overview.traffic.unavailable.title' : 'overview.traffic.partial.title')}</AlertTitle>
-              <AlertDescription>{t(analyticsUnavailable ? 'overview.traffic.unavailable.body' : 'overview.traffic.partial.body')}</AlertDescription>
+              <AlertTitle>{t('overview.traffic.partial.title')}</AlertTitle>
+              <AlertDescription>{t('overview.traffic.partial.body')}</AlertDescription>
             </Alert>
           ) : null}
 
@@ -300,8 +320,8 @@ function ProjectsPage() {
               label={t('dashboard.stats.pageViews')}
               value={analyticsUnavailable ? null : (analytics?.totalViews ?? null)}
               icon={<BarChart3 className="size-4" />}
-              trend={trend}
-              hint={trend ? t('analytics.vsPrevious') : undefined}
+              delta={viewsDelta}
+              hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
               loading={analyticsPending}
             />
             {/* No visitor-specific timeseries exists yet, so no trend badge here —

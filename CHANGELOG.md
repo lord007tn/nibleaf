@@ -6,6 +6,13 @@ manifest remains the authority for the latest published artifact.
 
 ## Unreleased
 
+### Changed
+
+- Container images after v0.2.1 omit pnpm and other package managers. Run search
+  operators with `/app/docker-entrypoint.sh search-reindex-all` and
+  `/app/docker-entrypoint.sh search-alias-switch` instead (#389). Published
+  v0.2.1 images keep their original operator commands.
+
 ### Fixed
 
 - Reject unusable CLI agent resources, point backup recovery at an empty target,
@@ -22,6 +29,8 @@ manifest remains the authority for the latest published artifact.
   upgrade guard. Dashboard and reader routes retain nonce CSP (#329).
 
 ## v0.2.1
+
+For later images without pnpm, use [the current operator commands](https://docs.nibleaf.com/self-hosting/search-ai); the commands in this section remain specific to v0.2.1.
 
 ### Highlights
 

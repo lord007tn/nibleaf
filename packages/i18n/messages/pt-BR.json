@@ -502,7 +502,6 @@
   "analytics_kpi_pageviews": "Visualizações de página",
   "analytics_kpi_uniquevisitors": "Visitantes únicos",
   "analytics_kpi_searches": "Pesquisas",
-  "analytics_kpi_projectswithtraffic": "Projetos com tráfego",
   "analytics_chart_pageviewsallprojects": "Visualizações de página · todos os projetos",
   "analytics_section_byproject": "Por projeto",
   "analytics_section_referrers": "Referenciadores",
@@ -2073,7 +2072,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -4003,5 +4001,7 @@
   "admin_pagination_first": "Primeira página",
   "admin_pagination_next": "Próxima página",
   "dashboard_ai_inputtokens": "Unidades de texto nas perguntas",
-  "dashboard_ai_outputtokens": "Unidades de texto nas respostas"
+  "dashboard_ai_outputtokens": "Unidades de texto nas respostas",
+  "analytics_kpi_siteswithtraffic": "Sites com tráfego",
+  "analytics_workspace_termspersite": "Os termos de busca podem aparecer no relatório de busca de cada site, conforme as configurações de privacidade e o limite de visitas."
 }
