@@ -706,6 +706,12 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
   if (requestedLanguage && data.activeLanguage !== requestedLanguage) {
     throw notFound('page', { path, language: requestedLanguage, reason: 'language_fallback' });
   }
+  // A private site's page reached this point only for a viewer who may read it
+  // (getSitePage applied the access gate and page grants): its Markdown is
+  // theirs too, never shared-cached. Public sites keep the public-discovery rule.
+  if ((data.project.config as { visibility?: string } | null)?.visibility === 'private') {
+    return { body: buildPublishedPageMarkdown(data), isPrivate: true };
+  }
   if (!isPublicMarkdownPage(data)) {
     throw notFound('page', { path, reason: 'not_public_markdown' });
   }
@@ -1107,9 +1113,8 @@ export const getSiteRobots = async (identifier: string): Promise<SiteTextDocumen
 
 /** llms.txt for a published site (llmstxt.org): title, description and a
  *  Markdown link list of every indexable page — so AI assistants can consume
- *  the docs without scraping. Same privacy rules as the sitemap: anonymous
- *  visitors of private sites get 404 from getPublished, members get an empty
- *  document, and noindex pages/languages are excluded. */
+ *  the docs without scraping. Anonymous visitors of private sites get 404 from
+ *  getPublished; a signed-in reader or member gets the pages they can read. */
 /** llms bodies vary with the live per-language serving/indexing flags AND the
  *  live-overlaid project name/description (both overlay the frozen snapshot),
  *  so the cache key carries them alongside the deployment id — a language
@@ -1127,7 +1132,10 @@ export const getSiteLlmsTxt = async (identifier: string): Promise<SiteTextDocume
   const { snapshot: published, deploymentId } = await getPublished(identifier);
   const config = seoConfigOf(published);
   const isPrivate = config?.visibility === 'private';
-  if (isPrivate || config?.seo?.allowIndex === false) {
+  // Built per request from this viewer's pages: never cached across viewers.
+  if (isPrivate)
+    return { body: buildLlmsTxt(publicSiteSnapshot(published), `${env.APP_URL}/sites/${published.project.id}`, { privateSite: true }), isPrivate };
+  if (config?.seo?.allowIndex === false) {
     return { body: '', isPrivate };
   }
   const cacheKey = llmsCacheKey(deploymentId, published);
@@ -1143,12 +1151,19 @@ export const getSiteLlmsTxt = async (identifier: string): Promise<SiteTextDocume
 };
 
 /** llms-full.txt: the concatenated Markdown of every indexable page with
- *  per-page headers and source URLs. Same privacy rules as llms.txt. */
+ *  per-page headers and source URLs. Same access rules as llms.txt. */
 export const getSiteLlmsFullTxt = async (identifier: string): Promise<SiteTextDocument> => {
   const { snapshot: published, deploymentId } = await getPublished(identifier);
   const config = seoConfigOf(published);
   const isPrivate = config?.visibility === 'private';
-  if (isPrivate || config?.seo?.allowIndex === false) {
+  // Built per request from this viewer's pages: never cached across viewers.
+  if (isPrivate) {
+    return {
+      body: buildLlmsFullTxt(publicSiteSnapshot(published), `${env.APP_URL}/sites/${published.project.id}`, { privateSite: true }),
+      isPrivate,
+    };
+  }
+  if (config?.seo?.allowIndex === false) {
     return { body: '', isPrivate };
   }
   const cacheKey = llmsCacheKey(deploymentId, published);
