@@ -3973,5 +3973,6 @@
   "dashboard_ai_outputtokens": "Unités de texte des réponses",
   "settings_usage_progressvalue": "{used} sur {limit} ({percent})",
   "settings_apikeys_namelabel": "Nom de la clé",
-  "settings_credentials_refreshfailed": "Impossible d’actualiser cette liste. Les données chargées précédemment sont affichées."
+  "settings_credentials_refreshfailed": "Impossible d’actualiser cette liste. Les données chargées précédemment sont affichées.",
+  "settings_usage_progressvaluenoshare": "{used} sur {limit}"
 }

@@ -101,6 +101,11 @@ describe('account settings hydration', () => {
   async function beginEmailChange(address = 'new@example.test') {
     root = createRoot(container);
     await act(async () => root?.render(<AccountTab />));
+    await requestCode(address);
+  }
+
+  /** Open "Change email" on the mounted tab and submit an address. */
+  async function requestCode(address: string) {
     const change = [...container.querySelectorAll('button')].find((button) => button.textContent === 'settings.account.email.change');
     await act(async () => change?.click());
     const input = container.querySelector<HTMLInputElement>('#acct-email');
@@ -137,6 +142,29 @@ describe('account settings hydration', () => {
     // Starting again begins from an empty address.
     await act(async () => button('settings.account.email.change')?.click());
     expect(container.querySelector<HTMLInputElement>('#acct-email')?.value).toBe('');
+  });
+
+  it('keeps a restarted send busy when a cancelled one answers late, so no extra code is requested', async () => {
+    const first = deferred<{ error: null }>();
+    const second = deferred<{ error: null }>();
+    mocks.send.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    await beginEmailChange();
+    await act(async () => button('common.cancel')?.click());
+    await requestCode('other@example.test');
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+
+    // The abandoned request finishes while the new one is still on its way.
+    await act(async () => first.resolve({ error: null }));
+    const send = [...container.querySelectorAll<HTMLButtonElement>('button[type="submit"]')].find((b) =>
+      b.closest('form')?.querySelector('#acct-email'),
+    );
+    expect(send?.getAttribute('aria-busy') === 'true' || send?.disabled).toBe(true);
+    const input = container.querySelector<HTMLInputElement>('#acct-email');
+    await act(async () => input?.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    expect(mocks.send).toHaveBeenCalledTimes(2);
+
+    await act(async () => second.resolve({ error: null }));
+    expect(container.querySelector('#acct-current-email-otp')).not.toBeNull();
   });
 
   it('ignores a current-address verification that answers after Cancel', async () => {

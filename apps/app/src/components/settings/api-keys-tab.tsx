@@ -3,6 +3,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale } from '@nibleaf/i18n/react';
@@ -309,14 +310,14 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
               </label>
             ))}
           </fieldset>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
             <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.apiKeys.nameLabel'), t)(value) }}>
               {(field) => (
                 <div className="flex flex-1 flex-col gap-1.5">
+                  <Label htmlFor="api-key-name">{t('settings.apiKeys.nameLabel')}</Label>
                   <Input
                     aria-describedby={field.state.meta.errors.length ? 'api-key-name-error' : undefined}
                     aria-invalid={field.state.meta.errors.length > 0}
-                    aria-label={t('settings.apiKeys.nameLabel')}
                     id="api-key-name"
                     maxLength={80}
                     onBlur={field.handleBlur}

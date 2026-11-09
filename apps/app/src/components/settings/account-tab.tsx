@@ -88,6 +88,11 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
   // request still in flight from an abandoned attempt can't bring it back.
   const attempt = useRef(0);
   const changeButton = useRef<HTMLButtonElement>(null);
+  // Which attempt's code request is in flight. The form's own isSubmitting is
+  // shared by every attempt, so a cancelled request finishing late would clear
+  // it while a newer one is still sending; this belongs to one attempt only.
+  const [sendingRun, setSendingRun] = useState<number | null>(null);
+  const sending = sendingRun !== null && sendingRun === attempt.current;
 
   const reset = () => {
     setStage('idle');
@@ -119,6 +124,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         return;
       }
       const run = attempt.current;
+      // Enter while this attempt's request is on its way must not send a second one.
+      if (sendingRun === run) return;
+      setSendingRun(run);
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
         if (run !== attempt.current) return;
@@ -132,6 +140,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       } catch {
         // The request never reached the server.
         if (run === attempt.current) toast.error(t('auth.error.tryAgain'));
+      } finally {
+        setSendingRun((current) => (current === run ? null : current));
       }
     },
   });
@@ -236,13 +246,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             )}
           </editForm.Field>
           <div className="mt-3 flex gap-2">
-            <editForm.Subscribe selector={(state) => state.isSubmitting}>
-              {(isSubmitting) => (
-                <Button loading={isSubmitting} type="submit" loadingText={t('settings.account.email.sending')}>
-                  {t('settings.account.email.sendVerification')}
-                </Button>
-              )}
-            </editForm.Subscribe>
+            <Button loading={sending} type="submit" loadingText={t('settings.account.email.sending')}>
+              {t('settings.account.email.sendVerification')}
+            </Button>
             <Button onClick={cancel} type="button" variant="outline">
               {t('common.cancel')}
             </Button>

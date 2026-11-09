@@ -143,7 +143,10 @@ export function UsageTab({ project }: { project: Project }) {
                     };
                     // The real share of the limit, which can pass 100%. The bar keeps a 2% sliver so a tiny
                     // positive amount stays visible, but that minimum is drawing only: assistive tech hears the truth.
-                    const percent = metric.ratio === null ? 0 : metric.ratio * 100;
+                    // No ratio with a limit means a zero limit: there is no share to announce, only
+                    // whether it is exceeded (any use of a 0 limit is), so never invent "0%".
+                    const share = metric.ratio === null ? null : metric.ratio * 100;
+                    const percent = share ?? (metric.state === 'exceeded' ? 100 : 0);
                     const barWidth = Math.min(100, Math.max(percent > 0 ? 2 : 0, percent));
                     const unavailable = metric.quantity === null;
                     return (
@@ -184,11 +187,18 @@ export function UsageTab({ project }: { project: Project }) {
                             aria-valuemax={100}
                             aria-valuemin={0}
                             aria-valuenow={Math.min(100, Math.round(percent))}
-                            aria-valuetext={t('settings.usage.progressValue', {
-                              used: formatQuantity(metric.quantity ?? '0'),
-                              limit: formatQuantity(metric.limit),
-                              percent: number(percent / 100, { style: 'percent', maximumFractionDigits: 1 }),
-                            })}
+                            aria-valuetext={
+                              share === null
+                                ? t('settings.usage.progressValueNoShare', {
+                                    used: formatQuantity(metric.quantity ?? '0'),
+                                    limit: formatQuantity(metric.limit),
+                                  })
+                                : t('settings.usage.progressValue', {
+                                    used: formatQuantity(metric.quantity ?? '0'),
+                                    limit: formatQuantity(metric.limit),
+                                    percent: number(share / 100, { style: 'percent', maximumFractionDigits: 1 }),
+                                  })
+                            }
                             className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted"
                             role="progressbar"
                           >

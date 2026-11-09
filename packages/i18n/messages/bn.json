@@ -3908,5 +3908,6 @@
   "dashboard_ai_outputtokens": "উত্তরে টেক্সট ইউনিট",
   "settings_usage_progressvalue": "{limit}-এর মধ্যে {used} ({percent})",
   "settings_apikeys_namelabel": "কী-এর নাম",
-  "settings_credentials_refreshfailed": "এই তালিকা রিফ্রেশ করা যায়নি। আগে লোড হওয়া তথ্য দেখানো হচ্ছে।"
+  "settings_credentials_refreshfailed": "এই তালিকা রিফ্রেশ করা যায়নি। আগে লোড হওয়া তথ্য দেখানো হচ্ছে।",
+  "settings_usage_progressvaluenoshare": "{limit}-এর মধ্যে {used}"
 }

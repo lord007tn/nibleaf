@@ -4008,5 +4008,6 @@
   "dashboard_ai_outputtokens": "وحدات النص في الإجابات",
   "settings_usage_progressvalue": "{used} من {limit} ({percent})",
   "settings_apikeys_namelabel": "اسم المفتاح",
-  "settings_credentials_refreshfailed": "تعذّر تحديث هذه القائمة. نعرض ما تم تحميله سابقًا."
+  "settings_credentials_refreshfailed": "تعذّر تحديث هذه القائمة. نعرض ما تم تحميله سابقًا.",
+  "settings_usage_progressvaluenoshare": "{used} من {limit}"
 }

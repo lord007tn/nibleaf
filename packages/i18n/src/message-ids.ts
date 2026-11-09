@@ -3870,6 +3870,7 @@ export const MESSAGE_IDS = {
   'settings.usage.progressValue': 'settings_usage_progressvalue',
   'settings.apiKeys.nameLabel': 'settings_apikeys_namelabel',
   'settings.credentials.refreshFailed': 'settings_credentials_refreshfailed',
+  'settings.usage.progressValueNoShare': 'settings_usage_progressvaluenoshare',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

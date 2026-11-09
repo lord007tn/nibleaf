@@ -58,7 +58,7 @@ describe('UsageTab progress semantics', () => {
     vi.clearAllMocks();
   });
 
-  const renderMeter = async (quantity: string, ratio: number, state = 'available') => {
+  const renderMeter = async (quantity: string, ratio: number | null, state = 'available', limit = '1000') => {
     mocks.usage.mockReturnValue({
       isPending: false,
       isError: false,
@@ -66,7 +66,7 @@ describe('UsageTab progress semantics', () => {
         plan: { key: 'free' },
         availability: 'complete',
         period: { start: '2026-11-01T00:00:00.000Z', endExclusive: '2026-12-01T00:00:00.000Z' },
-        meters: [{ key: 'published_page', unit: 'count', quantity, limit: '1000', ratio, state, availability: 'complete' }],
+        meters: [{ key: 'published_page', unit: 'count', quantity, limit, ratio, state, availability: 'complete' }],
       },
     });
     await act(async () => root.render(<UsageTab project={{ id: 'project-1' } as Project} />));
@@ -97,5 +97,16 @@ describe('UsageTab progress semantics', () => {
       limit: '1,000',
       percent,
     });
+  });
+
+  it('never invents a share for a zero limit: exceeded is full, and the text has no percentage', async () => {
+    const meter = await renderMeter('1', null, 'exceeded', '0');
+    expect(meter.now).toBe('100');
+    expect(meter.width).toBe('100%');
+    expect(meter.text).toEqual({ key: 'settings.usage.progressValueNoShare', used: '1', limit: '0' });
+
+    const unused = await renderMeter('0', null, 'available', '0');
+    expect(unused.now).toBe('0');
+    expect(unused.text).toEqual({ key: 'settings.usage.progressValueNoShare', used: '0', limit: '0' });
   });
 });
