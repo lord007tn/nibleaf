@@ -3983,5 +3983,13 @@
   "analytics_search_write_languageserror": "इस साइट की भाषाएँ लोड नहीं हो सकीं, इसलिए ड्राफ़्ट की भाषा अभी नहीं चुनी जा सकती।",
   "dashboard_ai_sessionexpired": "आपका सत्र समाप्त हो गया। यह बातचीत देखने के लिए फिर से साइन इन करें।",
   "dashboard_ai_signinagain": "फिर से साइन इन करें",
+  "nav_sidebartitle": "नेविगेशन",
+  "nav_sidebardescription": "साइट बदलें और अपने कार्यक्षेत्र में नेविगेट करें।",
+  "nav_breadcrumb": "नेविगेशन पथ",
+  "nav_sitesloaderror": "साइटें रीफ़्रेश नहीं हो सकीं",
+  "command_pagesloaderror": "पेज रीफ़्रेश नहीं हो सके",
+  "notifications_bellunreadlabel": "सूचनाएँ खोलें। अपठित: {count}",
+  "notifications_unread": "अपठित",
+  "admin_sidebardescription": "प्लैटफ़ॉर्म के ग्राहकों, साइटों और संचालन के बीच जाएँ।",
   "settings_appearance_theme_system": "मेरे डिवाइस जैसा"
 }

@@ -4048,5 +4048,13 @@
   "analytics_search_write_languageserror": "Impossible de charger les langues de ce site : la langue du brouillon ne peut pas encore être choisie.",
   "dashboard_ai_sessionexpired": "Votre session a expiré. Reconnectez-vous pour voir cette conversation.",
   "dashboard_ai_signinagain": "Se reconnecter",
+  "nav_sidebartitle": "Navigation",
+  "nav_sidebardescription": "Changez de site et parcourez votre espace de travail.",
+  "nav_breadcrumb": "Fil d’Ariane",
+  "nav_sitesloaderror": "Impossible d’actualiser les sites",
+  "command_pagesloaderror": "Impossible d’actualiser les pages",
+  "notifications_bellunreadlabel": "Ouvrir les notifications. Non lues : {count}",
+  "notifications_unread": "Non lue",
+  "admin_sidebardescription": "Accédez aux clients, aux sites et aux opérations de la plateforme.",
   "settings_appearance_theme_system": "Comme mon appareil"
 }

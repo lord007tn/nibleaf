@@ -21,7 +21,8 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects, usePages: mocks.usePages }));
 vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageDialog: () => null }));
 
-import { CommandPalette } from './command-palette';
+import { CommandPalette, CommandPaletteProvider } from './command-palette';
+import { ShellSearchButton } from './shell-search-button';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -89,6 +90,25 @@ const typeInto = (input: HTMLInputElement, value: string) =>
 const itemLabels = () => [...document.querySelectorAll('[data-slot="command-item"]')].map((node) => node.textContent?.trim());
 
 describe('CommandPalette', () => {
+  it('opens the app-wide palette from the separate shell search button', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () =>
+      root.render(
+        <CommandPaletteProvider>
+          <ShellSearchButton />
+        </CommandPaletteProvider>,
+      ),
+    );
+    expect(document.querySelector('[data-slot="dialog-content"]')).toBeNull();
+    const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="dashboard.search.placeholder"]');
+    expect(trigger).not.toBeNull();
+    await act(async () => trigger?.click());
+    expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Nibleaf Docs');
+  });
+
   it('opens inside a cmdk root and lists projects plus the go-to shortcuts', async () => {
     await render(true);
 
@@ -232,5 +252,39 @@ describe('CommandPalette', () => {
       document.dispatchEvent(event);
     });
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it.each(['sites', 'pages'])('retries a failed %s read without reporting no results', async (scope) => {
+    mocks.params = { projectId: 'project-1' };
+    const refetch = vi.fn();
+    const hook = scope === 'sites' ? mocks.useProjects : mocks.usePages;
+    hook.mockReturnValue({ isError: true, isPending: false, refetch, isFetching: false });
+    await render(true);
+    await typeInto(document.querySelector<HTMLInputElement>('[data-slot="command-input"]') as HTMLInputElement, 'unmatched-query');
+    expect(document.body.textContent).not.toContain('command.noResults');
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain(scope === 'sites' ? 'nav.sitesLoadError' : 'command.pagesLoadError');
+    expect(document.querySelector('[role="alert"]')?.closest('[role="listbox"]')).toBeNull();
+    await act(async () => document.querySelector<HTMLButtonElement>('[role="alert"] button')?.click());
+    expect(refetch).toHaveBeenCalledOnce();
+
+    hook.mockReturnValue({ data: [], isError: false, isPending: false });
+    await act(async () => roots[0]?.render(<CommandPalette open onOpenChange={vi.fn()} />));
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.body.textContent).toContain('command.noResults');
+  });
+
+  it('keeps cached projects and pages selectable when refreshes fail', async () => {
+    mocks.params = { projectId: 'project-1' };
+    mocks.useProjects.mockReturnValue({ data: [{ id: 'project-1', name: 'Cached site' }], isError: true, refetch: vi.fn() });
+    mocks.usePages.mockReturnValue({
+      data: [{ id: 'page-1', kind: 'PAGE', title: 'Cached page', slug: 'cached-page', updatedAt: '2026-11-01' }],
+      isError: true,
+      refetch: vi.fn(),
+    });
+    await render(true);
+    expect(itemLabels()).toContain('Cached site');
+    expect(itemLabels()).toContain('Cached page');
+    expect(document.querySelectorAll('[role="alert"]')).toHaveLength(2);
+    expect(document.body.textContent).not.toContain('command.noResults');
   });
 });

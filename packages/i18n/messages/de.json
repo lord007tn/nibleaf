@@ -4048,5 +4048,13 @@
   "analytics_search_write_languageserror": "Die Sprachen dieser Website konnten nicht geladen werden, daher lässt sich die Sprache des Entwurfs noch nicht wählen.",
   "dashboard_ai_sessionexpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um diese Unterhaltung zu sehen.",
   "dashboard_ai_signinagain": "Erneut anmelden",
+  "nav_sidebartitle": "Navigation",
+  "nav_sidebardescription": "Wechseln Sie Websites und navigieren Sie in Ihrem Arbeitsbereich.",
+  "nav_breadcrumb": "Brotkrümelnavigation",
+  "nav_sitesloaderror": "Websites konnten nicht aktualisiert werden",
+  "command_pagesloaderror": "Seiten konnten nicht aktualisiert werden",
+  "notifications_bellunreadlabel": "Benachrichtigungen öffnen. Ungelesen: {count}",
+  "notifications_unread": "Ungelesen",
+  "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb.",
   "settings_appearance_theme_system": "Wie mein Gerät"
 }

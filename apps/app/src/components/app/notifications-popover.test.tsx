@@ -15,10 +15,17 @@ const mocks = vi.hoisted(() => ({
   lastProject: undefined as string | undefined,
   requestedProjects: [] as string[],
   items: undefined as NotificationItem[] | undefined,
+  count: 1,
+  translations: {} as Record<string, string>,
 }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ t: (key: string) => key, locale: 'en' }) }));
+vi.mock('@nibleaf/i18n/react', () => ({
+  useT: () => (key: string, vars?: { count: string }) => (vars ? `${key}: ${vars.count}` : (mocks.translations[key] ?? key)),
+  useLocale: () => ({ t: (key: string) => key, locale: 'en' }),
+}));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
-vi.mock('@/lib/format', () => ({ useFormatters: () => ({ relativeTime: () => 'recently' }) }));
+vi.mock('@/lib/format', () => ({
+  useFormatters: () => ({ relativeTime: () => 'recently', number: (count: number) => count.toLocaleString('en-US') }),
+}));
 vi.mock('@/components/query-error-state', () => ({ QueryErrorState: () => null }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: false }) }));
 vi.mock('@/hooks/api', () => ({
@@ -31,7 +38,7 @@ vi.mock('@/hooks/api', () => ({
       isError: mocks.membersError,
     };
   },
-  useUnreadNotificationCount: () => ({ data: { count: 1 } }),
+  useUnreadNotificationCount: () => ({ data: { count: mocks.count } }),
   useNotifications: () => ({
     data: {
       items: mocks.items ?? [
@@ -67,6 +74,70 @@ beforeEach(() => {
   mocks.lastProject = undefined;
   mocks.requestedProjects = [];
   mocks.items = undefined;
+  mocks.count = 1;
+  mocks.translations = {};
+});
+
+it('allows the long German header action and title to shrink and wrap', async () => {
+  mocks.translations = { 'notifications.title': 'Benachrichtigungen', 'notifications.markAllRead': 'Alles als gelesen markieren' };
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<NotificationsPopover />));
+    await act(() => host.querySelector<HTMLButtonElement>('button')?.click());
+    const action = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Alles als gelesen markieren'));
+    expect(action).toBeDefined();
+    for (const token of ['h-auto', 'min-w-0', 'max-w-full', 'shrink', '[overflow-wrap:anywhere]'])
+      expect(action?.classList.contains(token)).toBe(true);
+    expect(action?.classList.contains('h-7')).toBe(false);
+    const title = [...document.querySelectorAll('span')].find((span) => span.textContent === 'Benachrichtigungen');
+    expect(title?.classList.contains('[overflow-wrap:anywhere]')).toBe(true);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+  }
+});
+
+it.each([
+  { count: 0, label: 'notifications.bellLabel' },
+  { count: 1, label: 'notifications.bellUnreadLabel: 1' },
+  { count: 12, label: 'notifications.bellUnreadLabel: 12' },
+  { count: 1234, label: 'notifications.bellUnreadLabel: 1,234' },
+])('uses the expected bell name for unread count $count and exposes row unread state', async ({ count, label }) => {
+  mocks.count = count;
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<NotificationsPopover />));
+    const bell = host.querySelector<HTMLButtonElement>('button');
+    expect(bell?.getAttribute('aria-label')).toBe(label);
+    expect(bell?.querySelector('span')?.getAttribute('aria-hidden')).toBe(count > 0 ? 'true' : undefined);
+    await act(() => bell?.click());
+    expect(document.querySelector('[data-slot="popover-content"] .sr-only')?.textContent).toContain('notifications.unread');
+    mocks.count = 0;
+    mocks.items = [
+      {
+        id: 'read',
+        type: 'deploy_ready',
+        projectId: null,
+        title: 'Read',
+        body: '',
+        params: null,
+        href: null,
+        readAt: '2026-11-08',
+        createdAt: '2026-11-07',
+      },
+    ];
+    await act(() => root.render(<NotificationsPopover />));
+    expect(bell?.getAttribute('aria-label')).toBe('notifications.bellLabel');
+    expect(bell?.querySelector('span')).toBeNull();
+    expect(document.querySelector('[data-slot="popover-content"]')?.textContent).not.toContain('notifications.unread');
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+  }
 });
 it('opens technical details without marking a notification read or navigating', async () => {
   const host = document.createElement('div');
