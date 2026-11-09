@@ -183,6 +183,25 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     expect(rows.find((page) => page.id === child.id)?.path).toBe(`${parent?.path}/child`);
   });
 
+  it('moves a subtree into another language in one transaction with free addresses', async () => {
+    const { project, branch, language } = await fixture();
+    const arabic = await db.prisma.language.create({ data: { projectId: project.id, code: 'ar', label: 'العربية', direction: 'RTL', position: 1 } });
+    const create = (slug: string, parentId: string | null, languageId: string, translationKey?: string) =>
+      pages.createPage(project.id, { title: slug, slug, parentId, branchId: branch.id, languageId, translationKey });
+    const guide = await create('guide', null, language.id, 'guide');
+    const child = await create('intro', guide.id, language.id);
+    await create('guide', null, arabic.id, 'guide');
+    await pages.reorderPages(project.id, { items: [{ id: guide.id, parentId: null, position: 5, languageId: arabic.id }] });
+    const rows = await db.prisma.page.findMany({ where: { projectId: project.id } });
+    const moved = rows.find((page) => page.id === guide.id);
+    expect(moved).toMatchObject({ languageId: arabic.id, slug: 'guide-2', path: 'guide-2', translationKey: null });
+    expect(rows.find((page) => page.id === child.id)).toMatchObject({ languageId: arabic.id, path: 'guide-2/intro' });
+    const other = await db.prisma.language.create({ data: { projectId: (await fixture()).project.id, code: 'fr', label: 'Français' } });
+    await expect(
+      pages.reorderPages(project.id, { items: [{ id: guide.id, parentId: null, position: 0, languageId: other.id }] }),
+    ).rejects.toMatchObject({ code: 'database:not_found' });
+  });
+
   it('allocates distinct slugs for concurrent sibling creation', async () => {
     const { project, branch, language } = await fixture();
     const create = () => pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });

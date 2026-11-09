@@ -104,7 +104,7 @@ export function LanguageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl" showCloseButton={false}>
         <DialogDescription className="sr-only">{t('editor.langSettings.desc')}</DialogDescription>
         <div className="flex h-[min(520px,80vh)]">
           {/* Left settings sidebar */}

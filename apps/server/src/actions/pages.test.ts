@@ -9,6 +9,7 @@ const database = vi.hoisted(() => ({
   updateMany: vi.fn(),
   transaction: vi.fn(),
   queryRaw: vi.fn(),
+  languages: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
@@ -42,6 +43,7 @@ type Row = {
   path: string;
   config: null;
   content: string;
+  translationKey?: string | null;
   updatedAt: Date;
 };
 
@@ -113,6 +115,7 @@ const seedTree = (initial: Row[]) => {
         ? await work({
             $queryRaw: database.queryRaw,
             page: { findMany: database.findMany, update: database.update, updateMany: database.updateMany },
+            language: { findMany: database.languages },
           })
         : await Promise.all(work);
     } catch (error) {
@@ -410,5 +413,90 @@ describe('updatePage revision precondition', () => {
     expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'page-1' } }));
     database.update.mockRejectedValueOnce(notFoundError());
     await expect(updatePage('project-1', 'page-1', { hidden: false }, 'author-1')).rejects.toMatchObject({ code: 'P2025' });
+  });
+
+  describe('moving pages between languages', () => {
+    const LANGUAGES = [{ id: 'lang-1' }, { id: 'lang-ar' }];
+    beforeEach(() => {
+      database.languages.mockImplementation(async ({ where }: { where: { id: { in: string[] } } }) =>
+        LANGUAGES.filter((language) => where.id.in.includes(language.id)),
+      );
+    });
+
+    it('moves a page with its whole subtree into another language at the dropped position', async () => {
+      const current = seedTree([
+        row({ id: 'guide', kind: 'GROUP', slug: 'guide', path: 'guide' }),
+        row({ id: 'intro', parentId: 'guide', slug: 'intro', path: 'guide/intro' }),
+        row({ id: 'deep', parentId: 'intro', slug: 'deep', path: 'guide/intro/deep' }),
+        row({ id: 'ar-group', languageId: 'lang-ar', kind: 'GROUP', slug: 'adlh', path: 'adlh' }),
+      ]);
+      await reorderPages('project-1', { items: [{ id: 'guide', parentId: 'ar-group', position: 0, languageId: 'lang-ar' }] });
+      const byId = new Map(current().map((page) => [page.id, page]));
+      expect(byId.get('guide')).toMatchObject({ languageId: 'lang-ar', parentId: 'ar-group', path: 'adlh/guide' });
+      expect(byId.get('intro')).toMatchObject({ languageId: 'lang-ar', parentId: 'guide', path: 'adlh/guide/intro' });
+      expect(byId.get('deep')).toMatchObject({ languageId: 'lang-ar', path: 'adlh/guide/intro/deep' });
+      expect(database.transaction).toHaveBeenCalledOnce();
+    });
+
+    it('gives a moved page the next free address when the target language already uses it', async () => {
+      const current = seedTree([
+        row({ id: 'moving', slug: 'intro', path: 'intro' }),
+        row({ id: 'ar-intro', languageId: 'lang-ar', slug: 'intro', path: 'intro' }),
+        row({ id: 'ar-intro-2', languageId: 'lang-ar', slug: 'intro-2', path: 'intro-2' }),
+      ]);
+      await reorderPages('project-1', { items: [{ id: 'moving', parentId: null, position: 3, languageId: 'lang-ar' }] });
+      expect(current().find((page) => page.id === 'moving')).toMatchObject({ languageId: 'lang-ar', slug: 'intro-3', path: 'intro-3' });
+      expect(current().find((page) => page.id === 'ar-intro')?.slug).toBe('intro');
+    });
+
+    it('drops a translation link the target language already holds and keeps a free one', async () => {
+      const current = seedTree([
+        row({ id: 'linked', slug: 'setup', path: 'setup', translationKey: 'setup' }),
+        row({ id: 'free', slug: 'billing', path: 'billing', translationKey: 'billing' }),
+        row({ id: 'ar-setup', languageId: 'lang-ar', slug: 'tahyia', path: 'tahyia', translationKey: 'setup' }),
+      ]);
+      await reorderPages('project-1', {
+        items: [
+          { id: 'linked', parentId: null, position: 1, languageId: 'lang-ar' },
+          { id: 'free', parentId: null, position: 2, languageId: 'lang-ar' },
+        ],
+      });
+      const byId = new Map(current().map((page) => [page.id, page]));
+      expect(byId.get('linked')?.translationKey).toBeNull();
+      expect(byId.get('free')?.translationKey).toBe('billing');
+      expect(byId.get('ar-setup')?.translationKey).toBe('setup');
+    });
+
+    it('rejects a language that is not on this site before writing', async () => {
+      seedTree([row({ id: 'moving' })]);
+      await expect(
+        reorderPages('project-1', { items: [{ id: 'moving', parentId: null, position: 0, languageId: 'other-site-language' }] }),
+      ).rejects.toMatchObject({ code: 'database:not_found', entityType: 'language' });
+      expect(database.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('still refuses to nest a page under a parent in another language without moving it there', async () => {
+      seedTree([row({ id: 'moving' }), row({ id: 'ar-group', languageId: 'lang-ar', kind: 'GROUP', slug: 'adlh', path: 'adlh' })]);
+      await expect(reorderPages('project-1', { items: [{ id: 'moving', parentId: 'ar-group', position: 0 }] })).rejects.toMatchObject({
+        code: 'http:bad_request',
+      });
+      expect(database.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses a descendant that asks to stay behind in the old language', async () => {
+      seedTree([
+        row({ id: 'parent', slug: 'parent', path: 'parent' }),
+        row({ id: 'child', parentId: 'parent', slug: 'child', path: 'parent/child' }),
+      ]);
+      await expect(
+        reorderPages('project-1', {
+          items: [
+            { id: 'parent', parentId: null, position: 0, languageId: 'lang-ar' },
+            { id: 'child', parentId: 'parent', position: 0, languageId: 'lang-1' },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: 'http:bad_request' });
+      expect(database.updateMany).not.toHaveBeenCalled();
+    });
   });
 });

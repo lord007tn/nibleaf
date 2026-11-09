@@ -28,6 +28,20 @@ describe('applyPageReorder (optimistic tree order)', () => {
     expect(applyPageReorder(pages, [])).toBe(pages);
   });
 
+  it('moves a page into another language when the request says so', () => {
+    const multilingual = [
+      { id: 'a', parentId: null, position: 0, languageId: 'en' },
+      { id: 'b', parentId: 'a', position: 0, languageId: 'en' },
+    ];
+    const next = applyPageReorder(multilingual, [
+      { id: 'a', parentId: null, position: 3, languageId: 'ar' },
+      { id: 'b', parentId: 'a', position: 0, languageId: 'ar' },
+    ]);
+    expect(next.map((page) => page.languageId)).toEqual(['ar', 'ar']);
+    expect(next[0]?.position).toBe(3);
+    expect(applyPageReorder(multilingual, [{ id: 'a', parentId: null, position: 0, languageId: 'en' }])[0]).toBe(multilingual[0]);
+  });
+
   it('tells page lists apart from page details in the query cache', () => {
     expect(isPageListKey(['pages', 'project', null, 'branch'])).toBe(true);
     expect(isPageListKey(['pages', 'project', 'page-id'])).toBe(false);

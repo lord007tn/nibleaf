@@ -321,46 +321,107 @@ export const deletePage = async (projectId: string, id: string) =>
     return { id };
   });
 
+type ReorderRow = { id: string; parentId: string | null; branchId: string; languageId: string; slug: string; translationKey: string | null };
+
+/** The languages a reorder moves pages into must belong to this site. */
+const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: ReorderPagesBody) => {
+  const ids = [...new Set(body.items.flatMap((item) => (item.languageId ? [item.languageId] : [])))];
+  if (ids.length === 0) return;
+  const found = new Set((await tx.language.findMany({ where: { projectId, id: { in: ids } }, select: { id: true } })).map((language) => language.id));
+  const missing = ids.find((id) => !found.has(id));
+  if (missing) throw notFound('language', { id: missing });
+};
+
+/** Give each page that changed language a free address among its new siblings
+ *  (`intro` → `intro-2`, the same suffixes page creation uses), and drop a
+ *  translation link another page of the target language already holds, so the
+ *  move never leaves two variants of one page in one language. */
+const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, ReorderRow>, order: string[]) => {
+  const rows = [...tree.values()];
+  const changed = order.filter((id) => tree.get(id)?.languageId !== before.get(id)?.languageId);
+  for (const id of changed) {
+    const page = tree.get(id);
+    if (!page) continue;
+    const sameScope = (other: ReorderRow) => other.id !== page.id && other.branchId === page.branchId && other.languageId === page.languageId;
+    const taken = new Set(rows.filter((other) => sameScope(other) && other.parentId === page.parentId).map((other) => other.slug));
+    if (taken.has(page.slug)) {
+      const base = page.slug;
+      let suffix = 2;
+      while (taken.has(`${base}-${suffix}`)) suffix += 1;
+      page.slug = `${base}-${suffix}`;
+    }
+    if (page.translationKey && rows.some((other) => sameScope(other) && other.translationKey === page.translationKey)) {
+      page.translationKey = null;
+    }
+  }
+};
+
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
       await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
-      const pages = await tx.page.findMany({
+      const pages: ReorderRow[] = await tx.page.findMany({
         where: { projectId },
-        select: { id: true, parentId: true, branchId: true, languageId: true, slug: true },
+        select: { id: true, parentId: true, branchId: true, languageId: true, slug: true, translationKey: true },
       });
       const byPage = new Map(pages.map((page) => [page.id, page]));
-      const proposed = new Map<string, string | null>();
+      const proposed = new Map<string, ReorderPagesBody['items'][number]>();
       for (const item of body.items) {
         if (proposed.has(item.id)) {
           throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
         }
-        const page = byPage.get(item.id);
-        if (!page) {
+        if (!byPage.has(item.id)) {
           throw notFound('page', { id: item.id });
         }
-        proposed.set(item.id, item.parentId);
-        if (!item.parentId) {
-          continue;
-        }
-        const parent = byPage.get(item.parentId);
-        if (!parent) {
+        if (item.parentId && !byPage.has(item.parentId)) {
           throw notFound('page', { id: item.parentId });
         }
-        if (parent.branchId !== page.branchId || parent.languageId !== page.languageId) {
-          throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id: item.id, parentId: item.parentId });
-        }
+        proposed.set(item.id, item);
       }
+      await assertTargetLanguages(tx, projectId, body);
       const nextTree = new Map(
-        pages.map((page) => [page.id, { ...page, parentId: proposed.has(page.id) ? (proposed.get(page.id) ?? null) : page.parentId }]),
+        pages.map((page) => {
+          const item = proposed.get(page.id);
+          return [page.id, { ...page, parentId: item ? item.parentId : page.parentId, languageId: item?.languageId ?? page.languageId }];
+        }),
       );
       for (const item of body.items) {
         assertNoParentCycle(nextTree, item.id, item.parentId);
       }
+      // A page that changes language takes its whole subtree along; a
+      // descendant listed with its own language keeps that (and is checked below).
+      const children = new Map<string, string[]>();
+      for (const page of nextTree.values()) {
+        if (!page.parentId) continue;
+        children.set(page.parentId, [...(children.get(page.parentId) ?? []), page.id]);
+      }
+      const moved = new Set(body.items.map((item) => item.id));
+      for (const item of body.items) {
+        const languageId = nextTree.get(item.id)?.languageId;
+        if (!languageId || languageId === byPage.get(item.id)?.languageId) continue;
+        const stack = [...(children.get(item.id) ?? [])];
+        while (stack.length > 0) {
+          const id = stack.pop() as string;
+          const page = nextTree.get(id);
+          if (!page || proposed.get(id)?.languageId) continue;
+          page.languageId = languageId;
+          moved.add(id);
+          stack.push(...(children.get(id) ?? []));
+        }
+      }
+      for (const id of moved) {
+        const page = nextTree.get(id);
+        const parent = page?.parentId ? nextTree.get(page.parentId) : undefined;
+        if (page && parent && (parent.branchId !== page.branchId || parent.languageId !== page.languageId)) {
+          throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id, parentId: parent.id });
+        }
+      }
+      settleLanguageMoves(nextTree, byPage, [...moved]);
       for (const item of body.items) {
         const page = nextTree.get(item.id);
-        if (!page || byPage.get(item.id)?.parentId === item.parentId) continue;
+        const before = byPage.get(item.id);
+        if (!page || before?.parentId === item.parentId || before?.languageId !== page.languageId) continue;
         const clash = [...nextTree.values()].find(
           (sibling) =>
             sibling.id !== page.id &&
@@ -373,8 +434,20 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
           throw conflict('A page with this address already exists in that group. Change its address first.', { id: page.id, reason: 'slug_taken' });
         }
       }
-      for (const item of body.items) {
-        await tx.page.updateMany({ where: { id: item.id, projectId }, data: { parentId: item.parentId, position: item.position } });
+      for (const id of moved) {
+        const page = nextTree.get(id);
+        const before = byPage.get(id);
+        const item = proposed.get(id);
+        if (!page || !before) continue;
+        await tx.page.updateMany({
+          where: { id, projectId },
+          data: {
+            ...(item ? { parentId: item.parentId, position: item.position } : {}),
+            ...(page.languageId === before.languageId ? {} : { languageId: page.languageId }),
+            ...(page.slug === before.slug ? {} : { slug: page.slug }),
+            ...(page.translationKey === before.translationKey ? {} : { translationKey: page.translationKey }),
+          },
+        });
       }
       await recomputeProjectPaths(projectId, tx);
       return body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined;

@@ -83,7 +83,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         {children}
 
         <Dialog open={Boolean(confirmState)} onOpenChange={(open) => !open && settleConfirm(false)}>
-          <DialogContent className="max-w-sm" closeLabel={labels?.cancel ?? 'Close'} finalFocus={returnFocus}>
+          <DialogContent className="max-w-sm" finalFocus={returnFocus} showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>{c?.title}</DialogTitle>
               {c?.description ? <DialogDescription>{c.description}</DialogDescription> : null}
@@ -100,7 +100,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         </Dialog>
 
         <Dialog open={Boolean(promptState)} onOpenChange={(open) => !open && settlePrompt(null)}>
-          <DialogContent className="max-w-sm" closeLabel={labels?.cancel ?? 'Close'} finalFocus={returnFocus}>
+          <DialogContent className="max-w-sm" finalFocus={returnFocus} showCloseButton={false}>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
