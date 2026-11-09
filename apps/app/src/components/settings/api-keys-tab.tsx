@@ -1,18 +1,23 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale } from '@nibleaf/i18n/react';
 import { MCP_KEY_PRESETS, MCP_PRESET_MIN_ROLE, MCP_PRESET_SCOPES, MCP_SCOPES, type McpKeyPreset, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import { canAdminister, roleAtLeast } from '@nibleaf/shared/rbac';
+import { useForm, useStore } from '@tanstack/react-form';
 import { Copy, KeyRound, RefreshCw, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { QueryErrorState } from '@/components/query-error-state';
 import { useApiKeys, useCreateApiKey, useRevokeApiKey, useRotateApiKey } from '@/hooks/api';
 import type { ApiKey } from '@/hooks/api/types';
+import { required } from '@/lib/form';
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import {
@@ -26,13 +31,21 @@ import {
   AlertDialogTitle,
 } from './api-key-alert-dialog';
 import { assistantSetup, ConnectionError, oauthAssistantSetup, testAssistantConnection } from './assistant-setup';
-import { ConnectedApps, CredentialRowsSkeleton, formattedDate, McpActivityLine, relativeMinutes, TechnicalDetails } from './connected-apps';
+import {
+  ConnectedApps,
+  CredentialRowsSkeleton,
+  formattedDate,
+  McpActivityLine,
+  RefreshFailedNotice,
+  relativeMinutes,
+  TechnicalDetails,
+} from './connected-apps';
 import { SettingsSection } from './section';
 
 type IssuableMcpScope = (typeof MCP_SCOPES)[number];
 type ExpiryDays = 7 | 30 | 90 | 180 | 365;
 
-const DEFAULT_SCOPES = [...MCP_PRESET_SCOPES.support_writer];
+const DEFAULT_SCOPES: IssuableMcpScope[] = [...MCP_PRESET_SCOPES.support_writer];
 const EXPIRY_OPTIONS = [7, 30, 90, 180, 365] as const satisfies readonly ExpiryDays[];
 const expiryOptionSchema = z.enum(['7', '30', '90', '180', '365']);
 const expiryDaysByValue = { '7': 7, '30': 30, '90': 90, '180': 180, '365': 365 } as const;
@@ -60,18 +73,16 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
     const timer = setTimeout(() => setWatchEnded((count) => count + 1), remaining);
     return () => clearTimeout(timer);
   }, [waiting]);
-  const { data: response, isError, isPending } = useApiKeys(projectId, waiting);
+  const { data: response, isError, isFetching, isPending, refetch } = useApiKeys(projectId, waiting);
   const create = useCreateApiKey(projectId);
   const rotate = useRotateApiKey(projectId);
   const revoke = useRevokeApiKey(projectId);
-  const [name, setName] = useState(t('settings.apiKeys.defaultName'));
   const keys = response?.data ?? [];
   const enabled = response?.meta.mcpEnabled === true;
   const endpoint = response?.meta.mcpEndpoint ?? '';
   const oauthEnabled = enabled && response?.meta.mcpOAuthEnabled === true;
   const oauthSetup = endpoint ? oauthAssistantSetup(endpoint) : null;
   const allowedScopes = mcpScopesForRole(role);
-  const [preset, setPreset] = useState<McpKeyPreset | 'custom'>('support_writer');
   const [client, setClient] = useState('claudeCode');
   const [connection, setConnection] = useState('');
   const [testing, setTesting] = useState(false);
@@ -80,10 +91,35 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
   const testRun = useRef(0);
   const connected = waiting && keys.some((key) => key.id === waiting.id && key.lastUsedAt && Date.parse(key.lastUsedAt) > waiting.since);
 
-  const [scopes, setScopes] = useState<IssuableMcpScope[]>(DEFAULT_SCOPES);
-  const [expiryDays, setExpiryDays] = useState<ExpiryDays>(90);
   const [secret, setSecret] = useState<string | null>(null);
   const [revokeCandidate, setRevokeCandidate] = useState<ApiKey | null>(null);
+  const form = useForm({
+    defaultValues: {
+      name: t('settings.apiKeys.defaultName'),
+      preset: 'support_writer' as McpKeyPreset | 'custom',
+      scopes: DEFAULT_SCOPES,
+      expiryDays: 90 as ExpiryDays,
+    },
+    onSubmit: ({ value }) => {
+      if (!enabled || !selectionPermitted) return;
+      create.mutate(
+        {
+          name: value.name.trim(),
+          ...(value.preset === 'custom' ? { scopes: value.scopes } : { preset: value.preset }),
+          expiresInDays: value.expiryDays,
+        },
+        {
+          // A failed create keeps the draft; the mutation toasts the reason.
+          onSuccess: (created) => {
+            form.reset();
+            showKey(created.id, created.secret);
+            toast.success(t('settings.apiKeys.created.toast'));
+          },
+        },
+      );
+    },
+  });
+  const { preset, scopes, expiryDays } = useStore(form.store, (state) => state.values);
   // The server refuses a preset or scope above the person's role; a role that
   // changed while the form was open must not leave Create enabled for it.
   const selectionPermitted =
@@ -100,22 +136,8 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
 
   const toggleScope = (scope: IssuableMcpScope) => {
     if (scope === 'mcp:connect') return;
-    setPreset('custom');
-    setScopes((current) => (current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]));
-  };
-
-  const submit = () => {
-    if (!name.trim() || !enabled || !selectionPermitted) return;
-    create.mutate(
-      { name: name.trim(), ...(preset === 'custom' ? { scopes } : { preset }), expiresInDays: expiryDays },
-      {
-        onSuccess: (created) => {
-          setName(t('settings.apiKeys.defaultName'));
-          showKey(created.id, created.secret);
-          toast.success(t('settings.apiKeys.created.toast'));
-        },
-      },
-    );
+    form.setFieldValue('preset', 'custom');
+    form.setFieldValue('scopes', (current) => (current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope]));
   };
 
   const rotateKey = async (key: ApiKey) => {
@@ -257,19 +279,29 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
             ) : null}
           </div>
         ) : null}
-        <div className="mt-4 flex flex-col gap-3">
+        <form
+          className="mt-4 flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
           <fieldset className="grid gap-3 sm:grid-cols-3">
             <legend className="mb-2 font-medium">{t('settings.apiKeys.preset')}</legend>
             {MCP_KEY_PRESETS.map((value) => (
-              <label key={value} className="rounded-lg border p-3 text-sm">
+              <label
+                key={value}
+                className="rounded-lg border p-3 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5 has-[:disabled]:opacity-70 has-[:focus-visible]:border-ring has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50"
+              >
                 <input
+                  className="accent-primary focus-visible:outline-none"
                   type="radio"
                   name="mcp-preset"
                   checked={preset === value}
-                  disabled={!roleAtLeast(role, MCP_PRESET_MIN_ROLE[value])}
+                  disabled={create.isPending || !roleAtLeast(role, MCP_PRESET_MIN_ROLE[value])}
                   onChange={() => {
-                    setPreset(value);
-                    setScopes([...MCP_PRESET_SCOPES[value]]);
+                    form.setFieldValue('preset', value);
+                    form.setFieldValue('scopes', [...MCP_PRESET_SCOPES[value]]);
                   }}
                 />
                 <span className="ms-2 font-medium">{t(`settings.apiKeys.${value}`)}</span>
@@ -278,20 +310,33 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
               </label>
             ))}
           </fieldset>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Input
-              aria-label={t('settings.apiKeys.namePlaceholder')}
-              className="flex-1"
-              maxLength={80}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={t('settings.apiKeys.namePlaceholder')}
-              value={name}
-            />
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <form.Field name="name" validators={{ onChange: ({ value }) => required(t('settings.apiKeys.nameLabel'), t)(value) }}>
+              {(field) => (
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Label htmlFor="api-key-name">{t('settings.apiKeys.nameLabel')}</Label>
+                  <Input
+                    aria-describedby={field.state.meta.errors.length ? 'api-key-name-error' : undefined}
+                    aria-invalid={field.state.meta.errors.length > 0}
+                    // Locked while the key is being created, so the reset on success can't wipe newer edits.
+                    disabled={create.isPending}
+                    id="api-key-name"
+                    maxLength={80}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                    placeholder={t('settings.apiKeys.namePlaceholder')}
+                    value={field.state.value}
+                  />
+                  <FieldError errors={field.state.meta.errors} id="api-key-name-error" />
+                </div>
+              )}
+            </form.Field>
             <Select
+              disabled={create.isPending}
               items={expiryOptions}
               onValueChange={(value) => {
                 const parsed = expiryOptionSchema.safeParse(value);
-                if (parsed.success) setExpiryDays(expiryDaysByValue[parsed.data]);
+                if (parsed.success) form.setFieldValue('expiryDays', expiryDaysByValue[parsed.data]);
               }}
               value={String(expiryDays)}
             >
@@ -306,12 +351,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              disabled={!enabled || !allowedScopes.length || !name.trim() || !selectionPermitted}
-              loading={create.isPending}
-              onClick={submit}
-              type="button"
-            >
+            <Button disabled={!enabled || !allowedScopes.length || !selectionPermitted} loading={create.isPending} type="submit">
               <KeyRound aria-hidden />
               {t('settings.apiKeys.create')}
             </Button>
@@ -322,13 +362,18 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
               <legend className="sr-only">{t('settings.apiKeys.description')}</legend>
               {allowedScopes.map((scope) => (
                 <label className="flex items-center gap-2 font-mono text-xs" key={scope}>
-                  <input type="checkbox" checked={scopes.includes(scope)} disabled={scope === 'mcp:connect'} onChange={() => toggleScope(scope)} />
+                  <input
+                    type="checkbox"
+                    checked={scopes.includes(scope)}
+                    disabled={create.isPending || scope === 'mcp:connect'}
+                    onChange={() => toggleScope(scope)}
+                  />
                   {scope}
                 </label>
               ))}
             </fieldset>
           </details>
-        </div>
+        </form>
       </SettingsSection>
 
       {secret ? (
@@ -416,10 +461,9 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
       ) : null}
 
       <SettingsSection>
-        {isError ? (
-          <p className="py-3 text-center text-destructive text-sm" role="alert">
-            {t('settings.apiKeys.loadError')}
-          </p>
+        {isError && response ? <RefreshFailedNotice onRetry={() => void refetch()} retrying={isFetching} /> : null}
+        {isError && !response ? (
+          <QueryErrorState description={t('settings.apiKeys.loadError')} onRetry={() => void refetch()} retrying={isFetching} />
         ) : isPending ? (
           <CredentialRowsSkeleton actions={2} label={t('settings.apiKeys.loadingKeys')} />
         ) : keys.length === 0 ? (

@@ -5,6 +5,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { type LucideIcon, Palette, UserRound } from 'lucide-react';
+import { PageHeader } from '@/components/app/page-header';
 import { ConfigDirtyProvider, useSettingsDirtyGuard } from '@/components/project-settings/shared';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
@@ -42,10 +43,7 @@ function WorkspaceSettingsPage() {
   return (
     <ConfigDirtyProvider report={reportDirty}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
-        <div>
-          <h1 className="font-semibold text-3xl tracking-tight">{t('settings.title')}</h1>
-          <p className="mt-1 text-muted-foreground text-sm">{t('settings.subtitle')}</p>
-        </div>
+        <PageHeader description={t('settings.subtitle')} title={t('settings.title')} />
 
         <div className="flex min-w-0 flex-col gap-6 sm:flex-row sm:gap-8">
           <div className="sm:hidden">

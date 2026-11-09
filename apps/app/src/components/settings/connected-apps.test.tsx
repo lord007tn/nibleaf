@@ -9,7 +9,7 @@ const hooks = vi.hoisted(() => ({
   revoke: { isPending: false, mutate: vi.fn() },
 }));
 
-vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
+vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }), useT: () => (key: string) => key }));
 vi.mock('@/hooks/api', () => ({ useConnectedApps: hooks.useConnectedApps, useRevokeConnectedApp: () => hooks.revoke }));
 
 import { ConnectedApps, describeMcpActivity, relativeMinutes } from './connected-apps';
@@ -105,6 +105,26 @@ describe('ConnectedApps', () => {
     const container = await render();
     expect(container.querySelector('[aria-busy="true"] [role="status"]')?.textContent).toBe('settings.connectedApps.loading');
     expect(container.textContent).not.toContain('settings.connectedApps.empty');
+  });
+
+  it('offers a retry when the first load fails, and keeps cached rows when a refresh fails', async () => {
+    const refetch = vi.fn();
+    hooks.useConnectedApps.mockReturnValue({ data: undefined, isError: true, isFetching: false, isPending: false, refetch });
+    const container = await render();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('settings.connectedApps.loadError');
+    expect(container.textContent).not.toContain('settings.connectedApps.empty');
+    await act(async () => alert?.querySelector('button')?.click());
+    expect(refetch).toHaveBeenCalledOnce();
+
+    hooks.useConnectedApps.mockReturnValue({ data: [app], isError: true, isFetching: true, isPending: false, refetch });
+    await act(async () => roots[0]?.render(<ConnectedApps projectId="project-1" role={ADMIN} />));
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.querySelector('li')?.textContent).toContain('ChatGPT');
+    const notice = Array.from(container.querySelectorAll('[role="status"]')).find((element) =>
+      element.textContent?.includes('settings.credentials.refreshFailed'),
+    );
+    expect(notice?.querySelector('button')?.getAttribute('aria-busy')).toBe('true');
   });
 
   it('shows the plain sentence and keeps scopes in collapsed technical details', async () => {

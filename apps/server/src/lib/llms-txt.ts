@@ -13,10 +13,21 @@ import { defaultLanguage, pageDescription, type SiteSnapshot, type SnapshotPage 
  * them onto a custom domain with the same regex it uses for sitemap.xml.
  */
 
+/** Options for the documents served to a signed-in reader of a private site. */
+export interface LlmsOptions {
+  /** A private site: every page the viewer can read that isn't hidden. Search
+   *  indexing rules (noindex, canonical, allowIndex) are about public search
+   *  results and don't apply behind sign-in. */
+  privateSite?: boolean;
+}
+
 /** Every AI-consumable page: real pages only, not hidden, not noindex, not
  *  externally canonicalized, and not in a language whose own SEO disallows
- *  indexing. Same rules as the sitemap. */
-export const llmsIndexablePages = (snapshot: SiteSnapshot): SnapshotPage[] => {
+ *  indexing. Same rules as the sitemap. On a private site, every readable page
+ *  that isn't hidden (the snapshot is already limited to the viewer's grants,
+ *  and ungranted ancestors are navigation-only groups without a body). */
+export const llmsIndexablePages = (snapshot: SiteSnapshot, options: LlmsOptions = {}): SnapshotPage[] => {
+  if (options.privateSite) return snapshot.pages.filter((page) => page.kind === 'PAGE' && !page.hidden);
   const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
   return snapshot.pages.filter(
     (page) =>
@@ -58,8 +69,8 @@ const siteHeader = (snapshot: SiteSnapshot): string[] => {
 
 /** llms.txt: site title + description, then a Markdown link list of every
  *  indexable page (grouped per language when the site has more than one). */
-export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string): string => {
-  const pages = llmsIndexablePages(snapshot);
+export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
+  const pages = llmsIndexablePages(snapshot, options);
   const lines = siteHeader(snapshot);
 
   const languages = snapshot.project.languages;
@@ -80,8 +91,8 @@ export const buildLlmsTxt = (snapshot: SiteSnapshot, base: string): string => {
 
 /** llms-full.txt: the full Markdown of every indexable page, concatenated with
  *  a per-page header and source URL so consumers can attribute content. */
-export const buildLlmsFullTxt = (snapshot: SiteSnapshot, base: string): string => {
-  const sections = llmsIndexablePages(snapshot).map((page) => {
+export const buildLlmsFullTxt = (snapshot: SiteSnapshot, base: string, options: LlmsOptions = {}): string => {
+  const sections = llmsIndexablePages(snapshot, options).map((page) => {
     const header = [`# ${oneLine(page.title)}`, '', `Source: ${llmsPageUrl(snapshot, page, base)}`];
     const description = page.description?.trim();
     if (description) {

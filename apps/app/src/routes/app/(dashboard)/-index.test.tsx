@@ -42,12 +42,12 @@ vi.mock('@tanstack/react-router', () => ({
     'aria-label': ariaLabel,
   }: {
     to: string;
-    params: { projectId: string };
+    params?: { projectId: string };
     children?: ReactNode;
     className?: string;
     'aria-label'?: string;
   }) => (
-    <a aria-label={ariaLabel} className={className} href={to.replace('$projectId', params.projectId)}>
+    <a aria-label={ariaLabel} className={className} href={to.replace('$projectId', params?.projectId ?? '')}>
       {children}
     </a>
   ),
@@ -415,8 +415,31 @@ describe('dashboard request recovery', () => {
     mocks.analytics.mockReturnValue({ isPending: true, data: undefined, refetch: mocks.refetch });
     await act(async () => root.render(<DashboardPage />));
     const row = container.querySelector('a[href="/app/projects/project-1"]')?.closest('tr');
-    const viewsCell = row?.querySelectorAll('td')[3];
+    const viewsCell = [...(row?.querySelectorAll('td') ?? [])].at(-1);
     expect(viewsCell?.querySelector('[data-slot="skeleton"]')).not.toBeNull();
     expect(viewsCell?.textContent).toBe('');
+  });
+  it('shows each site status and when it last went live, and opens New site through the URL', async () => {
+    mocks.projects.mockReturnValue({
+      isPending: false,
+      data: [
+        { id: 'live', name: 'Acme', slug: 'acme', live: true, lastPublishedAt: '2026-11-01T10:00:00.000Z', _count: { pages: 3 }, livePublishes: 2 },
+        { id: 'draft', name: 'Handbook', slug: 'handbook', live: false, lastPublishedAt: null, _count: { pages: 1 }, livePublishes: 0 },
+      ],
+      refetch: mocks.refetch,
+    });
+    await act(async () => root.render(<DashboardPage />));
+    const row = (id: string) => container.querySelector(`a[href="/app/projects/${id}"]`)?.closest('tr');
+    expect(row('live')?.querySelector('[data-status]')?.getAttribute('data-status')).toBe('live');
+    expect(row('live')?.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-01T10:00:00.000Z');
+    expect(row('draft')?.querySelector('[data-status]')?.getAttribute('data-status')).toBe('notPublished');
+    expect(row('draft')?.querySelector('time')).toBeNull();
+    // The heading block is the shared page header, titled like the navigation.
+    expect(container.querySelector('[data-slot="page-header"] h1')?.textContent).toBe('nav.overview');
+
+    const create = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.newProject'));
+    await act(async () => create?.click());
+    const call = mocks.navigate.mock.calls.at(-1)?.[0] as { search: (prev: object) => object };
+    expect(call.search({ firstPublish: true })).toEqual({ firstPublish: true, newSite: true });
   });
 });

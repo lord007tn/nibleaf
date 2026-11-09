@@ -52,11 +52,14 @@ const setSiteCache = (ctx: Context<HonoEnv>, project: { config?: Record<string, 
   for (const [name, value] of Object.entries(deliveryCacheHeaders(isPrivate, PUBLIC_CACHE))) ctx.header(name, value);
 };
 
-/** Serve a SiteTextDocument (sitemap/robots/llms) with the right cacheability. */
+/** Serve a SiteTextDocument (sitemap/robots/llms/Markdown) with the right
+ *  cacheability. A private site's documents are a signed-in viewer's own:
+ *  never shared-cached and never indexed. */
 const textDocument = (ctx: Context<HonoEnv>, doc: SiteTextDocument, contentType: string) =>
   ctx.body(doc.body, 200, {
     'Content-Type': contentType,
     ...deliveryCacheHeaders(doc.isPrivate, PUBLIC_CACHE),
+    ...(doc.isPrivate ? { 'X-Robots-Tag': 'noindex, nofollow' } : {}),
   });
 
 const app = new Hono<HonoEnv>()
