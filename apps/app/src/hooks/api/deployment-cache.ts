@@ -11,6 +11,28 @@ interface PendingChangesLike {
   changes: ReadonlyArray<{ id: string; status: string }>;
 }
 
+type LiveCandidate = Pick<Deployment, 'id' | 'status' | 'version'>;
+
+/** Every READY row of the polled list (newest 50 attempts) and the live-only list, newest first, once each. */
+const liveRows = <T extends LiveCandidate>(attempts: readonly T[] | undefined, live: readonly T[] | undefined): T[] => {
+  const byId = new Map<string, T>();
+  for (const row of [...(attempts ?? []), ...(live ?? [])]) if (row.status === 'READY' && !byId.has(row.id)) byId.set(row.id, row);
+  return [...byId.values()].sort((left, right) => right.version - left.version);
+};
+
+/** What's live now: the newest READY publish in either list. The polled list sees a
+ *  just-finished publish first; the live-only list still has the live version
+ *  after more than 50 failed attempts. */
+export const newestLiveDeployment = <T extends LiveCandidate>(attempts: readonly T[] | undefined, live: readonly T[] | undefined): T | undefined =>
+  liveRows(attempts, live)[0];
+
+/** The version a rollback from `current` returns to: the newest READY publish older than it. */
+export const rollbackTarget = <T extends LiveCandidate>(
+  attempts: readonly T[] | undefined,
+  live: readonly T[] | undefined,
+  current: LiveCandidate | undefined,
+): T | undefined => liveRows(attempts, live).find((row) => row.id !== current?.id && (!current || row.version < current.version));
+
 export const isDeploymentInFlight = (status?: string): boolean => status === 'PENDING' || status === 'BUILDING';
 
 /** True while any publish of the site is queued or being prepared. */
@@ -69,6 +91,7 @@ export const syncPublishReceipt = (
   }
   void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.live(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
   // The site's own publish facts (how many went live, whether one is exportable).
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });

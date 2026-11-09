@@ -20,10 +20,12 @@ import {
   useGitWorkflow,
   useImportFromGit,
   useLanguages,
+  useLiveDeployments,
   useRotateGitWebhookSecret,
   useUpdateWorkspaceSettings,
   useWorkspaceSettings,
 } from '@/hooks/api';
+import { newestLiveDeployment } from '@/hooks/api/deployment-cache';
 import { useFormatters } from '@/lib/format';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
@@ -134,8 +136,11 @@ function GitPipeline({ projectId, git, onImport, importing }: { projectId: strin
   const t = useT();
   const { dateTime } = useFormatters();
   const { data: deployments } = useDeployments(projectId);
+  // What's live comes from the live-only list too: the attempts list is the
+  // newest 50, which a run of failures can fill.
+  const { data: liveDeployments } = useLiveDeployments(projectId);
   const latest: Deployment | undefined = deployments?.[0];
-  const latestReady = deployments?.find((d) => d.status === 'READY');
+  const latestReady = newestLiveDeployment(deployments, liveDeployments);
 
   const buildTone: StepTone =
     latest?.status === 'FAILED' ? 'failed' : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? 'active' : latest ? 'done' : 'idle';

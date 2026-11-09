@@ -388,7 +388,9 @@ beforeEach(() => {
     })),
     redirectIssues: state.redirectIssues,
   }));
-  mocks.listDeployments.mockImplementation(async () => [...state.deployments].sort((left, right) => right.version - left.version));
+  mocks.listDeployments.mockImplementation(async (_projectId: string, filter?: { status?: string }) =>
+    [...state.deployments].filter((item) => !filter?.status || item.status === filter.status).sort((left, right) => right.version - left.version),
+  );
   mocks.createDeployment.mockImplementation(async (_organizationId: string, _projectId: string, _userId: string, body: { message?: string }) => {
     const deployment = {
       id: `deployment-${state.deployments.length + 1}`,

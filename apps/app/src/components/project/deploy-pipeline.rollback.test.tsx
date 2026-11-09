@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   deployments: { data: [] as Deployment[] },
   domains: { data: [] as object[] },
+  live: { data: [] as Deployment[] },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
@@ -29,6 +30,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error, info: mocks.info } }));
 vi.mock('@/hooks/api', () => ({
   useDomains: () => mocks.domains,
+  useLiveDeployments: () => mocks.live,
   useRollback: () => ({ mutate: mocks.mutate, isPending: false }),
   useDeployments: (_id: string, options: object) => {
     mocks.query(options);
@@ -77,6 +79,7 @@ describe('rollback progress', () => {
     mocks.confirm.mockResolvedValue(true);
     mocks.deployments.data = [deployment('live-3', 3, 'READY'), deployment('old-2', 2, 'READY')];
     mocks.domains.data = [];
+    mocks.live.data = [];
     mocks.mutate.mockImplementation((_id, options) => {
       const queued = deployment('restore-4', 4, 'PENDING');
       mocks.deployments.data = [queued, ...mocks.deployments.data];
@@ -104,6 +107,23 @@ describe('rollback progress', () => {
     expect(addresses.some((address) => address?.startsWith('http') || address?.startsWith('/'))).toBe(true);
     if (live) expect(addresses).toContain('https://docs.example.com');
     else expect(addresses).not.toContain('https://docs.example.com');
+  });
+
+  it('offers a rollback to the previous live version even when it is older than the newest 50 attempts', async () => {
+    // v60 just went live after 49 failures; v3, the version before it, only the live-only list has.
+    mocks.deployments.data = [
+      deployment('live-60', 60, 'READY'),
+      ...Array.from({ length: 49 }, (_, index) => deployment(`f${index}`, 59 - index, 'FAILED')),
+    ];
+    mocks.live.data = [deployment('live-60', 60, 'READY'), deployment('old-3', 3, 'READY')];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    const button = [...container.querySelectorAll('button')].find((item) => item.textContent === 'deploy.rollback');
+    expect(button?.hasAttribute('disabled')).toBe(false);
+    await act(async () => button?.click());
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: 'deploy.rollback.confirmDesc:3' }));
+    expect(mocks.mutate).toHaveBeenCalledWith('old-3', expect.anything());
   });
 
   const queueRollback = async () => {

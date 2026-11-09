@@ -1,6 +1,14 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
-import { addressMayFollowTitle, newlyReadyDeployment, pageNeverPublished, pagePublishState, syncPublishReceipt } from './deployment-cache';
+import {
+  addressMayFollowTitle,
+  newestLiveDeployment,
+  newlyReadyDeployment,
+  pageNeverPublished,
+  pagePublishState,
+  rollbackTarget,
+  syncPublishReceipt,
+} from './deployment-cache';
 import { queryKeys } from './query-keys';
 
 const deployment = (id: string, status: 'PENDING' | 'BUILDING' | 'READY' | 'FAILED', version = 1) => ({ id, status, version });
@@ -174,5 +182,27 @@ describe('addressMayFollowTitle', () => {
     expect(addressMayFollowTitle('page-1', neverPublished, [deployment('d1', 'PENDING')])).toBe(false);
     expect(addressMayFollowTitle('page-1', neverPublished, [deployment('d1', 'BUILDING')])).toBe(false);
     expect(addressMayFollowTitle('page-1', neverPublished, [deployment('d1', 'FAILED')])).toBe(true);
+  });
+});
+
+describe('live versions beyond the newest 50 attempts', () => {
+  const failures = Array.from({ length: 50 }, (_, index) => deployment(`f${index}`, 'FAILED', 60 - index));
+
+  it('finds what is live in the live-only list when every listed attempt failed', () => {
+    expect(newestLiveDeployment(failures, [deployment('d3', 'READY', 3)])?.id).toBe('d3');
+    expect(newestLiveDeployment(failures, [])).toBeUndefined();
+  });
+
+  it('prefers a publish that just went live in the polled list over an older live-only answer', () => {
+    expect(newestLiveDeployment([deployment('d61', 'READY', 61), ...failures], [deployment('d3', 'READY', 3)])?.id).toBe('d61');
+  });
+
+  it('rolls back to the newest live publish older than the current one, from either list, never to itself or a failure', () => {
+    const current = deployment('d61', 'READY', 61);
+    const live = [current, deployment('d3', 'READY', 3), deployment('d2', 'READY', 2)];
+    expect(rollbackTarget([current, ...failures], live, current)?.id).toBe('d3');
+    expect(rollbackTarget([current, ...failures], [current], current)).toBeUndefined();
+    // Without a current deployment, the newest live one.
+    expect(rollbackTarget(failures, live, undefined)?.id).toBe('d61');
   });
 });
