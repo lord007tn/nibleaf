@@ -1911,7 +1911,6 @@
   "settings_exports_workflow_defaultschedulename": "Nightly archive",
   "settings_account_title": "Account",
   "settings_account_description": "Your personal profile across every workspace.",
-  "settings_account_changeavatar": "Change avatar",
   "settings_account_profileupdated": "Profile updated",
   "settings_account_name_label": "Name",
   "settings_account_name_error": "Could not save your name",
@@ -4048,5 +4047,6 @@
   "analytics_section_bysite": "By site",
   "analytics_search_write_languageserror": "Couldn't load this site's languages, so the draft's language can't be chosen yet.",
   "dashboard_ai_sessionexpired": "Your session ended. Sign in again to see this conversation.",
-  "dashboard_ai_signinagain": "Sign in again"
+  "dashboard_ai_signinagain": "Sign in again",
+  "settings_appearance_theme_system": "Match my device"
 }

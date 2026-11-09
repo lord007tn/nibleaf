@@ -1939,7 +1939,6 @@
   "settings_exports_workflow_defaultschedulename": "أرشيف ليلي",
   "settings_account_title": "الحساب",
   "settings_account_description": "ملفك الشخصي في جميع مساحات العمل.",
-  "settings_account_changeavatar": "تغيير الصورة الرمزية",
   "settings_account_profileupdated": "تم تحديث الملف الشخصي",
   "settings_account_name_label": "الاسم",
   "settings_account_name_error": "تعذّر حفظ اسمك",
@@ -4083,5 +4082,6 @@
   "analytics_section_bysite": "حسب الموقع",
   "analytics_search_write_languageserror": "تعذّر تحميل لغات هذا الموقع، لذا لا يمكن تحديد لغة المسودة بعد.",
   "dashboard_ai_sessionexpired": "انتهت جلستك. سجّل الدخول مجددًا لعرض هذه المحادثة.",
-  "dashboard_ai_signinagain": "تسجيل الدخول مجددًا"
+  "dashboard_ai_signinagain": "تسجيل الدخول مجددًا",
+  "settings_appearance_theme_system": "مطابقة جهازي"
 }

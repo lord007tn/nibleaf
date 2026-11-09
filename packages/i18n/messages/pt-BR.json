@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Arquivo noturno",
   "settings_account_title": "Conta",
   "settings_account_description": "Seu perfil pessoal em todos os espaços de trabalho.",
-  "settings_account_changeavatar": "Alterar avatar",
   "settings_account_profileupdated": "Perfil atualizado",
   "settings_account_name_label": "Nome",
   "settings_account_name_error": "Não foi possível salvar seu nome",
@@ -4049,5 +4048,6 @@
   "analytics_section_bysite": "Por site",
   "analytics_search_write_languageserror": "Não foi possível carregar os idiomas deste site, então o idioma do rascunho ainda não pode ser escolhido.",
   "dashboard_ai_sessionexpired": "Sua sessão terminou. Entre novamente para ver esta conversa.",
-  "dashboard_ai_signinagain": "Entrar novamente"
+  "dashboard_ai_signinagain": "Entrar novamente",
+  "settings_appearance_theme_system": "Igual ao meu dispositivo"
 }

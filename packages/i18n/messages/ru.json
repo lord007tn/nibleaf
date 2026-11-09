@@ -1864,7 +1864,6 @@
   "settings_exports_workflow_defaultschedulename": "Ночной архив",
   "settings_account_title": "Аккаунт",
   "settings_account_description": "Ваш личный профиль в каждом рабочем пространстве.",
-  "settings_account_changeavatar": "Сменить аватар",
   "settings_account_profileupdated": "Профиль обновлен",
   "settings_account_name_label": "Имя",
   "settings_account_name_error": "Не удалось сохранить ваше имя",
@@ -4069,5 +4068,6 @@
   "analytics_section_bysite": "По сайтам",
   "analytics_search_write_languageserror": "Не удалось загрузить языки сайта, поэтому язык черновика пока нельзя выбрать.",
   "dashboard_ai_sessionexpired": "Сеанс завершён. Войдите снова, чтобы увидеть этот разговор.",
-  "dashboard_ai_signinagain": "Войти снова"
+  "dashboard_ai_signinagain": "Войти снова",
+  "settings_appearance_theme_system": "Как на устройстве"
 }

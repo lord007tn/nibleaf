@@ -2092,7 +2092,6 @@ export const MESSAGE_IDS = {
   'settings.exports.workflow.defaultScheduleName': 'settings_exports_workflow_defaultschedulename',
   'settings.account.title': 'settings_account_title',
   'settings.account.description': 'settings_account_description',
-  'settings.account.changeAvatar': 'settings_account_changeavatar',
   'settings.account.profileUpdated': 'settings_account_profileupdated',
   'settings.account.name.label': 'settings_account_name_label',
   'settings.account.name.error': 'settings_account_name_error',
@@ -3939,6 +3938,7 @@ export const MESSAGE_IDS = {
   'analytics.search.write.languagesError': 'analytics_search_write_languageserror',
   'dashboard.ai.sessionExpired': 'dashboard_ai_sessionexpired',
   'dashboard.ai.signInAgain': 'dashboard_ai_signinagain',
+  'settings.appearance.theme.system': 'settings_appearance_theme_system',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

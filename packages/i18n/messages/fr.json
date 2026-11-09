@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Archives nocturnes",
   "settings_account_title": "Compte",
   "settings_account_description": "Votre profil personnel sur chaque espace de travail.",
-  "settings_account_changeavatar": "Changer d'avatar",
   "settings_account_profileupdated": "Profil mis à jour",
   "settings_account_name_label": "Nom",
   "settings_account_name_error": "Impossible d'enregistrer votre nom",
@@ -4048,5 +4047,6 @@
   "analytics_section_bysite": "Par site",
   "analytics_search_write_languageserror": "Impossible de charger les langues de ce site : la langue du brouillon ne peut pas encore être choisie.",
   "dashboard_ai_sessionexpired": "Votre session a expiré. Reconnectez-vous pour voir cette conversation.",
-  "dashboard_ai_signinagain": "Se reconnecter"
+  "dashboard_ai_signinagain": "Se reconnecter",
+  "settings_appearance_theme_system": "Comme mon appareil"
 }

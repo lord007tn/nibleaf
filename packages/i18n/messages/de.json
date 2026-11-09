@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Nächtliches Archiv",
   "settings_account_title": "Konto",
   "settings_account_description": "Ihr persönliches Profil in jedem Arbeitsbereich.",
-  "settings_account_changeavatar": "Avatar ändern",
   "settings_account_profileupdated": "Profil aktualisiert",
   "settings_account_name_label": "Name",
   "settings_account_name_error": "Ihr Name konnte nicht gespeichert werden",
@@ -4048,5 +4047,6 @@
   "analytics_section_bysite": "Nach Website",
   "analytics_search_write_languageserror": "Die Sprachen dieser Website konnten nicht geladen werden, daher lässt sich die Sprache des Entwurfs noch nicht wählen.",
   "dashboard_ai_sessionexpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um diese Unterhaltung zu sehen.",
-  "dashboard_ai_signinagain": "Erneut anmelden"
+  "dashboard_ai_signinagain": "Erneut anmelden",
+  "settings_appearance_theme_system": "Wie mein Gerät"
 }

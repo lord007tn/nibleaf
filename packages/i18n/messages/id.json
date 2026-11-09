@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "Arsip malam",
   "settings_account_title": "Akun",
   "settings_account_description": "Profil pribadi Anda di setiap ruang kerja.",
-  "settings_account_changeavatar": "Ubah avatar",
   "settings_account_profileupdated": "Profil diperbarui",
   "settings_account_name_label": "Nama",
   "settings_account_name_error": "Tidak dapat menyimpan nama Anda",
@@ -3983,5 +3982,6 @@
   "analytics_section_bysite": "Per situs",
   "analytics_search_write_languageserror": "Bahasa situs ini tidak dapat dimuat, jadi bahasa draf belum bisa dipilih.",
   "dashboard_ai_sessionexpired": "Sesi Anda telah berakhir. Masuk lagi untuk melihat percakapan ini.",
-  "dashboard_ai_signinagain": "Masuk lagi"
+  "dashboard_ai_signinagain": "Masuk lagi",
+  "settings_appearance_theme_system": "Ikuti perangkat saya"
 }

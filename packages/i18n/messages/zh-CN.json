@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "每晚存档",
   "settings_account_title": "账户",
   "settings_account_description": "您在每个工作空间中的个人资料。",
-  "settings_account_changeavatar": "更改头像",
   "settings_account_profileupdated": "个人资料已更新",
   "settings_account_name_label": "名称",
   "settings_account_name_error": "无法保存您的名字",
@@ -3983,5 +3982,6 @@
   "analytics_section_bysite": "按站点",
   "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。",
   "dashboard_ai_sessionexpired": "你的会话已结束。请重新登录以查看此对话。",
-  "dashboard_ai_signinagain": "重新登录"
+  "dashboard_ai_signinagain": "重新登录",
+  "settings_appearance_theme_system": "跟随设备"
 }
