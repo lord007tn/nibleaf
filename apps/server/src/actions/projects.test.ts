@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   deploymentGroupBy: vi.fn(),
   deploymentFindFirst: vi.fn(),
+  deploymentFindMany: vi.fn(),
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn() },
@@ -30,7 +31,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
-    deployment: { groupBy: mocks.deploymentGroupBy, findFirst: mocks.deploymentFindFirst },
+    deployment: { groupBy: mocks.deploymentGroupBy, findFirst: mocks.deploymentFindFirst, findMany: mocks.deploymentFindMany },
     $transaction: (run: (tx: typeof mocks.tx) => Promise<unknown>) => run(mocks.tx),
   },
 }));
@@ -63,35 +64,72 @@ describe('project page counts', () => {
     expect(projects[0]?._count).toEqual({ pages: 58, deployments: 3 });
   });
 
-  it('tells each site how many of its publishes went live (starter excluded) and whether one is running, in one query', async () => {
+  it("counts the user's live publishes (starter excluded), shows any publish in flight (starter included) and dates the version readers see", async () => {
     mocks.memberFindMany.mockResolvedValue([{ organizationId: 'org-a' }]);
     mocks.projectFindMany.mockResolvedValue([
       { id: 'live', _count: { pages: 2, deployments: 3 } },
       { id: 'building', _count: { pages: 1, deployments: 1 } },
       { id: 'starter-only', _count: { pages: 6, deployments: 1 } },
+      { id: 'starter-building', _count: { pages: 6, deployments: 1 } },
     ]);
-    mocks.deploymentGroupBy.mockResolvedValue([
-      { projectId: 'live', status: 'READY', _count: { _all: 2 } },
-      { projectId: 'building', status: 'BUILDING', _count: { _all: 1 } },
+    const v2CreatedAt = new Date('2026-11-07T08:30:00Z');
+    const starterCreatedAt = new Date('2026-09-01T10:00:00Z');
+    mocks.deploymentGroupBy.mockImplementation(async ({ by }: { by: string[] }) =>
+      by.includes('status')
+        ? [
+            { projectId: 'live', status: 'READY', _count: { _all: 2 } },
+            { projectId: 'building', status: 'BUILDING', _count: { _all: 1 } },
+            // The sign-up starter's automatic publish, still running.
+            { projectId: 'starter-building', status: 'PENDING', _count: { _all: 1 } },
+          ]
+        : [
+            { projectId: 'live', _max: { version: 2 } },
+            { projectId: 'starter-only', _max: { version: 1 } },
+          ],
+    );
+    // v1 of "live" completed on Nov 1, but readers see v2 (created Nov 7, completedAt not recorded):
+    // independent maxima would have reported Nov 1.
+    mocks.deploymentFindMany.mockResolvedValue([
+      { projectId: 'live', completedAt: null, createdAt: v2CreatedAt },
+      { projectId: 'starter-only', completedAt: null, createdAt: starterCreatedAt },
     ]);
 
     const projects = await listProjects('user-1');
 
-    expect(mocks.deploymentGroupBy).toHaveBeenCalledTimes(1);
     expect(mocks.deploymentGroupBy).toHaveBeenCalledWith({
       by: ['projectId', 'status'],
       where: {
-        projectId: { in: ['live', 'building', 'starter-only'] },
-        status: { in: ['READY', 'PENDING', 'BUILDING'] },
-        // The sign-up starter site's automatic first publish is not the user's.
-        OR: [{ version: { not: 1 } }, { commitMessage: null }, { commitMessage: { not: 'Publish starter site' } }],
+        projectId: { in: ['live', 'building', 'starter-only', 'starter-building'] },
+        OR: [
+          // The sign-up starter site's automatic first publish is not the user's...
+          { status: 'READY', OR: [{ version: { not: 1 } }, { commitMessage: null }, { commitMessage: { not: 'Publish starter site' } }] },
+          // ...but it is in flight like any other.
+          { status: { in: ['PENDING', 'BUILDING'] } },
+        ],
       },
       _count: { _all: true },
     });
-    expect(projects.map(({ id, livePublishes, publishing }) => ({ id, livePublishes, publishing }))).toEqual([
-      { id: 'live', livePublishes: 2, publishing: false },
-      { id: 'building', livePublishes: 0, publishing: true },
-      { id: 'starter-only', livePublishes: 0, publishing: false },
+    expect(mocks.deploymentGroupBy).toHaveBeenCalledWith({
+      by: ['projectId'],
+      where: { projectId: { in: ['live', 'building', 'starter-only', 'starter-building'] }, status: 'READY' },
+      _max: { version: true },
+    });
+    expect(mocks.deploymentFindMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { projectId: 'live', version: 2 },
+          { projectId: 'starter-only', version: 1 },
+        ],
+      },
+      select: { projectId: true, completedAt: true, createdAt: true },
+    });
+    expect(
+      projects.map(({ id, livePublishes, publishing, live, lastPublishedAt }) => ({ id, livePublishes, publishing, live, lastPublishedAt })),
+    ).toEqual([
+      { id: 'live', livePublishes: 2, publishing: false, live: true, lastPublishedAt: v2CreatedAt },
+      { id: 'building', livePublishes: 0, publishing: true, live: false, lastPublishedAt: null },
+      { id: 'starter-only', livePublishes: 0, publishing: false, live: true, lastPublishedAt: starterCreatedAt },
+      { id: 'starter-building', livePublishes: 0, publishing: true, live: false, lastPublishedAt: null },
     ]);
   });
 
