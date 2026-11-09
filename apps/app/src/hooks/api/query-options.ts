@@ -2,7 +2,7 @@ import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
 import { infiniteQueryOptions, keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
-import { syncPublishReceipt } from './deployment-cache';
+import { liveDeploymentsKey, syncPublishReceipt } from './deployment-cache';
 import type { ExportRun, ExportSchedule } from './exports';
 import type { GitWorkflowStatus } from './git-workflow';
 import { queryKeys } from './query-keys';
@@ -104,12 +104,30 @@ export const deploymentsQueryOptions = (projectId: string | undefined) =>
     queryFn: projectId
       ? async ({ client }) => {
           const previous = client.getQueryData<Deployment[]>(queryKeys.deployments.all(projectId));
-          const next = await getData<Deployment[]>(await api.app.projects[':projectId'].deployments.$get({ param: { projectId } }), 'deployments');
+          const next = await getData<Deployment[]>(
+            await api.app.projects[':projectId'].deployments.$get({ param: { projectId }, query: {} }),
+            'deployments',
+          );
           // Every read (hook, loader prefetch, poll) notices a publish that just went
           // live, so published-state UI never trusts the pre-publish answer.
           syncPublishReceipt(client, projectId, previous, next);
           return next;
         }
+      : skipToken,
+  });
+
+/** Publishes that went live, newest first: what's live now and what a rollback can
+ *  return to. The full list is the newest 50 attempts, so a run of failures can
+ *  push every live version out of it. */
+export const liveDeploymentsQueryOptions = (projectId: string | undefined) =>
+  queryOptions({
+    queryKey: liveDeploymentsKey(projectId ?? ''),
+    queryFn: projectId
+      ? async () =>
+          getData<Deployment[]>(
+            await api.app.projects[':projectId'].deployments.$get({ param: { projectId }, query: { status: 'READY' } }),
+            'deployments',
+          )
       : skipToken,
   });
 

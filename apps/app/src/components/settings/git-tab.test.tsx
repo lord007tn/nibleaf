@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
   legacy: null as Record<string, unknown> | null,
   workflow: null as Record<string, unknown> | null,
   workflowProps: [] as Array<{ prefill?: unknown; onConnected?: () => void }>,
+  deployments: [] as Array<Record<string, unknown>>,
+  live: [] as Array<Record<string, unknown>>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -25,7 +27,8 @@ vi.mock('./git-workflow', () => ({
 const idle = { mutate: vi.fn(), isPending: false };
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
-  useDeployments: () => ({ data: [] }),
+  useDeployments: () => ({ data: state.deployments }),
+  useLiveDeployments: () => ({ data: state.live }),
   useGitWorkflow: () => ({ data: state.workflow, isPending: false }),
   useImportFromGit: () => idle,
   useLanguages: () => ({ data: [] }),
@@ -47,6 +50,8 @@ describe('one Git surface per site', () => {
     state.confirm.mockReset();
     state.workflowProps = [];
     state.workflow = null;
+    state.deployments = [];
+    state.live = [];
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -86,6 +91,18 @@ describe('one Git surface per site', () => {
     expect(state.update.mock.calls[0]?.[0]).toMatchObject({
       git: expect.objectContaining({ connected: false, repo: 'https://github.com/team/docs.git' }),
     });
+  });
+
+  it('keeps the pipeline Live step on the live version after more than 50 failed attempts', async () => {
+    state.legacy = { connected: true, provider: 'gitlab', repo: 'group/docs', branch: 'main', path: 'docs' };
+    const attempt = (version: number, status: string) => ({ id: `d${version}`, version, status, pagesCount: 4, completedAt: null });
+    // The newest 50 attempts all failed; v3 is still live, and only the live-only list has it.
+    state.deployments = Array.from({ length: 50 }, (_, index) => attempt(60 - index, 'FAILED'));
+    state.live = [attempt(3, 'READY')];
+    await render();
+    expect(host.textContent).toContain('settings.git.pipeline.built:3|4');
+    expect(host.textContent).not.toContain('settings.git.pipeline.notLive');
+    expect(host.querySelector('a[href="/sites/site-1"]')).not.toBeNull();
   });
 
   it('keeps a GitLab legacy import running, read-only about switching, with its own stop', async () => {

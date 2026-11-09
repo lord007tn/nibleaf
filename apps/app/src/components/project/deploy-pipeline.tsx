@@ -6,7 +6,8 @@ import { useT } from '@nibleaf/i18n/react';
 import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { friendlyErrorMessage, useDeployments, useDomains, useRollback } from '@/hooks/api';
+import { friendlyErrorMessage, useDeployments, useDomains, useLiveDeployments, useRollback } from '@/hooks/api';
+import { rollbackTarget } from '@/hooks/api/deployment-cache';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
@@ -117,10 +118,15 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const failureDetails = failed ? (reviewRequired ? [t('publish.reviewChanged')] : publishFailureDetails(deployment)) : [];
   const active = activeStep(retrying ? 'PENDING' : status);
 
-  // The previous READY deployment is the rollback target.
-  const previousReady = (deployments.data ?? []).find(
-    (item) => item.status === 'READY' && item.id !== deployment?.id && (!deployment || item.version < deployment.version),
-  );
+  // The rollback target: the newest live publish before this one, from the
+  // live-only list too, so it survives more than 50 failed attempts.
+  const liveDeployments = useLiveDeployments(project.id, { enabled: open });
+  // Never from a list that is being re-read, or whose last re-read failed (the
+  // query keeps its old data then): a stale answer can miss a newer live version
+  // and pick an older target. The polled list still answers — a live version
+  // older than this one that it lists is the right target.
+  const trustedLive = liveDeployments.isError ? undefined : liveDeployments.data;
+  const previousReady = liveDeployments.isFetching ? undefined : rollbackTarget(deployments.data, trustedLive, deployment);
 
   // Keep polling the exact mutation result after the dialog closes. The
   // worker owns the READY receipt; the client consumes local attribution only
@@ -279,7 +285,7 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
             {!superseded ? (
               <details className="w-full text-sm text-muted-foreground">
                 <summary className="cursor-pointer">{t('deploy.rollback')}</summary>
-                <Button variant="outline" disabled={!previousReady} loading={rollback.isPending} onClick={doRollback}>
+                <Button variant="outline" disabled={!previousReady} loading={rollback.isPending || liveDeployments.isFetching} onClick={doRollback}>
                   <RotateCcw className="size-3.5" />
                   {t('deploy.rollback')}
                 </Button>

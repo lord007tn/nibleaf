@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   deployments: { data: [] as Deployment[] },
   domains: { data: [] as object[] },
+  live: { data: [] as Deployment[], isFetching: false, isError: false },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
@@ -29,6 +30,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error, info: mocks.info } }));
 vi.mock('@/hooks/api', () => ({
   useDomains: () => mocks.domains,
+  useLiveDeployments: () => mocks.live,
   useRollback: () => ({ mutate: mocks.mutate, isPending: false }),
   useDeployments: (_id: string, options: object) => {
     mocks.query(options);
@@ -77,6 +79,9 @@ describe('rollback progress', () => {
     mocks.confirm.mockResolvedValue(true);
     mocks.deployments.data = [deployment('live-3', 3, 'READY'), deployment('old-2', 2, 'READY')];
     mocks.domains.data = [];
+    mocks.live.data = [];
+    mocks.live.isFetching = false;
+    mocks.live.isError = false;
     mocks.mutate.mockImplementation((_id, options) => {
       const queued = deployment('restore-4', 4, 'PENDING');
       mocks.deployments.data = [queued, ...mocks.deployments.data];
@@ -104,6 +109,69 @@ describe('rollback progress', () => {
     expect(addresses.some((address) => address?.startsWith('http') || address?.startsWith('/'))).toBe(true);
     if (live) expect(addresses).toContain('https://docs.example.com');
     else expect(addresses).not.toContain('https://docs.example.com');
+  });
+
+  it('offers a rollback to the previous live version even when it is older than the newest 50 attempts', async () => {
+    // v60 just went live after 49 failures; v3, the version before it, only the live-only list has.
+    mocks.deployments.data = [
+      deployment('live-60', 60, 'READY'),
+      ...Array.from({ length: 49 }, (_, index) => deployment(`f${index}`, 59 - index, 'FAILED')),
+    ];
+    mocks.live.data = [deployment('live-60', 60, 'READY'), deployment('old-3', 3, 'READY')];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    const button = [...container.querySelectorAll('button')].find((item) => item.textContent === 'deploy.rollback');
+    expect(button?.hasAttribute('disabled')).toBe(false);
+    await act(async () => button?.click());
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: 'deploy.rollback.confirmDesc:3' }));
+    expect(mocks.mutate).toHaveBeenCalledWith('old-3', expect.anything());
+  });
+
+  it('waits for a fresh live list before offering a rollback target', async () => {
+    mocks.deployments.data = [
+      deployment('live-60', 60, 'READY'),
+      ...Array.from({ length: 49 }, (_, index) => deployment(`f${index}`, 59 - index, 'FAILED')),
+    ];
+    // Stale: v4 went live after v3 but this cached answer predates it.
+    mocks.live.data = [deployment('old-3', 3, 'READY')];
+    mocks.live.isFetching = true;
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    const rollbackButton = () => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('deploy.rollback'));
+    expect(rollbackButton()?.hasAttribute('disabled')).toBe(true);
+
+    mocks.live.data = [deployment('live-60', 60, 'READY'), deployment('v4', 4, 'READY'), deployment('old-3', 3, 'READY')];
+    mocks.live.isFetching = false;
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    await act(async () => rollbackButton()?.click());
+    expect(mocks.mutate).toHaveBeenCalledWith('v4', expect.anything());
+  });
+
+  it('ignores a live list whose re-read failed, answering from the polled list alone', async () => {
+    const failures = Array.from({ length: 48 }, (_, index) => deployment(`f${index}`, 58 - index, 'FAILED'));
+    // The re-read failed; the query still holds a stale answer that misses v59.
+    mocks.live.data = [deployment('old-3', 3, 'READY')];
+    mocks.live.isError = true;
+    const rollbackButton = () => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('deploy.rollback'));
+
+    // The polled list has no older live version: no target, not the stale v3.
+    mocks.deployments.data = [deployment('live-60', 60, 'READY'), ...failures];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    expect(rollbackButton()?.hasAttribute('disabled')).toBe(true);
+
+    // It lists v59: that is the right target.
+    mocks.deployments.data = [deployment('live-60', 60, 'READY'), deployment('v59', 59, 'READY'), ...failures];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    await act(async () => rollbackButton()?.click());
+    expect(mocks.mutate).toHaveBeenCalledWith('v59', expect.anything());
   });
 
   const queueRollback = async () => {

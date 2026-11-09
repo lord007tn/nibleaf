@@ -186,7 +186,8 @@ export const getDeploymentDto = async (projectId: string, deploymentId: string) 
 };
 
 export const getLatestDeploymentDto = async (projectId: string) => {
-  const deployment = (await listDeployments(projectId)).find((item) => item.status === 'READY');
+  // Live-only list: the newest attempts can all be failures after a live publish.
+  const [deployment] = await listDeployments(projectId, { status: 'READY' });
   return deployment
     ? {
         id: deployment.id,
