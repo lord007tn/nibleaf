@@ -3713,8 +3713,6 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
-  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
-  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -4047,5 +4045,8 @@
   "sites_sort_views": "Les plus vus",
   "analytics_chart_pageviewsallsites": "Pages vues sur tous les sites",
   "analytics_section_bysite": "Par site",
+  "analytics_search_write_languageserror": "Impossible de charger les langues de ce site : la langue du brouillon ne peut pas encore être choisie.",
+  "dashboard_ai_sessionexpired": "Votre session a expiré. Reconnectez-vous pour voir cette conversation.",
+  "dashboard_ai_signinagain": "Se reconnecter",
   "settings_appearance_theme_system": "Comme mon appareil"
 }

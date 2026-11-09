@@ -3648,8 +3648,6 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
-  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
-  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -3982,5 +3980,8 @@
   "sites_sort_views": "浏览最多",
   "analytics_chart_pageviewsallsites": "所有站点的页面浏览量",
   "analytics_section_bysite": "按站点",
+  "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。",
+  "dashboard_ai_sessionexpired": "你的会话已结束。请重新登录以查看此对话。",
+  "dashboard_ai_signinagain": "重新登录",
   "settings_appearance_theme_system": "跟随设备"
 }

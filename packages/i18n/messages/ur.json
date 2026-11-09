@@ -3704,8 +3704,6 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
-  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
-  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -4038,5 +4036,8 @@
   "sites_sort_views": "سب سے زیادہ دیکھی گئی",
   "analytics_chart_pageviewsallsites": "تمام سائٹس پر صفحات کے مشاہدات",
   "analytics_section_bysite": "سائٹ کے لحاظ سے",
+  "analytics_search_write_languageserror": "اس سائٹ کی زبانیں لوڈ نہیں ہو سکیں، اس لیے مسودے کی زبان ابھی منتخب نہیں کی جا سکتی۔",
+  "dashboard_ai_sessionexpired": "آپ کا سیشن ختم ہو گیا۔ یہ گفتگو دیکھنے کے لیے دوبارہ سائن ان کریں۔",
+  "dashboard_ai_signinagain": "دوبارہ سائن ان کریں",
   "settings_appearance_theme_system": "میرے آلے کے مطابق"
 }

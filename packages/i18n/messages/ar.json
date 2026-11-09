@@ -3748,8 +3748,6 @@
   "dashboard_ai_lastasked": "آخر مرّة طُرح فيها السؤال",
   "dashboard_ai_write": "اكتب مقالة عن هذا الموضوع",
   "dashboard_ai_view": "عرض المحادثة",
-  "dashboard_ai_copied": "نُسخ السؤال. أنشئ صفحة جديدة والصقه عنوانًا لها.",
-  "dashboard_ai_copyerror": "تعذّر نسخ السؤال. حدّده وانسخه قبل فتح المحرّر.",
   "dashboard_ai_capture": "حفظ الأسئلة لتحسين التوثيق",
   "dashboard_ai_capturehint": "تُزال البيانات الحساسة من النصوص المحفوظة، وتُحتفَظ بها للمدة المحدّدة على الخادم (90 يومًا افتراضيًا)، وتُحفَظ بموافقة الزائر عندما تكون مطلوبة.",
   "dashboard_ai_starters": "أسئلة مقترحة",
@@ -4082,5 +4080,8 @@
   "sites_sort_views": "الأكثر مشاهدة",
   "analytics_chart_pageviewsallsites": "مشاهدات الصفحات عبر جميع المواقع",
   "analytics_section_bysite": "حسب الموقع",
+  "analytics_search_write_languageserror": "تعذّر تحميل لغات هذا الموقع، لذا لا يمكن تحديد لغة المسودة بعد.",
+  "dashboard_ai_sessionexpired": "انتهت جلستك. سجّل الدخول مجددًا لعرض هذه المحادثة.",
+  "dashboard_ai_signinagain": "تسجيل الدخول مجددًا",
   "settings_appearance_theme_system": "مطابقة جهازي"
 }
