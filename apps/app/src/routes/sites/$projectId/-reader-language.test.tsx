@@ -151,21 +151,21 @@ describe('reader language and access', () => {
     expect(toggle?.getAttribute('aria-pressed')).toBe('false');
   });
 
-  it('tells a visitor to a private site how to get in, in the requested language', async () => {
+  it('shows the private site sign-in screen in its own name and the requested language', async () => {
+    const gate = { projectId: 'docs', name: 'Acme', mode: 'READERS', language: { code: 'en', direction: 'LTR' }, config: null };
     mocks.getSite.mockRejectedValue(
-      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, { reason: 'private' }),
+      new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, { reason: 'private', gate }),
     );
-    const container = await renderReader('/sites/docs/guide?lang=ar', 'h1');
-    expect(container.querySelector('h1')?.textContent).toBe('هذا التوثيق خاص');
-    // The screen's copy loads on demand: let the lazy chunk resolve and React commit it.
+    const container = await renderReader('/sites/docs/guide?lang=ar', 'div');
+    // The screen loads on demand: let the lazy chunk resolve and React commit it.
     await act(async () => {
       await vi.dynamicImportSettled();
     });
-    await vi.waitFor(() => expect(container.querySelector('a[href="/sign-in"]')).not.toBeNull());
-    expect(container.textContent).toContain('افتح رابط الدعوة');
+    await vi.waitFor(() => expect(container.querySelector('h1')?.textContent).toBe('سجّل الدخول إلى Acme'));
+    expect(container.querySelector('input[type="email"]')).not.toBeNull();
     expect(container.textContent).not.toContain('المحرر');
-    const signIn = container.querySelector<HTMLAnchorElement>('a[href="/sign-in"]');
-    expect(signIn?.textContent).toBe('تسجيل الدخول');
+    // Readers sign in on the site itself; there is no detour through the dashboard.
+    expect(container.querySelector('a[href="/sign-in"]')).toBeNull();
     expect(container.querySelector('[dir="rtl"]')).not.toBeNull();
   });
 

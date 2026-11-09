@@ -4,7 +4,7 @@ import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
 import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
-import { BookOpen, ExternalLink, Link2, Lock, Moon, Search, Sun } from 'lucide-react';
+import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { z } from 'zod';
 import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
@@ -18,8 +18,10 @@ import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
+import type { PrivateSiteGate } from '@/components/site/site-private-gate';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
 import { preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
+import { SiteSignOut } from '@/components/site/site-sign-out';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -28,14 +30,14 @@ import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
+import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
 import { readerFallbackHead, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
 import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 
 // Only visitors of a private site need this screen's copy.
-const SitePrivateNotice = lazy(() => import('@/components/site/site-private-notice'));
+const SitePrivateGate = lazy(() => import('@/components/site/site-private-gate'));
 
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
@@ -60,7 +62,16 @@ export const Route = createFileRoute('/sites/$projectId')({
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
       // The API names why the shell is hidden. A private site gets its own
       // sign-in screen; every other cause keeps the not-published screen.
-      return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'private' ? ('private' as const) : undefined };
+      // A private site's sign-in screen shows the site's own name, logo and colours.
+      if (error.reason === 'private') {
+        return {
+          site: null,
+          siteOrigin: customDomainOrigin(),
+          unavailable: 'private' as const,
+          gate: error.details?.gate as PrivateSiteGate | undefined,
+        };
+      }
+      return { site: null, siteOrigin: customDomainOrigin(), unavailable: undefined };
     }
   },
   headers: ({ loaderData }) => (loaderData ? siteRobotsHeaders(loaderData.site) : undefined),
@@ -71,7 +82,7 @@ export const Route = createFileRoute('/sites/$projectId')({
     return loaderData.site
       ? siteHead(loaderData.site, loaderData.siteOrigin)
       : // A private or unpublished site still gets a readable tab title, never indexed.
-        unavailableSiteHead(loaderData.unavailable, lang);
+        unavailableSiteHead(loaderData.unavailable, lang ?? ('gate' in loaderData ? loaderData.gate?.language?.code : undefined));
   },
 });
 
@@ -108,6 +119,7 @@ function SiteChrome() {
   const loaderData = Route.useLoaderData();
   const site = loaderData.site;
   const unavailable = 'unavailable' in loaderData ? loaderData.unavailable : undefined;
+  const privateGate = 'gate' in loaderData ? loaderData.gate : undefined;
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
   const announcement = useSiteLinkNavigation(projectId);
@@ -289,19 +301,9 @@ function SiteChrome() {
     const shelllessLocale = resolveLocale(lang) ?? 'en';
     if (unavailable === 'private') {
       return (
-        <div
-          className="grid min-h-screen place-items-center bg-background px-6 text-center"
-          lang={shelllessLocale}
-          dir={isRtlLocale(shelllessLocale) ? 'rtl' : 'ltr'}
-        >
-          <div className="flex max-w-sm flex-col items-center">
-            <Lock className="size-8 text-muted-foreground" aria-hidden />
-            <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('privateTitle')}</h1>
-            <Suspense fallback={null}>
-              <SitePrivateNotice lang={shelllessLocale} showSignIn={!isCustomDomainSite(projectId)} />
-            </Suspense>
-          </div>
-        </div>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <SitePrivateGate gate={privateGate} lang={lang} projectId={projectId} />
+        </Suspense>
       );
     }
     return (
@@ -707,7 +709,7 @@ function SiteChrome() {
               </main>
             }
             footer={
-              hasFooterContent || showBadge ? (
+              hasFooterContent || showBadge || site.signedIn ? (
                 <footer className="mt-auto border-border/60 border-t">
                   {hasFooterContent && footer ? (
                     <div
@@ -757,6 +759,8 @@ function SiteChrome() {
                       <MadeWithBadge lang={activeLanguage?.code} />
                     </div>
                   ) : null}
+                  {/* Signed in on the site itself (a reader, or a team member on a custom domain). */}
+                  {site.signedIn ? <SiteSignOut lang={activeLanguage?.code} projectId={projectId} /> : null}
                 </footer>
               ) : null
             }

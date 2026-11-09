@@ -21,7 +21,13 @@ vi.mock('@/hooks/api/ai-conversations', async (importOriginal) => ({
 }));
 vi.mock('@/services/auth-client', () => ({ useSession: vi.fn() }));
 vi.mock('@/lib/format', () => ({
-  useFormatters: () => ({ number: String, currency: (value: number) => `$${value}`, dateTime: String, relativeTime: () => 'recently' }),
+  useFormatters: () => ({
+    number: String,
+    currency: (value: number) => `$${value}`,
+    usd: (value: number) => `$${value}`,
+    dateTime: String,
+    relativeTime: () => 'recently',
+  }),
 }));
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: ReturnType<typeof createRoot>[] = [];

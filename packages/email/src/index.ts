@@ -179,7 +179,7 @@ export async function renderReaderInvitationEmail({
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       action: { label: t('email.readerInvite.action'), url: activationUrl },
-      detail: t('email.readerInvite.expiry', params),
+      detail: `${t('email.readerInvite.expiry', params)} ${t('email.readerInvite.later')}`,
       language,
       message: t('email.readerInvite.message', params),
       preview: t('email.readerInvite.preview', params),
@@ -188,6 +188,38 @@ export async function renderReaderInvitationEmail({
   );
   return {
     subject: t('email.readerInvite.subject', params)
+      .replace(/[\r\n]+/g, ' ')
+      .trim(),
+    html,
+    text,
+  };
+}
+
+/** A one-time code for signing in on a private published site. */
+export async function renderSiteSignInCodeEmail({
+  code,
+  language = DEFAULT_EMAIL_LANGUAGE,
+  projectName,
+}: {
+  code: string;
+  language?: EmailLanguage;
+  projectName: string;
+}) {
+  const t = createEmailTranslator(language);
+  const params = { projectName };
+  const message = t('email.siteSignIn.message', params);
+  const { html, text } = await renderEmail(
+    createElement(TransactionalEmail, {
+      code,
+      detail: t('email.otp.expiry', { minutes: 10 }),
+      language,
+      message,
+      preview: message,
+      title: t('email.siteSignIn.title', params),
+    }),
+  );
+  return {
+    subject: t('email.siteSignIn.subject', params)
       .replace(/[\r\n]+/g, ' ')
       .trim(),
     html,
