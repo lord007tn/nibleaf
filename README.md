@@ -298,7 +298,7 @@ Orama · optional Qdrant and ClickHouse · shadcn/ui (Base UI) · Tailwind CSS v
 
 ## 💻 Local development
 
-Prerequisites: **Node ≥ 22**, **pnpm 10**, **Docker**.
+Prerequisites: **Node ≥ 26.13.0**, **pnpm 10**, **Docker**.
 
 ```bash
 pnpm install

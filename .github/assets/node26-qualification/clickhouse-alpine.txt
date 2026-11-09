@@ -1,0 +1,62 @@
+
+ RUN  v5.0.5 /app/packages/clickhouse
+
+ ✓ src/ai-conversations.test.ts (27 tests) 135ms
+ ✓ src/ai-conversations.integration.test.ts (1 test) 1662ms
+   ✓ AI archive SQL integration (1)
+     ✓ aggregates isolated fixtures, filters and pages without leaking deleted content 1661ms
+ ✓ src/insights/integration.test.ts (9 tests) 6701ms
+   ✓ insights over real deduplicated facts (9)
+     ✓ executes every SQL report without degradation 746ms
+     ✓ counts deduplicated drafting events by connection with exact period and tenant scope 1809ms
+     ✓ answers all seven contracts, excludes bots, settles bursts and computes CTR 802ms
+     ✓ fills all count series and aligns empty previous buckets 562ms
+     ✓ uses visit arrival channels/referrers, filters non-AI bots and retains freshness after raw erasure 530ms
+     ✓ hides every term below k distinct visits and respects a later opt-out 1488ms
+ ✓ src/integration.test.ts (5 tests) 2371ms
+   ✓ ClickHouse schema integration (4)
+     ✓ deduplicates retries in raw facts and rollups 1514ms
+     ✓ reconciles a closed UTC period with exact coverage and tenant isolation 367ms
+ ✓ src/initialization-boot.test.ts (9 tests) 793ms
+   ✓ background schema lifecycle (9)
+     ✓ bounds a stalled health probe independently of the transport timeout 753ms
+ ✓ src/usage.test.ts (9 tests) 24ms
+ ✓ src/classifiers.test.ts (49 tests) 32ms
+ ✓ src/events.test.ts (9 tests) 30ms
+docker : stderr | src/client.test.ts > ClickHouse ingestion > retains a failed 
+batch for a later retry without reopening capacity
+At line:2 char:1
++ docker run --rm --network nibleaf-runtime_default --entrypoint node - ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (stderr...pening capacity:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+{"timestamp":"2026-11-08T23:04:31.305Z","level":"warn","service":"nibleaf","environment":"production","packag
+e":"clickhouse","error":{"status":400},"eventCount":1,"message":"ClickHouse analytics insert failed"}
+
+ ✓ src/client.test.ts (7 tests) 75ms
+ ✓ src/insights/reader.test.ts (5 tests) 48ms
+ ✓ src/insights/cache.test.ts (2 tests) 14ms
+ ✓ src/initialization.test.ts (3 tests) 15ms
+ ✓ src/migrations.test.ts (1 test) 12ms
+ ✓ src/privacy.test.ts (2 tests) 6ms
+ ✓ src/insights/period.test.ts (5 tests) 20ms
+stdout | src/initialization-lock.postgres.test.ts > serializes separate migration attempts through real Postgres and releases after failure
+{"timestamp":"2026-11-08T23:04:33.076Z","level":"info","service":"nibleaf","environment":"production","package":"clickhouse","lifecycle":"initialization","applied":[1,2,3,2026110601,2026110602,2026110603,2026110604,2026110605,2026110606,2026110607,2026110608,2026110801],"message":"ClickHouse migrations and retention settings applied"}
+
+stdout | src/initialization-lock.postgres.test.ts > serializes separate migration attempts through real Postgres and releases after failure
+{"timestamp":"2026-11-08T23:04:33.083Z","level":"info","service":"nibleaf","environment":"production","package":"clickhouse","lifecycle":"initialization","applied":[1,2,3,2026110601,2026110602,2026110603,2026110604,2026110605,2026110606,2026110607,2026110608,2026110801],"message":"ClickHouse migrations and retention settings applied"}
+
+ ✓ src/initialization-lock.postgres.test.ts (1 test) 381ms
+   ✓ serializes separate migration attempts through real Postgres and releases after failure 380ms
+ ✓ src/insights/availability.test.ts (3 tests) 20ms
+ ✓ src/queries.test.ts (1 test) 16ms
+
+ Test Files  18 passed (18)
+      Tests  148 passed (148)
+   Start at  23:04:17
+   Duration  16.37s (tests 85%, import 11%, transform 3%)
+
+    Isolate  18 workers spawned · ~92ms startup each (spawn + environment, per file)
+             at least ~1.56s faster with isolate: false — reuses workers across files instead of one per file
+

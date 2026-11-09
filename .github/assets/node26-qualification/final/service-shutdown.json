@@ -1,0 +1,26 @@
+{
+  "project": "nibleaf-runtime",
+  "observedAt": "2026-11-09T00:59:54.207Z",
+  "receipts": [
+    {
+      "service": "server",
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "composeStopWindowSeconds": 30,
+      "elapsedMs": 606,
+      "exitCode": 0,
+      "oomKilled": false,
+      "shutdownLogs": "{\"timestamp\":\"2026-11-09T00:59:52.606Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"signal\":\"SIGTERM\",\"message\":\"shutting down API\"}"
+    },
+    {
+      "service": "worker",
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "composeStopWindowSeconds": 30,
+      "elapsedMs": 616,
+      "exitCode": 0,
+      "oomKilled": false,
+      "shutdownLogs": "{\"timestamp\":\"2026-11-09T00:59:53.495Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"signal\":\"SIGTERM\",\"message\":\"shutting down worker\"}\n{\"timestamp\":\"2026-11-09T00:59:53.502Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"search\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.502Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"search\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.502Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"publish\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.502Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"publish\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.504Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"erasure\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.504Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"erasure\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"git\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"git\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"analytics\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"analytics\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"export\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.505Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"export\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.506Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"email\",\"connection\":\"blocking\",\"event\":\"close\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.506Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"queue\":\"email\",\"connection\":\"blocking\",\"event\":\"end\",\"message\":\"Worker connection changed\"}\n{\"timestamp\":\"2026-11-09T00:59:53.506Z\",\"level\":\"info\",\"service\":\"nibleaf\",\"environment\":\"production\",\"component\":\"bullmq\",\"message\":\"All workers closed\"}"
+    }
+  ]
+}

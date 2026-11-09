@@ -35,7 +35,7 @@ export const packageJsonTemplate = ({ templateId }: ThemeRepositoryTemplateOptio
     devDependencies: {
       '@inlang/paraglide-js': '2.24.1',
       '@tailwindcss/vite': '^4.3.3',
-      '@types/node': '^22.19.21',
+      '@types/node': '^26.6.6',
       '@types/react': '^19.2.17',
       '@types/react-dom': '^19.2.3',
       '@vitejs/plugin-react': '^6.1.0',

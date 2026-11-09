@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { prisma } from '@nibleaf/database';
+import { getQdrantClient } from '@nibleaf/qdrant';
+
+const projectId = 'runtime-390-final-operator-project';
+const run = await prisma.searchIndexRun.findFirstOrThrow({
+  where: { projectId }, orderBy: { createdAt: 'desc' },
+  select: { id: true, status: true, deploymentId: true, expectedChunks: true, indexedChunks: true, expectedPages: true, indexedPages: true, embeddedChunks: true, reusedChunks: true, failedChunks: true },
+});
+assert.equal(run.status, 'READY');
+assert.equal(run.indexedChunks, 2);
+assert.equal(run.reusedChunks, 2);
+assert.equal(run.embeddedChunks, 0);
+assert.equal(run.failedChunks, 0);
+const points = await getQdrantClient().listIndexedPoints({ must: [{ key: 'project_id', match: { value: projectId } }, { key: 'deployment_id', match: { value: run.deploymentId } }] });
+assert.equal(points.length, 2);
+assert.deepEqual(points.map((point) => point.payload.language).sort(), ['ar', 'en']);
+const aliases = (await (await fetch(`${process.env.QDRANT_URL}/aliases`)).json()).result.aliases;
+const alias = aliases.find((item) => item.alias_name === 'nibleaf_runtime_390_final_alias_switch');
+assert.equal(alias?.collection_name, 'nibleaf_runtime_390_final_alias_switch_v2_64');
+const collections = (await (await fetch(`${process.env.QDRANT_URL}/collections`)).json()).result.collections.map((item) => item.name);
+for (const name of ['nibleaf_runtime_390_final_alias_switch_v1_64', 'nibleaf_runtime_390_final_alias_switch_v2_64']) assert.ok(collections.includes(name));
+const hosts = readFileSync('/etc/hosts', 'utf8');
+for (const host of ['openrouter.ai', 'api.openai.com']) assert.ok(hosts.split('\n').some((line) => line.startsWith('127.0.0.1') && line.split(/\s+/).includes(host)));
+console.log(JSON.stringify({ sourceRevision: process.env.NIBLEAF_REVISION, projectId, run, indexedPoints: points.length, languages: ['ar', 'en'], alias, bothDummyCollectionsRetained: true, embeddingMode: 'reused seeded synthetic vectors; no live-provider acceptance', providerTrafficBlockedByHosts: true }));
+await prisma.$disconnect();

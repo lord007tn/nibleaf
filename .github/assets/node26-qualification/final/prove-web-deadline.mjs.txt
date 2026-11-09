@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+const image = 'nibleaf-runtime:390-final';
+const name = `nibleaf-runtime-web-deadline-${randomUUID()}`;
+const source = `import { writeFileSync } from 'node:fs';
+writeFileSync('/tmp/web-deadline-fixture.mjs', "process.on('SIGTERM', () => {}); console.log('FIXTURE_READY'); setInterval(() => {}, 1000);");
+process.argv[2] = '/tmp/web-deadline-fixture.mjs';
+await import('/app/scripts/graceful-web-service.mjs');`;
+const id = execFileSync('docker', ['run','--detach','--init','--name',name,'--label','com.docker.compose.project=nibleaf-runtime','--entrypoint','node',image,'--input-type=module','-e',source], { encoding:'utf8' }).trim();
+try {
+  const before = JSON.parse(execFileSync('docker',['inspect',id],{encoding:'utf8'}))[0];
+  assert.equal(before.Config.Labels['com.docker.compose.project'],'nibleaf-runtime');
+  for(let attempt=0;attempt<50;attempt++){
+    const ready=execFileSync('docker',['logs',id],{encoding:'utf8',stdio:['ignore','pipe','pipe']}).includes('FIXTURE_READY');
+    if(ready) break;
+    if(attempt===49) throw new Error('Deadline fixture failed to become ready');
+    await new Promise(resolve => setTimeout(resolve,100));
+  }
+  const started=performance.now();
+  execFileSync('docker',['kill','--signal=SIGTERM',id],{stdio:'pipe'});
+  const waiter=spawn('docker',['wait',id],{stdio:['ignore','pipe','pipe']});
+  let output='';waiter.stdout.on('data',chunk=>{output+=chunk;});
+  const timer=setTimeout(()=>waiter.kill(),12000);
+  const [code]=await once(waiter,'exit');clearTimeout(timer);
+  const elapsedMs=Math.round(performance.now()-started);
+  assert.equal(code,0); assert.equal(output.trim(),'1');
+  assert.ok(elapsedMs>=8500 && elapsedMs<11000,`Unexpected default deadline: ${elapsedMs}ms`);
+  const logs = spawn('docker',['logs',id],{stdio:['ignore','pipe','pipe']});
+  let combined='';for(const stream of [logs.stdout,logs.stderr])stream.on('data',chunk=>{combined+=chunk;});await once(logs,'exit');
+  assert.match(combined,/shutdown deadline; sending SIGKILL/);
+  const report={image,imageId:before.Image,sourceRevision:before.Config.Labels['org.opencontainers.image.revision'],elapsedMs,exitCode:1,logs:combined.trim(),scope:'Exact shipped web wrapper with a synthetic SIGTERM-ignoring child. No source overlay or custom timeout environment.'};
+  writeFileSync(process.argv[2],JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
+} finally { execFileSync('docker',['rm','--force',id],{stdio:'pipe'}); }
