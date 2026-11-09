@@ -4055,5 +4055,6 @@
   "nav_sitesloaderror": "No se pudieron actualizar los sitios",
   "command_pagesloaderror": "No se pudieron actualizar las páginas",
   "notifications_bellunreadlabel": "Abrir notificaciones. Sin leer: {count}",
-  "notifications_unread": "Sin leer"
+  "notifications_unread": "Sin leer",
+  "admin_sidebardescription": "Navega por los clientes, sitios y operaciones de la plataforma."
 }

@@ -103,7 +103,7 @@ describe('CommandPalette', () => {
       ),
     );
     expect(document.querySelector('[data-slot="dialog-content"]')).toBeNull();
-    const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="command.dialog.title"]');
+    const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="dashboard.search.placeholder"]');
     expect(trigger).not.toBeNull();
     await act(async () => trigger?.click());
     expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Nibleaf Docs');

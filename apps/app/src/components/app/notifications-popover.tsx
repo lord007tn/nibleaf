@@ -111,9 +111,9 @@ export function NotificationsPopover() {
       />
       <PopoverContent align="end" className="w-90 gap-0 p-0">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-border border-b px-4 py-2.5">
-          <span className="font-semibold text-sm">{t('notifications.title')}</span>
+          <span className="min-w-0 font-semibold text-sm [overflow-wrap:anywhere]">{t('notifications.title')}</span>
           <Button
-            className="h-7 px-2 text-xs"
+            className="h-auto min-w-0 max-w-full shrink px-2 text-xs [overflow-wrap:anywhere]"
             disabled={!hasUnread}
             loading={markingAll}
             onClick={() => markRead.mutate({ all: true })}
@@ -123,7 +123,7 @@ export function NotificationsPopover() {
             {t('notifications.markAllRead')}
           </Button>
         </div>
-        <div aria-busy={isPending && !isError ? true : undefined} className="min-h-0 max-h-96 overflow-y-auto p-1.5">
+        <div aria-busy={isPending && !isError ? true : undefined} className="min-h-0 max-h-96 shrink-0 overflow-y-auto p-1.5">
           {isError && !inbox ? (
             <div className="p-1.5">
               <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} />

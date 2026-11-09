@@ -28,6 +28,7 @@ describe('Paraglide message catalogs', () => {
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s localizes shell recovery and accessible names', (locale) => {
     const catalog = loadCatalog(locale);
     for (const key of [
+      'admin_sidebardescription',
       'nav_sidebartitle',
       'nav_sidebardescription',
       'nav_breadcrumb',

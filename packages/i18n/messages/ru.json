@@ -4076,5 +4076,6 @@
   "nav_sitesloaderror": "Не удалось обновить сайты",
   "command_pagesloaderror": "Не удалось обновить страницы",
   "notifications_bellunreadlabel": "Открыть уведомления. Непрочитанных: {count}",
-  "notifications_unread": "Не прочитано"
+  "notifications_unread": "Не прочитано",
+  "admin_sidebardescription": "Навигация по клиентам, сайтам и операциям платформы."
 }

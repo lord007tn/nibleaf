@@ -4090,5 +4090,6 @@
   "nav_sitesloaderror": "تعذّر تحديث المواقع",
   "command_pagesloaderror": "تعذّر تحديث الصفحات",
   "notifications_bellunreadlabel": "فتح الإشعارات. غير المقروءة: {count}",
-  "notifications_unread": "غير مقروء"
+  "notifications_unread": "غير مقروء",
+  "admin_sidebardescription": "تنقّل بين عملاء المنصة ومواقعها وعملياتها."
 }

@@ -83,10 +83,13 @@ it.each(['en', 'ar', 'de'])('passes the localized breadcrumb name in both shells
   await render('/app/sites', false);
   const header = document.querySelector('header');
   const workspaceClass = header?.className;
-  const searchClass = header?.querySelector(`button[aria-label="${locale}:command.dialog.title"]`)?.className;
+  const searchClass = header?.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`)?.className;
+  const search = header?.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`);
+  expect(search).not.toBeNull();
+  expect(search?.getAttribute('aria-label')).toBe(search?.querySelector('span')?.textContent);
   expect(document.querySelector('[data-slot="breadcrumb"]')?.getAttribute('aria-label')).toBe(`${locale}:nav.breadcrumb`);
   await act(async () => root.render(<ProjectLayout projectId="fixture">Content</ProjectLayout>));
   expect(document.querySelector('header')?.className).toBe(workspaceClass);
-  expect(document.querySelector(`button[aria-label="${locale}:command.dialog.title"]`)?.className).toBe(searchClass);
+  expect(document.querySelector(`button[aria-label="${locale}:dashboard.search.placeholder"]`)?.className).toBe(searchClass);
   expect(document.querySelector('[data-slot="breadcrumb"]')?.getAttribute('aria-label')).toBe(`${locale}:nav.breadcrumb`);
 });

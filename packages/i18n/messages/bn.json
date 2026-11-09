@@ -3990,5 +3990,6 @@
   "nav_sitesloaderror": "সাইটগুলো রিফ্রেশ করা যায়নি",
   "command_pagesloaderror": "পৃষ্ঠাগুলো রিফ্রেশ করা যায়নি",
   "notifications_bellunreadlabel": "বিজ্ঞপ্তি খুলুন। অপঠিত: {count}",
-  "notifications_unread": "অপঠিত"
+  "notifications_unread": "অপঠিত",
+  "admin_sidebardescription": "প্ল্যাটফর্মের গ্রাহক, সাইট ও কার্যক্রমে যান।"
 }

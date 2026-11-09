@@ -86,3 +86,15 @@ The owner-approved isolated `nibleaf-dashui-gpt` infrastructure used +220 ports 
 Cleanup review covered the task diff against `72699708`. Recovery controls now sit outside the command listbox, and breadcrumb ancestors use exact route matching. Existing primitives/query hooks were reused; no remaining actionable cleanup findings were identified.
 
 L1 (repeated New site deep-link intent on the already-mounted sites/index routes) remains a follow-up in the excluded files.
+
+## CodeRabbit follow-up
+
+All five review findings were reproduced or source-confirmed and fixed: search label/name parity, stable retry focus through fetch and recovery, wrapped notification header text, localized admin mobile labels, and a fallback for blank sidebar titles. The admin description is translated in all 12 locales; the existing admin title is reused.
+
+The isolated German header fixture uses the real Button, source component classes and built CSS. Headless Chrome reproduces the before overflow and verifies fitting text plus the final notification's scroll reachability at 320/240px with doubled text size, and 720px with normal text. This is CSS viewport/text-size emulation, not native zoom controls or a fresh full-app journey. Run after building: `node .github/assets/dashboard-shell/notification-wrap.test.mjs [before-ref]`.
+
+| German header, 320px with doubled text size | Before | After |
+| --- | --- | --- |
+| Isolated component layout | ![Before German notification header](before-review-notifications-de-320-text-zoom.png) | ![After German notification header](after-review-notifications-de-320-text-zoom.png) |
+
+Fresh local checks passed: 9 app/admin/design-system typecheck tasks; lint; dead-code; app 2,985 passed and 14 existing skips; admin 29 passed; i18n 145 passed; analyzed build and bundle boundaries. Against main d8970e64, docs gzip L9 is 346,016 -> 345,897 bytes (-119), index 345,193 -> 345,075 (-118). Cleanup review found no additional actionable issues.

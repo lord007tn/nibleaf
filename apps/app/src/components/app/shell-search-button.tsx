@@ -11,7 +11,7 @@ export function ShellSearchButton() {
   const searchShortcut = useSearchShortcutLabel();
   return (
     <Button
-      aria-label={t('command.dialog.title')}
+      aria-label={t('dashboard.search.placeholder')}
       className="ms-auto h-8 shrink-0 gap-2 px-2.5 text-muted-foreground md:w-40 md:px-3 xl:w-56 pointer-coarse:h-10 pointer-coarse:min-w-10"
       onClick={() => openPalette?.()}
       size="sm"

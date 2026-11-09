@@ -4046,5 +4046,6 @@
   "nav_sitesloaderror": "سائٹس ریفریش نہیں ہو سکیں",
   "command_pagesloaderror": "صفحات ریفریش نہیں ہو سکے",
   "notifications_bellunreadlabel": "اطلاعات کھولیں۔ غیر پڑھی ہوئی: {count}",
-  "notifications_unread": "غیر پڑھی ہوئی"
+  "notifications_unread": "غیر پڑھی ہوئی",
+  "admin_sidebardescription": "پلیٹ فارم کے صارفین، سائٹس اور کارروائیوں میں جائیں۔"
 }

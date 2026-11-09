@@ -16,9 +16,10 @@ const mocks = vi.hoisted(() => ({
   requestedProjects: [] as string[],
   items: undefined as NotificationItem[] | undefined,
   count: 1,
+  translations: {} as Record<string, string>,
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
-  useT: () => (key: string, vars?: { count: string }) => (vars ? `${key}: ${vars.count}` : key),
+  useT: () => (key: string, vars?: { count: string }) => (vars ? `${key}: ${vars.count}` : (mocks.translations[key] ?? key)),
   useLocale: () => ({ t: (key: string) => key, locale: 'en' }),
 }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
@@ -74,6 +75,28 @@ beforeEach(() => {
   mocks.requestedProjects = [];
   mocks.items = undefined;
   mocks.count = 1;
+  mocks.translations = {};
+});
+
+it('allows the long German header action and title to shrink and wrap', async () => {
+  mocks.translations = { 'notifications.title': 'Benachrichtigungen', 'notifications.markAllRead': 'Alles als gelesen markieren' };
+  const host = document.createElement('div');
+  document.body.append(host);
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<NotificationsPopover />));
+    await act(() => host.querySelector<HTMLButtonElement>('button')?.click());
+    const action = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Alles als gelesen markieren'));
+    expect(action).toBeDefined();
+    for (const token of ['h-auto', 'min-w-0', 'max-w-full', 'shrink', '[overflow-wrap:anywhere]'])
+      expect(action?.classList.contains(token)).toBe(true);
+    expect(action?.classList.contains('h-7')).toBe(false);
+    const title = [...document.querySelectorAll('span')].find((span) => span.textContent === 'Benachrichtigungen');
+    expect(title?.classList.contains('[overflow-wrap:anywhere]')).toBe(true);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+  }
 });
 
 it.each([

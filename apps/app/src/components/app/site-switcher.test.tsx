@@ -109,3 +109,31 @@ it('retains cached site choices and the current name on a background error', asy
   expect(item('Cached site')).toBeDefined();
   expect(document.querySelector('[role="alert"]')).not.toBeNull();
 });
+
+it('moves focus to Workspace before retrying a cached error and retains it after recovery', async () => {
+  const cached = [{ id: 'site-a', name: 'Cached site' }];
+  const refetch = vi.fn(() => expect(document.activeElement).toBe(item('nav.workspace')));
+  mocks.useProjects.mockReturnValue({ data: cached, isError: true, refetch });
+  await render('site-a');
+  const retry = item('error.tryAgain');
+  await act(async () => retry?.focus());
+  expect(document.activeElement).toBe(retry);
+  await act(async () => retry?.click());
+  expect(refetch).toHaveBeenCalledOnce();
+  for (const state of [
+    { data: cached, isError: true, isFetching: true, refetch },
+    { data: cached, isError: false, isFetching: false, refetch },
+  ]) {
+    mocks.useProjects.mockReturnValue(state);
+    await act(async () =>
+      root.render(
+        <SidebarProvider>
+          <Harness projectId="site-a" />
+        </SidebarProvider>,
+      ),
+    );
+    expect(document.querySelector('[role="menu"]')?.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(item('nav.workspace'));
+  }
+  expect(mocks.navigate).not.toHaveBeenCalled();
+});

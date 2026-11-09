@@ -4055,5 +4055,6 @@
   "nav_sitesloaderror": "Websites konnten nicht aktualisiert werden",
   "command_pagesloaderror": "Seiten konnten nicht aktualisiert werden",
   "notifications_bellunreadlabel": "Benachrichtigungen öffnen. Ungelesen: {count}",
-  "notifications_unread": "Ungelesen"
+  "notifications_unread": "Ungelesen",
+  "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb."
 }

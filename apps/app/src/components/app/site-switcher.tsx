@@ -12,7 +12,7 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@ni
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { InlineSkeleton } from '@/components/inline-skeleton';
 import { useProjects } from '@/hooks/api';
 
@@ -21,6 +21,7 @@ const subscribeToHydration = () => () => undefined;
 export function SiteSwitcher({ projectId }: { projectId?: string }) {
   const { data: projects, isPending, isError, isFetching, refetch } = useProjects();
   const { setOpenMobile } = useSidebar();
+  const workspaceItem = useRef<HTMLDivElement>(null);
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
     () => true,
@@ -68,7 +69,7 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <DropdownMenuLabel>{t('project.allSites')}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => go(() => void navigate({ to: '/app' }))}>
+            <DropdownMenuItem ref={workspaceItem} onClick={() => go(() => void navigate({ to: '/app' }))}>
               <LayoutGrid className="size-4.5" />
               <span className="flex-1">{t('nav.workspace')}</span>
               {!projectId ? <Check className="size-4 text-primary" /> : null}
@@ -81,7 +82,11 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
                   closeOnClick={false}
                   disabled={isFetching}
                   nativeButton
-                  onClick={() => void refetch()}
+                  onClick={(event) => {
+                    event.preventBaseUIHandler();
+                    workspaceItem.current?.focus();
+                    void refetch();
+                  }}
                   render={<Button loading={isFetching} size="sm" variant="outline" />}
                 >
                   {t('error.tryAgain')}

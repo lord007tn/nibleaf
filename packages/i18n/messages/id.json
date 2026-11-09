@@ -3990,5 +3990,6 @@
   "nav_sitesloaderror": "Tidak dapat memperbarui situs",
   "command_pagesloaderror": "Tidak dapat memperbarui halaman",
   "notifications_bellunreadlabel": "Buka notifikasi. Belum dibaca: {count}",
-  "notifications_unread": "Belum dibaca"
+  "notifications_unread": "Belum dibaca",
+  "admin_sidebardescription": "Jelajahi pelanggan, situs, dan operasi platform."
 }

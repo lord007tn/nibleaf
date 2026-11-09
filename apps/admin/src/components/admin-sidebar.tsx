@@ -30,7 +30,7 @@ export function AdminSidebar() {
   const initial = (user?.name ?? user?.email ?? 'A').slice(0, 1).toUpperCase();
 
   return (
-    <Sidebar>
+    <Sidebar mobileTitle={t('admin.meta.title')} mobileDescription={t('admin.sidebarDescription')}>
       <SidebarHeader>
         <div className="flex items-center gap-2.5 px-2 py-1.5">
           <NibleafMark className="size-7" />

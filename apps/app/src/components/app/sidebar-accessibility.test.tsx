@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
+import { Sidebar, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -27,6 +27,24 @@ let root: ReturnType<typeof createRoot>;
 afterEach(async () => {
   await act(async () => root?.unmount());
   document.body.replaceChildren();
+});
+
+it.each(['', '   ', '\n\t'])('gives a mobile dialog a default name for blank title %j', async (mobileTitle) => {
+  const host = document.createElement('div');
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () =>
+    root.render(
+      <SidebarProvider>
+        <Sidebar mobileTitle={mobileTitle}>Navigation</Sidebar>
+        <SidebarTrigger />
+      </SidebarProvider>,
+    ),
+  );
+  await act(async () => document.querySelector<HTMLButtonElement>('[data-slot="sidebar-trigger"]')?.click());
+  const dialog = document.querySelector('[role="dialog"]');
+  const title = document.getElementById(dialog?.getAttribute('aria-labelledby') ?? '');
+  expect(title?.textContent).toBe('Sidebar');
 });
 it.each(['en', 'ar', 'de'])('labels both mobile dialogs with app-supplied %s text', async (locale) => {
   mocks.locale = locale;

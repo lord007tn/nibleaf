@@ -4055,5 +4055,6 @@
   "nav_sitesloaderror": "Could not refresh sites",
   "command_pagesloaderror": "Could not refresh pages",
   "notifications_bellunreadlabel": "Open notifications. Unread: {count}",
-  "notifications_unread": "Unread"
+  "notifications_unread": "Unread",
+  "admin_sidebardescription": "Navigate platform customers, sites, and operations."
 }

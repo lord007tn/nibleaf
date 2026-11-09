@@ -3990,5 +3990,6 @@
   "nav_sitesloaderror": "无法刷新站点",
   "command_pagesloaderror": "无法刷新页面",
   "notifications_bellunreadlabel": "打开通知。未读：{count}",
-  "notifications_unread": "未读"
+  "notifications_unread": "未读",
+  "admin_sidebardescription": "浏览平台客户、站点和运营功能。"
 }

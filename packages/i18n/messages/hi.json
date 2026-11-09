@@ -3990,5 +3990,6 @@
   "nav_sitesloaderror": "साइटें रीफ़्रेश नहीं हो सकीं",
   "command_pagesloaderror": "पेज रीफ़्रेश नहीं हो सके",
   "notifications_bellunreadlabel": "सूचनाएँ खोलें। अपठित: {count}",
-  "notifications_unread": "अपठित"
+  "notifications_unread": "अपठित",
+  "admin_sidebardescription": "प्लैटफ़ॉर्म के ग्राहकों, साइटों और संचालन के बीच जाएँ।"
 }

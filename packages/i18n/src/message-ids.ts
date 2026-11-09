@@ -1,5 +1,6 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'admin.sidebarDescription': 'admin_sidebardescription',
   'nav.sidebarTitle': 'nav_sidebartitle',
   'nav.sidebarDescription': 'nav_sidebardescription',
   'nav.breadcrumb': 'nav_breadcrumb',
