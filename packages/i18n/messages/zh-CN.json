@@ -493,7 +493,6 @@
   "analytics_kpi_pageviews": "页面浏览量",
   "analytics_kpi_uniquevisitors": "独特的访客",
   "analytics_kpi_searches": "搜索次数",
-  "analytics_kpi_projectswithtraffic": "有流量的项目",
   "analytics_chart_pageviewsallprojects": "浏览量·所有项目",
   "analytics_section_byproject": "按项目",
   "analytics_section_referrers": "推荐人",
@@ -1977,7 +1976,6 @@
   "analytics_kpi_resultclicks": "Search result clicks",
   "analytics_kpi_averagelatencyms": "Average latency (ms)",
   "analytics_kpi_answerscompleted": "AI answers completed",
-  "analytics_kpi_aicostmicros": "AI cost (micro-units)",
   "analytics_section_searchquality": "Search quality",
   "analytics_section_noanswerreasons": "No-answer reasons",
   "analytics_empty_noanswers": "No no-answer events in this period.",
@@ -3905,5 +3903,7 @@
   "admin_pagination_first": "第一页",
   "admin_pagination_next": "下一页",
   "dashboard_ai_inputtokens": "问题中的文本单位",
-  "dashboard_ai_outputtokens": "回答中的文本单位"
+  "dashboard_ai_outputtokens": "回答中的文本单位",
+  "analytics_kpi_siteswithtraffic": "有访问量的站点",
+  "analytics_workspace_termspersite": "搜索词可能会显示在各站点的搜索报告中，具体取决于其隐私设置和访问量门槛。"
 }

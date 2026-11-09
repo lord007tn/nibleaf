@@ -10,7 +10,10 @@ export const relationalInterval = (range: AnalyticsRange, requestedTimezone: str
   } catch {
     timezone = 'UTC';
   }
-  const since = new Date(now.getTime() - RANGE_DAYS[range] * 86_400_000);
+  const windowMs = RANGE_DAYS[range] * 86_400_000;
+  const since = new Date(now.getTime() - windowMs);
+  // The equal window right before this one, for "vs previous period".
+  const previousSince = new Date(since.getTime() - windowMs);
   const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
   const dateAt = (instant: Date) => {
     const parts = Object.fromEntries(formatter.formatToParts(instant).map(({ type, value }) => [type, value]));
@@ -21,23 +24,33 @@ export const relationalInterval = (range: AnalyticsRange, requestedTimezone: str
   for (let day = new Date(`${dateAt(since)}T00:00:00Z`); day.toISOString().slice(0, 10) <= last; day = new Date(day.getTime() + 86_400_000)) {
     dates.push(day.toISOString().slice(0, 10));
   }
-  return { since, until: now, timezone, dates };
+  return { since, until: now, previousSince, timezone, dates };
 };
 
 /** One PostgreSQL snapshot returns a total row and at most 92 local-day rows (DST edges included). */
 export const relationalViewSummary = async (projectIds: string[], interval: ReturnType<typeof relationalInterval>) => {
-  const rows = await prisma.$queryRaw<Array<{ date: string | null; views: bigint; visitors: bigint }>>(Prisma.sql`
+  // One statement over [previousSince, until), so the current window and the equal
+  // window before it (for "vs previous period") come from the same snapshot.
+  const rows = await prisma.$queryRaw<Array<{ date: string | null; views: bigint; visitors: bigint; previous: bigint }>>(Prisma.sql`
     WITH events AS (
-      SELECT to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${interval.timezone}, 'YYYY-MM-DD') AS date, "sessionId"
+      SELECT to_char("createdAt" AT TIME ZONE 'UTC' AT TIME ZONE ${interval.timezone}, 'YYYY-MM-DD') AS date, "sessionId",
+        "createdAt" >= ${interval.since} AS is_current
       FROM analytics_event WHERE "projectId" IN (${Prisma.join(projectIds)}) AND type = 'pageview'
-        AND "createdAt" >= ${interval.since} AND "createdAt" < ${interval.until}
+        AND "createdAt" >= ${interval.previousSince} AND "createdAt" < ${interval.until}
     )
-    SELECT date, count(*) AS views, count(DISTINCT "sessionId") AS visitors
+    SELECT date,
+      count(*) FILTER (WHERE is_current) AS views,
+      count(DISTINCT "sessionId") FILTER (WHERE is_current) AS visitors,
+      count(*) FILTER (WHERE NOT is_current) AS previous
     FROM events GROUP BY GROUPING SETS ((date), ())`);
   const totals = rows.find((row) => row.date === null);
   const counts = new Map(rows.map((row) => [row.date, Number(row.views)]));
+  const previousTotalViews = Number(totals?.previous ?? 0);
   return {
     totalViews: Number(totals?.views ?? 0),
+    // Exact millisecond windows here, so the compared total is the displayed one.
+    comparableTotalViews: Number(totals?.views ?? 0),
+    previousTotalViews,
     uniqueVisitors: Number(totals?.visitors ?? 0),
     timeseries: interval.dates.map((date) => ({ date, views: counts.get(date) ?? 0 })),
   };
