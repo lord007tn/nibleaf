@@ -182,11 +182,13 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
 /**
  * One site, with `hasPublishedVersion`: whether a publish went live and kept
  * its site copy — exactly what an export copies (see `createPublishedSnapshot`
- * in ./exports), the sign-up starter's first publish included. Unlike the
- * deployments list (newest 50), this isn't capped by history.
+ * in ./exports), the sign-up starter's first publish included — and
+ * `readyPublishes`: how many publishes went live (failed and pending attempts
+ * aren't counted). Unlike the deployments list (newest 50), neither is capped
+ * by history.
  */
 export const getProject = async (organizationId: string, id: string) => {
-  const [project, published] = await Promise.all([
+  const [project, published, readyPublishes] = await Promise.all([
     prisma.project.findFirst({
       where: { id, organizationId },
       include: {
@@ -195,6 +197,7 @@ export const getProject = async (organizationId: string, id: string) => {
       },
     }),
     prisma.deployment.findFirst({ where: { projectId: id, status: 'READY', snapshot: { not: Prisma.DbNull } }, select: { id: true } }),
+    prisma.deployment.count({ where: { projectId: id, status: 'READY' } }),
   ]);
   if (!project) {
     throw notFound('project', { id });
@@ -202,6 +205,7 @@ export const getProject = async (organizationId: string, id: string) => {
   return {
     ...project,
     hasPublishedVersion: published !== null,
+    readyPublishes,
     languages: project.languages.map(({ projectTranslations, ...language }) => ({
       ...language,
       translation: projectTranslations[0] ?? null,
