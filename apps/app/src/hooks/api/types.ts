@@ -55,6 +55,8 @@ export interface Project {
   /** One site only: a publish went live and kept its site copy (so it can be
    *  exported), however long ago — the sign-up starter's first publish included. */
   hasPublishedVersion?: boolean;
+  /** One site only: how many publishes went live, however long ago (failed and pending attempts aren't counted). */
+  readyPublishes?: number;
 }
 
 /** The newest MCP audit event of a key or connected app. `operation` is the

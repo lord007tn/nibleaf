@@ -1841,7 +1841,6 @@
   "settings_exports_workflow_defaultschedulename": "نائٹ آرکائیو",
   "settings_account_title": "اکاؤنٹ",
   "settings_account_description": "ہر ورک اسپیس میں آپ کا ذاتی پروفائل۔",
-  "settings_account_changeavatar": "اوتار تبدیل کریں۔",
   "settings_account_profileupdated": "پروفائل اپ ڈیٹ ہو گیا۔",
   "settings_account_name_label": "نام",
   "settings_account_name_error": "آپ کا نام محفوظ نہیں کیا جا سکا",
@@ -4047,5 +4046,6 @@
   "command_pagesloaderror": "صفحات ریفریش نہیں ہو سکے",
   "notifications_bellunreadlabel": "اطلاعات کھولیں۔ غیر پڑھی ہوئی: {count}",
   "notifications_unread": "غیر پڑھی ہوئی",
-  "admin_sidebardescription": "پلیٹ فارم کے صارفین، سائٹس اور کارروائیوں میں جائیں۔"
+  "admin_sidebardescription": "پلیٹ فارم کے صارفین، سائٹس اور کارروائیوں میں جائیں۔",
+  "settings_appearance_theme_system": "میرے آلے کے مطابق"
 }

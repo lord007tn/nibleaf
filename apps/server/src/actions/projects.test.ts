@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deploymentGroupBy: vi.fn(),
   deploymentFindFirst: vi.fn(),
   deploymentFindMany: vi.fn(),
+  deploymentCount: vi.fn(),
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn() },
@@ -31,7 +32,12 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
-    deployment: { groupBy: mocks.deploymentGroupBy, findFirst: mocks.deploymentFindFirst, findMany: mocks.deploymentFindMany },
+    deployment: {
+      groupBy: mocks.deploymentGroupBy,
+      findFirst: mocks.deploymentFindFirst,
+      findMany: mocks.deploymentFindMany,
+      count: mocks.deploymentCount,
+    },
     $transaction: (run: (tx: typeof mocks.tx) => Promise<unknown>) => run(mocks.tx),
   },
 }));
@@ -174,6 +180,18 @@ describe('project page counts', () => {
       select: { id: true },
     });
     await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ hasPublishedVersion: false });
+  });
+
+  it('counts every publish that went live, beyond the newest 50 attempts, and none that failed', async () => {
+    // 80 attempts: most failed, and the live ones are older than the deployments list reaches.
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-a', _count: { pages: 1, deployments: 80, domains: 0 }, languages: [] });
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1' });
+    mocks.deploymentCount.mockResolvedValueOnce(3).mockResolvedValueOnce(0);
+
+    await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ readyPublishes: 3, hasPublishedVersion: true });
+    expect(mocks.deploymentCount).toHaveBeenCalledWith({ where: { projectId: 'project-a', status: 'READY' } });
+    // Only failed attempts: nothing went live.
+    await expect(getProject('org-a', 'project-a')).resolves.toMatchObject({ readyPublishes: 0 });
   });
 
   it('reports not-found for a project outside the organization', async () => {

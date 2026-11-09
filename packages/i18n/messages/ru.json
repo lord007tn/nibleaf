@@ -1864,7 +1864,6 @@
   "settings_exports_workflow_defaultschedulename": "Ночной архив",
   "settings_account_title": "Аккаунт",
   "settings_account_description": "Ваш личный профиль в каждом рабочем пространстве.",
-  "settings_account_changeavatar": "Сменить аватар",
   "settings_account_profileupdated": "Профиль обновлен",
   "settings_account_name_label": "Имя",
   "settings_account_name_error": "Не удалось сохранить ваше имя",
@@ -4077,5 +4076,6 @@
   "command_pagesloaderror": "Не удалось обновить страницы",
   "notifications_bellunreadlabel": "Открыть уведомления. Непрочитанных: {count}",
   "notifications_unread": "Не прочитано",
-  "admin_sidebardescription": "Навигация по клиентам, сайтам и операциям платформы."
+  "admin_sidebardescription": "Навигация по клиентам, сайтам и операциям платформы.",
+  "settings_appearance_theme_system": "Как на устройстве"
 }

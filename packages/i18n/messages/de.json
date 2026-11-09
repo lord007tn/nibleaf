@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Nächtliches Archiv",
   "settings_account_title": "Konto",
   "settings_account_description": "Ihr persönliches Profil in jedem Arbeitsbereich.",
-  "settings_account_changeavatar": "Avatar ändern",
   "settings_account_profileupdated": "Profil aktualisiert",
   "settings_account_name_label": "Name",
   "settings_account_name_error": "Ihr Name konnte nicht gespeichert werden",
@@ -4056,5 +4055,6 @@
   "command_pagesloaderror": "Seiten konnten nicht aktualisiert werden",
   "notifications_bellunreadlabel": "Benachrichtigungen öffnen. Ungelesen: {count}",
   "notifications_unread": "Ungelesen",
-  "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb."
+  "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb.",
+  "settings_appearance_theme_system": "Wie mein Gerät"
 }

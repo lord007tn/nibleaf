@@ -1911,7 +1911,6 @@
   "settings_exports_workflow_defaultschedulename": "Nightly archive",
   "settings_account_title": "Account",
   "settings_account_description": "Your personal profile across every workspace.",
-  "settings_account_changeavatar": "Change avatar",
   "settings_account_profileupdated": "Profile updated",
   "settings_account_name_label": "Name",
   "settings_account_name_error": "Could not save your name",
@@ -4056,5 +4055,6 @@
   "command_pagesloaderror": "Could not refresh pages",
   "notifications_bellunreadlabel": "Open notifications. Unread: {count}",
   "notifications_unread": "Unread",
-  "admin_sidebardescription": "Navigate platform customers, sites, and operations."
+  "admin_sidebardescription": "Navigate platform customers, sites, and operations.",
+  "settings_appearance_theme_system": "Match my device"
 }

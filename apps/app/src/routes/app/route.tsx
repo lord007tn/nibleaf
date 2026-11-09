@@ -8,6 +8,7 @@ import { getSessionFn } from '@/functions/session';
 import { projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
+import { useDashboardIntentPreload } from '@/lib/dashboard-intent-preload';
 import { useSession } from '@/services/auth-client';
 import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
@@ -50,6 +51,8 @@ function AppGuard() {
   const { data: session, isPending } = useSession();
   const resolvedSession = session ?? (isPending ? routeSession : null);
   const sessionReady = useDashboardSessionBoundary(resolvedSession?.user.id ?? null);
+  // Dashboard links preload their route's chunks on hover and focus.
+  useDashboardIntentPreload();
 
   if (!sessionReady || (isPending && !resolvedSession)) {
     return <PageLoader />;

@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "रात्रिकालीन संग्रह",
   "settings_account_title": "खाता",
   "settings_account_description": "प्रत्येक कार्यक्षेत्र में आपकी व्यक्तिगत प्रोफ़ाइल।",
-  "settings_account_changeavatar": "अवतार बदलें",
   "settings_account_profileupdated": "प्रोफ़ाइल अपडेट की गई",
   "settings_account_name_label": "नाम",
   "settings_account_name_error": "आपका नाम सहेजा नहीं जा सका",
@@ -3991,5 +3990,6 @@
   "command_pagesloaderror": "पेज रीफ़्रेश नहीं हो सके",
   "notifications_bellunreadlabel": "सूचनाएँ खोलें। अपठित: {count}",
   "notifications_unread": "अपठित",
-  "admin_sidebardescription": "प्लैटफ़ॉर्म के ग्राहकों, साइटों और संचालन के बीच जाएँ।"
+  "admin_sidebardescription": "प्लैटफ़ॉर्म के ग्राहकों, साइटों और संचालन के बीच जाएँ।",
+  "settings_appearance_theme_system": "मेरे डिवाइस जैसा"
 }

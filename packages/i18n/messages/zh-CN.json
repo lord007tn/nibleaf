@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "每晚存档",
   "settings_account_title": "账户",
   "settings_account_description": "您在每个工作空间中的个人资料。",
-  "settings_account_changeavatar": "更改头像",
   "settings_account_profileupdated": "个人资料已更新",
   "settings_account_name_label": "名称",
   "settings_account_name_error": "无法保存您的名字",
@@ -3991,5 +3990,6 @@
   "command_pagesloaderror": "无法刷新页面",
   "notifications_bellunreadlabel": "打开通知。未读：{count}",
   "notifications_unread": "未读",
-  "admin_sidebardescription": "浏览平台客户、站点和运营功能。"
+  "admin_sidebardescription": "浏览平台客户、站点和运营功能。",
+  "settings_appearance_theme_system": "跟随设备"
 }

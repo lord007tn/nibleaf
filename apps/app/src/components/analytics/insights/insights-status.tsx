@@ -4,7 +4,7 @@ import { Card, CardContent } from '@nibleaf/design-system/components/ui/card';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { BarChart3, CirclePause, Clock, Database, ExternalLink, Info, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useDeployments } from '@/hooks/api';
+import { useDeployments, useProject } from '@/hooks/api';
 import { dataFreshness, type InsightsState } from './insights-data';
 import { useInsightFormat } from './use-insight-format';
 
@@ -16,9 +16,11 @@ function FreshnessNotice({ projectId, lastEventAt }: { projectId: string; lastEv
   const { t } = useLocale();
   const format = useInsightFormat();
   const { data: deployments } = useDeployments(projectId);
+  const { data: project } = useProject(projectId);
   const freshness = dataFreshness(lastEventAt);
   if (freshness === 'unknown' || freshness === 'never' || !lastEventAt) return null;
-  const published = (deployments ?? []).some((deployment) => deployment.status === 'READY');
+  // From the site's own count: the deployments list is only the newest 50 attempts.
+  const published = (project?.readyPublishes ?? 0) > 0 || (deployments ?? []).some((deployment) => deployment.status === 'READY');
   const received = (
     <p className="flex items-center gap-1.5 text-muted-foreground text-xs">
       <Clock aria-hidden className="size-3.5" />

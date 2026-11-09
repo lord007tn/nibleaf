@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Archivo nocturno",
   "settings_account_title": "cuenta",
   "settings_account_description": "Su perfil personal en cada espacio de trabajo.",
-  "settings_account_changeavatar": "Cambiar avatar",
   "settings_account_profileupdated": "Perfil actualizado",
   "settings_account_name_label": "Nombre",
   "settings_account_name_error": "No se pudo guardar tu nombre",
@@ -4056,5 +4055,6 @@
   "command_pagesloaderror": "No se pudieron actualizar las páginas",
   "notifications_bellunreadlabel": "Abrir notificaciones. Sin leer: {count}",
   "notifications_unread": "Sin leer",
-  "admin_sidebardescription": "Navega por los clientes, sitios y operaciones de la plataforma."
+  "admin_sidebardescription": "Navega por los clientes, sitios y operaciones de la plataforma.",
+  "settings_appearance_theme_system": "Como mi dispositivo"
 }

@@ -26,6 +26,8 @@ const forbiddenPublicModules = [
   /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
   /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
   /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
+  // The signed-in shell's intent preload, which reads the dashboard's chunk lists.
+  /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,
   /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
 ];
 
@@ -107,4 +109,40 @@ export function nonReaderRouteBytes(modules) {
     count += 1;
   }
   return { bytes, count };
+}
+
+// Dashboard-only code: the signed-in app's routes, and the components and data
+// hooks only it uses. Sign-in, invitations and OAuth consent use some of the
+// same data hooks, so a chunk is the dashboard's only when none of the other
+// lazy imports of the chunk holding the preload table loads it.
+const DASHBOARD_ONLY_MODULE =
+  /\/apps\/app\/src\/(?:routes\/app\/|components\/(?:app|project|project-settings|settings|analytics|ai-conversations)\/|hooks\/api\/)/;
+const DASHBOARD_ROUTE_MODULE = /\/apps\/app\/src\/routes\/app\//;
+
+/** The files of a chunk's `__vite__mapDeps` preload table (`m.f=[…]`), or []. */
+export function preloadTableFiles(source) {
+  const table = /__vite__mapDeps=[\s\S]{0,120}?\.f=(\[[^\]]*\])/.exec(source)?.[1];
+  return table ? JSON.parse(table) : [];
+}
+
+/** Dashboard chunks named in the preload table (`listed`) of chunk `owner`:
+ *  chunks whose every module is dashboard-only code, and that none of
+ *  `owner`'s lazy imports other than a dashboard route's loads, statically.
+ *  `dashboardPreloadPlugin` keeps them out of the router's eager chunk, which
+ *  published docs load. `chunks` are the module report's entries, with
+ *  forward-slash ids. */
+export function leakedDashboardPreloads(chunks, owner, listed) {
+  const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+  const isDashboardRoute = (file) => DASHBOARD_ROUTE_MODULE.test(byFile.get(file)?.facadeModuleId?.replaceAll('\\', '/') ?? '');
+  const needed = new Set();
+  const queue = (byFile.get(owner)?.dynamicImports ?? []).filter((file) => !isDashboardRoute(file));
+  for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+    if (needed.has(file)) continue;
+    needed.add(file);
+    queue.push(...(byFile.get(file)?.imports ?? []));
+  }
+  return listed.filter((file) => {
+    const modules = byFile.get(file)?.modules ?? [];
+    return !needed.has(file) && modules.length > 0 && modules.every((module) => DASHBOARD_ONLY_MODULE.test(module.id));
+  });
 }

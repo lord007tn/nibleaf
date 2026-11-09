@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "Arsip malam",
   "settings_account_title": "Akun",
   "settings_account_description": "Profil pribadi Anda di setiap ruang kerja.",
-  "settings_account_changeavatar": "Ubah avatar",
   "settings_account_profileupdated": "Profil diperbarui",
   "settings_account_name_label": "Nama",
   "settings_account_name_error": "Tidak dapat menyimpan nama Anda",
@@ -3991,5 +3990,6 @@
   "command_pagesloaderror": "Tidak dapat memperbarui halaman",
   "notifications_bellunreadlabel": "Buka notifikasi. Belum dibaca: {count}",
   "notifications_unread": "Belum dibaca",
-  "admin_sidebardescription": "Jelajahi pelanggan, situs, dan operasi platform."
+  "admin_sidebardescription": "Jelajahi pelanggan, situs, dan operasi platform.",
+  "settings_appearance_theme_system": "Ikuti perangkat saya"
 }

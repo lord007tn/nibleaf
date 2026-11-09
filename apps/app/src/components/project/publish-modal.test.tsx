@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api/types';
 import { PublishModal, reviewRows } from './publish-modal';
 
-const { mutate, showError, preflight, refreshPreflight, retryMembers } = vi.hoisted(() => ({
+const { mutate, showError, preflight, refreshPreflight, retryMembers, domains } = vi.hoisted(() => ({
+  domains: { data: [] as object[] },
   mutate: vi.fn(),
   showError: vi.fn(),
   preflight: {
@@ -44,7 +45,7 @@ const pendingChange = {
 };
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
-  useDomains: () => ({ data: [] }),
+  useDomains: () => domains,
   usePublish: () => ({ isPending: false, mutate }),
   useProjectMembers: () => ({
     data: preflight.membersMissing ? undefined : { members: [{ user: { id: 'user-a' }, role: preflight.role }] },
@@ -79,6 +80,7 @@ describe('publish draft barrier', () => {
     preflight.membersMissing = false;
     preflight.membersFetching = false;
     preflight.sessionPending = false;
+    domains.data = [];
     refreshPreflight.mockResolvedValue({ data: { redirectIssues: [], reviewedStateHash: 'reviewed-hash' }, isError: false });
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     container = document.createElement('div');
@@ -88,6 +90,22 @@ describe('publish draft barrier', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+  });
+
+  it.each([
+    [{ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }, true],
+    // Ownership proven, but readers would get a browser error: name the default address.
+    [{ dnsStatus: 'ERROR', sslStatus: 'PENDING' }, false],
+    [{ dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' }, false],
+  ])('names the custom domain as the address only once readers can open it: %o', async (status, live) => {
+    domains.data = [{ id: 'domain-1', domain: 'docs.example.com', verified: true, isPrimary: true, ...status }];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    // The site address line, compared whole (not as a substring of the page).
+    const addresses = [...document.querySelectorAll('[dir="ltr"]')].map((element) => element.textContent?.trim());
+    // An address is always shown: the default one when the domain isn't live.
+    expect(addresses.some((address) => address?.startsWith('http') || address?.startsWith('/'))).toBe(true);
+    if (live) expect(addresses).toContain('https://docs.example.com');
+    else expect(addresses).not.toContain('https://docs.example.com');
   });
 
   it('waits for the current draft before creating the deployment', async () => {

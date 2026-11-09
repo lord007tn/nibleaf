@@ -1939,7 +1939,6 @@
   "settings_exports_workflow_defaultschedulename": "أرشيف ليلي",
   "settings_account_title": "الحساب",
   "settings_account_description": "ملفك الشخصي في جميع مساحات العمل.",
-  "settings_account_changeavatar": "تغيير الصورة الرمزية",
   "settings_account_profileupdated": "تم تحديث الملف الشخصي",
   "settings_account_name_label": "الاسم",
   "settings_account_name_error": "تعذّر حفظ اسمك",
@@ -4091,5 +4090,6 @@
   "command_pagesloaderror": "تعذّر تحديث الصفحات",
   "notifications_bellunreadlabel": "فتح الإشعارات. غير المقروءة: {count}",
   "notifications_unread": "غير مقروء",
-  "admin_sidebardescription": "تنقّل بين عملاء المنصة ومواقعها وعملياتها."
+  "admin_sidebardescription": "تنقّل بين عملاء المنصة ومواقعها وعملياتها.",
+  "settings_appearance_theme_system": "مطابقة جهازي"
 }
