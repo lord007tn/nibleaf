@@ -310,9 +310,18 @@ function SiteOverviewPage() {
                   <span className="shrink-0 font-medium" dir="ltr">
                     v{deployment.version}
                   </span>
-                  <span className="min-w-0 truncate text-muted-foreground" dir="auto">
-                    {deployment.commitMessage || t('overview.activity.publish')}
-                  </span>
+                  {/* Only a publish that went live reads "Published docs"; a failed or
+                      in-flight attempt says so. */}
+                  {deployment.status === 'READY' ? null : (
+                    <Badge className="shrink-0" variant={deploymentStatusVariant(deployment.status)}>
+                      {deploymentStatusLabel(deployment.status, t)}
+                    </Badge>
+                  )}
+                  {deployment.commitMessage || deployment.status === 'READY' ? (
+                    <span className="min-w-0 truncate text-muted-foreground" dir="auto">
+                      {deployment.commitMessage || t('overview.activity.publish')}
+                    </span>
+                  ) : null}
                 </div>
                 <span className="shrink-0 text-muted-foreground text-xs">{date(deployment.completedAt ?? deployment.createdAt)}</span>
               </div>

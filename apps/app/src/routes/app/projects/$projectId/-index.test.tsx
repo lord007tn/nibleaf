@@ -343,6 +343,24 @@ describe('site overview when something fails or is still connecting', () => {
       expect(tile('overview.stats.deploys')).toBe('4');
     });
 
+    it('never labels a failed attempt "Published docs" in the activity list', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 }),
+        deployments: loaded([{ ...readyDeployment, id: 'dep-f', version: 4, status: 'FAILED' }, readyDeployment]),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      const row = (version: string) =>
+        [...container.querySelectorAll('span[dir="ltr"]')].find((tag) => tag.textContent === version)?.closest('.justify-between');
+      const failedRow = row('v4');
+      const readyRow = row('v3');
+      expect(failedRow).toBeTruthy();
+      expect(readyRow).toBeTruthy();
+      expect(failedRow?.textContent).not.toContain('overview.activity.publish');
+      expect(failedRow?.querySelector('[data-slot="badge"]')).not.toBeNull();
+      expect(readyRow?.textContent).toContain('overview.activity.publish');
+      expect(readyRow?.querySelector('[data-slot="badge"]')).toBeNull();
+    });
+
     it('shows a publish that just went live before the site is read again', async () => {
       Object.assign(queries, {
         project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 }),
