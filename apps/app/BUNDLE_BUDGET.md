@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 348,200-byte gzip JavaScript budget. The
+Public documentation pages have a 345,100-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
 measured size. CI also rejects public profiles that contain known
@@ -75,8 +75,66 @@ include that chunk. So:
   `bundle:check` fails on a reader icon that a marketing chunk imports unless it
   is one of the icons already shared on main@88daac87
   (`marketingSharedReaderIcons` in `scripts/bundle-boundaries.mjs`).
+- Dashboard chunk names stay out of the router's eager chunk. For each lazy
+  import, Vite writes the chunks to preload with it into a `__vite__mapDeps`
+  table in the importing chunk, and the router's eager chunk imports every
+  route lazily, so before #393 every dashboard chunk name shipped to published
+  docs. `dashboardPreloadPlugin` (`scripts/dashboard-preload-plugin.ts`) gives
+  dashboard routes (`src/routes/app/**`) an empty list there.
+  `bundle:check` fails with "dashboard chunk names leak into the published-docs
+  eager preload list" when a public chunk's table names a chunk whose every
+  module is dashboard code (`routes/app/`, `hooks/api/`, or
+  `components/{app,project,project-settings,settings,analytics,ai-conversations}/`)
+  and that none of the chunk's non-dashboard lazy imports load: sign-in,
+  invitations and OAuth consent use some of the same data hooks, so those stay
+  listed (`leakedDashboardPreloads` in `scripts/bundle-boundaries.mjs`; it
+  needs the `BUNDLE_ANALYZE=true` report, like the module check).
+- Dashboard navigations get their preloads from the dashboard instead. The
+  client build writes `assets/dashboard-preloads.json`: for each dashboard
+  route id, every chunk its split parts load (each chunk and its static
+  imports, minus what the entry already loads). The signed-in shell
+  (`routes/app/route.tsx`) calls `useDashboardIntentPreload`
+  (`src/lib/dashboard-intent-preload.ts`), which fetches that file when the
+  browser is idle (production only, with `cache: 'no-cache'`: the file's name has
+  no hash and `/assets/` is cached as immutable, and a per-build query string would
+  rename reader chunks on every build, because the shell chunk that carries it is
+  named in the router's eager chunk) and, when the pointer or focus reaches a same-origin
+  `/app…` link, adds `<link rel="modulepreload">` for the chunks of every route
+  the link matches, each once. Without it, the router's intent preload fetches
+  a route chunk and then its imports one level at a time. A failed or missing
+  file only leaves navigation to the router. The module is listed in
+  `forbiddenPublicModules`, so docs pages can't start loading it.
 
 ## Budget history
+
+### 348,200 → 345,100 bytes: dashboard preload lists out of the eager chunk (#393)
+
+The router's eager `index` chunk carried `__vite__mapDeps`: the dependency
+chunk names of every lazy route, dashboard routes included (343 entries, ~11 KB
+raw). Dashboard routes now get no preload list there
+(`scripts/dashboard-preload-plugin.ts`), and the signed-in shell preloads a
+route's chunks on hover or focus from `assets/dashboard-preloads.json`.
+
+Measured against main@bae70857 (analyzed builds, gzip level 9):
+
+| Build | public-docs | public-docs-index | eager `index` chunk (raw) |
+| --- | --- | --- | --- |
+| main | 345,985 B (337.88 KiB) | 337.07 KiB | 311,499 B |
+| this change | 343,096 B (335.05 KiB) | 334.25 KiB | ~299,000 B |
+
+Dashboard navigation, production build, 100 ms round trip, time from click to
+the last chunk (one request wave on both builds):
+
+| Navigation | main | this change |
+| --- | --- | --- |
+| sites → site overview (250 ms hover) | 682 ms | 490 ms |
+| site overview → analytics (250 ms hover) | 367 ms | 172 ms |
+| sites → site overview (no hover) | 940 ms | 804 ms |
+| site overview → analytics (no hover) | 645 ms | 497 ms |
+
+The budget is the 343,096 bytes plus the usual ~2 KiB margin. The guard in
+`check-bundle-budget.mjs` fails when a dashboard-only chunk name reaches a
+public profile's preload table again.
 
 ### 349,700 → 348,200 bytes: a marketing route table (#345)
 
