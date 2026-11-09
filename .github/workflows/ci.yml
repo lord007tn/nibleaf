@@ -182,6 +182,7 @@ jobs:
           pnpm --filter @nibleaf/server exec vitest run src/modules/public/private-site-access.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access.postgres.test.ts
           pnpm --filter @nibleaf/server exec vitest run src/actions/site-sign-in.postgres.test.ts
+          pnpm --filter @nibleaf/server exec vitest run src/actions/reader-access-requests.postgres.test.ts
 
       - name: Exercise ClickHouse analytics migrations
         env:

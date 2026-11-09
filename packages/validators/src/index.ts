@@ -1085,6 +1085,18 @@ export const siteSignInVerifyBody = z
   })
   .strict();
 export type SiteSignInVerifyBody = z.infer<typeof siteSignInVerifyBody>;
+/** Ask a private site's Admins for access from its sign-in screen. */
+export const readerAccessRequestBody = z
+  .object({
+    email: z.string().trim().toLowerCase().email().max(320),
+    name: z.string().trim().max(120).optional(),
+    note: z.string().trim().max(500).optional(),
+  })
+  .strict();
+export type ReaderAccessRequestBody = z.infer<typeof readerAccessRequestBody>;
+/** Turn access requests from the sign-in screen on or off. */
+export const readerAccessRequestsSettingBody = z.object({ enabled: z.boolean() }).strict();
+export type ReaderAccessRequestsSettingBody = z.infer<typeof readerAccessRequestsSettingBody>;
 
 // ─── Comments ────────────────────────────────────────────────────────────────
 

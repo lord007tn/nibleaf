@@ -64,7 +64,7 @@ const invalidCode = () => badRequest('That code is wrong or has expired. Ask for
 type SignInIdentity = { kind: 'member'; userId: string } | { kind: 'reader'; readerId: string } | { kind: 'domain' };
 
 /** Who this address is on the site right now, or null when it may not read it. */
-const signInIdentity = async (projectId: string, email: string): Promise<SignInIdentity | null> => {
+export const signInIdentity = async (projectId: string, email: string): Promise<SignInIdentity | null> => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     select: { accessMode: true, organizationId: true, takedownAt: true, readerEmailDomains: true },

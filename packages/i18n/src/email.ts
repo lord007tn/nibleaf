@@ -1,6 +1,12 @@
 import type { Locale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
 import {
+  email_accessrequest_action,
+  email_accessrequest_message,
+  email_accessrequest_note,
+  email_accessrequest_review,
+  email_accessrequest_subject,
+  email_accessrequest_title,
   email_brand_fallbacklink,
   email_brand_footer,
   email_brand_name,
@@ -122,6 +128,12 @@ const emailMessages = {
   'email.readerInvite.action': email_readerinvite_action,
   'email.readerInvite.expiry': email_readerinvite_expiry,
   'email.readerInvite.later': email_readerinvite_later,
+  'email.accessRequest.subject': email_accessrequest_subject,
+  'email.accessRequest.title': email_accessrequest_title,
+  'email.accessRequest.message': email_accessrequest_message,
+  'email.accessRequest.note': email_accessrequest_note,
+  'email.accessRequest.review': email_accessrequest_review,
+  'email.accessRequest.action': email_accessrequest_action,
   'email.siteSignIn.subject': email_sitesignin_subject,
   'email.siteSignIn.title': email_sitesignin_title,
   'email.siteSignIn.message': email_sitesignin_message,

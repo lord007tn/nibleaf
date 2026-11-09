@@ -98,6 +98,27 @@ describe('private site sign-in screen', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain('Too many attempts');
   });
 
+  it('offers "Ask the team" only when the site takes requests, and thanks the visitor the same way whatever happened', async () => {
+    await render();
+    expect(container.textContent).not.toContain("Don't have access?");
+    fetchMock.mockResolvedValueOnce(answer(200, { data: { received: true } }));
+    await render({ gate: gate({ requests: true }) });
+    const ask = [...container.querySelectorAll('button')].find((button) => button.textContent?.startsWith("Don't have access?"));
+    await act(async () => ask?.click());
+    await type('input[type="email"]', 'kim@example.com');
+    await type('input[autocomplete="name"]', 'Kim');
+    await act(async () => {
+      const note = container.querySelector<HTMLTextAreaElement>('textarea');
+      if (!note) throw new Error('no note');
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(note, 'For the pilot');
+      note.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await submit();
+    expect(fetchMock).toHaveBeenCalledWith('/api/public/reader-access/request/site-1', expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1].body)).toEqual({ email: 'kim@example.com', name: 'Kim', note: 'For the pilot' });
+    expect(container.textContent).toContain('an invitation will arrive at ⁨kim@example.com⁩');
+  });
+
   it('takes an invitation from the URL fragment, removes it from the address bar and accepts it only on a click', async () => {
     window.history.replaceState(null, '', '/sites/site-1#reader-invite=invite-token-1234567890');
     fetchMock.mockResolvedValueOnce(answer(404));
