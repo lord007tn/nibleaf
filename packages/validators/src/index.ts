@@ -1,5 +1,6 @@
 import { aiSelectionSchema } from '@nibleaf/shared/ai';
 import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
+import { isPublicEmailProvider } from '@nibleaf/shared/email-providers';
 import { normalizeEmailDomain } from '@nibleaf/shared/join-links';
 import { MCP_KEY_PRESETS, MCP_SCOPES } from '@nibleaf/shared/mcp';
 import { MAX_REDIRECT_RULES, validateRedirectGraph } from '@nibleaf/shared/redirects';
@@ -968,10 +969,45 @@ export const inviteReaderBody = z
   .object({
     email: z.string().trim().toLowerCase().email().max(320),
     name: z.string().trim().min(1).max(120).optional(),
-    audienceIds: z.array(z.string().min(1)).min(1).max(100),
+    /** Empty or absent: the whole site. */
+    audienceIds: z.array(z.string().min(1)).max(100).optional(),
   })
   .strict();
 export type InviteReaderBody = z.infer<typeof inviteReaderBody>;
+
+/** Invite up to 100 readers at once, to the whole site unless audiences are given. */
+export const inviteReadersBody = z
+  .object({
+    emails: z.array(z.string().trim().toLowerCase().email().max(320)).min(1).max(100),
+    audienceIds: z.array(z.string().min(1)).max(100).optional(),
+  })
+  .strict();
+export type InviteReadersBody = z.infer<typeof inviteReadersBody>;
+
+/** A bare email domain such as `example.com` (lowercase, no `@`, at least one dot). */
+export const readerEmailDomain = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((value) => value.replace(/^@/, ''))
+  .pipe(
+    z
+      .string()
+      .max(253)
+      .regex(/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/)
+      // Anyone can sign up at a public provider, so allowing one would open a
+      // private site to everyone.
+      .superRefine((value, ctx) => {
+        if (isPublicEmailProvider(value)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `${value} is a public email provider; anyone could sign up. Invite people individually instead.`,
+          });
+        }
+      }),
+  );
+export const readerEmailDomainsBody = z.object({ domains: z.array(readerEmailDomain).max(20) }).strict();
+export type ReaderEmailDomainsBody = z.infer<typeof readerEmailDomainsBody>;
 
 export const updateReaderBody = z
   .object({

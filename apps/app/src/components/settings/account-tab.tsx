@@ -7,7 +7,7 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
 import { Mail } from 'lucide-react';
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
@@ -84,11 +84,38 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
   const [newEmail, setNewEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  // One number per attempt. Cancel and "Change email" start a new one, so a
+  // request still in flight from an abandoned attempt can't bring it back.
+  const attempt = useRef(0);
+  const changeButton = useRef<HTMLButtonElement>(null);
+  // Which attempt's code request is in flight. The form's own isSubmitting is
+  // shared by every attempt, so a cancelled request finishing late would clear
+  // it while a newer one is still sending; this belongs to one attempt only.
+  const [sendingRun, setSendingRun] = useState<number | null>(null);
+  // The same, synchronously: two submits in one frame both see the old state,
+  // so the guard that stops a second OTP request has to be a ref.
+  const sendingRef = useRef<number | null>(null);
+  const sending = sendingRun !== null && sendingRun === attempt.current;
 
   const reset = () => {
     setStage('idle');
     setNewEmail('');
     setOtp('');
+  };
+
+  const start = () => {
+    attempt.current += 1;
+    setStage('editing');
+  };
+
+  const cancel = () => {
+    attempt.current += 1;
+    flushSync(() => {
+      reset();
+      setIsVerifying(false);
+      editForm.reset();
+    });
+    changeButton.current?.focus();
   };
 
   const editForm = useForm({
@@ -99,8 +126,14 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         toast.error(t('settings.account.email.sameAsCurrent'));
         return;
       }
+      const run = attempt.current;
+      // Enter (or a double click) while this attempt's request is on its way must not send a second one.
+      if (sendingRef.current === run) return;
+      sendingRef.current = run;
+      setSendingRun(run);
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+        if (run !== attempt.current) return;
         if (res.error) {
           toast.error(emailChangeError(res.error, t, t('settings.account.email.sendError')));
           return;
@@ -110,15 +143,21 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         setStage('verify-current');
       } catch {
         // The request never reached the server.
-        toast.error(t('auth.error.tryAgain'));
+        if (run === attempt.current) toast.error(t('auth.error.tryAgain'));
+      } finally {
+        // Only the attempt that set the guard clears it.
+        if (sendingRef.current === run) sendingRef.current = null;
+        setSendingRun((current) => (current === run ? null : current));
       }
     },
   });
 
   const verifyCurrentEmail = async () => {
+    const run = attempt.current;
     setIsVerifying(true);
     try {
       const res = await authClient.emailOtp.requestEmailChange({ newEmail, otp: otp.trim() });
+      if (run !== attempt.current) return;
       if (res.error) {
         toast.error(emailChangeError(res.error, t, t('settings.account.email.verifyError')));
         return;
@@ -127,16 +166,18 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       setOtp('');
       setStage('pending');
     } catch {
-      toast.error(t('auth.error.tryAgain'));
+      if (run === attempt.current) toast.error(t('auth.error.tryAgain'));
     } finally {
-      setIsVerifying(false);
+      if (run === attempt.current) setIsVerifying(false);
     }
   };
 
   const verifyEmailChange = async () => {
+    const run = attempt.current;
     setIsVerifying(true);
     try {
       const res = await authClient.emailOtp.changeEmail({ newEmail, otp: otp.trim() });
+      if (run !== attempt.current) return;
       if (res.error) {
         // Never Better Auth's English text ("Email already in use").
         toast.error(emailChangeError(res.error, t, t('settings.account.email.verifyError')));
@@ -146,9 +187,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
       flushSync(reset);
       window.location.reload();
     } catch {
-      toast.error(t('auth.error.tryAgain'));
+      if (run === attempt.current) toast.error(t('auth.error.tryAgain'));
     } finally {
-      setIsVerifying(false);
+      if (run === attempt.current) setIsVerifying(false);
     }
   };
 
@@ -171,7 +212,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
               {t('settings.account.email.unverified')}
             </Badge>
           )}
-          <Button className="ms-auto" size="sm" type="button" variant="outline" onClick={() => setStage('editing')}>
+          <Button className="ms-auto" onClick={start} ref={changeButton} size="sm" type="button" variant="outline">
             {t('settings.account.email.change')}
           </Button>
         </div>
@@ -211,14 +252,10 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             )}
           </editForm.Field>
           <div className="mt-3 flex gap-2">
-            <editForm.Subscribe selector={(state) => state.isSubmitting}>
-              {(isSubmitting) => (
-                <Button loading={isSubmitting} type="submit" loadingText={t('settings.account.email.sending')}>
-                  {t('settings.account.email.sendVerification')}
-                </Button>
-              )}
-            </editForm.Subscribe>
-            <Button type="button" variant="outline" onClick={reset}>
+            <Button loading={sending} type="submit" loadingText={t('settings.account.email.sending')}>
+              {t('settings.account.email.sendVerification')}
+            </Button>
+            <Button onClick={cancel} type="button" variant="outline">
               {t('common.cancel')}
             </Button>
           </div>
@@ -265,7 +302,7 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <Button disabled={otp.length !== 6} loading={isVerifying} type="submit" loadingText={t('auth.otp.verifying')}>
               {t('settings.account.email.verifyCurrent')}
             </Button>
-            <Button onClick={reset} type="button" variant="outline">
+            <Button onClick={cancel} type="button" variant="outline">
               {t('common.cancel')}
             </Button>
           </div>
@@ -312,7 +349,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
             <Button disabled={otp.length !== 6} loading={isVerifying} type="submit" loadingText={t('auth.otp.verifying')}>
               {t('settings.account.email.confirm')}
             </Button>
-            <Button onClick={reset} type="button" variant="outline">
+            {/* Once the final confirmation is on its way the address may already have changed: no cancelling it then. */}
+            <Button disabled={isVerifying} onClick={cancel} type="button" variant="outline">
               {t('common.cancel')}
             </Button>
           </div>
