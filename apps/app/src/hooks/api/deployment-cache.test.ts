@@ -68,6 +68,25 @@ describe('syncPublishReceipt', () => {
     expect(addressMayFollowTitle('page-1', queryClient.getQueryData(changesKey), [])).toBe(false);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.deployments.latest('p1') });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projects.all(), exact: true });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projects.detail('p1'), exact: true });
+  });
+
+  it('re-reads the site when the first list read shows a live publish the site has not counted yet', () => {
+    const queryClient = new QueryClient();
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+    const detailKey = queryKeys.projects.detail('p1');
+    // The site was read just before the starter's first publish went live.
+    queryClient.setQueryData(detailKey, { id: 'p1', readyPublishes: 0 });
+    expect(syncPublishReceipt(queryClient, 'p1', undefined, [deployment('d1', 'READY')])).toBe(false);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: detailKey, exact: true });
+
+    // Already counted, or nothing live: no extra read.
+    invalidate.mockClear();
+    queryClient.setQueryData(detailKey, { id: 'p1', readyPublishes: 1 });
+    syncPublishReceipt(queryClient, 'p1', undefined, [deployment('d1', 'READY')]);
+    queryClient.setQueryData(detailKey, { id: 'p1', readyPublishes: 0 });
+    syncPublishReceipt(queryClient, 'p1', undefined, [deployment('d1', 'FAILED')]);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it('never hides an edit saved after the published snapshot: state is unknown until the server answers', async () => {

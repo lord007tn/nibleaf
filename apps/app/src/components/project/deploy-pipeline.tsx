@@ -7,6 +7,7 @@ import { Check, ExternalLink, Loader2, RotateCcw, TriangleAlert } from 'lucide-r
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDeployments, useDomains, useRollback } from '@/hooks/api';
+import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, DeploymentStatus, Project } from '@/hooks/api/types';
 import { completeFirstPublishAttribution, type FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { canonicalSiteBase, type SiteUrlOptions, sitePageUrl } from '@/lib/site-seo';
@@ -78,7 +79,8 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   const domains = useDomains(project.id);
   const siteOptions: SiteUrlOptions = {
     slug: project.slug,
-    primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
+    // Only a domain readers can open (ownership, DNS and HTTPS), as on the site overview.
+    primaryDomain: domains.data ? pickLiveDomain(domains.data)?.domain : undefined,
   };
   const siteUrl = canonicalSiteBase(project.id, siteOptions);
   const livePage = currentPage;

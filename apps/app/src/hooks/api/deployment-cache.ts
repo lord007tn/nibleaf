@@ -1,6 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { queryKeys } from './query-keys';
-import type { Deployment } from './types';
+import type { Deployment, Project } from './types';
 
 type DeploymentReceipt = Pick<Deployment, 'id' | 'status' | 'version'>;
 
@@ -54,10 +54,24 @@ export const syncPublishReceipt = (
   next: readonly DeploymentReceipt[],
 ): boolean => {
   const ready = newlyReadyDeployment(previous, next);
-  if (!ready) return false;
+  if (!ready) {
+    // The first read describes the past, but it can still contradict the site's
+    // publish facts: a publish (the starter's, a colleague's) went live between
+    // reading the site and reading this list. Re-read the site, or "Times
+    // published" stays 0 — nothing polls once every attempt has settled.
+    if (!previous && next.some((deployment) => deployment.status === 'READY')) {
+      const detailKey = queryKeys.projects.detail(projectId);
+      if (queryClient.getQueryData<Project>(detailKey)?.readyPublishes === 0) {
+        void queryClient.invalidateQueries({ queryKey: detailKey, exact: true });
+      }
+    }
+    return false;
+  }
   void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
+  // The site's own publish facts (how many went live, whether one is exportable).
+  void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
   return true;
 };
 
