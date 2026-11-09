@@ -4051,5 +4051,6 @@
   "sites_sort_name": "الاسم",
   "sites_sort_views": "الأكثر مشاهدة",
   "analytics_chart_pageviewsallsites": "مشاهدات الصفحات عبر جميع المواقع",
-  "analytics_section_bysite": "حسب الموقع"
+  "analytics_section_bysite": "حسب الموقع",
+  "analytics_search_write_languageserror": "تعذّر تحميل لغات هذا الموقع، لذا لا يمكن تحديد لغة المسودة بعد."
 }

@@ -3913,6 +3913,7 @@ export const MESSAGE_IDS = {
   'sites.sort.views': 'sites_sort_views',
   'analytics.chart.pageviewsAllSites': 'analytics_chart_pageviewsallsites',
   'analytics.section.bySite': 'analytics_section_bysite',
+  'analytics.search.write.languagesError': 'analytics_search_write_languageserror',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

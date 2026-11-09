@@ -3951,5 +3951,6 @@
   "sites_sort_name": "Nama",
   "sites_sort_views": "Paling banyak dilihat",
   "analytics_chart_pageviewsallsites": "Tayangan halaman di semua situs",
-  "analytics_section_bysite": "Per situs"
+  "analytics_section_bysite": "Per situs",
+  "analytics_search_write_languageserror": "Bahasa situs ini tidak dapat dimuat, jadi bahasa draf belum bisa dipilih."
 }

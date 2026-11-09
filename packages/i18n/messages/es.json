@@ -4016,5 +4016,6 @@
   "sites_sort_name": "Nombre",
   "sites_sort_views": "Más vistos",
   "analytics_chart_pageviewsallsites": "Vistas de página en todos los sitios",
-  "analytics_section_bysite": "Por sitio"
+  "analytics_section_bysite": "Por sitio",
+  "analytics_search_write_languageserror": "No se pudieron cargar los idiomas de este sitio, así que aún no se puede elegir el idioma del borrador."
 }

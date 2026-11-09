@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ mutate: vi.fn(), navigate: vi.fn(), languagesPending: false }));
+const mocks = vi.hoisted(() => ({ mutate: vi.fn(), navigate: vi.fn(), refetch: vi.fn(), languagesPending: false, languagesError: false }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: null }) }));
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -16,8 +16,11 @@ vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
   useLanguages: () => ({
-    isSuccess: !mocks.languagesPending,
+    isSuccess: !mocks.languagesPending && !mocks.languagesError,
     isPending: mocks.languagesPending,
+    isError: mocks.languagesError,
+    isFetching: false,
+    refetch: mocks.refetch,
     data: mocks.languagesPending
       ? undefined
       : [
@@ -60,6 +63,7 @@ describe('content gaps', () => {
     container.remove();
     vi.clearAllMocks();
     mocks.languagesPending = false;
+    mocks.languagesError = false;
   });
 
   it("writes a draft titled with the question, in the question's language, and opens it", async () => {
@@ -95,6 +99,28 @@ describe('content gaps', () => {
     const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
     expect(write?.disabled).toBe(true);
     await act(async () => write?.click());
+    expect(mocks.mutate).not.toHaveBeenCalled();
+  });
+
+  it('writes the Arabic draft once the languages arrive after an early hover', async () => {
+    mocks.languagesPending = true;
+    const ui = <ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />;
+    await act(async () => root.render(ui));
+    mocks.languagesPending = false;
+    await act(async () => root.render(<ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />));
+    const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
+    expect(write?.disabled).toBe(false);
+    await act(async () => write?.click());
+    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'كيف أبدأ؟', languageId: 'lang-ar' }, expect.anything());
+  });
+
+  it('says the languages could not be loaded and offers a retry instead of a silent disabled button', async () => {
+    mocks.languagesError = true;
+    await act(async () => root.render(<ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />));
+    expect(container.textContent).toContain('analytics.search.write.languagesError');
+    const retry = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('error.tryAgain'));
+    await act(async () => retry?.click());
+    expect(mocks.refetch).toHaveBeenCalledOnce();
     expect(mocks.mutate).not.toHaveBeenCalled();
   });
 });

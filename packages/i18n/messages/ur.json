@@ -4007,5 +4007,6 @@
   "sites_sort_name": "نام",
   "sites_sort_views": "سب سے زیادہ دیکھی گئی",
   "analytics_chart_pageviewsallsites": "تمام سائٹس پر صفحات کے مشاہدات",
-  "analytics_section_bysite": "سائٹ کے لحاظ سے"
+  "analytics_section_bysite": "سائٹ کے لحاظ سے",
+  "analytics_search_write_languageserror": "اس سائٹ کی زبانیں لوڈ نہیں ہو سکیں، اس لیے مسودے کی زبان ابھی منتخب نہیں کی جا سکتی۔"
 }

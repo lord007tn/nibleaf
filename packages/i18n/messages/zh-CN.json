@@ -3951,5 +3951,6 @@
   "sites_sort_name": "名称",
   "sites_sort_views": "浏览最多",
   "analytics_chart_pageviewsallsites": "所有站点的页面浏览量",
-  "analytics_section_bysite": "按站点"
+  "analytics_section_bysite": "按站点",
+  "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。"
 }

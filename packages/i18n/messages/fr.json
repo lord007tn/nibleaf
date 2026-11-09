@@ -4016,5 +4016,6 @@
   "sites_sort_name": "Nom",
   "sites_sort_views": "Les plus vus",
   "analytics_chart_pageviewsallsites": "Pages vues sur tous les sites",
-  "analytics_section_bysite": "Par site"
+  "analytics_section_bysite": "Par site",
+  "analytics_search_write_languageserror": "Impossible de charger les langues de ce site : la langue du brouillon ne peut pas encore être choisie."
 }

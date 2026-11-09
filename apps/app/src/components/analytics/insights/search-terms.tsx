@@ -270,6 +270,19 @@ export function WriteArticleButton({
       },
     );
   };
+  // The site's languages couldn't be read: say so and offer a retry instead of a silent disabled button.
+  if (languageCode && languagesQuery.isError) {
+    return (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs" role="status">
+          {t('analytics.search.write.languagesError')}
+        </span>
+        <Button loading={languagesQuery.isFetching} onClick={() => void languagesQuery.refetch()} size="sm" type="button" variant="outline">
+          {t('error.tryAgain')}
+        </Button>
+      </span>
+    );
+  }
   return (
     <Button
       aria-label={t('analytics.search.write.aria', { term })}
