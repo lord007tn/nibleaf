@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
-import { ArrowUpRight, BarChart3, BookText, FileText, Plus, Search, SearchX } from 'lucide-react';
+import { ArrowUpRight, BarChart3, BookText, FileText, Plus, Search } from 'lucide-react';
 import { useId, useMemo, useState, useSyncExternalStore } from 'react';
 import { EmptyState } from '@/components/app/empty-state';
 import { NewProjectDialog } from '@/components/app/new-project-dialog';
@@ -195,7 +195,7 @@ function SitesPage() {
             </Button>
           }
           framed
-          icon={<SearchX />}
+          icon={<Search />}
           title={t('dashboard.search.noResults')}
         />
       ) : (
