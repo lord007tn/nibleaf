@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
+import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import {
   Dialog,
   DialogClose,
@@ -22,7 +23,7 @@ import { ChevronRight, CirclePlus, type LucideIcon, PanelsTopLeft, SearchCheck, 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { PageConfig, PageNode } from '@/hooks/api';
-import { friendlyErrorMessage, useUpdatePage } from '@/hooks/api';
+import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
 
 type PageMode = 'default' | 'wide' | 'center';
 type PageSettingsSection = 'general' | 'seo' | 'behaviour';
@@ -44,6 +45,8 @@ export function PageSettingsDialog({
   open,
   onOpenChange,
   published = false,
+  languages = [],
+  pages = [],
 }: {
   projectId: string;
   page: PageNode;
@@ -51,9 +54,15 @@ export function PageSettingsDialog({
   onOpenChange: (open: boolean) => void;
   /** The page is live for readers, so changing its address breaks old links. */
   published?: boolean;
+  /** The site's languages, in sidebar order, for moving the page to another one. */
+  languages?: ReadonlyArray<{ id: string; label: string }>;
+  /** Every page on the page's branch, to move its subtree along and append it in the target language. */
+  pages?: readonly PageNode[];
 }) {
   const t = useT();
   const update = useUpdatePage(projectId);
+  const reorder = useReorderPages(projectId);
+  const confirm = useConfirm();
   const isGroup = page.kind === 'GROUP';
 
   // General
@@ -120,6 +129,53 @@ export function PageSettingsDialog({
     setMode(page.config?.mode ?? 'default');
     setHideToc(page.config?.hideToc ?? false);
   }, [open, pageId]);
+
+  const languageOptions = languages.map((language) => ({ value: language.id, label: language.label }));
+  // Moving to another language is its own step (the same move as dragging the
+  // page into that language's section), confirmed because the whole subtree goes.
+  const moveToLanguage = async (languageId: string) => {
+    const target = languages.find((language) => language.id === languageId);
+    if (!target || languageId === page.languageId) return;
+    const subtree = descendantsOf(page.id, pages);
+    const ok = await confirm({
+      title: t('editor.pageSettings.moveLanguage.title', { language: target.label }),
+      description:
+        subtree.length > 0
+          ? t('editor.pageSettings.moveLanguage.descriptionWithChildren', { title: page.title, count: subtree.length, language: target.label })
+          : t('editor.pageSettings.moveLanguage.description', { title: page.title, language: target.label }),
+      confirmLabel: t('editor.pageSettings.moveLanguage.confirm'),
+    });
+    if (!ok) return;
+    const topLevel = pages.filter((other) => other.languageId === languageId && other.branchId === page.branchId && !other.parentId);
+    const position = topLevel.length > 0 ? Math.max(...topLevel.map((other) => other.position)) + 1 : 0;
+    // What the fields held when the move started: the server's result only
+    // replaces a field the author has not edited in the meantime.
+    const slugAtStart = slug;
+    const slugEditedAtStart = slugTouched;
+    const keyAtStart = translationKey;
+    reorder.mutate(
+      {
+        items: [
+          { id: page.id, parentId: null, position, languageId },
+          ...subtree.map((child) => ({ id: child.id, parentId: child.parentId, position: child.position, languageId })),
+        ],
+      },
+      {
+        onSuccess: (list) => {
+          const moved = Array.isArray(list) ? list.find((item) => item.id === page.id) : undefined;
+          if (moved) {
+            // A clash in the target language gives the page a numbered address, and a
+            // translation key that language already uses is cleared. Show both, so a
+            // later Save can't put the old address or a duplicate key back.
+            if (!slugEditedAtStart) setSlug((current) => (current === slugAtStart ? moved.slug : current));
+            setTranslationKey((current) => (current === keyAtStart ? (moved.translationKey ?? '') : current));
+          }
+          toast.success(t('editor.pageSettings.moveLanguage.done', { language: target.label }));
+        },
+        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.pageSettings.moveLanguage.error')),
+      },
+    );
+  };
 
   const save = () => {
     // A complete config object so the server merge replaces every managed key
@@ -188,7 +244,7 @@ export function PageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl" showCloseButton={false}>
         <DialogDescription className="sr-only">{t('editor.pageSettings.desc')}</DialogDescription>
         <div className="flex h-[min(620px,85dvh)] flex-col sm:flex-row">
           {/* Left settings sidebar */}
@@ -259,6 +315,27 @@ export function PageSettingsDialog({
                         {t('editor.pageSettings.slugChangeWarning')}
                       </p>
                     ) : null}
+                  </Field>
+                  <Field label={t('editor.pageSettings.language')} hint={t('editor.pageSettings.languageHint')} htmlFor="page-language">
+                    <Select
+                      items={languageOptions}
+                      value={page.languageId}
+                      onValueChange={(value) => {
+                        if (value) void moveToLanguage(value);
+                      }}
+                      disabled={languageOptions.length < 2 || reorder.isPending}
+                    >
+                      <SelectTrigger id="page-language" className="w-full">
+                        <SelectValue>{languageOptions.find((option) => option.value === page.languageId)?.label}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {languageOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </Field>
                   <Field label={t('editor.pageSettings.description')} htmlFor="page-desc">
                     <Textarea
@@ -408,6 +485,24 @@ export function PageSettingsDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Every page nested under `id`, at any depth. */
+function descendantsOf(id: string, pages: readonly PageNode[]): PageNode[] {
+  const out: PageNode[] = [];
+  const parents = new Set([id]);
+  let added = true;
+  while (added) {
+    added = false;
+    for (const page of pages) {
+      if (page.parentId && parents.has(page.parentId) && !parents.has(page.id)) {
+        parents.add(page.id);
+        out.push(page);
+        added = true;
+      }
+    }
+  }
+  return out;
 }
 
 /** Open "More options" straight away when the page already uses one of them. */

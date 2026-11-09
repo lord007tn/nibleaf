@@ -1,12 +1,29 @@
 /** @vitest-environment jsdom */
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageNode } from '@/hooks/api/types';
 import { PageSettingsDialog } from './page-settings-dialog';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
-vi.mock('@/hooks/api', () => ({ friendlyErrorMessage: () => 'error', useUpdatePage: () => ({ isPending: false, mutate: vi.fn() }) }));
+const mocks = vi.hoisted(() => ({ reorder: vi.fn(), confirm: vi.fn() }));
+vi.mock('@/hooks/api', () => ({
+  friendlyErrorMessage: () => 'error',
+  useUpdatePage: () => ({ isPending: false, mutate: vi.fn() }),
+  useReorderPages: () => ({ isPending: false, mutate: mocks.reorder }),
+}));
+vi.mock('@nibleaf/design-system/components/ui/select', () => ({
+  Select: ({ children, value, onValueChange }: { children: ReactNode; value: string; onValueChange: (value: string) => void }) => (
+    <select data-testid="select" value={value} onChange={(event) => onValueChange(event.target.value)}>
+      {children}
+    </select>
+  ),
+  SelectTrigger: () => null,
+  SelectValue: () => null,
+  SelectContent: ({ children }: { children: ReactNode }) => children,
+  SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
+}));
+vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 
 const page: PageNode = {
   id: 'page-a',
@@ -51,5 +68,104 @@ describe('page settings draft', () => {
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Unsaved dialog title');
     await act(async () => render({ ...page, id: 'page-b', title: 'Other page' }));
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Other page');
+  });
+
+  it('moves the page and its subtree to the chosen language after confirming', async () => {
+    const child: PageNode = { ...page, id: 'child', parentId: 'page-a', slug: 'child', path: 'original/child' };
+    const arabicTop: PageNode = { ...page, id: 'ar-top', languageId: 'ar', slug: 'muqaddima', path: 'muqaddima', position: 4 };
+    mocks.confirm.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    await act(async () =>
+      root.render(
+        <PageSettingsDialog
+          languages={[
+            { id: 'en', label: 'English' },
+            { id: 'ar', label: 'العربية' },
+          ]}
+          onOpenChange={vi.fn()}
+          open
+          page={page}
+          pages={[page, child, arabicTop]}
+          projectId="project-a"
+        />,
+      ),
+    );
+    const language = document.querySelector<HTMLSelectElement>('#page-language, [data-testid="select"]');
+    if (!language) throw new Error('Language select was not rendered');
+    const choose = async (value: string) =>
+      act(async () => {
+        Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(language, value);
+        language.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    await choose('ar');
+    expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ description: 'editor.pageSettings.moveLanguage.descriptionWithChildren' }));
+    expect(mocks.reorder).not.toHaveBeenCalled();
+    await choose('ar');
+    expect(mocks.reorder).toHaveBeenCalledWith(
+      {
+        items: [
+          { id: 'page-a', parentId: null, position: 5, languageId: 'ar' },
+          { id: 'child', parentId: 'page-a', position: 0, languageId: 'ar' },
+        ],
+      },
+      expect.any(Object),
+    );
+  });
+
+  describe('after a language move finishes', () => {
+    const linked: PageNode = { ...page, translationKey: 'shared' };
+    const setValue = async (selector: string, value: string) => {
+      const input = document.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+      if (!input) throw new Error(`${selector} was not rendered`);
+      const proto = input instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(input, value);
+        input.dispatchEvent(new Event(input instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
+      });
+    };
+    const openSeo = async () => {
+      const tab = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+      await act(async () => tab?.click());
+    };
+    const startMove = async () => {
+      mocks.confirm.mockResolvedValueOnce(true);
+      await act(async () =>
+        root.render(
+          <PageSettingsDialog
+            languages={[
+              { id: 'en', label: 'English' },
+              { id: 'ar', label: 'العربية' },
+            ]}
+            onOpenChange={vi.fn()}
+            open
+            page={linked}
+            pages={[linked]}
+            projectId="project-a"
+          />,
+        ),
+      );
+      await setValue('[data-testid="select"]', 'ar');
+      const options = mocks.reorder.mock.calls.at(-1)?.[1] as { onSuccess: (list: PageNode[]) => void };
+      return (moved: Partial<PageNode>) => act(async () => options.onSuccess([{ ...linked, languageId: 'ar', ...moved }]));
+    };
+
+    it('shows the numbered address and the cleared translation key the server gave the page', async () => {
+      const finish = await startMove();
+      await finish({ slug: 'original-2', translationKey: null });
+      expect(document.querySelector<HTMLInputElement>('#page-slug')?.value).toBe('original-2');
+      await openSeo();
+      expect(document.querySelector<HTMLInputElement>('#page-translation-key')?.value).toBe('');
+    });
+
+    it('keeps an address and a translation key edited while the move was pending', async () => {
+      const finish = await startMove();
+      await setValue('#page-slug', 'my-address');
+      await openSeo();
+      await setValue('#page-translation-key', 'my-key');
+      await finish({ slug: 'original-2', translationKey: null });
+      expect(document.querySelector<HTMLInputElement>('#page-translation-key')?.value).toBe('my-key');
+      const general = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.general'));
+      await act(async () => general?.click());
+      expect(document.querySelector<HTMLInputElement>('#page-slug')?.value).toBe('my-address');
+    });
   });
 });
