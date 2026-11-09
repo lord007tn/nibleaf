@@ -1,5 +1,14 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'admin.sidebarDescription': 'admin_sidebardescription',
+  'nav.sidebarTitle': 'nav_sidebartitle',
+  'nav.sidebarDescription': 'nav_sidebardescription',
+  'nav.breadcrumb': 'nav_breadcrumb',
+  'nav.sitesLoadError': 'nav_sitesloaderror',
+  'command.pagesLoadError': 'command_pagesloaderror',
+  'notifications.bellUnreadLabel': 'notifications_bellunreadlabel',
+  'notifications.unread': 'notifications_unread',
+
   'analytics.drafting.title': 'analytics_drafting_title',
   'analytics.drafting.description': 'analytics_drafting_description',
   'analytics.drafting.total': 'analytics_drafting_total',

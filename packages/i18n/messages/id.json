@@ -3983,5 +3983,13 @@
   "analytics_search_write_languageserror": "Bahasa situs ini tidak dapat dimuat, jadi bahasa draf belum bisa dipilih.",
   "dashboard_ai_sessionexpired": "Sesi Anda telah berakhir. Masuk lagi untuk melihat percakapan ini.",
   "dashboard_ai_signinagain": "Masuk lagi",
+  "nav_sidebartitle": "Navigasi",
+  "nav_sidebardescription": "Beralih situs dan jelajahi ruang kerja Anda.",
+  "nav_breadcrumb": "Jejak navigasi",
+  "nav_sitesloaderror": "Tidak dapat memperbarui situs",
+  "command_pagesloaderror": "Tidak dapat memperbarui halaman",
+  "notifications_bellunreadlabel": "Buka notifikasi. Belum dibaca: {count}",
+  "notifications_unread": "Belum dibaca",
+  "admin_sidebardescription": "Jelajahi pelanggan, situs, dan operasi platform.",
   "settings_appearance_theme_system": "Ikuti perangkat saya"
 }

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
+import { QueryErrorState } from '@/components/query-error-state';
 import { usePages, useProjects } from '@/hooks/api';
 
 /** Site-settings destinations people look for most, with English aliases so
@@ -84,9 +85,11 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   const navigate = useNavigate();
   // Mounted above the site routes, so read the site from the deepest match.
   const projectId = useRouterState({ select: (state) => (state.matches.at(-1)?.params as { projectId?: string } | undefined)?.projectId });
-  const { data: projects, isPending: projectsPending } = useProjects();
+  const projectsQuery = useProjects();
+  const { data: projects, isPending: projectsPending } = projectsQuery;
   // Only fetch the current site's pages once the palette is actually open.
-  const { data: pages, isPending: pagesQueryPending } = usePages(open ? projectId : undefined);
+  const pagesQuery = usePages(open ? projectId : undefined);
+  const { data: pages, isPending: pagesQueryPending } = pagesQuery;
   // A disabled query (no site, palette closed) is also "pending"; only a real first load counts.
   const pagesPending = Boolean(open && projectId) && pagesQueryPending;
   const { resolvedTheme, setTheme } = useTheme();
@@ -129,9 +132,21 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     <>
       <CommandDialog description={t('command.dialog.description')} onOpenChange={changeOpen} open={open} title={t('command.dialog.title')}>
         <CommandInput onValueChange={setQuery} placeholder={t('command.searchPlaceholder')} value={query} />
+        {projectsQuery.isError ? (
+          <div className="p-2">
+            <QueryErrorState title={t('nav.sitesLoadError')} onRetry={() => void projectsQuery.refetch()} retrying={projectsQuery.isFetching} />
+          </div>
+        ) : null}
+        {projectId && pagesQuery.isError ? (
+          <div className="p-2">
+            <QueryErrorState title={t('command.pagesLoadError')} onRetry={() => void pagesQuery.refetch()} retrying={pagesQuery.isFetching} />
+          </div>
+        ) : null}
         <CommandList>
           {/* While sites or pages are still loading, a miss isn't "no results" yet. */}
-          {projectsPending || pagesPending ? null : <CommandEmpty>{t('command.noResults')}</CommandEmpty>}
+          {projectsPending || pagesPending || projectsQuery.isError || (projectId && pagesQuery.isError) ? null : (
+            <CommandEmpty>{t('command.noResults')}</CommandEmpty>
+          )}
           {pagesPending ? <PaletteLoadingRows heading={t('command.group.pages')} /> : null}
           {projectsPending ? <PaletteLoadingRows heading={t('command.group.projects')} /> : null}
           {projectId && pageItems.length > 0 ? (

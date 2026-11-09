@@ -4048,5 +4048,13 @@
   "analytics_search_write_languageserror": "No se pudieron cargar los idiomas de este sitio, así que aún no se puede elegir el idioma del borrador.",
   "dashboard_ai_sessionexpired": "Tu sesión terminó. Vuelve a iniciar sesión para ver esta conversación.",
   "dashboard_ai_signinagain": "Volver a iniciar sesión",
+  "nav_sidebartitle": "Navegación",
+  "nav_sidebardescription": "Cambia de sitio y navega por tu espacio de trabajo.",
+  "nav_breadcrumb": "Ruta de navegación",
+  "nav_sitesloaderror": "No se pudieron actualizar los sitios",
+  "command_pagesloaderror": "No se pudieron actualizar las páginas",
+  "notifications_bellunreadlabel": "Abrir notificaciones. Sin leer: {count}",
+  "notifications_unread": "Sin leer",
+  "admin_sidebardescription": "Navega por los clientes, sitios y operaciones de la plataforma.",
   "settings_appearance_theme_system": "Como mi dispositivo"
 }

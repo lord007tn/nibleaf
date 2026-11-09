@@ -3983,5 +3983,13 @@
   "analytics_search_write_languageserror": "এই সাইটের ভাষাগুলো লোড করা যায়নি, তাই খসড়ার ভাষা এখনও বেছে নেওয়া যাচ্ছে না।",
   "dashboard_ai_sessionexpired": "আপনার সেশন শেষ হয়েছে। এই কথোপকথন দেখতে আবার সাইন ইন করুন।",
   "dashboard_ai_signinagain": "আবার সাইন ইন করুন",
+  "nav_sidebartitle": "নেভিগেশন",
+  "nav_sidebardescription": "সাইট বদলান এবং আপনার কর্মক্ষেত্রে নেভিগেট করুন।",
+  "nav_breadcrumb": "নেভিগেশন পথ",
+  "nav_sitesloaderror": "সাইটগুলো রিফ্রেশ করা যায়নি",
+  "command_pagesloaderror": "পৃষ্ঠাগুলো রিফ্রেশ করা যায়নি",
+  "notifications_bellunreadlabel": "বিজ্ঞপ্তি খুলুন। অপঠিত: {count}",
+  "notifications_unread": "অপঠিত",
+  "admin_sidebardescription": "প্ল্যাটফর্মের গ্রাহক, সাইট ও কার্যক্রমে যান।",
   "settings_appearance_theme_system": "আমার ডিভাইসের মতো"
 }

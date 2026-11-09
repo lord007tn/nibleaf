@@ -3983,5 +3983,13 @@
   "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。",
   "dashboard_ai_sessionexpired": "你的会话已结束。请重新登录以查看此对话。",
   "dashboard_ai_signinagain": "重新登录",
+  "nav_sidebartitle": "导航",
+  "nav_sidebardescription": "切换站点并浏览工作区。",
+  "nav_breadcrumb": "面包屑导航",
+  "nav_sitesloaderror": "无法刷新站点",
+  "command_pagesloaderror": "无法刷新页面",
+  "notifications_bellunreadlabel": "打开通知。未读：{count}",
+  "notifications_unread": "未读",
+  "admin_sidebardescription": "浏览平台客户、站点和运营功能。",
   "settings_appearance_theme_system": "跟随设备"
 }

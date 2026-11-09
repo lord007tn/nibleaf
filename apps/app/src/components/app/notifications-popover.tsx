@@ -33,6 +33,7 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (it
       >
         <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${unread ? 'bg-primary' : 'bg-transparent'}`} />
         <span className="min-w-0 flex-1 leading-snug">
+          {unread ? <span className="sr-only">{t('notifications.unread')} </span> : null}
           <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`} dir="auto">
             {text.title}
           </span>
@@ -63,6 +64,7 @@ const anyUnread = (count: number, items: NotificationItem[]) => count > 0 || ite
  */
 export function NotificationsPopover() {
   const t = useT();
+  const { number } = useFormatters();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const { data: unread } = useUnreadNotificationCount();
@@ -89,21 +91,29 @@ export function NotificationsPopover() {
     <Popover onOpenChange={setOpen} open={open}>
       <PopoverTrigger
         render={
-          <Button aria-label={t('notifications.bellLabel')} className="relative size-8" size="icon" variant="ghost">
-            <Bell className="size-4" />
+          <Button
+            aria-label={unreadCount > 0 ? t('notifications.bellUnreadLabel', { count: number(unreadCount) }) : t('notifications.bellLabel')}
+            className="relative size-8 shrink-0"
+            size="icon"
+            variant="ghost"
+          >
+            <Bell aria-hidden className="size-4" />
             {unreadCount > 0 ? (
-              <span className="-top-0.5 -end-0.5 absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-none">
-                {unreadCount > 9 ? '9+' : unreadCount}
+              <span
+                aria-hidden
+                className="-top-0.5 -end-0.5 absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 font-semibold text-[10px] text-primary-foreground leading-none"
+              >
+                {unreadCount > 9 ? `${number(9)}+` : number(unreadCount)}
               </span>
             ) : null}
           </Button>
         }
       />
       <PopoverContent align="end" className="w-90 gap-0 p-0">
-        <div className="flex items-center justify-between border-border border-b px-4 py-2.5">
-          <span className="font-semibold text-sm">{t('notifications.title')}</span>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-border border-b px-4 py-2.5">
+          <span className="min-w-0 font-semibold text-sm [overflow-wrap:anywhere]">{t('notifications.title')}</span>
           <Button
-            className="h-7 px-2 text-xs"
+            className="h-auto min-w-0 max-w-full shrink px-2 text-xs [overflow-wrap:anywhere]"
             disabled={!hasUnread}
             loading={markingAll}
             onClick={() => markRead.mutate({ all: true })}
@@ -113,7 +123,7 @@ export function NotificationsPopover() {
             {t('notifications.markAllRead')}
           </Button>
         </div>
-        <div aria-busy={isPending && !isError ? true : undefined} className="max-h-96 overflow-y-auto p-1.5">
+        <div aria-busy={isPending && !isError ? true : undefined} className="min-h-0 max-h-96 shrink-0 overflow-y-auto p-1.5">
           {isError && !inbox ? (
             <div className="p-1.5">
               <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} />

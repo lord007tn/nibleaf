@@ -1,4 +1,5 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
+import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,18 +8,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@nibleaf/design-system/components/ui/sidebar';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@nibleaf/design-system/components/ui/sidebar';
 import { useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, ChevronsUpDown, LayoutGrid, Plus } from 'lucide-react';
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { InlineSkeleton } from '@/components/inline-skeleton';
 import { useProjects } from '@/hooks/api';
 
 const subscribeToHydration = () => () => undefined;
 
 export function SiteSwitcher({ projectId }: { projectId?: string }) {
-  const { data: projects, isPending } = useProjects();
+  const { data: projects, isPending, isError, isFetching, refetch } = useProjects();
+  const { setOpenMobile } = useSidebar();
+  const workspaceItem = useRef<HTMLDivElement>(null);
   const hydrated = useSyncExternalStore(
     subscribeToHydration,
     () => true,
@@ -29,6 +32,10 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
   const nameLoading = Boolean(projectId) && (!hydrated || isPending);
   const navigate = useNavigate();
   const t = useT();
+  const go = (navigateTo: () => void) => {
+    setOpenMobile(false);
+    navigateTo();
+  };
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -39,7 +46,7 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
             }
           >
             <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-sidebar-border bg-sidebar-primary/10">
-              {selected ? <NibleafMark className="size-5.5" /> : <LayoutGrid className="size-4.5 text-sidebar-primary" />}
+              {projectId ? <NibleafMark className="size-5.5" /> : <LayoutGrid className="size-4.5 text-sidebar-primary" />}
             </span>
             <span className="min-w-0 flex-1">
               {nameLoading ? (
@@ -52,9 +59,9 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
                 <>
                   {/* bdi isolates a Latin site name without left-aligning it in RTL. */}
                   <span className="block truncate text-start font-semibold text-sm">
-                    <bdi>{selected?.name ?? t('project.allSites')}</bdi>
+                    <bdi>{selected?.name ?? t(projectId ? 'nav.site' : 'project.allSites')}</bdi>
                   </span>
-                  <span className="block truncate text-start text-muted-foreground text-xs">{selected ? t('nav.site') : t('nav.workspace')}</span>
+                  <span className="block truncate text-start text-muted-foreground text-xs">{t(projectId ? 'nav.site' : 'nav.workspace')}</span>
                 </>
               )}
             </span>
@@ -62,14 +69,36 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
             <DropdownMenuLabel>{t('project.allSites')}</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigate({ to: '/app' })}>
+            <DropdownMenuItem ref={workspaceItem} onClick={() => go(() => void navigate({ to: '/app' }))}>
               <LayoutGrid className="size-4.5" />
               <span className="flex-1">{t('nav.workspace')}</span>
               {!projectId ? <Check className="size-4 text-primary" /> : null}
             </DropdownMenuItem>
+            {isError ? (
+              <div className="p-2" role="alert">
+                <p className="text-destructive text-sm">{t('nav.sitesLoadError')}</p>
+                <DropdownMenuItem
+                  className="mt-2 justify-center"
+                  closeOnClick={false}
+                  disabled={isFetching}
+                  nativeButton
+                  onClick={(event) => {
+                    event.preventBaseUIHandler();
+                    workspaceItem.current?.focus();
+                    void refetch();
+                  }}
+                  render={<Button loading={isFetching} size="sm" variant="outline" />}
+                >
+                  {t('error.tryAgain')}
+                </DropdownMenuItem>
+              </div>
+            ) : null}
             {(projects ?? []).length > 0 ? <DropdownMenuSeparator /> : null}
             {(projects ?? []).map((site) => (
-              <DropdownMenuItem key={site.id} onClick={() => navigate({ to: '/app/projects/$projectId', params: { projectId: site.id } })}>
+              <DropdownMenuItem
+                key={site.id}
+                onClick={() => go(() => void navigate({ to: '/app/projects/$projectId', params: { projectId: site.id } }))}
+              >
                 <NibleafMark className="size-4.5" />
                 <span className="flex-1 truncate text-start">
                   <bdi>{site.name}</bdi>
@@ -78,7 +107,7 @@ export function SiteSwitcher({ projectId }: { projectId?: string }) {
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate({ to: '/app/sites', search: { newSite: true } })}>
+            <DropdownMenuItem onClick={() => go(() => void navigate({ to: '/app/sites', search: { newSite: true } }))}>
               <Plus className="size-4.5" /> {t('dashboard.newProject')}
             </DropdownMenuItem>
           </DropdownMenuContent>
