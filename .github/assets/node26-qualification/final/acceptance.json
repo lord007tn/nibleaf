@@ -1,0 +1,105 @@
+{
+  "checkedAt": "2026-11-09T00:55:33.705Z",
+  "image": "nibleaf-runtime:390-final",
+  "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+  "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+  "services": {
+    "server": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "revision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e"
+      },
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "bindMounts": 0
+    },
+    "worker": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "service": "worker",
+        "revision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+        "queues": {
+          "status": "ok",
+          "workers": [
+            {
+              "queue": "publish",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "search",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "email",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "analytics",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "export",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "git",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "erasure",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            }
+          ]
+        },
+        "email": {
+          "status": "disabled",
+          "provider": "none",
+          "required": false
+        },
+        "analytics": {
+          "configured": true,
+          "latencyMs": 11,
+          "status": "ok"
+        }
+      },
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "bindMounts": 0
+    },
+    "app": {
+      "status": 200,
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "bindMounts": 0
+    },
+    "admin": {
+      "status": 200,
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "bindMounts": 0
+    }
+  }
+}

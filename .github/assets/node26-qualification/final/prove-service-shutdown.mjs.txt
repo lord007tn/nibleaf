@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+const inspect=(name)=>JSON.parse(execFileSync('docker',['inspect',name],{encoding:'utf8'}))[0];
+const receipts=[];
+for(const [service,port] of [['server',4521],['worker',4442]]){
+ const name=`nibleaf-runtime-${service}-1`;
+ const before=inspect(name);
+ assert.equal(before.Config.Labels['com.docker.compose.project'],'nibleaf-runtime');
+ assert.equal(before.Config.Labels['com.docker.compose.service'],service);
+ assert.equal(before.Config.StopTimeout,30);
+ assert.equal(before.State.Running,true);
+ const health=await fetch(`http://127.0.0.1:${port}/health`);assert.equal(health.status,200);
+ const since=new Date().toISOString();const started=performance.now();
+ execFileSync('docker',['stop','--timeout','30',name],{stdio:'pipe'});
+ const elapsedMs=Math.round(performance.now()-started);const after=inspect(name);
+ assert.equal(after.State.ExitCode,0);assert.equal(after.State.Running,false);assert.equal(after.State.OOMKilled,false);
+ assert.ok(elapsedMs<10000,`${service} stop exceeded ten seconds: ${elapsedMs}ms`);
+ const logs=spawnSync('docker',['logs','--since',since,name],{encoding:'utf8'});assert.equal(logs.status,0);
+ receipts.push({service,imageId:before.Image,sourceRevision:before.Config.Labels['org.opencontainers.image.revision'],composeStopWindowSeconds:before.Config.StopTimeout,elapsedMs,exitCode:after.State.ExitCode,oomKilled:after.State.OOMKilled,shutdownLogs:(logs.stdout+logs.stderr).trim()});
+}
+const report={project:'nibleaf-runtime',observedAt:new Date().toISOString(),receipts};
+writeFileSync(process.argv[2],JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

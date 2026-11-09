@@ -1,0 +1,37 @@
+{
+  "project": "nibleaf-runtime",
+  "observedAt": "2026-11-09T00:59:52.123Z",
+  "receipts": [
+    {
+      "service": "app",
+      "image": "nibleaf-runtime:390-final",
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "composeStopWindowSeconds": 30,
+      "ssrRequests": 20,
+      "ssrStatus": 200,
+      "idleKeepAliveConnections": 20,
+      "allKeepAlivesClosed": true,
+      "elapsedMs": 2628,
+      "exitCode": 0,
+      "oomKilled": false,
+      "shutdownLogs": "[nibleaf] SIGTERM: readiness disabled; draining for 1000ms\n\rStopping server gracefully (5s)... Press Ctrl+C again to force close.\u001b[2K\rServer closed successfully."
+    },
+    {
+      "service": "admin",
+      "image": "nibleaf-runtime:390-final",
+      "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+      "sourceRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+      "composeStopWindowSeconds": 30,
+      "ssrRequests": 20,
+      "ssrStatus": 200,
+      "idleKeepAliveConnections": 20,
+      "allKeepAlivesClosed": true,
+      "elapsedMs": 2576,
+      "exitCode": 0,
+      "oomKilled": false,
+      "shutdownLogs": "[nibleaf] SIGTERM: readiness disabled; draining for 1000ms\n\rStopping server gracefully (5s)... Press Ctrl+C again to force close.\u001b[2K\rServer closed successfully."
+    }
+  ],
+  "scope": "Actual immutable app/admin image processes, no source overlays or runtime hooks; SSR and idle keep-alive closure. Does not simulate a long-running SSR handler."
+}
