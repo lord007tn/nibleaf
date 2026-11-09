@@ -697,7 +697,7 @@ export type UpdatePageBody = z.infer<typeof updatePageBody>;
  *  whole subtree, into another language of the same site; omitted, the page
  *  keeps its language. */
 export const reorderPagesBody = z.object({
-  items: z.array(z.object({ id: z.string(), parentId: z.string().nullable(), position: z.number().int(), languageId: z.string().optional() })),
+  items: z.array(z.object({ id: z.string(), parentId: z.string().nullable(), position: z.number().int(), languageId: z.string().min(1).optional() })),
 });
 export type ReorderPagesBody = z.infer<typeof reorderPagesBody>;
 

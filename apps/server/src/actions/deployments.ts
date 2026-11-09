@@ -176,10 +176,14 @@ function pageChanged(
     parentId: string | null;
     translationKey: string | null;
     config: unknown;
+    languageCode: string;
   },
   prev: SnapshotPage,
 ): boolean {
   return (
+    // A page moved to another language can keep its slug, path, parent and
+    // position (e.g. top level of an empty language), so compare the language too.
+    draft.languageCode !== prev.languageCode ||
     draft.title !== prev.title ||
     draft.content !== prev.content ||
     draft.slug !== prev.slug ||

@@ -325,11 +325,13 @@ type ReorderRow = { id: string; parentId: string | null; branchId: string; langu
 
 /** The languages a reorder moves pages into must belong to this site. */
 const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: ReorderPagesBody) => {
-  const ids = [...new Set(body.items.flatMap((item) => (item.languageId ? [item.languageId] : [])))];
+  // Every given id is checked, including an empty one from a caller that skipped
+  // the request schema: it must fail here as "not found", not reach the database.
+  const ids = [...new Set(body.items.flatMap((item) => (item.languageId === undefined ? [] : [item.languageId])))];
   if (ids.length === 0) return;
   const found = new Set((await tx.language.findMany({ where: { projectId, id: { in: ids } }, select: { id: true } })).map((language) => language.id));
   const missing = ids.find((id) => !found.has(id));
-  if (missing) throw notFound('language', { id: missing });
+  if (missing !== undefined) throw notFound('language', { id: missing });
 };
 
 /** Give each page that changed language a free address among its new siblings

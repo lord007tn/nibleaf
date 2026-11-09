@@ -110,4 +110,62 @@ describe('page settings draft', () => {
       expect.any(Object),
     );
   });
+
+  describe('after a language move finishes', () => {
+    const linked: PageNode = { ...page, translationKey: 'shared' };
+    const setValue = async (selector: string, value: string) => {
+      const input = document.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+      if (!input) throw new Error(`${selector} was not rendered`);
+      const proto = input instanceof HTMLSelectElement ? HTMLSelectElement.prototype : HTMLInputElement.prototype;
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(input, value);
+        input.dispatchEvent(new Event(input instanceof HTMLSelectElement ? 'change' : 'input', { bubbles: true }));
+      });
+    };
+    const openSeo = async () => {
+      const tab = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+      await act(async () => tab?.click());
+    };
+    const startMove = async () => {
+      mocks.confirm.mockResolvedValueOnce(true);
+      await act(async () =>
+        root.render(
+          <PageSettingsDialog
+            languages={[
+              { id: 'en', label: 'English' },
+              { id: 'ar', label: 'العربية' },
+            ]}
+            onOpenChange={vi.fn()}
+            open
+            page={linked}
+            pages={[linked]}
+            projectId="project-a"
+          />,
+        ),
+      );
+      await setValue('[data-testid="select"]', 'ar');
+      const options = mocks.reorder.mock.calls.at(-1)?.[1] as { onSuccess: (list: PageNode[]) => void };
+      return (moved: Partial<PageNode>) => act(async () => options.onSuccess([{ ...linked, languageId: 'ar', ...moved }]));
+    };
+
+    it('shows the numbered address and the cleared translation key the server gave the page', async () => {
+      const finish = await startMove();
+      await finish({ slug: 'original-2', translationKey: null });
+      expect(document.querySelector<HTMLInputElement>('#page-slug')?.value).toBe('original-2');
+      await openSeo();
+      expect(document.querySelector<HTMLInputElement>('#page-translation-key')?.value).toBe('');
+    });
+
+    it('keeps an address and a translation key edited while the move was pending', async () => {
+      const finish = await startMove();
+      await setValue('#page-slug', 'my-address');
+      await openSeo();
+      await setValue('#page-translation-key', 'my-key');
+      await finish({ slug: 'original-2', translationKey: null });
+      expect(document.querySelector<HTMLInputElement>('#page-translation-key')?.value).toBe('my-key');
+      const general = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.general'));
+      await act(async () => general?.click());
+      expect(document.querySelector<HTMLInputElement>('#page-slug')?.value).toBe('my-address');
+    });
+  });
 });

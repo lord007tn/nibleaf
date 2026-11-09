@@ -148,6 +148,11 @@ export function PageSettingsDialog({
     if (!ok) return;
     const topLevel = pages.filter((other) => other.languageId === languageId && other.branchId === page.branchId && !other.parentId);
     const position = topLevel.length > 0 ? Math.max(...topLevel.map((other) => other.position)) + 1 : 0;
+    // What the fields held when the move started: the server's result only
+    // replaces a field the author has not edited in the meantime.
+    const slugAtStart = slug;
+    const slugEditedAtStart = slugTouched;
+    const keyAtStart = translationKey;
     reorder.mutate(
       {
         items: [
@@ -157,9 +162,14 @@ export function PageSettingsDialog({
       },
       {
         onSuccess: (list) => {
-          // A clash in the target language gives the page a numbered address.
           const moved = Array.isArray(list) ? list.find((item) => item.id === page.id) : undefined;
-          if (moved && !slugTouched) setSlug(moved.slug);
+          if (moved) {
+            // A clash in the target language gives the page a numbered address, and a
+            // translation key that language already uses is cleared. Show both, so a
+            // later Save can't put the old address or a duplicate key back.
+            if (!slugEditedAtStart) setSlug((current) => (current === slugAtStart ? moved.slug : current));
+            setTranslationKey((current) => (current === keyAtStart ? (moved.translationKey ?? '') : current));
+          }
           toast.success(t('editor.pageSettings.moveLanguage.done', { language: target.label }));
         },
         onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.pageSettings.moveLanguage.error')),

@@ -29,6 +29,7 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 
+import { reorderPagesBody } from '@nibleaf/validators';
 import { reorderPages, updatePage } from './pages';
 
 type Row = {
@@ -473,6 +474,16 @@ describe('updatePage revision precondition', () => {
         reorderPages('project-1', { items: [{ id: 'moving', parentId: null, position: 0, languageId: 'other-site-language' }] }),
       ).rejects.toMatchObject({ code: 'database:not_found', entityType: 'language' });
       expect(database.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty target language id before writing', async () => {
+      seedTree([row({ id: 'moving' })]);
+      await expect(reorderPages('project-1', { items: [{ id: 'moving', parentId: null, position: 0, languageId: '' }] })).rejects.toMatchObject({
+        code: 'database:not_found',
+        entityType: 'language',
+      });
+      expect(database.updateMany).not.toHaveBeenCalled();
+      expect(reorderPagesBody.safeParse({ items: [{ id: 'moving', parentId: null, position: 0, languageId: '' }] }).success).toBe(false);
     });
 
     it('still refuses to nest a page under a parent in another language without moving it there', async () => {

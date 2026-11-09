@@ -14,7 +14,14 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  arrayMove,
+  SortableContext,
+  type SortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import {
@@ -160,9 +167,27 @@ export const inlineDragOffset = (deltaX: number, dir: 'ltr' | 'rtl') => (dir ===
 /** Where the dragged page would land: its depth, its parent, and its language
  *  (the section it sits in once moved over `overId`). `items` is the shared list
  *  of every visible language section, each starting with its marker. */
+/** Where the dragged item goes in `items` when it is over `overIndex`. Over a
+ *  row it takes that row's slot. Over a language header it always lands just
+ *  below the header, at the top of that language: from below, plain sortable
+ *  order would put it above the header, in the language before it. */
+export const dropIndex = (items: readonly { id: string }[], activeIndex: number, overIndex: number) =>
+  activeIndex > overIndex && isMarker(items[overIndex] as TreeItem | undefined) ? overIndex + 1 : overIndex;
+
+/** The list's sorting animation, with header drops previewed below the header
+ *  (`dropIndex`), so the slot on screen is where the page lands. */
+const treeSortingStrategy =
+  (items: readonly TreeItem[]): SortingStrategy =>
+  (args) =>
+    verticalListSortingStrategy({ ...args, overIndex: args.overIndex < 0 ? args.overIndex : dropIndex(items, args.activeIndex, args.overIndex) });
+
 export function getProjection(items: TreeItem[], activeId: string, overId: string, dragOffset: number, indent: number): Projection {
-  const overIndex = items.findIndex((i) => i.id === overId);
   const activeIndex = items.findIndex((i) => i.id === activeId);
+  const overIndex = dropIndex(
+    items,
+    activeIndex,
+    items.findIndex((i) => i.id === overId),
+  );
   const activeItem = items[activeIndex];
   const activeDepth = activeItem && !isMarker(activeItem) ? activeItem.depth : 0;
   const newItems = arrayMove(items, activeIndex, overIndex);
@@ -207,7 +232,11 @@ export type PageMoveItem = { id: string; parentId: string | null; position: numb
  *  page of every language in tree order, each language led by its marker. */
 export function buildMove(full: TreeItem[], activeId: string, overId: string, projection: Projection): PageMoveItem[] {
   const activeIndex = full.findIndex((item) => item.id === activeId);
-  const overIndex = full.findIndex((item) => item.id === overId);
+  const overIndex = dropIndex(
+    full,
+    activeIndex,
+    full.findIndex((item) => item.id === overId),
+  );
   const active = full[activeIndex];
   if (activeIndex < 0 || overIndex < 0 || !active || isMarker(active)) {
     return [];
@@ -366,6 +395,7 @@ export function PageTreeDndProvider({
     return draggingId ? removeDescendants(shown, draggingId) : shown;
   }, [languages, flatByLanguage, collapsed, draggingId]);
 
+  const sortingStrategy = useMemo(() => treeSortingStrategy(visible), [visible]);
   const parentIds = useMemo(() => new Set(pages.flatMap((page) => (page.parentId ? [page.parentId] : []))), [pages]);
   const projection = draggingId && overId ? getProjection(visible, draggingId, overId, dragOffset, INDENT) : null;
   const pageById = useMemo(() => new Map(pages.map((page) => [page.id, page])), [pages]);
@@ -470,7 +500,7 @@ export function PageTreeDndProvider({
         onDragEnd={onDragEnd}
         onDragCancel={reset}
       >
-        <SortableContext items={visible.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={visible.map((item) => item.id)} strategy={sortingStrategy}>
           {children}
         </SortableContext>
         <DragOverlay>{draggingNode ? <RowPresentation node={draggingNode} depth={0} overlay hint={dropHint ?? undefined} /> : null}</DragOverlay>
