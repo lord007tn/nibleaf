@@ -4,7 +4,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ mutate: vi.fn(), navigate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ mutate: vi.fn(), navigate: vi.fn(), languagesPending: false }));
 vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: null }) }));
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -16,10 +16,14 @@ vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
   useLanguages: () => ({
-    data: [
-      { id: 'lang-en', code: 'en', label: 'English', isDefault: true },
-      { id: 'lang-ar', code: 'ar', label: 'العربية', isDefault: false },
-    ],
+    isSuccess: !mocks.languagesPending,
+    isPending: mocks.languagesPending,
+    data: mocks.languagesPending
+      ? undefined
+      : [
+          { id: 'lang-en', code: 'en', label: 'English', isDefault: true },
+          { id: 'lang-ar', code: 'ar', label: 'العربية', isDefault: false },
+        ],
   }),
   useProjectMembers: () => ({ data: undefined }),
 }));
@@ -55,6 +59,7 @@ describe('content gaps', () => {
     await act(async () => root.unmount());
     container.remove();
     vi.clearAllMocks();
+    mocks.languagesPending = false;
   });
 
   it("writes a draft titled with the question, in the question's language, and opens it", async () => {
@@ -82,5 +87,14 @@ describe('content gaps', () => {
     const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
     await act(async () => write?.click());
     expect(mocks.mutate).toHaveBeenCalledWith({ title: 'Wie starte ich?' }, expect.anything());
+  });
+
+  it('waits for the site languages before writing, instead of silently creating a default-language draft', async () => {
+    mocks.languagesPending = true;
+    await act(async () => root.render(<ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />));
+    const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
+    expect(write?.disabled).toBe(true);
+    await act(async () => write?.click());
+    expect(mocks.mutate).not.toHaveBeenCalled();
   });
 });

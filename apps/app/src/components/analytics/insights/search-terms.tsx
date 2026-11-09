@@ -243,12 +243,16 @@ export function WriteArticleButton({
   const t = useT();
   const navigate = useNavigate();
   const createPage = useCreatePage(projectId);
-  const { data: languages } = useLanguages(languageCode ? projectId : undefined);
-  const languageId = languageCode ? languages?.find((language) => language.code === languageCode)?.id : undefined;
+  const languagesQuery = useLanguages(languageCode ? projectId : undefined);
+  const languageId = languageCode ? languagesQuery.data?.find((language) => language.code === languageCode)?.id : undefined;
+  // With a content language asked for, wait until the site's languages are known: submitting
+  // before then would silently create the draft in the default language. A code the site
+  // doesn't have (known list, no match) still falls back to the default language.
+  const languageReady = !languageCode || languagesQuery.isSuccess;
   // The pending state only renders on the next frame; the ref blocks a same-frame double click.
   const inFlight = useRef(false);
   const write = () => {
-    if (inFlight.current) return;
+    if (inFlight.current || !languageReady) return;
     inFlight.current = true;
     createPage.mutate(
       { title: term.slice(0, 200), ...(languageId ? { languageId } : {}) },
@@ -267,7 +271,14 @@ export function WriteArticleButton({
     );
   };
   return (
-    <Button aria-label={t('analytics.search.write.aria', { term })} loading={createPage.isPending} onClick={write} size="sm" variant="outline">
+    <Button
+      aria-label={t('analytics.search.write.aria', { term })}
+      disabled={!languageReady}
+      loading={createPage.isPending || (Boolean(languageCode) && languagesQuery.isPending)}
+      onClick={write}
+      size="sm"
+      variant="outline"
+    >
       <PenLine aria-hidden />
       {label ?? t('analytics.search.write.action')}
     </Button>

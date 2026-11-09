@@ -116,37 +116,36 @@ describe('row helpers', () => {
     expect(sortWorstFirst(feedbackFixture().pages).map((page) => page.path)).toEqual(['bad', 'good', 'unrated']);
   });
 
-  const languages = [
-    { id: 'en', code: 'en', isDefault: true },
-    { id: 'ar', code: 'ar', isDefault: false },
-  ];
-
-  it('maps an analytics path to its editor page in the language the path is in', () => {
+  it('links an analytics path to its editor page only when exactly one page has it', () => {
     const pages = [
-      { id: 'p1', path: 'guides/install', kind: 'PAGE', languageId: 'en' },
-      { id: 'p1-ar', path: 'guides/install', kind: 'PAGE', languageId: 'ar' },
-      { id: 'g1', path: 'guides', kind: 'GROUP', languageId: 'en' },
+      { id: 'p1', path: 'guides/install', kind: 'PAGE' },
+      { id: 'g1', path: 'guides', kind: 'GROUP' },
     ];
-    expect(findPageIdForPath(pages, '/guides/install/', languages)).toBe('p1');
-    // The Arabic row opens the Arabic page, not whichever came first.
-    expect(findPageIdForPath(pages, 'ar/guides/install', languages)).toBe('p1-ar');
-    expect(findPageIdForPath(pages, 'guides', languages)).toBeNull();
+    expect(findPageIdForPath(pages, '/guides/install/')).toBe('p1');
+    expect(findPageIdForPath(pages, 'guides')).toBeNull();
   });
 
-  it('never strips a first segment that is not a language, and never guesses between matches', () => {
+  it('never treats a first segment as a language: readers carry it in ?lang=', () => {
+    // An English page really at "ar/guide" and an Arabic page at "guide".
     const pages = [
-      { id: 'guide', path: 'guide', kind: 'PAGE', languageId: 'en' },
-      { id: 'a', path: 'dup', kind: 'PAGE' },
-      { id: 'b', path: 'dup', kind: 'PAGE' },
+      { id: 'en-ar-guide', path: 'ar/guide', kind: 'PAGE' },
+      { id: 'guide', path: 'guide', kind: 'PAGE' },
     ];
+    expect(findPageIdForPath(pages, 'ar/guide')).toBe('en-ar-guide');
     // "section/guide" was deleted; "guide" is a different page.
-    expect(findPageIdForPath(pages, 'section/guide', languages)).toBeNull();
-    // Without language data, two pages with the same path stay ambiguous.
-    expect(findPageIdForPath(pages, 'dup')).toBeNull();
+    expect(findPageIdForPath([{ id: 'guide', path: 'guide', kind: 'PAGE' }], 'section/guide')).toBeNull();
+  });
+
+  it('gives no Edit link when the same path exists in several languages (analytics cannot tell which)', () => {
+    const pages = [
+      { id: 'en', path: 'quickstart', kind: 'PAGE' },
+      { id: 'ar', path: 'quickstart', kind: 'PAGE' },
+    ];
+    expect(findPageIdForPath(pages, 'quickstart')).toBeNull();
   });
 
   it('matches encoded and raw Arabic slugs alike', () => {
-    const pages = [{ id: 'start', path: 'البداية', kind: 'PAGE', languageId: 'ar' }];
-    expect(findPageIdForPath(pages, `ar/${encodeURIComponent('البداية')}`, languages)).toBe('start');
+    const pages = [{ id: 'start', path: 'البداية', kind: 'PAGE' }];
+    expect(findPageIdForPath(pages, encodeURIComponent('البداية'))).toBe('start');
   });
 });

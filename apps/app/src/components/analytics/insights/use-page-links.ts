@@ -1,5 +1,5 @@
 import { env } from '@/env';
-import { useDomains, useLanguages, usePages, useProject } from '@/hooks/api';
+import { useDomains, usePages, useProject } from '@/hooks/api';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 
 const cleanPath = (path: string) => path.replace(/^\/+|\/+$/g, '');
@@ -26,26 +26,17 @@ const decodePath = (path: string) => {
 };
 
 /**
- * The page an analytics path points at, in the right language. A leading
- * segment is treated as a language only when it is one of the site's
- * non-default language codes (`ar/guide`); otherwise the path is matched in
- * the default language. An ambiguous match returns null instead of guessing,
- * so Edit never opens the English page for an Arabic row, or an unrelated page
- * that happens to share the rest of a path.
+ * The editor page an analytics path points at, only when it is unambiguous.
+ * Readers carry the language in `?lang=` (recorded apart from the path), so a
+ * leading segment is never a language and is never stripped, and one path can
+ * be the same article in several languages. Analytics doesn't say which
+ * language or version a row is, so a path shared by more than one page gets no
+ * Edit link rather than a guess that could open the wrong document.
  */
-export function findPageIdForPath(
-  pages: ReadonlyArray<{ id: string; path: string; kind: string; languageId?: string }>,
-  path: string,
-  languages: ReadonlyArray<{ id: string; code: string; isDefault: boolean }> = [],
-): string | null {
+export function findPageIdForPath(pages: ReadonlyArray<{ id: string; path: string; kind: string }>, path: string): string | null {
   const target = cleanPath(decodePath(path));
-  const [first = '', ...rest] = target.split('/');
-  const prefixed = languages.find((language) => !language.isDefault && language.code.toLowerCase() === first.toLowerCase());
-  const wanted = prefixed ? rest.join('/') : target;
-  const languageId = prefixed?.id ?? languages.find((language) => language.isDefault)?.id;
-  const matches = pages.filter((page) => page.kind === 'PAGE' && cleanPath(decodePath(page.path)) === wanted);
-  const inLanguage = languageId ? matches.filter((page) => page.languageId === languageId) : matches;
-  return inLanguage.length === 1 ? (inLanguage[0]?.id ?? null) : null;
+  const matches = pages.filter((page) => page.kind === 'PAGE' && cleanPath(decodePath(page.path)) === target);
+  return matches.length === 1 ? (matches[0]?.id ?? null) : null;
 }
 
 /**
@@ -57,7 +48,6 @@ export function usePageLinks(projectId: string) {
   const { data: project } = useProject(projectId);
   const { data: domains } = useDomains(projectId);
   const { data: pages } = usePages(projectId);
-  const { data: languages } = useLanguages(projectId);
   // Only a domain readers can actually open (ownership, DNS and HTTPS), as on the site overview.
   const primary = domains ? pickLiveDomain(domains) : undefined;
   const baseDomain = env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
@@ -68,7 +58,6 @@ export function usePageLinks(projectId: string) {
       const encoded = encodePath(path);
       return encoded ? `${siteRoot}/${encoded}` : siteRoot;
     },
-    // Unknown until the languages are read: a guess could open the wrong language's page.
-    editorPageId: (path: string) => (pages && languages ? findPageIdForPath(pages, path, languages) : null),
+    editorPageId: (path: string) => (pages ? findPageIdForPath(pages, path) : null),
   };
 }
