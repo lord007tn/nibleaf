@@ -1,11 +1,13 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { isRtl, resolveLocale } from '@nibleaf/i18n/locales';
 import { siteAccessT } from '@nibleaf/i18n/site-access';
 import { Lock } from 'lucide-react';
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import type { ProjectConfig } from '@/hooks/api/types';
+import { isolate } from '@/lib/bidi';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { projectThemeStyle, projectThemeVariables } from '@/lib/site-theme';
 
@@ -17,9 +19,16 @@ export interface PrivateSiteGate {
   mode: 'WORKSPACE' | 'READERS';
   language: { code: string; direction: 'LTR' | 'RTL' } | null;
   config: Pick<ProjectConfig, 'branding' | 'styling'> | null;
+  /** The site lets people without access ask its Admins for it. */
+  requests?: boolean;
 }
 
-type Step = { kind: 'email'; notice?: 'inviteUsed' } | { kind: 'code'; email: string } | { kind: 'invite'; token: string };
+type Step =
+  | { kind: 'email'; notice?: 'inviteUsed' }
+  | { kind: 'code'; email: string }
+  | { kind: 'invite'; token: string }
+  | { kind: 'request' }
+  | { kind: 'requested'; email: string };
 type Problem = 'privateInvalidCode' | 'privateTooMany' | 'privateFailed';
 
 /** The invitation token rides in the URL fragment, which never reaches a server. */
@@ -59,6 +68,8 @@ export default function SitePrivateGate({
   const [step, setStep] = useState<Step>({ kind: 'email' });
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [requesterName, setRequesterName] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem>();
 
@@ -113,6 +124,23 @@ export default function SitePrivateGate({
       setStep({ kind: 'email', notice: 'inviteUsed' });
     });
 
+  // Ask the site's Admins for access. The answer is the same whether or not a
+  // request was recorded, so only a rate limit or an outage reads differently.
+  const askAccess = (address: string) =>
+    run(async () => {
+      const response = await post(`request/${encodeURIComponent(projectId)}`, {
+        email: address,
+        ...(requesterName.trim() ? { name: requesterName.trim() } : {}),
+        ...(note.trim() ? { note: note.trim() } : {}),
+      });
+      if (!response.ok) return setProblem(response.status === 429 ? 'privateTooMany' : 'privateFailed');
+      setStep({ kind: 'requested', email: address });
+    });
+  const backToSignIn = () => {
+    setProblem(undefined);
+    setStep({ kind: 'email' });
+  };
+
   const config = (gate?.config ?? null) as ProjectConfig | null;
   const logo = publishedSiteLogo(config?.branding?.logoLight || null, 'light');
   const name = gate?.name ?? '';
@@ -120,7 +148,8 @@ export default function SitePrivateGate({
     event.preventDefault();
     if (step.kind === 'email') void sendCode(email.trim());
     else if (step.kind === 'code') void verify(step.email);
-    else void accept(step.token);
+    else if (step.kind === 'invite') void accept(step.token);
+    else if (step.kind === 'request') void askAccess(email.trim());
   };
 
   return (
@@ -140,16 +169,24 @@ export default function SitePrivateGate({
             </span>
           )}
           <h1 className="mt-6 text-balance font-semibold text-2xl tracking-tight" dir="auto">
-            {step.kind === 'invite' ? t('privateInviteTitle', { name }) : t('privateSignInTitle', { name })}
+            {step.kind === 'invite'
+              ? t('privateInviteTitle', { name })
+              : step.kind === 'request' || step.kind === 'requested'
+                ? t('privateAskTitle', { name })
+                : t('privateSignInTitle', { name })}
           </h1>
           <p className="mt-2 text-muted-foreground text-sm">
             {step.kind === 'invite'
               ? t('privateInviteBody')
-              : step.kind === 'code'
-                ? t('privateCodeSent', { email: step.email })
-                : gate?.mode === 'WORKSPACE'
-                  ? t('privateTeamBody')
-                  : t('privateReadersBody')}
+              : step.kind === 'request'
+                ? t('privateAskBody')
+                : step.kind === 'requested'
+                  ? t('privateAskSent', { email: isolate(step.email) })
+                  : step.kind === 'code'
+                    ? t('privateCodeSent', { email: step.email })
+                    : gate?.mode === 'WORKSPACE'
+                      ? t('privateTeamBody')
+                      : t('privateReadersBody')}
           </p>
         </div>
 
@@ -218,6 +255,56 @@ export default function SitePrivateGate({
                 </button>
               </div>
             </>
+          ) : step.kind === 'request' ? (
+            <>
+              <Label htmlFor={`${ids}-email`}>{t('privateEmailLabel')}</Label>
+              <Input
+                autoComplete="email"
+                autoFocus
+                dir="ltr"
+                id={`${ids}-email`}
+                inputMode="email"
+                maxLength={320}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                type="email"
+                value={email}
+              />
+              <Label htmlFor={`${ids}-name`}>{t('privateAskName')}</Label>
+              <Input
+                autoComplete="name"
+                id={`${ids}-name`}
+                maxLength={120}
+                onChange={(event) => setRequesterName(event.target.value)}
+                value={requesterName}
+              />
+              <Label htmlFor={`${ids}-note`}>{t('privateAskNote')}</Label>
+              <Textarea
+                className="min-h-20 text-sm"
+                id={`${ids}-note`}
+                maxLength={500}
+                onChange={(event) => setNote(event.target.value)}
+                value={note}
+              />
+              <Button className="mt-1 w-full" disabled={!email.trim()} loading={busy} type="submit">
+                {t('privateAskSend')}
+              </Button>
+              <button
+                className="text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+                onClick={backToSignIn}
+                type="button"
+              >
+                {t('privateBackToSignIn')}
+              </button>
+            </>
+          ) : step.kind === 'requested' ? (
+            <button
+              className="text-muted-foreground text-sm underline-offset-4 hover:text-foreground hover:underline"
+              onClick={backToSignIn}
+              type="button"
+            >
+              {t('privateBackToSignIn')}
+            </button>
           ) : (
             <Button className="w-full" loading={busy} type="submit">
               {t('privateInviteAccept')}
@@ -229,6 +316,20 @@ export default function SitePrivateGate({
             </p>
           ) : null}
         </form>
+        {step.kind === 'email' && gate?.requests ? (
+          <p className="mt-4 text-center text-sm">
+            <button
+              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              onClick={() => {
+                setProblem(undefined);
+                setStep({ kind: 'request' });
+              }}
+              type="button"
+            >
+              {t('privateAskLink')}
+            </button>
+          </p>
+        ) : null}
       </div>
     </div>
   );

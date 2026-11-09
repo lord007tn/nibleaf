@@ -163,6 +163,42 @@ export async function renderMemberInvitationEmail({
   };
 }
 
+/** To a private site's Admins: someone asked to read it. */
+export async function renderReaderAccessRequestEmail({
+  language = DEFAULT_EMAIL_LANGUAGE,
+  note,
+  projectName,
+  requester,
+  reviewUrl,
+}: {
+  language?: EmailLanguage;
+  note?: string | null;
+  projectName: string;
+  requester: string;
+  reviewUrl: string;
+}) {
+  const t = createEmailTranslator(language);
+  const params = { projectName, requester };
+  const message = t('email.accessRequest.message', params);
+  const { html, text } = await renderEmail(
+    createElement(TransactionalEmail, {
+      action: { label: t('email.accessRequest.action'), url: reviewUrl },
+      detail: note ? t('email.accessRequest.note', { note }) : t('email.accessRequest.review'),
+      language,
+      message,
+      preview: message,
+      title: t('email.accessRequest.title', params),
+    }),
+  );
+  return {
+    subject: t('email.accessRequest.subject', params)
+      .replace(/[\r\n]+/g, ' ')
+      .trim(),
+    html,
+    text,
+  };
+}
+
 export async function renderReaderInvitationEmail({
   activationUrl,
   days,

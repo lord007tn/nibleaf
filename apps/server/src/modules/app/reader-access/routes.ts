@@ -52,6 +52,19 @@ const routes = {
     description: 'Set the email domains whose addresses can sign in without an invitation.',
     responses: ok,
   }),
+  accessRequestsSetting: createRouteConfig({
+    guard: [...guard],
+    tags: ['reader-access'],
+    description: 'Let people without access ask for it from the sign-in screen.',
+    responses: ok,
+  }),
+  approveAccessRequest: createRouteConfig({
+    guard: [...guard],
+    tags: ['reader-access'],
+    description: 'Approve an access request: invite the person to the whole site.',
+    responses: ok,
+  }),
+  declineAccessRequest: createRouteConfig({ guard: [...guard], tags: ['reader-access'], description: 'Decline an access request.', responses: ok }),
   updateReader: createRouteConfig({
     guard: [...guard],
     tags: ['reader-access'],

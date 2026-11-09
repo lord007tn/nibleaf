@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   resend: vi.fn(),
   revoke: vi.fn(),
   saveDomains: vi.fn(),
+  requestsSetting: vi.fn(),
+  approve: vi.fn(),
+  decline: vi.fn(),
 }));
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -32,6 +35,9 @@ vi.mock('@/hooks/api', () => {
     useResendReaderInvitation: () => mutation(mocks.resend),
     useRevokeReader: () => mutation(mocks.revoke),
     useUpdateReaderEmailDomains: () => mutation(mocks.saveDomains),
+    useUpdateReaderAccessRequests: () => mutation(mocks.requestsSetting),
+    useApproveAccessRequest: () => mutation(mocks.approve),
+    useDeclineAccessRequest: () => mutation(mocks.decline),
   };
 });
 vi.mock('@/lib/format', () => ({ useFormatters: () => ({ date: () => 'Nov 9', relativeTime: () => '3h ago' }) }));
@@ -42,6 +48,8 @@ import { VisibilityPicker, visibilityChangeCopy } from './visibility-picker';
 const data = (overrides: Partial<ReaderAccessData> = {}): ReaderAccessData => ({
   accessMode: 'READERS',
   readerEmailDomains: [],
+  readerAccessRequests: false,
+  accessRequests: [],
   readers: [
     {
       id: 'r-invited',
@@ -191,6 +199,25 @@ describe('visibility settings', () => {
       'settings.visibility.domains.publicProvider {"domain":"gmail.com"}',
     );
     expect(container.querySelector('#reader-email-domains')?.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('turns access requests on, and approves or declines a request in one click', async () => {
+    await act(async () => root.render(<ReadersPanel data={data()} disabled={false} projectId="site-1" />));
+    expect(container.textContent).not.toContain('settings.visibility.requests.empty');
+    await act(async () => container.querySelector<HTMLButtonElement>('#reader-access-requests')?.click());
+    expect(mocks.requestsSetting).toHaveBeenCalledWith({ enabled: true });
+
+    const pending = data({
+      readerAccessRequests: true,
+      accessRequests: [{ id: 'q1', email: 'kim@example.com', name: 'Kim', note: 'For the pilot', createdAt: '2026-11-09T00:00:00.000Z' }],
+    });
+    await act(async () => root.render(<ReadersPanel data={pending} disabled={false} projectId="site-1" />));
+    expect(container.textContent).toContain('For the pilot');
+    const button = (label: string) => [...container.querySelectorAll('button')].find((item) => item.textContent === label);
+    await act(async () => button('settings.visibility.requests.approve')?.click());
+    expect(mocks.approve).toHaveBeenCalledWith('q1');
+    await act(async () => button('settings.visibility.requests.decline')?.click());
+    expect(mocks.decline).toHaveBeenCalledWith('q1');
   });
 
   it('lists each reader with status and dates, and offers resend and revoke only while they have access', async () => {

@@ -68,11 +68,18 @@ vi.mock('@/services/auth-client', () => ({ useSession: mocks.session }));
 vi.mock('@tanstack/react-query', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQueryClient: () => ({ invalidateQueries: mocks.invalidate }),
+  // Other versions' page lists (page links); this site has a single version.
+  useQueries: () => [],
 }));
+vi.mock('@/hooks/api/query-options', () => ({ pagesQueryOptions: () => ({ queryKey: ['pages', 'other-version'], queryFn: () => [] }) }));
 vi.mock('@/hooks/api', () => ({
+  // One version only: nothing elsewhere makes a path ambiguous.
+  useBranches: () => ({ data: [{ id: 'main', isDefault: true }] }),
   useDeployments: mocks.deployments,
-  useDomains: () => ({ data: [{ domain: 'docs.example.com', isPrimary: true, verified: true }] }),
-  usePages: () => ({ data: [{ id: 'page-getting-started', path: 'getting-started', kind: 'PAGE' }] }),
+  // Live: ownership, DNS and HTTPS all ready (a merely verified domain is not linked).
+  useDomains: () => ({ data: [{ domain: 'docs.example.com', isPrimary: true, verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }] }),
+  useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
+  usePages: () => ({ data: [{ id: 'page-getting-started', path: 'getting-started', kind: 'PAGE', languageId: 'lang-en' }] }),
   useProject: () => ({ data: { id: 'p1', slug: 'docs' } }),
   useProjectMembers: mocks.members,
 }));
@@ -414,10 +421,9 @@ describe('Search', () => {
     expect(mocks.mutate).toHaveBeenCalledOnce();
     expect(mocks.mutate).toHaveBeenCalledWith({ title: 'webhooks' }, expect.any(Object));
 
-    const options = mocks.mutate.mock.calls[0]?.[1] as { onSuccess: (page: { id: string }) => void; onSettled: () => void };
+    const options = mocks.mutate.mock.calls[0]?.[1] as { onSuccess: (page: { id: string }) => void };
     await act(async () => {
       options.onSuccess({ id: 'new-page' });
-      options.onSettled();
     });
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId/editor', params: { projectId: 'p1' }, search: { page: 'new-page' } });
   });
@@ -756,10 +762,9 @@ describe('Async buttons', () => {
     mocks.search_.mockReturnValue(ready(searchFixture()));
     const view = await render(<SearchSection />);
     await act(async () => view.querySelector<HTMLButtonElement>('button[aria-label="Write an article for “webhooks”"]')?.click());
-    const options = mocks.mutate.mock.calls[0]?.[1] as { onError: (error: unknown) => void; onSettled: () => void };
+    const options = mocks.mutate.mock.calls[0]?.[1] as { onError: (error: unknown) => Promise<void> };
     await act(async () => {
-      options.onError(new Error('P2002 unique constraint failed on slug'));
-      options.onSettled();
+      await options.onError(new Error('P2002 unique constraint failed on slug'));
     });
     expect(mocks.toast.error).toHaveBeenCalledOnce();
     expect(String(mocks.toast.error.mock.calls[0]?.[0])).not.toContain('P2002');
