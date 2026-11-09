@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
       - name: Test diagnostic boundaries without credentials
         run: node --test scripts/production-email-diagnostic.test.mjs
       - name: Inspect Coolify worker and email provider

@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import http from 'node:http';
+import { once } from 'node:events';
+import { writeFileSync } from 'node:fs';
+const inspect = (name) => JSON.parse(execFileSync('docker', ['inspect', name], { encoding: 'utf8' }))[0];
+const receipts = [];
+for (const [service, port] of [['app', 4520], ['admin', 4522]]) {
+  const name = `nibleaf-runtime-${service}-1`;
+  const before = inspect(name);
+  assert.equal(before.Config.Labels['com.docker.compose.project'], 'nibleaf-runtime');
+  assert.equal(before.Config.Labels['com.docker.compose.service'], service);
+  assert.equal(before.State.Running, true);
+  assert.equal(before.Config.StopTimeout, 30);
+  const agent = new http.Agent({ keepAlive: true, maxSockets: 20, maxFreeSockets: 20 });
+  const requests = Array.from({ length: 20 }, () => new Promise((resolve, reject) => {
+    http.get(`http://127.0.0.1:${port}/sign-in`, { agent }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (data) => { body += data; });
+      response.on('end', () => {
+        try {
+          assert.equal(response.statusCode, 200);
+          assert.match(body, /<html/);
+          resolve(response.statusCode);
+        } catch (error) { reject(error); }
+      });
+    }).on('error', reject);
+  }));
+  await Promise.all(requests);
+  const sockets = Object.values(agent.freeSockets).flat();
+  assert.ok(sockets.length > 0, 'SSR requests must leave live keep-alive connections');
+  const closed = sockets.map((socket) => socket.destroyed ? Promise.resolve() : once(socket, 'close'));
+  const since = new Date().toISOString();
+  const started = performance.now();
+  execFileSync('docker', ['kill', '--signal=SIGTERM', name], { stdio: 'pipe' });
+  const waiter = spawn('docker', ['wait', name], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const timedOut = setTimeout(() => waiter.kill(), 12_000);
+  let exit = '';
+  waiter.stdout.on('data', (data) => { exit += data; });
+  const [waitCode] = await once(waiter, 'exit');
+  clearTimeout(timedOut);
+  const elapsedMs = Math.round(performance.now() - started);
+  assert.equal(waitCode, 0, 'Container did not stop within 12 seconds');
+  assert.equal(exit.trim(), '0', 'Container must exit cleanly without a forced kill');
+  assert.ok(elapsedMs < 10_000, `Shutdown exceeded ten seconds: ${elapsedMs}ms`);
+  await Promise.all(closed);
+  agent.destroy();
+  const after = inspect(name);
+  const logResult = spawnSync('docker', ['logs', '--since', since, name], { encoding: 'utf8' });
+  assert.equal(logResult.status, 0);
+  const logs = logResult.stdout + logResult.stderr;
+  assert.doesNotMatch(logs, /exceeded its shutdown deadline|SIGKILL/);
+  receipts.push({ service, image: before.Config.Image, imageId: before.Image, sourceRevision: before.Config.Labels['org.opencontainers.image.revision'], composeStopWindowSeconds: before.Config.StopTimeout, ssrRequests: requests.length, ssrStatus: 200, idleKeepAliveConnections: sockets.length, allKeepAlivesClosed: sockets.every((socket) => socket.destroyed), elapsedMs, exitCode: after.State.ExitCode, oomKilled: after.State.OOMKilled, shutdownLogs: logs.trim() });
+}
+const report = { project: 'nibleaf-runtime', observedAt: new Date().toISOString(), receipts, scope: 'Actual immutable app/admin image processes, no source overlays or runtime hooks; SSR and idle keep-alive closure. Does not simulate a long-running SSR handler.' };
+writeFileSync(process.argv[2], JSON.stringify(report, null, 2) + '\n');
+console.log(JSON.stringify(report));

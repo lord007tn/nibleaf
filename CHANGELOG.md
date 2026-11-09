@@ -8,6 +8,8 @@ manifest remains the authority for the latest published artifact.
 
 ### Changed
 
+- Move container services and the contributor toolchain to Node 26.13.0 after
+  qualifying the Ghost importer renderer family (#51).
 - Container images after v0.2.1 omit pnpm and other package managers. Run search
   operators with `/app/docker-entrypoint.sh search-reindex-all` and
   `/app/docker-entrypoint.sh search-alias-switch` instead (#389). Published
@@ -15,6 +17,9 @@ manifest remains the authority for the latest published artifact.
 
 ### Fixed
 
+- Let app SSR processes exit after HTTP shutdown by avoiding request-local
+  query cache timers. Bound default web shutdown to nine seconds and preserve
+  failed or forced child exit status (#391).
 - Reject unusable CLI agent resources, point backup recovery at an empty target,
   and require exact-source CI before manual image publication/deployment (#312).
 - Share app/API proxy parsing, validate mapped IPv6 addresses, and honor the

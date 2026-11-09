@@ -1,0 +1,334 @@
+{
+  "issue": 391,
+  "observedAt": "2026-11-08",
+  "image": "sha256:67669ca1262398a6cf502a4cd0ffa4308e5abe730098cff82068b4389bf2b035",
+  "source": "42640b930f306687ebbbd9560bf88e5f8063da68",
+  "node": "22.23.4",
+  "scope": "Owned nibleaf-runtime app container only; inspector internal loopback, no published port.",
+  "beforeSigterm": {
+    "handles": {
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "TCPServerWrap",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout"
+      ],
+      "handles": [
+        {
+          "type": "Socket",
+          "fd": 2
+        },
+        {
+          "type": "Socket",
+          "fd": 1
+        },
+        {
+          "type": "Server"
+        }
+      ]
+    },
+    "timers": [
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      }
+    ]
+  },
+  "afterHttpClosed": {
+    "handles": {
+      "resources": [
+        "PipeWrap",
+        "PipeWrap",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout",
+        "Timeout"
+      ],
+      "handles": [
+        {
+          "type": "Socket",
+          "fd": 2
+        },
+        {
+          "type": "Socket",
+          "fd": 1
+        }
+      ]
+    },
+    "timers": [
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      },
+      {
+        "timeout": 300000,
+        "repeat": null,
+        "name": "",
+        "source": "() => {\n\t\t\tthis.optionalRemove();\n\t\t}"
+      }
+    ]
+  },
+  "conclusion": "Twenty referenced 300000ms TanStack Query GC timers remain after HTTP server closure. The request-local SSR QueryClient overrides the library server default Infinity with a five-minute TTL. The old wrapper also allows 40s against a 30s Compose deadline and reports forced child termination as success.",
+  "fixStatus": "Prepared for #390; post-rebase exact-image acceptance is still required."
+}

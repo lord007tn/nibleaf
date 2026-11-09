@@ -12,11 +12,24 @@ import { getSessionGeneration } from './session-generation';
 const apiError = (status: number) => new ApiResponseError('failed', status);
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
 });
 
 describe('query client defaults', () => {
+  it.each([false, true])('only schedules cache collection in the browser (browser: %s)', async (browser) => {
+    vi.stubGlobal('window', browser ? {} : undefined);
+    vi.useFakeTimers();
+    const client = createQueryClient();
+    await client.fetchQuery({ queryKey: ['shutdown'], queryFn: async () => 'cached' });
+    expect(client.getQueryData(['shutdown'])).toBe('cached');
+    expect(vi.getTimerCount()).toBe(browser ? 1 : 0);
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
+    expect(client.getQueryData(['shutdown'])).toBe(browser ? undefined : 'cached');
+    client.clear();
+  });
+
   it('never retries 4xx answers, retries network and 5xx failures twice', () => {
     for (const status of [400, 401, 403, 404, 409, 422, 429]) {
       expect(isClientError(apiError(status))).toBe(true);

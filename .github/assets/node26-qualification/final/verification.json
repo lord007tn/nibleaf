@@ -1,0 +1,157 @@
+{
+  "checkedAt": "2026-11-09T01:02:59.964Z",
+  "baseRevision": "52de4bc2851660192ec7567c2f81549f350c11fb",
+  "codeRevision": "4ea0472b618b5a7c7bcf8fcd028ab7c76b3c155e",
+  "image": "nibleaf-runtime:390-final",
+  "imageId": "sha256:ef5e9375f38817d8b8ace049620299a0f83de267c32db8a5d9b409991adfd6b3",
+  "hostNode": "26.13.0",
+  "imageNode": "26.13.0",
+  "alpine": "3.24.4",
+  "checks": {
+    "typecheck": {
+      "passed": true,
+      "tasks": 27
+    },
+    "lint": {
+      "passed": true
+    },
+    "deadCode": {
+      "passed": true
+    },
+    "fullTest": {
+      "passed": true,
+      "turboTasks": 25
+    },
+    "allBuilds": {
+      "passed": true,
+      "tasks": 12,
+      "cached": 0
+    },
+    "bundle": {
+      "passed": true,
+      "ciModuleBoundaries": true,
+      "publicDocsGzipKiB": 338.28,
+      "budgetKiB": 340.04
+    },
+    "postgres": {
+      "passed": true,
+      "migrations": 46,
+      "tenantFenceTests": 3,
+      "authTests": 21,
+      "serverTests": 267,
+      "serverFiles": 19,
+      "workerTests": 5,
+      "workerFiles": 2,
+      "database": "nibleaf_node26_final_test",
+      "gitbookSetupTimeoutMs": 60000,
+      "exactAlpineImage": {
+        "passed": true,
+        "database": "nibleaf_node26_final_image_test",
+        "tenantFenceTests": 3,
+        "authTests": 21,
+        "serverTests": 267,
+        "serverFiles": 19,
+        "workerTests": 5,
+        "analyticsReadMode": "shadow_read"
+      }
+    },
+    "clickhouse": {
+      "passed": true,
+      "tests": 148,
+      "files": 18,
+      "hostAndExactAlpineImage": true,
+      "initializationLockEnabled": true
+    },
+    "pipeline": {
+      "passed": true,
+      "tests": 4,
+      "hostAndExactAlpineImage": true
+    },
+    "exactImageGhost": {
+      "passed": true,
+      "tests": 51,
+      "files": 3
+    },
+    "exactImageSignals": {
+      "passed": true,
+      "tests": 8
+    },
+    "imageRoles": {
+      "passed": true,
+      "roles": ["server", "worker", "app", "admin"],
+      "sourceOverlays": 0
+    },
+    "imageMigrations": {
+      "passed": true,
+      "modes": ["migrate", "clickhouse-migrate"],
+      "repeatIdempotent": true,
+      "productionSeedExcluded": true
+    },
+    "operators": {
+      "passed": true,
+      "reindexStatus": "READY",
+      "indexedChunks": 2,
+      "reusedChunks": 2,
+      "embeddedChunks": 0,
+      "aliasSwitch": true,
+      "rejectedUnconfirmedSwitch": true,
+      "liveProviderAcceptance": false
+    },
+    "shutdown": {
+      "passed": true,
+      "composeStopWindowSeconds": 30,
+      "appMs": 2628,
+      "adminMs": 2576,
+      "serverMs": 606,
+      "workerMs": 616,
+      "allExitCodes": 0,
+      "webIdleKeepAlivesClosed": 40,
+      "syntheticForcedChildExitCode": 1,
+      "syntheticForcedChildElapsedMs": 9318
+    },
+    "runtimeInventory": {
+      "passed": true,
+      "artifacts": 18,
+      "packageRecords": 1403,
+      "forbidden": []
+    },
+    "productionAudit": {
+      "passed": true,
+      "findings": 0
+    },
+    "trivy": {
+      "passed": true,
+      "findings": 0,
+      "scanner": "0.76.2",
+      "unfilteredVulnerabilities": true,
+      "skipDbUpdate": true
+    },
+    "releaseContract": {
+      "passed": true,
+      "tests": 30
+    },
+    "selfHostContract": {
+      "passed": true,
+      "publishedVersion": "0.2.1",
+      "historicalChecksumsPreserved": true
+    },
+    "dockerContext": {
+      "passed": true
+    },
+    "receiptGitleaks": {
+      "passed": true,
+      "version": "8.30.1",
+      "suppressionsAdded": 0
+    }
+  },
+  "limitations": [
+    "Initial full test run raced stale generated translations after rebase; explicit message generation followed by the complete passing rerun.",
+    "GitBook rehearsal cold beforeAll imports exceeded the default 10s hook budget; all four tests passed with an explicit 60s setup timeout, unchanged assertions.",
+    "Live embedding, PDF/provider and production deployment acceptance are not claimed.",
+    "Ghost upstream engine ranges still exclude Node 26; this is the documented Nibleaf qualification decision.",
+    "Historical Scout/native findings remain tracked in #195; dev deepmerge remains #361 until 2027-02-08.",
+    "The optional exact-image PostgreSQL run initially inherited production clickhouse read mode; two relational SQL assertions read empty ClickHouse data. With CI-equivalent shadow_read mode, all 267 tests in 19 files passed; both receipts are retained."
+  ],
+  "published": false,
+  "deployed": false
+}
