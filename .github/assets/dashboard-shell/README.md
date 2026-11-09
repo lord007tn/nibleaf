@@ -19,7 +19,20 @@ Document overflow was also zero before the fix, despite clipped portaled popups.
 
 [15.48-second Arabic mobile interaction recording](mobile-shell-ar.webm)
 
-## Published-docs bundle follow-up
+## Latest published-docs comparison
+
+Main's analytics update (#387) was merged without rebasing. Fresh gzip level-9 measurements against base `28ac9523`:
+
+| Profile | Main | This PR | Change |
+| --- | ---: | ---: | ---: |
+| public-docs | 345,919 bytes | 345,726 bytes | -193 bytes |
+| public-docs-index | 345,097 bytes | 344,905 bytes | -192 bytes |
+
+Latest-base checks passed: 8 Turbo typecheck tasks, lint, dead-code, 269 app files (2,927 tests passed, 14 existing opt-in skips; two workers), 145 i18n tests, analyzed production build and bundle boundaries. The earlier focused shell/palette run passed 32 tests. An initial latest-base full run hit the inherited five-second marketing canonical-URL timeout; its isolated file passed 142 tests, then the unchanged full suite passed with two workers. Cleanup review found no additional actionable issues.
+
+The 645 eager module IDs match main. The sole rendered-byte change is `lib/shortcut.ts`, reduced from 1,068 to 946 bytes. Both profiles meet the no-growth rule with no exception or budget increase. The earlier measurements below remain qualified to their recorded main revisions.
+
+## Initial published-docs bundle follow-up
 
 Exact gzip level-9 route-preload totals, measured in the same worktree against base main `52de4bc2`:
 
@@ -28,7 +41,7 @@ Exact gzip level-9 route-preload totals, measured in the same worktree against b
 | public-docs | 346,320 bytes | 346,427 bytes | 346,060 bytes | -260 bytes |
 | public-docs-index | 345,497 bytes | 345,604 bytes | 345,238 bytes | -259 bytes |
 
-The latest main update (#389) was merged, and fresh main/branch builds produced identical eager assets and module reports to the earlier comparison against `a9cfb175`.
+The security update (#389) was merged, and fresh main/branch builds produced identical eager assets and module reports to the earlier comparison against `a9cfb175`.
 
 The original 107-byte increase in each profile came from generated Vite preload metadata and changed content hashes. Every eager module ID and rendered byte count was identical to main; Popover, Sidebar, Breadcrumb and MESSAGE_IDS were absent from both eager-module reports. The entry's 14 raw added bytes were generated dependency metadata, not message-ID entries.
 
