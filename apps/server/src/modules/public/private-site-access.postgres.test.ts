@@ -267,8 +267,10 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     { name: 'changelog feed', path: `/api/public/sites/${site.projectId}/changelog/rss.xml`, readsContent: false },
     { name: 'sitemap', path: `/api/public/sites/${site.projectId}/sitemap.xml`, readsContent: false },
     { name: 'robots', path: `/api/public/sites/${site.projectId}/robots.txt`, readsContent: false },
-    { name: 'llms.txt', path: `/api/public/sites/${site.projectId}/llms.txt`, readsContent: false },
-    { name: 'llms-full.txt', path: `/api/public/sites/${site.projectId}/llms-full.txt`, readsContent: false },
+    // Machine-readable documents carry the pages to everyone who may read them (#398).
+    { name: 'Markdown', path: `/api/public/sites/${site.projectId}/markdown?path=guide`, readsContent: true },
+    { name: 'llms.txt', path: `/api/public/sites/${site.projectId}/llms.txt`, readsContent: true },
+    { name: 'llms-full.txt', path: `/api/public/sites/${site.projectId}/llms-full.txt`, readsContent: true },
     { name: 'asset', path: `/api/public/assets/${site.assetKey}`, readsContent: false },
   ];
 
@@ -347,6 +349,64 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     await db.prisma.project.update({ where: { id: site.projectId }, data: { config: {} } });
     sites.invalidatePublishedSiteConfig(site.projectId);
     expect((await request(`/api/public/assets/${logoKey}`, 'anonymous')).status).toBe(404);
+  });
+
+  it('gives a page-scoped reader the Markdown and llms documents of exactly their pages', async () => {
+    await setMode('READERS');
+    // Real page rows under the snapshot's page ids, so a grant can name one.
+    const language = await db.prisma.language.create({ data: { projectId: site.projectId, code: 'en', label: 'English' } });
+    const branch = await db.prisma.branch.create({ data: { projectId: site.projectId, name: 'main', isDefault: true } });
+    for (const [position, title] of SECRET_TITLES.entries()) {
+      await db.prisma.page.create({
+        data: {
+          id: `${site.projectId}-page-${position}`,
+          projectId: site.projectId,
+          languageId: language.id,
+          branchId: branch.id,
+          title,
+          slug: position === 0 ? 'guide' : 'runbook',
+          path: position === 0 ? 'guide' : 'runbook',
+          position,
+        },
+      });
+    }
+    const guideId = `${site.projectId}-page-0`;
+    const group = await db.prisma.audience.create({
+      data: {
+        projectId: site.projectId,
+        name: `Guide only ${randomUUID()}`,
+        grants: { create: [{ projectId: site.projectId, pageId: guideId, scopeKey: `PAGE:${guideId}` }] },
+      },
+    });
+    const scoped = await activeReader(site.projectId, group.id);
+    const headers = { cookie: `${cookieName(site.projectId)}=${scoped.token}` };
+    const get = async (path: string) => {
+      const response = await app.request(`/api/public/sites/${site.projectId}${path}`, { headers });
+      return { status: response.status, body: await response.text(), cache: response.headers.get('cache-control') };
+    };
+
+    const guide = await get('/markdown?path=guide');
+    expect(guide.status).toBe(200);
+    expect(guide.body).toContain(SECRET_TITLES[0]);
+    expect(guide.cache).toBe('private, no-store');
+    const runbook = await get('/markdown?path=runbook');
+    expect(runbook.status).toBe(404);
+    expect(runbook.body).not.toContain(SECRET_TITLES[1]);
+    for (const file of ['/llms.txt', '/llms-full.txt']) {
+      const document = await get(file);
+      expect(document.status, file).toBe(200);
+      expect(document.body, file).toContain(SECRET_TITLES[0]);
+      expect(document.body, file).not.toContain(SECRET_TITLES[1]);
+      expect(document.cache, file).toBe('private, no-store');
+    }
+    // A site-wide reader of the same site still gets both pages.
+    const everyone = await db.prisma.audience.findFirstOrThrow({ where: { projectId: site.projectId, name: 'Everyone' } });
+    const wide = await activeReader(site.projectId, everyone.id);
+    const full = await app.request(`/api/public/sites/${site.projectId}/llms-full.txt`, {
+      headers: { cookie: `${cookieName(site.projectId)}=${wide.token}` },
+    });
+    const fullBody = await full.text();
+    for (const title of SECRET_TITLES) expect(fullBody).toContain(title);
   });
 
   it('does not tell an anonymous visitor which pages exist on a private site', async () => {
