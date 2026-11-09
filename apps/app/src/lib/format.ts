@@ -86,22 +86,3 @@ export function localeTag(locale: string) {
 export function formatCurrency(tag: string, value: number, currency = 'USD') {
   return new Intl.NumberFormat(tag, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(value) ? 0 : 2 }).format(value);
 }
-
-/** Trend of a views time-series: % change of the recent half vs the older half.
- *  Returns null when there isn't enough signal to compare (avoids noisy badges). */
-export function viewsTrend(series: Array<{ views: number }>): { pct: number; direction: 'up' | 'down' | 'flat' } | null {
-  if (series.length < 4) {
-    return null;
-  }
-  const mid = Math.floor(series.length / 2);
-  const older = series.slice(0, mid).reduce((sum, p) => sum + p.views, 0);
-  const recent = series.slice(mid).reduce((sum, p) => sum + p.views, 0);
-  if (older === 0 && recent === 0) {
-    return null;
-  }
-  if (older === 0) {
-    return { pct: 100, direction: 'up' };
-  }
-  const pct = ((recent - older) / older) * 100;
-  return { pct, direction: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat' };
-}
