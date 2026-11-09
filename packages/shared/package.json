@@ -25,6 +25,7 @@
     "./redirects": "./src/redirects.ts",
     "./crypto": "./src/crypto.ts",
     "./domains": "./src/domains.ts",
+    "./email-providers": "./src/email-providers.ts",
     "./site": "./src/site.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",

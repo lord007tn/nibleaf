@@ -1,4 +1,11 @@
-import type { CreateAudienceBody, InviteReaderBody, JwtAccessConfigBody, ProjectAccessModeBody } from '@nibleaf/validators';
+import type {
+  CreateAudienceBody,
+  InviteReaderBody,
+  InviteReadersBody,
+  JwtAccessConfigBody,
+  ProjectAccessModeBody,
+  ReaderEmailDomainsBody,
+} from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -8,11 +15,18 @@ import { readerAccessQueryOptions } from './query-options';
 
 export interface ReaderAccessData {
   accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
+  /** Addresses at these domains can sign in to an Invited readers site without an invitation. */
+  readerEmailDomains: string[];
   readers: Array<{
     id: string;
     email: string | null;
     name: string | null;
+    /** INVITED, ACTIVE or REVOKED. */
     status: string;
+    createdAt: string;
+    activatedAt: string | null;
+    revokedAt: string | null;
+    lastSeenAt: string | null;
     audiences: Array<{ audience: { id: string; name: string } }>;
     _count: { sessions: number };
   }>;
@@ -76,6 +90,30 @@ export const useInviteReader = (projectId: string) =>
     mutateData(
       await api.app.projects[':projectId']['reader-access'].readers.invite.$post({ param: { projectId }, json }),
       'Could not invite the reader.',
+    ),
+  );
+
+export const useInviteReaders = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (json: InviteReadersBody) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access'].readers['invite-bulk'].$post({ param: { projectId }, json }),
+      'Could not invite the readers.',
+    ),
+  );
+
+export const useResendReaderInvitation = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (readerId: string) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access'].readers[':readerId'].resend.$post({ param: { projectId, readerId } }),
+      'Could not resend the invitation.',
+    ),
+  );
+
+export const useUpdateReaderEmailDomains = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (json: ReaderEmailDomainsBody) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access'].domains.$put({ param: { projectId }, json }),
+      'Could not save the allowed email domains.',
     ),
   );
 

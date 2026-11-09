@@ -654,6 +654,9 @@ model Project {
   /// navbar, footer, banner, seo, search, analytics, redirects, variables }.
   config         Json?
   accessMode     ProjectAccessMode @default(PUBLIC)
+  /// Invited readers mode: anyone with an address at one of these domains (lowercase,
+  /// no leading @) can sign in with an email code without an invitation.
+  readerEmailDomains String[] @default([])
   /// Moderation: set when a platform admin takes the site down. Taken-down
   /// projects must not be publicly served and cannot be published.
   takedownAt     DateTime?
