@@ -116,13 +116,42 @@ describe('row helpers', () => {
     expect(sortWorstFirst(feedbackFixture().pages).map((page) => page.path)).toEqual(['bad', 'good', 'unrated']);
   });
 
-  it('maps an analytics path to its editor page, tolerating a language prefix', () => {
+  it('links an analytics path to its editor page only when exactly one page has it', () => {
     const pages = [
       { id: 'p1', path: 'guides/install', kind: 'PAGE' },
       { id: 'g1', path: 'guides', kind: 'GROUP' },
     ];
     expect(findPageIdForPath(pages, '/guides/install/')).toBe('p1');
-    expect(findPageIdForPath(pages, 'ar/guides/install')).toBe('p1');
     expect(findPageIdForPath(pages, 'guides')).toBeNull();
+  });
+
+  it('never treats a first segment as a language: readers carry it in ?lang=', () => {
+    // An English page really at "ar/guide" and an Arabic page at "guide".
+    const pages = [
+      { id: 'en-ar-guide', path: 'ar/guide', kind: 'PAGE' },
+      { id: 'guide', path: 'guide', kind: 'PAGE' },
+    ];
+    expect(findPageIdForPath(pages, 'ar/guide')).toBe('en-ar-guide');
+    // "section/guide" was deleted; "guide" is a different page.
+    expect(findPageIdForPath([{ id: 'guide', path: 'guide', kind: 'PAGE' }], 'section/guide')).toBeNull();
+  });
+
+  it('gives no Edit link when the same path exists in several languages (analytics cannot tell which)', () => {
+    const pages = [
+      { id: 'en', path: 'quickstart', kind: 'PAGE' },
+      { id: 'ar', path: 'quickstart', kind: 'PAGE' },
+    ];
+    expect(findPageIdForPath(pages, 'quickstart')).toBeNull();
+  });
+
+  it('gives no Edit link when another version has the same path', () => {
+    const pages = [{ id: 'guide', path: 'guide', kind: 'PAGE' }];
+    expect(findPageIdForPath(pages, 'guide', [{ path: 'guide', kind: 'PAGE' }])).toBeNull();
+    expect(findPageIdForPath(pages, 'guide', [{ path: 'other', kind: 'PAGE' }])).toBe('guide');
+  });
+
+  it('matches encoded and raw Arabic slugs alike', () => {
+    const pages = [{ id: 'start', path: 'البداية', kind: 'PAGE' }];
+    expect(findPageIdForPath(pages, encodeURIComponent('البداية'))).toBe('start');
   });
 });
