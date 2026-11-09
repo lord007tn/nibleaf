@@ -953,6 +953,7 @@
   "settings_visibility_domains_save": "Salvar domínios",
   "settings_visibility_domains_saved": "Domínios permitidos salvos.",
   "settings_visibility_domains_invalid": "Use até 20 domínios como example.com, separados por vírgulas. Verifique: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} é um provedor de e-mail público; qualquer pessoa pode se cadastrar. Convide as pessoas individualmente.",
   "settings_visibility_list_title": "Pessoas com acesso",
   "settings_visibility_list_empty": "Ainda não há leitores. As pessoas que você convidar aparecem aqui.",
   "settings_visibility_list_search": "Buscar leitores",

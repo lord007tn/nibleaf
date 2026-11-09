@@ -182,6 +182,17 @@ describe('visibility settings', () => {
     expect(mocks.saveDomains).toHaveBeenCalledWith({ domains: ['partner.example'] });
   });
 
+  it('refuses a public email provider as an allowed domain, inline, without saving', async () => {
+    await act(async () => root.render(<ReadersPanel data={data()} disabled={false} projectId="site-1" />));
+    await type('#reader-email-domains', 'acme.com, Gmail.com');
+    await submit('#reader-email-domains');
+    expect(mocks.saveDomains).not.toHaveBeenCalled();
+    expect(container.querySelector('#reader-email-domains-error')?.textContent).toBe(
+      'settings.visibility.domains.publicProvider {"domain":"gmail.com"}',
+    );
+    expect(container.querySelector('#reader-email-domains')?.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('lists each reader with status and dates, and offers resend and revoke only while they have access', async () => {
     await act(async () => root.render(<ReadersPanel data={data()} disabled={false} projectId="site-1" />));
     const [invited, revoked] = [...container.querySelectorAll('li')];

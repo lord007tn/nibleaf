@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
+import { isPublicEmailProvider } from '@nibleaf/shared/email-providers';
 import { useForm } from '@tanstack/react-form';
 import { Mail, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -132,6 +133,9 @@ export function ReadersPanel({ projectId, data, disabled }: { projectId: string;
     if (domains.length > MAX_DOMAINS || invalid.length) {
       return t('settings.visibility.domains.invalid', { domains: invalid.slice(0, 5).join(', ') || domains.slice(MAX_DOMAINS).join(', ') });
     }
+    // The same rule as the server: a free webmail domain would let anyone in.
+    const publicProvider = domains.find(isPublicEmailProvider);
+    if (publicProvider) return t('settings.visibility.domains.publicProvider', { domain: publicProvider });
   };
 
   const readers = useMemo(() => {

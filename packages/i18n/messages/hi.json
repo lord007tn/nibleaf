@@ -917,6 +917,7 @@
   "settings_visibility_domains_save": "डोमेन सहेजें",
   "settings_visibility_domains_saved": "अनुमत ईमेल डोमेन सहेजे गए।",
   "settings_visibility_domains_invalid": "example.com जैसे 20 तक डोमेन, कॉमा से अलग करके डालें। जाँचें: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} एक सार्वजनिक ईमेल सेवा है; कोई भी उस पर खाता बना सकता है। इसके बजाय लोगों को अलग-अलग आमंत्रित करें।",
   "settings_visibility_list_title": "पहुँच वाले लोग",
   "settings_visibility_list_empty": "अभी कोई पाठक नहीं। आपके आमंत्रित लोग यहाँ दिखेंगे।",
   "settings_visibility_list_search": "पाठक खोजें",

@@ -953,6 +953,7 @@
   "settings_visibility_domains_save": "ڈومینز محفوظ کریں",
   "settings_visibility_domains_saved": "اجازت یافتہ ای میل ڈومینز محفوظ ہو گئے۔",
   "settings_visibility_domains_invalid": "example.com جیسے 20 تک ڈومینز، کاموں سے الگ کر کے لکھیں۔ چیک کریں: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} ایک عوامی ای میل سروس ہے؛ کوئی بھی اس پر اکاؤنٹ بنا سکتا ہے۔ اس کے بجائے لوگوں کو الگ الگ مدعو کریں۔",
   "settings_visibility_list_title": "رسائی رکھنے والے لوگ",
   "settings_visibility_list_empty": "ابھی کوئی قاری نہیں۔ جنہیں آپ مدعو کریں وہ یہاں نظر آئیں گے۔",
   "settings_visibility_list_search": "قارئین تلاش کریں",

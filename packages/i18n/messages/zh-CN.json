@@ -917,6 +917,7 @@
   "settings_visibility_domains_save": "保存域名",
   "settings_visibility_domains_saved": "已保存允许的邮箱域名。",
   "settings_visibility_domains_invalid": "请使用最多 20 个类似 example.com 的域名，用逗号分隔。请检查：{domains}",
+  "settings_visibility_domains_publicprovider": "{domain} 是公共邮箱服务，任何人都可以注册。请改为逐个邀请。",
   "settings_visibility_list_title": "有访问权限的人",
   "settings_visibility_list_empty": "还没有读者。你邀请的人会显示在这里。",
   "settings_visibility_list_search": "搜索读者",

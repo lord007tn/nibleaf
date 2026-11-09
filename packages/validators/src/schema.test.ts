@@ -502,6 +502,18 @@ describe('private reader validation', () => {
     expect(inviteReaderBody.safeParse({ email: 'not-an-email' }).success).toBe(false);
   });
 
+  it('refuses public email providers as allowed domains, naming the domain', () => {
+    for (const domain of ['gmail.com', 'Outlook.com', '@yahoo.co.uk', 'gmx.de', 'proton.me', 'qq.com']) {
+      const parsed = readerEmailDomainsBody.safeParse({ domains: ['acme.com', domain] });
+      expect(parsed.success, domain).toBe(false);
+      const normalized = domain.toLowerCase().replace(/^@/, '');
+      expect(parsed.error?.issues[0]?.message).toBe(
+        `${normalized} is a public email provider; anyone could sign up. Invite people individually instead.`,
+      );
+    }
+    expect(readerEmailDomainsBody.safeParse({ domains: ['acme.com', 'outlook.acme.com'] }).success).toBe(true);
+  });
+
   it('caps a bulk invitation at 100 valid addresses', () => {
     expect(inviteReadersBody.safeParse({ emails: ['a@example.com', 'B@Example.com '] })).toMatchObject({
       success: true,

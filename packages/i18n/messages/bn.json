@@ -917,6 +917,7 @@
   "settings_visibility_domains_save": "ডোমেইন সংরক্ষণ করুন",
   "settings_visibility_domains_saved": "অনুমোদিত ইমেল ডোমেইন সংরক্ষিত হয়েছে।",
   "settings_visibility_domains_invalid": "example.com-এর মতো সর্বোচ্চ ২০টি ডোমেইন কমা দিয়ে আলাদা করে দিন। দেখুন: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} একটি সর্বজনীন ইমেল সেবা; যে কেউ সেখানে অ্যাকাউন্ট খুলতে পারেন। বদলে লোকজনকে আলাদাভাবে আমন্ত্রণ জানান।",
   "settings_visibility_list_title": "যাঁদের অ্যাক্সেস আছে",
   "settings_visibility_list_empty": "এখনো কোনো পাঠক নেই। আপনার আমন্ত্রিতরা এখানে দেখা যাবেন।",
   "settings_visibility_list_search": "পাঠক খুঁজুন",

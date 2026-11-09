@@ -917,6 +917,7 @@
   "settings_visibility_domains_save": "Simpan domain",
   "settings_visibility_domains_saved": "Domain email yang diizinkan disimpan.",
   "settings_visibility_domains_invalid": "Gunakan hingga 20 domain seperti example.com, dipisahkan koma. Periksa: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} adalah penyedia email publik; siapa pun bisa mendaftar. Undang orang satu per satu saja.",
   "settings_visibility_list_title": "Orang dengan akses",
   "settings_visibility_list_empty": "Belum ada pembaca. Orang yang Anda undang akan muncul di sini.",
   "settings_visibility_list_search": "Cari pembaca",

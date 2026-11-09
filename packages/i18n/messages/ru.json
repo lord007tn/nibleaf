@@ -961,6 +961,7 @@
   "settings_visibility_domains_save": "Сохранить домены",
   "settings_visibility_domains_saved": "Разрешённые домены сохранены.",
   "settings_visibility_domains_invalid": "Укажите до 20 доменов вида example.com через запятую. Проверьте: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} — общедоступная почта, зарегистрироваться там может кто угодно. Приглашайте людей по отдельности.",
   "settings_visibility_list_title": "Люди с доступом",
   "settings_visibility_list_empty": "Читателей пока нет. Приглашённые появятся здесь.",
   "settings_visibility_list_search": "Поиск читателей",

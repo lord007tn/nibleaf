@@ -953,6 +953,7 @@
   "settings_visibility_domains_save": "Enregistrer les domaines",
   "settings_visibility_domains_saved": "Domaines autorisés enregistrés.",
   "settings_visibility_domains_invalid": "Indiquez jusqu'à 20 domaines comme example.com, séparés par des virgules. À vérifier : {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} est un fournisseur de messagerie public ; n'importe qui pourrait s'y inscrire. Invitez plutôt les personnes une par une.",
   "settings_visibility_list_title": "Personnes ayant accès",
   "settings_visibility_list_empty": "Aucun lecteur pour l'instant. Les personnes que vous invitez apparaîtront ici.",
   "settings_visibility_list_search": "Rechercher des lecteurs",

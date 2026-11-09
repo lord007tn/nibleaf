@@ -1004,6 +1004,7 @@
   "settings_visibility_domains_save": "Save domains",
   "settings_visibility_domains_saved": "Allowed email domains saved.",
   "settings_visibility_domains_invalid": "Use up to 20 domains like example.com, separated by commas. Check: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} is a public email provider; anyone could sign up. Invite people individually instead.",
   "settings_visibility_list_title": "People with access",
   "settings_visibility_list_empty": "No readers yet. People you invite appear here.",
   "settings_visibility_list_search": "Search readers",

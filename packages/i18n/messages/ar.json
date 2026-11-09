@@ -1020,6 +1020,7 @@
   "settings_visibility_domains_save": "حفظ النطاقات",
   "settings_visibility_domains_saved": "حُفظت نطاقات البريد المسموح بها.",
   "settings_visibility_domains_invalid": "استخدم حتى 20 نطاقًا مثل example.com، تفصل بينها فواصل. تحقّق من: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} مزوّد بريد عام يمكن لأي شخص التسجيل فيه. ادعُ الأشخاص كلًّا على حدة بدلًا من ذلك.",
   "settings_visibility_list_title": "الأشخاص الذين لديهم وصول",
   "settings_visibility_list_empty": "لا يوجد قرّاء بعد. يظهر هنا من تدعوهم.",
   "settings_visibility_list_search": "البحث في القرّاء",

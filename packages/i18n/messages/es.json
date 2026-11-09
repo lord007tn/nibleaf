@@ -953,6 +953,7 @@
   "settings_visibility_domains_save": "Guardar dominios",
   "settings_visibility_domains_saved": "Dominios permitidos guardados.",
   "settings_visibility_domains_invalid": "Usa hasta 20 dominios como example.com, separados por comas. Revisa: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} es un proveedor de correo público; cualquiera podría registrarse. Invita a las personas una por una.",
   "settings_visibility_list_title": "Personas con acceso",
   "settings_visibility_list_empty": "Aún no hay lectores. Las personas que invites aparecerán aquí.",
   "settings_visibility_list_search": "Buscar lectores",

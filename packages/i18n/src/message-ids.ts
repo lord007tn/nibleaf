@@ -3899,6 +3899,7 @@ export const MESSAGE_IDS = {
   'settings.visibility.audit.emailDomainsUpdated': 'settings_visibility_audit_emaildomainsupdated',
   'analytics.kpi.sitesWithTraffic': 'analytics_kpi_siteswithtraffic',
   'analytics.workspace.termsPerSite': 'analytics_workspace_termspersite',
+  'settings.visibility.domains.publicProvider': 'settings_visibility_domains_publicprovider',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

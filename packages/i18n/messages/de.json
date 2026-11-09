@@ -953,6 +953,7 @@
   "settings_visibility_domains_save": "Domains speichern",
   "settings_visibility_domains_saved": "Erlaubte E-Mail-Domains gespeichert.",
   "settings_visibility_domains_invalid": "Verwenden Sie bis zu 20 Domains wie example.com, durch Kommas getrennt. Prüfen Sie: {domains}",
+  "settings_visibility_domains_publicprovider": "{domain} ist ein öffentlicher E-Mail-Anbieter; jeder könnte sich dort registrieren. Laden Sie Personen stattdessen einzeln ein.",
   "settings_visibility_list_title": "Personen mit Zugriff",
   "settings_visibility_list_empty": "Noch keine Leser. Eingeladene Personen erscheinen hier.",
   "settings_visibility_list_search": "Leser suchen",
