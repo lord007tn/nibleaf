@@ -1787,7 +1787,6 @@
   "settings_exports_workflow_defaultschedulename": "रात्रिकालीन संग्रह",
   "settings_account_title": "खाता",
   "settings_account_description": "प्रत्येक कार्यक्षेत्र में आपकी व्यक्तिगत प्रोफ़ाइल।",
-  "settings_account_changeavatar": "अवतार बदलें",
   "settings_account_profileupdated": "प्रोफ़ाइल अपडेट की गई",
   "settings_account_name_label": "नाम",
   "settings_account_name_error": "आपका नाम सहेजा नहीं जा सका",
@@ -3649,6 +3648,8 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
+  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
+  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -3981,7 +3982,5 @@
   "sites_sort_views": "सबसे ज़्यादा देखे गए",
   "analytics_chart_pageviewsallsites": "सभी साइटों पर पेज व्यू",
   "analytics_section_bysite": "साइट के अनुसार",
-  "analytics_search_write_languageserror": "इस साइट की भाषाएँ लोड नहीं हो सकीं, इसलिए ड्राफ़्ट की भाषा अभी नहीं चुनी जा सकती।",
-  "dashboard_ai_sessionexpired": "आपका सत्र समाप्त हो गया। यह बातचीत देखने के लिए फिर से साइन इन करें।",
-  "dashboard_ai_signinagain": "फिर से साइन इन करें"
+  "settings_appearance_theme_system": "मेरे डिवाइस जैसा"
 }

@@ -1911,7 +1911,6 @@
   "settings_exports_workflow_defaultschedulename": "Nightly archive",
   "settings_account_title": "Account",
   "settings_account_description": "Your personal profile across every workspace.",
-  "settings_account_changeavatar": "Change avatar",
   "settings_account_profileupdated": "Profile updated",
   "settings_account_name_label": "Name",
   "settings_account_name_error": "Could not save your name",
@@ -3714,6 +3713,8 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
+  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
+  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -4046,7 +4047,5 @@
   "sites_sort_views": "Most viewed",
   "analytics_chart_pageviewsallsites": "Page views across all sites",
   "analytics_section_bysite": "By site",
-  "analytics_search_write_languageserror": "Couldn't load this site's languages, so the draft's language can't be chosen yet.",
-  "dashboard_ai_sessionexpired": "Your session ended. Sign in again to see this conversation.",
-  "dashboard_ai_signinagain": "Sign in again"
+  "settings_appearance_theme_system": "Match my device"
 }

@@ -17,12 +17,10 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Eye, EyeOff, PenLine } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useLanguages, useProjectMembers } from '@/hooks/api';
+import { useProjectMembers } from '@/hooks/api';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
 import { useCreatePage, useUpdateProjectConfig } from '@/hooks/api/mutations';
 import { queryKeys } from '@/hooks/api/query-keys';
-import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
-import { isClientError } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
 import { HIDDEN_TERMS_EXPLANATION } from './labels';
 
@@ -225,93 +223,37 @@ export function HiddenTermsEmpty({
 
 /**
  * "Write an article for this": creates a draft page titled with the search
- * term (or a reader's unanswered question) through the existing page-create
- * mutation and opens it in the editor. With `languageCode` the draft is
- * created in that content language when the site has it, so an Arabic
- * question becomes an Arabic draft.
+ * term through the existing page-create mutation and opens it in the editor.
  */
-export function WriteArticleButton({
-  projectId,
-  term,
-  languageCode,
-  label,
-  content,
-}: {
-  projectId: string;
-  term: string;
-  languageCode?: string;
-  /** Visible text; defaults to the search report's "Write an article". */
-  label?: string;
-  /** The draft's opening text, e.g. a reader's whole question when the title is cut at 200 characters. */
-  content?: string;
-}) {
+export function WriteArticleButton({ projectId, term }: { projectId: string; term: string }) {
   const t = useT();
   const navigate = useNavigate();
   const createPage = useCreatePage(projectId);
-  const languagesQuery = useLanguages(languageCode ? projectId : undefined);
-  const languageId = languageCode ? languagesQuery.data?.find((language) => language.code === languageCode)?.id : undefined;
-  // With a content language asked for, wait until the site's languages are known: submitting
-  // before then would silently create the draft in the default language. A code the site
-  // doesn't have (known list, no match) still falls back to the default language.
-  const languageReady = !languageCode || languagesQuery.isSuccess;
-  // Viewers can't create pages: no action they can't take.
-  const viewOnly = useProjectAdminStatus(projectId).edit === 'viewOnly';
   // The pending state only renders on the next frame; the ref blocks a same-frame double click.
   const inFlight = useRef(false);
   const write = () => {
-    if (inFlight.current || !languageReady) return;
+    if (inFlight.current) return;
     inFlight.current = true;
-    const create = (id: string | undefined, retried: boolean) =>
-      createPage.mutate(
-        { title: term.slice(0, 200), ...(content ? { content } : {}), ...(id ? { languageId: id } : {}) },
-        {
-          onSuccess: (page) => {
-            toast.success(t('analytics.search.write.created'));
-            void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: page.id } });
-            inFlight.current = false;
-          },
-          onError: async (error) => {
-            // The cached language may have been removed since the list was read: read the
-            // languages again and retry once with the current match, or the default language.
-            if (id && !retried && isClientError(error)) {
-              const fresh = await languagesQuery.refetch();
-              create(fresh.data?.find((language) => language.code === languageCode)?.id, true);
-              return;
-            }
-            // Plain language, never the server's raw message. (useCreatePage is shared with
-            // the editor, which reports its own failures, so no `meta.errorMessage` there.)
-            toast.error(t('analytics.search.write.failed'));
-            inFlight.current = false;
-          },
+    createPage.mutate(
+      { title: term.slice(0, 200) },
+      {
+        onSuccess: (page) => {
+          toast.success(t('analytics.search.write.created'));
+          void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: page.id } });
         },
-      );
-    create(languageId, false);
-  };
-  // The site's languages couldn't be read: say so and offer a retry instead of a silent disabled button.
-  if (viewOnly) return null;
-  if (languageCode && languagesQuery.isError) {
-    return (
-      <span className="inline-flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground text-xs" role="status">
-          {t('analytics.search.write.languagesError')}
-        </span>
-        <Button loading={languagesQuery.isFetching} onClick={() => void languagesQuery.refetch()} size="sm" type="button" variant="outline">
-          {t('error.tryAgain')}
-        </Button>
-      </span>
+        // Plain language, never the server's raw message. (useCreatePage is shared with
+        // the editor, which reports its own failures, so no `meta.errorMessage` there.)
+        onError: () => toast.error(t('analytics.search.write.failed')),
+        onSettled: () => {
+          inFlight.current = false;
+        },
+      },
     );
-  }
+  };
   return (
-    <Button
-      aria-label={t('analytics.search.write.aria', { term })}
-      disabled={!languageReady}
-      loading={createPage.isPending || (Boolean(languageCode) && languagesQuery.isPending)}
-      onClick={write}
-      size="sm"
-      variant="outline"
-    >
+    <Button aria-label={t('analytics.search.write.aria', { term })} loading={createPage.isPending} onClick={write} size="sm" variant="outline">
       <PenLine aria-hidden />
-      {label ?? t('analytics.search.write.action')}
+      {t('analytics.search.write.action')}
     </Button>
   );
 }

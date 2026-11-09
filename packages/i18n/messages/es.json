@@ -1850,7 +1850,6 @@
   "settings_exports_workflow_defaultschedulename": "Archivo nocturno",
   "settings_account_title": "cuenta",
   "settings_account_description": "Su perfil personal en cada espacio de trabajo.",
-  "settings_account_changeavatar": "Cambiar avatar",
   "settings_account_profileupdated": "Perfil actualizado",
   "settings_account_name_label": "Nombre",
   "settings_account_name_error": "No se pudo guardar tu nombre",
@@ -3714,6 +3713,8 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
+  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
+  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -4046,7 +4047,5 @@
   "sites_sort_views": "Más vistos",
   "analytics_chart_pageviewsallsites": "Vistas de página en todos los sitios",
   "analytics_section_bysite": "Por sitio",
-  "analytics_search_write_languageserror": "No se pudieron cargar los idiomas de este sitio, así que aún no se puede elegir el idioma del borrador.",
-  "dashboard_ai_sessionexpired": "Tu sesión terminó. Vuelve a iniciar sesión para ver esta conversación.",
-  "dashboard_ai_signinagain": "Volver a iniciar sesión"
+  "settings_appearance_theme_system": "Como mi dispositivo"
 }

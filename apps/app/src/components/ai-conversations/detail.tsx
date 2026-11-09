@@ -15,11 +15,11 @@ import { useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 
 import { toast } from 'sonner';
-import { QueryErrorState } from '@/components/query-error-state';
+
 import { useProjectMembers } from '@/hooks/api';
+
 import { useAiConversation, useDeleteAiConversation } from '@/hooks/api/ai-conversations';
-import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { isClientError } from '@/integrations/tanstack-query/query-client';
+
 import { useFormatters } from '@/lib/format';
 
 import { useSession } from '@/services/auth-client';
@@ -95,25 +95,7 @@ export function ConversationDetail({ projectId, conversation, onClose }: { proje
               ))}
             </div>
           ) : detail.isError ? (
-            // Gone (deleted, expired, not yours) is final; anything else can be retried in place.
-            detail.error instanceof ApiResponseError && detail.error.status === 401 ? (
-              // Not a broken conversation: the session ended.
-              <div className="space-y-3" role="alert">
-                <p>{t('dashboard.ai.sessionExpired')}</p>
-                <Button
-                  nativeButton={false}
-                  render={<a href={`/sign-in?next=${encodeURIComponent(`${window.location.pathname}${window.location.search}`)}`} />}
-                  size="sm"
-                  variant="outline"
-                >
-                  {t('dashboard.ai.signInAgain')}
-                </Button>
-              </div>
-            ) : isClientError(detail.error) ? (
-              <p role="alert">{t('dashboard.ai.missing')}</p>
-            ) : (
-              <QueryErrorState onRetry={() => void detail.refetch()} retrying={detail.isFetching} />
-            )
+            <p role="alert">{t('dashboard.ai.missing')}</p>
           ) : detail.data ? (
             <>
               {detail.data.visibility === 'private' && <Badge variant="outline">{t('dashboard.ai.private')}</Badge>}

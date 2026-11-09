@@ -1864,7 +1864,6 @@
   "settings_exports_workflow_defaultschedulename": "Ночной архив",
   "settings_account_title": "Аккаунт",
   "settings_account_description": "Ваш личный профиль в каждом рабочем пространстве.",
-  "settings_account_changeavatar": "Сменить аватар",
   "settings_account_profileupdated": "Профиль обновлен",
   "settings_account_name_label": "Имя",
   "settings_account_name_error": "Не удалось сохранить ваше имя",
@@ -3735,6 +3734,8 @@
   "dashboard_ai_lastasked": "Last asked",
   "dashboard_ai_write": "Write an article about this",
   "dashboard_ai_view": "View conversation",
+  "dashboard_ai_copied": "Question copied. Create a new page and paste it as the title.",
+  "dashboard_ai_copyerror": "Could not copy the question. Select and copy it before opening the editor.",
   "dashboard_ai_capture": "Save questions to improve your docs",
   "dashboard_ai_capturehint": "Saved text is redacted to remove sensitive details, kept for the server's retention period (90 days by default), and saved only with visitor consent where required.",
   "dashboard_ai_starters": "Suggested questions",
@@ -4067,7 +4068,5 @@
   "sites_sort_views": "Самые просматриваемые",
   "analytics_chart_pageviewsallsites": "Просмотры страниц на всех сайтах",
   "analytics_section_bysite": "По сайтам",
-  "analytics_search_write_languageserror": "Не удалось загрузить языки сайта, поэтому язык черновика пока нельзя выбрать.",
-  "dashboard_ai_sessionexpired": "Сеанс завершён. Войдите снова, чтобы увидеть этот разговор.",
-  "dashboard_ai_signinagain": "Войти снова"
+  "settings_appearance_theme_system": "Как на устройстве"
 }

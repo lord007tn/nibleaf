@@ -38,8 +38,20 @@ describe('error-page retry', () => {
     await act(async () => retry.click());
     expect(mocks.invalidate).toHaveBeenCalledOnce();
     expect(reset).not.toHaveBeenCalled();
+    // The retry shows that it is working.
+    expect(retry.getAttribute('aria-busy')).toBe('true');
     if (!finish) throw new Error('Missing route reload completion');
     await act(async () => finish?.());
     expect(reset).toHaveBeenCalledOnce();
+  });
+
+  it('says what happened in plain words, never the raw exception as the message', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => root.render(<ErrorPage error={new Error('TypeError: Cannot read properties of undefined')} reset={vi.fn()} />));
+    expect(container.querySelector('p')?.textContent).toBe('error.unexpected');
+    // Development (this test run) keeps the technical message apart, below.
+    expect(container.querySelector('pre')?.textContent).toContain('Cannot read properties');
   });
 });

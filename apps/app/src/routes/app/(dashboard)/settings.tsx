@@ -75,11 +75,12 @@ function WorkspaceSettingsPage() {
           </div>
 
           {/* Left settings sidebar */}
-          <nav className="hidden w-48 shrink-0 flex-col gap-0.5 sm:flex">
+          <nav aria-label={t('settings.title')} className="hidden w-48 shrink-0 flex-col gap-0.5 sm:flex">
             {SECTIONS.map((item) => {
               const Icon = item.icon;
               return (
                 <button
+                  aria-current={tab === item.id ? 'page' : undefined}
                   key={item.id}
                   type="button"
                   onClick={() => navigate({ search: { tab: item.id }, replace: true })}

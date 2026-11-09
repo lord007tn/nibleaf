@@ -104,4 +104,14 @@ describe('AppearanceTab', () => {
 
     expect(theme.setTheme).toHaveBeenCalledWith('dark');
   });
+
+  it('offers a theme that follows the device', async () => {
+    await render();
+    const system = [...container.querySelectorAll<HTMLButtonElement>('button[type="button"]')].find((button) =>
+      button.textContent?.includes('Match my device'),
+    );
+    expect(system?.getAttribute('aria-pressed')).toBe('false');
+    await act(async () => system?.click());
+    expect(theme.setTheme).toHaveBeenCalledWith('system');
+  });
 });

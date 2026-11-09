@@ -10,15 +10,10 @@ import { GapList } from './gaps';
 import { CostValue, Engagement } from './overview';
 import { aiDashboardSearch } from './search';
 
-vi.mock('@/env', () => ({ env: {} }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, variables?: Record<string, string>) => `${key}${variables ? JSON.stringify(variables) : ''}`,
 }));
-vi.mock('@/hooks/api', () => ({ useProjectMembers: vi.fn(), useLanguages: () => ({ data: undefined }) }));
-vi.mock('@/hooks/api/mutations', () => ({
-  useCreatePage: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateProjectConfig: () => ({ mutate: vi.fn() }),
-}));
+vi.mock('@/hooks/api', () => ({ useProjectMembers: vi.fn() }));
 vi.mock('@/hooks/api/ai-conversations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/api/ai-conversations')>()),
   useAiConversation: vi.fn(),
@@ -132,12 +127,8 @@ describe('AI dashboard', () => {
             reason: 'no_answer',
           },
         ]}
+        onWrite={write}
         onOpen={open}
-        writeAction={(gap) => (
-          <button onClick={() => write(gap.question)} type="button">
-            write
-          </button>
-        )}
       />,
     );
     const buttons = container.querySelectorAll('button');

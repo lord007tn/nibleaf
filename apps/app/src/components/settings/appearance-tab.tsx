@@ -8,7 +8,7 @@ import { InterfaceLocaleLabel } from '@/components/interface-language-dialog';
 import { SettingsSection } from './section';
 
 interface ThemeOption {
-  id: 'light' | 'dark';
+  id: 'light' | 'dark' | 'system';
   labelKey: MessageKey;
   surface: string;
   border: string;
@@ -29,6 +29,14 @@ const THEMES: ThemeOption[] = [
     surface: '#131318',
     border: '#2a2a33',
     bars: ['#3a3a46', '#2c2c36', '#2c2c36'],
+  },
+  {
+    // Follows the device: half light, half dark.
+    id: 'system',
+    labelKey: 'settings.appearance.theme.system',
+    surface: 'linear-gradient(90deg, #fbfbfc 50%, #131318 50%)',
+    border: '#9a9aa6',
+    bars: ['#8a8a96', '#9a9aa6', '#9a9aa6'],
   },
 ];
 
@@ -68,7 +76,7 @@ export function AppearanceTab() {
   return (
     <div className="flex flex-col gap-6">
       <SettingsSection title={t('settings.appearance.theme.title')} description={t('settings.appearance.theme.description')}>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 min-[360px]:grid-cols-3">
           {THEMES.map((option) => (
             <ThemeCard
               key={option.id}

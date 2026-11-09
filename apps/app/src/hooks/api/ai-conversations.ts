@@ -86,8 +86,8 @@ export const aiContentGapsQueryOptions = (projectId: string, range: AiConversati
 export const aiConversationQueryOptions = (projectId: string, conversation?: string) =>
   queryOptions({
     queryKey: aiConversationKeys.detail(projectId, conversation ?? ''),
-    // The client's default policy: a deleted or expired conversation (4xx) is
-    // never retried, while a dropped connection or a 5xx is.
+    // A deleted or expired conversation will not come back on retry.
+    retry: false,
     queryFn: conversation
       ? ({ signal }) => request(aiConversationsPath(projectId, `/${encodeURIComponent(conversation)}`), aiConversationDetailSchema, signal)
       : skipToken,

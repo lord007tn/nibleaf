@@ -103,6 +103,8 @@ export const MESSAGE_IDS = {
   'dashboard.ai.lastAsked': 'dashboard_ai_lastasked',
   'dashboard.ai.write': 'dashboard_ai_write',
   'dashboard.ai.view': 'dashboard_ai_view',
+  'dashboard.ai.copied': 'dashboard_ai_copied',
+  'dashboard.ai.copyError': 'dashboard_ai_copyerror',
   'dashboard.ai.capture': 'dashboard_ai_capture',
   'dashboard.ai.captureHint': 'dashboard_ai_capturehint',
   'dashboard.ai.starters': 'dashboard_ai_starters',
@@ -2092,7 +2094,6 @@ export const MESSAGE_IDS = {
   'settings.exports.workflow.defaultScheduleName': 'settings_exports_workflow_defaultschedulename',
   'settings.account.title': 'settings_account_title',
   'settings.account.description': 'settings_account_description',
-  'settings.account.changeAvatar': 'settings_account_changeavatar',
   'settings.account.profileUpdated': 'settings_account_profileupdated',
   'settings.account.name.label': 'settings_account_name_label',
   'settings.account.name.error': 'settings_account_name_error',
@@ -3936,9 +3937,7 @@ export const MESSAGE_IDS = {
   'sites.sort.views': 'sites_sort_views',
   'analytics.chart.pageviewsAllSites': 'analytics_chart_pageviewsallsites',
   'analytics.section.bySite': 'analytics_section_bysite',
-  'analytics.search.write.languagesError': 'analytics_search_write_languageserror',
-  'dashboard.ai.sessionExpired': 'dashboard_ai_sessionexpired',
-  'dashboard.ai.signInAgain': 'dashboard_ai_signinagain',
+  'settings.appearance.theme.system': 'settings_appearance_theme_system',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;
