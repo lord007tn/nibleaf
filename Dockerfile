@@ -8,19 +8,22 @@
 
 # Refresh within the reviewed Alpine branch; distro upgrades need their own review.
 FROM node:26-alpine3.24@sha256:8996bb5821d62a8fd9bb27c1cb07462f3fdce6e47d640c6a881ead0b064ce216 AS base
-ENV PNPM_HOME=/pnpm
-ENV PNPM_STORE_DIR=/pnpm/store
-ENV PATH=$PNPM_HOME:$PATH
 WORKDIR /app
 # openssl: Prisma engine detection at migrate time. curl: Compose healthchecks.
 # git: public repository imports for self-hosted Git/Forgejo/Gitea/GitLab URLs.
 # Chromium needs an Arabic font for readable RTL PDF exports.
-# Node 26 no longer bundles Corepack. Install the same pinned package manager
-# used by contributors; runtime migrations still use pnpm's workspace filters.
-RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic && npm install --global pnpm@10.34.9
+RUN apk add --no-cache chromium curl git openssl font-noto-naskh-arabic
 ENV EXPORT_CHROMIUM_PATH=/usr/bin/chromium-browser
 
-FROM base AS build
+# Node 26 no longer bundles Corepack. Only build stages need standalone pnpm;
+# runtime services, migrations and operators execute Node/tsx directly.
+FROM base AS build-tools
+ENV PNPM_HOME=/pnpm
+ENV PNPM_STORE_DIR=/pnpm/store
+ENV PATH=$PNPM_HOME:$PATH
+RUN npm install --global pnpm@10.34.9
+
+FROM build-tools AS build
 ARG MARKETING_GITHUB_STARS=0
 ENV MARKETING_GITHUB_STARS=$MARKETING_GITHUB_STARS
 COPY . .
@@ -50,7 +53,7 @@ RUN touch apps/app/.output/.nibleaf-runtime-required apps/admin/.output/.nibleaf
 # Install a clean production graph instead of copying the builder's tooling.
 # Keep the workspace layout: server/worker and their workspace dependencies run
 # through tsx, and migrations invoke the installed Prisma/tsx entry points.
-FROM base AS runtime-deps
+FROM build-tools AS runtime-deps
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
 # Production peers pull TypeScript's optional native compiler into this graph.
