@@ -58,6 +58,8 @@ export const syncPublishReceipt = (
   void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
+  // The site's own publish facts (how many went live, whether one is exportable).
+  void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
   return true;
 };
 

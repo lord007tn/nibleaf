@@ -104,9 +104,15 @@ function SiteOverviewPage() {
   const pageCount = (pages ?? []).filter((page) => page.kind !== 'GROUP').length;
   const canManageSettings = settingsAccess === 'admin';
   const memberCount = members?.members.length ?? 0;
-  const deployCount = (deployments ?? []).length;
+  // From the site itself, not the deployments list: that list is the newest 50
+  // attempts (failed and pending included), so it can't count publishes or tell
+  // whether an older version is still live.
+  const deployCount = project?.readyPublishes ?? null;
   const latestDeployment = deployments?.[0];
-  const hasReadyDeployment = (deployments ?? []).some((deployment) => deployment.status === 'READY');
+  // A publish that just went live shows in the (polled) list before the site is re-read.
+  const hasReadyDeployment = (project?.readyPublishes ?? 0) > 0 || (deployments ?? []).some((deployment) => deployment.status === 'READY');
+  // "Never published" only once the site itself says so; until then it's unknown.
+  const neverPublished = !hasReadyDeployment && project?.readyPublishes === 0;
   const publishFailed = latestDeployment?.status === 'FAILED';
   // Only a domain whose DNS and HTTPS both work opens the docs; one still connecting
   // (or broken) would greet the owner with a browser error, so link the default address.
@@ -165,7 +171,7 @@ function SiteOverviewPage() {
             >
               <Eye className="size-3.5" /> {t('overview.viewSite')}
             </Button>
-          ) : deployments ? (
+          ) : neverPublished ? (
             <Button
               nativeButton={false}
               render={<Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />}
@@ -191,7 +197,7 @@ function SiteOverviewPage() {
 
       {/* First-publish nudge: shown until the site has one READY deployment.
           Hidden while the latest attempt is FAILED (the failure card leads). */}
-      {deployments && !hasReadyDeployment && !publishFailed && !viewOnly ? (
+      {deployments && neverPublished && !publishFailed && !viewOnly ? (
         <PublishNudge
           projectId={projectId}
           settingsAccess={settingsAccess}
@@ -223,11 +229,7 @@ function SiteOverviewPage() {
             </span>
             <div className="min-w-0">
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
-              {deploymentsPending ? (
-                <Skeleton className="mt-1 h-4 w-40" />
-              ) : deploymentsFailed ? (
-                <p className="text-muted-foreground text-sm">{t('overview.live.loadError')}</p>
-              ) : hasReadyDeployment ? (
+              {hasReadyDeployment ? (
                 <>
                   <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
                     <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
@@ -253,6 +255,10 @@ function SiteOverviewPage() {
                     </p>
                   ) : null}
                 </>
+              ) : projectPending || (deploymentsPending && !neverPublished) ? (
+                <Skeleton className="mt-1 h-4 w-40" />
+              ) : !neverPublished ? (
+                <p className="text-muted-foreground text-sm">{t('overview.live.loadError')}</p>
               ) : (
                 <>
                   <p className="text-muted-foreground text-sm">{t('overview.live.unavailable')}</p>
@@ -330,12 +336,7 @@ function SiteOverviewPage() {
           icon={<Users className="size-4" />}
           loading={membersPending && !membersFailed}
         />
-        <StatCard
-          label={t('overview.stats.deploys')}
-          value={deploymentsFailed ? null : deployCount}
-          icon={<Rocket className="size-4" />}
-          loading={deploymentsPending && !deploymentsFailed}
-        />
+        <StatCard label={t('overview.stats.deploys')} value={deployCount} icon={<Rocket className="size-4" />} loading={projectPending} />
         <StatCard
           label={t('overview.stats.pageviews')}
           value={analytics?.totalViews ?? null}

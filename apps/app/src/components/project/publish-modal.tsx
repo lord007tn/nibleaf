@@ -20,6 +20,7 @@ import { ArrowLeft, FileText, type LucideIcon, Minus, Pencil, Plus, Rocket, Tria
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
+import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, PendingChange, Project } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { type FirstPublishAttribution, readFirstPublishAttribution } from '@/lib/first-publish-activation';
@@ -390,7 +391,8 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
                 <div className="truncate text-start font-mono text-[12.5px] text-muted-foreground" dir="ltr">
                   {canonicalSiteBase(project.id, {
                     slug: project.slug,
-                    primaryDomain: domains.data?.find((item) => item.verified && item.isPrimary)?.domain,
+                    // Only a domain readers can open (ownership, DNS and HTTPS).
+                    primaryDomain: domains.data ? pickLiveDomain(domains.data)?.domain : undefined,
                   })}
                 </div>
               </div>

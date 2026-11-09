@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   query: vi.fn(),
   deployments: { data: [] as Deployment[] },
+  domains: { data: [] as object[] },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
@@ -27,7 +28,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error, info: mocks.info } }));
 vi.mock('@/hooks/api', () => ({
-  useDomains: () => ({ data: [] }),
+  useDomains: () => mocks.domains,
   useRollback: () => ({ mutate: mocks.mutate, isPending: false }),
   useDeployments: (_id: string, options: object) => {
     mocks.query(options);
@@ -75,6 +76,7 @@ describe('rollback progress', () => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
     mocks.confirm.mockResolvedValue(true);
     mocks.deployments.data = [deployment('live-3', 3, 'READY'), deployment('old-2', 2, 'READY')];
+    mocks.domains.data = [];
     mocks.mutate.mockImplementation((_id, options) => {
       const queued = deployment('restore-4', 4, 'PENDING');
       mocks.deployments.data = [queued, ...mocks.deployments.data];
@@ -88,6 +90,17 @@ describe('rollback progress', () => {
     await act(async () => root.unmount());
     container.remove();
   });
+  it.each([
+    [{ dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }, true],
+    // Ownership proven, but readers would get a browser error: keep the default address.
+    [{ dnsStatus: 'ERROR', sslStatus: 'PENDING' }, false],
+    [{ dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' }, false],
+  ])('names the custom domain as the site address only once readers can open it: %o', async (status, live) => {
+    mocks.domains.data = [{ id: 'domain-1', domain: 'docs.example.com', verified: true, isPrimary: true, ...status }];
+    await render();
+    expect(container.textContent?.includes('docs.example.com')).toBe(live);
+  });
+
   const queueRollback = async () => {
     await render();
     mocks.success.mockClear();

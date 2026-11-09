@@ -68,6 +68,7 @@ describe('syncPublishReceipt', () => {
     expect(addressMayFollowTitle('page-1', queryClient.getQueryData(changesKey), [])).toBe(false);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.deployments.latest('p1') });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projects.all(), exact: true });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projects.detail('p1'), exact: true });
   });
 
   it('never hides an edit saved after the published snapshot: state is unknown until the server answers', async () => {

@@ -11,6 +11,8 @@ const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' 
 const navigation = queries;
 /** Signed in as the `viewer` the settings-access tests give a role to. */
 const viewer = { data: { user: { id: 'viewer' } }, isPending: false };
+/** A site the server says has never gone live. */
+const neverPublishedSite = { data: { id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 }, isPending: false };
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({
@@ -92,6 +94,7 @@ describe('site overview first load', () => {
   it.each(['member', 'admin', 'owner'])('keeps overview settings links within the %s role', async (role) => {
     navigation.members = { isPending: false, data: { members: [{ role, user: { id: 'viewer' } }] } };
     navigation.deployments = { isPending: false, data: [] };
+    navigation.project = neverPublishedSite;
     await act(async () => root.render(<SiteOverviewPage />));
     const sections = [...container.querySelectorAll('a[href^="/settings"]')].map((link) =>
       new URL(link.getAttribute('href') ?? '', 'https://example.test').searchParams.get('section'),
@@ -117,6 +120,7 @@ describe('site overview first load', () => {
     const retry = vi.fn();
     navigation.members = { isError: true, refetch: retry };
     navigation.deployments = { data: [] };
+    navigation.project = neverPublishedSite;
     await act(async () => root.render(<SiteOverviewPage />));
     expect(container.textContent).not.toContain('overview.settings.askAdmin');
     expect(container.querySelector('a[href="/settings?section=languages"]')).toBeNull();
@@ -130,6 +134,7 @@ describe('site overview first load', () => {
 
   it('keeps checklist steps 1 and 2 usable while permissions load, gating only the optional domain step', async () => {
     navigation.deployments = { data: [], isPending: false };
+    navigation.project = neverPublishedSite;
     navigation.members = pending;
     await act(async () => root.render(<SiteOverviewPage />));
     const checklist = container.querySelector('ol');
@@ -147,6 +152,7 @@ describe('site overview first load', () => {
   it('keeps checklist steps 1 and 2 usable after a permission failure and offers Retry inside step 3', async () => {
     const retry = vi.fn();
     navigation.deployments = { data: [], isPending: false };
+    navigation.project = neverPublishedSite;
     navigation.members = { isPending: false, isError: true, refetch: retry };
     await act(async () => root.render(<SiteOverviewPage />));
     const checklist = container.querySelector('ol');
@@ -176,6 +182,7 @@ describe('site overview first load', () => {
     const data = { members: [{ role, user: { id: 'viewer' } }] };
     navigation.members = { data, isPending: false };
     navigation.deployments = { data: [] };
+    navigation.project = neverPublishedSite;
     await act(async () => root.render(<SiteOverviewPage />));
     const settingsHref = `/settings?section=${role === 'member' ? 'languages' : 'general'}`;
     expect(container.querySelector(`a[href="${settingsHref}"]`)).not.toBeNull();
@@ -295,6 +302,56 @@ describe('site overview when something fails or is still connecting', () => {
     expect(container.textContent).toContain('overview.live.loadError');
     expect(container.querySelector('[role="alert"]')).not.toBeNull();
     expect(tile('overview.stats.deploys')).toBe('—');
+  });
+
+  describe('publish facts come from the site, not the newest 50 attempts', () => {
+    const failedAttempts = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({ ...readyDeployment, id: `dep-f${index}`, version: 100 - index, status: 'FAILED' }));
+
+    it('stays live, and counts every publish, when the live one is older than the list reaches', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 2 }),
+        deployments: loaded(failedAttempts(50)),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(container.textContent).not.toContain('overview.live.unavailable');
+      expect(container.textContent).not.toContain('overview.nudge.title');
+      // Publishes that went live, not attempts listed.
+      expect(tile('overview.stats.deploys')).toBe('2');
+    });
+
+    it('counts no publishes when every attempt failed', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 }),
+        deployments: loaded(failedAttempts(3)),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(tile('overview.stats.deploys')).toBe('0');
+      expect(liveLink()).toBeNull();
+      expect(container.textContent).toContain('overview.live.unavailable');
+    });
+
+    it('still links the live site when the publish list fails to load', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 4 }),
+        deployments: failed(),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(container.textContent).not.toContain('overview.live.loadError');
+      expect(tile('overview.stats.deploys')).toBe('4');
+    });
+
+    it('shows a publish that just went live before the site is read again', async () => {
+      Object.assign(queries, {
+        project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 }),
+        deployments: loaded([readyDeployment]),
+      });
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(liveLink()?.getAttribute('href')).toBe('/sites/project-1');
+      expect(container.textContent).not.toContain('overview.nudge.title');
+    });
   });
 
   it('links a custom domain only once its DNS and HTTPS both work', async () => {
