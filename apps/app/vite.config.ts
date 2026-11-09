@@ -12,6 +12,7 @@ import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
+import { dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
 
 // Baseline browser hardening for every dashboard, marketing, and published-site
 // response. The custom server entry adds the per-response nonce-based CSP to
@@ -63,6 +64,7 @@ export default defineConfig(({ mode }) => {
     emptyStringAsUndefined: true,
   });
   const apiTarget = configEnv.VITE_API_URL;
+  const dashboardPreload = dashboardPreloadPlugin();
   return {
     // Keep the manual i18n groups in the browser bundle. Nitro's generated
     // service namespace must stay in one SSR chunk: Rolldown otherwise splits
@@ -71,6 +73,9 @@ export default defineConfig(({ mode }) => {
     environments: {
       client: {
         build: {
+          // Dashboard routes keep their preload lists out of the router's eager chunk
+          // (the one published docs load); see scripts/dashboard-preload-plugin.ts.
+          modulePreload: { resolveDependencies: dashboardPreload.resolveDependencies },
           rolldownOptions: {
             output: {
               codeSplitting: {
@@ -140,6 +145,7 @@ export default defineConfig(({ mode }) => {
         cookieName: 'NIBLEAF_LOCALE',
       }),
       bundleAnalysisPlugin(),
+      dashboardPreload.plugin,
       // Blog articles (src/content/**). `enforce: 'pre'` so .mdx compiles before the
       // React plugin sees it. remark-mdx-frontmatter turns the YAML block into an
       // `export const frontmatter` for the article module. Production metadata
