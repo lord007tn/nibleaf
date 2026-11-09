@@ -12,6 +12,7 @@ import {
   inferSafeInlineAssetContentType,
   inviteMemberBody,
   inviteReaderBody,
+  inviteReadersBody,
   jwtAccessConfigBody,
   languageConfigSchema,
   mergeBranchBody,
@@ -21,6 +22,7 @@ import {
   presignAssetBody,
   projectConfigSchema,
   projectConfigUpdateSchema,
+  readerEmailDomainsBody,
   resolveRedirectTarget,
   searchConfigurationSchema,
   searchIndexDiagnosticsQuery,
@@ -491,10 +493,31 @@ describe('adminSetRoleBody', () => {
 });
 
 describe('private reader validation', () => {
-  it('requires a normalized email and at least one audience for invitations', () => {
+  it('requires a normalized email, and invites to the whole site when no audience is given', () => {
     const parsed = inviteReaderBody.safeParse({ email: '  READER@Example.com ', audienceIds: ['audience'] });
     expect(parsed.success && parsed.data.email).toBe('reader@example.com');
-    expect(inviteReaderBody.safeParse({ email: 'reader@example.com', audienceIds: [] }).success).toBe(false);
+    // No audience means the whole site: the server assigns its site-wide audience.
+    expect(inviteReaderBody.safeParse({ email: 'reader@example.com', audienceIds: [] }).success).toBe(true);
+    expect(inviteReaderBody.safeParse({ email: 'reader@example.com' }).success).toBe(true);
+    expect(inviteReaderBody.safeParse({ email: 'not-an-email' }).success).toBe(false);
+  });
+
+  it('caps a bulk invitation at 100 valid addresses', () => {
+    expect(inviteReadersBody.safeParse({ emails: ['a@example.com', 'B@Example.com '] })).toMatchObject({
+      success: true,
+      data: { emails: ['a@example.com', 'b@example.com'] },
+    });
+    expect(inviteReadersBody.safeParse({ emails: [] }).success).toBe(false);
+    expect(inviteReadersBody.safeParse({ emails: ['a@example.com', 'nope'] }).success).toBe(false);
+    expect(inviteReadersBody.safeParse({ emails: Array.from({ length: 101 }, (_, index) => `r${index}@example.com`) }).success).toBe(false);
+  });
+
+  it('accepts bare email domains only, lowercased and without @', () => {
+    expect(readerEmailDomainsBody.parse({ domains: ['@Partner.Example', 'docs.acme.co'] })).toEqual({ domains: ['partner.example', 'docs.acme.co'] });
+    for (const bad of ['partner', 'a@b.example', 'http://x.example', 'x..example', '-x.example']) {
+      expect(readerEmailDomainsBody.safeParse({ domains: [bad] }).success, bad).toBe(false);
+    }
+    expect(readerEmailDomainsBody.safeParse({ domains: Array.from({ length: 21 }, (_, index) => `d${index}.example`) }).success).toBe(false);
   });
 
   it('accepts exactly one asymmetric public-key source', () => {

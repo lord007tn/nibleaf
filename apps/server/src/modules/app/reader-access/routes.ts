@@ -34,6 +34,24 @@ const routes = {
     description: 'Invite a dedicated reader without creating an author seat.',
     responses: created,
   }),
+  inviteReaders: createRouteConfig({
+    guard: [...guard],
+    tags: ['reader-access'],
+    description: 'Invite up to 100 readers at once, to the whole site unless audiences are given.',
+    responses: created,
+  }),
+  resendInvitation: createRouteConfig({
+    guard: [...guard],
+    tags: ['reader-access'],
+    description: 'Email a reader a new invitation link without changing their access.',
+    responses: ok,
+  }),
+  emailDomains: createRouteConfig({
+    guard: [...guard],
+    tags: ['reader-access'],
+    description: 'Set the email domains whose addresses can sign in without an invitation.',
+    responses: ok,
+  }),
   updateReader: createRouteConfig({
     guard: [...guard],
     tags: ['reader-access'],
