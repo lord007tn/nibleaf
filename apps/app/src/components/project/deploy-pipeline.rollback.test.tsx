@@ -98,7 +98,12 @@ describe('rollback progress', () => {
   ])('names the custom domain as the site address only once readers can open it: %o', async (status, live) => {
     mocks.domains.data = [{ id: 'domain-1', domain: 'docs.example.com', verified: true, isPrimary: true, ...status }];
     await render();
-    expect(container.textContent?.includes('docs.example.com')).toBe(live);
+    // The site address line, compared whole (not as a substring of the page).
+    const addresses = [...container.querySelectorAll('[dir="ltr"]')].map((element) => element.textContent?.trim());
+    // An address is always shown: the default one when the domain isn't live.
+    expect(addresses.some((address) => address?.startsWith('http') || address?.startsWith('/'))).toBe(true);
+    if (live) expect(addresses).toContain('https://docs.example.com');
+    else expect(addresses).not.toContain('https://docs.example.com');
   });
 
   const queueRollback = async () => {
