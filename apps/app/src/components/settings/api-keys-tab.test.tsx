@@ -327,6 +327,17 @@ describe('API-key actions', () => {
     expect(create?.disabled).toBe(true);
   });
 
+  it('locks the key form while the key is being created, so the reset on success cannot wipe newer edits', async () => {
+    hooks.useApiKeys.mockReturnValue(response());
+    hooks.create.isPending = true;
+    const container = await renderTab();
+    expect(container.querySelector<HTMLInputElement>('#api-key-name')?.disabled).toBe(true);
+    const presets = [...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(presets.length).toBeGreaterThan(0);
+    expect(presets.every((radio) => radio.disabled)).toBe(true);
+    expect([...container.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].every((box) => box.disabled)).toBe(true);
+  });
+
   it('marks only the rotating key as loading', async () => {
     hooks.useApiKeys.mockReturnValue(response(true, [apiKey({ ownedByViewer: true }), apiKey({ id: 'key-2', ownedByViewer: true })]));
     hooks.rotate.isPending = true;

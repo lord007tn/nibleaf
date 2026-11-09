@@ -298,7 +298,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   type="radio"
                   name="mcp-preset"
                   checked={preset === value}
-                  disabled={!roleAtLeast(role, MCP_PRESET_MIN_ROLE[value])}
+                  disabled={create.isPending || !roleAtLeast(role, MCP_PRESET_MIN_ROLE[value])}
                   onChange={() => {
                     form.setFieldValue('preset', value);
                     form.setFieldValue('scopes', [...MCP_PRESET_SCOPES[value]]);
@@ -318,6 +318,8 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
                   <Input
                     aria-describedby={field.state.meta.errors.length ? 'api-key-name-error' : undefined}
                     aria-invalid={field.state.meta.errors.length > 0}
+                    // Locked while the key is being created, so the reset on success can't wipe newer edits.
+                    disabled={create.isPending}
                     id="api-key-name"
                     maxLength={80}
                     onBlur={field.handleBlur}
@@ -330,6 +332,7 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
               )}
             </form.Field>
             <Select
+              disabled={create.isPending}
               items={expiryOptions}
               onValueChange={(value) => {
                 const parsed = expiryOptionSchema.safeParse(value);
@@ -359,7 +362,12 @@ export function ApiKeysTab({ projectId, role = '' }: { projectId: string; role?:
               <legend className="sr-only">{t('settings.apiKeys.description')}</legend>
               {allowedScopes.map((scope) => (
                 <label className="flex items-center gap-2 font-mono text-xs" key={scope}>
-                  <input type="checkbox" checked={scopes.includes(scope)} disabled={scope === 'mcp:connect'} onChange={() => toggleScope(scope)} />
+                  <input
+                    type="checkbox"
+                    checked={scopes.includes(scope)}
+                    disabled={create.isPending || scope === 'mcp:connect'}
+                    onChange={() => toggleScope(scope)}
+                  />
                   {scope}
                 </label>
               ))}

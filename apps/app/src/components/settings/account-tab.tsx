@@ -92,6 +92,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
   // shared by every attempt, so a cancelled request finishing late would clear
   // it while a newer one is still sending; this belongs to one attempt only.
   const [sendingRun, setSendingRun] = useState<number | null>(null);
+  // The same, synchronously: two submits in one frame both see the old state,
+  // so the guard that stops a second OTP request has to be a ref.
+  const sendingRef = useRef<number | null>(null);
   const sending = sendingRun !== null && sendingRun === attempt.current;
 
   const reset = () => {
@@ -124,8 +127,9 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         return;
       }
       const run = attempt.current;
-      // Enter while this attempt's request is on its way must not send a second one.
-      if (sendingRun === run) return;
+      // Enter (or a double click) while this attempt's request is on its way must not send a second one.
+      if (sendingRef.current === run) return;
+      sendingRef.current = run;
       setSendingRun(run);
       try {
         const res = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
@@ -141,6 +145,8 @@ function EmailRow({ email, verified }: { email: string; verified: boolean }) {
         // The request never reached the server.
         if (run === attempt.current) toast.error(t('auth.error.tryAgain'));
       } finally {
+        // Only the attempt that set the guard clears it.
+        if (sendingRef.current === run) sendingRef.current = null;
         setSendingRun((current) => (current === run ? null : current));
       }
     },

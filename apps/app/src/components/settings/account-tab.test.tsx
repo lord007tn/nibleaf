@@ -144,6 +144,28 @@ describe('account settings hydration', () => {
     expect(container.querySelector<HTMLInputElement>('#acct-email')?.value).toBe('');
   });
 
+  it('requests one code when the form is submitted twice in the same moment', async () => {
+    const send = deferred<{ error: null }>();
+    mocks.send.mockReturnValue(send.promise);
+    root = createRoot(container);
+    await act(async () => root?.render(<AccountTab />));
+    const change = [...container.querySelectorAll('button')].find((b) => b.textContent === 'settings.account.email.change');
+    await act(async () => change?.click());
+    const input = container.querySelector<HTMLInputElement>('#acct-email');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'new@example.test');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    // Both submits land before React re-renders with the busy state.
+    await act(async () => {
+      const form = input?.closest('form');
+      form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      form?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(mocks.send).toHaveBeenCalledOnce();
+    await act(async () => send.resolve({ error: null }));
+  });
+
   it('keeps a restarted send busy when a cancelled one answers late, so no extra code is requested', async () => {
     const first = deferred<{ error: null }>();
     const second = deferred<{ error: null }>();
