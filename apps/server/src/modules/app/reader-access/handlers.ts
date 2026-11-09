@@ -4,6 +4,7 @@ import {
   inviteReadersBody,
   jwtAccessConfigBody,
   projectAccessModeBody,
+  readerAccessRequestsSettingBody,
   readerEmailDomainsBody,
   readerJwtHandoffBody,
   updateAudienceBody,
@@ -26,6 +27,7 @@ import {
   updateAudience,
   updateReader,
 } from '@/actions/reader-access';
+import { approveReaderAccessRequest, declineReaderAccessRequest, setReaderAccessRequests } from '@/actions/reader-access-requests';
 import { invalidatePublishedSiteConfig } from '@/actions/sites';
 import { getContextLocale, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -87,6 +89,32 @@ const app = new Hono<HonoEnv>()
   )
   .put('/domains', ...routes.emailDomains, validator('json', readerEmailDomainsBody), async (ctx) =>
     ctx.json({ data: await setReaderEmailDomains(ctx.req.param('projectId') as string, getContextUserOrThrow().id, ctx.req.valid('json')) }, 200),
+  )
+  .put('/requests-setting', ...routes.accessRequestsSetting, validator('json', readerAccessRequestsSettingBody), async (ctx) => {
+    const projectId = ctx.req.param('projectId') as string;
+    const data = await setReaderAccessRequests(projectId, getContextUserOrThrow().id, ctx.req.valid('json'));
+    // The sign-in screen shows "Ask for access" from the live settings.
+    invalidatePublishedSiteConfig(projectId);
+    return ctx.json({ data }, 200);
+  })
+  .post('/requests/:requestId/approve', ...routes.approveAccessRequest, async (ctx) =>
+    ctx.json(
+      {
+        data: await approveReaderAccessRequest(
+          ctx.req.param('projectId') as string,
+          ctx.req.param('requestId'),
+          getContextUserOrThrow().id,
+          getContextLocale(),
+        ),
+      },
+      200,
+    ),
+  )
+  .post('/requests/:requestId/decline', ...routes.declineAccessRequest, async (ctx) =>
+    ctx.json(
+      { data: await declineReaderAccessRequest(ctx.req.param('projectId') as string, ctx.req.param('requestId'), getContextUserOrThrow().id) },
+      200,
+    ),
   )
   .patch('/readers/:readerId', ...routes.updateReader, validator('json', updateReaderBody), async (ctx) =>
     ctx.json(

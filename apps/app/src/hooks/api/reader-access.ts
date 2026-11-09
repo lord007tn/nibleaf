@@ -4,6 +4,7 @@ import type {
   InviteReadersBody,
   JwtAccessConfigBody,
   ProjectAccessModeBody,
+  ReaderAccessRequestsSettingBody,
   ReaderEmailDomainsBody,
 } from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +18,10 @@ export interface ReaderAccessData {
   accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
   /** Addresses at these domains can sign in to an Invited readers site without an invitation. */
   readerEmailDomains: string[];
+  /** The sign-in screen lets people without access ask for it. */
+  readerAccessRequests: boolean;
+  /** Pending requests, newest first. */
+  accessRequests: Array<{ id: string; email: string; name: string | null; note: string | null; createdAt: string }>;
   readers: Array<{
     id: string;
     email: string | null;
@@ -114,6 +119,30 @@ export const useUpdateReaderEmailDomains = (projectId: string) =>
     mutateData(
       await api.app.projects[':projectId']['reader-access'].domains.$put({ param: { projectId }, json }),
       'Could not save the allowed email domains.',
+    ),
+  );
+
+export const useUpdateReaderAccessRequests = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (json: ReaderAccessRequestsSettingBody) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access']['requests-setting'].$put({ param: { projectId }, json }),
+      'Could not change access requests.',
+    ),
+  );
+
+export const useApproveAccessRequest = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (requestId: string) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access'].requests[':requestId'].approve.$post({ param: { projectId, requestId } }),
+      'Could not approve the request.',
+    ),
+  );
+
+export const useDeclineAccessRequest = (projectId: string) =>
+  useReaderAccessMutation(projectId, async (requestId: string) =>
+    mutateData(
+      await api.app.projects[':projectId']['reader-access'].requests[':requestId'].decline.$post({ param: { projectId, requestId } }),
+      'Could not decline the request.',
     ),
   );
 

@@ -657,6 +657,9 @@ model Project {
   /// Invited readers mode: anyone with an address at one of these domains (lowercase,
   /// no leading @) can sign in with an email code without an invitation.
   readerEmailDomains String[] @default([])
+  /// Invited readers mode: the sign-in screen lets someone without access ask
+  /// the site's Admins for it. Off unless an Admin turns it on.
+  readerAccessRequests Boolean @default(false)
   /// Moderation: set when a platform admin takes the site down. Taken-down
   /// projects must not be publicly served and cannot be published.
   takedownAt     DateTime?
@@ -686,6 +689,7 @@ model Project {
   readerAuditLogs ReaderAuditLog[]
   siteSignInCodes SiteSignInCode[]
   siteSignInGuards SiteSignInGuard[]
+  accessRequests  ReaderAccessRequest[]
   siteMemberSessions SiteMemberSession[]
   exportSnapshots ExportSnapshot[]
   exportJobs      ExportJob[]
@@ -1387,6 +1391,25 @@ model SiteSignInGuard {
   @@id([projectId, email])
   @@index([updatedAt])
   @@map("site_sign_in_guard")
+}
+
+/// Someone without access asked to read a private site (one row per address).
+/// status: PENDING, APPROVED (they were invited) or DECLINED.
+model ReaderAccessRequest {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  email       String
+  name        String?
+  note        String?
+  status      String    @default("PENDING")
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+  decidedById String?
+
+  @@unique([projectId, email])
+  @@index([projectId, status, createdAt])
+  @@map("reader_access_request")
 }
 
 /// A team member signed in on the published site itself. The dashboard session

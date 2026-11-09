@@ -80,6 +80,8 @@ interface LiveChromeRow {
   icon: string | null;
   config: unknown;
   accessMode: 'PUBLIC' | 'WORKSPACE' | 'READERS';
+  /** Invited readers sites: whether the sign-in screen offers "Ask for access". */
+  readerAccessRequests: boolean;
   /** Moderation kill switch — a taken-down project must stop serving. */
   takedownAt: Date | null;
   /** Best verified domain (isPrimary first, oldest verified as fallback). */
@@ -156,6 +158,7 @@ const getLiveChrome = async (projectId: string): Promise<LiveChromeRow | null> =
       icon: true,
       config: true,
       accessMode: true,
+      readerAccessRequests: true,
       takedownAt: true,
       addons: { select: { key: true, enabled: true, config: true } },
       organization: {
@@ -399,7 +402,7 @@ export const getProjectAssetAccess = async (projectId: string, key: string, head
 /** What the sign-in screen of a private site may show a visitor who can't read
  *  it yet: the site's own name, logo and colours, its default language, and who
  *  can sign in. Never a page, title or anything else from its content. */
-const privateSiteGate = (projectId: string, project: PublicSnapshotProject) => {
+const privateSiteGate = (projectId: string, project: PublicSnapshotProject, acceptsRequests: boolean) => {
   const config = (project.config ?? {}) as { branding?: Record<string, unknown>; styling?: Record<string, unknown> };
   const branding = config.branding ?? {};
   const pick = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
@@ -408,6 +411,8 @@ const privateSiteGate = (projectId: string, project: PublicSnapshotProject) => {
     projectId,
     name: project.name,
     mode: project.accessMode,
+    // Whether the sign-in screen offers "Ask for access".
+    requests: project.accessMode === 'READERS' && acceptsRequests,
     language: language ? { code: language.code, direction: language.direction } : null,
     config: {
       branding: { logoLight: pick(branding.logoLight), logoDark: pick(branding.logoDark), favicon: pick(branding.favicon) },
@@ -457,7 +462,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   };
   const viewer = await resolveViewerAccess(projectId, live.accessMode, getContext<HonoEnv>().req.raw.headers);
   if (!viewer) {
-    throw notFound('site', { identifier: projectId, reason: 'private', gate: privateSiteGate(projectId, project) });
+    throw notFound('site', { identifier: projectId, reason: 'private', gate: privateSiteGate(projectId, project, live.readerAccessRequests) });
   }
   const pages = filterPagesForReader(frozen.pages, viewer.allowedPageIds);
   // No page grant covers the API reference, so only site-wide viewers get it.

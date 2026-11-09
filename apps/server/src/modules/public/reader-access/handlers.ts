@@ -1,4 +1,5 @@
 import {
+  readerAccessRequestBody,
   readerActivationQuery,
   readerInvitationAcceptBody,
   readerJwtHandoffBody,
@@ -7,6 +8,7 @@ import {
 } from '@nibleaf/validators';
 import { Hono } from 'hono';
 import { activateReaderInvitation, jwtReaderHandoff, logoutReader } from '@/actions/reader-access';
+import { requestReaderAccess } from '@/actions/reader-access-requests';
 import { readerInvitationLanding, startSiteSignIn, verifySiteSignIn } from '@/actions/site-sign-in';
 import { badRequest } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -33,6 +35,10 @@ const app = new Hono<HonoEnv>()
   )
   .post('/sign-in/:projectId/verify', validator('json', siteSignInVerifyBody), async (ctx) =>
     ctx.json({ data: await verifySiteSignIn(ctx, ctx.req.param('projectId'), ctx.req.valid('json')) }, 200),
+  )
+  // Ask the site's Admins for access. Always the same answer.
+  .post('/request/:projectId', validator('json', readerAccessRequestBody), (ctx) =>
+    ctx.json({ data: requestReaderAccess(ctx.req.param('projectId'), ctx.req.valid('json')) }, 200),
   )
   .post('/jwt/:projectId', validator('json', readerJwtHandoffBody), async (ctx) => {
     const body = ctx.req.valid('json');
