@@ -144,6 +144,12 @@ describe('row helpers', () => {
     expect(findPageIdForPath(pages, 'quickstart')).toBeNull();
   });
 
+  it('gives no Edit link when another version has the same path', () => {
+    const pages = [{ id: 'guide', path: 'guide', kind: 'PAGE' }];
+    expect(findPageIdForPath(pages, 'guide', [{ path: 'guide', kind: 'PAGE' }])).toBeNull();
+    expect(findPageIdForPath(pages, 'guide', [{ path: 'other', kind: 'PAGE' }])).toBe('guide');
+  });
+
   it('matches encoded and raw Arabic slugs alike', () => {
     const pages = [{ id: 'start', path: 'البداية', kind: 'PAGE' }];
     expect(findPageIdForPath(pages, encodeURIComponent('البداية'))).toBe('start');

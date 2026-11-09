@@ -3952,5 +3952,7 @@
   "sites_sort_views": "浏览最多",
   "analytics_chart_pageviewsallsites": "所有站点的页面浏览量",
   "analytics_section_bysite": "按站点",
-  "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。"
+  "analytics_search_write_languageserror": "无法加载此站点的语言，因此暂时无法选择草稿的语言。",
+  "dashboard_ai_sessionexpired": "你的会话已结束。请重新登录以查看此对话。",
+  "dashboard_ai_signinagain": "重新登录"
 }

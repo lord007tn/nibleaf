@@ -54,4 +54,12 @@ describe('conversation detail errors', () => {
     await act(async () => retry?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
   });
+
+  it('says the session ended and links to sign-in on a 401, instead of a load failure', async () => {
+    await renderWith(new ApiResponseError('Unauthorized', 401));
+    expect(document.body.textContent).toContain('dashboard.ai.sessionExpired');
+    expect(document.body.textContent).not.toContain('error.tryAgain');
+    const link = [...document.querySelectorAll<HTMLAnchorElement>('a')].find((a) => a.textContent?.includes('dashboard.ai.signInAgain'));
+    expect(link?.getAttribute('href')).toMatch(/^\/sign-in\?next=/);
+  });
 });

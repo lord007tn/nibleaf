@@ -4052,5 +4052,7 @@
   "sites_sort_views": "الأكثر مشاهدة",
   "analytics_chart_pageviewsallsites": "مشاهدات الصفحات عبر جميع المواقع",
   "analytics_section_bysite": "حسب الموقع",
-  "analytics_search_write_languageserror": "تعذّر تحميل لغات هذا الموقع، لذا لا يمكن تحديد لغة المسودة بعد."
+  "analytics_search_write_languageserror": "تعذّر تحميل لغات هذا الموقع، لذا لا يمكن تحديد لغة المسودة بعد.",
+  "dashboard_ai_sessionexpired": "انتهت جلستك. سجّل الدخول مجددًا لعرض هذه المحادثة.",
+  "dashboard_ai_signinagain": "تسجيل الدخول مجددًا"
 }

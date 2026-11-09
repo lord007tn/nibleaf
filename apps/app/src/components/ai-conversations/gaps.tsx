@@ -72,7 +72,13 @@ export function ContentGaps({ projectId, items, onOpen }: { projectId: string; i
       languageLabel={(code) => languageName(code, siteLanguages, locale)}
       onOpen={onOpen}
       writeAction={(gap) => (
-        <WriteArticleButton label={t('dashboard.ai.write')} languageCode={gap.language} projectId={projectId} term={gap.question} />
+        <WriteArticleButton
+          content={gap.question}
+          label={t('dashboard.ai.write')}
+          languageCode={gap.language}
+          projectId={projectId}
+          term={gap.question}
+        />
       )}
     />
   );

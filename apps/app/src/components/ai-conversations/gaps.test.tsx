@@ -4,9 +4,16 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ mutate: vi.fn(), navigate: vi.fn(), refetch: vi.fn(), languagesPending: false, languagesError: false }));
+const mocks = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  navigate: vi.fn(),
+  refetch: vi.fn(),
+  languagesPending: false,
+  languagesError: false,
+  role: undefined as string | undefined,
+}));
 vi.mock('@/env', () => ({ env: {} }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: null }) }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: mocks.role ? { user: { id: 'me' } } : null, isPending: false }) }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, params?: Record<string, unknown>) => (params ? `${key} ${JSON.stringify(params)}` : key),
   useLocale: () => ({ locale: 'en' }),
@@ -28,13 +35,14 @@ vi.mock('@/hooks/api', () => ({
           { id: 'lang-ar', code: 'ar', label: 'العربية', isDefault: false },
         ],
   }),
-  useProjectMembers: () => ({ data: undefined }),
+  useProjectMembers: () => ({ data: mocks.role ? { members: [{ user: { id: 'me' }, role: mocks.role }] } : undefined, isPending: false }),
 }));
 vi.mock('@/hooks/api/mutations', () => ({
   useCreatePage: () => ({ mutate: mocks.mutate, isPending: false }),
   useUpdateProjectConfig: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { ContentGaps } from './gaps';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -64,13 +72,14 @@ describe('content gaps', () => {
     vi.clearAllMocks();
     mocks.languagesPending = false;
     mocks.languagesError = false;
+    mocks.role = undefined;
   });
 
   it("writes a draft titled with the question, in the question's language, and opens it", async () => {
     await act(async () => root.render(<ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />));
     const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
     await act(async () => write?.click());
-    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'كيف أبدأ؟', languageId: 'lang-ar' }, expect.anything());
+    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'كيف أبدأ؟', content: 'كيف أبدأ؟', languageId: 'lang-ar' }, expect.anything());
 
     const options = mocks.mutate.mock.calls[0]?.[1] as { onSuccess: (page: { id: string }) => void } | undefined;
     options?.onSuccess({ id: 'draft-1' });
@@ -90,7 +99,7 @@ describe('content gaps', () => {
     await act(async () => root.render(<ContentGaps items={[gap('Wie starte ich?', 'de')]} onOpen={vi.fn()} projectId="site-1" />));
     const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
     await act(async () => write?.click());
-    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'Wie starte ich?' }, expect.anything());
+    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'Wie starte ich?', content: 'Wie starte ich?' }, expect.anything());
   });
 
   it('waits for the site languages before writing, instead of silently creating a default-language draft', async () => {
@@ -111,7 +120,7 @@ describe('content gaps', () => {
     const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
     expect(write?.disabled).toBe(false);
     await act(async () => write?.click());
-    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'كيف أبدأ؟', languageId: 'lang-ar' }, expect.anything());
+    expect(mocks.mutate).toHaveBeenCalledWith({ title: 'كيف أبدأ؟', content: 'كيف أبدأ؟', languageId: 'lang-ar' }, expect.anything());
   });
 
   it('says the languages could not be loaded and offers a retry instead of a silent disabled button', async () => {
@@ -122,5 +131,32 @@ describe('content gaps', () => {
     await act(async () => retry?.click());
     expect(mocks.refetch).toHaveBeenCalledOnce();
     expect(mocks.mutate).not.toHaveBeenCalled();
+  });
+
+  it('keeps the whole question in the draft when the title has to be cut at 200 characters', async () => {
+    const question = `${'How do I configure webhooks for every environment '.repeat(5)}?`;
+    await act(async () => root.render(<ContentGaps items={[gap(question, 'en')]} onOpen={vi.fn()} projectId="site-1" />));
+    const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
+    await act(async () => write?.click());
+    const body = mocks.mutate.mock.calls[0]?.[0] as { title: string; content: string };
+    expect(body.title).toHaveLength(200);
+    expect(body.content).toBe(question);
+  });
+
+  it('offers no Write to a viewer, who cannot create pages', async () => {
+    mocks.role = 'viewer';
+    await act(async () => root.render(<ContentGaps items={[gap('How do I start?', 'en')]} onOpen={vi.fn()} projectId="site-1" />));
+    expect([...container.querySelectorAll('button')].some((button) => button.textContent?.includes('dashboard.ai.write'))).toBe(false);
+  });
+
+  it('reads the languages again and retries once when the cached language was removed', async () => {
+    mocks.refetch.mockResolvedValue({ data: [{ id: 'lang-ar-new', code: 'ar', label: 'العربية', isDefault: false }] });
+    await act(async () => root.render(<ContentGaps items={[gap('كيف أبدأ؟', 'ar')]} onOpen={vi.fn()} projectId="site-1" />));
+    const write = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('dashboard.ai.write'));
+    await act(async () => write?.click());
+    const options = mocks.mutate.mock.calls[0]?.[1] as { onError: (error: unknown) => Promise<void> } | undefined;
+    await act(async () => options?.onError(new ApiResponseError('Language not found', 404)));
+    expect(mocks.refetch).toHaveBeenCalledOnce();
+    expect(mocks.mutate).toHaveBeenLastCalledWith({ title: 'كيف أبدأ؟', content: 'كيف أبدأ؟', languageId: 'lang-ar-new' }, expect.anything());
   });
 });

@@ -3952,5 +3952,7 @@
   "sites_sort_views": "সবচেয়ে বেশি দেখা",
   "analytics_chart_pageviewsallsites": "সব সাইটে পেজ ভিউ",
   "analytics_section_bysite": "সাইট অনুযায়ী",
-  "analytics_search_write_languageserror": "এই সাইটের ভাষাগুলো লোড করা যায়নি, তাই খসড়ার ভাষা এখনও বেছে নেওয়া যাচ্ছে না।"
+  "analytics_search_write_languageserror": "এই সাইটের ভাষাগুলো লোড করা যায়নি, তাই খসড়ার ভাষা এখনও বেছে নেওয়া যাচ্ছে না।",
+  "dashboard_ai_sessionexpired": "আপনার সেশন শেষ হয়েছে। এই কথোপকথন দেখতে আবার সাইন ইন করুন।",
+  "dashboard_ai_signinagain": "আবার সাইন ইন করুন"
 }

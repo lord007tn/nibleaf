@@ -21,6 +21,8 @@ import { useLanguages, useProjectMembers } from '@/hooks/api';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
 import { useCreatePage, useUpdateProjectConfig } from '@/hooks/api/mutations';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import { isClientError } from '@/integrations/tanstack-query/query-client';
 import { useSession } from '@/services/auth-client';
 import { HIDDEN_TERMS_EXPLANATION } from './labels';
 
@@ -233,12 +235,15 @@ export function WriteArticleButton({
   term,
   languageCode,
   label,
+  content,
 }: {
   projectId: string;
   term: string;
   languageCode?: string;
   /** Visible text; defaults to the search report's "Write an article". */
   label?: string;
+  /** The draft's opening text, e.g. a reader's whole question when the title is cut at 200 characters. */
+  content?: string;
 }) {
   const t = useT();
   const navigate = useNavigate();
@@ -249,28 +254,41 @@ export function WriteArticleButton({
   // before then would silently create the draft in the default language. A code the site
   // doesn't have (known list, no match) still falls back to the default language.
   const languageReady = !languageCode || languagesQuery.isSuccess;
+  // Viewers can't create pages: no action they can't take.
+  const viewOnly = useProjectAdminStatus(projectId).edit === 'viewOnly';
   // The pending state only renders on the next frame; the ref blocks a same-frame double click.
   const inFlight = useRef(false);
   const write = () => {
     if (inFlight.current || !languageReady) return;
     inFlight.current = true;
-    createPage.mutate(
-      { title: term.slice(0, 200), ...(languageId ? { languageId } : {}) },
-      {
-        onSuccess: (page) => {
-          toast.success(t('analytics.search.write.created'));
-          void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: page.id } });
+    const create = (id: string | undefined, retried: boolean) =>
+      createPage.mutate(
+        { title: term.slice(0, 200), ...(content ? { content } : {}), ...(id ? { languageId: id } : {}) },
+        {
+          onSuccess: (page) => {
+            toast.success(t('analytics.search.write.created'));
+            void navigate({ to: '/app/projects/$projectId/editor', params: { projectId }, search: { page: page.id } });
+            inFlight.current = false;
+          },
+          onError: async (error) => {
+            // The cached language may have been removed since the list was read: read the
+            // languages again and retry once with the current match, or the default language.
+            if (id && !retried && isClientError(error)) {
+              const fresh = await languagesQuery.refetch();
+              create(fresh.data?.find((language) => language.code === languageCode)?.id, true);
+              return;
+            }
+            // Plain language, never the server's raw message. (useCreatePage is shared with
+            // the editor, which reports its own failures, so no `meta.errorMessage` there.)
+            toast.error(t('analytics.search.write.failed'));
+            inFlight.current = false;
+          },
         },
-        // Plain language, never the server's raw message. (useCreatePage is shared with
-        // the editor, which reports its own failures, so no `meta.errorMessage` there.)
-        onError: () => toast.error(t('analytics.search.write.failed')),
-        onSettled: () => {
-          inFlight.current = false;
-        },
-      },
-    );
+      );
+    create(languageId, false);
   };
   // The site's languages couldn't be read: say so and offer a retry instead of a silent disabled button.
+  if (viewOnly) return null;
   if (languageCode && languagesQuery.isError) {
     return (
       <span className="inline-flex flex-wrap items-center gap-2">

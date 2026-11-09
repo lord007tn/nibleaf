@@ -3952,5 +3952,7 @@
   "sites_sort_views": "सबसे ज़्यादा देखे गए",
   "analytics_chart_pageviewsallsites": "सभी साइटों पर पेज व्यू",
   "analytics_section_bysite": "साइट के अनुसार",
-  "analytics_search_write_languageserror": "इस साइट की भाषाएँ लोड नहीं हो सकीं, इसलिए ड्राफ़्ट की भाषा अभी नहीं चुनी जा सकती।"
+  "analytics_search_write_languageserror": "इस साइट की भाषाएँ लोड नहीं हो सकीं, इसलिए ड्राफ़्ट की भाषा अभी नहीं चुनी जा सकती।",
+  "dashboard_ai_sessionexpired": "आपका सत्र समाप्त हो गया। यह बातचीत देखने के लिए फिर से साइन इन करें।",
+  "dashboard_ai_signinagain": "फिर से साइन इन करें"
 }

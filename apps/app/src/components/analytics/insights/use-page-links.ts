@@ -1,6 +1,8 @@
+import { useQueries } from '@tanstack/react-query';
 import { env } from '@/env';
-import { useDomains, usePages, useProject } from '@/hooks/api';
+import { useBranches, useDomains, usePages, useProject } from '@/hooks/api';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
+import { pagesQueryOptions } from '@/hooks/api/query-options';
 
 const cleanPath = (path: string) => path.replace(/^\/+|\/+$/g, '');
 
@@ -33,9 +35,16 @@ const decodePath = (path: string) => {
  * language or version a row is, so a path shared by more than one page gets no
  * Edit link rather than a guess that could open the wrong document.
  */
-export function findPageIdForPath(pages: ReadonlyArray<{ id: string; path: string; kind: string }>, path: string): string | null {
+export function findPageIdForPath(
+  pages: ReadonlyArray<{ id: string; path: string; kind: string }>,
+  path: string,
+  otherVersionPages: ReadonlyArray<{ path: string; kind: string }> = [],
+): string | null {
   const target = cleanPath(decodePath(path));
-  const matches = pages.filter((page) => page.kind === 'PAGE' && cleanPath(decodePath(page.path)) === target);
+  const isTarget = (page: { path: string; kind: string }) => page.kind === 'PAGE' && cleanPath(decodePath(page.path)) === target;
+  const matches = pages.filter(isTarget);
+  // The same path in another version is another document the row may be about.
+  if (otherVersionPages.some(isTarget)) return null;
   return matches.length === 1 ? (matches[0]?.id ?? null) : null;
 }
 
@@ -48,6 +57,13 @@ export function usePageLinks(projectId: string) {
   const { data: project } = useProject(projectId);
   const { data: domains } = useDomains(projectId);
   const { data: pages } = usePages(projectId);
+  // Every other version's pages too: a path is only unambiguous across all of them.
+  const { data: branches } = useBranches(projectId);
+  const otherVersions = useQueries({
+    queries: (branches ?? []).filter((branch) => !branch.isDefault).map((branch) => pagesQueryOptions(projectId, undefined, branch.id)),
+  });
+  const otherVersionsReady = branches !== undefined && otherVersions.every((query) => query.isSuccess);
+  const otherVersionPages = otherVersions.flatMap((query) => query.data ?? []);
   // Only a domain readers can actually open (ownership, DNS and HTTPS), as on the site overview.
   const primary = domains ? pickLiveDomain(domains) : undefined;
   const baseDomain = env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || undefined;
@@ -58,6 +74,7 @@ export function usePageLinks(projectId: string) {
       const encoded = encodePath(path);
       return encoded ? `${siteRoot}/${encoded}` : siteRoot;
     },
-    editorPageId: (path: string) => (pages ? findPageIdForPath(pages, path) : null),
+    // Unknown until every version is read: a guess could open the wrong document.
+    editorPageId: (path: string) => (pages && otherVersionsReady ? findPageIdForPath(pages, path, otherVersionPages) : null),
   };
 }
