@@ -3938,5 +3938,9 @@
   "dashboard_ai_inputtokens": "প্রশ্নে টেক্সট ইউনিট",
   "dashboard_ai_outputtokens": "উত্তরে টেক্সট ইউনিট",
   "analytics_kpi_siteswithtraffic": "ট্রাফিক থাকা সাইট",
-  "analytics_workspace_termspersite": "প্রতিটি সাইটের সার্চ রিপোর্টে সার্চ শব্দ দেখানো হতে পারে, তার গোপনীয়তা সেটিংস ও ভিজিটের সীমা অনুযায়ী।"
+  "analytics_workspace_termspersite": "প্রতিটি সাইটের সার্চ রিপোর্টে সার্চ শব্দ দেখানো হতে পারে, তার গোপনীয়তা সেটিংস ও ভিজিটের সীমা অনুযায়ী।",
+  "settings_usage_progressvalue": "{limit}-এর মধ্যে {used} ({percent})",
+  "settings_apikeys_namelabel": "কী-এর নাম",
+  "settings_credentials_refreshfailed": "এই তালিকা রিফ্রেশ করা যায়নি। আগে লোড হওয়া তথ্য দেখানো হচ্ছে।",
+  "settings_usage_progressvaluenoshare": "{limit}-এর মধ্যে {used}"
 }

@@ -4024,5 +4024,9 @@
   "dashboard_ai_inputtokens": "Текстовые единицы в вопросах",
   "dashboard_ai_outputtokens": "Текстовые единицы в ответах",
   "analytics_kpi_siteswithtraffic": "Сайты с посещениями",
-  "analytics_workspace_termspersite": "Поисковые запросы могут отображаться в отчёте «Поиск» каждого сайта — с учётом его настроек конфиденциальности и порога посещений."
+  "analytics_workspace_termspersite": "Поисковые запросы могут отображаться в отчёте «Поиск» каждого сайта — с учётом его настроек конфиденциальности и порога посещений.",
+  "settings_usage_progressvalue": "{used} из {limit} ({percent})",
+  "settings_apikeys_namelabel": "Название ключа",
+  "settings_credentials_refreshfailed": "Не удалось обновить список. Показаны ранее загруженные данные.",
+  "settings_usage_progressvaluenoshare": "{used} из {limit}"
 }
