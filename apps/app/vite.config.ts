@@ -162,6 +162,9 @@ export default defineConfig(({ mode }) => {
           // Nitro otherwise treats dotted asset keys as app/static paths before
           // the broad API proxy, leaving imported images as published-site 404s.
           '/api/public/assets/**': { proxy: `${apiTarget}/api/public/assets/**` },
+          // H3 forwards request.body as a stream, including Content-Length and
+          // cookies. Do not buffer PUTs here or impose a global body-size increase:
+          // only the authenticated asset upload handler admits up to 50 MiB.
           '/api/**': { proxy: `${apiTarget}/api/**` },
           // MCP clients discover OAuth at the public origin, outside /api.
           ...Object.fromEntries(

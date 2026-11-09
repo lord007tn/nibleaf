@@ -76,6 +76,65 @@ export const putObject = async (key: string, body: Buffer | Uint8Array | string,
   await getS3Client(target).send(new PutObjectCommand({ Bucket: getBucket(target), Key: key, Body: body, ContentType: contentType }));
 };
 
+/** Bounded, backpressured PUT via the internal endpoint. Never buffer an upload
+ * or retry a consumed stream. The caller owns durable failure cleanup. */
+export const putObjectStream = async (
+  key: string,
+  body: ReadableStream<Uint8Array>,
+  contentLength: number,
+  contentType: string,
+  signal?: AbortSignal,
+): Promise<void> => {
+  if (!Number.isSafeInteger(contentLength) || contentLength < 1 || contentLength > MAX_PRESIGNED_UPLOAD_BYTES) {
+    throw new Error('Upload size must be between 1 byte and 50 MiB.');
+  }
+  const controller = new AbortController();
+  const abortSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000), ...(signal ? [signal] : [])]);
+  const reader = body.getReader();
+  let complete = false;
+  const stream = Readable.from(
+    (async function* () {
+      let received = 0;
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        received += chunk.value.byteLength;
+        if (received > contentLength || received > MAX_PRESIGNED_UPLOAD_BYTES) {
+          controller.abort();
+          throw new Error('Upload exceeds reserved size.');
+        }
+        yield chunk.value;
+      }
+      if (received !== contentLength) throw new Error('Upload does not match reserved size.');
+      complete = true;
+    })(),
+    { objectMode: false },
+  );
+  // Cancel a blocked inbound read on disconnect, timeout or a size violation.
+  const cancel = () => {
+    void reader.cancel().catch(() => undefined);
+  };
+  abortSignal.addEventListener('abort', cancel, { once: true });
+  stream.on('error', () => controller.abort());
+  try {
+    await getS3Client().send(
+      new PutObjectCommand({
+        Bucket: getBucket(),
+        Key: key,
+        Body: stream,
+        ContentType: contentType,
+        ContentLength: contentLength,
+      }),
+      { abortSignal },
+    );
+    if (!complete) throw new Error('Storage completed before the upload body was validated.');
+  } finally {
+    abortSignal.removeEventListener('abort', cancel);
+    stream.destroy();
+    await reader.cancel().catch(() => undefined);
+  }
+};
+
 export const getObjectStream = async (key: string, target?: StorageTarget, abortSignal?: AbortSignal): Promise<Readable> => {
   const result = await getS3Client(target).send(new GetObjectCommand({ Bucket: getBucket(target), Key: key }), { abortSignal });
   const body = result.Body;

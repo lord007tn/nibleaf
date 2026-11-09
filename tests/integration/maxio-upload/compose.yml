@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: passer
+      POSTGRES_DB: nibleaf_upload_test
+    ports: ['127.0.0.1:5582:5432']
+  redis:
+    image: redis:8-alpine
+    ports: ['127.0.0.1:6519:6379']
+  maxio:
+    image: coollabsio/maxio:0.4.2
+    environment:
+      MAXIO_ACCESS_KEY: user
+      MAXIO_SECRET_KEY: passer123
+      MAXIO_REGION: auto
+      MAXIO_DEFAULT_BUCKETS: nibleaf-upload-test
+      MAXIO_ALLOW_INSECURE_DEV: 'true'
+    ports: ['127.0.0.1:9440:9000']
+  traefik:
+    image: traefik:v3.6
+    command: ['--providers.file.filename=/etc/traefik/upload.yml', '--entrypoints.web.address=:80']
+    ports: ['127.0.0.1:220:80']
+    volumes: ['./traefik.yml:/etc/traefik/upload.yml:ro']
+

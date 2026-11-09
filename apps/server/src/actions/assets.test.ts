@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('@nibleaf/storage/keys', () => ({ keys: () => ({ STORAGE_PROVIDER: mocks.provider }) }));
+
 const mocks = vi.hoisted(() => ({
+  provider: 's3',
   headObject: vi.fn(),
   deleteObject: vi.fn(),
   create: vi.fn(),
@@ -58,6 +61,7 @@ const confirmed = { id: 'confirmed', projectId: 'project', key: body.key, size: 
 describe('asset confirmation', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.provider = 's3';
     mocks.headObject.mockResolvedValue({ ContentLength: 1024, ContentType: 'image/png' });
     mocks.findUnique.mockResolvedValue(null);
     mocks.deleteObject.mockResolvedValue(undefined);
@@ -196,6 +200,28 @@ describe('asset confirmation', () => {
   it('passes the declared size to the upload signer', async () => {
     await presignAsset('org', 'project', { filename: 'a.png', contentType: 'image/png', size: 1024 });
     expect(mocks.presignPutUrl).toHaveBeenCalledWith(expect.objectContaining({ contentLength: 1024, contentType: 'image/png' }));
+  });
+
+  it.each(['s3', 'r2', 'b2', 'minio'])('keeps direct presigned PUTs for %s', async (provider) => {
+    mocks.provider = provider;
+    mocks.presignPutUrl.mockResolvedValue('https://storage.example/signed');
+    expect((await presignAsset('org', 'project', { filename: 'a.png', contentType: 'image/png', size: 1024 })).uploadUrl).toBe(
+      'https://storage.example/signed',
+    );
+    expect(mocks.pendingCreate.mock.calls[0]?.[0].data.uploadTokenHash).toBeNull();
+  });
+
+  it('binds a maxio API capability to the existing reservation instead of signing storage', async () => {
+    mocks.provider = 'maxio';
+    const upload = await presignAsset('org', 'project', { filename: 'a.png', contentType: 'image/png', size: 1024 });
+    expect(upload.uploadUrl).toMatch(/^\/api\/app\/projects\/project\/assets\/upload\/[A-Za-z0-9_-]{43}$/);
+    expect(mocks.pendingCreate.mock.calls[0]?.[0].data).toMatchObject({
+      key: upload.key,
+      size: 1024,
+      contentType: 'image/png',
+      uploadTokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(mocks.presignPutUrl).not.toHaveBeenCalled();
   });
 
   it('generates a flat key for filenames with path separators in the extension', async () => {

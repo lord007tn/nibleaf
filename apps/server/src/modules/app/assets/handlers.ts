@@ -1,6 +1,8 @@
+import { MAX_ASSET_UPLOAD_BYTES } from '@nibleaf/shared/constants';
 import { confirmAssetBody, presignAssetBody } from '@nibleaf/validators';
 import { Hono } from 'hono';
-import { confirmAsset, deleteAsset, listAssets, presignAsset } from '@/actions/assets';
+import { bodyLimit } from 'hono/body-limit';
+import { confirmAsset, deleteAsset, listAssets, presignAsset, uploadAsset } from '@/actions/assets';
 import { assertProjectInOrg } from '@/actions/projects';
 import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
@@ -14,6 +16,11 @@ const scope = async (ctx: { req: { param: (k: string) => string } }) => {
 };
 
 const app = new Hono<HonoEnv>()
+  .put('/upload/:token', ...assetsRoutes.upload, bodyLimit({ maxSize: MAX_ASSET_UPLOAD_BYTES }), async (ctx) => {
+    const { organizationId, projectId } = await scope(ctx);
+    await uploadAsset(organizationId, projectId, ctx.req.param('token'), ctx.req.raw);
+    return ctx.body(null, 204);
+  })
   .get('/', ...assetsRoutes.list, async (ctx) => {
     const { projectId } = await scope(ctx);
     return ctx.json({ data: await listAssets(projectId) }, 200);

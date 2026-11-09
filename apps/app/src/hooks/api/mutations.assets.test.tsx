@@ -56,6 +56,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('asset identity across editor Retry (4)', () => {
+  it('requests a fresh API capability after an interrupted single-use PUT', async () => {
+    mocks.confirm.mockResolvedValue(response(201, { data: asset }));
+    mocks.presign.mockImplementation(() =>
+      response(200, { data: { key: asset.key, uploadUrl: '/api/app/projects/project-a/assets/upload/token', contentType: 'image/png' } }),
+    );
+    mocks.put.mockRejectedValueOnce(new Error('Interrupted')).mockResolvedValueOnce(undefined);
+    const file = new File(['image'], 'one.png', { type: 'image/png' });
+    await act(async () => {
+      await expect(hook.mutateAsync(file)).rejects.toThrow('Interrupted');
+    });
+    await act(async () => {
+      await hook.mutateAsync(file);
+    });
+    expect(mocks.presign).toHaveBeenCalledTimes(2);
+  });
   it('keeps the successful PUT identity even when a later caller retries after a completed confirmation', async () => {
     mocks.confirm
       .mockResolvedValueOnce(response(201, { data: asset }))

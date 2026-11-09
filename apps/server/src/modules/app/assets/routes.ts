@@ -13,7 +13,8 @@ const assetsRoutes = {
     description: 'List uploaded assets.',
     responses: ok,
   }),
-  presign: createRouteConfig({ guard: [...editor], tags: ['assets'], description: 'Presign a direct upload URL.', responses: ok }),
+  presign: createRouteConfig({ guard: [...editor], tags: ['assets'], description: 'Reserve an upload URL.', responses: ok }),
+  upload: createRouteConfig({ guard: [...editor], tags: ['assets'], description: 'Stream a reserved maxio upload.', responses: ok }),
   confirm: createRouteConfig({
     guard: [...editor],
     tags: ['assets'],

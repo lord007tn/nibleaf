@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const actions = vi.hoisted(() => ({ deleteAsset: vi.fn() }));
+const actions = vi.hoisted(() => ({ deleteAsset: vi.fn(), uploadAsset: vi.fn() }));
 vi.mock('@/actions/assets', () => ({ ...actions, confirmAsset: vi.fn(), listAssets: vi.fn(), presignAsset: vi.fn() }));
 vi.mock('@/actions/projects', () => ({ assertProjectInOrg: vi.fn() }));
 vi.mock('@/lib/hono/context', () => ({ getContextOrganizationIdOrThrow: () => 'org', getContextUserOrThrow: () => ({ id: 'user' }) }));
@@ -29,6 +29,15 @@ const remove = (headers: Record<string, string> = {}) => app.request('/api/app/p
 
 beforeEach(() => {
   actions.deleteAsset.mockReset().mockResolvedValue({ id: 'a1' });
+  actions.uploadAsset.mockReset().mockResolvedValue(undefined);
+});
+
+it('uses the same editor guard for API uploads and rejects viewers before consuming the body', async () => {
+  const path = '/api/app/projects/p1/assets/upload/token';
+  expect((await app.request(path, { method: 'PUT', body: 'abc', headers: { 'x-test-role': 'viewer' } })).status).toBe(403);
+  expect(actions.uploadAsset).not.toHaveBeenCalled();
+  expect((await app.request(path, { method: 'PUT', body: 'abc' })).status).toBe(204);
+  expect(actions.uploadAsset).toHaveBeenCalledWith('org', 'p1', 'token', expect.any(Request));
 });
 
 describe('asset delete route', () => {
