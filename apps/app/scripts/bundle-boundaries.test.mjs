@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { forbiddenModuleIds, marketingSharedReaderIcons } from './bundle-boundaries.mjs';
+import { forbiddenModuleIds, leakedDashboardPreloads, marketingSharedReaderIcons, preloadTableFiles } from './bundle-boundaries.mjs';
 
 const root = 'C:/work/nibleaf';
 const app = (path) => `${root}/apps/app/src/${path}`;
@@ -67,5 +67,40 @@ describe('reader icon chunks shared with marketing (#345)', () => {
         publicFiles,
       ),
     ).toEqual([]);
+  });
+});
+
+describe('dashboard chunk names in the eager preload table (#393)', () => {
+  const route = (file) => app(`routes/${file}?tsr-split=component`);
+  const chunk = (fileName, facadeModuleId, imports, moduleIds, dynamicImports = []) => ({
+    fileName,
+    facadeModuleId,
+    imports,
+    dynamicImports,
+    modules: moduleIds.map((id) => ({ id })),
+  });
+  const chunks = [
+    chunk('assets/index.js', null, [], [app('routes/__root.tsx')], ['assets/sites.js', 'assets/sign-in.js', 'assets/reader.js']),
+    chunk('assets/sites.js', route('app/(dashboard)/sites.tsx'), ['assets/table.js', 'assets/session.js'], [route('app/(dashboard)/sites.tsx')]),
+    chunk('assets/table.js', null, [], [app('components/app/sites-table.tsx'), app('hooks/api/query-keys.ts')]),
+    chunk('assets/session.js', null, [], [app('hooks/api/public.ts')]),
+    chunk('assets/sign-in.js', route('(auth)/sign-in.tsx'), ['assets/session.js', 'assets/ui.js'], [route('(auth)/sign-in.tsx')]),
+    chunk('assets/ui.js', null, [], [app('components/app/button.tsx'), app('lib/utils.ts')]),
+    chunk('assets/reader.js', route('sites/$projectId/$.tsx'), [], [route('sites/$projectId/$.tsx')]),
+  ];
+
+  it('reads the file list of a minified preload table', () => {
+    const source = 'var a=1;const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/sites.js","assets/table.js"])))=>i.map(i=>d[i]);';
+    expect(preloadTableFiles(source)).toEqual(['assets/sites.js', 'assets/table.js']);
+    expect(preloadTableFiles('export const a = 1;')).toEqual([]);
+  });
+
+  it('flags chunks only dashboard routes load', () => {
+    const listed = ['assets/sites.js', 'assets/table.js', 'assets/session.js', 'assets/sign-in.js', 'assets/ui.js', 'assets/reader.js'];
+    expect(leakedDashboardPreloads(chunks, 'assets/index.js', listed)).toEqual(['assets/sites.js', 'assets/table.js']);
+  });
+
+  it('allows dashboard data hooks that sign-in also loads, mixed chunks and CSS', () => {
+    expect(leakedDashboardPreloads(chunks, 'assets/index.js', ['assets/session.js', 'assets/ui.js', 'assets/editor.css'])).toEqual([]);
   });
 });

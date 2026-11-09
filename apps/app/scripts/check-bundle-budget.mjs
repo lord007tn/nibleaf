@@ -2,7 +2,13 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { forbiddenModuleIds, marketingSharedReaderIcons, nonReaderRouteBytes } from './bundle-boundaries.mjs';
+import {
+  forbiddenModuleIds,
+  leakedDashboardPreloads,
+  marketingSharedReaderIcons,
+  nonReaderRouteBytes,
+  preloadTableFiles,
+} from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
 const publicRoot = join(appRoot, '.output', 'public');
@@ -37,9 +43,13 @@ const profiles = {
 // 349_700 → 348_200 (#345): marketing pages moved to their own route table,
 // dispatched by nine thin router routes, about 2.3 KiB less. The margin is ~2 KiB
 // over the 346,122 bytes measured.
+// 348_200 → 345_100 (#393): dashboard routes no longer list their dependency
+// chunks in the router's eager preload table; the dashboard preloads them on
+// intent from its own manifest instead. About 2.8 KiB less; the margin is ~2 KiB
+// over the 343,096 bytes measured.
 const gzipBudgets = {
-  'public-docs': 348_200,
-  'public-docs-index': 348_200,
+  'public-docs': 345_100,
+  'public-docs-index': 345_100,
 };
 
 // A size budget catches overall growth; these signatures make accidental
@@ -234,6 +244,21 @@ if (process.argv.includes('--check')) {
       }
     }
     const publicFiles = new Set(publicAssets.map((asset) => asset.url.replace(/^\//, '')));
+    // The router's eager chunk names, in its preload table, every chunk each
+    // lazy import loads. Dashboard routes get no list there (#393), so their
+    // chunk names stay out of published docs; see BUNDLE_BUDGET.md.
+    for (const file of publicFiles) {
+      const listed = preloadTableFiles(readFileSync(join(publicRoot, file), 'utf8'));
+      const leaked = leakedDashboardPreloads(chunkReport, file, listed);
+      if (leaked.length === 0) continue;
+      console.error(
+        `\nBUNDLE BOUNDARY FAILED: dashboard chunk names leak into the published-docs eager preload list (${file}, ${leaked.length} of ${listed.length}):`,
+      );
+      for (const leak of leaked.slice(0, 10)) console.error(`  ${leak}`);
+      if (leaked.length > 10) console.error(`  … and ${leaked.length - 10} more`);
+      console.error('  Check that dashboardPreloadPlugin (scripts/dashboard-preload-plugin.ts) is wired into vite.config.ts.');
+      invalid = true;
+    }
     for (const icon of marketingSharedReaderIcons(chunkReport, publicFiles)) {
       console.error(
         `\nBUNDLE BOUNDARY FAILED: marketing code imports the reader's ${icon} icon, which re-splits the reader's icon chunks. Use a copy in components/marketing/site/marketing-icons.ts.`,
