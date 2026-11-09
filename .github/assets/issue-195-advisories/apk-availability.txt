@@ -1,0 +1,22 @@
+v22.23.4
+OK: 782.8 MiB in 206 packages
+cups-libs policy:
+  2.4.19-r1:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+ffmpeg-libswresample policy:
+  8.1.3-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+libvpx policy:
+  1.15.2-r1:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/community
+musl policy:
+  1.2.6-r3:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+rav1e-libs policy:
+  0.8.1-r0:
+    lib/apk/db/installed
+    https://dl-cdn.alpinelinux.org/alpine/v3.24/community
