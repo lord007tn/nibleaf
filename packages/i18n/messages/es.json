@@ -4003,5 +4003,9 @@
   "dashboard_ai_inputtokens": "Unidades de texto en preguntas",
   "dashboard_ai_outputtokens": "Unidades de texto en respuestas",
   "analytics_kpi_siteswithtraffic": "Sitios con tráfico",
-  "analytics_workspace_termspersite": "Los términos de búsqueda pueden aparecer en el informe de búsqueda de cada sitio, según su configuración de privacidad y el umbral de visitas."
+  "analytics_workspace_termspersite": "Los términos de búsqueda pueden aparecer en el informe de búsqueda de cada sitio, según su configuración de privacidad y el umbral de visitas.",
+  "settings_usage_progressvalue": "{used} de {limit} ({percent})",
+  "settings_apikeys_namelabel": "Nombre de la clave",
+  "settings_credentials_refreshfailed": "No se pudo actualizar esta lista. Se muestra lo que se cargó antes.",
+  "settings_usage_progressvaluenoshare": "{used} de {limit}"
 }

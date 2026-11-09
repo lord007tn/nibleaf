@@ -4003,5 +4003,9 @@
   "dashboard_ai_inputtokens": "Text units in questions",
   "dashboard_ai_outputtokens": "Text units in answers",
   "analytics_kpi_siteswithtraffic": "Sites with traffic",
-  "analytics_workspace_termspersite": "Search terms may be shown in each site's Search report, subject to its privacy settings and the visit threshold."
+  "analytics_workspace_termspersite": "Search terms may be shown in each site's Search report, subject to its privacy settings and the visit threshold.",
+  "settings_usage_progressvalue": "{used} of {limit} ({percent})",
+  "settings_apikeys_namelabel": "Key name",
+  "settings_credentials_refreshfailed": "Couldn't refresh this list. Showing what was loaded earlier.",
+  "settings_usage_progressvaluenoshare": "{used} of {limit}"
 }

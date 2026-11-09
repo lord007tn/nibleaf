@@ -3899,6 +3899,10 @@ export const MESSAGE_IDS = {
   'settings.visibility.audit.emailDomainsUpdated': 'settings_visibility_audit_emaildomainsupdated',
   'analytics.kpi.sitesWithTraffic': 'analytics_kpi_siteswithtraffic',
   'analytics.workspace.termsPerSite': 'analytics_workspace_termspersite',
+  'settings.usage.progressValue': 'settings_usage_progressvalue',
+  'settings.apiKeys.nameLabel': 'settings_apikeys_namelabel',
+  'settings.credentials.refreshFailed': 'settings_credentials_refreshfailed',
+  'settings.usage.progressValueNoShare': 'settings_usage_progressvaluenoshare',
   'settings.visibility.domains.publicProvider': 'settings_visibility_domains_publicprovider',
 } as const;
 

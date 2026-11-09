@@ -3938,5 +3938,9 @@
   "dashboard_ai_inputtokens": "प्रश्नों में टेक्स्ट इकाइयाँ",
   "dashboard_ai_outputtokens": "उत्तरों में टेक्स्ट इकाइयाँ",
   "analytics_kpi_siteswithtraffic": "ट्रैफ़िक वाली साइटें",
-  "analytics_workspace_termspersite": "खोज शब्द हर साइट की खोज रिपोर्ट में दिख सकते हैं, उसकी गोपनीयता सेटिंग और विज़िट सीमा के अधीन।"
+  "analytics_workspace_termspersite": "खोज शब्द हर साइट की खोज रिपोर्ट में दिख सकते हैं, उसकी गोपनीयता सेटिंग और विज़िट सीमा के अधीन।",
+  "settings_usage_progressvalue": "{limit} में से {used} ({percent})",
+  "settings_apikeys_namelabel": "कुंजी का नाम",
+  "settings_credentials_refreshfailed": "यह सूची रीफ़्रेश नहीं हो सकी। पहले लोड की गई जानकारी दिखाई जा रही है।",
+  "settings_usage_progressvaluenoshare": "{limit} में से {used}"
 }

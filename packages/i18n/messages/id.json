@@ -3938,5 +3938,9 @@
   "dashboard_ai_inputtokens": "Unit teks dalam pertanyaan",
   "dashboard_ai_outputtokens": "Unit teks dalam jawaban",
   "analytics_kpi_siteswithtraffic": "Situs dengan kunjungan",
-  "analytics_workspace_termspersite": "Kata pencarian dapat ditampilkan di laporan Pencarian setiap situs, sesuai pengaturan privasinya dan ambang kunjungan."
+  "analytics_workspace_termspersite": "Kata pencarian dapat ditampilkan di laporan Pencarian setiap situs, sesuai pengaturan privasinya dan ambang kunjungan.",
+  "settings_usage_progressvalue": "{used} dari {limit} ({percent})",
+  "settings_apikeys_namelabel": "Nama kunci",
+  "settings_credentials_refreshfailed": "Daftar ini tidak dapat diperbarui. Menampilkan data yang dimuat sebelumnya.",
+  "settings_usage_progressvaluenoshare": "{used} dari {limit}"
 }

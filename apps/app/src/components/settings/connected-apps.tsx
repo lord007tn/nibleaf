@@ -7,6 +7,7 @@ import { canAdminister } from '@nibleaf/shared/rbac';
 import { Plug, Unplug } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
+import { QueryErrorState } from '@/components/query-error-state';
 import { type ConnectedApp, type McpActivity, useConnectedApps, useRevokeConnectedApp } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import {
@@ -173,6 +174,23 @@ export function TechnicalDetails({ activity, children, scopes }: { activity: Mcp
   );
 }
 
+/** A background refresh failed but the last loaded rows are still on screen:
+ *  keep them, say they may be out of date and offer a retry. */
+export function RefreshFailedNotice({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  const { t } = useLocale();
+  return (
+    <div
+      className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-sm"
+      role="status"
+    >
+      <span className="min-w-0 text-muted-foreground">{t('settings.credentials.refreshFailed')}</span>
+      <Button loading={retrying} onClick={onRetry} size="sm" type="button" variant="outline">
+        {t('error.tryAgain')}
+      </Button>
+    </div>
+  );
+}
+
 /** First-load placeholder shaped like key / connected-app rows: name and
  *  permission badge, one sentence, the last-used/expiry line, the Technical
  *  details summary and the row's buttons. */
@@ -215,7 +233,7 @@ export function CredentialRowsSkeleton({ actions = 1, label, rows = 2 }: { actio
  *  disconnect everyone's; members see their own, like personal keys. */
 export function ConnectedApps({ projectId, role = '' }: { projectId: string; role?: string }) {
   const { locale, t } = useLocale();
-  const { data, isError, isPending } = useConnectedApps(projectId);
+  const { data, isError, isFetching, isPending, refetch } = useConnectedApps(projectId);
   const revoke = useRevokeConnectedApp(projectId);
   const [candidate, setCandidate] = useState<ConnectedApp | null>(null);
   const apps = data ?? [];
@@ -239,10 +257,9 @@ export function ConnectedApps({ projectId, role = '' }: { projectId: string; rol
       title={t('settings.connectedApps.title')}
     >
       <div>
-        {isError ? (
-          <p className="py-3 text-center text-destructive text-sm" role="alert">
-            {t('settings.connectedApps.loadError')}
-          </p>
+        {isError && data ? <RefreshFailedNotice onRetry={() => void refetch()} retrying={isFetching} /> : null}
+        {isError && !data ? (
+          <QueryErrorState description={t('settings.connectedApps.loadError')} onRetry={() => void refetch()} retrying={isFetching} />
         ) : isPending ? (
           <CredentialRowsSkeleton label={t('settings.connectedApps.loading')} />
         ) : apps.length === 0 ? (
