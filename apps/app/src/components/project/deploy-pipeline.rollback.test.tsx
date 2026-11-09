@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   deployments: { data: [] as Deployment[] },
   domains: { data: [] as object[] },
-  live: { data: [] as Deployment[], isFetching: false },
+  live: { data: [] as Deployment[], isFetching: false, isError: false },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
 vi.mock('@nibleaf/design-system/components/ui/dialog', () => ({
@@ -81,6 +81,7 @@ describe('rollback progress', () => {
     mocks.domains.data = [];
     mocks.live.data = [];
     mocks.live.isFetching = false;
+    mocks.live.isError = false;
     mocks.mutate.mockImplementation((_id, options) => {
       const queued = deployment('restore-4', 4, 'PENDING');
       mocks.deployments.data = [queued, ...mocks.deployments.data];
@@ -148,6 +149,29 @@ describe('rollback progress', () => {
     );
     await act(async () => rollbackButton()?.click());
     expect(mocks.mutate).toHaveBeenCalledWith('v4', expect.anything());
+  });
+
+  it('ignores a live list whose re-read failed, answering from the polled list alone', async () => {
+    const failures = Array.from({ length: 48 }, (_, index) => deployment(`f${index}`, 58 - index, 'FAILED'));
+    // The re-read failed; the query still holds a stale answer that misses v59.
+    mocks.live.data = [deployment('old-3', 3, 'READY')];
+    mocks.live.isError = true;
+    const rollbackButton = () => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('deploy.rollback'));
+
+    // The polled list has no older live version: no target, not the stale v3.
+    mocks.deployments.data = [deployment('live-60', 60, 'READY'), ...failures];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    expect(rollbackButton()?.hasAttribute('disabled')).toBe(true);
+
+    // It lists v59: that is the right target.
+    mocks.deployments.data = [deployment('live-60', 60, 'READY'), deployment('v59', 59, 'READY'), ...failures];
+    await act(async () =>
+      root.render(<DeployPipeline project={project} open onOpenChange={close} trackedDeploymentId="live-60" onRetry={retryDraft} />),
+    );
+    await act(async () => rollbackButton()?.click());
+    expect(mocks.mutate).toHaveBeenCalledWith('v59', expect.anything());
   });
 
   const queueRollback = async () => {

@@ -121,9 +121,12 @@ export function DeployPipeline({ project, open, onOpenChange, trackedAttribution
   // The rollback target: the newest live publish before this one, from the
   // live-only list too, so it survives more than 50 failed attempts.
   const liveDeployments = useLiveDeployments(project.id, { enabled: open });
-  // Never from a list that is being re-read: a stale one can miss a newer live
-  // version and pick an older target. (If it fails, the polled list still answers.)
-  const previousReady = liveDeployments.isFetching ? undefined : rollbackTarget(deployments.data, liveDeployments.data, deployment);
+  // Never from a list that is being re-read, or whose last re-read failed (the
+  // query keeps its old data then): a stale answer can miss a newer live version
+  // and pick an older target. The polled list still answers — a live version
+  // older than this one that it lists is the right target.
+  const trustedLive = liveDeployments.isError ? undefined : liveDeployments.data;
+  const previousReady = liveDeployments.isFetching ? undefined : rollbackTarget(deployments.data, trustedLive, deployment);
 
   // Keep polling the exact mutation result after the dialog closes. The
   // worker owns the READY receipt; the client consumes local attribution only
