@@ -212,9 +212,12 @@ export const setSessionCookie = (ctx: Context<HonoEnv>, projectId: string, token
 };
 
 export const listReaderAccess = async (projectId: string) => {
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { accessMode: true, readerEmailDomains: true } });
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { accessMode: true, readerEmailDomains: true, readerAccessRequests: true },
+  });
   if (!project) throw notFound('project', { id: projectId });
-  const [readers, audiences, jwt, audit] = await Promise.all([
+  const [readers, audiences, jwt, audit, accessRequests] = await Promise.all([
     prisma.reader.findMany({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
@@ -238,8 +241,23 @@ export const listReaderAccess = async (projectId: string) => {
     }),
     prisma.jwtAccessProvider.findUnique({ where: { projectId } }),
     prisma.readerAuditLog.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, take: 100 }),
+    prisma.readerAccessRequest.findMany({
+      where: { projectId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: { id: true, email: true, name: true, note: true, createdAt: true },
+    }),
   ]);
-  return { accessMode: project.accessMode, readerEmailDomains: project.readerEmailDomains, readers, audiences, jwt, audit };
+  return {
+    accessMode: project.accessMode,
+    readerEmailDomains: project.readerEmailDomains,
+    readerAccessRequests: project.readerAccessRequests,
+    accessRequests,
+    readers,
+    audiences,
+    jwt,
+    audit,
+  };
 };
 
 export const setProjectAccessMode = async (projectId: string, actorUserId: string, body: ProjectAccessModeBody) => {

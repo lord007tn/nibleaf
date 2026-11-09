@@ -72,6 +72,12 @@ export function notificationText(t: Translate, item: NotificationItem, locale = 
           : 'notifications.feedback.onPage';
     return { title: t('notifications.feedback.title'), body: t(key, { page: isolate(page) }) };
   }
+  if (item.type === 'access_request' && typeof params?.requester === 'string' && typeof params.projectName === 'string') {
+    return {
+      title: t('notifications.accessRequest.title', { requester: isolate(params.requester), project: isolate(params.projectName) }),
+      body: typeof params.note === 'string' && params.note ? params.note : t('notifications.accessRequest.body'),
+    };
+  }
   // Old rows and unknown event types remain readable after an additive upgrade.
   return { title: item.title, body: item.body };
 }

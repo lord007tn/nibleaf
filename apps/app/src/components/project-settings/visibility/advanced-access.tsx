@@ -43,6 +43,10 @@ const AUDIT_ACTION_KEYS: Record<string, MessageKey> = {
   MEMBER_SIGNED_IN: 'settings.visibility.audit.memberSignedIn',
   READER_ADDED_BY_DOMAIN: 'settings.visibility.audit.readerAddedByDomain',
   EMAIL_DOMAINS_UPDATED: 'settings.visibility.audit.emailDomainsUpdated',
+  ACCESS_REQUESTED: 'settings.visibility.audit.accessRequested',
+  ACCESS_REQUEST_APPROVED: 'settings.visibility.audit.accessRequestApproved',
+  ACCESS_REQUEST_DECLINED: 'settings.visibility.audit.accessRequestDeclined',
+  ACCESS_REQUESTS_CHANGED: 'settings.visibility.audit.accessRequestsChanged',
 };
 
 const Panel = ({ title, description, children }: { title: string; description: string; children: ReactNode }) => (

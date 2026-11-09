@@ -25,6 +25,7 @@ import {
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import { DirtyStateReporter } from '../shared';
+import { AccessRequests } from './access-requests';
 
 const MAX_INVITES = 100;
 const MAX_DOMAINS = 20;
@@ -309,6 +310,8 @@ export function ReadersPanel({ projectId, data, disabled }: { projectId: string;
           </domainsForm.Subscribe>
         </form>
       </section>
+
+      <AccessRequests data={data} disabled={disabled} projectId={projectId} />
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-2">

@@ -1,5 +1,13 @@
 import { resolveLocale } from './locales';
 import type { MessageFn, MessageVariables } from './message-types';
+import { site_privateaskbody } from './paraglide/messages/site_privateaskbody.js';
+import { site_privateasklink } from './paraglide/messages/site_privateasklink.js';
+import { site_privateaskname } from './paraglide/messages/site_privateaskname.js';
+import { site_privateasknote } from './paraglide/messages/site_privateasknote.js';
+import { site_privateasksend } from './paraglide/messages/site_privateasksend.js';
+import { site_privateasksent } from './paraglide/messages/site_privateasksent.js';
+import { site_privateasktitle } from './paraglide/messages/site_privateasktitle.js';
+import { site_privatebacktosignin } from './paraglide/messages/site_privatebacktosignin.js';
 import { site_privatecodelabel } from './paraglide/messages/site_privatecodelabel.js';
 import { site_privatecodesent } from './paraglide/messages/site_privatecodesent.js';
 import { site_privateemaillabel } from './paraglide/messages/site_privateemaillabel.js';
@@ -42,6 +50,14 @@ const accessMessages = {
   privateInviteBody: site_privateinvitebody,
   privateInviteAccept: site_privateinviteaccept,
   privateInviteUsed: site_privateinviteused,
+  privateAskLink: site_privateasklink,
+  privateAskTitle: site_privateasktitle,
+  privateAskBody: site_privateaskbody,
+  privateAskName: site_privateaskname,
+  privateAskNote: site_privateasknote,
+  privateAskSend: site_privateasksend,
+  privateAskSent: site_privateasksent,
+  privateBackToSignIn: site_privatebacktosignin,
 };
 
 export type SiteAccessMessageKey = keyof typeof accessMessages;

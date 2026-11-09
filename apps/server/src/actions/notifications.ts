@@ -44,14 +44,20 @@ const NOTIFICATIONS_PAGE_SIZE = 50;
 export async function createNotificationsForOrgMembers(
   projectId: string,
   input: NotificationInput,
-  excludeUserId?: string,
+  /** A user to leave out (usually the actor), or that plus the member roles to reach. */
+  options?: string | { excludeUserId?: string; roles?: string[] },
 ): Promise<{ created: number }> {
+  const { excludeUserId, roles } = typeof options === 'string' ? { excludeUserId: options, roles: undefined } : (options ?? {});
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
   if (!project) {
     return { created: 0 };
   }
   const members = await prisma.member.findMany({
-    where: { organizationId: project.organizationId, ...(excludeUserId ? { userId: { not: excludeUserId } } : {}) },
+    where: {
+      organizationId: project.organizationId,
+      ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
+      ...(roles ? { role: { in: roles } } : {}),
+    },
     select: { userId: true },
   });
   if (members.length === 0) {
