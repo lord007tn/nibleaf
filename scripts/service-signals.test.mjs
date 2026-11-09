@@ -115,6 +115,56 @@ setInterval(() => {}, 1000);
   }
 });
 
+for (const failure of ['exit-code', 'deadline']) {
+  test(`web shutdown reports ${failure} failure`, { skip: process.platform === 'win32', timeout: 8000 }, async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'nibleaf-web-failure-'));
+    const entrypoint = join(directory, 'web.mjs');
+    await writeFile(
+      entrypoint,
+      `process.on('SIGTERM', () => { ${failure === 'exit-code' ? 'process.exit(7);' : ''} });
+console.log('FIXTURE_READY');
+setInterval(() => {}, 1000);
+`,
+    );
+    const child = spawn(process.execPath, [join(root, 'scripts/graceful-web-service.mjs'), entrypoint], {
+      detached: true,
+      env: {
+        ...process.env,
+        NIBLEAF_DRAIN_FILE: join(directory, 'draining'),
+        NIBLEAF_DRAIN_DELAY_MS: '1000',
+        NIBLEAF_WEB_FORCE_EXIT_MS: '1000',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const exited = once(child, 'exit');
+    let output = '';
+    child.stderr.on('data', (data) => {
+      output += data;
+    });
+    try {
+      await Promise.race([
+        new Promise((resolve) =>
+          child.stdout.on('data', (data) => {
+            if (data.toString().includes('FIXTURE_READY')) resolve();
+          }),
+        ),
+        exited.then(() => {
+          throw new Error('Web fixture exited before readiness');
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Web fixture readiness timed out')), 3000).unref()),
+      ]);
+      child.kill('SIGTERM');
+      const [code, signal] = await exited;
+      assert.equal(code, failure === 'exit-code' ? 7 : 1);
+      assert.equal(signal, null);
+      if (failure === 'deadline') assert.match(output, /shutdown deadline; sending SIGKILL/);
+    } finally {
+      stopFixture(child.pid);
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+}
+
 function stopFixture(pid) {
   try {
     process.kill(-pid, 'SIGKILL');

@@ -7,7 +7,13 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const i18n = vi.hoisted(() => ({ locale: 'en' as string }));
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), useProjects: vi.fn(), refetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  navigate: vi.fn(),
+  useProjects: vi.fn(),
+  analytics: vi.fn(),
+  refetch: vi.fn(),
+  search: {} as { newSite?: boolean },
+}));
 
 // Real catalogs, controlled locale: the page count must come out translated and
 // in the locale's own digits (Arabic-Indic for ar), not as a raw number.
@@ -23,7 +29,7 @@ vi.mock('@nibleaf/i18n/react', async () => {
 // The formatters read the same locale as the translator, as in the app.
 vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => i18n.locale, subscribeLanguage: () => () => undefined }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => mocks.search }),
   useNavigate: () => mocks.navigate,
   // The router's Link renders an anchor with the resolved href.
   Link: ({ to, params, children, ...props }: { to: string; params: Record<string, string>; children: ReactNode }) => (
@@ -34,8 +40,10 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 vi.mock('@/hooks/api/query-options', () => ({ projectsQueryOptions: () => ({ queryKey: ['projects'] }) }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects }));
-vi.mock('@/components/app/new-project-dialog', () => ({ NewProjectDialog: () => null }));
+vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects, useWorkspaceAnalytics: mocks.analytics }));
+vi.mock('@/components/app/new-project-dialog', () => ({
+  NewProjectDialog: ({ open }: { open: boolean }) => (open ? <div data-testid="new-site-dialog" /> : null),
+}));
 
 import { Route } from './sites';
 
@@ -53,6 +61,8 @@ describe('SitesPage', () => {
 
   beforeEach(() => {
     i18n.locale = 'en';
+    mocks.search = {};
+    mocks.analytics.mockReturnValue({ isSuccess: true, data: { availability: 'complete', byProject: [{ projectId: 'project-1', views: 1218 }] } });
     mocks.useProjects.mockReturnValue({
       isPending: false,
       isError: false,
@@ -153,5 +163,64 @@ describe('SitesPage', () => {
     await act(async () => clear?.click());
     expect(container.textContent).toContain('58 pages');
     expect(search?.value).toBe('');
+  });
+  const sites = [
+    {
+      id: 'live',
+      name: 'Acme',
+      slug: 'acme',
+      live: true,
+      lastPublishedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(),
+      _count: { pages: 18 },
+    },
+    { id: 'draft', name: 'Handbook', slug: 'handbook', live: false, lastPublishedAt: null, _count: { pages: 10 } },
+    { id: 'busy', name: 'Help', slug: 'help', live: true, publishing: true, lastPublishedAt: null, _count: { pages: 13 } },
+  ];
+  const cardText = (id: string) => container.querySelector(`a[href="/app/projects/${id}"]`)?.textContent ?? '';
+
+  it('says what readers can see on each site: live, not published or publishing, and when it went live', async () => {
+    mocks.useProjects.mockReturnValue({ ...mocks.useProjects(), data: sites });
+    mocks.analytics.mockReturnValue({ isSuccess: true, data: { availability: 'complete', byProject: [] } });
+    await render();
+    expect(container.querySelector('a[href="/app/projects/live"] [data-status]')?.getAttribute('data-status')).toBe('live');
+    expect(cardText('live')).toContain('Published 3d ago');
+    expect(container.querySelector('a[href="/app/projects/draft"] [data-status]')?.getAttribute('data-status')).toBe('notPublished');
+    expect(cardText('draft')).not.toContain('Published');
+    expect(container.querySelector('a[href="/app/projects/busy"] [data-status]')?.getAttribute('data-status')).toBe('publishing');
+  });
+
+  it('adds 30-day views when analytics answered, and leaves them out (not zero) when it did not', async () => {
+    await render();
+    expect(cardText('project-1')).toContain('1,218');
+    mocks.analytics.mockReturnValue({ isSuccess: false, isError: true, data: undefined });
+    await render();
+    expect(cardText('project-1')).not.toContain('Views');
+    expect(cardText('project-1')).not.toContain(': 0');
+  });
+
+  it('keeps polling while a site is publishing, so the badge does not stay on "Publishing…"', async () => {
+    await render();
+    expect(mocks.useProjects).toHaveBeenCalledWith({ pollWhilePublishing: true });
+  });
+
+  it('marks the publish date up as a machine-readable time', async () => {
+    mocks.useProjects.mockReturnValue({ ...mocks.useProjects(), data: sites });
+    await render();
+    const time = container.querySelector('a[href="/app/projects/live"] time');
+    expect(time?.getAttribute('datetime')).toBe(sites[0]?.lastPublishedAt);
+  });
+
+  it('opens New site from the URL, so the palette and switcher can open it again on this page', async () => {
+    await render();
+    expect(container.querySelector('[data-testid="new-site-dialog"]')).toBeNull();
+    const create = [...container.querySelectorAll('button')].find((button) => button.textContent?.includes('New site'));
+    await act(async () => create?.click());
+    const call = mocks.navigate.mock.calls.at(-1)?.[0] as { search: (prev: object) => object; replace: boolean };
+    expect(call.search({})).toEqual({ newSite: true });
+    expect(call.replace).toBe(false);
+
+    mocks.search = { newSite: true };
+    await render();
+    expect(container.querySelector('[data-testid="new-site-dialog"]')).not.toBeNull();
   });
 });

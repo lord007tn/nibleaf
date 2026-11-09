@@ -1,0 +1,78 @@
+{
+  "checkedAt": "2026-11-08T23:07:08.696Z",
+  "baseRevision": "551fdcff6cdca595104a0ecad474d48bfff36946",
+  "codeRevision": "dcd9d873b6400bc81a5ff57639439ee689a7b74a",
+  "hostNode": "v26.13.0",
+  "checks": {
+    "typecheck": {
+      "passed": true,
+      "tasks": 27
+    },
+    "lint": {
+      "passed": true
+    },
+    "deadCode": {
+      "passed": true
+    },
+    "fullTest": {
+      "passed": true,
+      "turboTasks": 25
+    },
+    "allBuilds": {
+      "passed": true,
+      "tasks": 12,
+      "cached": 0
+    },
+    "bundle": {
+      "passed": true,
+      "ciModuleBoundaries": true,
+      "publicDocsGzipKiB": 338,
+      "publicDocsIndexGzipKiB": 337.2,
+      "budgetKiB": 340.04
+    },
+    "postgres": {
+      "passed": true,
+      "migrations": 44,
+      "tenantFenceTests": 3,
+      "authTests": 21,
+      "serverTests": 223,
+      "serverFiles": 18,
+      "workerTests": 5,
+      "workerFiles": 2,
+      "freshDatabase": "nibleaf_node26_test"
+    },
+    "alpineGhost": {
+      "passed": true,
+      "tests": 51,
+      "files": 3
+    },
+    "alpineClickHouse": {
+      "passed": true,
+      "tests": 148,
+      "files": 18
+    },
+    "alpinePipeline": {
+      "passed": true,
+      "tests": 4
+    },
+    "productionImage": {
+      "passed": true
+    },
+    "imageRoles": {
+      "passed": true,
+      "roles": ["server", "worker", "app", "admin"]
+    },
+    "imageMigrations": {
+      "passed": true,
+      "modes": ["migrate", "clickhouse-migrate"],
+      "repeatIdempotent": true,
+      "productionSeedExcluded": true
+    },
+    "alpineGitBookPerformance": {
+      "passed": true,
+      "tests": 29
+    }
+  },
+  "published": false,
+  "deployed": false
+}
