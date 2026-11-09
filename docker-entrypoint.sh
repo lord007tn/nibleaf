@@ -39,14 +39,14 @@ case "$cmd" in
   migrate)
     require_prod_secret
     echo "[nibleaf] applying database migrations…"
-    pnpm --filter @nibleaf/database exec prisma migrate deploy
+    (cd packages/database && node ../../node_modules/prisma/build/index.js migrate deploy)
     if should_seed; then
       echo "[nibleaf] seeding demo data…"
       # NIBLEAF_RUN_SEED is an explicit operator opt-in, so pass ALLOW_SEED=1 to
       # clear the seed script's own production guard (it otherwise refuses to
       # seed when NODE_ENV=production). Seeding is idempotent and never runs
       # unless opted in.
-      ALLOW_SEED=1 pnpm --filter @nibleaf/server exec tsx src/database/seed/index.ts || echo "[nibleaf] seed skipped (continuing)"
+      (cd apps/server && ALLOW_SEED=1 node --import tsx src/database/seed/index.ts) || echo "[nibleaf] seed skipped (continuing)"
     else
       echo "[nibleaf] skipping seed (set NIBLEAF_RUN_SEED=true to enable)"
     fi
@@ -54,7 +54,19 @@ case "$cmd" in
     ;;
   clickhouse-migrate)
     echo "[nibleaf] applying ClickHouse analytics migrations…"
-    pnpm --filter @nibleaf/clickhouse migrate
+    cd packages/clickhouse
+    exec node --import tsx scripts/migrate.ts
+    ;;
+  search-reindex-all)
+    require_prod_secret
+    shift
+    cd apps/server
+    exec node --import tsx src/scripts/reindex-search.ts "$@"
+    ;;
+  search-alias-switch)
+    shift
+    cd packages/qdrant
+    exec node --import tsx scripts/switch-alias.ts "$@"
     ;;
   server)
     require_prod_secret

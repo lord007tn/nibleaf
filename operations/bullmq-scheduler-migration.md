@@ -19,13 +19,13 @@ Use the existing Redis environment configuration and run from the repository
 root. Commands print platform schedule status only, never connection details.
 
 1. Deploy this staged v5 release. Keep its image available for rollback.
-2. Run `pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts` to inventory
+2. Run `node --import tsx packages/bullmq/scripts/migrate-schedules.ts` to inventory
    the four platform schedules. Unknown IDs, cron patterns, timezones, data,
    or job options require investigation; do not bypass the refusal.
 3. Stop all processes that schedule these jobs and pause the analytics/export
    queues using the operator's existing queue controls. Wait for active jobs
    to finish and ensure there are no ready/paused jobs. Do not drain user jobs.
-4. Run `pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply`.
+4. Run `node --import tsx packages/bullmq/scripts/migrate-schedules.ts --apply`.
    It creates and verifies every destination before removing the exact known
    legacy definitions. On failure leave queues paused, investigate, and rerun;
    the operation supports partial-migration recovery.
@@ -51,13 +51,13 @@ Do not run this rollback tool after upgrading its dependency to BullMQ v6.
 ## Disposable integration verification
 
 Set `SCHEDULE_TEST_REDIS_URL` to an isolated Redis/Dragonfly test endpoint and run
-`pnpm exec tsx packages/bullmq/scripts/verify-schedules.ts`. The runner uses UUID
+`node --import tsx packages/bullmq/scripts/verify-schedules.ts`. The runner uses UUID
 queue names, never flushes a database, and deletes only its own test queues.
 It exercises dry-run, both startup paths, migration/retry, rollback/retry, and
 remigration against real v5 storage.
 
 With the same isolated endpoint, run
-`pnpm exec tsx packages/bullmq/scripts/verify-schedule-dry-run.ts` to compare all
+`node --import tsx packages/bullmq/scripts/verify-schedule-dry-run.ts` to compare all
 keys, serialized values, and TTLs before and after the actual default operator
 command. TTL comparison accounts for elapsed time; only its own expiring
 synthetic key is created and cleaned. Operator Queue clients disable BullMQ's

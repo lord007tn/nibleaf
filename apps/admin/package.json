@@ -25,7 +25,6 @@
     "@tanstack/react-start": "1.169.4",
     "@t3-oss/env-core": "^0.13.11",
     "lucide-react": "^1.65.0",
-    "nitro": "3.0.260903-beta",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "recharts": "3.10.1",
@@ -39,6 +38,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "6.1.2",
     "hono": "^4.13.14",
+    "nitro": "3.0.260903-beta",
     "oxc-transform-react": "0.156.0",
     "typescript": "^7.0.2",
     "vite": "8.3.5"
