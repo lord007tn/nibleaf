@@ -116,13 +116,37 @@ describe('row helpers', () => {
     expect(sortWorstFirst(feedbackFixture().pages).map((page) => page.path)).toEqual(['bad', 'good', 'unrated']);
   });
 
-  it('maps an analytics path to its editor page, tolerating a language prefix', () => {
+  const languages = [
+    { id: 'en', code: 'en', isDefault: true },
+    { id: 'ar', code: 'ar', isDefault: false },
+  ];
+
+  it('maps an analytics path to its editor page in the language the path is in', () => {
     const pages = [
-      { id: 'p1', path: 'guides/install', kind: 'PAGE' },
-      { id: 'g1', path: 'guides', kind: 'GROUP' },
+      { id: 'p1', path: 'guides/install', kind: 'PAGE', languageId: 'en' },
+      { id: 'p1-ar', path: 'guides/install', kind: 'PAGE', languageId: 'ar' },
+      { id: 'g1', path: 'guides', kind: 'GROUP', languageId: 'en' },
     ];
-    expect(findPageIdForPath(pages, '/guides/install/')).toBe('p1');
-    expect(findPageIdForPath(pages, 'ar/guides/install')).toBe('p1');
-    expect(findPageIdForPath(pages, 'guides')).toBeNull();
+    expect(findPageIdForPath(pages, '/guides/install/', languages)).toBe('p1');
+    // The Arabic row opens the Arabic page, not whichever came first.
+    expect(findPageIdForPath(pages, 'ar/guides/install', languages)).toBe('p1-ar');
+    expect(findPageIdForPath(pages, 'guides', languages)).toBeNull();
+  });
+
+  it('never strips a first segment that is not a language, and never guesses between matches', () => {
+    const pages = [
+      { id: 'guide', path: 'guide', kind: 'PAGE', languageId: 'en' },
+      { id: 'a', path: 'dup', kind: 'PAGE' },
+      { id: 'b', path: 'dup', kind: 'PAGE' },
+    ];
+    // "section/guide" was deleted; "guide" is a different page.
+    expect(findPageIdForPath(pages, 'section/guide', languages)).toBeNull();
+    // Without language data, two pages with the same path stay ambiguous.
+    expect(findPageIdForPath(pages, 'dup')).toBeNull();
+  });
+
+  it('matches encoded and raw Arabic slugs alike', () => {
+    const pages = [{ id: 'start', path: 'البداية', kind: 'PAGE', languageId: 'ar' }];
+    expect(findPageIdForPath(pages, `ar/${encodeURIComponent('البداية')}`, languages)).toBe('start');
   });
 });

@@ -103,8 +103,6 @@ export const MESSAGE_IDS = {
   'dashboard.ai.lastAsked': 'dashboard_ai_lastasked',
   'dashboard.ai.write': 'dashboard_ai_write',
   'dashboard.ai.view': 'dashboard_ai_view',
-  'dashboard.ai.copied': 'dashboard_ai_copied',
-  'dashboard.ai.copyError': 'dashboard_ai_copyerror',
   'dashboard.ai.capture': 'dashboard_ai_capture',
   'dashboard.ai.captureHint': 'dashboard_ai_capturehint',
   'dashboard.ai.starters': 'dashboard_ai_starters',

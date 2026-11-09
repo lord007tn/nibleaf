@@ -15,11 +15,10 @@ import { useT } from '@nibleaf/i18n/react';
 import { canAdminister } from '@nibleaf/shared/rbac';
 
 import { toast } from 'sonner';
-
+import { QueryErrorState } from '@/components/query-error-state';
 import { useProjectMembers } from '@/hooks/api';
-
 import { useAiConversation, useDeleteAiConversation } from '@/hooks/api/ai-conversations';
-
+import { isClientError } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 
 import { useSession } from '@/services/auth-client';
@@ -95,7 +94,12 @@ export function ConversationDetail({ projectId, conversation, onClose }: { proje
               ))}
             </div>
           ) : detail.isError ? (
-            <p role="alert">{t('dashboard.ai.missing')}</p>
+            // Gone (deleted, expired, not yours) is final; anything else can be retried in place.
+            isClientError(detail.error) ? (
+              <p role="alert">{t('dashboard.ai.missing')}</p>
+            ) : (
+              <QueryErrorState onRetry={() => void detail.refetch()} retrying={detail.isFetching} />
+            )
           ) : detail.data ? (
             <>
               {detail.data.visibility === 'private' && <Badge variant="outline">{t('dashboard.ai.private')}</Badge>}

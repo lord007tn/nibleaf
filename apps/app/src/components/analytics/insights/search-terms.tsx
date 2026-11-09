@@ -17,7 +17,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { Eye, EyeOff, PenLine } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useProjectMembers } from '@/hooks/api';
+import { useLanguages, useProjectMembers } from '@/hooks/api';
 import type { SearchTermRow, SearchTermsVisibility } from '@/hooks/api/analytics';
 import { useCreatePage, useUpdateProjectConfig } from '@/hooks/api/mutations';
 import { queryKeys } from '@/hooks/api/query-keys';
@@ -223,19 +223,35 @@ export function HiddenTermsEmpty({
 
 /**
  * "Write an article for this": creates a draft page titled with the search
- * term through the existing page-create mutation and opens it in the editor.
+ * term (or a reader's unanswered question) through the existing page-create
+ * mutation and opens it in the editor. With `languageCode` the draft is
+ * created in that content language when the site has it, so an Arabic
+ * question becomes an Arabic draft.
  */
-export function WriteArticleButton({ projectId, term }: { projectId: string; term: string }) {
+export function WriteArticleButton({
+  projectId,
+  term,
+  languageCode,
+  label,
+}: {
+  projectId: string;
+  term: string;
+  languageCode?: string;
+  /** Visible text; defaults to the search report's "Write an article". */
+  label?: string;
+}) {
   const t = useT();
   const navigate = useNavigate();
   const createPage = useCreatePage(projectId);
+  const { data: languages } = useLanguages(languageCode ? projectId : undefined);
+  const languageId = languageCode ? languages?.find((language) => language.code === languageCode)?.id : undefined;
   // The pending state only renders on the next frame; the ref blocks a same-frame double click.
   const inFlight = useRef(false);
   const write = () => {
     if (inFlight.current) return;
     inFlight.current = true;
     createPage.mutate(
-      { title: term.slice(0, 200) },
+      { title: term.slice(0, 200), ...(languageId ? { languageId } : {}) },
       {
         onSuccess: (page) => {
           toast.success(t('analytics.search.write.created'));
@@ -253,7 +269,7 @@ export function WriteArticleButton({ projectId, term }: { projectId: string; ter
   return (
     <Button aria-label={t('analytics.search.write.aria', { term })} loading={createPage.isPending} onClick={write} size="sm" variant="outline">
       <PenLine aria-hidden />
-      {t('analytics.search.write.action')}
+      {label ?? t('analytics.search.write.action')}
     </Button>
   );
 }

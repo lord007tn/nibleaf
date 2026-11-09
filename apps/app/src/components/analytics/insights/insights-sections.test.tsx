@@ -71,8 +71,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => ({
 }));
 vi.mock('@/hooks/api', () => ({
   useDeployments: mocks.deployments,
-  useDomains: () => ({ data: [{ domain: 'docs.example.com', isPrimary: true, verified: true }] }),
-  usePages: () => ({ data: [{ id: 'page-getting-started', path: 'getting-started', kind: 'PAGE' }] }),
+  // Live: ownership, DNS and HTTPS all ready (a merely verified domain is not linked).
+  useDomains: () => ({ data: [{ domain: 'docs.example.com', isPrimary: true, verified: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }] }),
+  useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
+  usePages: () => ({ data: [{ id: 'page-getting-started', path: 'getting-started', kind: 'PAGE', languageId: 'lang-en' }] }),
   useProject: () => ({ data: { id: 'p1', slug: 'docs' } }),
   useProjectMembers: mocks.members,
 }));
