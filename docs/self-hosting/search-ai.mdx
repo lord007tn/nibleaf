@@ -3,12 +3,15 @@ title: 'Operate hybrid search and grounded answers'
 description: 'Index published documentation in Qdrant, evaluate shadow traffic, cut over safely, and operate optional grounded AI answers.'
 audience: 'self-hosted Nibleaf operators'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
-verified_against: 'packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
+last_reviewed: '2026-11-09'
+verified_against: 'docker-entrypoint.sh, packages/search, packages/qdrant, packages/clickhouse/src/ai-conversations.ts, apps/server/src/lib/ai-search, apps/server/src/actions/site-chat.ts, apps/worker/src/processors/search.ts, docker-compose.search.yml, and scripts/self-host-release.mjs'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'self-hosting/search-ai'
 ---
+
+Container commands below target images after v0.2.1, which omit pnpm.
+For the published v0.2.1 image, use [its retained commands](/releases/v0-2-1).
 
 Nibleaf v0.2 can retrieve published English, Arabic, and mixed-language content
 with a tenant-filtered BM25 and dense-vector hybrid index. Results mode remains
@@ -192,7 +195,7 @@ are already set, and nothing changes.
 2. Queue a rebuild of every published site:
 
    ```bash
-   docker compose exec -T server pnpm --filter @nibleaf/server search:reindex-all
+   docker compose exec -T server /app/docker-entrypoint.sh search-reindex-all
    ```
 
    It prints how many sites it queued and which it skipped, and why. You can also
@@ -206,14 +209,14 @@ are already set, and nothing changes.
    `openai/text-embedding-3-large`, 3072 dimensions and collection version `v2`.
    An index rebuilt by a worker that still had the old settings doesn't count. The
    worker logs that such a run "was queued with other embedding settings". Choose
-   **Reindex** for that site, or run `search:reindex-all` again. Then switch the
+   **Reindex** for that site, or run `search-reindex-all` again. Then switch the
    alias:
 
    ```bash
    docker compose exec -T \
      -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
      -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
-     server pnpm --filter @nibleaf/qdrant alias:switch
+     server /app/docker-entrypoint.sh search-alias-switch
    ```
 
    Within 30 seconds, hybrid search and AI answers return for every site whose
@@ -497,9 +500,10 @@ rather than creating a second search analytics store.
    after configuring `QDRANT_COLLECTION_VERSION=v2` and a 3072-dimension index:
 
    ```bash
-   QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
-   QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
-   pnpm --filter @nibleaf/qdrant alias:switch
+   docker compose exec -T \
+     -e QDRANT_PREVIOUS_COLLECTION=nibleaf_search_active_v1_1536 \
+     -e QDRANT_SWITCH_TO=nibleaf_search_active_v2_3072 \
+     server /app/docker-entrypoint.sh search-alias-switch
    ```
 
    Then set `SEARCH_RUNTIME=hybrid` and watch error, no-result, latency, and

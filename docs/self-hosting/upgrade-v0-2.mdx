@@ -260,7 +260,7 @@ From here until step 10, Compose must use the staged image:
 ```bash
 export NIBLEAF_VERSION="$STAGED"
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 ```
 
 **Expected:** JSON with `"applied": false` and these four entries. This command
@@ -281,7 +281,7 @@ around it.
 
 ```bash
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --apply
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --apply
 ```
 
 **Expected:** JSON with `"applied": true`. The tool creates and verifies every new
@@ -293,7 +293,7 @@ image, and never copy its script into v0.2.1.
 
 ```bash
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 ```
 
 **Expected:** all four entries show `"scheduler": true` and `"legacy": false`. Do not
@@ -466,11 +466,11 @@ Move the schedules back, then check them:
 ```bash
 export NIBLEAF_VERSION="$STAGED"
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --rollback
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts --rollback --apply
 docker compose run --rm --no-deps -T worker \
-  pnpm exec tsx packages/bullmq/scripts/migrate-schedules.ts
+  node --import tsx packages/bullmq/scripts/migrate-schedules.ts
 unset NIBLEAF_VERSION
 ```
 

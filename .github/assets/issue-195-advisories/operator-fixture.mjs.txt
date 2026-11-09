@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import { prisma } from '@nibleaf/database';
+import { QdrantClient } from '@nibleaf/qdrant';
+import { chunkSearchDocument, sparseVectorForChunk } from '@nibleaf/search';
+import { extractHeadings } from '@nibleaf/shared/site';
+
+const projectId = 'runtime-389-operator-project';
+const orgId = 'runtime-389-operator-org';
+const previousId = 'runtime-389-deployment-original';
+const currentId = 'runtime-389-deployment-target';
+assert.equal(await prisma.project.count(), 0, 'Operator proof requires an empty owned fixture database');
+await prisma.organization.create({ data: { id: orgId, name: 'Fictional runtime operator qualification' } });
+await prisma.project.create({ data: { id: projectId, organizationId: orgId, slug: projectId, name: 'Fictional published site', config: { search: { aiProvider: 'instance' } } } });
+const pages = [
+  { id: 'runtime-389-page-en', title: 'Fictional operator guide', languageCode: 'en', content: '## Operations\n\nThis fictional guide qualifies a cached-vector reindex.' },
+  { id: 'runtime-389-page-ar', title: 'دليل تشغيل تجريبي', languageCode: 'ar', content: '## التشغيل\n\nدليل خيالي للتحقق من إعادة الفهرسة باستخدام متجهات مخزنة.' },
+].map((page) => ({ ...page, path: `${page.languageCode}/operator-guide`, versionId: 'runtime-389-version-main', kind: 'PAGE', hidden: false, config: null, description: '', icon: null }));
+const snapshot = { project: { id: projectId, name: 'Fictional published site', versions: [{ id: 'runtime-389-version-main', slug: 'main' }] }, pages };
+for (const [id, version] of [[previousId, 1], [currentId, 2]]) await prisma.deployment.create({ data: { id, projectId, version, status: 'READY', snapshot } });
+const reindex = new QdrantClient({ url: process.env.QDRANT_URL, alias: process.env.QDRANT_COLLECTION_ALIAS, schemaVersion: 'v2', vectorSize: 64 });
+await reindex.ensureHybridCollection();
+const previousChunks = pages.flatMap((page) => chunkSearchDocument(
+  { projectId, deploymentId: previousId, versionSlug: 'main' },
+  { id: page.id, title: page.title, path: page.path, description: '', headings: extractHeadings(page.content).map((heading) => heading.text), content: page.content, language: page.languageCode, visible: true },
+));
+await reindex.upsert(previousChunks.map((chunk) => ({
+  id: chunk.id,
+  vector: { dense: [1, ...Array(63).fill(0)], bm25: sparseVectorForChunk(chunk) },
+  payload: { project_id: projectId, deployment_id: previousId, version_slug: 'main', language: chunk.language, visibility: 'public', visible: true, page_id: chunk.pageId, ordinal: chunk.ordinal, content_hash: chunk.contentHash },
+})));
+const alias = 'nibleaf_runtime_389_alias_switch';
+const previous = new QdrantClient({ url: process.env.QDRANT_URL, alias, schemaVersion: 'v1', vectorSize: 64 });
+const target = new QdrantClient({ url: process.env.QDRANT_URL, alias, schemaVersion: 'v2', vectorSize: 64 });
+await previous.ensureHybridCollection();
+await target.ensureHybridCollection();
+await previous.switchAlias();
+console.log(JSON.stringify({ projectId, orgId, previousId, currentId, previousChunks: previousChunks.length, alias, previousCollection: previous.collection, targetCollection: target.collection, externalProviderTrafficBlocked: true, vectors: 'synthetic cached fixtures, no provider invocation' }));
+await prisma.$disconnect();
