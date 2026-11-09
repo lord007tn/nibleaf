@@ -35,6 +35,7 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code sign-in in PostgreSQL', () => {
   let db: typeof import('@nibleaf/database');
   let sites: typeof import('@/actions/sites');
+  let readerAccess: typeof import('@/actions/reader-access');
   let app: Hono<HonoEnv>;
   const organizationIds: string[] = [];
   const userIds: string[] = [];
@@ -42,6 +43,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
   beforeAll(async () => {
     db = await import('@nibleaf/database');
     sites = await import('@/actions/sites');
+    readerAccess = await import('@/actions/reader-access');
     const { errorMiddleware } = await import('@/errors/handler');
     app = new Hono<HonoEnv>();
     app.use(contextStorage());
@@ -537,6 +539,77 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
       .join('; ');
     expect((await readPage(project.id, cookie)).status).toBe(200);
     expect((await post('accept', { token })).status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('lets an address at an allowed domain sign in as a whole-site reader, and only on an Invited readers site', async () => {
+    const { project, user } = await site('READERS');
+    await readerAccess.setReaderEmailDomains(project.id, user.id, { domains: ['partner.example'] });
+    const email = `ana-${randomUUID()}@partner.example`;
+    const { response, cookie } = await signIn(project.id, email);
+    expect(response.status).toBe(200);
+    expect((await readPage(project.id, cookie)).status).toBe(200);
+    const reader = await db.prisma.reader.findUniqueOrThrow({
+      where: { projectId_email: { projectId: project.id, email } },
+      include: { audiences: { include: { audience: { include: { grants: true } } } } },
+    });
+    expect(reader.status).toBe('ACTIVE');
+    expect(reader.audiences.flatMap((item) => item.audience.grants.map((grant) => grant.scopeKey))).toEqual(['SITE']);
+    // Other domains, and the same domain on a Team only site, get nothing.
+    expect(await startAnswer(project.id, 'ana@other.example')).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+    const team = await site('WORKSPACE');
+    await readerAccess.setReaderEmailDomains(team.project.id, team.user.id, { domains: ['partner.example'] });
+    expect(await startAnswer(team.project.id, email)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+  });
+
+  it('keeps a revoked reader out even when their address is at an allowed domain', async () => {
+    const { project, user, reader, readerEmail } = await site('READERS');
+    await readerAccess.setReaderEmailDomains(project.id, user.id, { domains: [readerEmail.split('@')[1] as string] });
+    await readerAccess.revokeReader(project.id, reader.id, user.id);
+    expect(await startAnswer(project.id, readerEmail)).toEqual({ status: 200, body: { data: { sent: true } } });
+    await noCodeSent();
+  });
+
+  it('stores allowed domains lowercased, without @, sorted and once each', async () => {
+    const { project, user } = await site('READERS');
+    expect(await readerAccess.setReaderEmailDomains(project.id, user.id, { domains: ['b.example', 'a.example', 'b.example'] })).toEqual({
+      domains: ['a.example', 'b.example'],
+    });
+    const { readerEmailDomainsBody } = await import('@nibleaf/validators');
+    expect(readerEmailDomainsBody.parse({ domains: ['@Partner.Example '] })).toEqual({ domains: ['partner.example'] });
+    expect(readerEmailDomainsBody.safeParse({ domains: ['not a domain'] }).success).toBe(false);
+  });
+
+  it('invites readers to the whole site without setting up an audience, one or many at a time', async () => {
+    const id = `fresh-${randomUUID()}`;
+    const organization = await db.prisma.organization.create({ data: { name: id, slug: id } });
+    organizationIds.push(organization.id);
+    const project = await db.prisma.project.create({ data: { organizationId: organization.id, name: id, slug: id, accessMode: 'READERS' } });
+    const one = await readerAccess.inviteReader(project.id, 'owner', { email: `one-${randomUUID()}@example.invalid` });
+    const many = await readerAccess.inviteReaders(project.id, 'owner', {
+      emails: [`two-${randomUUID()}@example.invalid`, `three-${randomUUID()}@example.invalid`],
+    });
+    expect(many.invited).toBe(2);
+    const audiences = await db.prisma.audience.findMany({ where: { projectId: project.id }, include: { grants: true, readers: true } });
+    // One whole-site audience, created once and shared by every invite.
+    expect(audiences).toHaveLength(1);
+    expect(audiences[0]?.grants.map((grant) => grant.scopeKey)).toEqual(['SITE']);
+    expect(audiences[0]?.readers.map((member) => member.readerId).sort()).toEqual([one.reader.id, ...many.readers.map((reader) => reader.id)].sort());
+  });
+
+  it('resends an invitation with a new link, keeps the reader’s access, and refuses revoked readers', async () => {
+    const { project, user, readerEmail } = await site('READERS');
+    const first = await readerAccess.inviteReader(project.id, user.id, { email: readerEmail });
+    const resent = await readerAccess.resendReaderInvitation(project.id, first.reader.id, user.id);
+    expect(resent.activationUrl).not.toBe(first.activationUrl);
+    const invitations = await db.prisma.readerInvitation.findMany({ where: { readerId: first.reader.id }, orderBy: { createdAt: 'asc' } });
+    expect(invitations.map((invitation) => invitation.revokedAt === null)).toEqual([false, true]);
+    expect(await db.prisma.readerAudience.count({ where: { readerId: first.reader.id } })).toBe(1);
+    await readerAccess.revokeReader(project.id, first.reader.id, user.id);
+    await expect(readerAccess.resendReaderInvitation(project.id, first.reader.id, user.id)).rejects.toMatchObject({
+      details: { reason: 'reader_revoked' },
+    });
   });
 
   it('shows a visitor who cannot read a private site its name and branding, and nothing from its pages', async () => {

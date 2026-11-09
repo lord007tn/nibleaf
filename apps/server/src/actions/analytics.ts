@@ -114,6 +114,8 @@ const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsR
       range,
       timezone,
       totalViews: 0,
+      comparableTotalViews: 0,
+      previousTotalViews: 0,
       uniqueVisitors: 0,
       timeseries: interval.dates.map((date) => ({ date, views: 0 })),
       byProject: [] as Array<{ projectId: string; name: string; color: string; views: number }>,
