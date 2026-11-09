@@ -21,7 +21,8 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects, usePages: mocks.usePages }));
 vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageDialog: () => null }));
 
-import { CommandPalette } from './command-palette';
+import { CommandPalette, CommandPaletteProvider } from './command-palette';
+import { ShellSearchButton } from './shell-search-button';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -89,6 +90,25 @@ const typeInto = (input: HTMLInputElement, value: string) =>
 const itemLabels = () => [...document.querySelectorAll('[data-slot="command-item"]')].map((node) => node.textContent?.trim());
 
 describe('CommandPalette', () => {
+  it('opens the app-wide palette from the separate shell search button', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () =>
+      root.render(
+        <CommandPaletteProvider>
+          <ShellSearchButton />
+        </CommandPaletteProvider>,
+      ),
+    );
+    expect(document.querySelector('[data-slot="dialog-content"]')).toBeNull();
+    const trigger = container.querySelector<HTMLButtonElement>('button[aria-label="command.dialog.title"]');
+    expect(trigger).not.toBeNull();
+    await act(async () => trigger?.click());
+    expect(document.querySelector('[data-slot="dialog-content"]')?.textContent).toContain('Nibleaf Docs');
+  });
+
   it('opens inside a cmdk root and lists projects plus the go-to shortcuts', async () => {
     await render(true);
 

@@ -1,4 +1,3 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useTheme } from '@nibleaf/design-system/theme';
@@ -17,7 +16,6 @@ import {
   Moon,
   PenLine,
   Plus,
-  Search,
   Settings,
   SlidersHorizontal,
   Sun,
@@ -28,7 +26,6 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
 import { QueryErrorState } from '@/components/query-error-state';
 import { usePages, useProjects } from '@/hooks/api';
-import { useSearchShortcutLabel } from '@/lib/shortcut';
 
 /** Site-settings destinations people look for most, with English aliases so
  *  "domain", "team" or "language" find them whatever the label says. */
@@ -44,33 +41,8 @@ const RECENT_PAGE_LIMIT = 6;
 
 const CommandPaletteContext = createContext<(() => void) | null>(null);
 
-/** The same search affordance in the workspace and per-site headers. */
-export function ShellSearchButton() {
-  const t = useT();
-  const openPalette = useContext(CommandPaletteContext);
-  const searchShortcut = useSearchShortcutLabel();
-  return (
-    <Button
-      aria-label={t('command.dialog.title')}
-      className="ms-auto h-8 shrink-0 gap-2 px-2.5 text-muted-foreground md:w-40 md:px-3 xl:w-56 pointer-coarse:h-10 pointer-coarse:min-w-10"
-      onClick={() => openPalette?.()}
-      size="sm"
-      variant="outline"
-    >
-      <Search aria-hidden className="size-3.5" />
-      <span aria-hidden className="hidden flex-1 text-start md:inline">
-        {t('dashboard.search.placeholder')}
-      </span>
-      <kbd
-        aria-hidden
-        className="hidden rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[11px] xl:inline pointer-coarse:hidden"
-        dir="ltr"
-      >
-        {searchShortcut}
-      </kbd>
-    </Button>
-  );
-}
+/** Opens the app-wide palette; null outside the signed-in app shell. */
+export const useOpenCommandPalette = () => useContext(CommandPaletteContext);
 
 /**
  * Mounted once for the whole signed-in app (routes/app/route.tsx), so Ctrl/⌘+K

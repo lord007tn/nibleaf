@@ -5,8 +5,8 @@ import { useT } from '@nibleaf/i18n/react';
 import { useRouterState } from '@tanstack/react-router';
 import type { CSSProperties, ReactNode } from 'react';
 import { AppSidebar } from '@/components/app/app-sidebar';
-import { ShellSearchButton } from '@/components/app/command-palette';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
+import { ShellSearchButton } from '@/components/app/shell-search-button';
 
 /** Derive the header title key from the current dashboard route. */
 function titleKeyFromPathname(pathname: string): MessageKey {

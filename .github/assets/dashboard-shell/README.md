@@ -19,6 +19,23 @@ Document overflow was also zero before the fix, despite clipped portaled popups.
 
 [15.48-second Arabic mobile interaction recording](mobile-shell-ar.webm)
 
+## Published-docs bundle follow-up
+
+Exact gzip level-9 route-preload totals, measured in the same worktree against base main `52de4bc2`:
+
+| Profile | Main | Before fix (`05997a9a`) | After fix | Change from main |
+| --- | ---: | ---: | ---: | ---: |
+| public-docs | 346,320 bytes | 346,427 bytes | 346,060 bytes | -260 bytes |
+| public-docs-index | 345,497 bytes | 345,604 bytes | 345,238 bytes | -259 bytes |
+
+The latest main update (#389) was merged, and fresh main/branch builds produced identical eager assets and module reports to the earlier comparison against `a9cfb175`.
+
+The original 107-byte increase in each profile came from generated Vite preload metadata and changed content hashes. Every eager module ID and rendered byte count was identical to main; Popover, Sidebar, Breadcrumb and MESSAGE_IDS were absent from both eager-module reports. The entry's 14 raw added bytes were generated dependency metadata, not message-ID entries.
+
+The shared header search button now lives in its own app component, with the palette-opening hook restored. This keeps its icon and shortcut imports out of the app-wide palette's dependency graph. The resulting reader shortcut module is 122 rendered bytes smaller than main, and neither published-docs profile grows. No message-ID exception or budget increase is used. Popover bounds, localized sidebar names and header behavior are preserved. A component regression verifies that the separate header button still opens the app-wide palette.
+
+The council measurement helper was copied locally and excluded from Git. Browser captures remain the historical evidence above; this module-boundary change has no visible UI change.
+
 ## Council review follow-up
 
 The bell now uses the plain localized name when the unread count is zero, including after marking all notifications read. Positive counts retain the formatted unread name and badge. The notification component suite verifies counts 0, 1, 12, and 1,234 and the transition to zero; all 12 tests passed. The browser script's zero-state expectation was updated to the plain localized label, but that script and the gallery were not rerun for this accessible-name-only correction. Their receipts below remain historical evidence from the initial delivery.
