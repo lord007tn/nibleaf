@@ -11,6 +11,10 @@ interface PendingChangesLike {
   changes: ReadonlyArray<{ id: string; status: string }>;
 }
 
+/** The live-only deployments list (publishes that went live, newest first). Kept
+ *  here, not in ./query-keys, which ships with published docs: dashboard-only. */
+export const liveDeploymentsKey = (projectId: string) => [...queryKeys.deployments.all(projectId), 'live'] as const;
+
 type LiveCandidate = Pick<Deployment, 'id' | 'status' | 'version'>;
 
 /** Every READY row of the polled list (newest 50 attempts) and the live-only list, newest first, once each. */
@@ -91,7 +95,7 @@ export const syncPublishReceipt = (
   }
   void queryClient.resetQueries({ queryKey: queryKeys.deployments.changes(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.latest(projectId) });
-  void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.live(projectId), exact: true });
+  void queryClient.invalidateQueries({ queryKey: liveDeploymentsKey(projectId), exact: true });
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all(), exact: true });
   // The site's own publish facts (how many went live, whether one is exportable).
   void queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });

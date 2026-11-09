@@ -2,7 +2,7 @@ import type { IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
 import { infiniteQueryOptions, keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
-import { syncPublishReceipt } from './deployment-cache';
+import { liveDeploymentsKey, syncPublishReceipt } from './deployment-cache';
 import type { ExportRun, ExportSchedule } from './exports';
 import type { GitWorkflowStatus } from './git-workflow';
 import { queryKeys } from './query-keys';
@@ -121,7 +121,7 @@ export const deploymentsQueryOptions = (projectId: string | undefined) =>
  *  push every live version out of it. */
 export const liveDeploymentsQueryOptions = (projectId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.deployments.live(projectId ?? ''),
+    queryKey: liveDeploymentsKey(projectId ?? ''),
     queryFn: projectId
       ? async () =>
           getData<Deployment[]>(

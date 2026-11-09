@@ -29,8 +29,6 @@ export const queryKeys = {
   deployments: {
     all: (projectId: string) => ['deployments', projectId] as const,
     latest: (projectId: string) => ['deployments', projectId, 'latest'] as const,
-    /** Only publishes that went live, newest first (not capped by failed attempts). */
-    live: (projectId: string) => ['deployments', projectId, 'live'] as const,
     changes: (projectId: string) => ['deployments', projectId, 'changes'] as const,
     detail: (projectId: string, id: string) => ['deployments', projectId, id] as const,
     diff: (projectId: string, id: string) => ['deployments', projectId, id, 'diff'] as const,
