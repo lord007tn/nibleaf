@@ -1,0 +1,92 @@
+{
+  "image": "nibleaf-runtime:389-operators",
+  "services": {
+    "server": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "revision": "42640b930f306687ebbbd9560bf88e5f8063da68"
+      }
+    },
+    "worker": {
+      "status": 200,
+      "health": {
+        "status": "ok",
+        "service": "worker",
+        "revision": "42640b930f306687ebbbd9560bf88e5f8063da68",
+        "queues": {
+          "status": "ok",
+          "workers": [
+            {
+              "queue": "publish",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "search",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "email",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "analytics",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "export",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "git",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            },
+            {
+              "queue": "erasure",
+              "ready": true,
+              "reason": "ready",
+              "client": "ready",
+              "blockingClient": "ready"
+            }
+          ]
+        },
+        "email": {
+          "status": "disabled",
+          "provider": "none",
+          "required": false
+        },
+        "analytics": {
+          "configured": true,
+          "latencyMs": 16,
+          "status": "ok"
+        }
+      }
+    },
+    "app": {
+      "status": 200
+    },
+    "admin": {
+      "status": 200
+    }
+  },
+  "imageId": "sha256:67669ca1262398a6cf502a4cd0ffa4308e5abe730098cff82068b4389bf2b035",
+  "sourceRevision": "42640b930f306687ebbbd9560bf88e5f8063da68"
+}
