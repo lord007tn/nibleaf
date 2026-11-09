@@ -2,6 +2,7 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@nibleaf/design-system/components/ui/table';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import {
@@ -26,7 +27,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { compareDelta } from '@/components/analytics/insights/metrics';
-import { SectionCard } from '@/components/analytics/section-card';
+import { STAT_GRID, StatCard } from '@/components/analytics/stat-card';
 import { ViewsAreaChart } from '@/components/analytics/views-area-chart';
 import { InlineSkeleton } from '@/components/inline-skeleton';
 import { ViewOnlyBanner } from '@/components/project/view-only-notice';
@@ -316,26 +317,26 @@ function SiteOverviewPage() {
       </div>
 
       {/* KPI cards */}
-      <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SectionCard
+      <div className={cn('mt-6', STAT_GRID)}>
+        <StatCard
           label={t('overview.stats.pages')}
           value={pagesFailed ? null : pageCount}
           icon={<FileText className="size-4" />}
           loading={pagesPending && !pagesFailed}
         />
-        <SectionCard
+        <StatCard
           label={t('overview.stats.members')}
           value={membersFailed ? null : memberCount}
           icon={<Users className="size-4" />}
           loading={membersPending && !membersFailed}
         />
-        <SectionCard
+        <StatCard
           label={t('overview.stats.deploys')}
           value={deploymentsFailed ? null : deployCount}
           icon={<Rocket className="size-4" />}
           loading={deploymentsPending && !deploymentsFailed}
         />
-        <SectionCard
+        <StatCard
           label={t('overview.stats.pageviews')}
           value={analytics?.totalViews ?? null}
           icon={<BarChart3 className="size-4" />}

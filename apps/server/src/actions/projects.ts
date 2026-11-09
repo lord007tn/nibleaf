@@ -88,7 +88,9 @@ const nonStarterPublishWhere: Prisma.DeploymentWhereInput = {
  *  Each site also says how many publishes on it went live (`livePublishes`: any
  *  member's, the sign-up starter publish excluded)
  *  and whether one is queued or running now (`publishing`), so the dashboard's
- *  first-run checklist is decided by this one request for any number of sites. */
+ *  first-run checklist is decided by this one request for any number of sites.
+ *  `live`/`lastPublishedAt` describe what readers can open now (starter included),
+ *  for the site status shown on the overview and the sites list. */
 export const listProjects = async (userId: string) => {
   const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
   const organizationIds = memberships.map((m) => m.organizationId);
@@ -97,24 +99,44 @@ export const listProjects = async (userId: string) => {
     orderBy: { updatedAt: 'desc' },
     include: { _count: { select: { pages: { where: contentPagesWhere }, deployments: true } } },
   });
-  const activity =
+  const projectIds = projects.map((project) => project.id);
+  const [activity, newestLive] =
     projects.length === 0
+      ? [[], []]
+      : await Promise.all([
+          prisma.deployment.groupBy({
+            by: ['projectId', 'status'],
+            where: {
+              projectId: { in: projectIds },
+              OR: [
+                // Live publishes count the user's own, not the sign-up starter's automatic one...
+                { status: 'READY', ...nonStarterPublishWhere },
+                // ...but any publish in flight, the starter's included, is "Publishing…".
+                { status: { in: ['PENDING', 'BUILDING'] } },
+              ],
+            },
+            _count: { _all: true },
+          }),
+          // Readers see the highest READY version (the starter publish included).
+          prisma.deployment.groupBy({ by: ['projectId'], where: { projectId: { in: projectIds }, status: 'READY' }, _max: { version: true } }),
+        ]);
+  const liveVersions = newestLive.flatMap((row) => (row._max.version === null ? [] : [{ projectId: row.projectId, version: row._max.version }]));
+  // One bounded read for those versions' own timestamps; independent maxima could mix two versions.
+  const liveRows =
+    liveVersions.length === 0
       ? []
-      : await prisma.deployment.groupBy({
-          by: ['projectId', 'status'],
-          where: {
-            projectId: { in: projects.map((project) => project.id) },
-            status: { in: ['READY', 'PENDING', 'BUILDING'] },
-            ...nonStarterPublishWhere,
-          },
-          _count: { _all: true },
-        });
+      : await prisma.deployment.findMany({ where: { OR: liveVersions }, select: { projectId: true, completedAt: true, createdAt: true } });
   return projects.map((project) => {
     const rows = activity.filter((row) => row.projectId === project.id);
+    const live = liveRows.find((row) => row.projectId === project.id);
     return {
       ...project,
       livePublishes: rows.filter((row) => row.status === 'READY').reduce((sum, row) => sum + row._count._all, 0),
       publishing: rows.some((row) => row.status !== 'READY' && row._count._all > 0),
+      /** The site has a published version readers can open (the starter publish counts). */
+      live: Boolean(live),
+      /** When the version readers see went live; null before the first publish. */
+      lastPublishedAt: live ? (live.completedAt ?? live.createdAt) : null,
     };
   });
 };

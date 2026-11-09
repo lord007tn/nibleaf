@@ -205,14 +205,17 @@ const internalRequestHeaders = () => {
   };
 };
 
-/** Public machine documents intentionally never inherit reader credentials. */
-const publicMachineRequestHeaders = () => {
-  const requestAuth = publishedRequestAuth.getStore();
-  return {
-    ...(requestAuth?.ip ? { 'x-nibleaf-client-ip': requestAuth.ip } : {}),
-    'x-nibleaf-ssr': '1',
-    ...(requestAuth?.ip && INTERNAL_API_SECRET ? { 'x-nibleaf-internal': INTERNAL_API_SECRET } : {}),
-  };
+/** Headers of a proxied site document worth passing on: cacheability, what it
+ *  varies on, and whether it may be indexed. A private site's document is the
+ *  signed-in viewer's own (`private, no-store`, `Vary: Cookie, Authorization`,
+ *  `noindex`); a public one stays shared-cacheable. */
+const passThroughDocumentHeaders = (upstream: Record<string, string | string[] | undefined>): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  for (const name of ['cache-control', 'vary', 'x-robots-tag']) {
+    const value = upstream[name];
+    if (typeof value === 'string' && value) headers[name] = value;
+  }
+  return headers;
 };
 
 // ─── Custom-domain host → project resolution ─────────────────────────────────
@@ -372,9 +375,7 @@ async function proxySeoDocument(projectId: string, file: string, origin?: string
         // robots.txt points at the API-served sitemap; on a domain it lives at the root.
         .replace(new RegExp(`https?://[^/]+/api/public/sites/${projectId}/sitemap\\.xml`, 'g'), `${origin}/sitemap.xml`);
     }
-    const headers: Record<string, string> = { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8' };
-    const cacheControl = response.headers['cache-control'];
-    if (cacheControl) headers['cache-control'] = cacheControl;
+    const headers = { 'content-type': SEO_CONTENT_TYPE[file] ?? 'text/plain; charset=utf-8', ...passThroughDocumentHeaders(response.headers) };
     return { ok: true, response: new Response(body, { status: 200, headers }) };
   } catch {
     return null;
@@ -389,14 +390,15 @@ async function proxyPublishedMarkdown(projectId: string, path: string, search: U
     const version = path.replace(/^\/+|\/+$/gu, '').split('/')[0];
     if (version) query.set('version', version);
     const response = await got(`${SELF}/api/public/sites/${projectId}/markdown?${query}`, {
-      headers: publicMachineRequestHeaders(),
+      // The visitor's own credentials: a signed-in reader of a private site gets
+      // the Markdown of pages they can read. The API decides cacheability (public
+      // sites ignore credentials, so their Markdown stays shared-cacheable).
+      headers: internalRequestHeaders(),
       retry: { limit: 0 },
       throwHttpErrors: false,
     });
     if (!response.ok) return { ok: false, status: response.statusCode };
-    const headers: Record<string, string> = { 'content-type': 'text/markdown; charset=utf-8' };
-    const cacheControl = response.headers['cache-control'];
-    if (cacheControl) headers['cache-control'] = cacheControl;
+    const headers = { 'content-type': 'text/markdown; charset=utf-8', ...passThroughDocumentHeaders(response.headers) };
     return { ok: true, response: new Response(response.body, { status: 200, headers }) };
   } catch {
     return null;
@@ -409,7 +411,8 @@ const siteMarkdownUnavailableResponse = (origin: string): Response => {
     {
       status: 404,
       headers: {
-        'cache-control': 'no-store',
+        // Whether a page has Markdown can depend on who asks (a private site's readers).
+        'cache-control': 'private, no-store',
         'content-type': 'text/markdown; charset=utf-8',
         'x-robots-tag': 'noindex, nofollow',
       },
