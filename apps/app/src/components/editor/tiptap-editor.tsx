@@ -107,11 +107,12 @@ export function seedMarkdown(editor: Editor, markdown: string): void {
   // Replacing the document maps the selection to its end. When the page ends
   // with an image, that is a node selection on the image, which reads as "the
   // user selected this image" and opens its controls over the content on every
-  // load (AUTH-17). A freshly seeded page starts with the caret in its first
-  // text instead, or its last text when it opens with an image.
+  // load (AUTH-17). A freshly seeded page starts with the caret at its first
+  // text position instead; a document with no text position keeps the mapped
+  // selection.
   const { doc, selection } = editor.state;
   if (selection instanceof NodeSelection) {
-    const caret = TextSelection.findFrom(doc.resolve(0), 1, true) ?? TextSelection.findFrom(doc.resolve(doc.content.size), -1, true);
+    const caret = TextSelection.findFrom(doc.resolve(0), 1, true);
     if (caret) editor.view.dispatch(editor.state.tr.setSelection(caret).setMeta('addToHistory', false));
   }
 }

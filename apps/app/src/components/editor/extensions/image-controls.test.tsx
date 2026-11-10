@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
+import { undoDepth } from '@tiptap/pm/history';
 import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
 import { act } from 'react';
@@ -60,15 +61,37 @@ describe('image description controls', () => {
       'ends with an image',
       ['Install the app.', ['| Name | Value |', '| --- | --- |', '| a | b |'].join(NL), '![Screenshot](/shot.png)'].join(NL + NL),
     ],
-    ['starts with an image', ['![Logo](/logo.png)', 'Welcome to the docs.'].join(NL + NL)],
+    ['is only an image', '![Screenshot](/shot.png)'],
   ])('stays closed when a page that %s loads, with nothing selected by the user (AUTH-17)', async (_label, markdown) => {
     await mount();
     await act(async () => seedMarkdown(editor, markdown));
-    expect(editor.state.selection).toBeInstanceOf(TextSelection);
     expect(editor.isActive('image')).toBe(false);
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     // The image itself is untouched.
-    expect(getMarkdown(editor)).toMatch(/\/(shot|logo)\.png/);
+    expect(getMarkdown(editor)).toContain('/shot.png');
+  });
+
+  it('stays closed across repeated seeding (switching pages), and the caret move is not an undo step', async () => {
+    await mount();
+    const endsWithImage = ['Intro', '![Screenshot](/shot.png)'].join(NL + NL);
+    for (const markdown of [endsWithImage, endsWithImage, ['Other page', '![Chart](/chart.png)'].join(NL + NL)]) {
+      await act(async () => seedMarkdown(editor, markdown));
+      expect(editor.state.selection).toBeInstanceOf(TextSelection);
+      expect(container.querySelector('[role="dialog"]')).toBeNull();
+    }
+    // The caret move adds no undo step of its own: the history is as deep as
+    // after seeding the same pages when they end with text (no caret move).
+    const depthWithMove = undoDepth(editor.state);
+    await act(async () => {
+      root.unmount();
+      editor.destroy();
+    });
+    container.remove();
+    await mount();
+    for (const markdown of [['Intro', 'End.'].join(NL + NL), ['Intro', 'End.'].join(NL + NL), ['Other page', 'End.'].join(NL + NL)]) {
+      await act(async () => seedMarkdown(editor, markdown));
+    }
+    expect(depthWithMove).toBe(undoDepth(editor.state));
   });
 
   it('still opens when the user selects the image after the page loads', async () => {
