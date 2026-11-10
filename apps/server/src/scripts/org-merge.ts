@@ -95,7 +95,7 @@ const allowedMetadata = new Set(['plan', 'entitlements', 'notifications', 'git',
 const validSlug = (slug: string) =>
   /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) && !['new', 'settings', 'welcome', 'o', 'api', 'app', 'admin'].includes(slug);
 export const mergedName = (names: string[], ownerName: string) => {
-  const named = names.filter((name) => name !== 'My workspace' && !/^.+['’]s workspace$/.test(name));
+  const named = names.filter((name) => name !== 'My workspace' && !/^.+'s workspace$/.test(name));
   if (named.length === 1) return named[0] ?? 'My organization';
   const first = ownerName.trim().split(/\s+/)[0];
   return first ? `${first}'s organization` : 'My organization';
@@ -104,15 +104,18 @@ export const mergedName = (names: string[], ownerName: string) => {
 /** Plans contain fingerprints, never the raw snapshot or secret values. */
 export async function snapshot(tx: Db, orgIds: string[]): Promise<Snapshot> {
   const ids = Prisma.join(orgIds);
-  const result: Snapshot = {};
+  const result: Snapshot = { $fingerprints: [] };
   for (const table of Object.keys(primaryKeys)) {
     let where: Prisma.Sql;
     if (table === 'organization') where = Prisma.sql`id IN (${ids})`;
     else if (table === 'join_link_use' || table === 'join_link_redemption')
       where = Prisma.sql`"joinLinkId" IN (SELECT id FROM join_link WHERE "organizationId" IN (${ids}))`;
     else where = Prisma.sql`"organizationId" IN (${ids})`;
-    const rows = await tx.$queryRaw<Array<{ row: Row }>>(Prisma.sql`SELECT to_jsonb(t) AS row FROM ${Prisma.raw(quote(table))} t WHERE ${where}`);
+    const rows = await tx.$queryRaw<Array<{ row: Row; fingerprint: string }>>(
+      Prisma.sql`SELECT to_jsonb(t) AS row,encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS fingerprint FROM ${Prisma.raw(quote(table))} t WHERE ${where}`,
+    );
     result[table] = sortRows(rows.map(({ row }) => row));
+    result.$fingerprints?.push(...rows.map(({ row, fingerprint }) => ({ table, key: keyFor(table, row), fingerprint })));
   }
   const projectIds = (result.project ?? []).map((row) => row.id as string);
   for (const table of [
@@ -124,12 +127,24 @@ export async function snapshot(tx: Db, orgIds: string[]): Promise<Snapshot> {
     'project_legacy_settings',
   ]) {
     const where = projectIds.length ? Prisma.sql`"projectId" IN (${Prisma.join(projectIds)})` : Prisma.sql`false`;
-    const legacy = table.startsWith('usage_') ? Prisma.sql`OR "organizationId" IN (${ids})` : Prisma.empty;
-    const rows = await tx.$queryRaw<Array<{ row: Row }>>(
-      Prisma.sql`SELECT to_jsonb(t) AS row FROM ${Prisma.raw(quote(table))} t WHERE ${where} ${legacy}`,
+    const partitions = (result.project ?? []).map((row) => row.dataTenantId as string);
+    const historical =
+      table === 'usage_provider_checkpoint' && partitions.length ? Prisma.sql`OR \"organizationId\" IN (${Prisma.join(partitions)})` : Prisma.empty;
+    const legacy = table.startsWith('usage_') ? Prisma.sql`OR \"organizationId\" IN (${ids}) ${historical}` : Prisma.empty;
+    const rows = await tx.$queryRaw<Array<{ row: Row; fingerprint: string }>>(
+      Prisma.sql`SELECT to_jsonb(t) AS row,encode(sha256(convert_to(to_jsonb(t)::text,'UTF8')),'hex') AS fingerprint FROM ${Prisma.raw(quote(table))} t WHERE ${where} ${legacy}`,
     );
     result[table] = sortRows(rows.map(({ row }) => row));
+    result.$fingerprints?.push(...rows.map(({ row, fingerprint }) => ({ table, key: keyFor(table, row), fingerprint })));
   }
+  result.$metadata = sortRows(
+    await tx.$queryRaw<Row[]>(Prisma.sql`
+    SELECT o.id AS "organizationId", field.key,
+      encode(sha256(convert_to(field.value::text,'UTF8')),'hex') AS fingerprint
+    FROM organization o CROSS JOIN LATERAL jsonb_each(
+      CASE WHEN jsonb_typeof(legacy_metadata_json(o.metadata))='object' THEN legacy_metadata_json(o.metadata) ELSE '{}'::jsonb END
+    ) field WHERE o.id IN (${ids})`),
+  );
   const users = [
     ...new Set(
       [
@@ -142,6 +157,8 @@ export async function snapshot(tx: Db, orgIds: string[]): Promise<Snapshot> {
   result.user = users.length
     ? await tx.$queryRaw<Row[]>(Prisma.sql`SELECT id,name,email,banned,"suspendedAt" FROM "user" WHERE id IN (${Prisma.join(users)}) ORDER BY id`)
     : [];
+  result.$fingerprints?.push(...result.user.map((row) => ({ table: 'user', key: keyFor('user', row), fingerprint: digest(row) })));
+  sortRows(result.$fingerprints ?? []);
   return result;
 }
 
@@ -266,10 +283,28 @@ function makeGroup(state: Snapshot, ownerId: string, day: string, decision?: Mer
   const owner = state.user?.find((row) => row.id === ownerId);
   const survivor = orgs.find((org) => state.project?.some((row) => row.organizationId === org.id)) ?? orgs[0];
   if (!survivor) throw new Error('Empty owner group');
-  const handle = orgs.find((org) => validSlug(org.slug));
+  const orgOrder = new Map(orgs.map((org, index) => [org.id, index]));
+  const handle =
+    [...(state.organization_handle ?? [])]
+      .filter((row) => validSlug(row.slug))
+      .sort(
+        (a, b) =>
+          a.createdAt.localeCompare(b.createdAt) ||
+          (orgOrder.get(a.organizationId) ?? 0) - (orgOrder.get(b.organizationId) ?? 0) ||
+          a.slug.localeCompare(b.slug),
+      )[0] ?? orgs.find((org) => validSlug(org.slug));
   const rowDigests = Object.fromEntries(
-    Object.entries(state).map(([table, rows]) => [table, Object.fromEntries(rows.map((row) => [keyFor(table, row), digest(row)]))]),
+    Object.entries(state)
+      .filter(([table]) => !table.startsWith('$'))
+      .map(([table, rows]) => [table, Object.fromEntries(rows.map((row) => [keyFor(table, row), digest(row)]))]),
   );
+  for (const row of state.$fingerprints ?? []) {
+    const table = String(row.table);
+    const entries = rowDigests[table] ?? {};
+    entries[String(row.key)] = row.fingerprint;
+    rowDigests[table] = entries;
+  }
+  delete rowDigests.$fingerprints;
   const group: MergeGroup = {
     key: ownerId,
     ownerId,
@@ -318,21 +353,28 @@ function makeGroup(state: Snapshot, ownerId: string, day: string, decision?: Mer
   if (state.usage_provider_checkpoint?.some((row) => row.status === 'pending')) group.reasons.push('pending provider receipts');
   const plans = orgs.map((org) => state.organization_usage_plan?.find((row) => row.organizationId === org.id));
   const planSet = new Set(plans.map((row) => canonical(row ? [row.planId, row.status, row.expiresAt] : null)));
-  if (
-    planSet.size > 1 &&
-    !(decision?.reason.trim() && plans.some((row) => row?.organizationId === decision.organizationId && row.planId === decision.plan))
-  )
-    group.reasons.push('plan conflict: explicit human decision required');
+  const validDecision = !!(
+    decision?.reason.trim() && plans.some((row) => row?.organizationId === decision.organizationId && row.planId === decision.plan)
+  );
+  if (decision && !validDecision) group.reasons.push('invalid human plan decision');
+  if (planSet.size > 1 && !validDecision) group.reasons.push('plan conflict: explicit human decision required');
+
   const metas = orgs.map((org) => json(org.metadata));
   const unknown = [...new Set(metas.flatMap((meta) => Object.keys(meta).filter((key) => !allowedMetadata.has(key))))].sort();
-  const metadata = unknown.map((key) => ({ key, fingerprints: metas.map((meta) => digest(meta[key] ?? null)) }));
+  const metadata = unknown.map((key) => ({
+    key,
+    fingerprints: metas.map(
+      (meta, index) =>
+        state.$metadata?.find((row) => row.organizationId === orgs[index]?.id && row.key === key)?.fingerprint ?? digest(meta[key] ?? null),
+    ),
+  }));
   for (const entry of metadata) if (new Set(entry.fingerprints).size > 1) group.reasons.push(`unclassified metadata differs: ${entry.key}`);
   for (const key of ['plan', 'entitlements'])
-    if (new Set(metas.map((meta) => digest(meta[key] ?? null))).size > 1 && !decision) group.reasons.push(`metadata.${key} conflict`);
+    if (new Set(metas.map((meta) => digest(meta[key] ?? null))).size > 1 && !validDecision) group.reasons.push(`metadata.${key} conflict`);
   const next = transformed(state, group);
   group.after = permissions(next);
   group.summary = {
-    reason: 'oldest organization with a website, then lowest id',
+    reason: state.project?.length ? 'oldest organization with a website, then lowest id' : 'no websites; oldest organization, then lowest id',
     organizations: orgs.map((org) => ({
       id: org.id,
       name: org.name,
@@ -445,11 +487,24 @@ async function writeRow(tx: Db, table: string, row: Row | null, identity: Row) {
     await tx.$executeRaw(Prisma.sql`DELETE FROM ${Prisma.raw(quote(table))} WHERE ${where}`);
     return;
   }
-  const columns = Object.keys(row);
-  const updates = columns.filter((col) => !keys.includes(col));
-  await tx.$executeRaw(Prisma.sql`INSERT INTO ${Prisma.raw(quote(table))} (${Prisma.raw(columns.map(quote).join(','))})
-    SELECT ${Prisma.raw(columns.map(quote).join(','))} FROM jsonb_populate_record(NULL::${Prisma.raw(quote(table))}, ${JSON.stringify(row)}::jsonb)
-    ON CONFLICT (${Prisma.raw(keys.map(quote).join(','))}) DO UPDATE SET ${Prisma.raw(updates.map((col) => `${quote(col)}=EXCLUDED.${quote(col)}`).join(','))}`);
+  const [existing] = await tx.$queryRaw<Array<{ row: Row }>>(Prisma.sql`SELECT to_jsonb(t) AS row FROM ${Prisma.raw(quote(table))} t WHERE ${where}`);
+  if (existing) {
+    const changed = Object.keys(row).filter((key) => !keys.includes(key) && canonical(row[key]) !== canonical(existing.row[key]));
+    if (!changed.length) return;
+    // Never round-trip unchanged JSON/decimal/configuration through JS numbers.
+    // PostgreSQL retains every untouched column in its original representation.
+    const setters = Prisma.join(
+      changed.map(
+        (col) =>
+          Prisma.sql`${Prisma.raw(quote(col))}=(SELECT ${Prisma.raw(quote(col))} FROM jsonb_populate_record(NULL::${Prisma.raw(quote(table))},${JSON.stringify(row)}::jsonb))`,
+      ),
+    );
+    await tx.$executeRaw(Prisma.sql`UPDATE ${Prisma.raw(quote(table))} SET ${setters} WHERE ${where}`);
+  } else {
+    const columns = Object.keys(row);
+    await tx.$executeRaw(Prisma.sql`INSERT INTO ${Prisma.raw(quote(table))} (${Prisma.raw(columns.map(quote).join(','))})
+      SELECT ${Prisma.raw(columns.map(quote).join(','))} FROM jsonb_populate_record(NULL::${Prisma.raw(quote(table))},${JSON.stringify(row)}::jsonb)`);
+  }
 }
 
 // JSONB normalizes object-key order. Record just the key shape, with no leaf
@@ -472,7 +527,7 @@ function inOriginalOrder(value: any, shape: any): any {
 function journalImage(table: string, row: Row | null, state: Snapshot): Row | null {
   if (!row) return null;
   const image = structuredClone(row);
-  if (table === 'project') {
+  if (table === 'project' || table === 'notification') {
     const { organizationId, ...retained } = row;
     return { id: row.id, organizationId, retainedFingerprint: digest(retained) };
   }
@@ -501,8 +556,10 @@ function journalImage(table: string, row: Row | null, state: Snapshot): Row | nu
 async function hydrate(tx: Db, table: string, image: Row | null): Promise<Row | null> {
   if (!image) return null;
   const row = structuredClone(image);
-  if (table === 'project') {
-    const [current] = await tx.$queryRaw<Array<{ row: Row }>>`SELECT to_jsonb(p) AS row FROM project p WHERE id=${row.id}`;
+  if (table === 'project' || table === 'notification') {
+    const [current] = await tx.$queryRaw<Array<{ row: Row }>>(
+      Prisma.sql`SELECT to_jsonb(p) AS row FROM ${Prisma.raw(quote(table))} p WHERE id=${row.id}`,
+    );
     if (!current) throw new Error('Website was deleted');
     const { organizationId: _, ...retained } = current.row;
     if (digest(retained) !== row.retainedFingerprint) throw new Error('Website after-image drift');
@@ -558,7 +615,7 @@ export async function applyMerge(plan: MergePlan, options: { db?: typeof prisma;
               if (done.length) {
                 return {
                   groupKey: input.key,
-                  status: done[0]?.table_name === '@restored' ? 'already restored; create a new plan' : 'already applied',
+                  status: done.some((row) => row.table_name === '@restored') ? 'already restored; create a new plan' : 'already applied',
                 };
               }
               await lockGroups(tx, input.orgIds);
@@ -632,7 +689,8 @@ export async function applyMerge(plan: MergePlan, options: { db?: typeof prisma;
 export async function verifyMerge(runId: string, db = prisma) {
   return db.$transaction(
     async (tx) => {
-      const entries = await tx.$queryRaw<Row[]>`SELECT after FROM org_merge_journal WHERE run_id=${runId} AND table_name='@group' ORDER BY seq`;
+      const entries = await tx.$queryRaw<Row[]>`SELECT after FROM org_merge_journal WHERE run_id=${runId} AND table_name='@group'
+        AND group_key NOT IN (SELECT group_key FROM org_merge_journal WHERE run_id=${runId} AND table_name='@restored') ORDER BY seq`;
       if (!entries.length) throw new Error('Unknown or restored run');
       const results: Array<{ groupKey: string; status: string; reason?: string }> = [];
       for (const entry of entries) {
@@ -676,6 +734,10 @@ export async function restoreMerge(runId: string, options: { db?: typeof prisma;
       if (!entries.length) throw new Error('Unknown run');
       const results: Array<{ groupKey: string; status: string; reason?: string }> = [];
       for (const marker of entries.filter((row) => row.table_name === '@group')) {
+        if (entries.some((row) => row.group_key === marker.group_key && row.table_name === '@restored')) {
+          results.push({ groupKey: marker.group_key, status: 'already restored' });
+          continue;
+        }
         await tx.$executeRawUnsafe('SAVEPOINT org_merge_restore');
         const group = marker.after.group as MergeGroup;
         try {
@@ -699,7 +761,6 @@ export async function restoreMerge(runId: string, options: { db?: typeof prisma;
           }
           await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
           if (digest(await snapshot(tx, group.orgIds)) !== marker.before.digest) throw new Error('Restored input digest differs');
-          await tx.$executeRaw`DELETE FROM org_merge_journal WHERE run_id=${runId} AND group_key=${group.key}`;
           await journal(tx, runId, group.key, '@restored', group.key, null, { restored: true });
           results.push({ groupKey: group.key, status: 'restored' });
         } catch (error) {

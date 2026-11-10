@@ -81,7 +81,9 @@ describe.skipIf(process.env.ORG_MERGE_INTEGRATION !== '1')('organization merge o
     await prisma.project.deleteMany({ where: { organizationId: { in: orgIds } } });
     await prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
-    await prisma.usageProviderCheckpoint.deleteMany({ where: { organizationId: { in: orgIds } } });
+    await prisma.usageProviderCheckpoint.deleteMany({
+      where: { OR: [{ organizationId: { in: orgIds } }, { reconciliationId: { startsWith: prefix } }] },
+    });
     await prisma.usagePlan.deleteMany({ where: { id: { in: planIds } } });
     await prisma.$disconnect();
   });
@@ -125,11 +127,14 @@ describe.skipIf(process.env.ORG_MERGE_INTEGRATION !== '1')('organization merge o
         payloadDigest: 'synthetic',
       },
     });
+    const oldestAlias = `${source.id}-old-alias`;
+    await prisma.organizationHandle.create({ data: { slug: oldestAlias, organizationId: source.id, current: false, createdAt: new Date(1) } });
     const before = await read(ids);
     const plan = await onePlan(f.owner.id);
     expect(digest(await read(ids))).toBe(digest(before));
     expect(await prisma.orgMergeJournal.count({ where: { runId: plan.runId } })).toBe(0);
     expect(plan.groups[0]?.name).toBe('API Docs');
+    expect(plan.groups[0]?.slug).toBe(oldestAlias);
     expect(await applyMerge(plan, { quota })).toEqual([{ groupKey: f.owner.id, status: 'applied' }]);
     expect(await applyMerge(plan, { quota })).toEqual([{ groupKey: f.owner.id, status: 'already applied' }]);
     expect(await verifyMerge(plan.runId)).toEqual([{ groupKey: f.owner.id, status: 'verified' }]);
@@ -147,6 +152,10 @@ describe.skipIf(process.env.ORG_MERGE_INTEGRATION !== '1')('organization merge o
     expect((await prisma.organization.findUniqueOrThrow({ where: { id: survivor } })).metadata).toContain('"member_invited":false');
     expect(await restoreMerge(plan.runId, { offline: true })).toEqual([{ groupKey: f.owner.id, status: 'restored' }]);
     expect(canonical(await read(ids))).toBe(canonical(before));
+    expect(await prisma.orgMergeJournal.count({ where: { runId: plan.runId } })).toBeGreaterThan(1);
+    expect(await restoreMerge(plan.runId, { offline: true })).toEqual([{ groupKey: f.owner.id, status: 'already restored' }]);
+    expect((await applyMerge(plan, { quota }))[0]?.status).toBe('already restored; create a new plan');
+    await expect(verifyMerge(plan.runId)).rejects.toThrow('restored');
   });
 
   it('skips input drift and does not call Redis', async () => {
@@ -197,6 +206,10 @@ describe.skipIf(process.env.ORG_MERGE_INTEGRATION !== '1')('organization merge o
       b = plan.groups.find((group) => group.ownerId === second.owner.id);
     if (!a || !b) throw new Error('Missing fixture groups');
     plan.groups = [a, b];
+    const typo = structuredClone(plan);
+    typo.groups = [{ ...a, decision: { plan: 'missing', organizationId: a.survivorId, reason: 'Synthetic typo' } }];
+    expect((await applyMerge(typo, { quota }))[0]?.status).toBe('skipped');
+
     const before = await read(b.orgIds);
     let calls = 0;
     const result = await applyMerge(plan, {
@@ -256,6 +269,71 @@ describe.skipIf(process.env.ORG_MERGE_INTEGRATION !== '1')('organization merge o
     expect((await prisma.project.findUniqueOrThrow({ where: { id: single.sites[0]!.id } })).organizationId).toBe(single.orgs[0]!.id);
     expect(await restoreMerge(plan.runId, { offline: true })).toEqual([{ groupKey: second.owner.id, status: 'restored' }]);
     expect(digest(await read(second.orgs.map((org) => org.id)))).toBe(digest(before));
+  });
+
+  it('preserves exact JSONB configuration, notification params and large accepted receipt quantities', async () => {
+    const f = await fixture(),
+      site = f.sites[1]!,
+      source = f.orgs[1]!;
+    const raw = '{"exact":9007199254740993,"apiKey":"fictional-config-keep"}';
+    await prisma.$executeRaw`UPDATE project SET config=${raw}::jsonb WHERE id=${site.id}`;
+    const notification = await prisma.notification.create({
+      data: { organizationId: source.id, userId: f.owner.id, type: 'fixture', title: 'Synthetic' },
+    });
+    await prisma.$executeRaw`UPDATE notification SET params=${raw}::jsonb WHERE id=${notification.id}`;
+    const receipt = await prisma.usageProviderCheckpoint.create({
+      data: {
+        organizationId: site.dataTenantId,
+        reconciliationId: `${prefix}-${source.id}-large`,
+        provider: 'fixture',
+        meterKey: 'fixture',
+        quantity: '99999999999999999999999999999999999999',
+        periodStart: new Date(),
+        periodEnd: new Date(),
+        status: 'accepted',
+      },
+    });
+    const exact = async () => {
+      const [project] = await prisma.$queryRaw<Array<{ value: string }>>`SELECT config::text AS value FROM project WHERE id=${site.id}`;
+      const [notice] = await prisma.$queryRaw<Array<{ value: string }>>`SELECT params::text AS value FROM notification WHERE id=${notification.id}`;
+      const [provider] = await prisma.$queryRaw<
+        Array<{ value: string }>
+      >`SELECT quantity::text AS value FROM usage_provider_checkpoint WHERE id=${receipt.id}`;
+      return { project, notice, provider };
+    };
+    const before = await exact(),
+      plan = await onePlan(f.owner.id);
+    expect((await applyMerge(plan, { quota }))[0]?.status).toBe('applied');
+    expect(await exact()).toEqual(before);
+    expect(await restoreMerge(plan.runId, { offline: true })).toEqual([{ groupKey: f.owner.id, status: 'restored' }]);
+    expect(await exact()).toEqual(before);
+  });
+
+  it('blocks a pending historical-partition receipt without projectId and detects JSONB integer drift beyond JS precision', async () => {
+    const f = await fixture(),
+      site = f.sites[1]!;
+    const receipt = await prisma.usageProviderCheckpoint.create({
+      data: {
+        organizationId: site.dataTenantId,
+        reconciliationId: `${prefix}-${site.id}-pending`,
+        provider: 'fixture',
+        meterKey: 'fixture',
+        quantity: 1,
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      },
+    });
+    expect((await onePlan(f.owner.id)).groups[0]?.reasons).toContain('pending provider receipts');
+    await prisma.usageProviderCheckpoint.delete({ where: { id: receipt.id } });
+    await prisma.organization.update({ where: { id: f.orgs[0]!.id }, data: { metadata: '{"opaque":9007199254740993}' } });
+    await prisma.organization.update({ where: { id: f.orgs[1]!.id }, data: { metadata: '{"opaque":9007199254740992}' } });
+    expect((await onePlan(f.owner.id)).groups[0]?.reasons).toContain('unclassified metadata differs: opaque');
+    await prisma.organization.updateMany({ where: { id: { in: f.orgs.map((org) => org.id) } }, data: { metadata: '{}' } });
+
+    await prisma.$executeRaw`UPDATE project SET config='{"exact":9007199254740993}'::jsonb WHERE id=${site.id}`;
+    const plan = await onePlan(f.owner.id);
+    await prisma.$executeRaw`UPDATE project SET config='{"exact":9007199254740992}'::jsonb WHERE id=${site.id}`;
+    expect(await applyMerge(plan, { quota })).toEqual([{ groupKey: f.owner.id, status: 'skipped', reason: 'input digest drift' }]);
   });
 
   it('requires an offline assertion for restore', async () => {

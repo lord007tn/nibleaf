@@ -66,7 +66,8 @@ Do not normalize live metadata merely to bypass this check without reviewing it.
 Restore checks the complete group snapshot and every changed row before writing.
 A new website/invitation, changed grant/account/metadata, or missing copy refuses
 the group. It replays journal sequence in reverse, retaining original IDs, and
-compares the restored snapshot with the original digest. `verify` compares
+compares the restored snapshot with the original digest. The undo rows remain
+intact, with a restored marker, so the run retains its audit history. `verify` compares
 permissions and calls production `resolveSiteAccess` and account checks for each
 person/site pair, including denied siblings.
 
@@ -150,7 +151,7 @@ remain integration acceptance checks; these tests do not claim those outcomes.
   passes, as do both new-resolver checks. All 152 surviving old member/site
   roles in the raw-run database matched; all 23 in the adapted-run database
   matched. Zero access mismatches.
-- Focused merge/credential/legacy-trigger suite: 19 passed on a fresh database.
+- Focused merge/credential/legacy-trigger suite: 21 passed on a fresh database.
 - `pnpm turbo run typecheck`: 27 tasks passed.
 - `node --test scripts/*.test.mjs`: 131 passed, 20 skipped, zero failures.
 - Fresh `migrate deploy`: all 52 migrations applied. Prisma diff has no
@@ -171,3 +172,10 @@ The test-owning agent must reuse/assert the existing current handle there, then
 retain the second-current rejection assertion. That file is intentionally outside
 this implementation branch's ownership. This fixture update is required before
 PR CI can be green; the new script tests already assert automatic registration.
+
+The final cleanup also verifies PostgreSQL-generated SHA-256 fingerprints for
+input rows, including exact JSONB/decimal values beyond JavaScript integer
+precision. Updates write only changed columns, keeping website configuration and
+notification payloads unchanged. The oldest valid registry handle includes aliases,
+not just the organizations' current slug mirrors. Pending legacy provider receipts
+are checked by immutable website partition even when `projectId` is null.
