@@ -13,7 +13,8 @@ const projectsRoutes = {
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
   create: createRouteConfig({
-    // Any signed-in user can start a new site; they become its owner.
+    // Organization Owner/Admin of the body's organizationId (checked in createProject:
+    // the org comes from the body, not the path). Never creates an organization.
     guard: isAuthenticated,
     tags: ['projects'],
     description: 'Create a documentation site.',
@@ -64,7 +65,8 @@ const projectsRoutes = {
   remove: createRouteConfig({
     guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],
     tags: ['projects'],
-    description: 'Delete a documentation site.',
+    // Site Admins pass this guard; deleteProject additionally requires org Owner/Admin.
+    description: 'Delete a documentation site (organization owners and admins only).',
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
 };
