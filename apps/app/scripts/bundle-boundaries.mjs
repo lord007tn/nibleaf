@@ -25,6 +25,10 @@ const forbiddenPublicModules = [
   /\/apps\/app\/src\/components\/(?:app|project|project-settings|settings|editor|oauth)\//,
   /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
   /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
+  // Route ids and validateSearch parsers stay in non-split route options.
+  /\/apps\/app\/src\/features\/(?![^/]+\/model\/(?:ids|[^/]+-search)\.ts$)/,
+  // Dashboard form plumbing and app-level UI adapters.
+  /\/apps\/app\/src\/(?:lib\/forms|components\/ui)\//,
   /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
   // The signed-in shell's intent preload, which reads the dashboard's chunk lists.
   /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,
@@ -116,7 +120,7 @@ export function nonReaderRouteBytes(modules) {
 // same data hooks, so a chunk is the dashboard's only when none of the other
 // lazy imports of the chunk holding the preload table loads it.
 const DASHBOARD_ONLY_MODULE =
-  /\/apps\/app\/src\/(?:routes\/app\/|components\/(?:app|project|project-settings|settings|analytics|ai-conversations)\/|hooks\/api\/)/;
+  /\/apps\/app\/src\/(?:routes\/app\/|features\/|components\/(?:app|project|project-settings|settings|analytics|ai-conversations)\/|hooks\/api\/)/;
 const DASHBOARD_ROUTE_MODULE = /\/apps\/app\/src\/routes\/app\//;
 
 /** The files of a chunk's `__vite__mapDeps` preload table (`m.f=[…]`), or []. */
