@@ -18,7 +18,7 @@ baseApp.use('*', observabilityMiddleware());
 baseApp.route('/', middlewares);
 
 baseApp.notFound((ctx) => {
-  throw new AppError({ code: 'http:not_found', details: { route: ctx.req.url } });
+  throw new AppError({ code: 'http:not_found', details: { route: ctx.req.path } });
 });
 
 baseApp.onError((err, ctx) =>
