@@ -259,7 +259,7 @@ function ProjectPreview() {
           </>
         }
         content={
-          // The site shell (SidebarInset) is already the page's <main>; this is the
+          // The site layout already renders the page's <main>; this is the
           // skip target, past the preview's own page list.
           <div className="min-h-0 flex-1 overflow-y-auto bg-background outline-none" data-theme-region="preview-main" id="main-content" tabIndex={-1}>
             <div className="flex flex-wrap items-center justify-between gap-2 border-border border-b p-3">

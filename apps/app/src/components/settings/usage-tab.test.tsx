@@ -109,4 +109,41 @@ describe('UsageTab progress semantics', () => {
     expect(unused.now).toBe('0');
     expect(unused.text).toEqual({ key: 'settings.usage.progressValueNoShare', used: '0', limit: '0' });
   });
+
+  it('says why a number is missing instead of a bare Unknown (audit WORKSPACE-19)', async () => {
+    mocks.usage.mockReturnValue({
+      isPending: false,
+      isError: false,
+      data: {
+        plan: { key: 'free' },
+        availability: 'unavailable',
+        period: { start: '2026-11-01T00:00:00.000Z', endExclusive: '2026-12-01T00:00:00.000Z' },
+        meters: [
+          {
+            key: 'public_page_view',
+            unit: 'count',
+            quantity: null,
+            limit: null,
+            ratio: null,
+            state: 'unknown',
+            availability: 'unavailable',
+            unavailableReason: 'metering_disabled',
+          },
+          {
+            key: 'search_query',
+            unit: 'count',
+            quantity: null,
+            limit: null,
+            ratio: null,
+            state: 'unknown',
+            availability: 'unavailable',
+            unavailableReason: null,
+          },
+        ],
+      },
+    });
+    await act(async () => root.render(<UsageTab project={{ id: 'project-1' } as Project} />));
+    expect(container.querySelector('[data-meter="public_page_view"]')?.textContent).toContain('settings.usage.reason.meteringDisabled');
+    expect(container.querySelector('[data-meter="search_query"]')?.textContent).toContain('settings.usage.unknownExplanation');
+  });
 });

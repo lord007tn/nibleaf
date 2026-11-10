@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@nibleaf/bullmq', async (original) => ({
   ...(await original<typeof import('@nibleaf/bullmq')>()),
   createJob: vi.fn(async () => undefined),
+  getJob: vi.fn(async () => undefined),
+  removeJob: vi.fn(async () => undefined),
   sendRequiredEmail: vi.fn(async () => undefined),
 }));
 
@@ -25,6 +27,8 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
     projects = await import('./projects');
   }, 120_000);
   afterAll(async () => {
+    // project → organization is Restrict from PR 2 on: websites go first.
+    await db.prisma.project.deleteMany({ where: { organizationId: { in: orgIds } } });
     await db.prisma.organization.deleteMany({ where: { id: { in: orgIds } } });
     await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await db.prisma.$disconnect();
@@ -38,8 +42,9 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
    * (and the expand backfill) wrote them: only the legacy `role` column. */
   const legacyFixture = async () => {
     const owner = await person();
-    const site = await projects.createProject(owner.id, { name: `Rollback ${randomUUID().slice(0, 8)}` });
-    orgIds.push(site.organizationId);
+    const org = await organizations.createOrganization(owner.id, `Rollback ${randomUUID().slice(0, 8)}`);
+    orgIds.push(org.id);
+    const site = await projects.createProject(owner.id, { name: `Rollback ${randomUUID().slice(0, 8)}`, organizationId: org.id });
     const legacy = async (role: string) => {
       const user = await person();
       // No orgRole: the legacy-writer triggers derive orgRole + the site grant.
@@ -121,14 +126,18 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
     });
   });
 
-  describe('new websites share the org partition in PR 1 (fix 4)', () => {
-    it('createProject', async () => {
+  describe('website data partitions (fix 4, PR 2 follow-up)', () => {
+    it('a new website gets an independent partition, never its org id', async () => {
       const owner = await person();
-      const site = await projects.createProject(owner.id, { name: `Partition ${randomUUID().slice(0, 8)}` });
-      orgIds.push(site.organizationId);
-      expect(site.dataTenantId).toBe(site.organizationId);
+      const org = await organizations.createOrganization(owner.id, `Partition ${randomUUID().slice(0, 8)}`);
+      orgIds.push(org.id);
+      const a = await projects.createProject(owner.id, { name: `A ${randomUUID().slice(0, 8)}`, organizationId: org.id });
+      const b = await projects.createProject(owner.id, { name: `B ${randomUUID().slice(0, 8)}`, organizationId: org.id });
+      expect(a.dataTenantId).not.toBe(org.id);
+      expect(b.dataTenantId).not.toBe(org.id);
+      expect(a.dataTenantId).not.toBe(b.dataTenantId);
     });
-    it('platform-created websites', async () => {
+    it('platform-created websites get an independent partition too', async () => {
       const admin = await import('./admin');
       const staff = await person('admin');
       const created = await admin.inviteOrganizationOwner(staff.id, {
@@ -139,25 +148,27 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
       });
       orgIds.push(created.organizationId);
       const site = await db.prisma.project.findUniqueOrThrow({ where: { id: created.projectId } });
-      expect(site.dataTenantId).toBe(created.organizationId);
+      expect(site.dataTenantId).not.toBe(created.organizationId);
     });
   });
 
-  describe('deleting an organization row still removes its website (fix 5)', () => {
-    it('keeps project → organization ON DELETE CASCADE', async () => {
+  describe('an organization with a website cannot be deleted (fix 5, PR 2 follow-up)', () => {
+    it('project → organization is ON DELETE RESTRICT', async () => {
       const [fk] = await db.prisma.$queryRaw<Array<{ action: string }>>`
         SELECT confdeltype::text AS action FROM pg_constraint WHERE conname = 'project_organizationId_fkey'`;
-      expect(fk?.action).toBe('c');
+      expect(fk?.action).toBe('r');
     });
-    it("the previous release's organization delete takes the website with it", async () => {
+    it('a raw organization delete is refused while it holds a website', async () => {
       const f = await legacyFixture();
-      await db.prisma.$executeRaw`DELETE FROM organization WHERE id = ${f.organizationId}`;
-      expect(await db.prisma.project.count({ where: { id: f.site.id } })).toBe(0);
-    });
-    it('new code never deletes an organization that still holds a website', async () => {
-      const f = await legacyFixture();
-      await db.prisma.organization.deleteMany({ where: { id: f.organizationId, projects: { none: {} } } });
+      await expect(db.prisma.$executeRaw`DELETE FROM organization WHERE id = ${f.organizationId}`).rejects.toThrow();
       expect(await db.prisma.project.count({ where: { id: f.site.id } })).toBe(1);
+    });
+    it('PR 1 erasure (the rollback target) still works: website first, then the org', async () => {
+      const { eraseProjectOrganization } = await import('@nibleaf/auth/tenant-erasure');
+      const f = await legacyFixture();
+      await eraseProjectOrganization(f.organizationId, f.site.id);
+      expect(await db.prisma.project.count({ where: { id: f.site.id } })).toBe(0);
+      expect(await db.prisma.organization.count({ where: { id: f.organizationId } })).toBe(0);
     });
   });
 });

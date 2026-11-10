@@ -64,7 +64,7 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/:id', ...projectsRoutes.remove, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await deleteProject(organizationId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await deleteProject(getContextUserOrThrow().id, organizationId, ctx.req.param('id')) }, 200);
   });
 
 export default app;

@@ -10,7 +10,18 @@ import { toast } from 'sonner';
 import { useCreateProject } from '@/hooks/api';
 import { required } from '@/lib/form';
 
-export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+/** New website, created inside `organizationId` (§6.10): no new organization, you land in its editor. */
+export function NewProjectDialog({
+  open,
+  onOpenChange,
+  organizationId,
+  organizationName,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  organizationId: string;
+  organizationName?: string;
+}) {
   const create = useCreateProject();
   const t = useT();
   const navigate = useNavigate();
@@ -19,7 +30,7 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
     onSubmit: async ({ value }) => {
       await new Promise<void>((resolve) => {
         create.mutate(
-          { name: value.name.trim() },
+          { name: value.name.trim(), organizationId },
           {
             onSuccess: (project) => {
               toast.success(t('newSite.created'));
@@ -50,7 +61,7 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
         >
           <DialogHeader>
             <DialogTitle>{t('newSite.title')}</DialogTitle>
-            <DialogDescription>{t('newSite.desc')}</DialogDescription>
+            <DialogDescription>{organizationName ? t('newSite.descInOrganization', { org: organizationName }) : t('newSite.desc')}</DialogDescription>
           </DialogHeader>
           <div className="my-4 flex flex-col gap-1.5">
             <form.Field name="name" validators={{ onChange: ({ value }) => required(t('newSite.name'), t)(value) }}>

@@ -96,6 +96,19 @@ export default defineConfig(({ mode }) => {
                     },
                   },
                   {
+                    // Small modules every page needs (button, icon factory, brand mark, a few
+                    // Base UI hooks, the standalone translator). Without a group Rolldown splits
+                    // each into its own chunk once the dashboard shell shares them, and eight
+                    // tiny files gzip ~4 KiB worse than one for every published docs page.
+                    name: 'shell-ui',
+                    priority: 50,
+                    minSize: 0,
+                    test: (id) =>
+                      /\/(?:packages\/design-system\/src\/(?:components\/ui\/button|brand\/)|node_modules\/lucide-react\/dist\/esm\/(?:createLucideIcon|Icon|defaultAttributes|shared\/)|node_modules\/@base-ui\/(?:utils\/(?:useOpenChangeComplete|useValueChanged|useTimeout)|react\/direction-provider\/DirectionContext)|packages\/i18n\/src\/standalone\.ts$)/.test(
+                        id.replaceAll('\\', '/'),
+                      ),
+                  },
+                  {
                     name: 'standalone-i18n',
                     test: (id) =>
                       /\/packages\/i18n\/src\/paraglide\/messages\/(?:common_loading|error_(?:backhome|badge|title|tryagain|unexpected)|notfound_(?:backhome|badge|body|title))\.js$/.test(
