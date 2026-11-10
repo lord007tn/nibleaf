@@ -165,9 +165,10 @@ const aiCrawlerSummary = (insights: AiVisibilityInsights, languageRequested: boo
 };
 
 export const getSupportAnalytics = async (principal: McpPrincipal, kind: InvestigationKind, input: SupportRange) => {
-  const { id: projectId, organizationId: tenantId } = principal.project;
-  const project = await prisma.project.findFirst({ where: { id: projectId, organizationId: tenantId }, select: { config: true } });
+  const { id: projectId, organizationId } = principal.project;
+  const project = await prisma.project.findFirst({ where: { id: projectId, organizationId }, select: { config: true, dataTenantId: true } });
   if (!project) throw new AppError({ code: 'database:not_found', message: 'Project not found.' });
+  const tenantId = project.dataTenantId;
   // Match the existing overview: shadow_read keeps relational results authoritative.
   const source = keys().ANALYTICS_MODE === 'clickhouse' ? 'clickhouse' : 'relational';
   if (source === 'clickhouse' && (kind === 'get_top_searches' || kind === 'get_failed_searches'))
@@ -225,7 +226,7 @@ export const getSupportAnalytics = async (principal: McpPrincipal, kind: Investi
       totals.push({ key: 'other', count: number(all[0]?.count) - totals.reduce((sum, row) => sum + number(row.count), 0) });
     }
   } else {
-    const common = Prisma.sql`a."projectId" = ${projectId} AND EXISTS (SELECT 1 FROM project p WHERE p.id = a."projectId" AND p."organizationId" = ${tenantId}) AND a."createdAt" >= ${range.from} AND a."createdAt" <= ${range.to} AND (${range.language ?? ''} = '' OR a.language = ${range.language ?? ''})`;
+    const common = Prisma.sql`a."projectId" = ${projectId} AND EXISTS (SELECT 1 FROM project p WHERE p.id = a."projectId" AND p."organizationId" = ${organizationId}) AND a."createdAt" >= ${range.from} AND a."createdAt" <= ${range.to} AND (${range.language ?? ''} = '' OR a.language = ${range.language ?? ''})`;
     if (searches) {
       totals = await prisma.$queryRaw<Row[]>(Prisma.sql`SELECT count(*) AS count FROM analytics_event a WHERE ${common} AND type = 'search' LIMIT 1`);
       if (termsEnabled && kind === 'get_top_searches')

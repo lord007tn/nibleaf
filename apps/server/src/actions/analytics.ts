@@ -205,7 +205,7 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
   if (!clickHouseReadsEnabled(config.ANALYTICS_MODE)) {
     return getRelationalAnalyticsOverview(organizationId, projectId, range, timezone);
   }
-  const clickhouse = await queryProjectAnalytics(project.organizationId, projectId, range, timezone);
+  const clickhouse = await queryProjectAnalytics(project.dataTenantId, projectId, range, timezone);
   if (config.ANALYTICS_MODE === 'clickhouse') return { ...clickhouse, source: 'clickhouse' as const, topSearches: [] };
 
   const relational = await getRelationalAnalyticsOverview(organizationId, projectId, range, timezone);
@@ -229,10 +229,10 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
   const organizationIds = memberships.map(({ organizationId }) => organizationId);
   const projects = await prisma.project.findMany({
     where: { organizationId: { in: organizationIds } },
-    select: { id: true, name: true, organizationId: true, config: true },
+    select: { id: true, name: true, dataTenantId: true, config: true },
   });
   const clickhouse = await queryWorkspaceAnalytics(
-    projects.map((project) => ({ tenantId: project.organizationId, projectId: project.id })),
+    projects.map((project) => ({ tenantId: project.dataTenantId, projectId: project.id })),
     range,
     timezone,
   );
@@ -264,7 +264,7 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
 
 export const getProjectAnalyticsExport = async (organizationId: string, projectId: string, before?: string, limit?: number) => {
   const project = await assertProjectInOrg(organizationId, projectId);
-  return exportProjectAnalytics(project.organizationId, project.id, { before, limit });
+  return exportProjectAnalytics(project.dataTenantId, project.id, { before, limit });
 };
 
 /** How long the hot path waits for the queue before falling back to a direct
@@ -370,7 +370,7 @@ export const trackProjectEvents = async (
 ): Promise<void> => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, organizationId: true, accessMode: true, config: true },
+    select: { id: true, dataTenantId: true, accessMode: true, config: true },
   });
   if (!project) return;
   const projectConfig = project.config as ProjectConfig | null;
@@ -379,7 +379,7 @@ export const trackProjectEvents = async (
     payloads.map((payload) =>
       trackEvent(
         {
-          tenantId: project.organizationId,
+          tenantId: project.dataTenantId,
           projectId: project.id,
           userAgent: options.userAgent,
           siteHost: options.siteHost,

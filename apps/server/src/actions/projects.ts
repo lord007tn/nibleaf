@@ -150,6 +150,7 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
     const org = await tx.organization.create({ data: { name: body.name } });
     await assignDefaultUsagePlan(tx, org.id);
     await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER } });
+    // Project.dataTenantId gets an independent cuid from the Prisma default.
     const project = await tx.project.create({
       data: {
         organizationId: org.id,

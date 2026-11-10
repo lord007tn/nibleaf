@@ -41,6 +41,7 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   const created = await prisma.$transaction(async (tx) => {
     const organization = await tx.organization.create({ data: { name: input.organizationName.trim() } });
     await assignDefaultUsagePlan(tx, organization.id);
+    // Project.dataTenantId gets an independent cuid from the Prisma default.
     const project = await tx.project.create({
       data: {
         organizationId: organization.id,

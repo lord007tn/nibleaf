@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/env', () => ({ env: { SEARCH_ANSWER_MIN_CONFIDENCE: 0.2, BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret-00' } }));
 vi.mock('@/lib/env-extras', () => ({ envExtras: mocks.extras }));
 vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: mocks.request.current } }) }));
-vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: vi.fn(async () => ({ organizationId: 'org-1' })) } } }));
+vi.mock('@nibleaf/database', () => ({ prisma: { project: { findUnique: vi.fn(async () => ({ dataTenantId: 'org-1' })) } } }));
 vi.mock('./sites', () => ({ resolvePublishedAnswerContext: mocks.context, deviceFromUserAgent: () => 'desktop' }));
 vi.mock('./analytics', () => ({ trackProjectEvent: mocks.track }));
 vi.mock('@/lib/ai-search/runtime', () => ({ resolveChatRuntime: mocks.runtime, retrieveChatContext: mocks.retrieve }));
