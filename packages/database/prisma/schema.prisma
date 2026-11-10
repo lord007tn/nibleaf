@@ -51,6 +51,8 @@ model User {
   oauthConsents      OauthConsent[]
   mcpOAuthGrants     McpOAuthGrant[]
   siteMemberSessions SiteMemberSession[]
+  preference      UserPreference?
+  joinLinkRedemptions JoinLinkRedemption[]
 
   @@map("user")
 }
@@ -115,7 +117,9 @@ model Verification {
 model Organization {
   id        String   @id @default(cuid())
   name      String
-  slug      String?  @unique
+  slug      String   @unique @default(cuid())
+  needsRepair Boolean @default(false)
+  deletionStartedAt DateTime?
   logo      String?
   metadata  String?
   createdAt DateTime @default(now())
@@ -124,6 +128,7 @@ model Organization {
   invitations Invitation[]
   joinLinks   JoinLink[]
   projects    Project[]
+  handles     OrganizationHandle[]
   usagePlan          OrganizationUsagePlan?
   usageStorageMarker UsageStorageMarker?
   usageIngestCheckpoints UsageIngestCheckpoint[]
@@ -290,11 +295,86 @@ model Member {
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           String       @default("member")
+  orgRole        String       @default("member")
+  projectGrants  ProjectMember[]
   createdAt      DateTime     @default(now())
 
   @@unique([organizationId, userId])
   @@index([userId])
   @@map("member")
+}
+
+model ProjectMember {
+  id             String @id @default(cuid())
+  organizationId String
+  projectId      String
+  userId         String
+  role           String
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  member         Member @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([organizationId, userId])
+  @@map("project_member")
+}
+
+model InvitationGrant {
+  invitationId   String
+  organizationId String
+  projectId      String
+  role           String
+  invitation     Invitation @relation(fields: [invitationId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([invitationId, projectId])
+  @@map("invitation_grant")
+}
+
+model JoinLinkGrant {
+  joinLinkId     String
+  organizationId String
+  projectId      String
+  role           String
+  joinLink       JoinLink @relation(fields: [joinLinkId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([joinLinkId, projectId])
+  @@map("join_link_grant")
+}
+
+model JoinLinkRedemption {
+  joinLinkId String
+  userId     String
+  createdAt  DateTime @default(now())
+  joinLink   JoinLink @relation(fields: [joinLinkId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([joinLinkId, userId])
+  @@map("join_link_redemption")
+}
+
+model OrganizationHandle {
+  slug           String @id
+  organizationId String
+  current        Boolean
+  createdAt      DateTime @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_handle")
+}
+
+model UserPreference {
+  userId             String @id
+  lastOrganizationId String?
+  recentProjectIds   String[] @default([])
+  notifications      Json @default("{}")
+  updatedAt          DateTime @updatedAt
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference")
 }
 
 model Invitation {
@@ -303,12 +383,16 @@ model Invitation {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String
   role           String?
+  kind           String       @default("member")
+  orgRole        String       @default("member")
+  grants         InvitationGrant[]
   status         String       @default("pending")
   expiresAt      DateTime
   inviterId      String
   inviter        User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("invitation")
 }
@@ -326,6 +410,9 @@ model JoinLink {
   label          String?
   /// Role granted on join: viewer | member | admin. Never owner.
   role           String        @default("member")
+  orgRole        String        @default("member")
+  grants         JoinLinkGrant[]
+  redemptions    JoinLinkRedemption[]
   /// Lower-case email domain the joiner's verified address must use, or null for any.
   allowedDomain  String?
   maxUses        Int?
@@ -338,6 +425,7 @@ model JoinLink {
   updatedAt      DateTime      @updatedAt
   uses           JoinLinkUse[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("join_link")
 }
@@ -642,10 +730,11 @@ enum OpenApiSourceType {
 /// A documentation site.
 model Project {
   id             String            @id @default(cuid())
-  // Each site owns its own Organization (1:1) — that org IS the site's member
-  // boundary, so members/roles/invitations are per-site. See provisionSiteOrg.
-  organizationId String            @unique
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  members        ProjectMember[]
+  invitationGrants InvitationGrant[]
+  joinLinkGrants  JoinLinkGrant[]
   name           String
   slug           String
   description    String?
@@ -711,6 +800,8 @@ model Project {
 
   @@unique([organizationId, slug])
   @@unique([slug])
+  @@unique([id, organizationId])
+  @@index([organizationId])
   @@map("project")
 }
 
@@ -1911,6 +2002,7 @@ model Notification {
   id        String    @id @default(cuid())
   userId    String
   projectId String?
+  organizationId String?
   type      String
   title     String
   body      String?
