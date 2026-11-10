@@ -757,13 +757,22 @@ that changes only unrelated fields (`updatedAt`, counters) is not a change.
    - if the form is dirty and the server change touches fields the person has not edited, those fields update in
      `current` and the baseline moves;
    - if it touches a field the person has edited, the edit is kept and a `Callout` offers "This was changed elsewhere.
-     Use theirs / Keep mine". There is no silent overwrite either way.
+     Use theirs / Keep mine". There is no silent overwrite either way. A conflict stays until the person resolves it or
+     the draft matches the server again. A later refetch that touches other fields never clears it;
+   - during a save, the refetch only merges values. It never resets the form and never drops the save's snapshot or its
+     pending state, even when the form looks clean (the person typed the value back).
 3. **When a save succeeds**, the baseline becomes `submitted`, reconciled with the response's values when they differ
    (server normalization). Fields the person edited **during** the request (`current ≠ submitted` for that field) keep
    their newer values and stay dirty. Today `general-section.tsx:130` does this by hand; the hook makes it the default.
 4. **When a save fails**, the baseline is unchanged, the form stays dirty, field errors are mapped (§6.4), and
    `submitted` is cleared.
 5. **Discard** resets `current` to `baseline`. It is disabled while a save is pending.
+6. **One save at a time.** Every submit, whether Save, Enter or Cmd/Ctrl+S, goes through the hook's `submit()`. It takes a
+   synchronous lock and records a snapshot for that request. A submit while a save is in flight returns `'busy'` and
+   sends nothing. Only that request's own completion releases the lock, so pending can't end early. "Saving" is the
+   hook's state (`isSaving`), not TanStack's `isSubmitting`, which a form reset clears.
+7. **Field errors from a save apply only to the value that was sent.** If the field has changed since (a corrected
+   address while the refusal of the old one was in flight), the new value stays clean and can be saved.
 
 `useServerDraft` is a small state machine in `lib/forms/server-draft.ts`, with unit tests for every rule above.
 
