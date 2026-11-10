@@ -15,13 +15,17 @@ export const isValidOrganizationHandle = (slug: string) => ORGANIZATION_HANDLE_P
  * empty result (an Arabic-only name, for example) or a reserved word becomes
  * `org-<first 6 chars of the id>`.
  */
+/** Linear-time trim of `-` (an anchored `-+$` regex backtracks on long runs). */
+const trimDashes = (value: string) => {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === '-') start++;
+  while (end > start && value[end - 1] === '-') end--;
+  return value.slice(start, end);
+};
+
 export const organizationHandleBase = (name: string, organizationId: string) => {
-  const base = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, MAX_ORGANIZATION_HANDLE_BASE)
-    .replace(/-+$/g, '');
+  const base = trimDashes(trimDashes(name.toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, MAX_ORGANIZATION_HANDLE_BASE));
   return base && !RESERVED_ORGANIZATION_HANDLES.has(base) ? base : `org-${organizationId.slice(0, 6).toLowerCase()}`;
 };
 
