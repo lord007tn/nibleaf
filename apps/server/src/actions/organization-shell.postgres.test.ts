@@ -15,7 +15,7 @@ vi.mock('@nibleaf/bullmq', async (original) => ({
   getJob: vi.fn(async () => undefined),
   removeJob: vi.fn(async () => undefined),
   sendRequiredEmail: vi.fn(async () => undefined),
-}))
+}));
 
 /**
  * The organization shell's server side (design §5.4) against a real database:

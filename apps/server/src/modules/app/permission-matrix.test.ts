@@ -340,11 +340,11 @@ describe('dashboard API permission matrix', () => {
     state.organizationId = 'org-1';
     state.role = null;
     state.deleting = true;
-    const send = (method: string, path: string, body = '{}') =>
-      harness.request(path, { method, headers: { 'content-type': 'application/json' }, body }).then(async (response) => ({
-        status: response.status,
-        code: ((await response.json().catch(() => ({}))) as { code?: string }).code,
-      }));
+    const send = async (method: string, path: string, body = '{}') => {
+      const response = await harness.request(path, { method, headers: { 'content-type': 'application/json' }, body });
+      const payload = (await response.json().catch(() => ({}))) as { code?: string };
+      return { status: response.status, code: payload.code };
+    };
     try {
       state.orgRole = 'owner';
       const resumed = await send('DELETE', '/organizations/org-1', JSON.stringify({ confirmName: 'x' }));
