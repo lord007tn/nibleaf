@@ -515,7 +515,8 @@ export const useCancelProjectInvitation = (projectId: string) => {
         await api.app.projects[':projectId'].members.invitations[':id'].$delete({ param: { projectId, id } }),
         'Could not revoke the invitation.',
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
+    // A refused revoke (already accepted) also means the list is out of date.
+    onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };
 

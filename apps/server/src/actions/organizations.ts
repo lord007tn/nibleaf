@@ -303,10 +303,19 @@ export async function sendOrganizationInvitations(
   }
 }
 
+/** Only a pending invitation can be revoked. An accepted one already made a
+ *  membership (remove the member instead); revoking it must never report a
+ *  removal that did not happen. Runs under the org lock, so it serializes with
+ *  acceptance. */
+export const assertRevocable = (invitation: { status: string; expiresAt: Date } | null) => {
+  if (!invitation) throw notFound('invitation');
+  if (invitation.status === 'accepted')
+    throw conflict('This invitation was already accepted. Remove the member instead.', { reason: 'invitation_accepted' });
+  if (invitation.status !== 'pending') throw conflict('This invitation is no longer pending.', { reason: 'invitation_not_pending' });
+};
 export const cancelOrganizationInvitation = (organizationId: string, actorId: string, id: string) =>
   withOrganization(organizationId, actorId, async (tx) => {
-    const invite = await tx.invitation.findFirst({ where: { id, organizationId } });
-    if (!invite) throw notFound('invitation');
+    assertRevocable(await tx.invitation.findFirst({ where: { id, organizationId }, select: { status: true, expiresAt: true } }));
     await tx.invitation.update({ where: { id }, data: { status: 'canceled' } });
     return { id };
   });

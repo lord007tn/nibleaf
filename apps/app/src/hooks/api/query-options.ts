@@ -260,6 +260,9 @@ export const projectMembersQueryOptions = (projectId: string | undefined) =>
   queryOptions({
     queryKey: queryKeys.members.forProject(projectId ?? ''),
     queryFn: projectId ? async () => getData(await api.app.projects[':projectId'].members.$get({ param: { projectId } }), 'members') : skipToken,
+    // Invitations are accepted elsewhere: never keep showing an accepted one as pending.
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
 
 /** The first inbox page (newest 50). */

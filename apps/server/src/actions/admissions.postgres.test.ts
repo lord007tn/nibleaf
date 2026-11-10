@@ -463,4 +463,31 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
     expect(await db.prisma.joinLinkRedemption.count({ where: { joinLinkId: link.id, userId: user.id } })).toBe(1);
     expect(await grantRoles(f.org.id, user.id)).toEqual([[f.projectId, 'admin']]);
   });
+  describe('revoking an invitation that is no longer pending (WORKSPACE-09)', () => {
+    for (const via of ['website', 'organization'] as const)
+      it(`refuses an accepted invitation from the ${via} and leaves the membership alone`, async () => {
+        const f = await fixture();
+        const user = await person();
+        const invitation = await invite(f, user, 'member', [{ projectId: f.projectId, role: 'viewer' }]);
+        await admissions.admit(user.id, { invitationId: invitation.id });
+        const revoke =
+          via === 'website'
+            ? members.cancelInvitation(f.org.id, invitation.id, f.owner.id, f.projectId)
+            : organizations.cancelOrganizationInvitation(f.org.id, f.owner.id, invitation.id);
+        await expect(revoke).rejects.toMatchObject({ status: 409, details: { reason: 'invitation_accepted' } });
+        expect((await db.prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id } })).status).toBe('accepted');
+        expect(await db.prisma.invitationGrant.count({ where: { invitationId: invitation.id } })).toBe(1);
+        expect(await grantRoles(f.org.id, user.id)).toEqual([[f.projectId, 'viewer']]);
+      });
+    it('refuses a canceled invitation and still revokes a pending one', async () => {
+      const f = await fixture();
+      const pending = await invite(f, await person(), 'member', [{ projectId: f.projectId, role: 'viewer' }]);
+      await members.cancelInvitation(f.org.id, pending.id, f.owner.id, f.projectId);
+      expect((await db.prisma.invitation.findUniqueOrThrow({ where: { id: pending.id } })).status).toBe('canceled');
+      await expect(members.cancelInvitation(f.org.id, pending.id, f.owner.id, f.projectId)).rejects.toMatchObject({
+        status: 409,
+        details: { reason: 'invitation_not_pending' },
+      });
+    });
+  });
 });
