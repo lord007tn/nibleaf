@@ -60,6 +60,7 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
         inviterId: issuerId,
         email: user.email,
         orgRole,
+        kind: 'member',
         role: 'viewer',
         expiresAt: new Date(Date.now() + 86_400_000),
         grants: { create: grants },
@@ -85,6 +86,7 @@ describe.skipIf(process.env.ADMISSION_INTEGRATION !== '1')('transactional organi
             email: user.email,
             role: 'viewer',
             orgRole: 'member',
+            kind: 'member',
             expiresAt: new Date(Date.now() + 86_400_000),
           },
         });
