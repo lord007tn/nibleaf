@@ -509,16 +509,17 @@ async function writeRow(tx: Db, table: string, row: Row | null, identity: Row) {
 
 // JSONB normalizes object-key order. Record just the key shape, with no leaf
 // values, so restoring a legacy JSON string reproduces its original bytes.
-function jsonShape(value: any): any {
+type JsonShape = JsonShape[] | { keys: string[]; children: Record<string, JsonShape> } | null;
+function jsonShape(value: unknown): JsonShape {
   if (Array.isArray(value)) return value.map(jsonShape);
   if (value && typeof value === 'object')
     return { keys: Object.keys(value), children: Object.fromEntries(Object.entries(value).map(([key, item]) => [key, jsonShape(item)])) };
   return null;
 }
-function inOriginalOrder(value: any, shape: any): any {
-  if (Array.isArray(value)) return value.map((item, index) => inOriginalOrder(item, shape[index]));
-  if (value && typeof value === 'object' && shape?.keys)
-    return Object.fromEntries(shape.keys.map((key: string) => [key, inOriginalOrder(value[key], shape.children[key])]));
+function inOriginalOrder(value: unknown, shape: JsonShape | undefined): unknown {
+  if (Array.isArray(value)) return value.map((item, index) => inOriginalOrder(item, Array.isArray(shape) ? shape[index] : undefined));
+  if (value && typeof value === 'object' && shape && !Array.isArray(shape))
+    return Object.fromEntries(shape.keys.map((key) => [key, inOriginalOrder((value as Record<string, unknown>)[key], shape.children[key])]));
   return value;
 }
 
