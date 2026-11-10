@@ -7,7 +7,10 @@ const mocks = vi.hoisted(() => ({ findArtifact: vi.fn(), assertAccess: vi.fn(), 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), getJob: vi.fn(), removeJob: vi.fn(), QueueNames: { EXPORT: 'export' } }));
 vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: null },
-  prisma: { exportArtifact: { findFirst: mocks.findArtifact }, user: { findUnique: vi.fn(async () => ({ id: 'synthetic-user', banned: false, suspendedAt: null })) } },
+  prisma: {
+    exportArtifact: { findFirst: mocks.findArtifact },
+    user: { findUnique: vi.fn(async () => ({ id: 'synthetic-user', banned: false, suspendedAt: null })) },
+  },
 }));
 vi.mock('@/actions/projects', () => ({ assertProjectAccess: mocks.assertAccess }));
 vi.mock('@/actions/platform-events', () => ({ logPlatformEvent: mocks.event }));

@@ -1,7 +1,7 @@
-import { AppError } from '@/errors';
 import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppError } from '@/errors';
 import apiKeysRoutes from './routes';
 
 vi.mock('@/actions/projects', () => ({
