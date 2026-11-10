@@ -1,7 +1,8 @@
-import { type QueryClient, type QueryKey, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { ApiResponseError, mutateData } from '@/hooks/api/client-helpers';
 import type { OrganizationMember } from '@/hooks/api/organization-query-options';
 import type { useProjectMembers } from '@/hooks/api/queries';
+import { useSessionMutation, useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import type { SiteRole } from '../model/roles';
 import { peopleKeys } from './keys';
@@ -16,6 +17,9 @@ import type { JoinLinkRecord, OrgInvitation } from './query-options';
  * - server-confirmed: the server creates ids, sends email or can refuse for
  *   reasons the client can't see (invite, org role, resend, links).
  * - form save: the access sheet, from `mutateAsync` in its submit.
+ *
+ * All of them are session-scoped (useSessionMutation / useSessionQueryClient):
+ * a late result for one account never writes into another account's cache.
  *
  * Every mutation reports its own error where it was started (a dialog, the
  * sheet, a toast that names the person), so none sets `meta.errorMessage`
@@ -52,8 +56,8 @@ export interface InviteResult {
 
 /** server-confirmed: creates invitations (ids), may add grants to existing members directly. */
 export const useInviteToOrganization = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: { emails: string[]; orgRole: 'admin' | 'member'; grants: Grant[] }) =>
       mutateData<InviteResult>(
         await api.app.organizations[':organizationId'].invitations.$post({ param: { organizationId }, json: body }),
@@ -65,8 +69,8 @@ export const useInviteToOrganization = (organizationId: string) => {
 
 /** server-confirmed: Member ↔ Admin; a demotion carries the websites they keep. Also revokes the person's links beyond their new role. */
 export const useChangeOrgRole = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async ({ memberId, orgRole, grants }: { memberId: string; orgRole: 'admin' | 'member'; grants?: Grant[] }) =>
       mutateData(
         await api.app.organizations[':organizationId'].members[':memberId'].$patch({
@@ -81,8 +85,8 @@ export const useChangeOrgRole = (organizationId: string) => {
 
 /** form save: replaces a Member's website set (none is allowed). */
 export const useReplaceMemberAccess = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async ({ memberId, grants }: { memberId: string; grants: Grant[] }) =>
       mutateData(
         await api.app.organizations[':organizationId'].members[':memberId'].access.$put({ param: { organizationId, memberId }, json: { grants } }),
@@ -94,8 +98,8 @@ export const useReplaceMemberAccess = (organizationId: string) => {
 
 /** optimistic: the row leaves the list at once and comes back if the server refuses. */
 export const useRemoveOrgMember = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (memberId: string) =>
       mutateData(
         await api.app.organizations[':organizationId'].members[':memberId'].$delete({ param: { organizationId, memberId } }),
@@ -113,8 +117,8 @@ export const useRemoveOrgMember = (organizationId: string) => {
 
 /** optimistic: the invitation leaves the list; a 409 (already accepted) puts it back and refreshes members too. */
 export const useRevokeOrgInvitation = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       mutateData(await api.app.organizations[':organizationId'].invitations[':id'].$delete({ param: { organizationId, id } }), 'Could not revoke.'),
     onMutate: async (id) => ({
@@ -127,8 +131,8 @@ export const useRevokeOrgInvitation = (organizationId: string) => {
 
 /** server-confirmed: a fresh expiry from the server, and maybe an email. */
 export const useResendOrgInvitation = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       mutateData<{ id: string; expiresAt: string; emailed: boolean }>(
         await api.app.organizations[':organizationId'].invitations[':id'].resend.$post({ param: { organizationId, id } }),
@@ -146,8 +150,8 @@ export const useResendOrgInvitation = (organizationId: string) => {
 
 /** server-confirmed: adds an existing org member directly or creates an invitation. */
 export const useInviteToSite = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: { email: string; role: SiteRole }) =>
       mutateData<{ id: string; email: string; role: string; status: string; emailed?: boolean; changed?: boolean }>(
         await api.app.projects[':projectId'].members.invite.$post({ param: { projectId }, json: body }),
@@ -159,8 +163,8 @@ export const useInviteToSite = (projectId: string) => {
 
 /** optimistic: the select shows the new role at once; a refusal puts the old one back. Writes to one person share a scope, so they run in click order. */
 export const useChangeSiteRole = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     scope: { id: `site-role:${projectId}` },
     mutationFn: async ({ memberId, role }: { memberId: string; role: SiteRole }) =>
       mutateData(
@@ -184,8 +188,8 @@ export const useChangeSiteRole = (projectId: string) => {
 
 /** optimistic: removes the person from this website only; they stay in the organization. */
 export const useRemoveFromSite = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (memberId: string) =>
       mutateData(await api.app.projects[':projectId'].members[':id'].$delete({ param: { projectId, id: memberId } }), 'Could not remove.'),
     onMutate: async (memberId) => ({
@@ -201,8 +205,8 @@ export const useRemoveFromSite = (projectId: string) => {
 
 /** optimistic: drops this website from the invitation (an invitation left with none is cancelled). */
 export const useRevokeSiteInvitation = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       mutateData(await api.app.projects[':projectId'].members.invitations[':id'].$delete({ param: { projectId, id } }), 'Could not revoke.'),
     onMutate: async (id) => ({
@@ -218,8 +222,8 @@ export const useRevokeSiteInvitation = (projectId: string) => {
 
 /** server-confirmed: fresh expiry, maybe an email. */
 export const useResendSiteInvitation = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       mutateData<{ id: string; expiresAt: string; emailed: boolean }>(
         await api.app.projects[':projectId'].members.invitations[':id'].resend.$post({ param: { projectId, id } }),
@@ -246,8 +250,8 @@ type CreatedLink = { link: JoinLinkRecord; token: string; url: string };
 
 /** server-confirmed: the URL exists only in this response (only a hash is stored). */
 export const useCreateJoinLink = (scope: LinkScope) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: LinkBody): Promise<CreatedLink> => {
       if (scope.kind === 'org')
         return mutateData<CreatedLink>(
@@ -275,8 +279,8 @@ export const useCreateJoinLink = (scope: LinkScope) => {
 
 /** server-confirmed: a new token for the same settings; the old URL stops working. */
 export const useRegenerateJoinLink = (scope: LinkScope) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string): Promise<CreatedLink> =>
       scope.kind === 'org'
         ? mutateData<CreatedLink>(
@@ -295,8 +299,8 @@ export const useRegenerateJoinLink = (scope: LinkScope) => {
 
 /** server-confirmed: disabling is final; the server returns the link's new state. */
 export const useDisableJoinLink = (scope: LinkScope) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       scope.kind === 'org'
         ? mutateData(
@@ -316,8 +320,8 @@ export const useDisableJoinLink = (scope: LinkScope) => {
 
 /** optimistic: a link that no longer admits anyone leaves the list. */
 export const useDeleteJoinLink = (scope: LinkScope) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (id: string) =>
       scope.kind === 'org'
         ? mutateData(
@@ -343,7 +347,7 @@ export const useDeleteJoinLink = (scope: LinkScope) => {
 
 /** Join the link's organization and websites as the signed-in person. */
 export const useJoinWithLink = () =>
-  useMutation({
+  useSessionMutation({
     mutationFn: async (token: string) => mutateData(await api.app.join[':token'].$post({ param: { token } }), 'Could not join.'),
   });
 
