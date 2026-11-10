@@ -55,8 +55,8 @@ site role** without a second rank table.
 ```
 effectiveSiteRole(user, project):
   m = Member(project.organizationId, user)        -- none → NO ACCESS (404)
-  if m.role == owner  → owner
-  if m.role == admin  → admin
+  if m.orgRole == owner  → owner
+  if m.orgRole == admin  → admin
   g = ProjectMember(project, m)                   -- none → NO ACCESS (404)
   return g.role                                   -- admin | member | viewer
 ```
@@ -76,14 +76,29 @@ current UI says "Site" stays "Site"/«الموقع» — see §9 for the exact w
 
 ## 3. Data model
 
+Prisma 7.10 / PostgreSQL. Sketches; the migration SQL is in PR 1.
+
 ```prisma
+model Organization {
+  slug             String     @unique   // required (better-auth's schema requires it)
+  needsRepair      Boolean    @default(false)  // ownerless legacy org: org mutations refused (§10.1)
+  deletionStartedAt DateTime?            // deletion fence (§6.12)
+  handles          OrganizationHandle[]
+}
+
+model Member {
+  role    String   // LEGACY site role, unchanged; new code writes the least-privilege mirror (§10.1)
+  orgRole String   // owner | admin | member — the only role new code reads
+  @@unique([organizationId, userId])      // existing; target of ProjectMember FK
+  // partial unique index: one orgRole = 'owner' per organizationId
+}
+
 model Project {
   organizationId String            // was @unique — now many per org
   organization   Organization @relation(..., onDelete: Restrict)   // was Cascade
-  members        ProjectMember[]
+  dataTenantId   String  @unique   // immutable partition key (below)
   @@unique([id, organizationId])   // composite target for grant FKs
   @@index([organizationId])
-  // @@unique([slug]) and @@unique([organizationId, slug]) unchanged
 }
 
 /// A per-website grant for an org Member. Org Owner/Admins never need one.
@@ -92,86 +107,107 @@ model ProjectMember {
   organizationId String
   projectId      String
   userId         String
-  role           String   // admin | member (Editor) | viewer — never owner
+  role           String   // admin | member (Editor) | viewer — CHECK
   createdById    String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  project Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  member  Member  @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
+  project Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  member  Member  @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade, onUpdate: Cascade)
   @@unique([projectId, userId])
   @@index([organizationId, userId])
-  @@map("project_member")
 }
 
-/// Website grants an invitation will create on acceptance.
+model Invitation {
+  kind    String  @default("member")  // member | bootstrap_owner
+  orgRole String  @default("member")  // admin | member (owner only with bootstrap_owner)
+  @@unique([id, organizationId])      // composite target for InvitationGrant
+}
+
+/// Website grants an invitation creates on acceptance. Both parents carry the
+/// org id, so a grant can never name a website of another org.
 model InvitationGrant {
-  invitationId String
-  projectId    String
+  invitationId   String
   organizationId String
-  role         String   // admin | member | viewer
-  invitation Invitation @relation(..., onDelete: Cascade)
-  project    Project    @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  projectId      String
+  role           String   // admin | member | viewer — CHECK
+  invitation Invitation @relation(fields: [invitationId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project    Project    @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
   @@id([invitationId, projectId])
 }
 
-/// Website grants a join link gives each person who joins through it.
+model JoinLink {
+  orgRole String @default("member")  // always member (§6.2)
+  @@unique([id, organizationId])
+}
+
+/// Website grants a join link gives on each redemption.
 model JoinLinkGrant {
-  joinLinkId String
-  projectId  String
+  joinLinkId     String
   organizationId String
-  role       String   // admin | member | viewer
-  joinLink JoinLink @relation(..., onDelete: Cascade)
-  project  Project  @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  projectId      String
+  role           String   // admin | member | viewer — CHECK
+  joinLink JoinLink @relation(fields: [joinLinkId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project  Project  @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
   @@id([joinLinkId, projectId])
 }
-```
 
-Invariants enforced **by the database**, not only by code:
+/// One redemption per link and person: makes "free retry" vs "new use" exact (§6.4).
+model JoinLinkRedemption {
+  joinLinkId String
+  userId     String
+  createdAt  DateTime @default(now())
+  @@id([joinLinkId, userId])
+}
 
-1. A grant always lives in the same org as its website and its member
-   (composite FKs) — a grant can never point across organizations.
-2. Removing someone from the org deletes all their grants (cascade on the
-   `Member` composite FK). Deleting a website deletes its grants, invitation
-   grants and join-link grants.
-3. `ProjectMember.role` is checked `IN ('admin','member','viewer')`
-   (SQL `CHECK`), same for `InvitationGrant` / `JoinLinkGrant`.
-4. `Member.role` meaning changes to org role: `owner | admin | member`.
-   `viewer` is no longer a valid org role (migrated to grants, §10.1); a
-   `CHECK` constraint is added after the data migration.
-5. `Invitation.role` / `JoinLink.role` become the **org role** granted
-   (`admin | member`; join links: `member` only, §6.2).
-6. Deleting an org with websites is impossible at the DB level
-   (`onDelete: Restrict`); the delete-organization flow erases each website
-   explicitly first (§6.12).
-
-7. `Organization.slug` becomes **required** and unique (backfilled in the
-   migration: `slugify(name)`, `-2`, `-3`… on clash; reserved words such as
-   `new`, `settings`, `welcome` refused). It is the org's URL handle (§5.4).
-
-Supporting tables:
-
-```prisma
-/// Old slugs keep working after a rename: /app/o/<old> redirects to the current one.
-model OrganizationSlugAlias {
+/// Every URL handle an org has or had, in ONE unique namespace (current + aliases).
+model OrganizationHandle {
   slug           String   @id
   organizationId String
-  organization   Organization @relation(..., onDelete: Cascade)
+  current        Boolean  // exactly one current per org (partial unique index)
   createdAt      DateTime @default(now())
 }
 
 /// Per-user dashboard preferences that are not auth state.
 model UserPreference {
   userId             String  @id
-  lastOrganizationId String?        // landing org; validated on read, never trusted
+  lastOrganizationId String?           // landing org; validated on read, never trusted
+  recentProjectIds   String[]          // switcher "Recent" (§5.4.1), filtered by access on read
   notifications      Json    @default("{}")   // personal email prefs (§5.4.4)
   updatedAt          DateTime @updatedAt
 }
 
 model Notification {
-  organizationId String?   // new: which org an item belongs to (null = account-level)
-  // projectId stays: which website, when there is one
+  organizationId String?   // only for org events (member joined the org, billing…)
+  // projectId stays for website events; their org is derived at read time
 }
 ```
+
+Invariants enforced **by the database**, not only by code:
+
+1. A grant (site, invitation, join link) always lives in the same org as its
+   website **and** its parent (composite FKs on both sides). FK constraints are
+   `DEFERRABLE INITIALLY IMMEDIATE`: normal statements check immediately; only
+   the merge script defers them (§10.2). A FK is integrity, not authorization:
+   every submitted project id is still checked against the path org and the
+   actor's scope, with 404 first.
+2. Removing someone from the org deletes all their grants (cascade on the
+   `Member` FK). Deleting a website deletes its grants, invitation grants and
+   join-link grants; an invitation or join link left with no grant is then
+   cancelled/revoked by the same operation (a website link never silently
+   turns into an org-only admission).
+3. Role columns have `CHECK` constraints; one `orgRole = owner` per org
+   (partial unique index); one current handle per org.
+4. Deleting an org with websites is impossible (`onDelete: Restrict`); org
+   deletion erases each website first behind the deletion fence (§6.12).
+5. `Project.dataTenantId` is non-null, unique, never reused, and an update
+   trigger rejects any change.
+6. Handles: every slug an org ever had is a row of `OrganizationHandle`, so a
+   new org can never take an old alias. Normalisation: `slugify(name)`; if it
+   is empty (e.g. an Arabic-only name) → `org-<6 chars of id>`; max 48 chars
+   before the `-2`, `-3`… suffix; reserved words (`new`, `settings`, `welcome`,
+   `o`, …) refused. Backfill keeps every existing valid slug and assigns the
+   rest in `createdAt, id` order. `Organization.slug` mirrors the current
+   handle. Aliases are followed only after authorization (members only).
 
 `session.activeOrganizationId` is no longer read by our code. The landing org
 is `UserPreference.lastOrganizationId` (per user, not per device, as asked),
@@ -224,7 +260,7 @@ resource, 404 for a website/org the caller cannot see) · (own) only their own.
 | Invite as org Admin | ✓ | ✓ | — |
 | Create / revoke / regenerate org join links | ✓ | ✓ | — |
 | Change someone's org role (Member ↔ Admin) | ✓ | ✓ (not the Owner) | — |
-| Remove someone from the org | ✓ | ✓ (not the Owner, not other Admins? → **allowed**, Admin ≥ Admin as today) | — |
+| Remove someone from the org | ✓ | ✓ (anyone but the Owner; Admins can remove Admins, as today) | — |
 | Transfer ownership (to an org Admin) | ✓ | — | — |
 | Leave the organization | — (transfer first) | ✓ | ✓ |
 | Usage & billing: view plan, org usage, per-website breakdown | ✓ | ✓ | — |
@@ -336,10 +372,14 @@ Pending invitations (to <Org>, with access to this website)
   new@acme.com     Editor  · expires in 6 days  [Copy link] [Revoke]
 ```
 
-"Add people" opens one dialog with a single input: typing matches org members
-(name/email) **and** accepts any email. Picking an org member adds a grant
-immediately; an unknown email becomes an org invitation (org role Member) with
-a grant on this website. Role select defaults to Editor.
+"Add people" opens one dialog with a single input and a role select (Editor
+by default); what it can find and do is §6.5. The pending list shows only
+invitations that grant **this** website, and only this website's part of them
+(email, role here, expiry, inviter); a site Admin can "Remove from this
+invitation" (drops this website's grant; an invitation left with no grant is
+cancelled). Copy link is allowed — only the invited address can accept.
+Cancelling an invitation as a whole, or seeing its other websites, is for org
+Owner/Admins on the org Members page (review #14).
 
 ### 5.4 Belonging to several organizations
 
@@ -431,7 +471,7 @@ org's** websites you can open (search on top, nothing else).
   no client-side "current org" state other than the URL.
 - Slug rather than id (master's direction, kept): readable in links and
   emails. A rename never breaks a link: changing the URL handle records the
-  old one in `OrganizationSlugAlias`, and `/app/o/<old>` redirects (only for
+  old one in the `OrganizationHandle` registry (§3), and `/app/o/<old>` redirects (only for
   members; non-members get the same 404 as any unknown slug, so slugs are not
   an existence oracle).
 - Website pages keep `/app/projects/$projectId/*`: the website implies its
@@ -463,7 +503,10 @@ org's** websites you can open (search on top, nothing else).
 
 | Lives in | What |
 | --- | --- |
-| **Account** (`/app/settings`, user menu; no org chrome — the shell shows a plain "Account" header and a "Back to <last org>" link) | Profile, email, sign-in methods, sessions/devices, appearance and interface language, **personal email notifications**, personal AI assistant keys overview, "Delete account" (refused while you own an org: transfer or delete it first). |
+| **Account** (`/app/settings`, user menu; no org chrome — the shell shows a plain "Account" header and a "Back to <last org>" link) | Profile, email, sign-in methods, sessions/devices, appearance and interface language, **personal email notifications**, personal AI assistant keys overview, "Delete account" — refused while you own **any** organization, even one
+where you are alone: the dialog lists them with "Transfer ownership" /
+"Delete organization" links. Only then is the account deleted, which removes
+your non-owner memberships through the normal removal operation (review #17). |
 | **Organization** | Members, invitations, join links, plan, billing, usage, org name/handle/logo, "send invitation emails", delete org. |
 | **Website** | Everything in §5.2. |
 
@@ -569,42 +612,99 @@ in the org's Invitations tab too (with "invited from <Website>").
 ### 6.3 Accept an email invitation — every case
 
 Entry `/accept-invite/:id`. The server endpoint is ours
-(`POST /app/invitations/:id/accept`); better-auth's accept endpoint is disabled
-so no path can create a `Member` without applying the grants.
+(`POST /app/invitations/:id/accept`); better-auth's is closed, so no path can
+create a `Member` without applying the grants.
+
+**One admission operation** serves invitations and join links (review #3, #4,
+#5). In one transaction it:
+
+1. locks, in this order, the org row, the issuer's `User` + `Member` rows, the
+   accepting `User` row (so a concurrent suspension, deletion, removal or
+   demotion of either side serialises with the admission);
+2. re-checks the accepting account: exists, not banned, not suspended, email
+   verified, and (invitations) normalised email equal to the invitation's;
+3. re-checks the invitation: `pending`, not expired, claimed with a
+   conditional update (`status pending → accepted`) so it can be used once;
+4. re-checks the **issuer's current authority for every grant and the org
+   role**: org Owner/Admin, or site Admin of each granted website (and org
+   Owner/Admin for an org-Admin invitation). If any part is no longer
+   grantable the **whole** admission is refused ("This invitation is no longer
+   valid — ask for a new one"); nothing partial is applied;
+5. applies the transition table (§6.3.1) and returns the exact landing target.
+
+An issuer's removal or demotion also cancels their outstanding invitations
+whose scope they can no longer grant (same rule as join links), so the
+invitation list stays truthful; re-promotion never reactivates them.
 
 | Case | What the person sees / what happens |
 | --- | --- |
-| Signed in, email matches | "Join <Org>" card listing the access → Accept → member + grants in one transaction → land (§6.3.1). |
-| Signed in, different email | "This invitation is for a…@x.com. You're signed in as b…@y.com." [Switch account] (signs out, returns here). No accept button. |
+| Signed in, email matches, verified | "Join <Org>" card listing the access (org role; websites with roles) → Accept → admission → land (§6.3.2). |
+| Signed in, different email | "This invitation is for a…@x.com. You're signed in as b…@y.com." [Switch account] (signs out, keeps the invitation as the pending destination, returns here). No accept button. |
 | Signed out, account exists | Sign in (email OTP / Google) with the email prefilled → back here → Accept. |
-| Signed out, no account | Sign up (email prefilled, OTP) → no starter organization is created because an invitation is pending → back here → Accept. |
-| Already a member | Grants from the invite are merged (a grant is upgraded, never downgraded) → "You're already in <Org>" → Open. |
+| Signed out, no account | Sign up (email prefilled, OTP verifies it) → no starter organization (pending invitation) → back here → Accept. If the invitation became invalid meanwhile → `/app/welcome` with the "no access yet" wording. |
+| Already a member | Transition table; "You're already in <Org>" + what changed → Open. |
+| Issuer lost authority | "This invitation is no longer valid. Ask <inviter> or an admin of <Org> for a new one." |
 | Expired | "This invitation expired. Ask <inviter> for a new one." |
-| Revoked / unknown | Same single "not valid" state (no oracle). |
-| Already accepted | "Already used." Signed in as the invitee → "Open <Org>". |
+| Revoked / unknown id | One "This invitation isn't valid" state (no oracle). |
+| Already accepted | "Already used." "Open <Org>" only if the viewer is **currently** a member. |
+| Suspended/banned account | Sign-in itself is refused (existing rules). |
 
-6.3.1 **Landing**: exactly one website accessible in that org → that website's
-Overview; otherwise the org's Websites page. The org becomes the last-opened
-org.
+#### 6.3.1 Existing role × invitation (applies to join links too)
+
+| Current state | Invitation: org Member + grants | Invitation: org Admin |
+| --- | --- | --- |
+| Not a member | `orgRole = member` + grants | `orgRole = admin` |
+| Org Member | grants added; an existing grant is upgraded, never downgraded; unrelated grants untouched | promoted to Admin (dormant grants kept); the card says "You'll become an Admin of <Org>" before Accept |
+| Org Admin / Owner | grants stored dormant (no demotion); "You already have access to every website" | no change |
+
+Accepting never marks other invitations as used; a join never consumes an
+invitation.
+
+#### 6.3.2 Landing and bootstrap
+
+- Landing: exactly one website accessible in that org → its Overview;
+  otherwise the org's Websites page. The org becomes the last org.
+- **Bootstrap-owner invitations** (platform staff creating a customer org):
+  `kind = bootstrap_owner`. Accepting claims the invitation and asserts, under
+  the org lock, that the org has **no** owner; the person becomes the Owner
+  (the partial unique index is the backstop against two concurrent accepts).
+  A bootstrap invitation for an org that already has an Owner is invalid. The
+  issuer check is "platform admin at issue time" (staff are not org members).
 
 ### 6.4 Join through a link — every case
 
 `/join/:token` shows: org name, the websites and roles it grants, domain rule.
+Redemption uses the admission operation (§6.3) with the link's creator as the
+issuer, plus:
+
+- every branch checks verified email, domain rule, current token hash,
+  expiry, revocation, creator authority and capacity — including for people
+  who are already org members (review #5);
+- a **use** is counted whenever the link gives the person any new or upgraded
+  permission (org membership or a website grant); a repeat by the same person
+  that changes nothing is free (`JoinLinkRedemption(link, user)` records it);
+- capacity is taken with the existing atomic conditional update.
 
 | Case | Behaviour |
 | --- | --- |
-| Signed in, verified, domain ok | Join → member (org Member) + grants, use counted atomically → land (§6.3.1). |
-| Already a member | Grants merged (upgrade-only), use **not** counted → land. |
-| Signed out | Sign in / sign up; the token rides in the short-lived cookie as today; sign-up skips the starter organization → back → Join. |
+| Signed in, verified, domain ok, link usable | Join → admission → land (§6.3.2). |
+| Already has everything the link grants | "You already have this access" → land; no use counted. |
+| Org Member without these grants | Grants added, **one use counted**. |
+| Signed out | Sign in / sign up; the token rides in the short-lived cookie as today; sign-up skips the starter organization only for a link that would admit this address → back → Join. |
 | Unverified email | "Verify your email first" (OTP flow). |
 | Wrong domain | "Only @x.com addresses can join with this link." |
 | Revoked / expired / used up / creator lost authority / unknown | One "This link is not valid" state. |
 
 ### 6.5 Add an existing org member to a website
 
-Website → Members → Add people → pick member → role → Add. Grant created
-(upgrade-only if one exists). Also available from the org Members access
-drawer (§6.6).
+Website → Members → Add people → type an email or name. What a **site Admin**
+can find is limited to people already visible to them: members of any website
+they administer, matched by name/email prefix; anyone else only by **exact**
+email (review #13). An exact match that is an org member → "Add to <website>"
+(role select). An org Owner/Admin → "Already has access via organization"
+(nothing written). No match → invitation to the org scoped to this website.
+Org Owner/Admins search the whole org roster. The grant is upgrade-only if one
+exists.
 
 ### 6.6 Change roles
 
@@ -655,9 +755,19 @@ project) → back to the org's Websites. The org and its members remain.
 ### 6.12 Delete the organization
 
 Owner → Settings → Danger zone → dialog lists every website that will be
-deleted ("3 websites, 412 pages") → type the org name → each website is erased
-with the website erasure, then the org (members, invitations, links, plan).
-Refused while a website is still being erased; resumable if interrupted.
+deleted ("3 websites, 412 pages") → type the org name. Then (review #16):
+
+1. Under the org lock: set `deletionStartedAt`, store the fixed website
+   manifest, revoke invitations and join links. From here every org
+   mutation, admission, website creation, publish/write and merge refuses
+   the org; members see "This organization is being deleted".
+2. A durable job erases each website of the manifest with the website
+   erasure (its own fence per website), outside any long transaction, and is
+   resumable from where it stopped.
+3. When all are gone: delete members, plan, handles, the org.
+
+The Owner authorises the start; the job continues under that authorisation
+even if the Owner's session ends.
 
 ### 6.13 Switch organization
 
@@ -689,19 +799,35 @@ person arrives through a pending invitation or a valid join link.
   access, remove), `org-invitations` (list, cancel, resend; public info;
   accept), `org-join-links` (CRUD + join), `project-members` rewritten to
   grants.
-- better-auth organization plugin: keep the tables and `set-active` (used by
-  admin support sessions). Disable `create`, `update`, `check-slug`,
-  `remove-member`, `update-member-role`, `leave`, `accept-invitation`,
-  `reject-invitation`, `cancel-invitation`, `get-invitation`,
-  `list-invitations`, `list-user-invitations`, `list-members`,
-  `get-full-organization`, `get-active-member`, `get-active-member-role`,
-  `has-permission` (`invite-member` and `delete` are already off). Membership,
-  roles and rosters then change only through our actions, which apply grants
-  and visibility rules; the `afterCreateOrganization` starter-site hook goes.
-- Notifications: `member_joined` and friends fan out to org Owner/Admins and to
-  site Admins of the granted websites; links point at the org Members page or
-  the website Members tab. Notification `projectId`-scoped rows are hidden from
-  a user who can no longer open that website.
+- better-auth organization plugin: **every `/organization/*` path is
+  disabled** (an explicit allowlist test fails if a plugin upgrade adds one).
+  Even read endpoints answer differently for "unknown" and "not a member"
+  (`get-organization`, `set-active`), which would turn slugs into an existence
+  oracle (review #11). The admin support flow stops calling `set-active`
+  (nothing reads the active org any more). The tables and server-side helpers
+  stay; the `afterCreateOrganization` starter hook goes.
+- Account state (review #4): one `assertUsableAccount(user)` — exists, not
+  banned, not suspended — used by session guards, API-key and MCP actor
+  resolution, `SiteMemberSession` revalidation and admissions (which also
+  require a verified email). Today MCP checks only `suspendedAt`; this makes
+  every path check both.
+- Notifications are classified by resource and the capability needed to see
+  them (review #19): website events (deploys, imports, a person added to the
+  website) need current access to that website; org events (someone joined
+  the org, billing) need current org Owner/Admin. Recipients are computed per
+  event: a site Admin gets a payload about **their** website only (never the
+  other websites of a multi-website admission), linking to the website
+  Members tab; org Owner/Admins get the org payload linking to org Members.
+  The inbox filters by the same rule **before** pagination and counts; legacy
+  rows without a project are shown only to users who are still org
+  Owner/Admin of an org they belonged to, else hidden. Queued emails
+  re-check the recipient's access at send time.
+- Usage (review #20): two DTOs. **Website usage** (any role on the website):
+  that website's pages, storage, traffic, AI usage — no plan, no seats, no
+  limits. **Org usage & billing** (org Owner/Admin): plan, limits, seats
+  computed once, totals = per-measure sums over the websites' partitions,
+  with "incomplete" propagated if any website's data is pending or
+  unavailable (never counted as zero).
 - Every non-route path that decides team access moves to `resolveSiteAccess`
   too, not only the REST guards: website listings and aggregate analytics
   (relational and ClickHouse branches), people/suggestion queries, add-on
@@ -760,154 +886,278 @@ glossary entry is replaced).
 
 ## 10. Migration
 
-### 10.1 Deploy-time conversion (in the SQL migration, PR 1)
+Two steps that are deliberately separate:
 
-Runs once inside the Prisma migration, so the deploy is atomic with the new
-access rule (otherwise every Editor/Viewer would lose access the moment the new
-code ships). No org is merged here.
+1. **PR 1's Prisma migration** — *expand only*. It adds tables/columns and
+   backfills them; it **changes no value the current code reads**. No org is
+   merged.
+2. **The merge-by-owner script** — operator-run, dry-run first, after PRs 1–3
+   are all deployed (the multi-org UI must exist before anyone ends up in a
+   merged org).
 
-For every org with exactly one website P:
+### 10.1 Expand migration (PR 1)
 
-| Old `Member.role` | New `Member.role` | Grant on P |
+Why expand-only (review #1): a deploy can run old and new code against the
+same database for a while (a rolling container replacement, a worker or the
+admin app updated later, a browser holding the old bundle). If the
+migration rewrote `Member.role` (e.g. Viewer → `member`), old code would read
+that as Editor and allow writes. So legacy columns keep their meaning and the
+new model lives in new columns/tables that old code ignores:
+
+| Legacy (unchanged, read by old code) | New (read only by new code) |
+| --- | --- |
+| `Member.role` (`owner/admin/member/viewer` = site role in a 1:1 org) | `Member.orgRole` (`owner/admin/member`) + `ProjectMember` grants |
+| `Invitation.role` | `Invitation.kind` (`member` / `bootstrap_owner`), `Invitation.orgRole`, `InvitationGrant` |
+| `JoinLink.role` | `JoinLink.orgRole` (always `member`), `JoinLinkGrant` |
+| `OrganizationGitWebhookSecret`, `metadata.git`, `metadata.integrations` | `ProjectGitWebhookSecret`, `ProjectGitSettings`, `ProjectLegacySettings` (server-only) |
+| `UsageStorageMarker/UsageIngestCheckpoint.organizationId` | `…partitionId` (= `Project.dataTenantId`), FK to the project, not the org |
+
+Backfill, for every org with exactly one website P (current data has no other
+case with a website):
+
+| Legacy `Member.role` | `orgRole` | Grant on P |
 | --- | --- | --- |
-| owner | owner | — (implicit) |
-| admin | **member** | admin |
+| owner (the earliest, if several — see below) | owner | — (implicit) |
+| admin | member | admin |
 | member | member | member (Editor) |
 | viewer | member | viewer |
+| any other / null | member | — (fail closed, reported) |
 
-Platform-admin bootstrap invitations (`role = owner`, the org's first owner)
-are left as they are. Other pending invitations: `role` admin/member/viewer → org role `member` +
-`InvitationGrant(P, old role)`. Join links: same (`role` → `member`,
-`JoinLinkGrant(P, old role)`). Orgs with zero websites: members unchanged
-except `viewer` → `member`; invitations/links of such orgs are revoked
-(`status = 'canceled'`, `revokedAt = now()`) since there is nothing to grant.
+- Pending invitations: `kind = member`, `orgRole = member`,
+  `InvitationGrant(P, legacy role)`. Platform bootstrap invitations
+  (`role = owner`): `kind = bootstrap_owner`, no grants (§6.3.2).
+- Join links: `orgRole = member`, `JoinLinkGrant(P, legacy role)`.
+- Orgs with **zero websites**: every non-owner gets `orgRole = member` —
+  including legacy Admins (no automatic org Admins, review #9). Their pending
+  invitations and join links are revoked (nothing to grant).
+- **Exceptional orgs are quarantined, not guessed** (review #9): an org with
+  several owners keeps the earliest as `orgRole = owner` and the others as
+  `member` + Admin grant (a demotion, never an expansion); an org with no owner
+  gets no owner and is flagged `needsRepair` — org-level mutations are refused
+  there until platform staff repair it through the bootstrap flow. All such
+  orgs are listed in the migration log and the dry-run report.
+- Suspended/banned users keep their rows as converted; they stay locked out by
+  the account-state checks (§7). Deleted users have no rows (cascade today).
+- `Project.dataTenantId = organizationId` for every website; a unique,
+  non-null, immutable column (an update trigger rejects changes).
+- `Organization.slug`/handles backfilled (§3, review #23).
+- `UserPreference.notifications` backfilled (§5.4.4).
+- Partial unique index: one `orgRole = owner` per org.
 
-**Decision — no automatic org Admins.** A site Admin becomes an org Member with
-a site-Admin grant, never an org Admin, even when they administered every
-website of that owner. Org Admin implies authority over billing, all members
-and every **future** website, which no one but the owner held across sites
-before. This keeps "privilege never expands" unconditional and easy to verify;
-the report lists people who were Admin everywhere so owners can promote them
-in one click (Members page highlights "Admin on all websites").
+New code writes the legacy columns too, with the **least** privilege they can
+express under the old meaning (owner→`owner`, admin→`admin`, member→`viewer`;
+links/invites: legacy role `viewer`), so a brief overlap or a rollback can
+never hand an old server more than the new model grants.
 
-### 10.2 Merge per owner (separate, operator-run script, PR 1)
+**Cutover:** stop-then-start for this release (maintenance window of a few
+minutes; the deploy runbook says so), and the expand-only migration is the
+defence in depth if anything old keeps running. **Rollback:** redeploying the
+previous image is safe until the first organization holds two websites or the
+merge runs; after that, roll forward only. The **contract** migration
+(`Member.role := orgRole`, drop legacy tables/columns) is a later PR once
+merges are verified.
 
-`pnpm --filter @nibleaf/server org:merge -- --dry-run | --apply | --restore <runId>`
+**Decision — no automatic org Admins** (kept from the first draft, confirmed by
+review): org Admin implies billing, the whole roster and every future
+website, which nobody but the owner held across websites before. The report
+lists people who were Admin on every website of an owner so the owner can
+promote them deliberately.
 
-1. Group orgs by their single Owner `U` (orgs with ≠ 1 owner are left alone
-   and reported).
-2. Survivor = U's owned org with the most websites, tie → oldest `createdAt`,
-   tie → lowest id. Reason recorded.
-3. Name: survivor's name, except an auto-generated "<X>'s workspace" /
-   "My workspace" becomes "<X>'s organization" / "My organization". Slug: the
-   survivor keeps the slug backfilled by the PR 1 migration; each merged org's
-   slug becomes an `OrganizationSlugAlias` of the survivor, so any
-   `/app/o/<old>` link redirects to the merged org.
-4. For each other org `O` of the group, in one transaction per group:
-   - move its website(s): `project.organizationId = survivor`;
-   - members: each person gets one survivor `Member` (role `member` unless they
-     are `U`); their grants move with the website (`ProjectMember` rows are
-     re-pointed; a person on several websites keeps one grant per website with
-     that website's role);
-   - pending invitations and join links: re-pointed to the survivor with their
-     grants (ids and token hashes unchanged, so emailed and shared links keep
-     working); if an invitee is already a survivor member, the invitation stays
-     and only adds grants on accept;
-   - per-site data that still lives on `O` (see §10.3) is already on the
-     project after PR 1; org-only data of `O` is resolved per §10.3;
-   - `O` is deleted only after all of the above (members, plan rows,
-     metadata), never before.
-5. Plan merge: the survivor keeps the **highest-ranked active plan** of the
-   group (rank by `UsagePlan` order: custom/enterprise > paid > free; tie →
-   most recent `effectiveAt`); conflicts (different paid plans, different
-   expiries) are listed in the dry-run report and the run **refuses to apply a
-   group with a plan conflict** unless `--accept-plan-conflicts` is passed after
-   review.
-6. Usage history: usage facts stay keyed by their original `organizationId` in
-   ClickHouse; PR 1 changes every usage read to filter by **projectId**
-   (website share) or `projectId IN org's websites` (org totals), so history
-   follows the website without rewriting ClickHouse. Checkpoints / storage
-   markers are re-pointed or summed as listed in §10.3.
+### 10.2 Merge per owner (operator-run script)
 
-Idempotence: the script is a no-op when no owner has more than one org. Each
-group is one transaction; a crash leaves groups either fully merged or
-untouched.
+`pnpm --filter @nibleaf/server org:merge -- plan | apply <planFile> | verify <runId> | restore <runId>`
 
-Journal: every change is written to `org_merge_journal(run_id, group_owner,
-table, row_id, before jsonb, after jsonb)` in the same transaction, so
-`--restore <runId>` replays `before` images in reverse order (recreating
-deleted orgs/members with their original ids). Production still takes a
-`pg_dump` first; restore is tested in CI on the seed.
+**Plan** (read-only): for every owner `U` of more than one org (orgs flagged
+`needsRepair` or being deleted are excluded):
+
+1. Survivor: U's owned org with a website, oldest `createdAt`, then lowest id.
+   Reason recorded.
+2. Name: survivor's, except auto names "<X>'s workspace"/"My workspace" →
+   "<X>'s organization"/"My organization". Handles: the survivor keeps its
+   current slug; **all** handles of merged orgs (current and aliases) become
+   aliases of the survivor.
+3. Plans: the group merges only if every org has the **same** plan id, status
+   and expiry. Anything else is a conflict: the plan file must carry an
+   explicit per-group decision (`plan: <planId>` chosen by a human) or the
+   group is skipped (review #22). No automatic "highest plan" rule.
+4. Provider receipts: a group with **pending** `UsageProviderCheckpoint` rows
+   is skipped until they are drained; accepted ones are never touched (review
+   #21).
+5. Per person: the exact before/after permission sets (org role + every
+   website role) — the plan **fails** if any person gains anything (review
+   #25).
+6. Unknown `metadata` keys: listed by name with a fingerprint (never values);
+   a group with an unclassified key that differs between its orgs is skipped
+   (review #12).
+7. Output: a plan file with a **digest of every input row** of each group.
+
+**Apply** (`apply <planFile>`), one transaction per group:
+
+1. Take the run's advisory lock (one run at a time); lock every org of the
+   group `FOR UPDATE` in id order; re-read; if the group's input digest
+   differs from the plan (ownership transferred, grant changed, new Admin,
+   website added/deleted, deletion started), **skip the group** and report it
+   (review #8).
+2. `SET CONSTRAINTS ALL DEFERRED` (the grant FKs are declared `DEFERRABLE
+   INITIALLY IMMEDIATE` in the PR 1 migration; review #7). Order:
+   a. upsert a survivor `Member` for every person of every source org
+      (`orgRole = member`; `U` stays owner);
+   b. move websites (`project.organizationId`), which re-points their grants
+      (`ProjectMember.organizationId` updated in the same statement batch);
+   c. move invitations and join links with their grant rows (ids and token
+      hashes unchanged, so emailed and shared links keep working);
+   d. merge handles into the survivor's registry;
+   e. delete source members, then source orgs (their plan rows, metadata);
+      `UsageStorageMarker`/`UsageIngestCheckpoint` hang off the project
+      partition now, so nothing usage-related cascades (review #15).
+3. Recompute every person's permission set and compare with the plan's
+   after-set; any difference aborts the group's transaction.
+4. Write the journal (below) in the same transaction.
+
+**Journal and restore** (review #2): `org_merge_journal(run_id, seq bigserial,
+group_key, table, row_id, before jsonb, after jsonb)`. It holds no secrets
+(the merge touches no secret-bearing rows; they moved to the website in
+PR 1). `restore <runId>` is an **offline** operation (maintenance window, app
+stopped): for each group, in reverse `seq`, it first checks that every row's
+current state equals its journalled `after` image; any divergence (a grant
+removed since, a new website, a new invitation) **aborts that group** with a
+report instead of resurrecting revoked access or discarding new work. The
+pg_dump taken before `apply` is the last resort for anything restore refuses.
+
+`verify <runId>`: re-runs the permission comparison against live data and the
+404 checks (§10.5) for every merged group.
 
 ### 10.3 Org-scoped data: move or merge
 
-PR 1 moves every per-website value off the organization (copied exactly, never
-rotated), so the merge script (§10.2) never has to choose between two sites'
-values.
+PR 1 moves every per-website value off the organization (copied exactly,
+never rotated), so the merge never has to choose between two sites' values.
 
 | Data (today on the one-site org) | Decision | When |
 | --- | --- | --- |
-| `metadata.git` (provider, repo, branch, path, import branch/language ids, push-to-deploy, sync bookkeeping) | **Move** to `ProjectGitSettings` (project-owned row); readers/writers switch to it | PR 1 migration |
-| `OrganizationGitWebhookSecret` (+ legacy `metadata.git.webhookSecret`) | **Move** to `ProjectGitWebhookSecret(projectId)`, exact value, so every configured provider webhook keeps verifying | PR 1 migration |
-| `metadata.integrations` (legacy) | **Move** to the website (server-only legacy field), never in any org DTO | PR 1 migration |
-| `metadata.notifications` | **Split**: personal toggles → `UserPreference.notifications` (off only if off in every org the user is in); `member_invited` → org setting "send invitation emails" (§5.4.4) | PR 1 migration (personal), merge (org) |
-| `metadata.plan` / `metadata.entitlements` (compat) and `OrganizationUsagePlan` | **Org**. Merge: highest-ranked active plan, tie → most recent; conflicting paid plans block `--apply` for that group until reviewed | merge |
-| `UsageStorageMarker`, `UsageIngestCheckpoint`, `UsageProviderCheckpoint` | **Website partition** via `dataTenantId` (§3) | PR 1 migration |
-| ClickHouse analytics/usage/AI facts, sealed archives, queued jobs | **Unchanged** (keyed by `dataTenantId` = old org id) | — |
-| Redis draft-AI daily quota (keyed by org) | **Org** budget (billing is org-level). After a merge the survivor's counter applies; the others expire within 24 h | — |
-| Editor seats (`countEditorSeats`) | **Org**: distinct users who are Owner/Admin or hold any Admin/Editor grant; Viewer-only and no-grant members are not seats | PR 1 |
-| `Organization` name/slug/logo | **Org**; survivor keeps its own, merged slugs → aliases (§10.2) | merge |
-| `Member`, `Invitation`, `JoinLink(+Use)` | Converted per §10.1, re-pointed per §10.2 (ids/hashes unchanged) | PR 1 / merge |
-| `session.activeOrganizationId` | Ignored by our code | — |
-| `IntegrationAuditEvent.organizationId`, `PlatformEvent.metadata.organizationId` | **Historical provenance**, never rewritten | — |
-| `ApiKey`, `McpOAuthGrant`, MCP audit/idempotency, `ProjectIntegration`, AI settings in `Project.config`, two-way `GitConnection` and descendants, readers/audiences, content, assets, domains, deployments, exports | Already website-owned. Only their **access checks** change (§7) | PR 1 |
-| `Notification` | Gains `organizationId`; old rows backfilled from their `projectId`'s org; inbox filtered by current access | PR 1 |
-| Unknown `metadata` keys | The dry-run lists every key found in production; unknown keys are kept on the survivor and copied to a per-website `legacyOrgMetadata` until classified | merge |
+| `metadata.git` | **Copy** to `ProjectGitSettings`; new code reads only that | PR 1 |
+| `OrganizationGitWebhookSecret` (+ legacy `metadata.git.webhookSecret`) | **Copy** to `ProjectGitWebhookSecret(projectId)`, exact value | PR 1 |
+| `metadata.integrations` and every other non-allowlisted key | **Copy** to server-only `ProjectLegacySettings` (per original website); org DTOs and auth responses return only allowlisted org fields (review #12) | PR 1 |
+| `metadata.notifications` | Personal toggles → `UserPreference.notifications` (off only if off in every org the user is in); `member_invited` → org "send invitation emails" (off only if off in every merged org) | PR 1 / merge |
+| `OrganizationUsagePlan`, `metadata.plan`/`entitlements` | **Org**; merge only when identical or with an explicit human decision (§10.2) | merge |
+| `UsageStorageMarker`, `UsageIngestCheckpoint` | **Website partition**: keyed by `partitionId = Project.dataTenantId`, FK to Project (§3, review #15) | PR 1 |
+| `UsageProviderCheckpoint` | Keeps `organizationId` as **historical source partition** (never rewritten); new nullable `projectId` + `billingOrganizationId` for new rows; pending rows block a merge (§10.2) | PR 1 |
+| ClickHouse facts, sealed archives, queued jobs, hash scopes, tombstones | **Unchanged**, keyed by `dataTenantId` (§3) | — |
+| Redis draft-AI quota (per org per day) | **Org** budget. The merge sums the day's counters of the group into the survivor's key (review #22) | merge |
+| Editor seats | **Org DTO only**: distinct users who are Owner/Admin or hold any Admin/Editor grant, banned/suspended excluded; computed once per org, never per website (review #20) | PR 1 |
+| `Organization` name/handles/logo | **Org**; §10.2 | merge |
+| `Member`, `Invitation`, `JoinLink(+Use)` | §10.1 / §10.2 | PR 1 / merge |
+| `IntegrationAuditEvent.organizationId`, `PlatformEvent` metadata | **Historical provenance**, never rewritten | — |
+| `ApiKey`, `McpOAuthGrant`, MCP audit/idempotency, `ProjectIntegration`, AI settings in `Project.config`, `GitConnection` and descendants, readers, content, assets, domains, deployments, exports | Already website-owned; only access checks change (§7) | PR 1 |
+| `Notification` | Website events: org derived from `projectId` at read time (no backfill that could point at a deleted org). Org events: new `organizationId`, re-pointed by the merge (review #19) | PR 1 / merge |
 
-### 10.4 Dry-run report (per owner)
+### 10.4 Dry-run (plan) report, per owner
 
 ```
-Owner sara@example.com (user_123)
-  survivor org_A "Sara's workspace" → "Sara's organization"  (reason: 2 websites, oldest)
-  merges org_B "API Docs" (1 website: api-docs)
-  people: 5 → 4 org members (1 shared)
-    lina@…   member  grants: docs=admin, api-docs=member
-    omar@…   member  grants: api-docs=admin     ← was Admin on every website: candidate for org Admin
-  invitations: 2 moved (with grants) · join links: 1 moved
-  plan: free + free → free (no conflict)
-  per-site settings moved: notifications(conflict: member_invited off in org_B → kept per-website)
+Owner sara@example.com (user_123)                    group digest 9f2c…
+  survivor org_A "Sara's workspace" → "Sara's organization"  (oldest with a website)
+  merges   org_B "API Docs" (website: api-docs)  handles: api-docs → alias
+  plan     free = free  ✓          provider receipts: none pending ✓
+  people   5 → 4 org members (1 shared)
+    lina@…  before: docs=admin | api-docs=editor     after: same ✓
+    omar@…  before: api-docs=admin                    after: same ✓   (Admin on every website: promotion candidate)
+  invitations 2 moved (grants kept) · join links 1 moved (3 uses kept)
+  metadata keys: notifications, git(moved), integrations(moved) · unknown: none
+  notifications: member_invited on/on → on
+  result: APPLY                                     (or SKIP: <reason>)
 ```
 
-### 10.5 Test seed
+Plus a global section: quarantined orgs (`needsRepair`, multi-owner),
+bootstrap invitations pending, orgs with zero websites, users referenced but
+missing, every unknown metadata key with counts.
 
-Multiple owners; an owner with 1 site, one with 3 sites; a person shared by two
-owners' sites with different roles; admins, editors, viewers; pending
-invitations and join links (with uses) on non-survivor orgs; API keys, Git
-connections (with webhook secrets), MCP OAuth grants, readers/audiences;
-paid + free plans (conflict case); an org with zero websites; a legacy
-two-owner org. Tests assert: no one gains a website or a role they did not
-have; every API key/Git webhook/preview keeps working; invitation and join
-URLs keep working; dry-run makes no writes; apply twice = apply once; restore
-returns the exact pre-run rows.
+### 10.5 Tests (seed)
+
+The seed covers: several owners (1, 2 and 3 websites); a person shared by two
+owners with different roles; admins/editors/viewers; a person in both
+survivor and source; pending invitations (incl. multi-grant and bootstrap)
+and join links with uses on source orgs; API keys, Git connections with
+one-way webhook secrets, MCP OAuth grants, readers/audiences; equal plans,
+differing plans; zero-website orgs with an Admin and a Viewer; a multi-owner
+and an ownerless org; banned, suspended and deleted principals; unknown
+metadata keys; pending usage receipts; queued analytics jobs for a source
+org's website.
+
+Assertions: no person gains any permission (machine-checked sets); every API
+key, Git webhook (signature), preview and OAuth grant keeps working; invitation
+and join URLs keep working; queued jobs complete after the merge; erasure of a
+merged website removes its old-partition facts; plan is pure (no writes);
+`apply` twice = once; drift between plan and apply skips the group;
+concurrent accept/remove, demote/join, delete-website/grant and
+merge/transfer serialize correctly; restore right after apply returns the
+exact rows; restore after an intervening grant removal or new website aborts
+that group.
 
 ### 10.6 Production
 
-Deploy PR 1 (conversion runs in the migration). `pg_dump`. Run `--dry-run`
-through the audit thread's deploy path; review the report (JOODPMS first).
-`--apply`. Spot-check. Never run by the feature thread directly.
+1. Deploy PR 1 with the stop-then-start cutover; `pg_dump` **before** it, and
+   verify the dump restores (review #1).
+2. Deploy PRs 2 and 3.
+3. `pg_dump`, then `org:merge plan` through the audit thread's deploy path;
+   review the report (JOODPMS first), resolve skipped groups.
+4. `apply <planFile>`, then `verify <runId>`; spot-check in the browser.
+5. Later PR: contract migration.
+
+The feature thread never runs any of this against production.
 
 ## 11. PR plan (merge order; each works alone)
 
-1. **Data model + conversion + server authorization + merge script + tests.**
-   Schema, migration, `resolveSiteAccess` everywhere, org-scoped APIs, better-auth
-   endpoint lockdown, per-site data moved off the org, usage reads by
-   project, permission-matrix suite, merge script with dry-run/journal/restore.
-   UI: minimal adaptations only so nothing breaks (site Members tab reads
-   grants).
-2. **Org-level navigation and pages + site-level navigation split.** Org
-   switcher, `/app/o/$orgSlug/*`, redirects, breadcrumb Org › Website, settings
-   regrouping, Usage & billing, org Settings, create/delete org/website.
-3. **Invites, join links, Members UI, emails, docs, i18n.** Org Members page
-   (access drawer, invitations, join links), website Members tab, accept/join
-   pages for every case, emails, `docs/product/team.mdx` (EN + AR), all
-   locales.
+Each PR is deployable on its own and must work with the previous browser
+bundle during the cutover (review #18).
+
+1. **Data model + server authorization + admissions + merge script + tests.**
+   Expand migration; `resolveSiteAccess` on every surface; org APIs (by id);
+   better-auth `/organization/*` closed; transactional admissions (invite
+   accept, join) **with their current pages switched to the new endpoints**,
+   so accept/join keep working; per-website data off the org; partitions;
+   erasure split; permission-matrix suite; merge script (plan/apply/verify/
+   restore). Minimal UI so nothing regresses for 1:1 orgs: website Members
+   tab reads grants and labels "via organization"; Plan/Notifications in
+   website settings visible to org Owner/Admin with a pointer for others.
+   Creating a website still creates a new org (unchanged behaviour) until PR 2
+   ships the org UI.
+2. **Organization shell.** `[Org ▾] / [Website ▾]` switcher, `/app/o/$slug/*`
+   (Websites, Analytics, Members read view, Usage & billing, Settings),
+   redirects, landing and `/app/welcome`, Account settings split, create
+   website **inside** an org, create/delete/leave org, transfer ownership,
+   notifications labelled by org.
+3. **People.** Org Members (invite with website grants, access drawer,
+   role changes, invitations, join links), website Members tab (add people,
+   invite scoped to the website), accept/join pages for every case, emails,
+   `docs/product/team.mdx` EN + AR, all locales.
+
+Production merge runs only after PR 3 is deployed (§10.6).
+
+## 12. Adversarial review (Sol, 2026-11-10) — resolutions
+
+| # | Sev. | Finding | Resolution |
+| --- | --- | --- | --- |
+| 1 | critical | Rewriting roles in place lets old servers misread them during rollout | Expand-only migration, legacy columns untouched, least-privilege mirror writes, stop-then-start cutover, verified backup first (§10.1, §10.6) |
+| 2 | high | Restore could resurrect revoked access / overwrite new work | Offline, `seq`-ordered restore that checks each row against its after-image and aborts a diverged group (§10.2) |
+| 3 | high | Invitations didn't recheck the issuer's authority | Shared admission operation locks and rechecks issuer authority for every grant; issuer loss cancels their invitations (§6.3) |
+| 4 | high | No account-state contract | `assertUsableAccount` everywhere + verified-email admission (§7, §6.3) |
+| 5 | high | Existing org members bypass link limits | Use = any new/upgraded permission; every check on every branch; `JoinLinkRedemption` (§6.4) |
+| 6 | high | Invitation/link grants not tied to their parent's org | Composite FKs to `Invitation(id, organizationId)` / `JoinLink(id, organizationId)` (§3) |
+| 7 | high | Merge statement order fails immediate composite FKs | Deferrable FKs, explicit order, permission recheck before commit (§3, §10.2) |
+| 8 | high | Live changes between plan and apply | Plan digest, ordered locks, re-read, skip drifted groups, run lock (§10.2) |
+| 9 | high | Zero-website Admins stayed Admins; odd legacy orgs | Everyone non-owner → org Member; multi-owner/ownerless/unknown roles quarantined and reported (§10.1) |
+| 10 | high | Bootstrap-owner invitations had no contract | `kind = bootstrap_owner`, no-owner assertion under lock, partial unique owner index (§3, §6.3.2) |
+| 11 | high | better-auth reads leak org existence | All `/organization/*` closed, allowlist test (§7) |
+| 12 | high | Unknown metadata could leak through org responses | Copied to server-only per-website storage; org DTOs allowlisted; merge skips unclassified conflicts (§10.3, §10.2) |
+| 13 | high | Site admins could enumerate the org roster | Prefix search limited to people they already see; exact email otherwise (§6.5) |
+| 14 | high | Shared invitations visible/cancellable beyond a site admin's scope | Site-scoped invitation view and "remove from this invitation"; whole-invite actions org-only (§5.3) |
+| 15 | high | Contradictory partition rules; markers cascaded from org | §3 is the only rule; markers keyed by partition with FK to project (§3, §10.3) |
+| 16 | high | Org deletion had no fence | `deletionStartedAt` + fixed manifest + resumable job (§6.12) |
+| 17 | high | Account deletion could half-run | Refuse while owning any org (§5.4.4) |
+| 18 | high | PRs weren't independently deployable | PR 1 ships working accept/join and 1:1-compatible behaviour; merge only after PR 3 (§11) |
+| 19 | medium | Notification scope underspecified | Resource + capability classification, per-recipient payloads, filtered before counts, send-time recheck (§7) |
+| 20 | medium | Org usage as a sum of site summaries double-counts seats and leaks billing | Separate website-usage and org-billing DTOs (§7) |
+| 21 | medium | Provider receipt identity vs billing org | Historical partition kept; new `projectId`/`billingOrganizationId`; pending receipts block merge (§10.3) |
+| 22 | medium | "Highest plan" isn't a defined policy; quota reset | Merge only identical plans or an explicit human choice; day quota summed (§10.2, §10.3) |
+| 23 | medium | Slugs and aliases in separate namespaces; Arabic slugs empty | One `OrganizationHandle` registry; fallback and ordering rules (§3) |
+| 24 | medium | Existing-member × invitation semantics | Transition table; nothing marks other invitations used (§6.3.1) |
+| 25 | medium | Gate doesn't prove "no privilege expansion" | Machine-checked before/after permission sets, wider seed and concurrency tests (§10.2, §10.5) |
