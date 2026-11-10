@@ -1,4 +1,11 @@
 import { describe, expect, it } from 'vitest';
+
+it('council: REST revisions survive validation and generated rules round-trip through config', () => {
+  const expectedUpdatedAt = '2026-11-01T00:00:00.000Z';
+  expect(updatePageBody.parse({ content: 'Draft', expectedUpdatedAt })).toMatchObject({ expectedUpdatedAt });
+  expect(projectConfigSchema.parse({ redirects: [{ from: '/old', to: '/new', generated: true }] }).redirects?.[0]).toMatchObject({ generated: true });
+});
+
 import {
   addDomainBody,
   adminSetRoleBody,

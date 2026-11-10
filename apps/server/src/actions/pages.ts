@@ -3,8 +3,8 @@ import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
-import { badRequest, conflict, notFound } from '@/errors';
-import { type PagePathChange, preservePageAddresses } from '@/lib/page-address-changes';
+import { AppError, badRequest, conflict, notFound } from '@/errors';
+import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -125,7 +125,7 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
 export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<PagePathChange[]> => {
   const pages = await tx.page.findMany({
     where: { projectId },
-    select: { id: true, parentId: true, slug: true, path: true, branchId: true, languageId: true },
+    select: { id: true, parentId: true, slug: true, path: true, updatedAt: true, branchId: true, languageId: true },
   });
   const byId = new Map(pages.map((p) => [p.id, p]));
   const pathOf = (id: string, seen = new Set<string>()): string => {
@@ -140,9 +140,10 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
     return node.parentId ? joinPath(pathOf(node.parentId, seen), node.slug) : node.slug;
   };
   const updates = pages
-    .map((p) => ({ id: p.id, branchId: p.branchId, languageId: p.languageId, path: pathOf(p.id), old: p.path }))
+    .map((p) => ({ id: p.id, branchId: p.branchId, languageId: p.languageId, path: pathOf(p.id), old: p.path, updatedAt: p.updatedAt }))
     .filter((u) => u.path !== u.old);
-  for (const u of updates) await tx.page.update({ where: { id: u.id }, data: { path: u.path } });
+  for (const u of updates)
+    await tx.page.update({ where: { id: u.id }, data: { path: u.path, updatedAt: new Date(Math.max(Date.now(), u.updatedAt.getTime() + 1)) } });
   return updates;
 };
 
@@ -207,7 +208,11 @@ const mergePageConfig = (existing: unknown, patch: UpdatePageBody['config']): ob
 
 /** Raised when an `expectedUpdatedAt` precondition no longer matches the page. */
 const pageRevisionConflict = (id: string) =>
-  conflict('This page was changed after it was read. Re-read it and apply the edit again.', { id, reason: 'revision_conflict' });
+  new AppError({
+    code: 'page:revision_conflict',
+    message: 'This page changed. Review the saved version and keep your unsaved text.',
+    details: { id, reason: 'revision_conflict' },
+  });
 
 const isRecordNotFound = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && (error as { code?: unknown }).code === 'P2025';
@@ -242,8 +247,9 @@ class StructuralPageEdit extends Error {}
 
 export const updatePage = async (projectId: string, id: string, body: UpdatePageBody, userId?: string, options?: UpdatePageOptions) => {
   const initial = await getPage(projectId, id);
-  const save = (lockStructure: boolean) =>
-    prisma.$transaction(
+  const save = async (lockStructure: boolean) => {
+    const prepared = lockStructure ? await prepareAddressLinks(projectId, { id, content: body.content }) : new Map();
+    return prisma.$transaction(
       async (tx) => {
         if (lockStructure) {
           await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -251,18 +257,19 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         } else {
           await tx.$queryRaw`SELECT 1 FROM "page" WHERE id = ${id} AND "projectId" = ${projectId} FOR NO KEY UPDATE`;
         }
+        if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
         const route = pageRouteEdit(page, body);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
-        const expectedUpdatedAt = options?.expectedUpdatedAt;
+        const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
           throw pageRevisionConflict(id);
         }
         // The slug/URL is decoupled from the title (Mintlify-style): it only changes
         // when the slug is set explicitly or the page is re-parented (which needs a
-        // uniqueness re-check among the new siblings). A title-only edit — e.g. every
-        // editor autosave keystroke — must NOT silently rewrite the slug/path.
+        // uniqueness re-check among the new siblings). A title-only edit â€” e.g. every
+        // editor autosave keystroke â€” must NOT silently rewrite the slug/path.
         const nextParentId = route.parentId;
         if (nextParentId !== null && nextParentId !== page.parentId) {
           const parent = await parentInfo(tx, projectId, nextParentId);
@@ -283,6 +290,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
             // a concurrent edit makes it match nothing (P2025) instead of being lost.
             where: expectedUpdatedAt ? { id, updatedAt: expectedUpdatedAt } : { id },
             data: {
+              updatedAt: new Date(Math.max(Date.now(), page.updatedAt.getTime() + 1)),
               ...(body.parentId === undefined ? {} : { parentId: body.parentId }),
               ...(body.title === undefined ? {} : { title: body.title }),
               ...(structural ? { slug: nextSlug } : {}),
@@ -300,8 +308,8 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         // A structural change commits with the path recomputation, so a failure
         // never leaves the page or its descendants with stale paths.
         const addressChanges = structural
-          ? await preservePageAddresses(projectId, await recomputeProjectPaths(projectId, tx), tx)
-          : { redirectsAdded: 0, linksUpdated: 0 };
+          ? await preservePageAddresses(projectId, await recomputeProjectPaths(projectId, tx), tx, prepared)
+          : { redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 };
         const saved = structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated;
         return {
           page,
@@ -310,6 +318,7 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
       },
       { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
     );
+  };
   let result: Awaited<ReturnType<typeof save>>;
   try {
     result = await save(pageRouteEdit(initial, body).structural);
@@ -348,7 +357,7 @@ const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: st
 };
 
 /** Give each page that changed language a free address among its new siblings
- *  (`intro` → `intro-2`, the same suffixes page creation uses), and drop a
+ *  (`intro` â†’ `intro-2`, the same suffixes page creation uses), and drop a
  *  translation link another page of the target language already holds, so the
  *  move never leaves two variants of one page in one language. */
 const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, ReorderRow>, order: string[]) => {
@@ -372,10 +381,12 @@ const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, 
 };
 
 export const reorderPages = async (projectId: string, body: ReorderPagesBody) => {
+  const prepared = await prepareAddressLinks(projectId);
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
       await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+      await assertAddressLinkRevisions(projectId, prepared, tx);
       const pages: ReorderRow[] = await tx.page.findMany({
         where: { projectId },
         select: { id: true, parentId: true, branchId: true, languageId: true, slug: true, translationKey: true },
@@ -469,13 +480,14 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
         projectId,
         changes.map((change) => ({ ...change, oldLanguageId: byPage.get(change.id)?.languageId })),
         tx,
+        prepared,
       );
       return body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined;
     },
     { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
   );
   // Return the list scoped to the branch the moved pages live on (all items share
-  // a branch — they were validated against their parents above). Empty items keep
+  // a branch â€” they were validated against their parents above). Empty items keep
   // the default-branch behavior.
   return listPages(projectId, undefined, branchId);
 };

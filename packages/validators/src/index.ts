@@ -90,7 +90,7 @@ const navLink = z.object({ label: z.string().max(80), href: url, external: z.boo
 const navAnchor = z.object({ label: z.string().max(80), href: url, icon: z.string().max(40).optional(), external: z.boolean().optional() }).strict();
 
 const redirectsSchema = z
-  .array(z.object({ from: z.string().max(300), to: z.string().max(300) }).strict())
+  .array(z.object({ from: z.string().max(300), to: z.string().max(300), generated: z.boolean().optional() }).strict())
   .max(MAX_REDIRECT_RULES)
   .superRefine((redirects, ctx) => {
     for (const graphIssue of validateRedirectGraph(redirects).issues) {
@@ -681,6 +681,7 @@ export const mergeBranchBody = z.object({
 export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 
 export const updatePageBody = z.object({
+  expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
   parentId: z.string().nullable().optional(),
   title: z.string().min(1).max(200).optional(),
   slug: z.string().max(200).optional(),

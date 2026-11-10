@@ -584,6 +584,12 @@ importers:
       jose:
         specifier: ^6.2.14
         version: 6.2.15
+      mdast-util-mdx:
+        specifier: 3.0.0
+        version: 3.0.0
+      micromark-extension-mdxjs:
+        specifier: 3.0.0
+        version: 3.0.0
       octokit:
         specifier: 5.0.5
         version: 5.0.5

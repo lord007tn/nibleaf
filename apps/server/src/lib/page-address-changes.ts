@@ -1,4 +1,4 @@
-import type { Prisma } from '@nibleaf/database';
+import { type Prisma, prisma } from '@nibleaf/database';
 import {
   normalizeRedirectPath,
   type RedirectPair,
@@ -8,8 +8,43 @@ import {
   validateSnapshotRedirects,
 } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
-import { badRequest, notFound } from '@/errors';
-import { rewritePageLinks } from './rewrite-page-links';
+import { AppError, notFound } from '@/errors';
+import { preparePageLinks } from './rewrite-page-links';
+
+/** Parsing happens before entering the structural transaction. */
+export const prepareAddressLinks = async (projectId: string, override?: { id: string; content?: string }) => {
+  const pages = await prisma.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
+  return new Map(
+    pages.map((page) => [
+      page.id,
+      {
+        content: page.content,
+        updatedAt: page.updatedAt,
+        links: preparePageLinks(override?.id === page.id && override.content !== undefined ? override.content : page.content),
+      },
+    ]),
+  );
+};
+type PreparedAddressLinks = Awaited<ReturnType<typeof prepareAddressLinks>>;
+
+export const assertAddressLinkRevisions = async (projectId: string, prepared: PreparedAddressLinks, tx: Prisma.TransactionClient) => {
+  const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, content: true, updatedAt: true } });
+  if (
+    pages.length !== prepared.size ||
+    pages.some((page) => {
+      const base = prepared.get(page.id);
+      return !base || base.updatedAt.getTime() !== page.updatedAt.getTime() || base.content !== page.content;
+    })
+  )
+    throw new AppError({
+      code: 'page:address_conflict',
+      message: 'Pages changed while links were prepared. Try the address change again.',
+      details: { reason: 'address_raced' },
+    });
+};
+
+const redirectFailure = (issues: import('@nibleaf/shared/redirects').RedirectValidationIssue[]) =>
+  new AppError({ code: 'page:redirect_invalid', message: summarizeRedirectIssues(issues), details: { issues } });
 
 export interface PagePathChange {
   id: string;
@@ -21,8 +56,13 @@ export interface PagePathChange {
 }
 
 /** Called with the project and page locks held, after recomputing draft paths. */
-export const preservePageAddresses = async (projectId: string, changes: PagePathChange[], tx: Prisma.TransactionClient) => {
-  const counts = { redirectsAdded: 0, linksUpdated: 0 };
+export const preservePageAddresses = async (
+  projectId: string,
+  changes: PagePathChange[],
+  tx: Prisma.TransactionClient,
+  prepared: PreparedAddressLinks,
+) => {
+  const counts = { redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 };
   if (changes.length === 0) return counts;
   const project = await tx.project.findUnique({
     where: { id: projectId },
@@ -116,14 +156,23 @@ export const preservePageAddresses = async (projectId: string, changes: PagePath
     project: { ...snapshot.project, config: { redirects: raw === undefined ? [] : raw } },
   });
   const malformed = existingValidation.issues.filter((issue) => issue.code.startsWith('malformed'));
-  if (malformed.length) throw badRequest(summarizeRedirectIssues(malformed));
+  if (malformed.length) throw redirectFailure(malformed);
   const existing = (raw ?? []) as RedirectPair[];
   const graph = validateRedirectGraph(existing);
-  if (graph.issues.length) throw badRequest(summarizeRedirectIssues(graph.issues));
+  if (graph.issues.length) throw redirectFailure(graph.issues);
   const destinations = new Set(mappings.map((mapping) => mapping.to));
+  const refuseUserRule = (rule: RedirectPair) => {
+    throw new AppError({
+      code: 'page:address_conflict',
+      message: `The user redirect ${rule.from} → ${rule.to} conflicts with this address change. Edit or remove it in Settings → Appearance → Redirects.`,
+      details: { reason: 'user_redirect_conflict', from: rule.from, to: rule.to },
+    });
+  };
+  for (const rule of graph.redirects) if (destinations.has(normalizeRedirectPath(rule.from)) && rule.generated !== true) refuseUserRule(rule);
   const redirects = graph.redirects
     .filter((redirect) => !destinations.has(normalizeRedirectPath(redirect.from)))
     .map((redirect) => ({ ...redirect, to: rewriteHref(redirect.to, defaultCode ?? '') }));
+  const candidates: RedirectPair[] = [];
   for (const mapping of mappings) {
     const wasLive = live?.pages.some(
       (page) =>
@@ -140,29 +189,57 @@ export const preservePageAddresses = async (projectId: string, changes: PagePath
     )
       continue;
     const to = `/${mapping.to}${mapping.targetLanguage.isDefault ? '' : `?lang=${encodeURIComponent(mapping.targetLanguage.code)}`}`;
-    const previous = redirects.findIndex((redirect) => normalizeRedirectPath(redirect.from) === mapping.from);
-    if (previous >= 0) redirects.splice(previous, 1);
-    else counts.redirectsAdded++;
-    redirects.push({ from: `/${mapping.from}`, to });
+    const conflicting = candidates.find((rule) => rule.from === `/${mapping.from}` && rule.to !== to);
+    if (conflicting)
+      throw new AppError({
+        code: 'page:address_conflict',
+        message: `Languages need different redirects from /${mapping.from}. Use distinct source addresses or move one language at a time.`,
+        details: { reason: 'locale_redirect_conflict', from: `/${mapping.from}`, destinations: [conflicting.to, to] },
+      });
+    candidates.push({ from: `/${mapping.from}`, to, generated: true });
+  }
+  for (const candidate of candidates) {
+    const mappingFrom = normalizeRedirectPath(candidate.from);
+    const previous = redirects.findIndex((redirect) => normalizeRedirectPath(redirect.from) === mappingFrom);
+    if (previous >= 0) {
+      const rule = redirects[previous];
+      if (rule && rule.generated !== true) refuseUserRule(rule);
+      redirects.splice(previous, 1);
+    } else counts.redirectsAdded++;
+    redirects.push(candidate);
   }
   if (JSON.stringify(redirects) !== JSON.stringify(existing)) {
     const validation = validateSnapshotRedirects({
       ...snapshot,
       project: { ...snapshot.project, config: { ...snapshot.project.config, redirects } },
     });
-    if (validation.issues.length) throw badRequest(summarizeRedirectIssues(validation.issues));
+    if (validation.issues.length) throw redirectFailure(validation.issues);
     await tx.project.update({
       where: { id: projectId },
-      data: { config: { ...(project.config as Prisma.JsonObject), redirects: validation.redirects.map(({ from, to }) => ({ from, to })) } },
+      data: { config: { ...(project.config as Prisma.JsonObject), redirects: validation.redirects.map((rule) => ({ ...rule })) } },
     });
   }
   for (const page of pages) {
     if (!changes.some((change) => change.branchId === page.branchId)) continue;
     const previousLanguageId = changes.find((change) => change.id === page.id)?.oldLanguageId;
     const sourceLanguage = (previousLanguageId ? languages.get(previousLanguageId)?.code : undefined) ?? page.language.code;
-    const result = rewritePageLinks(page.content, (href) => rewriteHref(href, sourceLanguage, page.branchId));
+    const oldPath = changes.find((change) => change.id === page.id)?.old ?? page.path;
+    const document = prepared.get(page.id);
+    if (!document) throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
+    const result = document.links.rewrite((href) => {
+      if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\?)/i.test(href)) return href;
+      if (href.startsWith('/')) return rewriteHref(href, sourceLanguage, page.branchId);
+      const absolute = new URL(href, `https://nibleaf.invalid/${oldPath}`);
+      const resolved = `${absolute.pathname}${absolute.search}${absolute.hash}`;
+      const rewritten = rewriteHref(resolved, sourceLanguage, page.branchId);
+      return rewritten !== resolved || oldPath !== page.path ? rewritten : href;
+    });
+    counts.documentsSkipped += result.documentsSkipped;
     if (!result.linksUpdated) continue;
-    await tx.page.update({ where: { id: page.id }, data: { content: result.content } });
+    await tx.page.update({
+      where: { id: page.id },
+      data: { content: result.content, updatedAt: new Date(Math.max(Date.now(), page.updatedAt.getTime() + 1)) },
+    });
     counts.linksUpdated += result.linksUpdated;
   }
   return counts;

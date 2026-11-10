@@ -12,7 +12,11 @@ const database = vi.hoisted(() => ({
   languages: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
-vi.mock('@/lib/page-address-changes', () => ({ preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0 }) }));
+vi.mock('@/lib/page-address-changes', () => ({
+  prepareAddressLinks: async () => undefined,
+  assertAddressLinkRevisions: async () => undefined,
+  preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
+}));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
 vi.mock('./branches', () => ({ assertBranchInProject: async () => ({ id: 'branch-1' }), getDefaultBranch: async () => ({ id: 'branch-1' }) }));
 
@@ -180,7 +184,7 @@ describe('updatePage placeholder slug adoption', () => {
     const updated = await updatePage('project-1', 'page-1', { title: 'Overview and setup' });
 
     expect(updated.slug).toBe('untitled');
-    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: { title: 'Overview and setup' } }));
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: 'Overview and setup' }) }));
   });
 });
 
@@ -387,7 +391,7 @@ describe('updatePage revision precondition', () => {
     seed(row({ title: 'Guide', slug: 'guide' }));
     await expect(
       updatePage('project-1', 'page-1', { content: 'new' }, 'author-1', { expectedUpdatedAt: new Date('2026-11-01T00:00:00.000Z') }),
-    ).rejects.toMatchObject({ code: 'database:conflict', details: { id: 'page-1', reason: 'revision_conflict' } });
+    ).rejects.toMatchObject({ code: 'page:revision_conflict', details: { id: 'page-1', reason: 'revision_conflict' } });
     expect(database.update).not.toHaveBeenCalled();
     expect(recordEdit).not.toHaveBeenCalled();
   });
@@ -403,7 +407,7 @@ describe('updatePage revision precondition', () => {
     seed(row({ title: 'Guide', slug: 'guide' }));
     database.update.mockRejectedValueOnce(notFoundError());
     await expect(updatePage('project-1', 'page-1', { content: 'new' }, 'author-1', { expectedUpdatedAt: readRevision })).rejects.toMatchObject({
-      code: 'database:conflict',
+      code: 'page:revision_conflict',
       details: { reason: 'revision_conflict' },
     });
     expect(recordEdit).not.toHaveBeenCalled();

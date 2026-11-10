@@ -244,10 +244,13 @@ export const useUpdatePage = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pageId, body }: { pageId: string; body: UpdatePageBody }) =>
-      mutateData<Page & { addressChanged: boolean; redirectsAdded: number; linksUpdated: number }>(
+      mutateData<Page & { addressChanged: boolean; redirectsAdded: number; linksUpdated: number; documentsSkipped: number }>(
         await api.app.projects[':projectId'].pages[':id'].$patch({ param: { projectId, id: pageId }, json: body }),
         'Could not save the page.',
       ),
+    onError: (_error, { pageId }) => {
+      void qc.invalidateQueries({ queryKey: queryKeys.pages.detail(projectId, pageId) });
+    },
     onSuccess: (data, { pageId }) => {
       if (data.addressChanged) {
         qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });

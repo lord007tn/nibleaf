@@ -239,6 +239,7 @@ export function PageSettingsDialog({
               ? t('editor.pageSettings.addressChanged', { path: `/${page.path}`, redirects: result.redirectsAdded, links: result.linksUpdated })
               : t('editor.pageSettings.saved'),
           );
+          if (result.documentsSkipped) toast.warning(t('editor.pageSettings.linksSkipped', { count: result.documentsSkipped }));
           onOpenChange(false);
         },
         onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.pageSettings.saveError')),

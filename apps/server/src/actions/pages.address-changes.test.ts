@@ -2,7 +2,22 @@ import { validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const database = vi.hoisted(() => ({ page: { findFirst: vi.fn(), findMany: vi.fn() }, transaction: vi.fn() }));
+const database = vi.hoisted(() => ({
+  page: { findFirst: vi.fn(), findMany: vi.fn() },
+  transaction: vi.fn(),
+  inTransaction: false,
+  parsesUnderLock: 0,
+}));
+vi.mock('mdast-util-from-markdown', async (original) => {
+  const actual = await original<typeof import('mdast-util-from-markdown')>();
+  return {
+    ...actual,
+    fromMarkdown: (...args: Parameters<typeof actual.fromMarkdown>) => {
+      if (database.inTransaction) database.parsesUnderLock++;
+      return actual.fromMarkdown(...args);
+    },
+  };
+});
 vi.mock('@nibleaf/database', () => ({ Prisma: { JsonNull: null }, prisma: { page: database.page, $transaction: database.transaction } }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: vi.fn() }));
 vi.mock('./branches', () => ({
@@ -93,7 +108,10 @@ const seed = (initial: Row[], published = true) => {
       update: vi.fn().mockImplementation(async ({ where, data }) => {
         if (failContent && data.content) throw new Error('content write failed');
         const index = pages.findIndex((page) => page.id === where.id);
-        pages[index] = { ...pages[index], ...data };
+        const current = pages[index];
+        if (!current || (where.updatedAt && current.updatedAt.getTime() !== where.updatedAt.getTime()))
+          throw Object.assign(new Error('Revision mismatch'), { code: 'P2025' });
+        pages[index] = { ...current, ...data, updatedAt: new Date(current.updatedAt.getTime() + 1) };
         return pages[index];
       }),
       updateMany: vi.fn().mockImplementation(async ({ where, data }) => {
@@ -116,10 +134,13 @@ const seed = (initial: Row[], published = true) => {
   database.transaction.mockImplementation(async (work) => {
     const previous = structuredClone({ pages, project });
     try {
+      database.inTransaction = true;
       return await work(tx);
     } catch (error) {
       ({ pages, project } = previous);
       throw error;
+    } finally {
+      database.inTransaction = false;
     }
   });
   return {
@@ -140,7 +161,118 @@ const seed = (initial: Row[], published = true) => {
 };
 
 describe('page address preservation through page actions', () => {
-  beforeEach(() => vi.clearAllMocks());
+  it('council: stale REST autosave cannot undo a rename link rewrite', async () => {
+    const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
+    const base = state.pages()[1]?.updatedAt.toISOString();
+    await updatePage('project', 'target', { slug: 'new' });
+    await expect(updatePage('project', 'source', { content: '[link](/old)\nMy unsaved text', expectedUpdatedAt: base })).rejects.toMatchObject({
+      status: 409,
+      code: 'page:revision_conflict',
+    });
+    expect(state.pages()[1]?.content).toBe('[link](/new)');
+    await updatePage('project', 'source', { content: 'Legacy caller without precondition' });
+    expect(state.pages()[1]?.content).toBe('Legacy caller without precondition');
+  });
+
+  it('council: conflicting locale destinations roll back instead of letting the last language win', async () => {
+    const initial = [
+      pageFixture('english', 'old'),
+      pageFixture('arabic', 'old', 'main', 'ar'),
+      pageFixture('en-parent', 'en-parent'),
+      pageFixture('ar-parent', 'ar-parent', 'main', 'ar'),
+    ];
+    const state = seed(initial);
+    await expect(
+      reorderPages('project', {
+        items: [
+          { id: 'english', parentId: 'en-parent', position: 0 },
+          { id: 'arabic', parentId: 'ar-parent', position: 0 },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: 'page:address_conflict', details: { reason: 'locale_redirect_conflict', from: '/old' } });
+    expect(state.pages()).toEqual(initial);
+  });
+
+  it('council: a user redirect is never replaced by a generated redirect', async () => {
+    const state = seed([pageFixture('target', 'old')]);
+    state.config().redirects.push({ from: '/old', to: 'https://example.com/custom' });
+    await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toMatchObject({
+      code: 'page:address_conflict',
+      details: { reason: 'user_redirect_conflict', from: '/old', to: 'https://example.com/custom' },
+    });
+    expect(state.pages()[0]?.path).toBe('old');
+    expect(state.config().redirects[0]?.to).toBe('https://example.com/custom');
+  });
+
+  it('council: generated provenance survives validation and a sequential slug swap', async () => {
+    const state = seed([pageFixture('target', 'a')]);
+    await updatePage('project', 'target', { slug: 'b' });
+    expect(state.config().redirects[0]).toMatchObject({ from: '/a', to: '/b', generated: true });
+    state.publish();
+    await updatePage('project', 'target', { slug: 'a' });
+    expect(state.config().redirects).toEqual([{ from: '/b', to: '/a', generated: true }]);
+    expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
+  });
+
+  it('council: relative and reference destinations resolve against a moving source old address', async () => {
+    const state = seed([
+      pageFixture('parent', 'old'),
+      {
+        ...pageFixture('source', 'old/source'),
+        parentId: 'parent',
+        content: '[inline](target?x=1#part) [reference][dest]\n\n[dest]: target#section',
+      },
+      { ...pageFixture('target', 'old/target'), parentId: 'parent' },
+    ]);
+    const result = await updatePage('project', 'parent', { slug: 'new' });
+    expect(result.linksUpdated).toBe(2);
+    expect(state.pages()[1]?.content).toBe('[inline](/new/target?x=1#part) [reference][dest]\n\n[dest]: /new/target#section');
+  });
+
+  it('council: redirect validation returns structured issues for a localized remedy', async () => {
+    const state = seed([pageFixture('target', 'old')]);
+    state.config().redirects.push(...Array.from({ length: 100 }, (_, index) => ({ from: `/legacy-${index}`, to: '/old' })));
+    await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toMatchObject({
+      code: 'page:redirect_invalid',
+      details: { issues: expect.arrayContaining([expect.objectContaining({ code: 'too-many-rules' })]) },
+    });
+  });
+
+  it('council: document parsing never runs under the structural transaction lock', async () => {
+    seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
+    await updatePage('project', 'target', { slug: 'new' });
+    expect(database.parsesUnderLock).toBe(0);
+  });
+
+  it('council: a document changed after preparation aborts safely instead of applying stale patches', async () => {
+    const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
+    const transaction = database.transaction.getMockImplementation();
+    database.transaction.mockImplementationOnce(async (work) => {
+      const source = state.pages()[1];
+      if (!source || !transaction) throw new Error('Missing fixture');
+      source.content += '\nConcurrent edit';
+      source.updatedAt = new Date(source.updatedAt.getTime() + 1);
+      return transaction(work);
+    });
+    await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toMatchObject({
+      code: 'page:address_conflict',
+      details: { reason: 'address_raced' },
+    });
+    expect(state.pages()[0]?.path).toBe('old');
+    expect(state.pages()[1]?.content).toContain('Concurrent edit');
+  });
+
+  it('council: failed MDX documents are counted and left untouched', async () => {
+    const content = '[link](/old)\n\n{not valid javascript';
+    const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content }]);
+    expect(await updatePage('project', 'target', { slug: 'new' })).toMatchObject({ documentsSkipped: 1, linksUpdated: 0 });
+    expect(state.pages()[1]?.content).toBe(content);
+  });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    database.inTransaction = false;
+    database.parsesUnderLock = 0;
+  });
 
   it('redirects a live slug, rewrites query/anchor links, and preserves code and external URLs', async () => {
     const source =
@@ -148,7 +280,7 @@ describe('page address preservation through page actions', () => {
     const state = seed([pageFixture('target', 'getting-started'), { ...pageFixture('config'), content: source }]);
     const result = await updatePage('project', 'target', { slug: 'quickstart' });
     expect(result).toMatchObject({ path: 'quickstart', redirectsAdded: 1, linksUpdated: 3 });
-    expect(state.config()).toEqual({ theme: 'kept', redirects: [{ from: '/getting-started', to: '/quickstart' }] });
+    expect(state.config()).toEqual({ theme: 'kept', redirects: [{ from: '/getting-started', to: '/quickstart', generated: true }] });
     expect(state.pages()[1]?.content).toBe(
       source
         .replace('[plain](/getting-started)', '[plain](/quickstart)')
@@ -162,7 +294,7 @@ describe('page address preservation through page actions', () => {
   it('relinks an unpublished page without creating a redirect', async () => {
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[draft](/old)' }], false);
     expect(await updatePage('project', 'target', { slug: 'new' })).toMatchObject({ redirectsAdded: 0, linksUpdated: 1 });
-    expect(state.config().redirects).toEqual([]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([]);
     expect(state.pages()[1]?.content).toBe('[draft](/new)');
   });
 
@@ -178,13 +310,13 @@ describe('page address preservation through page actions', () => {
     ];
     state.setLive(live);
     expect(await updatePage('project', 'target', { slug: 'new' })).toMatchObject({ redirectsAdded: 0 });
-    expect(state.config().redirects).toEqual([]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([]);
   });
 
   it('redirects descendants when a parent address changes', async () => {
     const state = seed([pageFixture('parent', 'old'), { ...pageFixture('child', 'old/child'), parentId: 'parent' }]);
     expect(await updatePage('project', 'parent', { slug: 'new' })).toMatchObject({ redirectsAdded: 2 });
-    expect(state.config().redirects).toEqual([
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([
       { from: '/old', to: '/new' },
       { from: '/old/child', to: '/new/child' },
     ]);
@@ -198,7 +330,7 @@ describe('page address preservation through page actions', () => {
       { ...pageFixture('source'), content: '[child](/target/child#help)' },
     ]);
     await reorderPages('project', { items: [{ id: 'target', parentId: 'parent', position: 0 }] });
-    expect(state.config().redirects).toEqual([
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([
       { from: '/target', to: '/parent/target' },
       { from: '/target/child', to: '/parent/target/child' },
     ]);
@@ -212,7 +344,7 @@ describe('page address preservation through page actions', () => {
       { ...pageFixture('source'), content: '[guide](/old?x=1#help)' },
     ]);
     await reorderPages('project', { items: [{ id: 'target', parentId: 'group', languageId: 'ar', position: 0 }] });
-    expect(state.config().redirects).toEqual([{ from: '/old', to: '/group/old?lang=ar' }]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([{ from: '/old', to: '/group/old?lang=ar' }]);
     expect(state.pages().at(-1)?.content).toBe('[guide](/group/old?x=1&lang=ar#help)');
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
   });
@@ -230,7 +362,7 @@ describe('page address preservation through page actions', () => {
         { id: 'two', parentId: 'left', position: 0 },
       ],
     });
-    expect(state.config().redirects).toEqual([]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([]);
   });
 
   it('flattens published chains, retargets unpublished intermediate paths, and avoids loops on return', async () => {
@@ -238,17 +370,17 @@ describe('page address preservation through page actions', () => {
     await updatePage('project', 'target', { slug: 'b' });
     state.publish();
     await updatePage('project', 'target', { slug: 'c' });
-    expect(state.config().redirects).toEqual([
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([
       { from: '/a', to: '/c' },
       { from: '/b', to: '/c' },
     ]);
     await updatePage('project', 'target', { slug: 'd' });
-    expect(state.config().redirects).toEqual([
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([
       { from: '/a', to: '/d' },
       { from: '/b', to: '/d' },
     ]);
     await updatePage('project', 'target', { slug: 'a' });
-    expect(state.config().redirects).toEqual([{ from: '/b', to: '/a' }]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([{ from: '/b', to: '/a' }]);
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
   });
 
@@ -273,7 +405,7 @@ describe('page address preservation through page actions', () => {
       { ...pageFixture('other'), content: '[other](/old)' },
     ]);
     await updatePage('project', 'target', { slug: 'new' });
-    expect(state.config().redirects).toEqual([{ from: '/version-2/old', to: '/version-2/new?lang=ar' }]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([{ from: '/version-2/old', to: '/version-2/new?lang=ar' }]);
     expect(state.pages()[1]?.content).toBe('[local](/new) [version](/version-2/new?lang=ar)');
     expect(state.pages()[2]?.content).toBe('[other](/old)');
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
@@ -285,7 +417,7 @@ describe('page address preservation through page actions', () => {
     state.failContent();
     await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toThrow('content write failed');
     expect(state.pages()).toEqual(initial);
-    expect(state.config().redirects).toEqual([]);
+    expect(state.config().redirects.map(({ from, to }) => ({ from, to }))).toEqual([]);
   });
 
   it('keeps the redirect limit and rolls back when adding a rule would exceed it', async () => {

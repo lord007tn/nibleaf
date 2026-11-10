@@ -1,5 +1,17 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'editor.pageSettings.linksSkipped': 'editor_pagesettings_linksskipped',
+  'editor.pageSettings.addressRaced': 'editor_pagesettings_addressraced',
+  'editor.pageSettings.addressRedirectInvalid': 'editor_pagesettings_addressredirectinvalid',
+  'editor.pageSettings.addressRedirectLimit': 'editor_pagesettings_addressredirectlimit',
+  'editor.pageSettings.addressUserRuleConflict': 'editor_pagesettings_addressuserruleconflict',
+  'editor.pageSettings.addressLocaleConflict': 'editor_pagesettings_addresslocaleconflict',
+  'editor.conflict.review': 'editor_conflict_review',
+  'editor.conflict.resolve': 'editor_conflict_resolve',
+  'editor.conflict.local': 'editor_conflict_local',
+  'editor.conflict.server': 'editor_conflict_server',
+  'editor.conflict.body': 'editor_conflict_body',
+  'editor.conflict.title': 'editor_conflict_title',
   'roles.organizationMember': 'roles_organizationmember',
   'settings.members.viaOrganization': 'settings_members_viaorganization',
   'settings.members.noWebsiteAccess': 'settings_members_nowebsiteaccess',

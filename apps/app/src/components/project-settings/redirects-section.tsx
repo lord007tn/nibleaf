@@ -13,7 +13,7 @@ export function RedirectsSection({ project }: { project: Project }) {
   const update = useUpdateProjectConfig(project.id);
 
   const defaultValues = {
-    redirects: (project.config?.redirects ?? []).map((pair) => ({ from: pair.from, to: pair.to })),
+    redirects: (project.config?.redirects ?? []).map((pair) => ({ from: pair.from, to: pair.to, generated: pair.generated === true })),
   };
   const { offerUndo, clearUndo } = useDraftRowUndo();
   const form = useForm({
@@ -62,7 +62,10 @@ export function RedirectsSection({ project }: { project: Project }) {
                                 aria-invalid={invalidRows.has(index)}
                                 aria-label={t('settings.redirects.fromLabel')}
                                 dir="ltr"
-                                onChange={(e) => sub.handleChange(e.target.value)}
+                                onChange={(e) => {
+                                  sub.handleChange(e.target.value);
+                                  form.setFieldValue(`redirects[${index}].generated`, false);
+                                }}
                                 placeholder="/intro"
                                 value={sub.state.value}
                               />
@@ -76,7 +79,10 @@ export function RedirectsSection({ project }: { project: Project }) {
                                 aria-invalid={invalidRows.has(index)}
                                 aria-label={t('settings.redirects.toLabel')}
                                 dir="ltr"
-                                onChange={(e) => sub.handleChange(e.target.value)}
+                                onChange={(e) => {
+                                  sub.handleChange(e.target.value);
+                                  form.setFieldValue(`redirects[${index}].generated`, false);
+                                }}
                                 placeholder="/get-started/introduction"
                                 value={sub.state.value}
                               />
@@ -115,7 +121,7 @@ export function RedirectsSection({ project }: { project: Project }) {
                   ) : null}
                   <Button
                     className="mb-4 border-dashed text-muted-foreground"
-                    onClick={() => field.pushValue({ from: '', to: '' })}
+                    onClick={() => field.pushValue({ from: '', to: '', generated: false })}
                     type="button"
                     variant="outline"
                   >

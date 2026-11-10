@@ -6,6 +6,7 @@ export const MAX_REDIRECT_CHAIN_LENGTH = 10;
 export const MAX_REDIRECT_RULES = 100;
 
 export interface RedirectPair {
+  generated?: boolean;
   from: string;
   to: string;
 }
@@ -60,7 +61,7 @@ export interface RedirectGraphResult {
 type ParsedInternal = { kind: 'internal'; path: string; query: string; fragment: string; href: string; language: string | null };
 type ParsedExternal = { kind: 'external'; href: string };
 type ParsedDestination = ParsedInternal | ParsedExternal;
-type ParsedRule = { index: number; from: string; target: ParsedDestination };
+type ParsedRule = { index: number; from: string; target: ParsedDestination; generated?: boolean };
 
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const ENCODED_SEPARATOR = /%(?:2f|5c)/i;
@@ -261,7 +262,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
       continue;
     }
 
-    const current: ParsedRule = { index, from, target };
+    const current: ParsedRule = { index, from, target, generated: redirect.generated === true };
     const duplicate = bySource.get(from);
     if (duplicate) {
       const qualifier = duplicate.target.href === target.href ? 'Duplicate' : 'Conflicting';
@@ -381,7 +382,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
       continue;
     }
     if (finalTarget.kind === 'external') {
-      flattened.push({ from: displayPath(start.from), to: finalTarget.href });
+      flattened.push({ from: displayPath(start.from), to: finalTarget.href, ...(start.generated ? { generated: true } : {}) });
       continue;
     }
 
@@ -417,6 +418,7 @@ export function validateRedirectGraph(redirects: readonly RedirectPair[], option
     }
     flattened.push({
       from: displayPath(start.from),
+      ...(start.generated ? { generated: true } : {}),
       to: `${displayPath(finalPath)}${finalTarget.query ? `?${finalTarget.query}` : ''}${finalTarget.fragment ? `#${finalTarget.fragment}` : ''}`,
     });
   }
@@ -536,6 +538,7 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
         return {
           from: typeof record.from === 'string' ? record.from : `[invalid redirect row ${index + 1}]`,
           to: typeof record.to === 'string' ? record.to : '',
+          ...(record.generated === true ? { generated: true } : {}),
         };
       })
     : [];
