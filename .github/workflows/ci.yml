@@ -140,6 +140,12 @@ jobs:
           pnpm exec turbo run build --filter="@nibleaf/server^..."
           pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
 
+      - name: Verify concurrent custom-domain transitions
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          DOMAIN_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/domains.postgres.test.ts
+
       - name: Verify publishing retention aggregates
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
