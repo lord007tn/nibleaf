@@ -253,7 +253,7 @@ export function BranchSwitcher({
       />
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>{t('editor.branch.new')}</DialogTitle>
             <DialogDescription>{t('editor.branch.dialogDesc', { name: active?.name ?? 'main' })}</DialogDescription>
