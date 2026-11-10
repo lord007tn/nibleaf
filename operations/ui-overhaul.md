@@ -344,7 +344,9 @@ Every section is one of two kinds, never both:
 **SaveRegion** (one per page, not one per form):
 
 - Every explicit form on the page registers with it (`useSaveRegion(formId, { isDirty, isSubmitting, submit, discard
-  })`). It shows while any registered form is dirty: "Unsaved changes", then Discard, then Save.
+  })`). It shows while any registered form is dirty **or a save is still in flight**: "Unsaved changes", then Discard,
+  then Save. A pending save keeps it up even if the person types the value back to the baseline, because the request
+  can still change the stored value.
 - With one dirty form, Save and Discard act on it. With several (rare: General with translations), Save submits every
   dirty form in order and stops at the first invalid one. The region names how many have changes.
 - It is `position: sticky; bottom: 0` within the content column, so its containing block spans the forms it serves. It
@@ -355,8 +357,8 @@ Every section is one of two kinds, never both:
 - When the region hides after a successful save, focus moves to `returnFocusTo()` (default: the page `h1`, without
   scrolling) only if focus was on one of its buttons and fell to the body.
   Otherwise focus stays where it is. The "Saved" status is announced politely.
-- **Navigating away** while any form is dirty goes through the route's unsaved-changes guard. The guard reads the same
-  registry, with one dirty source per form.
+- **Navigating away** while any form is dirty, or while a save is in flight, goes through the route's unsaved-changes
+  guard. The guard reads the same registry, with one source for the page.
 
 ### 5.4 Other dashboard pages
 
@@ -374,7 +376,9 @@ Every section is one of two kinds, never both:
 - `<main id="main-content" tabIndex={-1}>` wraps the content column, and the skip link targets it. A `main` with
   `tabIndex=-1` is a landmark; the bug today is a focusable generic `div` (fixed by the Organizations thread in PR 2).
 - The settings nav is `<nav aria-label="Settings">`, with `aria-current="page"` on the active item. Items are router
-  links (`<Link search={{ section }} replace>`), so middle-click and copy-link work.
+  links, so middle-click and copy-link work. They merge into the current search params and clear only the params that
+  belong to the section being left: `<Link search={(prev) => ({ ...prev, section, appearanceSection: undefined })}
+  replace>`.
 - One h1 per page (`PageHeader`). Previews (theme, typography) render inert presentational elements, never headings.
 - Focus moves to the h1 on section change. Dialogs restore focus to their trigger, or to a fallback when the trigger is
   gone (§6.3).
@@ -728,6 +732,11 @@ These extend `apps/app/DATA_LOADING.md` and do not replace it. Its rules (query 
 
 - When the identity changes, the form resets to the new source's values and pending state is dropped. If the form was
   dirty, the switch must already have been confirmed by the caller's guard (scope picker, route blocker).
+- **Saves carry a generation.** Every identity change bumps it, including a switch back to an earlier identity
+  (A → B → A). A save remembers the generation it started in. If it settles in another generation, its success and
+  failure are both ignored: it moves no baseline and maps no field error. The submit handler checks `isCurrent()`
+  before touching the form itself. Dropping pending state does not cancel the request, so this check is what keeps
+  an old result out of the new form. Covered by a test that runs A → B → A while A's save is pending.
 
 **Three values per form:**
 

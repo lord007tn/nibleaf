@@ -8,7 +8,7 @@ import { Button } from './button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog'
 import { Input } from './input'
 import { Label } from './label'
-import { restoreFocusFallback } from '../../lib/focus'
+import { currentFocusTarget, restoreFocusFallback } from '../../lib/focus'
 
 const hasContent = (node: React.ReactNode) =>
   node != null && node !== false && !(typeof node === "string" && node.trim() === "")
@@ -122,7 +122,7 @@ function ActionDialog({
     pendingRef.current = false
     setPending(false)
     if (open) {
-      returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      returnFocus.current = currentFocusTarget()
       setFailure(null)
       setTyped("")
       setTypedAttempted(false)
