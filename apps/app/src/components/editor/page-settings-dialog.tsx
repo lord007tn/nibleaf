@@ -233,8 +233,12 @@ export function PageSettingsDialog({
         },
       },
       {
-        onSuccess: () => {
-          toast.success(t('editor.pageSettings.saved'));
+        onSuccess: (result) => {
+          toast.success(
+            result.addressChanged
+              ? t('editor.pageSettings.addressChanged', { path: `/${page.path}`, redirects: result.redirectsAdded, links: result.linksUpdated })
+              : t('editor.pageSettings.saved'),
+          );
           onOpenChange(false);
         },
         onError: (e) => toast.error(friendlyErrorMessage(t, e, 'editor.pageSettings.saveError')),

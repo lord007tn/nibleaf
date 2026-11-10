@@ -578,6 +578,9 @@ importers:
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0
+      mdast-util-from-markdown:
+        specifier: 2.0.3
+        version: 2.0.3
       jose:
         specifier: ^6.2.14
         version: 6.2.15

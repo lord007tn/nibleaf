@@ -55,6 +55,7 @@
     "hono-openapi": "1.5.0",
     "ioredis": "^6.0.0",
     "jose": "^6.2.14",
+    "mdast-util-from-markdown": "2.0.3",
     "octokit": "5.0.5",
     "quansync": "0.2.11",
     "turndown": "^7.2.5",

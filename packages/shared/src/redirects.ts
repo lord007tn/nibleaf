@@ -453,10 +453,8 @@ export interface SnapshotRedirectValidation extends RedirectGraphResult {
   snapshot: SiteSnapshot;
 }
 
-/** Build the effective locale/version/base-path route manifest and validate the
- * redirects stored in a publish snapshot. Successful snapshots contain only
- * normalized direct redirects; failures return the original snapshot untouched. */
-export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedirectValidation {
+/** The reader's effective locale/version route manifest, including group aliases. */
+export function snapshotRedirectOptions(snapshot: SiteSnapshot): RedirectGraphOptions {
   const languages = publicLanguages(snapshot.project.languages);
   const defaultLanguage = languages.find((language) => language.isDefault)?.code;
   const routes: RedirectRoute[] = [];
@@ -517,6 +515,17 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
     }
   }
 
+  return {
+    routes,
+    defaultLanguage,
+    enabledLanguages: languages.map((language) => language.code),
+    reservedPaths: reserved,
+    routeCollisions: [...routeCollisions],
+  };
+}
+
+/** Validate against the same effective routes used by the reader. */
+export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedirectValidation {
   const config = snapshot.project.config ?? {};
   const raw = (config as { redirects?: unknown }).redirects;
   const redirects = Array.isArray(raw)
@@ -530,13 +539,7 @@ export function validateSnapshotRedirects(snapshot: SiteSnapshot): SnapshotRedir
         };
       })
     : [];
-  const result = validateRedirectGraph(redirects, {
-    routes,
-    defaultLanguage,
-    enabledLanguages: languages.map((language) => language.code),
-    reservedPaths: reserved,
-    routeCollisions: [...routeCollisions],
-  });
+  const result = validateRedirectGraph(redirects, snapshotRedirectOptions(snapshot));
   if (raw !== undefined && !Array.isArray(raw)) {
     result.issues.unshift(issue('malformed-source', 'Stored redirect configuration must be an array of source/destination rules.', [], [], 'from'));
     result.redirects = [];

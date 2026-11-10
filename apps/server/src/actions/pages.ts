@@ -4,6 +4,7 @@ import { editor_newgroup, editor_untitled } from '@nibleaf/i18n/messages';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { badRequest, conflict, notFound } from '@/errors';
+import { type PagePathChange, preservePageAddresses } from '@/lib/page-address-changes';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { logFirstContentEdit } from './platform-events';
@@ -121,8 +122,11 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
 };
 
 /** Recompute materialized paths in the same transaction as the tree change. */
-export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<void> => {
-  const pages = await tx.page.findMany({ where: { projectId }, select: { id: true, parentId: true, slug: true, path: true } });
+export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<PagePathChange[]> => {
+  const pages = await tx.page.findMany({
+    where: { projectId },
+    select: { id: true, parentId: true, slug: true, path: true, branchId: true, languageId: true },
+  });
   const byId = new Map(pages.map((p) => [p.id, p]));
   const pathOf = (id: string, seen = new Set<string>()): string => {
     if (seen.has(id)) {
@@ -135,8 +139,11 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
     }
     return node.parentId ? joinPath(pathOf(node.parentId, seen), node.slug) : node.slug;
   };
-  const updates = pages.map((p) => ({ id: p.id, path: pathOf(p.id), old: p.path })).filter((u) => u.path !== u.old);
+  const updates = pages
+    .map((p) => ({ id: p.id, branchId: p.branchId, languageId: p.languageId, path: pathOf(p.id), old: p.path }))
+    .filter((u) => u.path !== u.old);
   for (const u of updates) await tx.page.update({ where: { id: u.id }, data: { path: u.path } });
+  return updates;
 };
 
 /** A move or slug change rewrites the paths of the page and its subtree. */
@@ -292,8 +299,14 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
           });
         // A structural change commits with the path recomputation, so a failure
         // never leaves the page or its descendants with stale paths.
-        if (structural) await recomputeProjectPaths(projectId, tx);
-        return { page, updated: structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated };
+        const addressChanges = structural
+          ? await preservePageAddresses(projectId, await recomputeProjectPaths(projectId, tx), tx)
+          : { redirectsAdded: 0, linksUpdated: 0 };
+        const saved = structural ? await tx.page.findFirstOrThrow({ where: { id, projectId } }) : updated;
+        return {
+          page,
+          updated: { ...saved, ...addressChanges, addressChanged: saved.path !== page.path },
+        };
       },
       { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
     );
@@ -451,7 +464,12 @@ export const reorderPages = async (projectId: string, body: ReorderPagesBody) =>
           },
         });
       }
-      await recomputeProjectPaths(projectId, tx);
+      const changes = await recomputeProjectPaths(projectId, tx);
+      await preservePageAddresses(
+        projectId,
+        changes.map((change) => ({ ...change, oldLanguageId: byPage.get(change.id)?.languageId })),
+        tx,
+      );
       return body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined;
     },
     { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },

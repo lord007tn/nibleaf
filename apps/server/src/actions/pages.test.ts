@@ -12,6 +12,7 @@ const database = vi.hoisted(() => ({
   languages: vi.fn(),
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/page-address-changes', () => ({ preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0 }) }));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: recordEdit }));
 vi.mock('./branches', () => ({ assertBranchInProject: async () => ({ id: 'branch-1' }), getDefaultBranch: async () => ({ id: 'branch-1' }) }));
 

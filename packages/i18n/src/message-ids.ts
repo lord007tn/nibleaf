@@ -501,6 +501,7 @@ export const MESSAGE_IDS = {
   'editor.pageSettings.title': 'editor_pagesettings_title',
   'editor.pageSettings.desc': 'editor_pagesettings_desc',
   'editor.pageSettings.save': 'editor_pagesettings_save',
+  'editor.pageSettings.addressChanged': 'editor_pagesettings_addresschanged',
   'editor.pageSettings.saved': 'editor_pagesettings_saved',
   'editor.pageSettings.saveError': 'editor_pagesettings_saveerror',
   'editor.pageSettings.pageTitle': 'editor_pagesettings_pagetitle',
