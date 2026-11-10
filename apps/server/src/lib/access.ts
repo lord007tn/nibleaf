@@ -4,8 +4,8 @@ import type { OrgRole } from '@nibleaf/shared/rbac';
 import { AppError, notFound } from '@/errors';
 
 /** Shared by dashboard sessions, personal credentials and private-site sessions. */
-export const assertUsableAccount = async (userId: string) => {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, banned: true, suspendedAt: true } });
+export const assertUsableAccount = async (userId: string, db: typeof prisma | Prisma.TransactionClient = prisma) => {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, banned: true, suspendedAt: true } });
   if (!user || user.banned || user.suspendedAt) throw new AppError({ code: 'auth:invalid_session' });
   return user;
 };
