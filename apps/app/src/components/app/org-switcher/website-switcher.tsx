@@ -185,8 +185,8 @@ function WebsiteList({
             >
               <WebsiteMark icon={site.icon} />
               <LiveDot live={site.live} />
-              <span className="min-w-0 flex-1 truncate">
-                <bdi>{site.name}</bdi>
+              <span className="min-w-0 flex-1 truncate" dir="auto">
+                {site.name}
               </span>
               {selected ? <Check aria-hidden className="size-4 shrink-0 text-primary" /> : null}
             </div>

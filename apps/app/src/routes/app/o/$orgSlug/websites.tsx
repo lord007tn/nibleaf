@@ -124,7 +124,7 @@ function WebsitesPage() {
         actions={
           canCreate ? (
             <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" /> {t('dashboard.newProject')}
+              <Plus className="size-4" /> {t('organization.websites.new')}
             </Button>
           ) : null
         }

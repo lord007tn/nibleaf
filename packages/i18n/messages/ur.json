@@ -4229,5 +4229,8 @@
   "welcome_invitations_title": "Invitations for you",
   "welcome_invitations_from": "From {name}.",
   "welcome_invitations_expires": "Expires {when}.",
-  "welcome_invitations_accept": "Accept"
+  "welcome_invitations_accept": "Accept",
+  "organization_websites_new": "New website",
+  "organization_billing_notice_title": "Free during the beta",
+  "organization_billing_notice_description": "This organization is on Nibleaf Cloud's free beta. Paid plan changes are handled manually while the beta is free."
 }

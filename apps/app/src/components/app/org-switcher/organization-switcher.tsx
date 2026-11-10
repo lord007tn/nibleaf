@@ -75,8 +75,8 @@ export function OrganizationSwitcher({
         {/* The sheet is not anchored, so the trigger is a plain button. */}
         <Button {...trigger.props} aria-expanded={open} onClick={() => setOpen(true)} />
         <Sheet onOpenChange={setOpen} open={open}>
-          <SheetContent aria-label={t('switcher.dialogLabel')} className="h-dvh max-h-dvh gap-0 p-0" side="bottom">
-            <SheetHeader className="border-border border-b py-3 pe-14">
+          <SheetContent aria-label={t('switcher.dialogLabel')} className="h-dvh max-h-dvh gap-0 p-0 data-[side=bottom]:h-dvh" side="bottom">
+            <SheetHeader className="min-h-14 justify-center border-border border-b py-3 pe-14">
               <SheetTitle>{t('switcher.dialogLabel')}</SheetTitle>
             </SheetHeader>
             <div className="min-h-0 flex-1">{panel}</div>

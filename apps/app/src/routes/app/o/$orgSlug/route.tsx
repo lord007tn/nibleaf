@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { NotFound } from '@/components/not-found';
 import { OrganizationContext } from '@/components/organization/organization-context';
 import { isAccessLoss, useAccessLoss } from '@/components/organization/use-access-loss';
@@ -10,6 +10,8 @@ import { organizationBySlugQueryOptions, switcherQueryOptions } from '@/hooks/ap
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { OrganizationLayout } from '@/layouts/organization';
+
+const subscribeToHydration = () => () => undefined;
 
 export const Route = createFileRoute('/app/o/$orgSlug')({
   loader: ({ context: { queryClient }, params: { orgSlug } }) => {
@@ -35,7 +37,13 @@ function OrganizationRoute() {
   const refetchOrganization = organization.refetch;
   const switcher = useSwitcher();
   const { lostOrganization } = useAccessLoss();
-  const data = organization.data;
+  // The query can resolve before this streamed route hydrates: render the server's loading tree until then.
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
+  const data = hydrated ? organization.data : undefined;
   const lost = isAccessLoss(organization.error);
   const cachedName = data?.name ?? switcher.data?.organizations.find((org) => org.slug === orgSlug)?.name;
   useRecordVisitEffect({ organizationId: data && !lost ? data.id : undefined });
@@ -46,6 +54,16 @@ function OrganizationRoute() {
     const rest = pathname.slice(`/app/o/${orgSlug}`.length);
     void navigate({ to: `/app/o/${data.slug}${rest}${search}` as never, replace: true });
   }, [data, lost, orgSlug, pathname, search, navigate]);
+
+  // Moving between this org's pages often needs no request (fresh cache), so re-check
+  // membership with the tiny by-slug read on each navigation inside the org.
+  const visited = useRef<string | null>(null);
+  useEffect(() => {
+    // Only while staying in this org: leaving it on purpose (delete, leave) must not trigger the lost-access path.
+    const inOrganization = pathname.startsWith(`/app/o/${orgSlug}/`);
+    if (visited.current !== null && visited.current !== pathname && inOrganization) void refetchOrganization();
+    visited.current = pathname;
+  }, [pathname, orgSlug, refetchOrganization]);
 
   // Any org-scoped request answering 404 means access may be gone: re-check the org itself.
   const organizationId = data?.id;
@@ -59,8 +77,8 @@ function OrganizationRoute() {
   }, [organizationId, queryClient, refetchOrganization]);
 
   useEffect(() => {
-    if (lost && cachedName) lostOrganization(cachedName);
-  }, [lost, cachedName, lostOrganization]);
+    if (lost && cachedName && pathname.startsWith(`/app/o/${orgSlug}`)) lostOrganization(cachedName);
+  }, [lost, cachedName, lostOrganization, pathname, orgSlug]);
 
   if (lost && !cachedName) return <NotFound />;
   if (organization.isError && !lost && !data) {

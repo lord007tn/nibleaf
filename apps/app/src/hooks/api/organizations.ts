@@ -1,5 +1,6 @@
 import type { AnalyticsRange } from '@nibleaf/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSyncExternalStore } from 'react';
 import { api } from '@/services/api';
 import { mutateData } from './client-helpers';
 import {
@@ -21,12 +22,20 @@ import { queryKeys } from './query-keys';
 
 export * from './organization-query-options';
 
+const subscribeToHydration = () => () => undefined;
+
 export const useSwitcher = () => useQuery(switcherQueryOptions());
 /** The switcher's entry for a website's organization: name, slug and the caller's org role. */
 export const useOrganizationOfProject = (organizationId: string | undefined) => {
   const switcher = useSwitcher();
+  // Same tree as the server until hydration, so cached data never causes a mismatch.
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   return {
-    organization: organizationId ? switcher.data?.organizations.find((org) => org.id === organizationId) : undefined,
+    organization: hydrated && organizationId ? switcher.data?.organizations.find((org) => org.id === organizationId) : undefined,
     isPending: switcher.isPending,
   };
 };

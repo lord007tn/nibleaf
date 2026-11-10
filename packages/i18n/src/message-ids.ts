@@ -1,5 +1,8 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'organization.billing.notice.title': 'organization_billing_notice_title',
+  'organization.billing.notice.description': 'organization_billing_notice_description',
+  'organization.websites.new': 'organization_websites_new',
   'account.header': 'account_header',
   'account.title': 'account_title',
   'account.subtitle': 'account_subtitle',

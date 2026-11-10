@@ -4277,5 +4277,8 @@
   "welcome_invitations_title": "دعوات موجّهة إليك",
   "welcome_invitations_from": "من {name}.",
   "welcome_invitations_expires": "تنتهي {when}.",
-  "welcome_invitations_accept": "قبول"
+  "welcome_invitations_accept": "قبول",
+  "organization_websites_new": "موقع جديد",
+  "organization_billing_notice_title": "مجاني خلال الفترة التجريبية",
+  "organization_billing_notice_description": "هذه المؤسسة على النسخة التجريبية المجانية من Nibleaf Cloud. تُعالَج تغييرات الخطط المدفوعة يدويًا طوال الفترة التجريبية المجانية."
 }

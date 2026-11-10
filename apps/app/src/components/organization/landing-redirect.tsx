@@ -15,7 +15,8 @@ export function LandingRedirect({ section, search }: { section: OrgSection; sear
   const navigate = useNavigate();
   const switcher = useSwitcher();
   const landing = switcher.data?.landing;
-  const empty = switcher.isSuccess && !landing;
+  // Cached data counts too: a failed background refetch must not hold the loader forever.
+  const empty = Boolean(switcher.data) && !landing;
   const slug = landing?.slug;
 
   useEffect(() => {

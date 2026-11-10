@@ -55,8 +55,8 @@ function BillingPage() {
           <Info className="size-5" />
         </span>
         <div className="leading-snug">
-          <div className="font-medium text-sm">{t('settings.billing.notice.title')}</div>
-          <p className="mt-0.5 text-muted-foreground text-sm">{t('settings.billing.notice.description')}</p>
+          <div className="font-medium text-sm">{t('organization.billing.notice.title')}</div>
+          <p className="mt-0.5 text-muted-foreground text-sm">{t('organization.billing.notice.description')}</p>
         </div>
       </div>
       {usage.isError && !usage.data ? (

@@ -439,10 +439,13 @@ export function SwitcherPanel({
           >
             <WebsiteMark icon={site.icon} />
             <LiveDot live={site.live} />
-            <span className="min-w-0 flex-1 truncate">
-              <bdi>{site.name}</bdi>
+            {/* dir on the truncating box itself, so a Latin name or domain is cut at its end in RTL too. */}
+            <span className="min-w-0 flex-1 truncate" dir="auto">
+              {site.name}
             </span>
-            <span className="max-w-[45%] truncate text-muted-foreground text-xs">{site.domain ? <bdi dir="ltr">{site.domain}</bdi> : '—'}</span>
+            <span className="max-w-[45%] truncate text-muted-foreground text-xs" dir="ltr">
+              {site.domain ?? '—'}
+            </span>
           </Option>
         )}
       >
