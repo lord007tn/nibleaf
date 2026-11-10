@@ -12,7 +12,6 @@ import {
   organizationBySlugQueryOptions,
   organizationMembersQueryOptions,
   organizationProjectsQueryOptions,
-  organizationQueryOptions,
   organizationSwitcherProjectsQueryOptions,
   organizationUsageQueryOptions,
   type PersonalNotificationKey,
@@ -41,7 +40,6 @@ export const useOrganizationOfProject = (organizationId: string | undefined) => 
   };
 };
 export const useOrganizationBySlug = (slug: string | undefined) => useQuery(organizationBySlugQueryOptions(slug));
-export const useOrganization = (organizationId: string | undefined) => useQuery(organizationQueryOptions(organizationId));
 export const useOrganizationSwitcherProjects = (organizationId: string | undefined) =>
   useQuery(organizationSwitcherProjectsQueryOptions(organizationId));
 export const useOrganizationProjects = (organizationId: string | undefined, options?: { pollWhilePublishing?: boolean }) =>

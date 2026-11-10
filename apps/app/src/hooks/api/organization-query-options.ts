@@ -109,14 +109,6 @@ export const organizationBySlugQueryOptions = (slug: string | undefined) =>
       : skipToken,
   });
 
-export const organizationQueryOptions = (organizationId: string | undefined) =>
-  queryOptions({
-    queryKey: organizationKeys.organizations.detail(organizationId ?? ''),
-    queryFn: organizationId
-      ? async () => getData<OrganizationDetail>(await api.app.organizations[':organizationId'].$get({ param: { organizationId } }), 'organization')
-      : skipToken,
-  });
-
 /** The compact website list the switcher's right pane shows (only websites you can open). */
 export const organizationSwitcherProjectsQueryOptions = (organizationId: string | undefined) =>
   queryOptions({

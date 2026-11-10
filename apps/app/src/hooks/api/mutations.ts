@@ -15,7 +15,6 @@ import type {
   ProjectConfigUpdate,
   ReorderPagesBody,
   RotateApiKeyBody,
-  TransferOwnershipBody,
   UpdateLanguageBody,
   UpdateMemberRoleBody,
   UpdatePageBody,
@@ -495,20 +494,6 @@ export const useUpdateProjectMemberRole = (projectId: string) => {
         await api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
         'Could not update the role.',
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
-  });
-};
-
-export const useTransferProjectOwnership = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: TransferOwnershipBody) => {
-      const project = await mutateData(await api.app.projects[':id'].$get({ param: { id: projectId } }), 'Could not load the website.');
-      return mutateData(
-        await api.app.organizations[':organizationId']['transfer-ownership'].$post({ param: { organizationId: project.organizationId }, json: body }),
-        'Could not transfer ownership.',
-      );
-    },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };

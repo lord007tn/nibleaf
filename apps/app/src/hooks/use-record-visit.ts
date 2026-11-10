@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useRecordVisit } from '@/hooks/api';
 
 /** Debounce so quick hops through the switcher record only where the person settles. */
-export const RECORD_VISIT_DELAY_MS = 1500;
+const RECORD_VISIT_DELAY_MS = 1500;
 
 /**
  * Remember the organization (and website) being viewed: the landing org for

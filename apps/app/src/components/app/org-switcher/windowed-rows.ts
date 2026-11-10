@@ -1,7 +1,7 @@
 import { type RefObject, useEffect, useState } from 'react';
 
 /** Lists longer than this render only the rows in view (design §5.4.1). */
-export const WINDOW_THRESHOLD = 50;
+const WINDOW_THRESHOLD = 50;
 const OVERSCAN = 6;
 
 /**

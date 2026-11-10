@@ -107,7 +107,7 @@ export function UsageTab({ project, organization }: { project: Project; organiza
 const WEBSITE_HIDDEN_METERS = new Set(['editor_seat']);
 
 /** "Plan and billing are managed by <Org> →" — the arrow link only for those who can open billing. */
-export function BillingPointer({ organization }: { organization: { slug: string; name: string; canManage: boolean } }) {
+function BillingPointer({ organization }: { organization: { slug: string; name: string; canManage: boolean } }) {
   const t = useT();
   return (
     <p className="text-muted-foreground text-sm" data-slot="billing-pointer">

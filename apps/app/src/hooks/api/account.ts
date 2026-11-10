@@ -31,12 +31,12 @@ const accountKeys = {
   linked: () => ['account', 'linked'] as const,
 };
 
-export const accountSessionsQueryOptions = () =>
+const accountSessionsQueryOptions = () =>
   queryOptions({
     queryKey: accountKeys.sessions(),
     queryFn: async () => unwrap((await authClient.listSessions()) as { data: AccountSession[] | null; error: null }, 'sessions'),
   });
-export const linkedAccountsQueryOptions = () =>
+const linkedAccountsQueryOptions = () =>
   queryOptions({
     queryKey: accountKeys.linked(),
     queryFn: async () => unwrap((await authClient.listAccounts()) as { data: LinkedAccount[] | null; error: null }, 'sign-in methods'),

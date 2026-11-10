@@ -9,7 +9,7 @@ import { createSequenceHandler, type Pane } from './switcher-model';
 import { SwitcherPanel } from './switcher-panel';
 
 /** The org of the page in view, from the URL only (§5.4.2: no client-side "current org" state). */
-export function useCurrentScope() {
+function useCurrentScope() {
   const params = useRouterState({ select: (state) => (state.matches.at(-1)?.params ?? {}) as { orgSlug?: string; projectId?: string } });
   const bySlug = useOrganizationBySlug(params.orgSlug);
   const project = useProject(params.projectId);
