@@ -21,11 +21,8 @@ import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-emai
 import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
 import { Route as AlternativesSlugRouteImport } from './routes/alternatives/$slug'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppLegacyRouteImport } from './routes/app/$legacy'
 import { Route as AppdashboardRouteRouteImport } from './routes/app/(dashboard)/route'
-import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
-import { Route as AppMembersRouteImport } from './routes/app/members'
-import { Route as AppPeopleRouteImport } from './routes/app/people'
-import { Route as AppSitesRouteImport } from './routes/app/sites'
 import { Route as AppWelcomeRouteImport } from './routes/app/welcome'
 import { Route as ArPageRouteImport } from './routes/ar/$page'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
@@ -44,7 +41,6 @@ import { Route as ArUseCasesSlugRouteImport } from './routes/ar/use-cases/$slug'
 import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$projectId/index'
 import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
 import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
-import { Route as AppOOrgSlugIndexRouteImport } from './routes/app/o/$orgSlug/index'
 import { Route as AppOOrgSlugAnalyticsRouteImport } from './routes/app/o/$orgSlug/analytics'
 import { Route as AppOOrgSlugBillingRouteImport } from './routes/app/o/$orgSlug/billing'
 import { Route as AppOOrgSlugMembersRouteImport } from './routes/app/o/$orgSlug/members'
@@ -123,28 +119,13 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppLegacyRoute = AppLegacyRouteImport.update({
+  id: '/$legacy',
+  path: '/$legacy',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppdashboardRouteRoute = AppdashboardRouteRouteImport.update({
   id: '/(dashboard)',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppMembersRoute = AppMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppPeopleRoute = AppPeopleRouteImport.update({
-  id: '/people',
-  path: '/people',
-  getParentRoute: () => AppRouteRoute,
-} as any)
-const AppSitesRoute = AppSitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppWelcomeRoute = AppWelcomeRouteImport.update({
@@ -237,11 +218,6 @@ const SitesProjectIdChangelogRoute = SitesProjectIdChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
   getParentRoute: () => SitesProjectIdRouteRoute,
-} as any)
-const AppOOrgSlugIndexRoute = AppOOrgSlugIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppOOrgSlugRouteRoute,
 } as any)
 const AppOOrgSlugAnalyticsRoute = AppOOrgSlugAnalyticsRouteImport.update({
   id: '/analytics',
@@ -352,10 +328,7 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
-  '/app/analytics': typeof AppAnalyticsRoute
-  '/app/members': typeof AppMembersRoute
-  '/app/people': typeof AppPeopleRoute
-  '/app/sites': typeof AppSitesRoute
+  '/app/$legacy': typeof AppLegacyRoute
   '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -384,7 +357,6 @@ export interface FileRoutesByFullPath {
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
-  '/app/o/$orgSlug/': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
@@ -404,10 +376,7 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
-  '/app/analytics': typeof AppAnalyticsRoute
-  '/app/members': typeof AppMembersRoute
-  '/app/people': typeof AppPeopleRoute
-  '/app/sites': typeof AppSitesRoute
+  '/app/$legacy': typeof AppLegacyRoute
   '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -418,6 +387,7 @@ export interface FileRoutesByTo {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/settings': typeof AppdashboardSettingsRoute
   '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
@@ -432,7 +402,6 @@ export interface FileRoutesByTo {
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
-  '/app/o/$orgSlug': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
@@ -456,10 +425,7 @@ export interface FileRoutesById {
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
-  '/app/analytics': typeof AppAnalyticsRoute
-  '/app/members': typeof AppMembersRoute
-  '/app/people': typeof AppPeopleRoute
-  '/app/sites': typeof AppSitesRoute
+  '/app/$legacy': typeof AppLegacyRoute
   '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -488,7 +454,6 @@ export interface FileRoutesById {
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
-  '/app/o/$orgSlug/': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
@@ -511,10 +476,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/people'
-    | '/app/sites'
+    | '/app/$legacy'
     | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
@@ -543,7 +505,6 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
-    | '/app/o/$orgSlug/'
     | '/app/projects/$projectId/'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
@@ -563,10 +524,7 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/people'
-    | '/app/sites'
+    | '/app/$legacy'
     | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
@@ -577,6 +535,7 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/app/o/$orgSlug'
     | '/app/settings'
     | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
@@ -591,7 +550,6 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
-    | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
@@ -614,10 +572,7 @@ export interface FileRouteTypes {
     | '/(auth)/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/people'
-    | '/app/sites'
+    | '/app/$legacy'
     | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
@@ -646,7 +601,6 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
-    | '/app/o/$orgSlug/'
     | '/app/projects/$projectId/'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
@@ -762,39 +716,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/$legacy': {
+      id: '/app/$legacy'
+      path: '/$legacy'
+      fullPath: '/app/$legacy'
+      preLoaderRoute: typeof AppLegacyRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/(dashboard)': {
       id: '/app/(dashboard)'
       path: ''
       fullPath: '/app'
       preLoaderRoute: typeof AppdashboardRouteRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/app/analytics': {
-      id: '/app/analytics'
-      path: '/analytics'
-      fullPath: '/app/analytics'
-      preLoaderRoute: typeof AppAnalyticsRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/app/members': {
-      id: '/app/members'
-      path: '/members'
-      fullPath: '/app/members'
-      preLoaderRoute: typeof AppMembersRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/app/people': {
-      id: '/app/people'
-      path: '/people'
-      fullPath: '/app/people'
-      preLoaderRoute: typeof AppPeopleRouteImport
-      parentRoute: typeof AppRouteRoute
-    }
-    '/app/sites': {
-      id: '/app/sites'
-      path: '/sites'
-      fullPath: '/app/sites'
-      preLoaderRoute: typeof AppSitesRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/welcome': {
@@ -922,13 +855,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/sites/$projectId/changelog'
       preLoaderRoute: typeof SitesProjectIdChangelogRouteImport
       parentRoute: typeof SitesProjectIdRouteRoute
-    }
-    '/app/o/$orgSlug/': {
-      id: '/app/o/$orgSlug/'
-      path: '/'
-      fullPath: '/app/o/$orgSlug/'
-      preLoaderRoute: typeof AppOOrgSlugIndexRouteImport
-      parentRoute: typeof AppOOrgSlugRouteRoute
     }
     '/app/o/$orgSlug/analytics': {
       id: '/app/o/$orgSlug/analytics'
@@ -1089,7 +1015,6 @@ interface AppOOrgSlugRouteRouteChildren {
   AppOOrgSlugMembersRoute: typeof AppOOrgSlugMembersRoute
   AppOOrgSlugSettingsRoute: typeof AppOOrgSlugSettingsRoute
   AppOOrgSlugWebsitesRoute: typeof AppOOrgSlugWebsitesRoute
-  AppOOrgSlugIndexRoute: typeof AppOOrgSlugIndexRoute
 }
 
 const AppOOrgSlugRouteRouteChildren: AppOOrgSlugRouteRouteChildren = {
@@ -1098,7 +1023,6 @@ const AppOOrgSlugRouteRouteChildren: AppOOrgSlugRouteRouteChildren = {
   AppOOrgSlugMembersRoute: AppOOrgSlugMembersRoute,
   AppOOrgSlugSettingsRoute: AppOOrgSlugSettingsRoute,
   AppOOrgSlugWebsitesRoute: AppOOrgSlugWebsitesRoute,
-  AppOOrgSlugIndexRoute: AppOOrgSlugIndexRoute,
 }
 
 const AppOOrgSlugRouteRouteWithChildren =
@@ -1160,10 +1084,7 @@ const AppProjectsProjectIdRouteRouteWithChildren =
 
 interface AppRouteRouteChildren {
   AppdashboardRouteRoute: typeof AppdashboardRouteRouteWithChildren
-  AppAnalyticsRoute: typeof AppAnalyticsRoute
-  AppMembersRoute: typeof AppMembersRoute
-  AppPeopleRoute: typeof AppPeopleRoute
-  AppSitesRoute: typeof AppSitesRoute
+  AppLegacyRoute: typeof AppLegacyRoute
   AppWelcomeRoute: typeof AppWelcomeRoute
   AppIndexRoute: typeof AppIndexRoute
   AppOOrgSlugRouteRoute: typeof AppOOrgSlugRouteRouteWithChildren
@@ -1172,10 +1093,7 @@ interface AppRouteRouteChildren {
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppdashboardRouteRoute: AppdashboardRouteRouteWithChildren,
-  AppAnalyticsRoute: AppAnalyticsRoute,
-  AppMembersRoute: AppMembersRoute,
-  AppPeopleRoute: AppPeopleRoute,
-  AppSitesRoute: AppSitesRoute,
+  AppLegacyRoute: AppLegacyRoute,
   AppWelcomeRoute: AppWelcomeRoute,
   AppIndexRoute: AppIndexRoute,
   AppOOrgSlugRouteRoute: AppOOrgSlugRouteRouteWithChildren,

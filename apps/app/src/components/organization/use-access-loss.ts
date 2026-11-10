@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { queryKeys } from '@/hooks/api/query-keys';
 
 /** The server hides what you cannot open (404; 403 for a page you lost the role for). */
@@ -21,7 +22,7 @@ export function useAccessLoss() {
   const refresh = useCallback(
     () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+        queryClient.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.projects.all() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() }),
       ]),

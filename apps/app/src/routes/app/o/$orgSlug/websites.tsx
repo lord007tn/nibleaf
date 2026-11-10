@@ -25,8 +25,8 @@ import { isOrgAdmin, useCurrentOrganization } from '@/components/organization/or
 import { QueryErrorState } from '@/components/query-error-state';
 import { type SiteRole, useOrganizationAnalytics, useOrganizationProjects, useProjectMembers } from '@/hooks/api';
 import { analyticsTimezone } from '@/hooks/api/analytics/query-options';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationAnalyticsQueryOptions, organizationProjectsQueryOptions } from '@/hooks/api/organization-query-options';
-import { queryKeys } from '@/hooks/api/query-keys';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 import { roleLabelKey } from '@/lib/member-roles';
@@ -43,7 +43,7 @@ export const Route = createFileRoute('/app/o/$orgSlug/websites')({
     search.newSite === true || search.newSite === 'true' ? { newSite: true } : {},
   loader: ({ context: { queryClient }, params: { orgSlug } }) => {
     // The org id comes from the layout's by-slug read; prefetch once it is cached (hover → click).
-    const organization = queryClient.getQueryData<{ id: string }>(queryKeys.organizations.bySlug(orgSlug));
+    const organization = queryClient.getQueryData<{ id: string }>(organizationKeys.organizations.bySlug(orgSlug));
     if (!organization) return;
     prefetchRouteData(queryClient, organizationProjectsQueryOptions(organization.id));
     prefetchRouteData(queryClient, organizationAnalyticsQueryOptions(organization.id, VIEWS_RANGE, analyticsTimezone()));

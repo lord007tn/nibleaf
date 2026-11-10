@@ -87,22 +87,6 @@ export const queryKeys = {
   readerAccess: {
     detail: (projectId: string) => ['reader-access', projectId] as const,
   },
-  /** The signed-in person: switcher, landing, invitations, personal preferences. */
-  me: {
-    switcher: () => ['me', 'switcher'] as const,
-    invitations: () => ['me', 'invitations'] as const,
-    preferences: () => ['me', 'preferences'] as const,
-  },
-  organizations: {
-    all: () => ['organizations'] as const,
-    bySlug: (slug: string) => ['organizations', 'by-slug', slug] as const,
-    detail: (organizationId: string) => ['organizations', organizationId] as const,
-    projects: (organizationId: string, view: 'list' | 'switcher') => ['organizations', organizationId, 'projects', view] as const,
-    members: (organizationId: string) => ['organizations', organizationId, 'members'] as const,
-    usage: (organizationId: string) => ['organizations', organizationId, 'usage'] as const,
-    analytics: (organizationId: string, range: AnalyticsRange, timezone: string) =>
-      ['organizations', organizationId, 'analytics', range, timezone] as const,
-  },
   notifications: {
     list: (organizationId?: string) => (organizationId ? (['notifications', 'organization', organizationId] as const) : (['notifications'] as const)),
     unreadCount: () => ['notifications', 'unread-count'] as const,

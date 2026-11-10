@@ -11,15 +11,15 @@ import { isAccessLoss } from '@/components/organization/use-access-loss';
 import { QueryErrorState } from '@/components/query-error-state';
 import { UsageOverview } from '@/components/settings/usage-tab';
 import { useOrganizationUsage } from '@/hooks/api';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationUsageQueryOptions } from '@/hooks/api/organization-query-options';
-import { queryKeys } from '@/hooks/api/query-keys';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 import { formatByteQuantity } from '@/lib/usage-format';
 
 export const Route = createFileRoute('/app/o/$orgSlug/billing')({
   loader: ({ context: { queryClient }, params: { orgSlug } }) => {
-    const organization = queryClient.getQueryData<{ id: string; orgRole: string }>(queryKeys.organizations.bySlug(orgSlug));
+    const organization = queryClient.getQueryData<{ id: string; orgRole: string }>(organizationKeys.organizations.bySlug(orgSlug));
     if (organization && organization.orgRole !== 'member') prefetchRouteData(queryClient, organizationUsageQueryOptions(organization.id));
   },
   component: BillingPage,

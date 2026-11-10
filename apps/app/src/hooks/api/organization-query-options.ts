@@ -1,8 +1,8 @@
 import type { AnalyticsRange } from '@nibleaf/validators';
 import { queryOptions, skipToken } from '@tanstack/react-query';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { api } from '@/services/api';
 import { getData } from './client-helpers';
-import { queryKeys } from './query-keys';
 import type { Project } from './types';
 
 /*
@@ -97,13 +97,13 @@ export interface PersonalPreferences {
 /** Orgs, recent websites and the landing org for the switcher and `/app`. */
 export const switcherQueryOptions = () =>
   queryOptions({
-    queryKey: queryKeys.me.switcher(),
+    queryKey: organizationKeys.me.switcher(),
     queryFn: async () => getData<SwitcherData>(await api.app.me.switcher.$get(), 'organizations'),
   });
 
 export const organizationBySlugQueryOptions = (slug: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.bySlug(slug ?? ''),
+    queryKey: organizationKeys.organizations.bySlug(slug ?? ''),
     queryFn: slug
       ? async () => getData<OrganizationDetail>(await api.app.organizations['by-slug'][':slug'].$get({ param: { slug } }), 'organization')
       : skipToken,
@@ -111,7 +111,7 @@ export const organizationBySlugQueryOptions = (slug: string | undefined) =>
 
 export const organizationQueryOptions = (organizationId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.detail(organizationId ?? ''),
+    queryKey: organizationKeys.organizations.detail(organizationId ?? ''),
     queryFn: organizationId
       ? async () => getData<OrganizationDetail>(await api.app.organizations[':organizationId'].$get({ param: { organizationId } }), 'organization')
       : skipToken,
@@ -120,7 +120,7 @@ export const organizationQueryOptions = (organizationId: string | undefined) =>
 /** The compact website list the switcher's right pane shows (only websites you can open). */
 export const organizationSwitcherProjectsQueryOptions = (organizationId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.projects(organizationId ?? '', 'switcher'),
+    queryKey: organizationKeys.organizations.projects(organizationId ?? '', 'switcher'),
     queryFn: organizationId
       ? async () =>
           getData<SwitcherWebsite[]>(
@@ -133,7 +133,7 @@ export const organizationSwitcherProjectsQueryOptions = (organizationId: string 
 /** The org Websites page: cards with status, last publish and your role. */
 export const organizationProjectsQueryOptions = (organizationId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.projects(organizationId ?? '', 'list'),
+    queryKey: organizationKeys.organizations.projects(organizationId ?? '', 'list'),
     queryFn: organizationId
       ? async () =>
           getData<OrganizationWebsite[]>(
@@ -145,7 +145,7 @@ export const organizationProjectsQueryOptions = (organizationId: string | undefi
 
 export const organizationMembersQueryOptions = (organizationId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.members(organizationId ?? ''),
+    queryKey: organizationKeys.organizations.members(organizationId ?? ''),
     queryFn: organizationId
       ? async () =>
           getData<OrganizationMember[]>(await api.app.organizations[':organizationId'].members.$get({ param: { organizationId } }), 'members')
@@ -154,7 +154,7 @@ export const organizationMembersQueryOptions = (organizationId: string | undefin
 
 export const organizationUsageQueryOptions = (organizationId: string | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizations.usage(organizationId ?? ''),
+    queryKey: organizationKeys.organizations.usage(organizationId ?? ''),
     queryFn: organizationId
       ? async () => getData(await api.app.organizations[':organizationId'].usage.$get({ param: { organizationId } }), 'usage')
       : skipToken,
@@ -162,7 +162,7 @@ export const organizationUsageQueryOptions = (organizationId: string | undefined
 
 export const organizationAnalyticsQueryOptions = (organizationId: string | undefined, range: AnalyticsRange, timezone: string) =>
   queryOptions({
-    queryKey: queryKeys.organizations.analytics(organizationId ?? '', range, timezone),
+    queryKey: organizationKeys.organizations.analytics(organizationId ?? '', range, timezone),
     queryFn: organizationId
       ? async () =>
           getData(
@@ -174,12 +174,12 @@ export const organizationAnalyticsQueryOptions = (organizationId: string | undef
 
 export const myInvitationsQueryOptions = () =>
   queryOptions({
-    queryKey: queryKeys.me.invitations(),
+    queryKey: organizationKeys.me.invitations(),
     queryFn: async () => getData<PendingInvitation[]>(await api.app.me.invitations.$get(), 'invitations'),
   });
 
 export const myPreferencesQueryOptions = () =>
   queryOptions({
-    queryKey: queryKeys.me.preferences(),
+    queryKey: organizationKeys.me.preferences(),
     queryFn: async () => getData<PersonalPreferences>(await api.app.me.preferences.$get(), 'preferences'),
   });

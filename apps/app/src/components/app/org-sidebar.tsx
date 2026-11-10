@@ -12,7 +12,7 @@ import {
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { BarChart3, BookOpen, CreditCard, type LucideIcon, Settings, Users } from 'lucide-react';
+import { BarChart3, BookOpen, type LucideIcon, ReceiptText, Settings, Users } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
 import { SidebarBrand } from '@/components/app/sidebar-brand';
 
@@ -23,7 +23,7 @@ export const ORG_NAV: ReadonlyArray<{ section: OrgSection; labelKey: MessageKey;
   { section: 'websites', labelKey: 'nav.websites', icon: BookOpen, adminOnly: false },
   { section: 'analytics', labelKey: 'nav.analytics', icon: BarChart3, adminOnly: false },
   { section: 'members', labelKey: 'nav.members', icon: Users, adminOnly: true },
-  { section: 'billing', labelKey: 'nav.billing', icon: CreditCard, adminOnly: true },
+  { section: 'billing', labelKey: 'nav.billing', icon: ReceiptText, adminOnly: true },
   { section: 'settings', labelKey: 'nav.settings', icon: Settings, adminOnly: false },
 ];
 

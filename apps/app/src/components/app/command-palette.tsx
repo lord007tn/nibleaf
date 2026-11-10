@@ -10,7 +10,6 @@ import {
   BookOpen,
   BookText,
   Building2,
-  CreditCard,
   FileText,
   Globe2,
   Languages,
@@ -18,6 +17,7 @@ import {
   Moon,
   PenLine,
   Plus,
+  ReceiptText,
   Settings,
   SlidersHorizontal,
   Sun,
@@ -324,7 +324,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                       onSelect={() => go('/app/o/$orgSlug/billing', { orgSlug: organization.slug })}
                       value="billing usage plan"
                     >
-                      <CreditCard className="size-4" /> {t('nav.billing')}
+                      <ReceiptText className="size-4" /> {t('nav.billing')}
                     </CommandItem>
                   </>
                 ) : null}

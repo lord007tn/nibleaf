@@ -27,6 +27,7 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import type { QueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { putAsset } from '@/lib/upload-asset-put';
@@ -93,8 +94,8 @@ export const useCreateProject = () => {
     onSuccess: () =>
       Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
-        qc.invalidateQueries({ queryKey: queryKeys.organizations.all() }),
-        qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
       ]),
   });
 };
@@ -201,8 +202,8 @@ export const useDeleteProject = () => {
       qc.removeQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
       return Promise.all([
         qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
-        qc.invalidateQueries({ queryKey: queryKeys.organizations.all() }),
-        qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
       ]);
     },
   });

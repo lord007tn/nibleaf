@@ -15,14 +15,14 @@ import { isOrgAdmin, useCurrentOrganization } from '@/components/organization/or
 import { isAccessLoss } from '@/components/organization/use-access-loss';
 import { QueryErrorState } from '@/components/query-error-state';
 import { type OrganizationMember, useOrganizationMembers } from '@/hooks/api';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationMembersQueryOptions } from '@/hooks/api/organization-query-options';
-import { queryKeys } from '@/hooks/api/query-keys';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/app/o/$orgSlug/members')({
   loader: ({ context: { queryClient }, params: { orgSlug } }) => {
-    const organization = queryClient.getQueryData<{ id: string; orgRole: string }>(queryKeys.organizations.bySlug(orgSlug));
+    const organization = queryClient.getQueryData<{ id: string; orgRole: string }>(organizationKeys.organizations.bySlug(orgSlug));
     if (organization && organization.orgRole !== 'member') prefetchRouteData(queryClient, organizationMembersQueryOptions(organization.id));
   },
   component: MembersPage,

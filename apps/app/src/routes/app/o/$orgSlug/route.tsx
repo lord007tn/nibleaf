@@ -48,6 +48,11 @@ function OrganizationRoute() {
   const cachedName = data?.name ?? switcher.data?.organizations.find((org) => org.slug === orgSlug)?.name;
   useRecordVisitEffect({ organizationId: data && !lost ? data.id : undefined });
 
+  // `/app/o/$orgSlug` itself is the org's Websites page (§5.1).
+  useEffect(() => {
+    if (/^\/app\/o\/[^/]+\/?$/.test(pathname)) void navigate({ to: '/app/o/$orgSlug/websites', params: { orgSlug }, replace: true });
+  }, [pathname, orgSlug, navigate]);
+
   // An alias (old handle) redirects to the current handle, keeping the rest of the URL.
   useEffect(() => {
     if (!data || lost || data.slug === orgSlug) return;

@@ -1,6 +1,7 @@
 import type { AnalyticsRange } from '@nibleaf/validators';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { api } from '@/services/api';
 import { mutateData } from './client-helpers';
 import {
@@ -59,8 +60,8 @@ export const useMyPreferences = () => useQuery(myPreferencesQueryOptions());
 /** Everything that lists organizations or their websites. */
 const invalidateOrganizations = (qc: ReturnType<typeof useQueryClient>) =>
   Promise.all([
-    qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
-    qc.invalidateQueries({ queryKey: queryKeys.organizations.all() }),
+    qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
+    qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
     qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
   ]);
 
@@ -71,9 +72,9 @@ const invalidateOrganizations = (qc: ReturnType<typeof useQueryClient>) =>
  */
 const forgetOrganization = (qc: ReturnType<typeof useQueryClient>) =>
   Promise.all([
-    qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+    qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
     qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
-    qc.invalidateQueries({ queryKey: queryKeys.organizations.all(), refetchType: 'none' }),
+    qc.invalidateQueries({ queryKey: organizationKeys.organizations.all(), refetchType: 'none' }),
   ]);
 
 export const useCreateOrganization = () => {
@@ -94,7 +95,7 @@ export const useUpdateOrganization = (organizationId: string) => {
         'Could not save the organization.',
       ),
     onSuccess: (organization) => {
-      qc.setQueryData(queryKeys.organizations.detail(organizationId), (previous: OrganizationDetail | undefined) => ({
+      qc.setQueryData(organizationKeys.organizations.detail(organizationId), (previous: OrganizationDetail | undefined) => ({
         ...previous,
         ...organization,
       }));
@@ -143,7 +144,7 @@ export const useRecordVisit = () => {
     mutationFn: async (body: { organizationId: string } | { projectId: string }) =>
       mutateData(await api.app.me['last-organization'].$put({ json: body }), 'Could not remember the last organization.'),
     // Recent websites and order change; refresh quietly the next time the switcher opens.
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.me.switcher(), refetchType: 'none' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: organizationKeys.me.switcher(), refetchType: 'none' }),
   });
 };
 
@@ -153,14 +154,14 @@ export const useUpdatePreferences = () => {
     mutationFn: async (notifications: Partial<Record<PersonalNotificationKey, boolean>>) =>
       mutateData<PersonalPreferences>(await api.app.me.preferences.$put({ json: { notifications } }), 'Could not save your preferences.'),
     onMutate: async (notifications) => {
-      await qc.cancelQueries({ queryKey: queryKeys.me.preferences() });
-      const previous = qc.getQueryData<PersonalPreferences>(queryKeys.me.preferences());
-      if (previous) qc.setQueryData(queryKeys.me.preferences(), { notifications: { ...previous.notifications, ...notifications } });
+      await qc.cancelQueries({ queryKey: organizationKeys.me.preferences() });
+      const previous = qc.getQueryData<PersonalPreferences>(organizationKeys.me.preferences());
+      if (previous) qc.setQueryData(organizationKeys.me.preferences(), { notifications: { ...previous.notifications, ...notifications } });
       return { previous };
     },
     onError: (_error, _vars, context) => {
-      if (context?.previous) qc.setQueryData(queryKeys.me.preferences(), context.previous);
+      if (context?.previous) qc.setQueryData(organizationKeys.me.preferences(), context.previous);
     },
-    onSuccess: (data) => qc.setQueryData(queryKeys.me.preferences(), data),
+    onSuccess: (data) => qc.setQueryData(organizationKeys.me.preferences(), data),
   });
 };

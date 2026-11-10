@@ -7,7 +7,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ArrowLeft, Check, ChevronRight, Plus, Search, Settings } from 'lucide-react';
+import { ArrowLeft, Check, ChevronsRight, Plus, Search, Settings } from 'lucide-react';
 import { type KeyboardEvent, type ReactNode, type RefObject, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { QueryErrorState } from '@/components/query-error-state';
 import {
@@ -327,7 +327,7 @@ export function SwitcherPanel({
               <Badge className="font-normal" variant="secondary">
                 {t(ORG_ROLE_LABEL[org.orgRole])}
               </Badge>
-              {compact ? <ChevronRight aria-hidden className="size-4 text-muted-foreground rtl:-scale-x-100" /> : null}
+              {compact ? <ChevronsRight aria-hidden className="size-4 text-muted-foreground rtl:-scale-x-100" /> : null}
             </Option>
           );
         }

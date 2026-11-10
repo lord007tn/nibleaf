@@ -15,6 +15,7 @@ import { OrgAvatar } from '@/components/app/org-switcher/org-avatar';
 import { ORG_ROLE_LABEL } from '@/components/app/org-switcher/switcher-panel';
 import { QueryErrorState } from '@/components/query-error-state';
 import { acceptInvitation, type PendingInvitation, useCreateOrganization, useMyInvitations, useSwitcher } from '@/hooks/api';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { useFormatters } from '@/lib/format';
 import { roleLabelKey } from '@/lib/member-roles';
@@ -111,8 +112,8 @@ function InvitationCard({ invitation }: { invitation: PendingInvitation }) {
       const accepted = await acceptInvitation(invitation.id);
       toast.success(t('auth.invite.acceptedToast'));
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.me.invitations() }),
+        queryClient.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
+        queryClient.invalidateQueries({ queryKey: organizationKeys.me.invitations() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.projects.all() }),
       ]);
       if ('projectId' in accepted.landing) {
@@ -121,7 +122,7 @@ function InvitationCard({ invitation }: { invitation: PendingInvitation }) {
       } else await navigate({ to: '/app/o/$orgSlug/websites', params: { orgSlug: accepted.landing.organization } });
     } catch {
       toast.error(t('auth.invite.error'));
-      void queryClient.invalidateQueries({ queryKey: queryKeys.me.invitations() });
+      void queryClient.invalidateQueries({ queryKey: organizationKeys.me.invitations() });
     } finally {
       setAccepting(false);
     }

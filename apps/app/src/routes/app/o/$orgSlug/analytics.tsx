@@ -19,7 +19,6 @@ import type { AnalyticsRange } from '@/hooks/api';
 import { analyticsTimezone } from '@/hooks/api/analytics/query-options';
 import { organizationAnalyticsQueryOptions } from '@/hooks/api/organization-query-options';
 import { useOrganizationAnalytics } from '@/hooks/api/organizations';
-import { queryKeys } from '@/hooks/api/query-keys';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { useFormatters } from '@/lib/format';
 
@@ -31,6 +30,7 @@ const DEVICE_KEYS: Record<string, MessageKey> = {
   unknown: 'analytics.device.unknown',
 };
 
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { AnalyticsProvider, useAnalyticsFilters } from '@/providers/analytics-provider';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
@@ -38,7 +38,7 @@ const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
 export const Route = createFileRoute('/app/o/$orgSlug/analytics')({
   // Same range and timezone as the page's first render (AnalyticsProvider below).
   loader: ({ context: { queryClient }, params: { orgSlug } }) => {
-    const organization = queryClient.getQueryData<{ id: string }>(queryKeys.organizations.bySlug(orgSlug));
+    const organization = queryClient.getQueryData<{ id: string }>(organizationKeys.organizations.bySlug(orgSlug));
     if (organization)
       prefetchRouteData(queryClient, organizationAnalyticsQueryOptions(organization.id, DEFAULT_ANALYTICS_RANGE, analyticsTimezone()));
   },

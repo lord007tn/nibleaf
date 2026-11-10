@@ -158,4 +158,25 @@ describe('/app/o/$orgSlug route', () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(host.querySelector('[data-testid="outlet"]')?.textContent).toBe('Acme Docs (admin)');
   });
+
+  it('sends the bare /app/o/$orgSlug to its Websites page', async () => {
+    mocks.pathname = '/app/o/acme';
+    await render();
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' }, replace: true });
+  });
+
+  it('re-checks membership when navigating inside the org, not when leaving it', async () => {
+    await render();
+    const calls = mocks.bySlug.mock.calls.length;
+    mocks.pathname = '/app/o/acme/analytics';
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={new QueryClient()}>
+          <OrganizationRoute />
+        </QueryClientProvider>,
+      ),
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(mocks.bySlug.mock.calls.length).toBeGreaterThan(calls);
+  });
 });
