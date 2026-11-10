@@ -3,6 +3,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { LimitState, UsageAvailability } from '@nibleaf/usage';
+import { Link } from '@tanstack/react-router';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -18,6 +19,7 @@ import {
   Search,
   Users,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { Project } from '@/hooks/api';
 import { useProjectUsage } from '@/hooks/api';
@@ -74,15 +76,97 @@ const availabilityKeys: Record<UsageAvailability, MessageKey> = {
 
 const planLabelKeys: ReadonlyMap<string, MessageKey> = new Map([['free', 'settings.usage.plan.free']]);
 
-export function UsageTab({ project }: { project: Project }) {
+type UsageSummary = NonNullable<ReturnType<typeof useProjectUsage>['data']>;
+type Meter = UsageSummary['meters'][number];
+
+/** Why a number is missing, named instead of a bare "Unknown" (audit WORKSPACE-19). */
+const unavailableReasonKeys = {
+  metering_disabled: 'settings.usage.reason.meteringDisabled',
+  query_failed: 'settings.usage.reason.queryFailed',
+  delayed: 'settings.usage.reason.delayed',
+  catching_up: 'settings.usage.reason.catchingUp',
+  tokens_incomplete: 'settings.usage.reason.tokensIncomplete',
+  not_measured: 'settings.usage.reason.notMeasured',
+  seats_unavailable: 'settings.usage.reason.seatsUnavailable',
+} as const satisfies Record<NonNullable<Meter['unavailableReason']> | 'seats_unavailable', string>;
+/** The explanation for a missing number; the generic line only for an unknown cause. */
+export const unavailableExplanationKey = (reason: string | null | undefined) =>
+  reason && reason in unavailableReasonKeys
+    ? unavailableReasonKeys[reason as keyof typeof unavailableReasonKeys]
+    : ('settings.usage.unknownExplanation' as const);
+
+/**
+ * Website usage (§7, review #20): this website's pages, storage, traffic and AI —
+ * no plan, no seats, no limits. Plan and billing live with the organization,
+ * so the header points there (a link only for org Owner/Admin).
+ */
+export function UsageTab({ project, organization }: { project: Project; organization?: { slug: string; name: string; canManage: boolean } }) {
   const t = useT();
-  const { date, number } = useFormatters();
   const { data: usage, isPending, isError, isFetching, refetch } = useProjectUsage(project.id);
 
   if (isError || (!isPending && !usage)) {
     return <QueryErrorState onRetry={() => void refetch()} retrying={isFetching} />;
   }
+  return (
+    <UsageOverview
+      description={t('settings.usage.websiteDescription')}
+      hiddenMeters={WEBSITE_HIDDEN_METERS}
+      isPending={isPending}
+      notice={organization ? <BillingPointer organization={organization} /> : null}
+      title={t('settings.usage.title')}
+      usage={usage}
+    />
+  );
+}
 
+/** Seats are an organization figure, computed once per org (§10.3). */
+const WEBSITE_HIDDEN_METERS = new Set(['editor_seat']);
+
+/** "Plan and billing are managed by <Org> →" — the arrow link only for those who can open billing. */
+function BillingPointer({ organization }: { organization: { slug: string; name: string; canManage: boolean } }) {
+  const t = useT();
+  return (
+    <p className="text-muted-foreground text-sm" data-slot="billing-pointer">
+      {t('settings.usage.billingManagedBy')}{' '}
+      {organization.canManage ? (
+        <Link
+          className="font-medium text-primary underline-offset-4 hover:underline"
+          params={{ orgSlug: organization.slug }}
+          to="/app/o/$orgSlug/billing"
+        >
+          <bdi>{organization.name}</bdi>{' '}
+          <span aria-hidden className="inline-block rtl:-scale-x-100">
+            →
+          </span>
+        </Link>
+      ) : (
+        <bdi className="font-medium text-foreground">{organization.name}</bdi>
+      )}
+    </p>
+  );
+}
+
+/** The meter grid shared by website usage and the org's Usage & billing page. */
+export function UsageOverview({
+  usage,
+  isPending,
+  title,
+  description,
+  planKey,
+  notice,
+  hiddenMeters,
+}: {
+  usage: (Pick<UsageSummary, 'meters' | 'period'> & { availability?: UsageSummary['availability'] }) | undefined;
+  isPending: boolean;
+  title: string;
+  description: string;
+  /** The org's plan badge; omitted on website usage. */
+  planKey?: string | null;
+  notice?: ReactNode;
+  hiddenMeters?: ReadonlySet<string>;
+}) {
+  const t = useT();
+  const { date, number } = useFormatters();
   return (
     <div aria-busy={isPending} className="flex flex-col gap-6">
       {isPending ? (
@@ -93,13 +177,16 @@ export function UsageTab({ project }: { project: Project }) {
       <header className="rounded-xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-xl tracking-tight">{t('settings.usage.title')}</h2>
-            <p className="mt-1 max-w-2xl text-muted-foreground text-sm">{t('settings.usage.description')}</p>
+            <h2 className="font-semibold text-xl tracking-tight">{title}</h2>
+            <p className="mt-1 max-w-2xl text-muted-foreground text-sm">{description}</p>
           </div>
-          <span className="rounded-full border border-border bg-background px-3 py-1.5 font-medium text-sm">
-            {t(planLabelKeys.get(usage?.plan?.key ?? '') ?? 'settings.usage.plan.unconfigured')}
-          </span>
+          {planKey !== undefined ? (
+            <span className="rounded-full border border-border bg-background px-3 py-1.5 font-medium text-sm">
+              {t(planLabelKeys.get(planKey ?? '') ?? 'settings.usage.plan.unconfigured')}
+            </span>
+          ) : null}
         </div>
+        {notice ? <div className="mt-3">{notice}</div> : null}
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-border border-t pt-4 text-muted-foreground text-xs">
           <span>
             {usage
@@ -109,17 +196,18 @@ export function UsageTab({ project }: { project: Project }) {
                 })
               : t('settings.usage.period.loading')}
           </span>
-          <span aria-live="polite">{usage ? t(availabilityKeys[usage.availability]) : null}</span>
+          <span aria-live="polite">{usage?.availability ? t(availabilityKeys[usage.availability]) : null}</span>
         </div>
       </header>
 
       {groups.map((group) => {
-        const metrics = usage?.meters.filter((metric) => group.keys.includes(metric.key)) ?? [];
+        const keys = group.keys.filter((key) => !hiddenMeters?.has(key));
+        const metrics = usage?.meters.filter((metric: Meter) => keys.includes(metric.key)) ?? [];
         return (
           <SettingsSection description={t(group.description)} key={group.title} title={t(group.title)}>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
               {isPending
-                ? group.keys.map((key) => <SkeletonStatTile className="min-h-36" key={key} />)
+                ? keys.map((key) => <SkeletonStatTile className="min-h-36" key={key} />)
                 : metrics.map((metric) => {
                     const presentation = meterPresentation[metric.key] ?? {
                       icon: Database,
@@ -162,8 +250,10 @@ export function UsageTab({ project }: { project: Project }) {
                               'shrink-0 rounded-full px-2 py-0.5 font-medium text-[11px]',
                               metric.state === 'exceeded' && 'bg-destructive/10 text-destructive',
                               metric.state === 'approaching' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-                              (metric.state === 'unknown' || metric.availability === 'partial') && 'bg-muted text-muted-foreground',
-                              (metric.state === 'available' || metric.state === 'unlimited') && 'bg-primary/10 text-primary',
+                              // Only approaching/exceeded may look like a warning; "No limit" is neutral (audit WORKSPACE-19).
+                              (metric.state === 'unknown' || metric.state === 'unlimited' || metric.availability === 'partial') &&
+                                'bg-muted text-muted-foreground',
+                              metric.state === 'available' && 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
                             )}
                           >
                             {metric.availability === 'partial' ? t('settings.usage.state.partial') : t(stateKeys[metric.state])}
@@ -212,7 +302,9 @@ export function UsageTab({ project }: { project: Project }) {
                             />
                           </div>
                         ) : null}
-                        {unavailable ? <p className="mt-2 text-muted-foreground text-xs">{t('settings.usage.unknownExplanation')}</p> : null}
+                        {unavailable ? (
+                          <p className="mt-2 text-muted-foreground text-xs">{t(unavailableExplanationKey(metric.unavailableReason))}</p>
+                        ) : null}
                       </article>
                     );
                   })}
