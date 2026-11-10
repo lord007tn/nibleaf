@@ -25,9 +25,6 @@ export const withoutServerOnlyMetadata = <T>(metadata: T): T => {
   return { ...metadata, git } as T;
 };
 
-/** Git URL fields that legacy rows may have stored with credentials in them. */
-const GIT_URL_FIELDS = ['cloneUrl', 'instanceUrl'] as const;
-
 /** An http(s) URL without credentials, query or fragment; null when it can't be parsed. */
 export const withoutUrlCredentials = (value: unknown): string | null => {
   if (typeof value !== 'string') return null;
@@ -44,36 +41,14 @@ export const withoutUrlCredentials = (value: unknown): string | null => {
   }
 };
 
-/**
- * Metadata as organization RESPONSES may show it, to any member of any role:
- * no server-only fields, no `integrations` (it can hold webhook URLs; Admins
- * read it through the dashboard's role-scoped settings API, and nothing reads it
- * from these endpoints), and no credentials in stored Git URLs. Returns the
- * input when nothing changes. Writes keep using withoutServerOnlyMetadata, so an
- * update through these endpoints never wipes the stored integrations.
- */
+/** Organization responses expose only org-owned keys. Website metadata and
+ * unclassified legacy keys stay in server-only ProjectLegacySettings. */
 export const withoutMemberHiddenMetadata = <T>(metadata: T): T => {
-  const base = withoutServerOnlyMetadata(metadata);
-  if (!isRecord(base)) return base;
-  let copy: Record<string, unknown> | null = null;
-  if ('integrations' in base) {
-    const { integrations: _adminOnly, ...rest } = base;
-    copy = rest;
-  }
-  const git = base.git;
-  if (isRecord(git)) {
-    let gitCopy: Record<string, unknown> | null = null;
-    for (const field of GIT_URL_FIELDS) {
-      if (!(field in git)) continue;
-      const clean = withoutUrlCredentials(git[field]);
-      if (clean === git[field]) continue;
-      gitCopy ??= { ...git };
-      if (clean === null) delete gitCopy[field];
-      else gitCopy[field] = clean;
-    }
-    if (gitCopy) copy = { ...(copy ?? base), git: gitCopy };
-  }
-  return (copy ?? base) as T;
+  if (metadata == null) return metadata;
+  if (!isRecord(metadata)) return {} as T;
+  const allowed = ['plan', 'notifications', 'entitlements'];
+  if (Object.keys(metadata).every((key) => allowed.includes(key))) return metadata;
+  return Object.fromEntries(Object.entries(metadata).filter(([key]) => allowed.includes(key))) as T;
 };
 
 /**

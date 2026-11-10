@@ -11,8 +11,10 @@ const metadata = {
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
-    organization: { findUnique: async () => ({ id: 'org-1', name: 'Acme', slug: 'acme', metadata: JSON.stringify(metadata) }) },
-    project: { count: async () => 1 },
+    organization: { findUniqueOrThrow: async () => ({ id: 'org-1', name: 'Acme', slug: 'acme', metadata: JSON.stringify(metadata) }) },
+    project: { count: async () => 1, findMany: async () => [{ id: 'website-1' }] },
+    projectGitSettings: { findUnique: async () => ({ settings: metadata.git }) },
+    projectLegacySettings: { findUnique: async () => ({ metadata: { integrations: metadata.integrations } }) },
     member: { count: async () => 3 },
   },
 }));

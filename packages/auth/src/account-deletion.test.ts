@@ -1,29 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ memberFindMany: vi.fn(), memberUpdate: vi.fn(), eraseProjectOrganization: vi.fn() }));
-
-vi.mock('@nibleaf/database', () => ({ prisma: { member: { findMany: mocks.memberFindMany, update: mocks.memberUpdate } } }));
-vi.mock('./tenant-erasure', () => ({ eraseProjectOrganization: mocks.eraseProjectOrganization }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), others: vi.fn(), projects: vi.fn(), remove: vi.fn() }));
+vi.mock('@nibleaf/database', () => {
+  const tx = { $queryRaw: mocks.query, member: { count: mocks.others }, project: { count: mocks.projects }, organization: { delete: mocks.remove } };
+  return {
+    Prisma: { sql: (parts: TemplateStringsArray) => parts.join('?') },
+    prisma: { $transaction: (run: (client: unknown) => Promise<unknown>) => run(tx) },
+  };
+});
 
 import { reassignOrDeleteOrgs } from './account-deletion';
 
-describe('Better Auth account deletion workspace handling', () => {
+describe('account deletion ownership policy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.memberFindMany
-      .mockResolvedValueOnce([{ organizationId: 'org-a', role: 'owner' }])
-      .mockResolvedValueOnce([{ id: 'member-a', userId: 'user-a', role: 'owner' }]);
-    mocks.eraseProjectOrganization.mockResolvedValue(undefined);
+    mocks.query
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ organizationId: 'owned' }])
+      .mockResolvedValue([]);
+    mocks.others.mockResolvedValue(0);
+    mocks.projects.mockResolvedValue(0);
   });
-
-  it('routes a sole-member organization through the shared retained-store erasure workflow', async () => {
-    await reassignOrDeleteOrgs('user-a');
-    expect(mocks.eraseProjectOrganization).toHaveBeenCalledWith('org-a');
-    expect(mocks.memberUpdate).not.toHaveBeenCalled();
+  it('refuses even a sole owner with a website', async () => {
+    mocks.projects.mockResolvedValue(1);
+    await expect(reassignOrDeleteOrgs('owner')).rejects.toThrow('Transfer ownership or delete your organization first');
+    expect(mocks.remove).not.toHaveBeenCalled();
   });
-
-  it('fails account deletion closed when retained-store erasure cannot complete', async () => {
-    mocks.eraseProjectOrganization.mockRejectedValue(new Error('usage ingestion is still draining'));
-    await expect(reassignOrDeleteOrgs('user-a')).rejects.toThrow('usage ingestion is still draining');
+  it('refuses an owner with other members and never promotes somebody', async () => {
+    mocks.others.mockResolvedValue(1);
+    await expect(reassignOrDeleteOrgs('owner')).rejects.toThrow('Transfer ownership');
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+  it('removes an empty sole-member org', async () => {
+    await reassignOrDeleteOrgs('owner');
+    expect(mocks.remove).toHaveBeenCalledWith({ where: { id: 'owned' } });
   });
 });

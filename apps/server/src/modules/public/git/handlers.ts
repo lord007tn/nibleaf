@@ -1,6 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
 import { type GitConnection, prisma } from '@nibleaf/database';
-import { logger } from '@nibleaf/logger';
 import { gitWebhookParams } from '@nibleaf/validators';
 import { type Context, Hono } from 'hono';
 import {
@@ -11,7 +10,7 @@ import {
   recordWebhookDelivery,
 } from '@/actions/git/workflow';
 import { extractPushBranch, getStoredGitConfig, runGitWebhookSync, verifyGitHubSignature, verifyGitLabToken } from '@/actions/git-webhook';
-import { readGitWebhookSecret, settleGitWebhookSecret } from '@/actions/git-webhook-secret';
+import { readGitWebhookSecret } from '@/actions/git-webhook-secret';
 import { env } from '@/env';
 import { AppError, badRequest, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -127,13 +126,11 @@ const app = new Hono<HonoEnv>()
     const twoWay = await prisma.gitConnection.findUnique({ where: { projectId } });
     if (twoWay) return handleTwoWayGitHubWebhook(ctx, twoWay, rawBody);
 
-    // Backward-compatible one-way webhook path for metadata.git connections.
+    // One-way webhooks use the website-owned configuration and original secret.
     const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
     if (!project) throw notFound('project', { projectId });
-    const git = await getStoredGitConfig(project.organizationId);
-    // Verify against the secret as read, and persist a metadata copy only after
-    // a delivery has been authenticated with it.
-    const stored = await readGitWebhookSecret(project.organizationId);
+    const git = await getStoredGitConfig(projectId);
+    const stored = await readGitWebhookSecret(projectId);
     const secret = stored.secret;
     if (!secret) throw unauthorized('No webhook secret is configured for this project. Generate one in Settings → Git.');
     const githubEvent = ctx.req.header('x-github-event');
@@ -148,13 +145,6 @@ const app = new Hono<HonoEnv>()
     } else {
       throw badRequest('Unrecognized webhook provider headers.');
     }
-    await settleGitWebhookSecret(stored).catch((error: unknown) => {
-      // Only the code: a database error message can echo query arguments.
-      logger.warn(
-        { projectId, code: (error as { code?: unknown } | null)?.code },
-        'Could not move the Git webhook secret out of organization metadata.',
-      );
-    });
     if (githubEvent === 'ping') return ctx.json({ data: { ok: true, event: 'ping' } }, 200);
     if (!isPush) return ctx.json({ data: { ok: true, ignored: 'event' } }, 200);
     const pushedBranch = extractPushBranch(parsePayload(rawBody));

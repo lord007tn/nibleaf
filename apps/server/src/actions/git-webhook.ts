@@ -8,8 +8,8 @@ import type { GitConfigStored } from '@nibleaf/validators';
 import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { importFromGitProvider } from './git-import';
-import { moveLegacyWebhookSecret } from './git-webhook-secret';
 import { logPlatformEvent } from './platform-events';
+import { readProjectGitSettings, writeProjectSettings } from './project-settings-storage';
 
 /**
  * Push-to-deploy webhook (Mintlify-style, self-hosted flavour). Mintlify installs
@@ -19,7 +19,7 @@ import { logPlatformEvent } from './platform-events';
  * per-project secret to their repo, and every verified push to the configured
  * branch re-runs the one-way import (and optionally auto-publishes).
  *
- * Sync bookkeeping lives in the org metadata `git` blob next to the
+ * Sync bookkeeping lives in ProjectGitSettings next to the
  * client-editable GitConfig (see GitConfigStored in @nibleaf/validators). The
  * secret itself is server-only storage (see ./git-webhook-secret).
  */
@@ -61,32 +61,11 @@ export const extractPushBranch = (payload: unknown): string | null => {
   return branch.length > 0 ? branch : null;
 };
 
-const parseMetadata = (raw: string | null): Record<string, unknown> => {
-  if (!raw) {
-    return {};
-  }
-  try {
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-};
+/** The website's configuration; organizationId is used only for authorization. */
+export const getStoredGitConfig = async (projectId: string): Promise<GitConfigStored> => (await readProjectGitSettings(projectId)) as GitConfigStored;
 
-/** The org's stored git config (client fields + server-managed sync fields). */
-export const getStoredGitConfig = async (organizationId: string): Promise<GitConfigStored> => {
-  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
-  return (parseMetadata(org?.metadata ?? null).git ?? {}) as GitConfigStored;
-};
-
-/** Read-modify-write one field set of `metadata.git`, preserving everything else. */
-const patchStoredGitConfig = async (organizationId: string, patch: Partial<GitConfigStored>): Promise<void> => {
-  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
-  const metadata = parseMetadata(org?.metadata ?? null);
-  await moveLegacyWebhookSecret(organizationId, metadata);
-  const git = { ...((metadata.git ?? {}) as Record<string, unknown>), ...patch };
-  // `undefined` values mean "remove the key" (JSON.stringify drops them).
-  metadata.git = git;
-  await prisma.organization.update({ where: { id: organizationId }, data: { metadata: JSON.stringify(metadata) } });
+const patchStoredGitConfig = async (projectId: string, patch: Partial<GitConfigStored>): Promise<void> => {
+  await writeProjectSettings(projectId, ({ git, legacy }) => ({ git: { ...git, ...patch }, legacy }));
 };
 
 const MAX_SYNC_ERROR_LENGTH = 300;
@@ -153,9 +132,9 @@ const enqueueWebhookPublish = async (organizationId: string, projectId: string, 
 export const runGitWebhookSync = async (organizationId: string, projectId: string, branch: string): Promise<void> => {
   try {
     const summary = await importFromGitProvider(organizationId, projectId);
-    // Re-read AFTER the import: importFromGitProvider rewrites metadata.git
+    // Re-read AFTER the import: importFromGitProvider updates the website Git settings
     // (connected/lastImportedAt), so patching before it finishes would be lost.
-    await patchStoredGitConfig(organizationId, {
+    await patchStoredGitConfig(projectId, {
       lastSyncAt: new Date().toISOString(),
       lastSyncStatus: 'ok',
       lastSyncError: undefined,
@@ -163,7 +142,7 @@ export const runGitWebhookSync = async (organizationId: string, projectId: strin
     logger.info({ projectId, branch, ...summary }, 'git webhook sync imported');
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Import failed.';
-    await patchStoredGitConfig(organizationId, {
+    await patchStoredGitConfig(projectId, {
       lastSyncAt: new Date().toISOString(),
       lastSyncStatus: 'failed',
       lastSyncError: message.slice(0, MAX_SYNC_ERROR_LENGTH),
@@ -172,7 +151,7 @@ export const runGitWebhookSync = async (organizationId: string, projectId: strin
     return;
   }
 
-  const git = await getStoredGitConfig(organizationId);
+  const git = await getStoredGitConfig(projectId);
   if (git.autoPublish === true) {
     try {
       await enqueueWebhookPublish(organizationId, projectId, branch);

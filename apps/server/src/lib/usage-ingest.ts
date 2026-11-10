@@ -61,11 +61,11 @@ export const enqueueAnalyticsEvent = async (envelope: AnalyticsEventEnvelope, ti
   }
   const usageEvents = clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE) ? usageEventsFromAnalytics(envelope) : [];
   if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) {
-    const analyticsMarker = await markAnalyticsStoragePending(envelope.tenantId);
+    const analyticsMarker = await markAnalyticsStoragePending(envelope.tenantId, envelope.projectId);
     if (!analyticsMarker.accepted) return { jobId, usageCheckpointed: false };
   }
   if (usageEvents.length > 0) {
-    await markUsageStoragePending({ id: jobId, organizationId: envelope.tenantId, projectId: envelope.projectId, events: usageEvents });
+    await markUsageStoragePending({ id: jobId, partitionId: envelope.tenantId, projectId: envelope.projectId, events: usageEvents });
   }
   await withTimeout(
     createJob(QueueNames.ANALYTICS, { name: 'track-event', data: { kind: 'track-event', envelope } }, { ...analyticsEventJobOptions, jobId }),

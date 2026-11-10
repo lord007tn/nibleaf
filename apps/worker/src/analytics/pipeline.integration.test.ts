@@ -122,7 +122,7 @@ integration('real Redis/Postgres/ClickHouse analytics pipeline', () => {
     release();
     await write;
     expect((await deletion).pendingCount).toBe(0);
-    expect(await markAnalyticsStoragePending(tenantId)).toEqual({ accepted: false });
+    expect(await markAnalyticsStoragePending(tenantId, projectId)).toEqual({ accepted: false });
     await deleteProjectAnalytics(tenantId, projectId);
     const now = new Date().toISOString();
     const envelope = fixedAnalyticsEvent({ tenantId, projectId, siteId: projectId, eventId: randomUUID(), occurredAt: now, receivedAt: now });

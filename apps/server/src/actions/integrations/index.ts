@@ -34,7 +34,6 @@ import type { HonoEnv } from '@/lib/hono/context';
 import { decryptGitSecret } from '../git/crypto';
 import { GitHubProvider } from '../git/github';
 import { assertProjectAccess } from '../projects';
-import { parseWorkspaceMetadata } from '../workspace';
 import {
   decryptIntegrationSecret,
   digestIntegrationValue,
@@ -243,7 +242,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
   const [project, webhookConnections, gitConnection] = await Promise.all([
     prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, createdAt: true, config: true, organization: { select: { metadata: true } } },
+      select: { id: true, createdAt: true, config: true, gitSettings: { select: { settings: true } } },
     }),
     prisma.projectIntegration.findMany({ where: { projectId }, orderBy: { createdAt: 'asc' } }),
     prisma.gitConnection.findUnique({
@@ -297,7 +296,7 @@ const listAuthorizedProjectIntegrations = async (projectId: string): Promise<Int
       updatedAt: gitConnection.updatedAt.toISOString(),
     });
   } else {
-    const rawMetadataGit = legacyGitMetadataSchema.safeParse(parseWorkspaceMetadata(project.organization.metadata).git).data ?? {};
+    const rawMetadataGit = legacyGitMetadataSchema.safeParse(project.gitSettings?.settings).data ?? {};
     const rawCloneUrl = z.string().safeParse(rawMetadataGit.cloneUrl).data;
     const safeCloneUrl = safeLegacyGitCloneUrl(rawCloneUrl);
     const metadataGit = gitConfigSchema.safeParse({

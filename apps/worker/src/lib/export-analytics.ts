@@ -16,7 +16,7 @@ export const trackExportLifecycle = async (projectId: string, exportJobId: strin
   if (!clickHouseWritesEnabled(config.ANALYTICS_MODE) || !config.ANALYTICS_HASH_SALT) return;
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, organizationId: true, accessMode: true, config: true },
+    select: { id: true, dataTenantId: true, accessMode: true, config: true },
   });
   if (!project) return;
   const visibility =
@@ -24,7 +24,7 @@ export const trackExportLifecycle = async (projectId: string, exportJobId: strin
   const event = buildAnalyticsEvent(
     { eventId: deterministicAnalyticsEventId(`${exportJobId}:${payload.name}`), consentState: 'not_required', payload },
     {
-      tenantId: project.organizationId,
+      tenantId: project.dataTenantId,
       projectId,
       siteId: projectId,
       source: 'worker',

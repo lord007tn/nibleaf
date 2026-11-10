@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  existingCheckpoint: null as null | { organizationId: string; projectId: string; payloadDigest: string; writtenAt: Date | null },
+  existingCheckpoint: null as null | { partitionId: string; projectId: string; payloadDigest: string; writtenAt: Date | null },
   marker: null as null | { deletionPendingAt: Date | null },
   queryRaw: vi.fn(),
   checkpointFindUnique: vi.fn(),
@@ -51,16 +51,17 @@ const event = {
 describe('usage ingestion checkpoint fencing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.queryRaw.mockResolvedValue([{ id: 'project-a' }]);
     mocks.checkpointFindUnique.mockImplementation(async () => mocks.existingCheckpoint);
     mocks.markerFindUnique.mockImplementation(async () => mocks.marker);
     mocks.markerUpsert.mockImplementation(
       async ({ create, update }: { create: { deletionPendingAt?: Date }; update: { deletionPendingAt?: Date } }) => {
         const deletionPendingAt = update.deletionPendingAt ?? create.deletionPendingAt;
         if (deletionPendingAt) mocks.marker = { deletionPendingAt };
-        return { organizationId: 'org-a' };
+        return { partitionId: 'org-a' };
       },
     );
-    mocks.checkpointCreate.mockResolvedValue({ organizationId: 'org-a', projectId: 'project-a', payloadDigest: 'digest', writtenAt: null });
+    mocks.checkpointCreate.mockResolvedValue({ partitionId: 'org-a', projectId: 'project-a', payloadDigest: 'digest', writtenAt: null });
     mocks.existingCheckpoint = null;
     mocks.marker = null;
     mocks.checkpointCount.mockResolvedValue(0);
@@ -68,30 +69,30 @@ describe('usage ingestion checkpoint fencing', () => {
   });
 
   it('rejects a checkpoint id already owned by another tenant before any marker mutation', async () => {
-    mocks.existingCheckpoint = { organizationId: 'org-b', projectId: 'project-b', payloadDigest: 'digest', writtenAt: null };
-    await expect(markUsageStoragePending({ id: 'shared-id', organizationId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
+    mocks.existingCheckpoint = { partitionId: 'org-b', projectId: 'project-b', payloadDigest: 'digest', writtenAt: null };
+    await expect(markUsageStoragePending({ id: 'shared-id', partitionId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
       'checkpoint scope collision',
     );
     expect(mocks.markerUpsert).not.toHaveBeenCalled();
   });
 
   it('rejects new work after a deletion fence but allows an existing pending receipt to drain', async () => {
-    await markUsageStoragePending({ id: 'existing-id', organizationId: 'org-a', projectId: 'project-a', events: [event] });
+    await markUsageStoragePending({ id: 'existing-id', partitionId: 'org-a', projectId: 'project-a', events: [event] });
     const created = mocks.checkpointCreate.mock.calls[0]?.[0]?.data;
     mocks.marker = { deletionPendingAt: new Date() };
     mocks.existingCheckpoint = null;
-    await expect(markUsageStoragePending({ id: 'new-id', organizationId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
+    await expect(markUsageStoragePending({ id: 'new-id', partitionId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
       'fenced for tenant deletion',
     );
 
     mocks.existingCheckpoint = {
-      organizationId: 'org-a',
+      partitionId: 'org-a',
       projectId: 'project-a',
       payloadDigest: created?.payloadDigest ?? '',
       writtenAt: null,
     };
     await expect(
-      markUsageStoragePending({ id: 'existing-id', organizationId: 'org-a', projectId: 'project-a', events: [event] }),
+      markUsageStoragePending({ id: 'existing-id', partitionId: 'org-a', projectId: 'project-a', events: [event] }),
     ).resolves.toBeDefined();
   });
 
@@ -101,12 +102,12 @@ describe('usage ingestion checkpoint fencing', () => {
       eventId: '2556c8fc-a234-8d55-9623-822270572dc5',
       receivedAt: '2026-08-24T00:00:02.000Z',
     };
-    await markUsageStoragePending({ id: 'stable-id', organizationId: 'org-a', projectId: 'project-a', events: [later, event] });
+    await markUsageStoragePending({ id: 'stable-id', partitionId: 'org-a', projectId: 'project-a', events: [later, event] });
     const created = mocks.checkpointCreate.mock.calls[0]?.[0]?.data;
     expect(created?.events.map((item: { eventId: string }) => item.eventId)).toEqual([event.eventId, later.eventId]);
 
     mocks.existingCheckpoint = {
-      organizationId: 'org-a',
+      partitionId: 'org-a',
       projectId: 'project-a',
       payloadDigest: created?.payloadDigest ?? '',
       writtenAt: null,
@@ -115,13 +116,13 @@ describe('usage ingestion checkpoint fencing', () => {
     const laterRetry = { ...later, receivedAt: '2026-08-24T00:05:00.000Z' };
     const retryWithNewReceiptTime = [eventRetry, laterRetry];
     await expect(
-      markUsageStoragePending({ id: 'stable-id', organizationId: 'org-a', projectId: 'project-a', events: retryWithNewReceiptTime }),
+      markUsageStoragePending({ id: 'stable-id', partitionId: 'org-a', projectId: 'project-a', events: retryWithNewReceiptTime }),
     ).resolves.toBeDefined();
 
     await expect(
       markUsageStoragePending({
         id: 'stable-id',
-        organizationId: 'org-a',
+        partitionId: 'org-a',
         projectId: 'project-a',
         events: [{ ...event, quantity: '2' }, laterRetry],
       }),
@@ -130,7 +131,7 @@ describe('usage ingestion checkpoint fencing', () => {
 
   it('establishes the deletion fence before a new enqueue can create a receipt', async () => {
     await expect(beginUsageDeletion('org-a', 'project-a')).resolves.toMatchObject({ exists: true, pendingCount: 0 });
-    await expect(markUsageStoragePending({ id: 'late-id', organizationId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
+    await expect(markUsageStoragePending({ id: 'late-id', partitionId: 'org-a', projectId: 'project-a', events: [event] })).rejects.toThrow(
       'fenced for tenant deletion',
     );
     expect(mocks.checkpointCreate).not.toHaveBeenCalled();

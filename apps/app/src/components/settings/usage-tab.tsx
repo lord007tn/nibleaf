@@ -97,7 +97,7 @@ export function UsageTab({ project }: { project: Project }) {
             <p className="mt-1 max-w-2xl text-muted-foreground text-sm">{t('settings.usage.description')}</p>
           </div>
           <span className="rounded-full border border-border bg-background px-3 py-1.5 font-medium text-sm">
-            {t(planLabelKeys.get(usage?.plan.key ?? '') ?? 'settings.usage.plan.unconfigured')}
+            {t(planLabelKeys.get(usage?.plan?.key ?? '') ?? 'settings.usage.plan.unconfigured')}
           </span>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-border border-t pt-4 text-muted-foreground text-xs">
@@ -149,6 +149,7 @@ export function UsageTab({ project }: { project: Project }) {
                     const percent = share ?? (metric.state === 'exceeded' ? 100 : 0);
                     const barWidth = Math.min(100, Math.max(percent > 0 ? 2 : 0, percent));
                     const unavailable = metric.quantity === null;
+                    const limit = 'limit' in metric && typeof metric.limit === 'string' ? metric.limit : null;
                     return (
                       <article className="rounded-xl border border-border bg-background p-4" data-meter={metric.key} key={metric.key}>
                         <div className="flex items-start justify-between gap-3">
@@ -179,9 +180,9 @@ export function UsageTab({ project }: { project: Project }) {
                           >
                             {metric.quantity === null ? '—' : formatQuantity(metric.quantity)}
                           </span>
-                          {metric.limit ? <span className="text-muted-foreground text-sm tabular-nums">/ {formatQuantity(metric.limit)}</span> : null}
+                          {limit ? <span className="text-muted-foreground text-sm tabular-nums">/ {formatQuantity(limit)}</span> : null}
                         </div>
-                        {metric.limit && !unavailable ? (
+                        {limit && !unavailable ? (
                           <div
                             aria-label={t('settings.usage.progressLabel', { label: t(presentation.label) })}
                             aria-valuemax={100}
@@ -191,11 +192,11 @@ export function UsageTab({ project }: { project: Project }) {
                               share === null
                                 ? t('settings.usage.progressValueNoShare', {
                                     used: formatQuantity(metric.quantity ?? '0'),
-                                    limit: formatQuantity(metric.limit),
+                                    limit: formatQuantity(limit),
                                   })
                                 : t('settings.usage.progressValue', {
                                     used: formatQuantity(metric.quantity ?? '0'),
-                                    limit: formatQuantity(metric.limit),
+                                    limit: formatQuantity(limit),
                                     percent: number(share / 100, { style: 'percent', maximumFractionDigits: 1 }),
                                   })
                             }

@@ -1,21 +1,24 @@
-import { prisma } from '@nibleaf/database';
-import { eraseProjectOrganization } from './tenant-erasure';
+import { Prisma, prisma } from '@nibleaf/database';
+import { APIError } from 'better-auth/api';
 
-/** Preserve ownership when possible; otherwise route sole-member workspace
- * removal through the same retained-store privacy erasure as the product UI. */
+/** Never transfer an organization implicitly during personal account deletion.
+ * Validate ALL ownerships before removing even an empty organization. */
 export const reassignOrDeleteOrgs = async (userId: string): Promise<void> => {
-  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true, role: true } });
-  for (const membership of memberships) {
-    const members = await prisma.member.findMany({
-      where: { organizationId: membership.organizationId },
-      select: { id: true, userId: true, role: true },
-      orderBy: { createdAt: 'asc' },
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM "user" WHERE id = ${userId} FOR UPDATE`);
+    const owned = await tx.member.findMany({
+      where: { userId, orgRole: 'owner' },
+      select: { organizationId: true },
+      orderBy: { organizationId: 'asc' },
     });
-    const others = members.filter((member) => member.userId !== userId);
-    if (others.length === 0) {
-      await eraseProjectOrganization(membership.organizationId);
-    } else if (membership.role === 'owner' && !others.some((member) => member.role === 'owner') && others[0]) {
-      await prisma.member.update({ where: { id: others[0].id }, data: { role: 'owner' } });
+    for (const org of owned) {
+      await tx.$queryRaw(Prisma.sql`SELECT id FROM organization WHERE id = ${org.organizationId} FOR UPDATE`);
+      const [others, websites] = await Promise.all([
+        tx.member.count({ where: { organizationId: org.organizationId, userId: { not: userId } } }),
+        tx.project.count({ where: { organizationId: org.organizationId } }),
+      ]);
+      if (others > 0 || websites > 0) throw new APIError('BAD_REQUEST', { message: 'Transfer ownership or delete your organization first' });
     }
-  }
+    for (const org of owned) await tx.organization.delete({ where: { id: org.organizationId } });
+  });
 };

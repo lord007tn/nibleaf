@@ -28,6 +28,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@nibleaf/database', () => ({ prisma: mocks.prisma }));
+vi.mock('./project-settings-storage', () => ({
+  readProjectGitSettings: async () => ({ provider: 'github', repo: 'acme/docs', branch: 'main', path: 'docs' }),
+  writeProjectSettings: vi.fn(async () => undefined),
+}));
 vi.mock('./projects', () => ({ assertProjectInOrg: vi.fn() }));
 vi.mock('./branches', () => ({ assertBranchInProject: vi.fn(), getDefaultBranch: vi.fn(async () => ({ id: 'branch-1' })) }));
 vi.mock('./languages', () => ({ assertLanguageInProject: vi.fn(), getDefaultLanguage: vi.fn(async () => ({ id: 'language-1' })) }));

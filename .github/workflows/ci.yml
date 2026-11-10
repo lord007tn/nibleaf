@@ -155,6 +155,12 @@ jobs:
           pnpm exec turbo run build --filter="@nibleaf/server^..."
           pnpm --filter @nibleaf/server exec vitest run src/actions/viewer-role.postgres.test.ts
 
+      - name: Verify immutable website data partitions
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          DATA_PARTITION_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-partition.postgres.test.ts
+
       - name: Verify join links (atomic max uses, one answer for bad links)
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf

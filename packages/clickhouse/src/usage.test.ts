@@ -49,6 +49,19 @@ describe('usage projection', () => {
     );
   });
 
+  it('keeps every usage query in the immutable partition after billing ownership changes', async () => {
+    const project = { id: 'moved-project', dataTenantId: 'original-partition', organizationId: 'new-billing-org' };
+    const query = vi.fn(async () => ({ json: async () => [] }));
+    await queryUsageMeterTotals(project.dataTenantId, project.id, '2026-02-01T00:00:00Z', '2026-03-01T00:00:00Z', { query } as never, {
+      now: new Date('2026-03-02T00:00:00Z'),
+    });
+    expect(query).toHaveBeenCalled();
+    for (const [input] of query.mock.calls as unknown as [{ query_params: { tenant_id: string; project_id: string } }][]) {
+      expect(input.query_params).toMatchObject({ tenant_id: 'original-partition', project_id: 'moved-project' });
+      expect(JSON.stringify(input)).not.toContain(project.organizationId);
+    }
+  });
+
   it('does not report expired raw history as a complete zero', async () => {
     const query = vi.fn(async () => ({ json: async () => [] }));
     await expect(

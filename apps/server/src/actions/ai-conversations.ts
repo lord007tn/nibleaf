@@ -23,8 +23,8 @@ import { aiConversationCaptureReady } from '@/lib/ai-search/conversation-archive
 import { assertProjectInOrg } from './projects';
 
 const log = createLogger({ action: 'ai-conversations' });
-const context = async (tenantId: string, projectId: string) => {
-  const project = await assertProjectInOrg(tenantId, projectId);
+const context = async (organizationId: string, projectId: string) => {
+  const project = await assertProjectInOrg(organizationId, projectId);
   const config = project.config as { search?: { aiConversationCapture?: boolean } } | null;
   const settingOn = config?.search?.aiConversationCapture !== false;
   const instanceReady = aiConversationCaptureReady();
@@ -32,7 +32,7 @@ const context = async (tenantId: string, projectId: string) => {
     captureEnabled: settingOn && instanceReady,
     // A missing encryption key is the operator's to fix, not the site admin's.
     capture: settingOn ? (instanceReady ? {} : { captureOffReason: 'instance' as const }) : { captureOffReason: 'setting' as const },
-    scope: { tenantId, projectId },
+    scope: { tenantId: project.dataTenantId, projectId },
   };
 };
 const read = async <T>(run: () => Promise<T>, fallback: T) => {
@@ -44,36 +44,36 @@ const read = async <T>(run: () => Promise<T>, fallback: T) => {
     return { ...fallback, availability: 'unavailable' as const };
   }
 };
-export const listProjectAiConversations = async (tenantId: string, projectId: string, query: AiConversationListQuery) => {
-  const c = await context(tenantId, projectId);
+export const listProjectAiConversations = async (organizationId: string, projectId: string, query: AiConversationListQuery) => {
+  const c = await context(organizationId, projectId);
   return aiConversationListResultSchema.parse({
     ...(await read(() => queryAiConversations(c.scope, query), { items: [], nextCursor: null })),
     captureEnabled: c.captureEnabled,
     ...c.capture,
   });
 };
-export const getProjectAiConversation = async (tenantId: string, projectId: string, conversationId: string) => {
-  const c = await context(tenantId, projectId);
+export const getProjectAiConversation = async (organizationId: string, projectId: string, conversationId: string) => {
+  const c = await context(organizationId, projectId);
   const result = await read(() => queryAiConversation(c.scope, conversationId).then((detail) => ({ detail })), { detail: null });
   if (result.availability !== 'available') throw new AppError({ code: 'storage:error' });
   if (!result.detail) throw notFound('ai conversation');
   return aiConversationDetailSchema.parse(result.detail);
 };
-export const deleteProjectAiConversation = async (tenantId: string, projectId: string, conversationId: string) => {
-  const c = await context(tenantId, projectId);
+export const deleteProjectAiConversation = async (organizationId: string, projectId: string, conversationId: string) => {
+  const c = await context(organizationId, projectId);
   await deleteAiConversation(c.scope, conversationId);
   return { deleted: true as const };
 };
-export const getProjectAiConversationSummary = async (tenantId: string, projectId: string, query: AiConversationSummaryQuery) => {
-  const c = await context(tenantId, projectId);
+export const getProjectAiConversationSummary = async (organizationId: string, projectId: string, query: AiConversationSummaryQuery) => {
+  const c = await context(organizationId, projectId);
   return aiConversationSummarySchema.parse({
     ...(await read(() => queryAiConversationSummary(c.scope, query), emptyAiSummary(query.range))),
     captureEnabled: c.captureEnabled,
     ...c.capture,
   });
 };
-export const listProjectAiContentGaps = async (tenantId: string, projectId: string, query: AiContentGapsQuery) => {
-  const c = await context(tenantId, projectId);
+export const listProjectAiContentGaps = async (organizationId: string, projectId: string, query: AiContentGapsQuery) => {
+  const c = await context(organizationId, projectId);
   return aiContentGapsResultSchema.parse({
     ...(await read(() => queryAiContentGaps(c.scope, query), { items: [] })),
     captureEnabled: c.captureEnabled,
@@ -105,8 +105,8 @@ const usageTotals = (rows: Record<string, string | number>[]) => {
 /** Daily usage per model in plain units (USD, milliseconds), with totals. Cost
  * sums the calls whose provider reported it; costKnownAnswers counts answers
  * whose every call, on every model, did. A utility model has its own rows. */
-export const getProjectAiUsage = async (tenantId: string, projectId: string, query: AiConversationSummaryQuery) => {
-  const c = await context(tenantId, projectId);
+export const getProjectAiUsage = async (organizationId: string, projectId: string, query: AiConversationSummaryQuery) => {
+  const c = await context(organizationId, projectId);
   return read(
     async () => {
       const rows = await queryAiUsageDaily(c.scope, query);

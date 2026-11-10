@@ -193,7 +193,7 @@ vi.mock('@nibleaf/database', () => ({
       deployment: {
         findFirst: vi.fn(async (args: { select?: { snapshot?: boolean } }) => (args.select?.snapshot ? mocks.deployment : mocks.previousDeployment)),
       },
-      project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode, organizationId: 'organization-a' })) },
+      project: { findUnique: vi.fn(async () => ({ accessMode: mocks.accessMode, dataTenantId: 'organization-a' })) },
       searchIndexRun,
       $transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
     };

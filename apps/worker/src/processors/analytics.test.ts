@@ -90,11 +90,11 @@ describe('durable usage ingestion and reconciliation worker path', () => {
     mocks.markAnalyticsStoragePending.mockResolvedValue({ accepted: true });
     mocks.reconcileUsageHourly.mockResolvedValue(undefined);
     mocks.usageEventsFromAnalytics.mockReturnValue([lateUsageEvent]);
-    mocks.projectFindUnique.mockResolvedValue({ organizationId: 'org-a' });
+    mocks.projectFindUnique.mockResolvedValue({ dataTenantId: 'org-a' });
     mocks.analyticsDeleteMany.mockResolvedValue({ count: 3 });
     mocks.checkpointDeleteMany.mockResolvedValue({ count: 2 });
     mocks.checkpointFindMany.mockResolvedValue([]);
-    mocks.checkpointFindUnique.mockResolvedValue({ events: [lateUsageEvent], organizationId: 'org-a', projectId: 'project-a', writtenAt: null });
+    mocks.checkpointFindUnique.mockResolvedValue({ events: [lateUsageEvent], partitionId: 'org-a', projectId: 'project-a', writtenAt: null });
     mocks.runWithTenantAnalyticsWriteFence.mockImplementation(
       async (_tenantId: string, _projectId: string, _checkpointId: string | null, action: () => Promise<unknown>) => ({
         accepted: true,
@@ -106,7 +106,7 @@ describe('durable usage ingestion and reconciliation worker path', () => {
   it('marks a receipt pending, writes ClickHouse, reconciles late usage, then marks it drained', async () => {
     await handleAnalyticsJobs({ name: 'track-event', data: { kind: 'track-event', envelope }, id: 'event-job' } as never);
     expect(mocks.markUsageStoragePending).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'event-job', organizationId: 'org-a', projectId: 'project-a' }),
+      expect.objectContaining({ id: 'event-job', partitionId: 'org-a', projectId: 'project-a' }),
     );
     expect(mocks.markUsageStoragePending).toHaveBeenCalledBefore(mocks.insertUsageEvents);
     expect(mocks.markUsageStorageDrained).toHaveBeenCalledAfter(mocks.insertUsageEvents);
@@ -150,7 +150,7 @@ describe('durable usage ingestion and reconciliation worker path', () => {
   });
 
   it('recovers an outbox receipt left by definite failure or timeout with the stable checkpoint job id', async () => {
-    mocks.checkpointFindMany.mockResolvedValue([{ id: 'usage-job-a', organizationId: 'org-a' }]);
+    mocks.checkpointFindMany.mockResolvedValue([{ id: 'usage-job-a', partitionId: 'org-a' }]);
     mocks.getJob.mockResolvedValue(null);
     mocks.listPendingUsagePeriods.mockResolvedValue([]);
     await handleAnalyticsJobs({ name: 'reconcile-usage', data: {} } as never);

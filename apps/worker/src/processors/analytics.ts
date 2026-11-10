@@ -57,9 +57,9 @@ const USAGE_CHECKPOINT_RETENTION_DAYS = 1;
 
 /** Insert one deferred public analytics event, preserving its original time. */
 const ensureUsageProject = async (tenantId: string, projectId: string) => {
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { dataTenantId: true } });
   if (!project) return false;
-  if (project.organizationId !== tenantId) throw new Error('Usage ingestion tenant scope is invalid.');
+  if (project.dataTenantId !== tenantId) throw new Error('Usage ingestion tenant scope is invalid.');
   return true;
 };
 
@@ -100,14 +100,14 @@ async function insertTrackedEvent(event: AnalyticsEventEnvelope, checkpointId: s
     }
   }
   if (clickHouseWritesEnabled(config.ANALYTICS_MODE)) {
-    const analyticsMarker = await markAnalyticsStoragePending(event.tenantId);
+    const analyticsMarker = await markAnalyticsStoragePending(event.tenantId, event.projectId);
     if (!analyticsMarker.accepted) return { inserted: 0 };
     const usageEvents = usageEventsFromAnalytics(event);
     if (usageEvents.length > 0) {
       if (!(await ensureUsageProject(event.tenantId, event.projectId))) return { inserted: 0 };
       await markUsageStoragePending({
         id: checkpointId,
-        organizationId: event.tenantId,
+        partitionId: event.tenantId,
         projectId: event.projectId,
         events: usageEvents,
       });
@@ -125,19 +125,22 @@ const insertUsageBatch = async (checkpointId: string) => {
   if (!clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) throw new Error('ClickHouse usage ingestion is disabled.');
   const checkpoint = await prisma.usageIngestCheckpoint.findUnique({
     where: { id: checkpointId },
-    select: { events: true, organizationId: true, projectId: true, writtenAt: true },
+    select: { events: true, partitionId: true, projectId: true, writtenAt: true },
   });
   if (!checkpoint || checkpoint.writtenAt) return { inserted: 0 };
   const events = usageEventBatchSchema.parse(checkpoint.events);
   const first = events[0];
-  if (!first || first.tenantId !== checkpoint.organizationId || first.projectId !== checkpoint.projectId) {
+  if (!first || first.tenantId !== checkpoint.partitionId || first.projectId !== checkpoint.projectId) {
     throw new Error('Usage ingestion checkpoint scope is invalid.');
   }
   if (!(await ensureUsageProject(first.tenantId, first.projectId))) return { inserted: 0 };
-  await insertUsageEvents(events);
-  await reconcileLateUsage(events);
-  await markUsageStorageDrained(checkpointId, first.tenantId);
-  return { inserted: events.length };
+  const write = await runWithTenantAnalyticsWriteFence(first.tenantId, first.projectId, checkpointId, async () => {
+    await insertUsageEvents(events);
+    await reconcileLateUsage(events);
+    await markUsageStorageDrained(checkpointId, first.tenantId);
+    return events.length;
+  });
+  return { inserted: write.accepted ? write.value : 0 };
 };
 
 const dispatchPendingUsage = async () => {
@@ -146,7 +149,7 @@ const dispatchPendingUsage = async () => {
     where: { writtenAt: null },
     orderBy: { enqueuedAt: 'asc' },
     take: 100,
-    select: { id: true, organizationId: true },
+    select: { id: true, partitionId: true },
   });
   let dispatched = 0;
   for (const checkpoint of checkpoints) {
@@ -160,7 +163,7 @@ const dispatchPendingUsage = async () => {
     } else if ((await existing.getState()) === 'failed') {
       await existing.retry();
     }
-    await markUsageStorageQueued(checkpoint.id, checkpoint.organizationId);
+    await markUsageStorageQueued(checkpoint.id, checkpoint.partitionId);
     dispatched += 1;
   }
   return dispatched;
@@ -234,7 +237,7 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
   }
   const project = await prisma.project.findUnique({
     where: { id: data.projectId },
-    select: { accessMode: true, config: true, organizationId: true },
+    select: { accessMode: true, config: true, dataTenantId: true },
   });
   if (!project) {
     log.info({ jobId, projectId: data.projectId }, 'legacy analytics job ignored because project no longer exists');
@@ -245,7 +248,7 @@ async function upgradeLegacyEvent(data: LegacyTrackAnalyticsEventJobData, jobId:
     visibility?: string;
   } | null;
   return legacyAnalyticsJobToEnvelope(data, {
-    tenantId: project.organizationId,
+    tenantId: project.dataTenantId,
     jobId,
     hashSalt: config.ANALYTICS_HASH_SALT ?? 'disabled-relational-mode',
     privacy: {

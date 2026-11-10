@@ -266,10 +266,10 @@ interface ReaderDimensions {
   country?: string;
 }
 
-/** The workspace that owns the project; null skips the conversation archive. */
+/** The immutable website partition; null skips the conversation archive. */
 const tenantOf = (projectId: string): Promise<string | null> =>
-  prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } }).then(
-    (project) => project?.organizationId ?? null,
+  prisma.project.findUnique({ where: { id: projectId }, select: { dataTenantId: true } }).then(
+    (project) => project?.dataTenantId ?? null,
     () => null,
   );
 
@@ -791,12 +791,12 @@ export const submitSiteChatFeedback = async (identifier: string, body: SiteChatF
   if (!verifyChatFeedbackToken(projectId, body.conversationId, body.turnId, body.token)) {
     throw new AppError({ code: 'http:forbidden', message: 'This answer cannot be rated from here.' });
   }
-  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { organizationId: true } });
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { dataTenantId: true } });
   if (!project) throw new AppError({ code: 'http:not_found', message: 'Site not found.' });
   const consent = trustedChatConsent(context.snapshot.project.config, body.consent);
   const language = body.lang ?? defaultLanguage(context.snapshot.project).code;
   await recordAiChatFeedback({
-    tenantId: project.organizationId,
+    tenantId: project.dataTenantId,
     projectId,
     conversationId: body.conversationId,
     turnId: body.turnId,
