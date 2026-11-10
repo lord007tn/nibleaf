@@ -3376,6 +3376,7 @@
   "editor_image_legacyupload": "चित्र अपलोड करें",
   "editor_image_legacyuploaded": "{filename} अपलोड हो गया है और आपकी प्रकाशित साइट पर दिखेगा",
   "editor_link_search": "पृष्ठ खोजें या लिंक पेस्ट करें",
+  "editor_link_suggestions": "मेल खाने वाले पृष्ठ",
   "editor_callout_remove": "नोट का बॉक्स हटाएँ",
   "editor_image_toolarge": "यह चित्र बहुत बड़ा है। 50 MB से छोटा चित्र चुनें।",
   "editor_image_wrongtype": "PNG, JPEG, GIF, WebP, AVIF या ICO चित्र चुनें।",
