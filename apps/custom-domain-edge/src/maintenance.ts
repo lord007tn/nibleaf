@@ -50,8 +50,12 @@ export const wantsHtml = (request: Request): boolean => {
   return (request.headers.get('accept') ?? '').includes('text/html');
 };
 
-const baseHeaders = (reason: string): Record<string, string> => ({
+const baseHeaders = (request: Request, reason: string): Record<string, string> => ({
   'cache-control': 'no-store',
+  // The body depends on these request headers (HTML vs JSON, EN vs AR).
+  vary: 'Accept, Accept-Language, Sec-Fetch-Dest',
+  // Same policy the app sends; only meaningful (and only sent) over HTTPS.
+  ...(new URL(request.url).protocol === 'https:' ? { 'strict-transport-security': 'max-age=63072000; includeSubDomains' } : {}),
   'retry-after': String(RETRY_AFTER_SECONDS),
   'x-robots-tag': 'noindex, nofollow',
   'x-content-type-options': 'nosniff',
@@ -98,7 +102,7 @@ a.retry:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   return new Response(request.method === 'HEAD' ? null : html, {
     status: 503,
     headers: {
-      ...baseHeaders(reason),
+      ...baseHeaders(request, reason),
       'content-type': 'text/html; charset=utf-8',
       'content-language': copy.lang,
       // Self-contained page: inline styles only, no scripts, no remote fetches.
@@ -113,7 +117,7 @@ const unavailableJson = (request: Request, reason: string): Response =>
     request.method === 'HEAD'
       ? null
       : JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'Temporarily unavailable. Please retry shortly.' } }),
-    { status: 503, headers: { ...baseHeaders(reason), 'content-type': 'application/json; charset=utf-8' } },
+    { status: 503, headers: { ...baseHeaders(request, reason), 'content-type': 'application/json; charset=utf-8' } },
   );
 
 export const unavailableResponse = (request: Request, reason: string): Response =>

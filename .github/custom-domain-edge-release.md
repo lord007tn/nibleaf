@@ -40,6 +40,36 @@ The configuration preserves externally managed plain-text/JSON variables;
 explicit declarations override their values. The existing secret is retained.
 Verify preservation from the uploaded version, not a successful upload alone.
 
+### Edge cache gate (stop the release if it fails)
+
+`EDGE_CACHE_MODE` turns on the Worker's shared cache. The code defaults to `off`,
+and this repository never declares the variable. An upload therefore keeps
+whatever value is already bound outside the repository, and a stale `on` or
+`stale-only` binding would switch caching on the moment the version is
+deployed. Caching may only be enabled through its own approved runbook, never
+as a side effect of a release.
+
+Before deploying, read the bindings of **both** versions:
+
+```sh
+pnpm --filter @nibleaf/custom-domain-edge exec cf workers deployments list --worker nibleaf-custom-domain-edge
+pnpm --filter @nibleaf/custom-domain-edge exec cf workers versions get <active-version> --worker-id nibleaf-custom-domain-edge
+pnpm --filter @nibleaf/custom-domain-edge exec cf workers versions get <uploaded-version> --worker-id nibleaf-custom-domain-edge
+```
+
+For each version, find `EDGE_CACHE_MODE` in the bindings:
+
+- **Absent, or the literal `off`:** continue.
+- **Any other value (`on`, `stale-only`, or anything unrecognised), in either version:** stop. Do not deploy. Record which version carries it, then have the owner remove the variable (or set it to `off`) through the approved edge-cache runbook. Re-upload and repeat this check.
+
+After deploying, confirm the gate from outside on a known custom hostname. A hashed asset must not report an edge cache status:
+
+```sh
+curl -sSI https://<custom-host>/assets/<any-hashed-file>.js | grep -i '^x-nibleaf-edge' || echo "no edge cache header: OK"
+```
+
+`x-nibleaf-edge: hit` or `miss` means caching is on. In that case, roll back to the previous version (see Rollback).
+
 The deployment command changes version traffic only. Avoid `cf deploy` and
 `cf workers triggers deploy` for this externally routed Worker. After deployment,
 verify the active version, hashes, settings, bindings, and complete routes.

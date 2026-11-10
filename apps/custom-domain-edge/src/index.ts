@@ -101,31 +101,69 @@ export const isOriginFailure = (response: Response): boolean => {
 };
 
 // ─── Immutable build assets ──────────────────────────────────────────────────
-// `/assets/<hashed-name>` files are content-addressed outputs of the one app
-// build that serves every tenant, so a single cache entry per path is shared by
-// all hostnames on purpose. Only responses the origin itself marks immutable
-// are stored; anything else (HTML fallbacks, errors, cookies) is refused.
+// `/assets/<name>-<hash>.<ext>` files are content-addressed outputs of the one
+// app build that serves every tenant, so a single cache entry per path is shared
+// by all hostnames on purpose. Three independent conditions must all hold before
+// anything is stored: the path carries Vite's content hash (so mutable files
+// such as `/assets/dashboard-preloads.json` never qualify), the origin marks the
+// response as static build output, and Cache-Control carries the `immutable`
+// directive without `private`, `no-store` or `no-cache`.
 
-const ASSET_PATH = /^\/assets\/[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
+/** Vite's default `[name]-[hash].[ext]`: an 8-character base64url content hash. */
+const HASHED_ASSET_PATH =
+  /^\/assets\/[A-Za-z0-9_][A-Za-z0-9_.-]{0,200}-[A-Za-z0-9_-]{8}\.(?:js|mjs|css|woff2?|ttf|otf|svg|png|jpe?g|webp|avif|gif|ico|wasm)$/;
+/** Set by the app's Nitro route rule for `/assets/**` (apps/app/vite.config.ts). */
+export const STATIC_BUILD_HEADER = 'x-nibleaf-static-build';
+
 /** Keyed under the app origin (a hostname in the Worker's own zone) with a
- *  reserved prefix no reader request is ever looked up under. */
+ *  reserved prefix no reader request is ever looked up under. The key ignores
+ *  Accept-Encoding: the runtime stores decoded bodies and re-encodes per reader,
+ *  and `cachedAssetFor` refuses an entry whose encoding the reader can't take. */
 export const assetCacheKey = (request: Request, env: Pick<Env, 'APP_ORIGIN'>): Request | null => {
   if (request.method !== 'GET' && request.method !== 'HEAD') return null;
   const url = new URL(request.url);
-  if (url.search || !ASSET_PATH.test(url.pathname) || url.pathname.includes('..')) return null;
+  if (url.search || url.pathname.includes('..') || !HASHED_ASSET_PATH.test(url.pathname)) return null;
   return new Request(`${new URL(env.APP_ORIGIN).origin}/__nibleaf_edge/v1/app-assets${url.pathname}`, { method: 'GET' });
+};
+
+/** Cache-Control directives as a lowercase name → value map (RFC 9111 §5.2). */
+export const cacheControlDirectives = (value: string | null): Map<string, string> => {
+  const directives = new Map<string, string>();
+  for (const part of (value ?? '').split(',')) {
+    const [rawName, ...rest] = part.split('=');
+    const name = rawName?.trim().toLowerCase();
+    if (name) directives.set(name, rest.join('=').trim().replace(/^"|"$/g, ''));
+  }
+  return directives;
 };
 
 export const isStorableAsset = (response: Response): boolean => {
   if (response.status !== 200) return false;
   if (response.headers.has('set-cookie')) return false;
-  const cacheControl = response.headers.get('cache-control')?.toLowerCase() ?? '';
-  if (!cacheControl.includes('immutable') || cacheControl.includes('private') || cacheControl.includes('no-store')) return false;
+  if (response.headers.get(STATIC_BUILD_HEADER) !== '1') return false;
+  const directives = cacheControlDirectives(response.headers.get('cache-control'));
+  if (!directives.has('immutable') || directives.has('private') || directives.has('no-store') || directives.has('no-cache')) return false;
   const vary = response.headers.get('vary')?.toLowerCase() ?? '';
   if (vary.split(',').some((name) => name.trim() && name.trim() !== 'accept-encoding')) return false;
   const type = response.headers.get('content-type')?.toLowerCase() ?? '';
   return Boolean(type) && !type.includes('text/html');
 };
+
+const acceptsEncoding = (request: Request, encoding: string): boolean => {
+  if (encoding === 'identity') return true;
+  return (request.headers.get('accept-encoding') ?? '')
+    .toLowerCase()
+    .split(',')
+    .some((part) => {
+      const [name, ...params] = part.trim().split(';');
+      const q = params.find((param) => param.trim().startsWith('q='));
+      return (name === encoding || name === '*') && !(q && Number.parseFloat(q.trim().slice(2)) === 0);
+    });
+};
+
+/** A stored asset is served only if the reader accepts its stored encoding. */
+const usableCachedAsset = (request: Request, cached: Response): boolean =>
+  acceptsEncoding(request, cached.headers.get('content-encoding')?.trim().toLowerCase() || 'identity');
 
 const withEdgeStatus = (response: Response, status: string): Response => {
   const copy = new Response(response.body, response);
@@ -175,7 +213,7 @@ export const handle = async (request: Request, env: Env, deps: EdgeDeps): Promis
   const assetKey = mode === 'off' || !deps.cache ? null : assetCacheKey(request, env);
   if (assetKey && deps.cache) {
     const cached = await deps.cache.match(assetKey).catch(() => undefined);
-    if (cached) return withoutBody(withEdgeStatus(cached, 'hit'), request.method);
+    if (cached && usableCachedAsset(request, cached)) return withoutBody(withEdgeStatus(cached, 'hit'), request.method);
   }
 
   const result = await fetchOrigin(request, env, deps);
