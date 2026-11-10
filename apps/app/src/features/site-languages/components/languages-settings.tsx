@@ -153,7 +153,9 @@ export function LanguagesSettings({ project }: { project: Project }) {
           onOpenChange={setConfirmOpen}
           open={confirmOpen}
           title={t('settings.languages.defaultConfirm.title')}
-        />
+        >
+          <p className="text-muted-foreground text-sm">{t('settings.languages.defaultConfirm.nextPublish')}</p>
+        </ActionDialog>
       ) : confirmation?.kind === 'remove' ? (
         <ActionDialog
           cancelLabel={t('common.cancel')}

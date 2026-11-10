@@ -3800,6 +3800,7 @@
   "settings_smartai_disableconfirm_description": "पाठकों को तुरंत AI उत्तर मिलने बंद हो जाएँगे। आप इन सेटिंग्स से इस साइट के लिए AI फिर से चालू कर सकते हैं।",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "पाठक नई डिफ़ॉल्ट भाषा आपके अगले प्रकाशन के बाद देखेंगे।",
   "settings_languages_actionsfor": "{label} के लिए कार्रवाइयाँ",
   "settings_languages_show": "साइट पर दिखाएँ",
   "settings_languages_hide": "साइट पर छिपाएँ",

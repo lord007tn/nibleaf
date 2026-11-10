@@ -197,27 +197,31 @@ export type RowActionState = {
   remove: Decision | null;
 };
 
+/** What is in flight for this site's domains: at most one of these at a time. */
+export type DomainActivity = { checkingId?: string; primaryId?: string; removingId?: string };
+
 /**
  * Which actions a domain row offers, and why one can't be used now. Non-admins
- * get none (the section says once why it is read-only). Setting the main
- * address is server-confirmed and changes every row, so while one is in flight
- * the others wait.
+ * get none (the section says once why it is read-only).
+ *
+ * Checks, main-address changes and removals all change which domain is the
+ * main address (a failed check can demote it), and they share one request
+ * per kind. So while any of them runs, every conflicting action on every row
+ * waits, with the reason shown.
  */
 export function domainRowActions(
   domain: Pick<Domain, 'id' | 'isPrimary' | 'dnsStatus' | 'sslStatus'>,
   status: SiteAdminState,
-  pending: { checkingId?: string; primaryId?: string } = {},
+  activity: DomainActivity = {},
 ): RowActionState {
   if (status === 'notAdmin') return { check: null, setPrimary: null, remove: null };
   if (status === 'pending') return { check: locked, setPrimary: domain.isPrimary ? null : locked, remove: locked };
-  const check = pending.checkingId === domain.id ? denied('settings.domain.status.checking') : allowed;
+  const busy = activity.checkingId ?? activity.primaryId ?? activity.removingId;
+  const waiting = busy === undefined ? null : denied(activity.checkingId !== undefined ? 'settings.domain.status.checking' : 'common.saving');
+  const check = waiting ?? allowed;
   let setPrimary: Decision | null = null;
-  if (!domain.isPrimary) {
-    if (domainStage(domain) !== 'live') setPrimary = denied('settings.domain.reason.verifyFirst');
-    else if (pending.primaryId !== undefined) setPrimary = denied('common.saving');
-    else setPrimary = allowed;
-  }
-  return { check, setPrimary, remove: allowed };
+  if (!domain.isPrimary) setPrimary = domainStage(domain) !== 'live' ? denied('settings.domain.reason.verifyFirst') : (waiting ?? allowed);
+  return { check, setPrimary, remove: waiting ?? allowed };
 }
 
 /** A decision as the props a control takes: disabled, with the reason when there is one. */

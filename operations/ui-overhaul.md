@@ -395,7 +395,9 @@ Every section is one of two kinds, never both:
   - The `Input` and `Textarea` primitives use `unicode-bidi: plaintext`, so typed text takes its own direction. A Latin
     description in an Arabic UI reads left-to-right with its period in place (it used to show ".Product docs"). An
     empty field keeps the interface's direction for the caret and placeholder; `dir="auto"` would fall back to
-    left-to-right there. This landed in B2. Fields with a fixed direction (hosts, slugs, emails) still pass `dir="ltr"`.
+    left-to-right there. This landed in B2. Fields with a fixed direction (paths, hosts, slugs, emails, code) pass
+    `dir="ltr"`. A field with any explicit `dir` does not get plaintext, so an Arabic-first path such as `/دليل/start`
+    keeps its left-to-right base and its separators stay in place.
 - **Touch:** targets are 44 px (the existing `--control-size-*` under `pointer: coarse`).
 - **Narrow screens:** rows stack by container width (§5.2), tables become `DataList` cards, and the SaveRegion spans the
   column.

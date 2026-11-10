@@ -3865,6 +3865,7 @@
   "settings_smartai_disableconfirm_description": "Los lectores dejarán de recibir respuestas con IA de inmediato. Puedes volver a activar la IA de este sitio desde estos ajustes.",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "Los lectores verán el nuevo idioma predeterminado después de tu próxima publicación.",
   "settings_languages_actionsfor": "Acciones para {label}",
   "settings_languages_show": "Mostrar en el sitio",
   "settings_languages_hide": "Ocultar en el sitio",

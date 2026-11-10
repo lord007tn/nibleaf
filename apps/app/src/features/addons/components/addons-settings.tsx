@@ -5,7 +5,7 @@ import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-s
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { useT } from '@nibleaf/i18n/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -59,12 +59,56 @@ export function AddonsSettings({ projectId }: { projectId: string }) {
   );
 }
 
+/**
+ * What an add-on's switch and its settings form share. Both write the same
+ * add-on and the server checks one revision for both, so they take turns: a
+ * settings save waits for a switch flip in flight, the switch is locked while
+ * a save runs, and each records the revision the server returned so the next
+ * write never sends a stale one (the page's list refetches later).
+ */
+export type AddonWrites = {
+  revision: () => number;
+  recordRevision: (revision: number) => void;
+  switchSettled: () => Promise<unknown>;
+  switching: boolean;
+  saving: boolean;
+  setSaving: (saving: boolean) => void;
+  trackSwitch: (write: Promise<unknown>) => void;
+};
+
+function useAddonWrites(addon: ProjectAddon): AddonWrites {
+  const known = useRef(addon.revision);
+  const pendingSwitch = useRef<Promise<unknown>>(Promise.resolve());
+  const [switching, setSwitching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  return {
+    revision: () => Math.max(addon.revision, known.current),
+    recordRevision: (revision) => {
+      known.current = Math.max(known.current, revision);
+    },
+    switchSettled: () => pendingSwitch.current,
+    switching,
+    saving,
+    setSaving,
+    trackSwitch: (write) => {
+      const settled = write.then(
+        () => undefined,
+        () => undefined,
+      );
+      pendingSwitch.current = settled;
+      setSwitching(true);
+      void settled.then(() => setSwitching(false));
+    },
+  };
+}
+
 /** One add-on: its switch row, then its settings in the same panel. */
 function AddonEntry({ addon, projectId, status }: { addon: ProjectAddon; projectId: string; status: AdminStatus }) {
+  const writes = useAddonWrites(addon);
   return (
     <>
-      <AddonToggleRow addon={addon} projectId={projectId} status={status} />
-      <AddonSettingsForm addon={addon} projectId={projectId} status={status} />
+      <AddonToggleRow addon={addon} projectId={projectId} status={status} writes={writes} />
+      <AddonSettingsForm addon={addon} projectId={projectId} status={status} writes={writes} />
     </>
   );
 }
@@ -74,11 +118,11 @@ function AddonEntry({ addon, projectId, status }: { addon: ProjectAddon; project
  * (the server decides the resulting status), then says "Saved" next to the
  * switch; a refusal leaves the switch as it was and explains in a toast.
  */
-function AddonToggleRow({ addon, projectId, status }: { addon: ProjectAddon; projectId: string; status: AdminStatus }) {
+function AddonToggleRow({ addon, projectId, status, writes }: { addon: ProjectAddon; projectId: string; status: AdminStatus; writes: AddonWrites }) {
   const t = useT();
   const { setEnabled, isPending } = useSetAddonEnabled(projectId);
   const [saved, setSaved] = useState(false);
-  const decision = toggleDecision(addon, status, isPending);
+  const decision = toggleDecision(addon, status, isPending || writes.switching || writes.saving);
   const text = ADDON_TEXT[addon.id];
   const badges = addonBadges(addon);
 
@@ -90,8 +134,13 @@ function AddonToggleRow({ addon, projectId, status }: { addon: ProjectAddon; pro
 
   const toggle = (enabled: boolean) => {
     setSaved(false);
-    setEnabled(addon, enabled).then(
-      () => setSaved(true),
+    const write = setEnabled({ id: addon.id, revision: writes.revision() }, enabled);
+    writes.trackSwitch(write);
+    write.then(
+      (next) => {
+        writes.recordRevision(next.revision);
+        setSaved(true);
+      },
       (error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')),
     );
   };

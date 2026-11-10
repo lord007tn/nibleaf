@@ -38,8 +38,9 @@ import {
   urlTemplateProblem,
   urlTemplateValues,
 } from '../model/addons';
+import type { AddonWrites } from './addons-settings';
 
-type Props = { addon: ProjectAddon; projectId: string; status: AdminStatus };
+type Props = { addon: ProjectAddon; projectId: string; status: AdminStatus; writes: AddonWrites };
 
 /** The add-on's settings, when it has any: one explicit-save form registered with the page's save bar. */
 export function AddonSettingsForm(props: Props) {
@@ -57,29 +58,32 @@ export function AddonSettingsForm(props: Props) {
  * something changed and the leave guard sees it.
  */
 function useAddonDraft<T extends DraftValues>(
-  { addon, projectId }: Props,
+  { addon, projectId, writes }: Props,
   toValues: (config: Record<string, unknown>) => T,
   toConfig: (values: T) => Record<string, unknown>,
 ) {
   const t = useT();
   const { save } = useSaveAddonSettings(projectId);
   const source = useMemo(() => toValues(addon.config), [addon.config, toValues]);
-  // Switching the add-on on or off bumps its revision; a save sends the latest one.
-  const revision = useRef(addon.revision);
-  revision.current = addon.revision;
 
   const { form, ...draft } = useServerDraftForm<T>({
     identity: [projectId, 'addon', addon.id],
     source,
     onSubmit: async (value, outcome) => {
+      writes.setSaving(true);
       try {
-        const saved = await save(addon.id, toConfig(value), revision.current);
+        // A switch flip in flight bumps the revision: wait for it, then send the latest.
+        await writes.switchSettled();
+        const saved = await save(addon.id, toConfig(value), writes.revision());
+        writes.recordRevision(saved.revision);
         outcome.succeeded(toValues(saved.config));
         return 'saved';
       } catch (error) {
         outcome.failed();
         if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
         return 'failed';
+      } finally {
+        writes.setSaving(false);
       }
     },
   });
@@ -101,9 +105,12 @@ function AddonFormFrame({
   addon,
   draft,
   submit,
+  reason,
   children,
 }: {
   addon: ProjectAddon;
+  /** Why the settings can't be changed, shown once above them. */
+  reason?: string;
   draft: { isDirty: boolean; conflicts: string[]; resolveConflict: (key: never, choice: 'theirs' | 'mine') => void };
   submit: () => Promise<'saved' | 'invalid' | 'failed'>;
   children: ReactNode;
@@ -125,6 +132,7 @@ function AddonFormFrame({
     >
       <fieldset className="m-0 min-w-0 divide-y divide-border border-0 p-0 ps-4 sm:ps-5">
         <legend className="sr-only">{t(ADDON_TEXT[addon.id].title)}</legend>
+        {reason ? <p className="px-4 py-3 text-muted-foreground text-sm sm:px-5">{reason}</p> : null}
         {draft.conflicts.length > 0 ? (
           <SettingsSectionBody>
             <Callout
@@ -148,6 +156,12 @@ function AddonFormFrame({
       </fieldset>
     </form>
   );
+}
+
+/** The visible reason when the settings are closed for a reason (not merely locked while access loads). */
+function settingsReason(t: ReturnType<typeof useT>, props: Props): string | undefined {
+  const decision = settingsDecision(props.addon, props.status);
+  return decision.kind === 'denied' ? t(decision.reason) : undefined;
 }
 
 /** A select over fixed options, labelled by its row, showing each option's words rather than its stored token. */
@@ -186,9 +200,9 @@ function OptionSelect({
 function FeedbackForm(props: Props) {
   const t = useT();
   const { form, draft, submit } = useAddonDraft(props, feedbackValues, feedbackConfig);
-  const disabled = settingsDecision(props.status).kind !== 'allowed';
+  const disabled = settingsDecision(props.addon, props.status).kind !== 'allowed';
   return (
-    <AddonFormFrame addon={props.addon} draft={draft} submit={submit}>
+    <AddonFormFrame addon={props.addon} draft={draft} reason={settingsReason(t, props)} submit={submit}>
       <form.Field name="placement">
         {(field) => (
           <FormField<string> control="compact" field={field} label={t('settings.addons.feedback.placement')}>
@@ -210,14 +224,14 @@ function FeedbackForm(props: Props) {
 function UrlTemplateForm({ addonId, ...props }: Props & { addonId: UrlTemplateAddonId }) {
   const t = useT();
   const { form, draft, submit } = useAddonDraft(props, urlTemplateValues, urlTemplateConfig);
-  const disabled = settingsDecision(props.status).kind !== 'allowed';
+  const disabled = settingsDecision(props.addon, props.status).kind !== 'allowed';
   const text = URL_TEMPLATE_TEXT[addonId];
   const check = (value: string) => {
     const problem = urlTemplateProblem(addonId, value);
     return problem ? t(URL_PROBLEM_TEXT[problem]) : undefined;
   };
   return (
-    <AddonFormFrame addon={props.addon} draft={draft} submit={submit}>
+    <AddonFormFrame addon={props.addon} draft={draft} reason={settingsReason(t, props)} submit={submit}>
       <form.Field name="urlTemplate" validators={validateOnBlurThenChange(check)}>
         {(field) => (
           <FormField<string> description={t(text.hint, text.params)} field={field} label={t(text.label)} layout="stacked">
@@ -246,10 +260,10 @@ function UrlTemplateForm({ addonId, ...props }: Props & { addonId: UrlTemplateAd
 function ConsentForm(props: Props) {
   const t = useT();
   const { form, draft, submit } = useAddonDraft(props, consentValues, consentConfig);
-  const disabled = settingsDecision(props.status).kind !== 'allowed';
+  const disabled = settingsDecision(props.addon, props.status).kind !== 'allowed';
   const check = (value: string) => (privacyUrlProblem(value) ? t(URL_PROBLEM_TEXT.invalid) : undefined);
   return (
-    <AddonFormFrame addon={props.addon} draft={draft} submit={submit}>
+    <AddonFormFrame addon={props.addon} draft={draft} reason={settingsReason(t, props)} submit={submit}>
       <form.Field name="placement">
         {(field) => (
           <FormField<string> control="compact" field={field} label={t('settings.addons.consent.placement')}>

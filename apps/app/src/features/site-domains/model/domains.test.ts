@@ -223,13 +223,33 @@ describe('domainRowActions', () => {
     expect(domainRowActions(live({ isPrimary: true }), 'admin').setPrimary).toBeNull();
   });
 
-  it('holds other rows while the main address is changing (exactly one primary)', () => {
-    expect(domainRowActions(live({ id: 'd2' }), 'admin', { primaryId: 'd1' }).setPrimary).toEqual({ kind: 'denied', reason: 'common.saving' });
+  const saving = { kind: 'denied', reason: 'common.saving' };
+  const checking = { kind: 'denied', reason: 'settings.domain.status.checking' };
+
+  it('locks checks, the main address and removal on every row while the main address changes', () => {
+    for (const row of [live({ id: 'd1' }), live({ id: 'd2' }), live({ id: 'd3', isPrimary: true })]) {
+      const actions = domainRowActions(row, 'admin', { primaryId: 'd1' });
+      expect(actions.check).toEqual(saving);
+      expect(actions.remove).toEqual(saving);
+      if (!row.isPrimary) expect(actions.setPrimary).toEqual(saving);
+    }
   });
 
-  it('keeps other rows checkable while one is checked', () => {
-    expect(domainRowActions(live(), 'admin', { checkingId: 'd1' }).check).toEqual({ kind: 'denied', reason: 'settings.domain.status.checking' });
-    expect(domainRowActions(live({ id: 'd2' }), 'admin', { checkingId: 'd1' }).check).toEqual({ kind: 'allowed' });
+  it('locks every row while a check runs: a failed check can demote the main address', () => {
+    for (const row of [live({ id: 'd1' }), live({ id: 'd2' })]) {
+      expect(domainRowActions(row, 'admin', { checkingId: 'd1' })).toEqual({ check: checking, setPrimary: checking, remove: checking });
+    }
+  });
+
+  it('locks every row while a domain is removed', () => {
+    expect(domainRowActions(live({ id: 'd2' }), 'admin', { removingId: 'd1' })).toEqual({ check: saving, setPrimary: saving, remove: saving });
+  });
+
+  it('still explains "verify first" over "saving" for a domain that is not live', () => {
+    expect(domainRowActions(domain({ id: 'd2' }), 'admin', { checkingId: 'd1' }).setPrimary).toEqual({
+      kind: 'denied',
+      reason: 'settings.domain.reason.verifyFirst',
+    });
   });
 
   it('turns a decision into control props', () => {

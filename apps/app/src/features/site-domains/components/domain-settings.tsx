@@ -11,9 +11,9 @@ import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-s
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm, useStore } from '@tanstack/react-form';
+import { useStore } from '@tanstack/react-form';
 import { ChevronDown, ExternalLink, Globe2, RefreshCw } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -23,6 +23,7 @@ import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { isolate } from '@/lib/bidi';
 import { useFormatters } from '@/lib/format';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
+import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 import { useAddSiteDomain, useCheckSiteDomain, useRemoveSiteDomain, useSetPrimarySiteDomain, useSiteDomains } from '../api/hooks';
 import {
@@ -32,6 +33,7 @@ import {
   checkOutcome,
   cleanDomainInput,
   type Decision,
+  type DomainActivity,
   type DomainToast,
   decisionProps,
   dnsRecordView,
@@ -70,7 +72,7 @@ export function DomainSettings({ project }: { project: Project }) {
         {query.isError ? retry : null}
         <SettingsSection>
           {domains.length ? (
-            <DomainList domains={domains} projectId={project.id} status={status} />
+            <DomainList domains={domains} key={project.id} projectId={project.id} status={status} />
           ) : (
             <DataListEmpty>
               <EmptyState headingLevel={2} icon={<Globe2 />} title={t('settings.domain.empty')} />
@@ -111,32 +113,59 @@ function DomainList({ domains, projectId, status }: { domains: Domain[]; project
   const [removeOpen, setRemoveOpen] = useState(false);
 
   const setOpen = (id: string, open: boolean) => setOpened((current) => ({ ...current, [id]: open }));
-  const checkingId = check.isPending ? check.variables : undefined;
-  const primaryId = setPrimary.isPending ? setPrimary.variables : undefined;
+  const activity: DomainActivity = {
+    checkingId: check.isPending ? check.variables : undefined,
+    primaryId: setPrimary.isPending ? setPrimary.variables : undefined,
+    removingId: remove.isPending ? remove.variables : undefined,
+  };
+  // One domain action at a time, decided synchronously: `isPending` only
+  // shows after a render, so two quick clicks would both get through.
+  const inFlight = useRef(false);
+  const exclusive = async (run: () => Promise<void>) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      await run();
+    } finally {
+      inFlight.current = false;
+    }
+  };
 
+  // Each action awaits its own request, so its outcome is reported even if
+  // the shared mutation is reused later (per-call mutate callbacks only run
+  // for the latest call).
   const runCheck = (domain: Domain) =>
-    check.mutate(domain.id, {
-      onSuccess: (result) => {
-        const { toasts, revealRecords } = checkOutcome(result);
+    exclusive(async () => {
+      try {
+        const { toasts, revealRecords } = checkOutcome(await check.mutateAsync(domain.id));
         showToasts(toasts, domain.domain);
         if (revealRecords) setOpen(domain.id, true);
-      },
-      // The reason is toasted by the mutation; losing the main address is said here.
-      onError: (error) => showToasts(checkFailureToasts(demotedByError(error)), domain.domain),
+      } catch (error) {
+        // The reason is toasted by the mutation; losing the main address is said here.
+        showToasts(checkFailureToasts(demotedByError(error)), domain.domain);
+      }
     });
-  const makePrimary = (domain: Domain) => setPrimary.mutate(domain.id, { onSuccess: () => toast.success(t('settings.domain.toast.primary')) });
+  const makePrimary = (domain: Domain) =>
+    exclusive(async () => {
+      try {
+        await setPrimary.mutateAsync(domain.id);
+        toast.success(t('settings.domain.toast.primary'));
+      } catch {
+        // Worded by the mutation's own error toast.
+      }
+    });
 
   return (
     <>
       <DataList aria-label={t('settings.domain.title')}>
         {domains.map((domain) => (
           <DomainRow
-            actions={domainRowActions(domain, status, { checkingId, primaryId })}
-            checking={checkingId === domain.id}
+            actions={domainRowActions(domain, status, activity)}
+            checking={activity.checkingId === domain.id}
             domain={domain}
             key={domain.id}
-            onCheck={() => runCheck(domain)}
-            onMakePrimary={() => makePrimary(domain)}
+            onCheck={() => void runCheck(domain)}
+            onMakePrimary={() => void makePrimary(domain)}
             onOpenChange={(open) => setOpen(domain.id, open)}
             onRemove={() => {
               setRemoveTarget(domain);
@@ -155,7 +184,14 @@ function DomainList({ domains, projectId, status }: { domains: Domain[]; project
         fallbackErrorMessage={t('settings.domain.toast.removeError')}
         onConfirm={async () => {
           if (!removeTarget) return;
-          await remove.mutateAsync(removeTarget.id);
+          // Another domain action is running; the dialog shows its fallback error and stays open.
+          if (inFlight.current) throw new Error('A domain action is already running.');
+          inFlight.current = true;
+          try {
+            await remove.mutateAsync(removeTarget.id);
+          } finally {
+            inFlight.current = false;
+          }
           toast.success(t('settings.domain.toast.removed'));
         }}
         onOpenChange={setRemoveOpen}
@@ -353,28 +389,47 @@ function DnsRecords({ domain }: { domain: Domain }) {
 }
 
 /**
- * The field that adds a domain. One field with its own button, so no save bar:
- * a plain TanStack form whose error shows once the field is left or submitted.
+ * The field that adds a domain. One field with its own button, so no save bar.
+ * It still runs on the form lifecycle (operations/ui-overhaul.md §8.3): one
+ * add at a time (Enter during an add does nothing), text typed while an add
+ * runs is kept, a refusal lands only on the address that was sent, and a
+ * result for another site (the page switched mid-request) is ignored.
  */
 function AddDomainForm({ projectId, decision }: { projectId: string; decision: Decision }) {
   const t = useT();
   const add = useAddSiteDomain(projectId);
   const locked = decisionProps(decision).disabled;
   const invalid = t('settings.domain.error.invalid');
-  const form = useForm({
-    defaultValues: { domain: '' },
-    onSubmit: async ({ value }) => {
+  const empty = useMemo(() => ({ domain: '' }), []);
+  const { form, ...draft } = useServerDraftForm({
+    identity: [projectId, 'add-domain'],
+    source: empty,
+    onSubmit: async (value, outcome) => {
       const { cleaned } = cleanDomainInput(value.domain);
-      form.setFieldValue('domain', cleaned);
       try {
         await add.mutateAsync({ domain: cleaned });
+        // The outcome is always reported; only the form is left alone when the page moved to another site.
         toast.success(t('settings.domain.toast.added'));
-        form.reset();
+        if (!outcome.isCurrent()) return 'failed';
+        // Back to empty, unless something new was typed while it was added.
+        outcome.succeeded(empty);
+        return 'saved';
       } catch (error) {
+        outcome.failed();
         const message = domainErrorMessage(t, error, 'settings.domain.toast.addError');
-        // A refusal about the host goes under the field, where the fix happens; anything else is a toast.
-        if (addErrorTarget(error) === 'field') form.setFieldMeta('domain', (meta) => withServerError(meta, message));
-        else toast.error(message);
+        if (!outcome.isCurrent()) {
+          toast.error(message);
+          return 'failed';
+        }
+        // A refusal about the host goes under the field, where the fix happens,
+        // but only while the field still holds the address that was refused.
+        if (addErrorTarget(error) === 'field') {
+          if (form.state.values.domain !== value.domain) return 'failed';
+          form.setFieldMeta('domain', (meta) => withServerError(meta, message));
+          return 'invalid';
+        }
+        toast.error(message);
+        return 'failed';
       }
     },
   });
@@ -386,10 +441,10 @@ function AddDomainForm({ projectId, decision }: { projectId: string; decision: D
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        void form.handleSubmit();
+        void draft.submit();
       }}
     >
-      <DirtyStateReporter dirty={Boolean(typed.trim())} />
+      <DirtyStateReporter dirty={Boolean(typed.trim()) || draft.isSaving} />
       <form.Field
         name="domain"
         validators={{
@@ -425,7 +480,7 @@ function AddDomainForm({ projectId, decision }: { projectId: string; decision: D
                   spellCheck={false}
                   value={value}
                 />
-                <Button disabled={locked} loading={add.isPending} type="submit">
+                <Button disabled={locked} loading={draft.isSaving} type="submit">
                   {t('settings.domain.add')}
                 </Button>
               </div>

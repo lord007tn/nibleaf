@@ -17,6 +17,7 @@ export const useAddons = (projectId: string) => useProjectAddons(projectId);
 export function useSetAddonEnabled(projectId: string) {
   const activate = useActivateProjectAddon(projectId);
   const deactivate = useDeactivateProjectAddon(projectId);
+  /** Resolves with the server's add-on, whose `revision` the next write must send. */
   const setEnabled = (addon: Pick<ProjectAddon, 'id' | 'revision'>, enabled: boolean) =>
     (enabled ? activate : deactivate).mutateAsync({ addonId: addon.id, expectedRevision: addon.revision });
   return { setEnabled, isPending: activate.isPending || deactivate.isPending };

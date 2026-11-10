@@ -3886,6 +3886,7 @@
   "settings_smartai_disableconfirm_description": "Читатели сразу перестанут получать ответы ИИ. Включить ИИ для этого сайта снова можно в этих настройках.",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "Читатели увидят новый язык по умолчанию после следующей публикации.",
   "settings_languages_actionsfor": "Действия для {label}",
   "settings_languages_show": "Показывать на сайте",
   "settings_languages_hide": "Скрыть на сайте",

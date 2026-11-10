@@ -3865,6 +3865,7 @@
   "settings_smartai_disableconfirm_description": "Leser erhalten sofort keine KI-Antworten mehr. Sie können die KI für diese Website hier wieder aktivieren.",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "Leser sehen die neue Standardsprache nach Ihrer nächsten Veröffentlichung.",
   "settings_languages_actionsfor": "Aktionen für {label}",
   "settings_languages_show": "Auf der Website anzeigen",
   "settings_languages_hide": "Auf der Website ausblenden",

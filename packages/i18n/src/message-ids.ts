@@ -3674,6 +3674,7 @@ export const MESSAGE_IDS = {
   'settings.smartAi.disableConfirm.description': 'settings_smartai_disableconfirm_description',
   'settings.languages.defaultConfirm.title': 'settings_languages_defaultconfirm_title',
   'settings.languages.defaultConfirm.description': 'settings_languages_defaultconfirm_description',
+  'settings.languages.defaultConfirm.nextPublish': 'settings_languages_defaultconfirm_nextpublish',
   'settings.languages.actionsFor': 'settings_languages_actionsfor',
   'settings.languages.show': 'settings_languages_show',
   'settings.languages.hide': 'settings_languages_hide',
