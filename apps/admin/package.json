@@ -31,7 +31,7 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
-    "@inlang/paraglide-js": "2.29.3",
+    "@inlang/paraglide-js": "3.2.0",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
