@@ -1,7 +1,16 @@
+import { AppError } from '@/errors';
 import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import connectedAppsRoutes from './routes';
+
+vi.mock('@/actions/projects', () => ({
+  assertProjectAccess: async () => {
+    const member = await prisma.member.findUnique({} as never);
+    if (!member || member.role === 'unknown') throw new AppError({ code: 'database:not_found' });
+    return { organizationId: 'org-1', role: member.role };
+  },
+}));
 
 vi.mock('@nibleaf/database', () => ({
   prisma: { user: { findUnique: vi.fn() }, project: { findUnique: vi.fn() }, member: { findUnique: vi.fn() } },

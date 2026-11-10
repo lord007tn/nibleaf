@@ -17,6 +17,14 @@ const mocks = vi.hoisted(() => ({
   verify: vi.fn(),
 }));
 
+vi.mock('@/actions/projects', () => ({
+  assertProjectAccess: async () => {
+    const role = mocks.memberRole;
+    if (!role) throw new AppError({ code: 'database:not_found' });
+    return { organizationId: 'org-1', role };
+  },
+}));
+
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     user: { findUnique: vi.fn(async () => ({ suspendedAt: null })) },

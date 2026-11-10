@@ -66,7 +66,7 @@ describe('usage authorization and entitlement policy', () => {
     mocks.analyticsMode = 'disabled';
     mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-a', dataTenantId: 'original-partition' });
     mocks.assertProjectAccess.mockResolvedValue({ organizationId: 'org-a', role: 'owner', project: { dataTenantId: 'original-partition' } });
-    mocks.memberFindUnique.mockResolvedValue({ role: 'owner' });
+    mocks.memberFindUnique.mockResolvedValue({ role: 'owner', orgRole: 'owner' });
     mocks.organizationFindUnique.mockResolvedValue({ metadata: null });
     mocks.planFindUnique.mockResolvedValue(activePlan());
     mocks.deploymentFindFirst.mockResolvedValue({ pagesCount: 12 });

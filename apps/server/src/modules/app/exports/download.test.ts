@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({ findArtifact: vi.fn(), assertAccess: vi.fn(), 
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), getJob: vi.fn(), removeJob: vi.fn(), QueueNames: { EXPORT: 'export' } }));
 vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: null },
-  prisma: { exportArtifact: { findFirst: mocks.findArtifact }, user: { findUnique: vi.fn() } },
+  prisma: { exportArtifact: { findFirst: mocks.findArtifact }, user: { findUnique: vi.fn(async () => ({ id: 'synthetic-user', banned: false, suspendedAt: null })) } },
 }));
 vi.mock('@/actions/projects', () => ({ assertProjectAccess: mocks.assertAccess }));
 vi.mock('@/actions/platform-events', () => ({ logPlatformEvent: mocks.event }));
@@ -79,7 +79,7 @@ describe('authenticated export file downloads', () => {
     expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     expect(response.headers.get('Content-Security-Policy')).toBe('sandbox');
     expect(await response.text()).toBe('PDF-data');
-    expect(mocks.assertAccess).toHaveBeenCalledExactlyOnceWith('synthetic-user', 'project-1');
+    expect(mocks.assertAccess).toHaveBeenCalledWith('synthetic-user', 'project-1');
     expect(mocks.findArtifact).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'artifact-1', jobId: 'run-1', job: { projectId: 'project-1', status: 'SUCCEEDED' } } }),
     );

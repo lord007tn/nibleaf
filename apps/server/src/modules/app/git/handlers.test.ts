@@ -9,6 +9,14 @@ const mocks = vi.hoisted(() => ({
   authorizeGitHub: vi.fn(async () => ({ login: 'octocat', name: 'The Octocat' })),
 }));
 
+vi.mock('@/actions/projects', () => ({
+  assertProjectAccess: async () => {
+    const role = mocks.role;
+    if (!role) throw new AppError({ code: 'database:not_found' });
+    return { organizationId: 'org-1', role };
+  },
+}));
+
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     user: { findUnique: vi.fn(async () => ({ suspendedAt: null })) },
