@@ -5,7 +5,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useStore } from '@tanstack/react-form';
 import { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
@@ -65,7 +64,6 @@ function useAddonDraft<T extends DraftValues>(
   const t = useT();
   const { save } = useSaveAddonSettings(projectId);
   const source = useMemo(() => toValues(addon.config), [addon.config, toValues]);
-  const result = useRef<'saved' | 'invalid' | 'failed'>('invalid');
   // Switching the add-on on or off bumps its revision; a save sends the latest one.
   const revision = useRef(addon.revision);
   revision.current = addon.revision;
@@ -77,22 +75,21 @@ function useAddonDraft<T extends DraftValues>(
       try {
         const saved = await save(addon.id, toConfig(value), revision.current);
         outcome.succeeded(toValues(saved.config));
-        result.current = 'saved';
+        return 'saved';
       } catch (error) {
         outcome.failed();
-        if (!outcome.isCurrent()) return;
-        toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
-        result.current = 'failed';
+        if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
+        return 'failed';
       }
     },
   });
-  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
+  const { submit: submitDraft } = draft;
+  // The page's save bar disables Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
-    result.current = 'invalid';
-    await form.handleSubmit();
-    return result.current;
-  }, [form]);
-  useSaveRegionForm(`addon-${addon.id}`, { isDirty: draft.isDirty, isSubmitting, submit, discard: draft.discard });
+    const outcome = await submitDraft();
+    return outcome === 'busy' ? 'failed' : outcome;
+  }, [submitDraft]);
+  useSaveRegionForm(`addon-${addon.id}`, { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
   return { form, draft, submit };
 }
 

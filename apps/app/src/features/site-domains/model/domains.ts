@@ -8,12 +8,37 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { isDomainLive } from '@nibleaf/shared/domains';
 import { DOMAIN_NAME_PATTERN, normalizeDomainInput } from '@nibleaf/validators';
 import { getDomain } from 'tldts';
-import { type DomainStage, domainStage } from '@/hooks/api/domain-state';
-import type { Domain } from '@/hooks/api/types';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 
-export type { DomainStage };
-export { domainStage };
+/**
+ * The fields of a custom domain this model reads: a structural copy of the
+ * API's `Domain` (hooks/api/types.ts), so the model takes plain values and
+ * imports nothing from the data layer.
+ */
+export type Domain = {
+  id: string;
+  domain: string;
+  verified: boolean;
+  isPrimary: boolean;
+  dnsStatus: 'PENDING' | 'VERIFIED' | 'ERROR';
+  sslStatus: 'PENDING' | 'PROVISIONING' | 'ACTIVE' | 'ERROR';
+  lastError: string | null;
+  records?: ReadonlyArray<unknown>;
+};
+
+export type DomainStage = 'waiting' | 'dnsProblem' | 'securing' | 'httpsProblem' | 'live';
+
+/**
+ * Where a domain is in its setup. The same rule as `domainStage` in
+ * hooks/api/domain-state.ts (frozen until the organizations shell merges;
+ * it should then re-export this one).
+ */
+export const domainStage = (domain: Pick<Domain, 'dnsStatus' | 'sslStatus'>): DomainStage => {
+  if (domain.dnsStatus === 'ERROR') return 'dnsProblem';
+  if (domain.dnsStatus !== 'VERIFIED') return 'waiting';
+  if (domain.sslStatus === 'ACTIVE') return 'live';
+  return domain.sslStatus === 'ERROR' ? 'httpsProblem' : 'securing';
+};
 
 /** The DS `StatusBadge` tones this section uses. */
 export type DomainTone = 'success' | 'pending' | 'danger';
