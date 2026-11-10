@@ -4476,7 +4476,7 @@
   "people_site_title": "Team",
   "people_site_description": "Who can open {site}. Owners and Admins of {org} can open every website.",
   "people_site_manageinorg": "Manage people in {org}",
-  "people_site_readonly": "You’re {role} on this website. Ask an Admin to add people or change roles.",
+  "people_site_readonly": "Your role on this website is {role}. Ask an Admin to add people or change roles.",
   "people_site_fromorg": "From the organization",
   "people_site_fromorghint": "The Owner and Admins of {org} open every website.",
   "people_site_access": "Website access",
