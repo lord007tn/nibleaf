@@ -50,7 +50,7 @@ export function invalidFieldCount(fieldMeta: Record<string, FieldMetaLike | unde
 }
 
 /** The server's error for a field, set by a failed save and cleared on the field's next change. */
-export const SERVER_ERROR_KEY = 'onServer';
+const SERVER_ERROR_KEY = 'onServer';
 
 type ErrorMapMeta = { errorMap: Record<string, unknown> };
 

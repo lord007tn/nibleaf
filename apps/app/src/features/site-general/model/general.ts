@@ -7,7 +7,7 @@
 /** A small curated set of emoji the site can use as its icon. */
 export const GENERAL_ICON_CHOICES = ['📘', '📕', '📗', '🚀', '⚡', '🛠️', '🧩', '🔌', '📦', '🌐', '🔭', '✨'] as const;
 
-export type TranslationValues = { name: string; description: string };
+type TranslationValues = { name: string; description: string };
 
 /** Everything the General form edits, in one place, so "dirty" has one meaning. */
 export type GeneralValues = {
