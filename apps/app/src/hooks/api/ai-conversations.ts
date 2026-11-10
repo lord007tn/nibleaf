@@ -24,7 +24,7 @@ import { getData } from './client-helpers';
  */
 
 /** Every key starts with `['ai-conversations', projectId]`, so `all` invalidates them. */
-export const aiConversationKeys = {
+const aiConversationKeys = {
   all: (projectId: string) => ['ai-conversations', projectId] as const,
   list: (projectId: string, filters: Record<string, string | undefined>) => ['ai-conversations', projectId, 'list', filters] as const,
   summary: (projectId: string, range: string, language: string | undefined, timezone: string) =>
@@ -56,7 +56,7 @@ export function conversationFilters(search: AiDashboardSearch): AiConversationFi
 }
 
 /** Paged and filtered: earlier results stay on screen while the next ones load. */
-export const aiConversationsQueryOptions = (projectId: string, filters: AiConversationFilters) =>
+const aiConversationsQueryOptions = (projectId: string, filters: AiConversationFilters) =>
   infiniteQueryOptions({
     queryKey: aiConversationKeys.list(projectId, filters),
     initialPageParam: undefined as string | undefined,
@@ -66,7 +66,7 @@ export const aiConversationsQueryOptions = (projectId: string, filters: AiConver
     placeholderData: keepPreviousData,
   });
 
-export const aiConversationSummaryQueryOptions = (projectId: string, range: AiConversationRange, language?: string) => {
+const aiConversationSummaryQueryOptions = (projectId: string, range: AiConversationRange, language?: string) => {
   // Daily buckets follow the viewer's own calendar.
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   return queryOptions({
@@ -76,14 +76,14 @@ export const aiConversationSummaryQueryOptions = (projectId: string, range: AiCo
   });
 };
 
-export const aiContentGapsQueryOptions = (projectId: string, range: AiConversationRange, language?: string) =>
+const aiContentGapsQueryOptions = (projectId: string, range: AiConversationRange, language?: string) =>
   queryOptions({
     queryKey: aiConversationKeys.gaps(projectId, range, language),
     queryFn: ({ signal }) => request(aiConversationsPath(projectId, '/gaps', { range, language }), aiContentGapsResultSchema, signal),
     placeholderData: keepPreviousData,
   });
 
-export const aiConversationQueryOptions = (projectId: string, conversation?: string) =>
+const aiConversationQueryOptions = (projectId: string, conversation?: string) =>
   queryOptions({
     queryKey: aiConversationKeys.detail(projectId, conversation ?? ''),
     // The client's default policy: a deleted or expired conversation (4xx) is
