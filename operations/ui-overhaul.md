@@ -392,9 +392,10 @@ Every section is one of two kinds, never both:
   - Text that ends up in a string (toasts, `aria-label`s, interpolated copy) goes through the existing `isolate()`,
     which wraps it in the Unicode isolates FSI…PDI.
   - Names, domains and emails rendered as elements use `<bdi>` or `dir="auto"`.
-  - Inputs and textareas that hold user content get `dir="auto"`. Today a Latin description in an Arabic UI shows its
-    final period on the wrong side (seen in the B1a gallery). This is an app-wide input change, so it lands in B2 with
-    its own screenshots.
+  - The `Input` and `Textarea` primitives use `unicode-bidi: plaintext`, so typed text takes its own direction. A Latin
+    description in an Arabic UI reads left-to-right with its period in place (it used to show ".Product docs"). An
+    empty field keeps the interface's direction for the caret and placeholder; `dir="auto"` would fall back to
+    left-to-right there. This landed in B2. Fields with a fixed direction (hosts, slugs, emails) still pass `dir="ltr"`.
 - **Touch:** targets are 44 px (the existing `--control-size-*` under `pointer: coarse`).
 - **Narrow screens:** rows stack by container width (§5.2), tables become `DataList` cards, and the SaveRegion spans the
   column.
