@@ -117,7 +117,7 @@ describe('Smart AI setup steps', () => {
       [...list.querySelectorAll('li')].map((item) => (item.hasAttribute('data-done') ? 'done' : 'todo')),
     );
   const typeKey = async (value: string) => {
-    const input = document.querySelector<HTMLInputElement>('input[type="password"]');
+    const input = document.querySelector<HTMLInputElement>('input[name="ai-provider-api-key"]');
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
     await act(async () => {
       setter?.call(input, value);
@@ -149,7 +149,7 @@ describe('Smart AI setup steps', () => {
   it('explains that replacing a stored key needs the consent box', async () => {
     Object.assign(state.query, { isPending: false, isError: false, data: loaded });
     await mount();
-    const keys = document.querySelectorAll<HTMLInputElement>('input[type="password"]');
+    const keys = document.querySelectorAll<HTMLInputElement>('input[name="ai-provider-api-key"]');
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
     await act(async () => {
       setter?.call(keys[1], 'sk-new');
