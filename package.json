@@ -96,7 +96,7 @@
     "tsx": "4.23.15"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.5.11",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
     "knip": "6.44.1",
