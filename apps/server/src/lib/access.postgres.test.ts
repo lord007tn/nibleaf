@@ -67,7 +67,7 @@ describe.skipIf(process.env.ORG_ACCESS_INTEGRATION !== '1')('organization grants
 
   it('authorizes organizations from the path, keeping site admins out of org administration and fencing repairs', async () => {
     const guards = await import('../middlewares/guard');
-    const runGuard = async (userId: string, required: MemberRole, organizationId = orgIds[0], method = 'GET') => {
+    const runGuard = async (userId: string, required: MemberRole, organizationId: string = orgIds[0], method = 'GET') => {
       const values = new Map<string, unknown>([
         ['user', { id: userId }],
         ['organizationId', orgIds[1]],
