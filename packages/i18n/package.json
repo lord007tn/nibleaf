@@ -27,7 +27,7 @@
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
-    "@inlang/paraglide-js": "2.29.3"
+    "@inlang/paraglide-js": "3.2.0"
   },
   "peerDependencies": {
     "react": "^19.3.1"
