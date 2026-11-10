@@ -525,6 +525,9 @@ export const createProjectBody = z
     name: z.string().min(1).max(120),
     description: z.string().max(500).optional(),
     icon: z.string().max(64).optional(),
+    /** The organization the website belongs to. Required by current dashboards;
+     *  omitted only by a dashboard bundle from before organizations. */
+    organizationId: z.string().min(1).max(64).optional(),
   })
   .strict();
 export type CreateProjectBody = z.infer<typeof createProjectBody>;
@@ -1201,7 +1204,7 @@ export type UpdateWorkspaceSettingsBody = z.infer<typeof updateWorkspaceSettings
 // ─── Notifications (in-app bell inbox) ───────────────────────────────────────
 
 /** Cursor pagination for the notification inbox (`cursor` = last row id). */
-export const notificationsListQuery = z.object({ cursor: z.string().max(64).optional() });
+export const notificationsListQuery = z.object({ cursor: z.string().max(64).optional(), organizationId: z.string().min(1).max(64).optional() });
 export type NotificationsListQuery = z.infer<typeof notificationsListQuery>;
 
 /** Mark specific notifications read (`ids`) or the whole inbox (`all: true`). */

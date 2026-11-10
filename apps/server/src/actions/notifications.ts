@@ -82,23 +82,50 @@ export async function createNotificationsForOrgMembers(
   return { created: result.count };
 }
 
-/** One page of a user's inbox, newest first. `cursor` is the previous page's last id. */
-export async function listNotifications(userId: string, cursor?: string) {
+/**
+ * One page of a user's inbox, newest first. `cursor` is the previous page's
+ * last id; `organizationId` narrows it to one organization's items (the
+ * "This organization" filter). Each item names its organization and website as
+ * they are now (design §5.4.5): a website event's org is the website's org.
+ */
+export async function listNotifications(userId: string, cursor?: string, organizationId?: string) {
   const rows = await prisma.notification.findMany({
-    where: await inboxWhere(userId),
+    where: await inboxWhere(userId, organizationId),
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: NOTIFICATIONS_PAGE_SIZE + 1,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
   });
-  const items = rows.slice(0, NOTIFICATIONS_PAGE_SIZE);
-  const nextCursor = rows.length > NOTIFICATIONS_PAGE_SIZE ? (items[items.length - 1]?.id ?? null) : null;
+  const page = rows.slice(0, NOTIFICATIONS_PAGE_SIZE);
+  const nextCursor = rows.length > NOTIFICATIONS_PAGE_SIZE ? (page[page.length - 1]?.id ?? null) : null;
+  const projectIds = [...new Set(page.flatMap((row) => (row.projectId ? [row.projectId] : [])))];
+  const projects = projectIds.length
+    ? await prisma.project.findMany({ where: { id: { in: projectIds } }, select: { id: true, name: true, organizationId: true } })
+    : [];
+  const orgIds = [
+    ...new Set([...projects.map((project) => project.organizationId), ...page.flatMap((row) => (row.organizationId ? [row.organizationId] : []))]),
+  ];
+  const orgs = orgIds.length
+    ? await prisma.organization.findMany({ where: { id: { in: orgIds } }, select: { id: true, slug: true, name: true, logo: true } })
+    : [];
+  const items = page.map((row) => {
+    const project = projects.find((candidate) => candidate.id === row.projectId) ?? null;
+    const orgId = project?.organizationId ?? row.organizationId;
+    return {
+      ...row,
+      organization: orgs.find((org) => org.id === orgId) ?? null,
+      project: project ? { id: project.id, name: project.name } : null,
+    };
+  });
   return { items, nextCursor };
 }
 
-const inboxWhere = async (userId: string): Promise<Prisma.NotificationWhereInput> => {
+const inboxWhere = async (userId: string, organizationId?: string): Promise<Prisma.NotificationWhereInput> => {
   const [projectIds, memberships] = await Promise.all([
-    accessibleProjectIds(userId),
-    prisma.member.findMany({ where: { userId, orgRole: { in: ['owner', 'admin'] } }, select: { organizationId: true } }),
+    accessibleProjectIds(userId, organizationId),
+    prisma.member.findMany({
+      where: { userId, orgRole: { in: ['owner', 'admin'] }, ...(organizationId ? { organizationId } : {}) },
+      select: { organizationId: true },
+    }),
   ]);
   return { userId, OR: [{ projectId: { in: projectIds } }, { projectId: null, organizationId: { in: memberships.map((m) => m.organizationId) } }] };
 };

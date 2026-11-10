@@ -21,8 +21,9 @@ const serverRoot = join(appRoot, '.output', 'server');
 const profiles = {
   'public-docs': ['__root__', '/sites/$projectId', '/sites/$projectId/$'],
   'public-docs-index': ['__root__', '/sites/$projectId', '/sites/$projectId/'],
-  'dashboard-home': ['__root__', '/app', '/app/(dashboard)', '/app/(dashboard)/'],
-  'dashboard-analytics': ['__root__', '/app', '/app/(dashboard)', '/app/(dashboard)/analytics'],
+  // The dashboard home is an organization's Websites page (/app lands there).
+  'dashboard-home': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/websites'],
+  'dashboard-analytics': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/analytics'],
 };
 
 // These values are intentionally applied to gzip transfer size, not raw file

@@ -15,7 +15,6 @@ import type {
   ProjectConfigUpdate,
   ReorderPagesBody,
   RotateApiKeyBody,
-  TransferOwnershipBody,
   UpdateLanguageBody,
   UpdateMemberRoleBody,
   UpdatePageBody,
@@ -27,6 +26,7 @@ import type {
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
 import type { QueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
+import { organizationKeys } from '@/hooks/api/organization-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 import { putAsset } from '@/lib/upload-asset-put';
@@ -88,8 +88,14 @@ export const useImportProjectTheme = (projectId: string) => {
 export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
+    // Websites are always created inside an organization (`organizationId`).
     mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
+      ]),
   });
 };
 
@@ -193,7 +199,11 @@ export const useDeleteProject = () => {
     onSuccess: (_data, projectId) => {
       // Drop the deleted site's detail rather than refetching it into a "not found".
       qc.removeQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
-      return qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
+      ]);
     },
   });
 };
@@ -491,20 +501,6 @@ export const useUpdateProjectMemberRole = (projectId: string) => {
         await api.app.projects[':projectId'].members[':id'].role.$patch({ param: { projectId, id }, json: body }),
         'Could not update the role.',
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
-  });
-};
-
-export const useTransferProjectOwnership = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: TransferOwnershipBody) => {
-      const project = await mutateData(await api.app.projects[':id'].$get({ param: { id: projectId } }), 'Could not load the website.');
-      return mutateData(
-        await api.app.organizations[':organizationId']['transfer-ownership'].$post({ param: { organizationId: project.organizationId }, json: body }),
-        'Could not transfer ownership.',
-      );
-    },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };
@@ -1048,6 +1044,8 @@ export const useMarkNotificationsRead = () => {
       if (qc.isMutating({ mutationKey }) > 1) return;
       markReads.drop(qc);
       void qc.invalidateQueries({ queryKey: listKey, exact: true });
+      // "This organization" inbox views are separate lists; they refetch rather than guess.
+      void qc.invalidateQueries({ queryKey: ['notifications', 'organization'] });
       void qc.invalidateQueries({ queryKey: countKey, exact: true });
     },
     meta: { errorMessage: t('notifications.markReadError') },

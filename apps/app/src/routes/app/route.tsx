@@ -1,11 +1,12 @@
 import { createFileRoute, Navigate, Outlet, redirect } from '@tanstack/react-router';
 import { CommandPaletteProvider } from '@/components/app/command-palette';
+import { SwitcherProvider } from '@/components/app/org-switcher/switcher-provider';
 import { SkipToContent } from '@/components/app/skip-to-content';
 import { SupportAccessBanner } from '@/components/app/support-access-banner';
 import { AppProviders } from '@/components/app-providers';
 import { PageLoader } from '@/components/page-loader';
 import { getSessionFn } from '@/functions/session';
-import { projectsQueryOptions } from '@/hooks/api/query-options';
+import { switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useDashboardIntentPreload } from '@/lib/dashboard-intent-preload';
@@ -28,9 +29,9 @@ export const Route = createFileRoute('/app')({
     }
     return { routeSession };
   },
-  // The site list feeds every signed-in screen (site switcher, command palette,
-  // overview), so start it with the session check instead of after the shell mounts.
-  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, projectsQueryOptions()),
+  // Organizations feed every signed-in screen (switcher, palette, landing), so
+  // start them with the session check instead of after the shell mounts.
+  loader: ({ context: { queryClient } }) => prefetchRouteData(queryClient, switcherQueryOptions()),
   head: () => ({
     meta: [{ name: 'robots', content: 'noindex' }],
   }),
@@ -67,10 +68,12 @@ function AppGuard() {
     <div className={impersonatedBy ? 'pb-14' : undefined}>
       <SkipToContent />
       <ProjectProvider key={resolvedSession.user.id}>
-        {/* One palette for every signed-in screen (dashboard, site pages, editor). */}
-        <CommandPaletteProvider>
-          <Outlet />
-        </CommandPaletteProvider>
+        {/* One switcher and one palette for every signed-in screen (org pages, site pages, editor). */}
+        <SwitcherProvider>
+          <CommandPaletteProvider>
+            <Outlet />
+          </CommandPaletteProvider>
+        </SwitcherProvider>
       </ProjectProvider>
       {impersonatedBy && supportSession.user?.id ? (
         <SupportAccessBanner customerId={supportSession.user.id} customerName={supportSession.user.name || supportSession.user.email} />
