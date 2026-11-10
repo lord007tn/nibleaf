@@ -28,6 +28,7 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
   }, 60_000);
   afterAll(async () => {
     if (!db) return;
+    await db.prisma.project.deleteMany({ where: { organizationId: { in: ownedOrgs } } });
     await db.prisma.organization.deleteMany({ where: { id: { in: ownedOrgs } } });
     await db.prisma.$disconnect();
   });

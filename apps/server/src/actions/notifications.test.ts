@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ project: vi.fn(), members: vi.fn(), insert: vi.fn(), list: vi.fn(), update: vi.fn() }));
+vi.mock('@/lib/access', () => ({ accessibleProjectIds: async () => ['project-1'] }));
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     project: { findUnique: mocks.project },
@@ -15,7 +16,7 @@ describe('structured personal notifications', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mocks.project.mockResolvedValue({ organizationId: 'org-1' });
-    mocks.members.mockResolvedValue([{ userId: 'recipient-1' }]);
+    mocks.members.mockResolvedValue([{ userId: 'recipient-1', organizationId: 'org-1', orgRole: 'member', projectGrants: [{ role: 'viewer' }] }]);
     mocks.insert.mockResolvedValue({ count: 1 });
   });
 
@@ -30,7 +31,9 @@ describe('structured personal notifications', () => {
       },
       'actor-1',
     );
-    expect(mocks.members).toHaveBeenCalledWith({ where: { organizationId: 'org-1', userId: { not: 'actor-1' } }, select: { userId: true } });
+    expect(mocks.members).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1', userId: { not: 'actor-1' }, OR: expect.any(Array) }) }),
+    );
     expect(mocks.insert).toHaveBeenCalledWith({
       data: [
         {
@@ -53,14 +56,16 @@ describe('structured personal notifications', () => {
     ];
     mocks.list.mockResolvedValue(rows);
     expect(await listNotifications('recipient-1')).toEqual({ items: rows, nextCursor: null });
-    expect(mocks.list).toHaveBeenCalledWith(expect.objectContaining({ where: { userId: 'recipient-1' } }));
+    expect(mocks.list).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ userId: 'recipient-1', OR: expect.any(Array) }) }),
+    );
   });
 
   it('continues to scope mark-read to the session user', async () => {
     mocks.update.mockResolvedValue({ count: 1 });
     await markNotificationsRead('recipient-1', { ids: ['someone-elses-row'] });
     expect(mocks.update).toHaveBeenCalledWith({
-      where: { userId: 'recipient-1', readAt: null, id: { in: ['someone-elses-row'] } },
+      where: expect.objectContaining({ userId: 'recipient-1', readAt: null, id: { in: ['someone-elses-row'] }, OR: expect.any(Array) }),
       data: { readAt: expect.any(Date) },
     });
   });

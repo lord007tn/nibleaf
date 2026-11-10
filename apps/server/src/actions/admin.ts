@@ -39,11 +39,15 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
   const ownerEmail = input.ownerEmail.trim().toLowerCase();
   const slug = await uniqueAdminProjectSlug(input.siteSlug || input.siteName);
   const created = await prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.create({ data: { name: input.organizationName.trim() } });
+    const organization = await tx.organization.create({
+      data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
+    });
     await assignDefaultUsagePlan(tx, organization.id);
+    // PR 1: the website partition stays equal to its 1:1 org (rollback compatibility, §10.1).
     const project = await tx.project.create({
       data: {
         organizationId: organization.id,
+        dataTenantId: organization.id,
         name: input.siteName.trim(),
         slug,
         ...(input.description?.trim() ? { description: input.description.trim() } : {}),
@@ -88,7 +92,12 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
     };
   } catch (error) {
     // Avoid leaving an ownerless site if invitation creation fails.
-    await prisma.organization.delete({ where: { id: created.organization.id } }).catch(() => undefined);
+    await prisma
+      .$transaction(async (tx) => {
+        await tx.project.delete({ where: { id: created.project.id } });
+        await tx.organization.delete({ where: { id: created.organization.id } });
+      })
+      .catch(() => undefined);
     throw error;
   }
 }
@@ -131,7 +140,7 @@ export async function getAdminOverview() {
     prisma.domain.count({ where: { dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' } }),
     prisma.domain.count({ where: { OR: [{ dnsStatus: 'ERROR' }, { sslStatus: 'ERROR' }] } }),
     prisma.project.count({ where: { takedownAt: { not: null } } }),
-    prisma.invitation.count({ where: { role: 'owner', status: 'pending', expiresAt: { lt: new Date() } } }),
+    prisma.invitation.count({ where: { kind: 'bootstrap_owner', status: 'pending', expiresAt: { lt: new Date() } } }),
     prisma.exportJob.count({ where: { status: 'FAILED', createdAt: { gte: weekAgo } } }),
     prisma.gitConnection.count({ where: { lastSyncStatus: { in: ['FAILED', 'CONFLICT'] } } }),
     prisma.$queryRaw<
@@ -398,8 +407,8 @@ export async function listAdminSites(input: AdminListInput = {}) {
           name: true,
           metadata: true,
           _count: { select: { members: true } },
-          members: { where: { role: 'owner' }, take: 1, select: { user: { select: { email: true } } } },
-          invitations: { where: { role: 'owner', status: 'pending' }, take: 1, select: { id: true, email: true } },
+          members: { where: { orgRole: 'owner' }, take: 1, select: { user: { select: { email: true } } } },
+          invitations: { where: { kind: 'bootstrap_owner', status: 'pending' }, take: 1, select: { id: true, email: true } },
         },
       },
     },

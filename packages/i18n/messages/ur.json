@@ -4058,5 +4058,8 @@
   "notifications_bellunreadlabel": "اطلاعات کھولیں۔ غیر پڑھی ہوئی: {count}",
   "notifications_unread": "غیر پڑھی ہوئی",
   "admin_sidebardescription": "پلیٹ فارم کے صارفین، سائٹس اور کارروائیوں میں جائیں۔",
-  "settings_appearance_theme_system": "میرے آلے کے مطابق"
+  "settings_appearance_theme_system": "میرے آلے کے مطابق",
+  "settings_members_viaorganization": "تنظیم کے ذریعے",
+  "settings_members_nowebsiteaccess": "آپ کو ابھی {org} کی کسی ویب سائٹ تک رسائی حاصل نہیں ہے۔ تنظیم کے منتظم سے رابطہ کریں۔",
+  "roles_organizationmember": "رکن"
 }

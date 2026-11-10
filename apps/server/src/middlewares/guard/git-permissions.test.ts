@@ -3,6 +3,13 @@ import { MemberRole } from '@nibleaf/shared/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { requireProjectRole } from './index';
 
+vi.mock('@/lib/access', () => ({
+  resolveSiteAccess: async () => ({
+    project: { id: 'project-1' },
+    organizationId: 'org-1',
+    role: (await prisma.member.findUnique({ where: { id: 'test' } }))?.role,
+  }),
+}));
 vi.mock('@nibleaf/database', () => ({
   prisma: { project: { findUnique: vi.fn() }, member: { findUnique: vi.fn() } },
 }));

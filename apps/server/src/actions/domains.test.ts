@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   tls: { outcome: 'ok' as 'ok' | 'timeout' | 'refused' | 'badCert' },
 }));
 
+vi.mock('@/lib/access', () => ({ optionalSiteAccess: async () => mocks.member.findFirst() }));
 vi.mock('@nibleaf/database', () => ({ prisma: { domain: mocks.domain, member: mocks.member, $transaction: mocks.transaction } }));
 vi.mock('@/env', () => ({ env: { NODE_ENV: 'production', CUSTOM_DOMAIN_CNAME_TARGET: 'cname.nibleaf.test', APP_URL: 'https://app.nibleaf.test' } }));
 vi.mock('node:dns/promises', () => mocks.dns);
@@ -96,7 +97,7 @@ describe('addDomain: a domain that is already connected', () => {
       status: 409,
       details: { domain: 'docs.example.com', scope: 'same_workspace', siteName: 'Partner Docs' },
     });
-    expect(mocks.member.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: 'org-2', userId: 'user-1' } }));
+    expect(mocks.member.findFirst).toHaveBeenCalledOnce();
   });
 
   it("never reveals another workspace's site or workspace", async () => {

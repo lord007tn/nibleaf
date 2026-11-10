@@ -1,45 +1,69 @@
 import { type Prisma, prisma } from '@nibleaf/database';
 import { hashJoinLinkToken } from '@nibleaf/shared/crypto';
 import { emailInDomain, isJoinLinkToken, JOIN_LINK_COOKIE, joinLinkStatus } from '@nibleaf/shared/join-links';
-import { canAssignRole } from '@nibleaf/shared/rbac';
+import { canAssignRole, effectiveSiteRole } from '@nibleaf/shared/rbac';
 
 type Db = typeof prisma | Prisma.TransactionClient;
 
-/**
- * A join link only works while the person who created it could still grant
- * its role: they are still on that site's team, not suspended, and their
- * CURRENT role can assign the link's role. A deleted creator (`createdById`
- * null) authorizes nothing. This is checked on every preview and join, so a
- * removed or demoted Admin never leaves a working Admin link behind, however
- * they lost the role.
- */
-export async function joinLinkCreatorAuthorizes(
+export type AdmissionGrant = { projectId: string; role: string };
+
+/** Shared issuer policy for email invitations, link previews and revocation. */
+export async function issuerAuthorizes(
   db: Db,
-  link: { organizationId: string; createdById: string | null; role: string },
+  organizationId: string,
+  userId: string | null,
+  orgRole: string,
+  grants: AdmissionGrant[],
 ): Promise<boolean> {
-  if (!link.createdById) return false;
-  const creator = await db.member.findUnique({
-    where: { organizationId_userId: { organizationId: link.organizationId, userId: link.createdById } },
-    select: { role: true, user: { select: { suspendedAt: true } } },
+  if (!userId || !['admin', 'member'].includes(orgRole)) return false;
+  const issuer = await db.member.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
+    select: { orgRole: true, projectGrants: { select: { projectId: true, role: true } }, user: { select: { banned: true, suspendedAt: true } } },
   });
-  return Boolean(creator && !creator.user.suspendedAt && canAssignRole(creator.role, link.role));
+  if (!issuer || issuer.user.banned || issuer.user.suspendedAt) return false;
+  const orgAdmin = issuer.orgRole === 'owner' || issuer.orgRole === 'admin';
+  if (orgRole === 'admin' && !orgAdmin) return false;
+  // A site administrator cannot invite a grantless organization member.
+  if (!orgAdmin && grants.length === 0) return false;
+  return grants.every((grant) => {
+    if (!['admin', 'member', 'viewer'].includes(grant.role)) return false;
+    const role = effectiveSiteRole(issuer.orgRole, issuer.projectGrants.find((g) => g.projectId === grant.projectId)?.role ?? null);
+    return role !== null && canAssignRole(role, grant.role);
+  });
 }
 
-/**
- * Disable the active links `userId` created that their new role can no longer
- * grant: all of them when they left the site (`role` null), otherwise those
- * whose role is above it. With `organizationId` null, every site's (account
- * deletion). Returns how many were disabled.
- */
-export async function revokeJoinLinksBeyondRole(db: Db, organizationId: string | null, userId: string, role: string | null): Promise<number> {
-  const links = await db.joinLink.findMany({
-    where: { createdById: userId, revokedAt: null, ...(organizationId ? { organizationId } : {}) },
-    select: { id: true, role: true },
+export async function joinLinkCreatorAuthorizes(
+  db: Db,
+  link: { id: string; organizationId: string; createdById: string | null; role: string },
+): Promise<boolean> {
+  const grants = await db.joinLinkGrant.findMany({
+    where: { joinLinkId: link.id, organizationId: link.organizationId },
+    select: { projectId: true, role: true },
   });
-  const ids = links.filter((link) => role === null || !canAssignRole(role, link.role)).map((link) => link.id);
-  if (ids.length === 0) return 0;
-  const { count } = await db.joinLink.updateMany({ where: { id: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() } });
-  return count;
+  return grants.length > 0 && issuerAuthorizes(db, link.organizationId, link.createdById, 'member', grants);
+}
+
+/** Called under the org lock after any membership/grant change. Revocation is final. */
+export async function revokeJoinLinksBeyondRole(db: Db, organizationId: string | null, userId: string, role: string | null): Promise<number> {
+  const whereOrg = organizationId ? { organizationId } : {};
+  const links = await db.joinLink.findMany({ where: { createdById: userId, revokedAt: null, ...whereOrg }, include: { grants: true } });
+  const deletingAccount = organizationId === null && role === null;
+  const ids: string[] = [];
+  for (const link of links)
+    if (deletingAccount || !link.grants.length || !(await issuerAuthorizes(db, link.organizationId, userId, 'member', link.grants)))
+      ids.push(link.id);
+  const revoked = ids.length
+    ? await db.joinLink.updateMany({ where: { id: { in: ids }, revokedAt: null }, data: { revokedAt: new Date() } })
+    : { count: 0 };
+  const invitations = await db.invitation.findMany({
+    where: { inviterId: userId, status: 'pending', kind: 'member', ...whereOrg },
+    include: { grants: true },
+  });
+  const cancelled: string[] = [];
+  for (const invite of invitations)
+    if (deletingAccount || !(await issuerAuthorizes(db, invite.organizationId, userId, invite.orgRole, invite.grants))) cancelled.push(invite.id);
+  if (cancelled.length) await db.invitation.updateMany({ where: { id: { in: cancelled }, status: 'pending' }, data: { status: 'canceled' } });
+  return revoked.count;
 }
 
 /** One cookie's value from a request's Cookie header. */
@@ -74,6 +98,7 @@ export async function arrivingThroughJoinLink(email: string, headers: Headers | 
     const link = await prisma.joinLink.findUnique({
       where: { tokenHash: hashJoinLinkToken(token) },
       select: {
+        id: true,
         organizationId: true,
         createdById: true,
         role: true,

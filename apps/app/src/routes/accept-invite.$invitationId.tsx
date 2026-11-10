@@ -7,14 +7,14 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { AuthProviders } from '@/components/auth-providers';
 import { QueryErrorState } from '@/components/query-error-state';
-import { useGetInvitationInfo } from '@/hooks/api';
+import { acceptInvitation, useGetInvitationInfo } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { getInvitationInfoQueryOptions, projectsQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { AuthLayout } from '@/layouts/auth';
 import { clearPendingInvitation, readPendingInvitation, setPendingInvitation } from '@/lib/invitations';
-import { authClient, useSession } from '@/services/auth-client';
+import { useSession } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
 import { rememberActiveProject } from '@/stores/active-project';
 
@@ -65,40 +65,22 @@ function AcceptInviteContent() {
     setError(null);
     setAccepting(true);
     try {
-      const { data: accepted, error: acceptError } = await authClient.organization.acceptInvitation({ invitationId });
-      if (acceptError) {
-        const blob = `${acceptError.code ?? ''} ${acceptError.message ?? ''}`.toUpperCase();
-        if (blob.includes('RECIPIENT') && info) {
-          setError(t('auth.invite.wrongAccount', { email: info.email }));
-        } else if (blob.includes('EXPIRED')) {
-          if (readPendingInvitation() === invitationId) clearPendingInvitation();
-          setError(t('auth.invite.expiredError'));
-        } else {
-          // Better Auth's message is English and technical; keep the localized one.
-          setError(t('auth.invite.error'));
-        }
-        return;
-      }
+      const accepted = await acceptInvitation(invitationId);
       clearPendingInvitation();
       toast.success(t('auth.invite.acceptedToast'));
       // Open the site they just joined, selected, instead of whichever site the
       // dashboard last had open (an existing user's own site). The site list is
       // refetched so it includes the new site.
-      const organizationId = accepted?.invitation?.organizationId;
-      // Bind the dashboard cache to this account first: after "Log in with the
-      // invited account", /app would otherwise see a new user and clear the
-      // selection made below.
       if (session) syncDashboardSession(queryClient, session.user.id);
       await queryClient.invalidateQueries({ queryKey: projectsQueryOptions().queryKey });
-      const sites = organizationId ? await queryClient.fetchQuery(projectsQueryOptions()).catch(() => []) : [];
-      const joined = sites.find((site) => site.organizationId === organizationId);
-      if (joined) {
-        rememberActiveProject(joined.id);
-        await navigate({ to: '/app/projects/$projectId', params: { projectId: joined.id } });
+      if ('projectId' in accepted.landing) {
+        rememberActiveProject(accepted.landing.projectId);
+        await navigate({ to: '/app/projects/$projectId', params: { projectId: accepted.landing.projectId } });
       } else {
-        await navigate({ to: '/app' });
+        await navigate({ to: '/app/o/$orgSlug/websites', params: { orgSlug: accepted.landing.organization } });
       }
-    } catch {
+    } catch (failure) {
+      if (failure instanceof ApiResponseError && failure.status === 404 && readPendingInvitation() === invitationId) clearPendingInvitation();
       setError(t('auth.invite.error'));
     } finally {
       setAccepting(false);
@@ -128,6 +110,12 @@ function AcceptInviteContent() {
     </Button>
   );
 
+  const accessSummary = info
+    ? [
+        t(info.orgRole === 'member' ? 'roles.organizationMember' : info.orgRole === 'owner' ? 'roles.owner' : 'roles.admin'),
+        ...info.grants.map((g) => `${g.name} (${t(g.role === 'admin' ? 'roles.admin' : g.role === 'member' ? 'roles.editor' : 'roles.viewer')})`),
+      ].join(' · ')
+    : '';
   const subtitle = info?.organizationName ? t('auth.invite.joinPrompt', { org: info.organizationName }) : t('auth.invite.subtitle');
 
   if (isPending || invitation.isPending) {
@@ -181,6 +169,7 @@ function AcceptInviteContent() {
       <AuthLayout subtitle={subtitle}>
         <div className="flex flex-col gap-4">
           <p className="text-center text-muted-foreground text-sm">{t('auth.invite.invitedAs', { email: info.email })}</p>
+          <p className="text-center text-muted-foreground text-sm">{accessSummary}</p>
           <p className="text-center text-muted-foreground text-sm">{t('auth.invite.signInPrompt')}</p>
           <Button className="w-full" nativeButton={false} render={<Link search={search} to="/sign-up" />}>
             {t('auth.invite.createAccountToJoin')}
@@ -201,8 +190,10 @@ function AcceptInviteContent() {
 
   return (
     <AuthLayout subtitle={subtitle}>
+      <p className="text-center text-muted-foreground text-sm">{accessSummary}</p>
       <div className="flex flex-col gap-4">
         <p className="text-center text-muted-foreground text-sm">{t('auth.invite.invitedAs', { email: info.email })}</p>
+        <p className="text-center text-muted-foreground text-sm">{accessSummary}</p>
         {mismatch ? (
           <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
             {t('auth.invite.wrongAccount', { email: info.email })}

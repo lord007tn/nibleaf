@@ -3,11 +3,18 @@ import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { arrivingThroughJoinLink, readCookie } from './join-links';
 
-vi.mock('@nibleaf/database', () => ({ prisma: { joinLink: { findUnique: vi.fn() }, member: { findUnique: vi.fn() } } }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: {
+    joinLink: { findUnique: vi.fn() },
+    member: { findUnique: vi.fn() },
+    joinLinkGrant: { findMany: vi.fn(async () => [{ projectId: 'project', role: 'member' }]) },
+  },
+}));
 
 const token = generateJoinLinkToken();
 const headers = (cookie: string) => new Headers({ cookie });
 const active = {
+  id: 'link',
   organizationId: 'org-1',
   createdById: 'admin-1',
   role: 'member',
@@ -17,7 +24,11 @@ const active = {
   useCount: 0,
   allowedDomain: null,
 };
-const creator = (role: string, suspendedAt: Date | null = null) => ({ role, user: { suspendedAt } });
+const creator = (role: string, suspendedAt: Date | null = null) => ({
+  orgRole: 'member',
+  projectGrants: [{ projectId: 'project', role }],
+  user: { banned: false, suspendedAt },
+});
 
 describe('readCookie', () => {
   it('reads one cookie among several', () => {

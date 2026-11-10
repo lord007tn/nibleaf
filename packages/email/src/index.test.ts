@@ -67,4 +67,23 @@ describe('localized transactional email rendering', () => {
     expect(email.text).toContain(phrase);
     expect(email.text).not.toMatch(/\b(viewer|member)\b/);
   });
+  it('describes organization membership and all website grants in both email forms', async () => {
+    const email = await renderMemberInvitationEmail({
+      acceptUrl: 'https://app.example.com/accept-invite/abc',
+      days: 7,
+      inviterName: 'Ada',
+      organizationName: 'Synthetic Org',
+      role: 'member',
+      organizationRole: true,
+      grants: [
+        { name: 'Docs <private>', role: 'viewer' },
+        { name: 'API', role: 'admin' },
+      ],
+    });
+    expect(email.text).toContain('as Member');
+    expect(email.text).toContain('Docs <private> (Viewer)');
+    expect(email.text).toContain('API (Admin)');
+    expect(email.html).toContain('Docs &lt;private&gt;');
+    expect(email.html).toContain('API (Admin)');
+  });
 });

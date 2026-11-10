@@ -4,11 +4,11 @@ import { createMcpDpopReplayStore, isMcpAccessTokenError, MCP_DPOP_SIGNING_ALGOR
 import { auth, mcpOAuth, verifyMcpAccessToken } from '@nibleaf/auth/server';
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
-import type { MemberRole } from '@nibleaf/shared/constants';
 import { hashApiKeySecret } from '@nibleaf/shared/crypto';
 import { isMcpWriteScope, MCP_OAUTH_CHALLENGE_SCOPES, MCP_SCOPES, type McpScope, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import type { Context } from 'hono';
 import { env } from '@/env';
+import { optionalSiteAccess } from '@/lib/access';
 import type { HonoEnv } from '@/lib/hono/context';
 import type { McpPrincipal } from './types';
 
@@ -89,14 +89,10 @@ const constantTimeHashMatch = (candidate: string, stored: string) => {
  * a null `createdById` means the user was deleted (`onDelete: SetNull`), and an
  * orphaned key must not outlive its owner's access.
  */
-const resolveActor = async (userId: string | null, organizationId: string): Promise<McpPrincipal['actor'] | 'revoked'> => {
+const resolveActor = async (userId: string | null, projectId: string): Promise<McpPrincipal['actor'] | 'revoked'> => {
   if (!userId) return 'revoked';
-  const member = await prisma.member.findUnique({
-    where: { organizationId_userId: { organizationId, userId } },
-    select: { role: true, user: { select: { suspendedAt: true } } },
-  });
-  if (!member || member.user.suspendedAt) return 'revoked';
-  return { userId, role: member.role as MemberRole };
+  const access = await optionalSiteAccess(userId, projectId);
+  return access ? { userId, role: access.role } : 'revoked';
 };
 
 /** Issuable scopes on the credential that its actor's current role still grants. */
@@ -146,7 +142,7 @@ const resolveKeyPrincipal = async (ctx: Context<HonoEnv>, secret: string): Promi
   const hashMatches = constantTimeHashMatch(digest, key?.hashedSecret ?? '0'.repeat(64));
   if (!(key && hashMatches) || key.revokedAt || !key.expiresAt || key.expiresAt <= new Date()) return rejectedKeyResponse();
 
-  const actor = await resolveActor(key.createdById, key.project.organizationId);
+  const actor = await resolveActor(key.createdById, key.project.id);
   if (actor === 'revoked') return rejectedKeyResponse();
 
   const scopes = effectiveScopes(key.scopes, actor);
@@ -218,7 +214,7 @@ const resolveAccessTokenPrincipal = async (ctx: Context<HonoEnv>, scheme: TokenS
     return invalidToken('This connection was revoked. Connect the app to Nibleaf again.', dpop);
   }
 
-  const actor = await resolveActor(grant.userId, grant.project.organizationId);
+  const actor = await resolveActor(grant.userId, grant.project.id);
   if (actor === 'revoked') return invalidToken('This connection was revoked. Connect the app to Nibleaf again.', dpop);
 
   const tokenScopes = new Set(verified.scopes);

@@ -363,7 +363,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
     await renewRunClaim(run);
     await client.ensureHybridCollection();
     const [project, previousDeployment] = await Promise.all([
-      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true, organizationId: true } }),
+      prisma.project.findUnique({ where: { id: job.data.projectId }, select: { accessMode: true, dataTenantId: true } }),
       prisma.deployment.findFirst({
         where: { projectId: job.data.projectId, status: 'READY', id: { not: deployment.id }, version: { lt: deployment.version } },
         orderBy: { version: 'desc' },
@@ -469,7 +469,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
             kind: 'usage',
             correctionOfEventId: null,
           },
-          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+          { tenantId: project.dataTenantId, projectId: job.data.projectId, source: 'worker' },
         ),
         buildUsageEvent(
           {
@@ -480,7 +480,7 @@ export async function handleSearchJobs(job: Job<ReindexProjectJobData>) {
             kind: 'usage',
             correctionOfEventId: null,
           },
-          { tenantId: project.organizationId, projectId: job.data.projectId, source: 'worker' },
+          { tenantId: project.dataTenantId, projectId: job.data.projectId, source: 'worker' },
         ),
       ];
       if (clickHouseWritesEnabled(clickHouseKeys().ANALYTICS_MODE)) {

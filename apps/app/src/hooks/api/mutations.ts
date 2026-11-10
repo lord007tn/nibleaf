@@ -491,11 +491,13 @@ export const useUpdateProjectMemberRole = (projectId: string) => {
 export const useTransferProjectOwnership = (projectId: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: TransferOwnershipBody) =>
-      mutateData(
-        await api.app.projects[':projectId'].members['transfer-ownership'].$post({ param: { projectId }, json: body }),
+    mutationFn: async (body: TransferOwnershipBody) => {
+      const project = await mutateData(await api.app.projects[':id'].$get({ param: { id: projectId } }), 'Could not load the website.');
+      return mutateData(
+        await api.app.organizations[':organizationId']['transfer-ownership'].$post({ param: { organizationId: project.organizationId }, json: body }),
         'Could not transfer ownership.',
-      ),
+      );
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.members.forProject(projectId) }),
   });
 };

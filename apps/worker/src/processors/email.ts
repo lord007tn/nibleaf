@@ -1,4 +1,5 @@
 import type { SendEmailJobData } from '@nibleaf/bullmq/jobs/email';
+import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { Job } from 'bullmq';
 import nodemailer from 'nodemailer';
@@ -16,6 +17,24 @@ const log = createLogger({ processor: 'email' });
  * provider is configured so BullMQ can retry and surface the outage.
  */
 export async function handleEmailJobs(job: Job<SendEmailJobData>): Promise<{ sent: boolean }> {
+  const scope = job.data.teamAccess;
+  if (scope) {
+    const member = await prisma.member.findFirst({
+      where: {
+        userId: scope.userId,
+        user: { email: job.data.to, banned: false, suspendedAt: null },
+        organization: { projects: { some: { id: scope.projectId } } },
+        OR: [
+          { orgRole: { in: ['owner', 'admin'] } },
+          { orgRole: 'member', projectGrants: { some: { projectId: scope.projectId, ...(scope.minimumRole === 'admin' ? { role: 'admin' } : {}) } } },
+        ],
+      },
+      select: { user: { select: { preference: { select: { notifications: true } } } } },
+    });
+    if (!member) return { sent: false };
+    const preferences = member.user.preference?.notifications as Record<string, unknown> | undefined;
+    if (scope.notificationId && preferences?.[scope.notificationId] === false) return { sent: false };
+  }
   const skipReason = authEmailSkipReason(job.data, job.timestamp);
   if (skipReason) {
     log.info({ jobId: job.id, reason: skipReason }, 'auth email skipped before delivery');

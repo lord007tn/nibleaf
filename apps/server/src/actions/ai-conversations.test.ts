@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.mode = 'clickhouse';
   mocks.ready = true;
-  mocks.project.mockResolvedValue({ config: { search: { aiConversationCapture: false } } });
+  mocks.project.mockResolvedValue({ dataTenantId: 'original-partition', config: { search: { aiConversationCapture: false } } });
   mocks.list.mockResolvedValue({ items: [], nextCursor: null });
   mocks.detail.mockResolvedValue(null);
 });
@@ -34,7 +34,7 @@ describe('conversation actions', () => {
   });
   it('blames the instance, not the site setting, when no encryption key is configured', async () => {
     mocks.ready = false;
-    mocks.project.mockResolvedValue({ config: { search: { aiConversationCapture: true } } });
+    mocks.project.mockResolvedValue({ dataTenantId: 'original-partition', config: { search: { aiConversationCapture: true } } });
     expect(await listProjectAiConversations('o', 'p', { range: '30d', limit: 25 })).toMatchObject({
       captureEnabled: false,
       captureOffReason: 'instance',
@@ -53,5 +53,11 @@ describe('conversation actions', () => {
     mocks.project.mockRejectedValue(new Error('forbidden'));
     await expect(listProjectAiConversations('other', 'p', { range: '30d', limit: 25 })).rejects.toThrow('forbidden');
     expect(mocks.list).not.toHaveBeenCalled();
+  });
+  it('authorizes against the owning org and reads the original archive partition after a move', async () => {
+    mocks.list.mockResolvedValue({ items: [], nextCursor: null });
+    await listProjectAiConversations('new-owner-org', 'p', { range: '30d', limit: 25 });
+    expect(mocks.project).toHaveBeenCalledWith('new-owner-org', 'p');
+    expect(mocks.list).toHaveBeenCalledWith({ tenantId: 'original-partition', projectId: 'p' }, { range: '30d', limit: 25 });
   });
 });

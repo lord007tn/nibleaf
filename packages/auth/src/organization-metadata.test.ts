@@ -38,7 +38,7 @@ describe('organization responses', () => {
   it('removes the secret from stored JSON text and keeps every other value', () => {
     const [organization] = redactOrganizationPayload([{ id: 'org-1', name: 'Site', metadata: skippedRow }]) as [{ metadata: string }];
     expect(organization.metadata).not.toContain('secret');
-    expect(JSON.parse(organization.metadata)).toEqual({ note: 'a\u0000b', label: '\ud800', git: { repo: 'acme/docs' } });
+    expect(JSON.parse(organization.metadata)).toEqual({});
   });
 
   it('removes the secret from parsed metadata in a full organization payload', () => {
@@ -49,7 +49,7 @@ describe('organization responses', () => {
       invitations: [],
     };
     const redacted = redactOrganizationPayload(payload);
-    expect(redacted).toEqual({ ...payload, metadata: { plan: 'free', git: { repo: 'acme/docs' } } });
+    expect(redacted).toEqual({ ...payload, metadata: { plan: 'free' } });
     expect(payload.metadata.git.webhookSecret).toBe('secret');
   });
 
@@ -98,7 +98,6 @@ describe('organization responses hide admin-only and credential-bearing metadata
   it('drops integrations, the webhook secret and URL credentials', () => {
     expect(withoutMemberHiddenMetadata(metadata)).toEqual({
       plan: 'free',
-      git: { repo: 'acme/docs', cloneUrl: 'https://git.example.com/acme/docs.git', instanceUrl: 'https://gitlab.example.com/' },
     });
     expect(metadata.git.cloneUrl).toContain('token');
   });
@@ -117,8 +116,8 @@ describe('organization responses hide admin-only and credential-bearing metadata
     expect(withoutUrlCredentials('not a url')).toBeNull();
     expect(withoutUrlCredentials('ssh://git@example.com/x')).toBeNull();
     const clean = { git: { cloneUrl: 'https://git.example.com/acme/docs.git' } };
-    expect(withoutMemberHiddenMetadata(clean)).toBe(clean);
-    expect(withoutMemberHiddenMetadata({ git: { cloneUrl: 'nope' } })).toEqual({ git: {} });
+    expect(withoutMemberHiddenMetadata(clean)).toEqual({});
+    expect(withoutMemberHiddenMetadata({ git: { cloneUrl: 'nope' } })).toEqual({});
   });
 
   it('never strips integrations from an organization update', async () => {

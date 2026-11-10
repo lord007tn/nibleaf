@@ -4088,5 +4088,8 @@
   "notifications_bellunreadlabel": "Открыть уведомления. Непрочитанных: {count}",
   "notifications_unread": "Не прочитано",
   "admin_sidebardescription": "Навигация по клиентам, сайтам и операциям платформы.",
-  "settings_appearance_theme_system": "Как на устройстве"
+  "settings_appearance_theme_system": "Как на устройстве",
+  "settings_members_viaorganization": "через организацию",
+  "settings_members_nowebsiteaccess": "У вас пока нет доступа к сайтам в {org}. Обратитесь к администратору организации.",
+  "roles_organizationmember": "Участник"
 }

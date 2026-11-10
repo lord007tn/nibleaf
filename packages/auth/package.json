@@ -10,6 +10,7 @@
     "./mcp-oauth": "./src/mcp-oauth.ts",
     "./join-links": "./src/join-links.ts",
     "./tenant-erasure": "./src/tenant-erasure.ts",
+    "./account-deletion": "./src/account-deletion.ts",
     "./keys.server": "./src/keys.server.ts",
     "./providers": "./src/providers.ts",
     "./starter-content": "./src/starter-content.ts"

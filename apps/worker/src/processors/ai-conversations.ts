@@ -38,7 +38,7 @@ export const handleAiConversationJob = async (data: unknown, client?: ReturnType
       throw new Error('plaintext');
     if (Date.parse(row.expires_at) <= Date.now()) return { inserted: 0 };
     phase = 'project';
-    const project = await prisma.project.findFirst({ where: { id: job.projectId, organizationId: job.tenantId }, select: { id: true } });
+    const project = await prisma.project.findFirst({ where: { id: job.projectId, dataTenantId: job.tenantId }, select: { id: true } });
     if (!project) return { inserted: 0 };
     const ch = client ?? getClickHouseClient('writer');
     const scope = { tenantId: job.tenantId, projectId: job.projectId };

@@ -33,6 +33,7 @@ describe.skipIf(process.env.ASSET_DELETE_INTEGRATION !== '1')('deleting an asset
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
     } finally {
       await db.prisma.$disconnect();

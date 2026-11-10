@@ -126,7 +126,7 @@ const monthPeriods = (start: Date, end: Date) => {
 };
 
 const assertHistoricalCoverage = async (
-  tenantId: string,
+  dataTenantId: string,
   projectId: string,
   periods: Array<{ start: string; endExclusive: string }>,
   client: ClickHouseClient,
@@ -149,7 +149,7 @@ const assertHistoricalCoverage = async (
         AND NOT EXISTS (SELECT 1 FROM usage_deletion_tombstones FINAL
           WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String})`,
     query_params: {
-      tenant_id: tenantId,
+      tenant_id: dataTenantId,
       project_id: projectId,
       period_start: periods[0]?.start ?? '',
       period_end: periods.at(-1)?.endExclusive ?? '',
@@ -162,7 +162,7 @@ const assertHistoricalCoverage = async (
 };
 
 export const queryUsageMeterTotals = async (
-  tenantId: string,
+  dataTenantId: string,
   projectId: string,
   periodStart: string,
   periodEndExclusive: string,
@@ -174,7 +174,7 @@ export const queryUsageMeterTotals = async (
   const end = new Date(periodEndExclusive);
   if (start < rawCutoff && end > rawCutoff) throw new UsageHistoryUnavailableError();
   if (end <= rawCutoff) {
-    await assertHistoricalCoverage(tenantId, projectId, monthPeriods(start, end), client);
+    await assertHistoricalCoverage(dataTenantId, projectId, monthPeriods(start, end), client);
     const result = await client.query({
       query: `SELECT meter_key AS meterKey, toString(sum(toDecimal128(quantity, 0))) AS quantity,
         toString(sum(event_count)) AS eventCount, '0' AS lateEventCount,
@@ -184,7 +184,7 @@ export const queryUsageMeterTotals = async (
         AND hour >= parseDateTimeBestEffort({period_start:String}) AND hour < parseDateTimeBestEffort({period_end:String})
         AND NOT EXISTS (SELECT 1 FROM usage_deletion_tombstones FINAL WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String})
       GROUP BY meter_key`,
-      query_params: { tenant_id: tenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive },
+      query_params: { tenant_id: dataTenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive },
       format: 'JSONEachRow',
     });
     const rows = await result.json<Record<string, string>>();
@@ -213,7 +213,7 @@ export const queryUsageMeterTotals = async (
         WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
       )
     GROUP BY meter_key`,
-    query_params: { tenant_id: tenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive },
+    query_params: { tenant_id: dataTenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive },
     format: 'JSONEachRow',
   });
   const rows = await result.json<Record<string, string>>();
@@ -280,14 +280,14 @@ export const listPendingUsagePeriods = async (client: ClickHouseClient = getClic
 };
 
 export const reconcileUsageHourly = async (
-  tenantId: string,
+  dataTenantId: string,
   projectId: string,
   periodStart: string,
   periodEndExclusive: string,
   client: ClickHouseClient = getClickHouseClient('writer'),
 ) => {
   assertMonthlyPeriod(periodStart, periodEndExclusive);
-  const queryParams = { tenant_id: tenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive };
+  const queryParams = { tenant_id: dataTenantId, project_id: projectId, period_start: periodStart, period_end: periodEndExclusive };
   await client.command({
     query: `ALTER TABLE usage_hourly DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
       AND hour >= parseDateTimeBestEffort({period_start:String}) AND hour < parseDateTimeBestEffort({period_end:String})`,
@@ -332,7 +332,7 @@ export const reconcileUsageHourly = async (
     format: 'JSONEachRow',
     values: [
       {
-        tenant_id: tenantId,
+        tenant_id: dataTenantId,
         project_id: projectId,
         period_start: periodStart,
         period_end: periodEndExclusive,
@@ -347,7 +347,7 @@ export const reconcileUsageHourly = async (
     format: 'JSONEachRow',
     values: [
       {
-        tenant_id: tenantId,
+        tenant_id: dataTenantId,
         project_id: projectId,
         period_start: periodStart,
         period_end: periodEndExclusive,
@@ -361,16 +361,16 @@ export const reconcileUsageHourly = async (
 
 /** Tombstone first, then synchronously delete facts and projections. Queries
  * exclude tombstoned projects so retries/backfills cannot resurrect usage. */
-export const deleteProjectUsage = async (tenantId: string, projectId: string, client: ClickHouseClient = getClickHouseClient('writer')) => {
+export const deleteProjectUsage = async (dataTenantId: string, projectId: string, client: ClickHouseClient = getClickHouseClient('writer')) => {
   await client.insert({
     table: 'usage_deletion_tombstones',
     format: 'JSONEachRow',
-    values: [{ tenant_id: tenantId, project_id: projectId, deleted_at: new Date().toISOString(), reason: 'privacy_deletion' }],
+    values: [{ tenant_id: dataTenantId, project_id: projectId, deleted_at: new Date().toISOString(), reason: 'privacy_deletion' }],
   });
   for (const table of ['usage_events', 'usage_hourly', 'usage_reconciliation_state', 'usage_reconciliation_coverage']) {
     await client.command({
       query: `ALTER TABLE ${table} DELETE WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}`,
-      query_params: { tenant_id: tenantId, project_id: projectId },
+      query_params: { tenant_id: dataTenantId, project_id: projectId },
       clickhouse_settings: { mutations_sync: '1' },
     });
   }

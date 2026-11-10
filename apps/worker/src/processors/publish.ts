@@ -22,7 +22,7 @@ import { DurableUsageEnqueueError, enqueueAnalyticsEvent } from '../lib/usage-in
 const log = createLogger({ processor: 'publish' });
 
 export const trackPublishLifecycle = async (
-  project: { id: string; organizationId: string; accessMode: string; config: unknown },
+  project: { id: string; organizationId: string; dataTenantId: string; accessMode: string; config: unknown },
   deploymentId: string,
   payload: AnalyticsPayload,
   occurredAt: string,
@@ -39,7 +39,7 @@ export const trackPublishLifecycle = async (
       payload,
     },
     {
-      tenantId: project.organizationId,
+      tenantId: project.dataTenantId,
       projectId: project.id,
       siteId: project.id,
       deploymentId,
@@ -309,7 +309,7 @@ const capIssues = (issues: PublishIssue[]): PublishIssue[] => {
 async function completePublish(
   job: PublishDeploymentJobData,
   ready: Pick<Deployment, 'createdById' | 'version' | 'completedAt' | 'pagesCount'>,
-  project: Pick<Project, 'id' | 'name' | 'organizationId' | 'accessMode' | 'config'>,
+  project: Pick<Project, 'id' | 'name' | 'organizationId' | 'dataTenantId' | 'accessMode' | 'config'>,
   occurredAt: string,
   recovery = false,
 ) {
@@ -368,7 +368,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
   if (deployment.status === 'READY') {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, name: true, organizationId: true, accessMode: true, config: true },
+      select: { id: true, name: true, organizationId: true, dataTenantId: true, accessMode: true, config: true },
     });
     if (!project) throw new Error('Published project no longer exists');
     return completePublish(job.data, deployment, project, lifecycleOccurredAt, String(job.id ?? '').startsWith('publish-recovery-'));
@@ -527,7 +527,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     const proj = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
     const analyticsProject = await prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true, organizationId: true, accessMode: true, config: true },
+      select: { id: true, organizationId: true, dataTenantId: true, accessMode: true, config: true },
     });
     if (analyticsProject) {
       await trackPublishLifecycle(

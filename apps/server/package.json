@@ -19,6 +19,7 @@
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache",
     "fixtures:record-docs": "node src/actions/importers/fixtures/record-nibleaf-docs.mjs",
+    "org:merge": "tsx src/scripts/org-merge.ts",
     "eval:drafts": "tsx src/scripts/evaluate-drafts.ts",
     "search:reindex-all": "tsx src/scripts/reindex-search.ts",
     "typecheck": "tsc --noEmit"

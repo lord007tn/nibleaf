@@ -14,9 +14,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@nibleaf/database', () => {
   const prisma = {
     gitConnection: { findUnique: vi.fn(async () => null) },
-    project: { findUnique: vi.fn(async () => ({ organizationId: 'site-org' })) },
+    project: { findUnique: vi.fn(async () => ({ organizationId: 'destination-org' })) },
+    projectGitSettings: { findUnique: vi.fn(async () => ({ settings: { repo: 'acme/docs' } })) },
     organization: { findUnique: mocks.organization, update: mocks.organizationUpdate, updateMany: mocks.stripCopy },
-    organizationGitWebhookSecret: { findUnique: mocks.secretFind, upsert: mocks.secretUpsert },
+    projectGitWebhookSecret: { findUnique: mocks.secretFind, upsert: mocks.secretUpsert },
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run(prisma),
   };
   return { Prisma: { PrismaClientKnownRequestError: class extends Error {} }, prisma };
@@ -68,26 +69,17 @@ describe('legacy one-way Git webhook', () => {
   });
 
   it('writes nothing for a delivery that fails verification', async () => {
-    mocks.secretFind.mockResolvedValue(null);
+    mocks.secretFind.mockResolvedValue({ secret: 'stored-secret' });
     expect((await ping('forged-secret')).status).toBe(401);
     expect(mocks.secretUpsert).not.toHaveBeenCalled();
     expect(mocks.stripCopy).not.toHaveBeenCalled();
     expect(mocks.organizationUpdate).not.toHaveBeenCalled();
   });
 
-  it('moves a legacy metadata secret into server-side storage after a verified delivery', async () => {
+  it('requires the migrated website secret, even when the org has a legacy copy', async () => {
     mocks.secretFind.mockResolvedValue(null);
-    expect((await ping('metadata-secret')).status).toBe(200);
-    expect(mocks.secretUpsert).toHaveBeenCalledWith(expect.objectContaining({ create: { organizationId: 'site-org', secret: 'metadata-secret' } }));
-    const [{ where, data }] = mocks.stripCopy.mock.calls[0] as [{ where: { id: string }; data: { metadata: string } }];
-    expect(where.id).toBe('site-org');
-    expect(JSON.parse(data.metadata).git).toEqual({ repo: 'acme/docs' });
+    expect((await ping('metadata-secret')).status).toBe(401);
+    expect(mocks.secretUpsert).not.toHaveBeenCalled();
     expect(mocks.organizationUpdate).not.toHaveBeenCalled();
-  });
-
-  it('still accepts a verified delivery when the metadata cleanup fails', async () => {
-    mocks.secretFind.mockResolvedValue(null);
-    mocks.stripCopy.mockRejectedValue(new Error('database unavailable'));
-    expect((await ping('metadata-secret')).status).toBe(200);
   });
 });

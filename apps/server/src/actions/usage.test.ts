@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   assertProjectAccess: vi.fn(),
   queryUsageMeterTotals: vi.fn(),
   pendingFindFirst: vi.fn(),
+  memberFindUnique: vi.fn(),
+  projectFindMany: vi.fn(),
   analyticsMode: 'disabled',
   UsageHistoryUnavailableError: class UsageHistoryUnavailableError extends Error {},
 }));
@@ -21,7 +23,8 @@ vi.mock('@nibleaf/clickhouse', () => ({
 vi.mock('@nibleaf/database', () => ({
   Prisma: { DbNull: Symbol('DbNull'), sql: (strings: TemplateStringsArray) => strings.join('?') },
   prisma: {
-    project: { findUnique: mocks.projectFindUnique },
+    project: { findUnique: mocks.projectFindUnique, findMany: mocks.projectFindMany },
+    member: { findUnique: mocks.memberFindUnique },
     organizationUsagePlan: { findUnique: mocks.planFindUnique },
     organization: { findUnique: mocks.organizationFindUnique },
     deployment: { findFirst: mocks.deploymentFindFirst },
@@ -31,7 +34,14 @@ vi.mock('@nibleaf/database', () => ({
 }));
 vi.mock('./projects', () => ({ assertProjectAccess: mocks.assertProjectAccess, assertProjectInOrg: vi.fn() }));
 
-import { checkProjectEntitlement, exportProjectUsage, getProjectEntitlements, getProjectUsageSummary, resolveProjectCapability } from './usage';
+import {
+  checkProjectEntitlement,
+  exportProjectUsage,
+  getOrganizationUsageSummary,
+  getProjectEntitlements,
+  getProjectUsageSummary,
+  resolveProjectCapability,
+} from './usage';
 
 const apiContext = (projectId: string, scopes: string[] = []) =>
   ({
@@ -54,8 +64,9 @@ describe('usage authorization and entitlement policy', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.analyticsMode = 'disabled';
-    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-a' });
-    mocks.assertProjectAccess.mockResolvedValue({ organizationId: 'org-a', role: 'owner' });
+    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-a', dataTenantId: 'original-partition' });
+    mocks.assertProjectAccess.mockResolvedValue({ organizationId: 'org-a', role: 'owner', project: { dataTenantId: 'original-partition' } });
+    mocks.memberFindUnique.mockResolvedValue({ role: 'owner', orgRole: 'owner' });
     mocks.organizationFindUnique.mockResolvedValue({ metadata: null });
     mocks.planFindUnique.mockResolvedValue(activePlan());
     mocks.deploymentFindFirst.mockResolvedValue({ pagesCount: 12 });
@@ -132,7 +143,7 @@ describe('usage authorization and entitlement policy', () => {
     mocks.planFindUnique.mockResolvedValue(
       activePlan([], [{ behavior: 'block', limit: 99n, warningRatio: 80, meter: { key: 'search_query', unit: 'count', active: false } }]),
     );
-    const summary = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a');
+    const summary = await getProjectUsageSummary(sessionContext(), 'project-a');
     expect(summary.meters.find((meter) => meter.key === 'published_page')).toMatchObject({ quantity: '12', availability: 'complete' });
     expect(summary.meters.find((meter) => meter.key === 'asset_storage_byte')).toMatchObject({ quantity: '1610612736' });
     expect(summary.meters.find((meter) => meter.key === 'search_query')).toMatchObject({ limit: null, availability: 'unavailable' });
@@ -149,20 +160,20 @@ describe('usage authorization and entitlement policy', () => {
   it('projects complete, partial, and unavailable summaries without inventing unknown quantities', async () => {
     mocks.analyticsMode = 'clickhouse';
     mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
-    await expect(getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a')).resolves.toMatchObject({
+    await expect(getProjectUsageSummary(sessionContext(), 'project-a')).resolves.toMatchObject({
       availability: 'complete',
       meters: expect.arrayContaining([expect.objectContaining({ key: 'public_page_view', quantity: '10', availability: 'complete' })]),
     });
 
     setSnapshots();
     mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows.filter((row) => !row.meterKey.includes('token')));
-    const partial = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a');
+    const partial = await getProjectUsageSummary(sessionContext(), 'project-a');
     expect(partial.availability).toBe('partial');
     expect(partial.meters.find((meter) => meter.key === 'ai_input_token')).toMatchObject({ quantity: null, availability: 'partial' });
 
     setSnapshots({ members: null, assets: null, domains: null, pages: null });
     mocks.queryUsageMeterTotals.mockRejectedValue(new Error('private clickhouse endpoint and credentials'));
-    const unavailable = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a');
+    const unavailable = await getProjectUsageSummary(sessionContext(), 'project-a');
     expect(unavailable.availability).toBe('unavailable');
     expect(unavailable.meters.every((meter) => meter.quantity === null)).toBe(true);
     expect(JSON.stringify(unavailable)).not.toContain('private clickhouse');
@@ -172,15 +183,16 @@ describe('usage authorization and entitlement policy', () => {
     mocks.analyticsMode = 'clickhouse';
     mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
     mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date() });
-    const partial = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a', {
+    const partial = await getProjectUsageSummary(sessionContext(), 'project-a', {
       periodStart: '2026-08-01T00:00:00Z',
       periodEndExclusive: '2026-09-01T00:00:00Z',
     });
     expect(partial.meters.find((meter) => meter.key === 'search_query')).toMatchObject({ availability: 'partial', quantity: null });
+    expect(partial.meters.find((meter) => meter.key === 'ai_input_token')).toMatchObject({ availability: 'partial', quantity: null });
 
     setSnapshots();
     mocks.pendingFindFirst.mockResolvedValueOnce({ enqueuedAt: new Date(Date.now() - 25 * 60 * 60 * 1000) });
-    const unavailable = await getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a', {
+    const unavailable = await getProjectUsageSummary(sessionContext(), 'project-a', {
       periodStart: '2026-08-01T00:00:00Z',
       periodEndExclusive: '2026-09-01T00:00:00Z',
     });
@@ -215,7 +227,7 @@ describe('usage authorization and entitlement policy', () => {
       { periodStart: '2026-02-01T00:00:00Z', periodEndExclusive: '2026-01-01T00:00:00Z' },
       { periodStart: '2024-01-01T00:00:00Z', periodEndExclusive: '2026-01-01T00:00:00Z' },
     ]) {
-      await expect(getProjectUsageSummary(apiContext('project-a', ['usage:read']), 'project-a', period)).rejects.toMatchObject({
+      await expect(getProjectUsageSummary(sessionContext(), 'project-a', period)).rejects.toMatchObject({
         code: 'usage:invalid_period',
       });
     }
@@ -231,11 +243,11 @@ describe('usage authorization and entitlement policy', () => {
       code: 'auth:insufficient_role',
     });
 
-    mocks.assertProjectAccess.mockResolvedValueOnce({ organizationId: 'org-a', role: 'member' });
+    mocks.assertProjectAccess.mockResolvedValueOnce({ organizationId: 'org-a', role: 'member', project: { dataTenantId: 'original-partition' } });
     await expect(exportProjectUsage(sessionContext(), 'project-a', period)).rejects.toMatchObject({ code: 'auth:insufficient_role' });
 
     for (const role of ['admin', 'owner']) {
-      mocks.assertProjectAccess.mockResolvedValueOnce({ organizationId: 'org-a', role });
+      mocks.assertProjectAccess.mockResolvedValueOnce({ organizationId: 'org-a', role, project: { dataTenantId: 'original-partition' } });
       const exported = await exportProjectUsage(sessionContext(), 'project-a', period);
       expect(exported).toEqual({
         schemaVersion: 1,
@@ -269,5 +281,43 @@ describe('usage authorization and entitlement policy', () => {
     const failure = await exportProjectUsage(sessionContext(), 'project-a', period).catch((error: unknown) => error);
     expect(failure).toMatchObject({ code: 'usage:unavailable', message: 'Usage facts are unavailable.' });
     expect(String(failure)).not.toContain('clickhouse-node-01');
+  });
+  it('withholds plan, seats and limits from a site-only Viewer and keeps the original partition after a move', async () => {
+    mocks.analyticsMode = 'clickhouse';
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
+    mocks.memberFindUnique.mockResolvedValue({ role: 'viewer', orgRole: 'member' });
+    mocks.queryRaw
+      .mockReset()
+      .mockResolvedValueOnce([{ quantity: 12n }])
+      .mockResolvedValueOnce([{ quantity: 1n }]);
+    const summary = await getProjectUsageSummary(sessionContext(), 'project-a');
+    expect(JSON.parse(JSON.stringify(summary))).not.toHaveProperty('plan');
+    expect(summary.meters.some((meter) => meter.key === 'editor_seat')).toBe(false);
+    expect(summary.meters.every((meter) => meter.limit === undefined)).toBe(true);
+    expect(mocks.planFindUnique).not.toHaveBeenCalled();
+    expect(mocks.queryUsageMeterTotals).toHaveBeenCalledWith('original-partition', 'project-a', expect.any(String), expect.any(String));
+    expect(mocks.pendingFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ partitionId: 'original-partition' }) }),
+    );
+  });
+
+  it('counts seats once while summing website partitions and propagates incomplete data', async () => {
+    mocks.analyticsMode = 'clickhouse';
+    mocks.projectFindMany.mockResolvedValue([{ id: 'project-a' }, { id: 'project-b' }]);
+    mocks.projectFindUnique.mockImplementation(async ({ where }: { where: { id: string } }) => ({ dataTenantId: `partition-${where.id}` }));
+    mocks.queryRaw
+      .mockReset()
+      .mockImplementation(async (sql: string) => [{ quantity: sql.includes('DISTINCT') ? 3n : sql.includes('SUM') ? 10n : 1n }]);
+    mocks.queryUsageMeterTotals.mockResolvedValue(aggregateRows);
+    const complete = await getOrganizationUsageSummary('user-a', 'org-a');
+    expect(complete.meters.find((meter) => meter.key === 'editor_seat')?.quantity).toBe('3');
+    expect(complete.meters.find((meter) => meter.key === 'asset_storage_byte')?.quantity).toBe('20');
+    expect(complete.meters.find((meter) => meter.key === 'public_page_view')?.quantity).toBe('20');
+    expect(mocks.queryRaw.mock.calls.filter(([sql]) => String(sql).includes('DISTINCT'))).toHaveLength(1);
+    expect(complete.incomplete).toBe(false);
+    mocks.pendingFindFirst.mockResolvedValue({ enqueuedAt: new Date() });
+    const incomplete = await getOrganizationUsageSummary('user-a', 'org-a');
+    expect(incomplete.incomplete).toBe(true);
+    expect(incomplete.meters.find((meter) => meter.key === 'public_page_view')?.quantity).toBeNull();
   });
 });

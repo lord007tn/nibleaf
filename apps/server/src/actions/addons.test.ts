@@ -22,6 +22,14 @@ vi.mock('@nibleaf/database', () => ({
   },
 }));
 
+vi.mock('@/lib/access', () => ({
+  resolveSiteAccess: async () => {
+    const project = await database.authorizeProject();
+    if (!project) throw (await import('@/errors')).notFound('project');
+    return { project, organizationId: project.organizationId, role: project.organization.members[0]?.role ?? '' };
+  },
+}));
+
 vi.mock('./usage', () => ({ resolveProjectCapability: database.resolveCapability }));
 vi.mock('./sites', () => ({ invalidatePublishedSiteConfig: database.invalidatePublishedSiteConfig }));
 

@@ -4002,5 +4002,8 @@
   "notifications_bellunreadlabel": "Buka notifikasi. Belum dibaca: {count}",
   "notifications_unread": "Belum dibaca",
   "admin_sidebardescription": "Jelajahi pelanggan, situs, dan operasi platform.",
-  "settings_appearance_theme_system": "Ikuti perangkat saya"
+  "settings_appearance_theme_system": "Ikuti perangkat saya",
+  "settings_members_viaorganization": "melalui organisasi",
+  "settings_members_nowebsiteaccess": "Anda belum memiliki akses ke situs web apa pun di {org}. Hubungi admin organisasi.",
+  "roles_organizationmember": "Anggota"
 }

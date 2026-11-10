@@ -34,7 +34,7 @@ const scope = async (organizationId: string, projectId: string, query: Analytics
   const titles = new Map<string, string>();
   for (const page of snapshot?.pages ?? [])
     if (typeof page.path === 'string' && typeof page.title === 'string') titles.set(page.path.replace(/^\//u, ''), page.title);
-  return { tenantId: project.organizationId, projectId: project.id, meta: resolveInsightsMeta(query), visibility, titles };
+  return { tenantId: project.dataTenantId, projectId: project.id, meta: resolveInsightsMeta(query), visibility, titles };
 };
 
 export const getOverviewInsights = async (organizationId: string, projectId: string, query: AnalyticsInsightsQuery) =>

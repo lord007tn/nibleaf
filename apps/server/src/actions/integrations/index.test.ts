@@ -165,7 +165,7 @@ describe('integration lifecycle durability', () => {
       organizationId: 'org-1',
       createdAt: now,
       config: null,
-      organization: { metadata: null },
+      gitSettings: { settings: {} },
     });
   });
 
@@ -324,15 +324,13 @@ describe('integration lifecycle durability', () => {
       organizationId: 'org-1',
       createdAt: now,
       config: null,
-      organization: {
-        metadata: JSON.stringify({
-          git: {
-            provider: 'git',
-            connected: true,
-            cloneUrl: 'https://token@git.example.com/acme/docs.git?access_token=provider-secret#fragment',
-            branch: 'main',
-          },
-        }),
+      gitSettings: {
+        settings: {
+          provider: 'git',
+          connected: true,
+          cloneUrl: 'https://token@git.example.com/acme/docs.git?access_token=provider-secret#fragment',
+          branch: 'main',
+        },
       },
     });
 

@@ -5,6 +5,14 @@ import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({ member: vi.fn(), user: vi.fn(), listMembers: vi.fn() }));
+vi.mock('@/lib/access', () => ({
+  assertUsableAccount: async () => mocks.user(),
+  resolveSiteAccess: async (userId: string, projectId: string) => {
+    const member = await mocks.member(userId, projectId);
+    if (!member) throw (await import('@/errors')).notFound('project');
+    return { organizationId: 'resource-org', role: member.role };
+  },
+}));
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     user: { findUnique: mocks.user },
@@ -38,18 +46,18 @@ describe('workspace member list', () => {
     mocks.listMembers.mockResolvedValue({ members: [], invitations: [] });
   });
 
-  it('requires current membership of the active workspace', async () => {
+  it('requires current membership of the resource website', async () => {
     mocks.member.mockResolvedValue(null);
-    const response = await app.request('/members');
-    expect(response.status).toBe(403);
-    expect(mocks.member).toHaveBeenCalledWith({ where: { organizationId_userId: { organizationId: 'active-org', userId: 'user' } } });
+    const response = await app.request('/members?projectId=site');
+    expect(response.status).toBe(404);
+    expect(mocks.member).toHaveBeenCalledWith('user', 'site');
     expect(mocks.listMembers).not.toHaveBeenCalled();
   });
 
   it('lists members for a current member', async () => {
     mocks.member.mockResolvedValue({ role: 'member' });
-    const response = await app.request('/members');
+    const response = await app.request('/members?projectId=site');
     expect(response.status).toBe(200);
-    expect(mocks.listMembers).toHaveBeenCalledWith('active-org');
+    expect(mocks.listMembers).toHaveBeenCalledWith('resource-org');
   });
 });

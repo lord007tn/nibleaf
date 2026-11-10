@@ -48,6 +48,7 @@ import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
 import { Route as AppProjectsProjectIdSettingsRouteImport } from './routes/app/projects/$projectId/settings'
+import { Route as AppdashboardOOrgSlugWebsitesRouteImport } from './routes/app/(dashboard)/o/$orgSlug/websites'
 import { Route as AppProjectsProjectIdAnalyticsIndexRouteImport } from './routes/app/projects/$projectId/analytics.index'
 import { Route as AppProjectsProjectIdAnalyticsAiRouteImport } from './routes/app/projects/$projectId/analytics.ai'
 import { Route as AppProjectsProjectIdAnalyticsFeedbackRouteImport } from './routes/app/projects/$projectId/analytics.feedback'
@@ -255,6 +256,12 @@ const AppProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
   } as any)
+const AppdashboardOOrgSlugWebsitesRoute =
+  AppdashboardOOrgSlugWebsitesRouteImport.update({
+    id: '/o/$orgSlug/websites',
+    path: '/o/$orgSlug/websites',
+    getParentRoute: () => AppdashboardRouteRoute,
+  } as any)
 const AppProjectsProjectIdAnalyticsIndexRoute =
   AppProjectsProjectIdAnalyticsIndexRouteImport.update({
     id: '/',
@@ -330,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
+  '/app/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -371,6 +379,7 @@ export interface FileRoutesByTo {
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
+  '/app/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -419,6 +428,7 @@ export interface FileRoutesById {
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
+  '/app/(dashboard)/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -466,6 +476,7 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId/'
+    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -507,6 +518,7 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId'
+    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -554,6 +566,7 @@ export interface FileRouteTypes {
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
     | '/app/projects/$projectId/'
+    | '/app/(dashboard)/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -857,6 +870,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdSettingsRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
     }
+    '/app/(dashboard)/o/$orgSlug/websites': {
+      id: '/app/(dashboard)/o/$orgSlug/websites'
+      path: '/o/$orgSlug/websites'
+      fullPath: '/app/o/$orgSlug/websites'
+      preLoaderRoute: typeof AppdashboardOOrgSlugWebsitesRouteImport
+      parentRoute: typeof AppdashboardRouteRoute
+    }
     '/app/projects/$projectId/analytics/': {
       id: '/app/projects/$projectId/analytics/'
       path: '/'
@@ -929,6 +949,7 @@ interface AppdashboardRouteRouteChildren {
   AppdashboardSettingsRoute: typeof AppdashboardSettingsRoute
   AppdashboardSitesRoute: typeof AppdashboardSitesRoute
   AppdashboardIndexRoute: typeof AppdashboardIndexRoute
+  AppdashboardOOrgSlugWebsitesRoute: typeof AppdashboardOOrgSlugWebsitesRoute
 }
 
 const AppdashboardRouteRouteChildren: AppdashboardRouteRouteChildren = {
@@ -938,6 +959,7 @@ const AppdashboardRouteRouteChildren: AppdashboardRouteRouteChildren = {
   AppdashboardSettingsRoute: AppdashboardSettingsRoute,
   AppdashboardSitesRoute: AppdashboardSitesRoute,
   AppdashboardIndexRoute: AppdashboardIndexRoute,
+  AppdashboardOOrgSlugWebsitesRoute: AppdashboardOOrgSlugWebsitesRoute,
 }
 
 const AppdashboardRouteRouteWithChildren =

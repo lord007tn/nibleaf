@@ -26,7 +26,7 @@ export function DangerSection({ project }: { project: Project }) {
   // Ownership can only move to an ADMIN (server enforces this with a 409) —
   // offer only valid targets so the picker can't dead-end.
   const transferTargets = currentUserId
-    ? (memberData?.members ?? []).filter((member) => member.user.id !== currentUserId && member.role === 'admin')
+    ? (memberData?.members ?? []).filter((member) => member.user.id !== currentUserId && member.orgRole === 'admin')
     : [];
   const noTransferTargets = canTransferOwnership && !membersPending && !membersError && transferTargets.length === 0;
   const [targetMemberId, setTargetMemberId] = useState('');

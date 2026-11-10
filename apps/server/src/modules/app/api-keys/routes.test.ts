@@ -1,7 +1,16 @@
 import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppError } from '@/errors';
 import apiKeysRoutes from './routes';
+
+vi.mock('@/actions/projects', () => ({
+  assertProjectAccess: async () => {
+    const member = await prisma.member.findUnique({} as never);
+    if (!member || member.role === 'unknown') throw new AppError({ code: 'database:not_found' });
+    return { organizationId: 'org-1', role: member.role };
+  },
+}));
 
 vi.mock('@nibleaf/database', () => ({
   prisma: {
@@ -37,7 +46,7 @@ describe('API-key lifecycle route permissions', () => {
   it.each(guardedRoutes)('rejects unknown roles from %s', async (_name, route) => {
     vi.mocked(prisma.member.findUnique).mockResolvedValue({ role: 'unknown' } as never);
     const next = vi.fn();
-    await expect(route[1](context(), next)).rejects.toMatchObject({ code: 'auth:insufficient_role' });
+    await expect(route[1](context(), next)).rejects.toMatchObject({ code: 'database:not_found' });
     expect(next).not.toHaveBeenCalled();
   });
 

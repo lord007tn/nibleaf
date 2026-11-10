@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { canonicalUsageEventBatch, type UsageEvent } from '@nibleaf/usage';
+import { canonicalUsageEventBatch, type FinalizedUsageRecord, type UsageEvent } from '@nibleaf/usage';
 import { getDb, type PrismaClient } from './client';
 import { Prisma } from './generated/client';
 import { keys } from './keys';
@@ -13,11 +13,11 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? getDb({ connectionString: keys().POSTGRES_URL });
 
-export const markUsageStoragePending = async (input: { id: string; organizationId: string; projectId: string; events: UsageEvent[] }) => {
+export const markUsageStoragePending = async (input: { id: string; partitionId: string; projectId: string; events: UsageEvent[] }) => {
   const enqueuedAt = new Date();
   const events = canonicalUsageEventBatch(input.events);
   const first = events[0];
-  if (!first || first.tenantId !== input.organizationId || first.projectId !== input.projectId) {
+  if (!first || first.tenantId !== input.partitionId || first.projectId !== input.projectId) {
     throw new Error('Usage ingestion checkpoint scope is invalid.');
   }
   const occurredAt = events.map((event) => new Date(event.occurredAt).getTime());
@@ -40,34 +40,44 @@ export const markUsageStoragePending = async (input: { id: string; organizationI
     )
     .digest('hex');
   return prisma.$transaction(async (tx) => {
-    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "organization" WHERE "id" = ${input.organizationId} FOR UPDATE`);
+    const projects = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "project" WHERE "id" = ${input.projectId} AND "dataTenantId" = ${input.partitionId} FOR UPDATE`,
+    );
+    if (!projects[0]) throw new Error('Usage ingestion project scope is invalid.');
     const existing = await tx.usageIngestCheckpoint.findUnique({
       where: { id: input.id },
-      select: { organizationId: true, payloadDigest: true, projectId: true, writtenAt: true },
+      select: { partitionId: true, payloadDigest: true, projectId: true, writtenAt: true },
     });
-    if (existing && (existing.organizationId !== input.organizationId || existing.projectId !== input.projectId)) {
+    if (existing && (existing.partitionId !== input.partitionId || existing.projectId !== input.projectId)) {
       throw new Error('Usage ingestion checkpoint scope collision.');
     }
     if (existing && existing.payloadDigest !== payloadDigest) throw new Error('Usage ingestion checkpoint payload collision.');
     const existingMarker = await tx.usageStorageMarker.findUnique({
-      where: { organizationId: input.organizationId },
+      where: { partitionId: input.partitionId },
       select: { deletionPendingAt: true },
     });
     if (existingMarker?.deletionPendingAt && (!existing || existing.writtenAt)) {
       throw new Error('Usage ingestion is fenced for tenant deletion.');
     }
     const marker = await tx.usageStorageMarker.upsert({
-      where: { organizationId: input.organizationId },
-      create: { organizationId: input.organizationId, firstEnqueuedAt: enqueuedAt, lastEnqueuedAt: enqueuedAt },
+      where: { partitionId: input.partitionId },
+      create: {
+        partitionId: input.partitionId,
+        organizationId: input.partitionId,
+        projectId: input.projectId,
+        firstEnqueuedAt: enqueuedAt,
+        lastEnqueuedAt: enqueuedAt,
+      },
       update: { lastEnqueuedAt: enqueuedAt },
-      select: { organizationId: true },
+      select: { partitionId: true },
     });
     const checkpoint =
       existing ??
       (await tx.usageIngestCheckpoint.create({
         data: {
           id: input.id,
-          organizationId: input.organizationId,
+          partitionId: input.partitionId,
+          organizationId: input.partitionId,
           projectId: input.projectId,
           firstOccurredAt: new Date(Math.min(...occurredAt)),
           lastOccurredAt: new Date(Math.max(...occurredAt)),
@@ -75,58 +85,58 @@ export const markUsageStoragePending = async (input: { id: string; organizationI
           payloadDigest,
           enqueuedAt,
         },
-        select: { organizationId: true, payloadDigest: true, projectId: true, writtenAt: true },
+        select: { partitionId: true, payloadDigest: true, projectId: true, writtenAt: true },
       }));
     return { marker, checkpoint };
   });
 };
 
-export const markUsageStorageQueued = async (id: string, organizationId: string) =>
+export const markUsageStorageQueued = async (id: string, partitionId: string) =>
   prisma.usageIngestCheckpoint.updateMany({
-    where: { id, organizationId, writtenAt: null },
+    where: { id, partitionId, writtenAt: null },
     data: { lastQueuedAt: new Date(), enqueueAttemptCount: { increment: 1 } },
   });
 
 /** Durable evidence that an analytics envelope may reach ClickHouse. This
  * shares the deletion fence but stores no event, query, identity, or payload. */
-export const markAnalyticsStoragePending = async (organizationId: string) => {
+export const markAnalyticsStoragePending = async (partitionId: string, projectId: string) => {
   const enqueuedAt = new Date();
   return prisma.$transaction(async (tx) => {
-    const organizations = await tx.$queryRaw<Array<{ id: string }>>(
-      Prisma.sql`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`,
+    const projects = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "project" WHERE "id" = ${projectId} AND "dataTenantId" = ${partitionId} FOR UPDATE`,
     );
-    if (organizations.length === 0) return { accepted: false as const };
-    const marker = await tx.usageStorageMarker.findUnique({ where: { organizationId }, select: { deletionPendingAt: true } });
+    if (projects.length === 0) return { accepted: false as const };
+    const marker = await tx.usageStorageMarker.findUnique({ where: { partitionId }, select: { deletionPendingAt: true } });
     if (marker?.deletionPendingAt) return { accepted: false as const };
     await tx.usageStorageMarker.upsert({
-      where: { organizationId },
-      create: { organizationId, firstEnqueuedAt: enqueuedAt, lastEnqueuedAt: enqueuedAt },
+      where: { partitionId },
+      create: { partitionId, organizationId: partitionId, projectId, firstEnqueuedAt: enqueuedAt, lastEnqueuedAt: enqueuedAt },
       update: { lastEnqueuedAt: enqueuedAt },
-      select: { organizationId: true },
+      select: { partitionId: true },
     });
     return { accepted: true as const };
   });
 };
 
-/** Fence a tenant/project before ClickHouse privacy erasure. Organization-row
+/** Fence a partition/project before ClickHouse privacy erasure. Project-row
  * locking serializes this with checkpoint creation so no new batch can race the
  * fence. Existing pending receipts remain drainable and make deletion retry. */
-export const beginUsageDeletion = async (organizationId: string, projectId: string) =>
+export const beginUsageDeletion = async (partitionId: string, projectId: string) =>
   prisma.$transaction(async (tx) => {
     // PostgreSQL lock functions return void, which the Prisma adapter cannot decode.
-    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${organizationId}, 904711))::text`);
-    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "organization" WHERE "id" = ${organizationId} FOR UPDATE`);
-    const project = await tx.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true } });
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${partitionId}, 904711))::text`);
+    await tx.$queryRaw(Prisma.sql`SELECT "id" FROM "project" WHERE "id" = ${projectId} AND "dataTenantId" = ${partitionId} FOR UPDATE`);
+    const project = await tx.project.findFirst({ where: { id: projectId, dataTenantId: partitionId }, select: { id: true } });
     if (!project) return { exists: false as const, hadStorageMarker: false, pendingCount: 0 };
-    const existingMarker = await tx.usageStorageMarker.findUnique({ where: { organizationId }, select: { organizationId: true } });
+    const existingMarker = await tx.usageStorageMarker.findUnique({ where: { partitionId }, select: { partitionId: true } });
     const now = new Date();
     await tx.usageStorageMarker.upsert({
-      where: { organizationId },
-      create: { organizationId, firstEnqueuedAt: now, lastEnqueuedAt: now, deletionPendingAt: now },
+      where: { partitionId },
+      create: { partitionId, organizationId: partitionId, projectId, firstEnqueuedAt: now, lastEnqueuedAt: now, deletionPendingAt: now },
       update: { deletionPendingAt: now },
-      select: { organizationId: true },
+      select: { partitionId: true },
     });
-    const pendingCount = await tx.usageIngestCheckpoint.count({ where: { organizationId, projectId, writtenAt: null } });
+    const pendingCount = await tx.usageIngestCheckpoint.count({ where: { partitionId, projectId, writtenAt: null } });
     return { exists: true as const, hadStorageMarker: existingMarker !== null, pendingCount };
   });
 
@@ -134,25 +144,25 @@ export const beginUsageDeletion = async (organizationId: string, projectId: stri
  * exclusive counterpart before setting the fence. This closes the gap between
  * a project check and ClickHouse insertion without serializing normal writes. */
 export const runWithTenantAnalyticsWriteFence = async <T>(
-  organizationId: string,
+  partitionId: string,
   projectId: string,
   checkpointId: string | null,
   action: () => Promise<T>,
 ) =>
   prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${organizationId}, 904711))::text`);
+      await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock_shared(hashtextextended(${partitionId}, 904711))::text`);
       const [project, marker, checkpoint] = await Promise.all([
-        tx.project.findFirst({ where: { id: projectId, organizationId }, select: { id: true } }),
-        tx.usageStorageMarker.findUnique({ where: { organizationId }, select: { deletionPendingAt: true } }),
+        tx.project.findFirst({ where: { id: projectId, dataTenantId: partitionId }, select: { id: true } }),
+        tx.usageStorageMarker.findUnique({ where: { partitionId }, select: { deletionPendingAt: true } }),
         checkpointId
           ? tx.usageIngestCheckpoint.findUnique({
               where: { id: checkpointId },
-              select: { organizationId: true, projectId: true, writtenAt: true },
+              select: { partitionId: true, projectId: true, writtenAt: true },
             })
           : Promise.resolve(null),
       ]);
-      const drainable = checkpoint?.organizationId === organizationId && checkpoint.projectId === projectId && checkpoint.writtenAt === null;
+      const drainable = checkpoint?.partitionId === partitionId && checkpoint.projectId === projectId && checkpoint.writtenAt === null;
       if (!project || (marker?.deletionPendingAt && !drainable)) return { accepted: false as const, value: null };
       return { accepted: true as const, value: await action() };
     },
@@ -161,13 +171,40 @@ export const runWithTenantAnalyticsWriteFence = async <T>(
 
 /** Mark a content-free ingestion receipt drained only after ClickHouse accepts
  * the idempotent fact batch. A missing row is valid after tenant deletion. */
-export const markUsageStorageDrained = async (id: string, organizationId: string) => {
+export const markUsageStorageDrained = async (id: string, partitionId: string) => {
   const writtenAt = new Date();
   return prisma.$transaction([
-    prisma.usageIngestCheckpoint.updateMany({ where: { id, organizationId, writtenAt: null }, data: { writtenAt } }),
-    prisma.usageStorageMarker.updateMany({ where: { organizationId }, data: { lastWrittenAt: writtenAt } }),
+    prisma.usageIngestCheckpoint.updateMany({ where: { id, partitionId, writtenAt: null }, data: { writtenAt } }),
+    prisma.usageStorageMarker.updateMany({ where: { partitionId }, data: { lastWrittenAt: writtenAt } }),
   ]);
 };
+
+/** Persist provider retries without changing accepted reconciliation identity.
+ * Billing ownership is resolved now; organizationId retains the source partition. */
+export const markUsageProviderAttempt = async (provider: string, record: FinalizedUsageRecord & { projectId: string }) =>
+  prisma.$transaction(async (tx) => {
+    const project = await tx.project.findFirstOrThrow({
+      where: { id: record.projectId, dataTenantId: record.tenantId },
+      select: { id: true, organizationId: true },
+    });
+    return tx.usageProviderCheckpoint.upsert({
+      where: { reconciliationId: record.reconciliationId },
+      create: {
+        organizationId: record.tenantId,
+        projectId: project.id,
+        billingOrganizationId: project.organizationId,
+        provider,
+        reconciliationId: record.reconciliationId,
+        meterKey: record.meterKey,
+        periodStart: new Date(record.periodStart),
+        periodEnd: new Date(record.periodEndExclusive),
+        quantity: record.quantity,
+        attemptCount: 1,
+        lastAttemptAt: new Date(),
+      },
+      update: { attemptCount: { increment: 1 }, lastAttemptAt: new Date() },
+    });
+  });
 
 /** Usage owns default plan provisioning. Product creation paths call this in
  * the same transaction as the organization; add-ons and payment adapters never

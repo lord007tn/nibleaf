@@ -23,6 +23,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {

@@ -16,6 +16,7 @@ import exports from './exports/handlers';
 import git from './git/handlers';
 import imports from './imports/handlers';
 import integrations from './integrations/handlers';
+import invitations from './invitations/handlers';
 import join from './join/handlers';
 import joinLinks from './join-links/handlers';
 import languages from './languages/handlers';
@@ -23,6 +24,7 @@ import mcpOAuth from './mcp-oauth/handlers';
 import members from './members/handlers';
 import notifications from './notifications/handlers';
 import openapi from './openapi/handlers';
+import organizations from './organizations/handlers';
 import pages from './pages/handlers';
 import people from './people/handlers';
 import projectMembers from './project-members/handlers';
@@ -38,6 +40,8 @@ const app = new Hono<HonoEnv>()
       'x-nibleaf-revision': revision,
     });
   })
+  .route('/organizations', organizations)
+  .route('/invitations', invitations)
   .route('/activation-events', activationEvents)
   .route('/projects', projects)
   .route('/projects/:projectId/pages', pages)

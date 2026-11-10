@@ -30,22 +30,13 @@ async function throwServerError(res: { json: () => Promise<unknown>; status: num
 export function useStartSupportAccess() {
   const t = useT();
   return useMutation({
-    mutationFn: async ({ userId, organizationId }: { userId: string; organizationId: string }) => {
+    mutationFn: async ({ userId }: { userId: string; organizationId: string }) => {
       const impersonation = await authClient.admin.impersonateUser({ userId });
       if (impersonation.error) {
         throw new AdminMutationError(
           impersonation.error.message || t('admin.mutation.supportAuthorizeError'),
           impersonation.error.code || 'auth:impersonation_failed',
           impersonation.error.status,
-        );
-      }
-      const workspace = await authClient.organization.setActive({ organizationId });
-      if (workspace.error) {
-        await authClient.admin.stopImpersonating();
-        throw new AdminMutationError(
-          workspace.error.message || t('admin.mutation.workspaceSelectError'),
-          workspace.error.code || 'auth:workspace_selection_failed',
-          workspace.error.status,
         );
       }
       return impersonation.data;

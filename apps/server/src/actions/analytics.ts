@@ -15,6 +15,7 @@ import {
 import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import type { AnalyticsRange, ProjectConfig } from '@nibleaf/validators';
+import { accessibleProjectIds } from '@/lib/access';
 import { relationalInterval, relationalViewSummary } from '@/lib/relational-analytics';
 import { enqueueAnalyticsEvent } from '@/lib/usage-ingest';
 import { assertProjectInOrg } from './projects';
@@ -97,10 +98,9 @@ const getRelationalAnalyticsOverview = async (organizationId: string, projectId:
 const getRelationalWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone: string) => {
   const interval = relationalInterval(range, timezone);
   const { since, until } = interval;
-  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
-  const organizationIds = memberships.map((m) => m.organizationId);
+  const accessibleIds = await accessibleProjectIds(userId);
   const projects = await prisma.project.findMany({
-    where: { organizationId: { in: organizationIds } },
+    where: { id: { in: accessibleIds } },
     select: { id: true, name: true, config: true },
   });
   const projectIds = projects.map((p) => p.id);
@@ -205,7 +205,7 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
   if (!clickHouseReadsEnabled(config.ANALYTICS_MODE)) {
     return getRelationalAnalyticsOverview(organizationId, projectId, range, timezone);
   }
-  const clickhouse = await queryProjectAnalytics(project.organizationId, projectId, range, timezone);
+  const clickhouse = await queryProjectAnalytics(project.dataTenantId, projectId, range, timezone);
   if (config.ANALYTICS_MODE === 'clickhouse') return { ...clickhouse, source: 'clickhouse' as const, topSearches: [] };
 
   const relational = await getRelationalAnalyticsOverview(organizationId, projectId, range, timezone);
@@ -225,14 +225,13 @@ export const getAnalyticsOverview = async (organizationId: string, projectId: st
 export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRange, timezone = 'UTC') => {
   const config = clickHouseKeys();
   if (!clickHouseReadsEnabled(config.ANALYTICS_MODE)) return getRelationalWorkspaceAnalytics(userId, range, timezone);
-  const memberships = await prisma.member.findMany({ where: { userId }, select: { organizationId: true } });
-  const organizationIds = memberships.map(({ organizationId }) => organizationId);
+  const accessibleIds = await accessibleProjectIds(userId);
   const projects = await prisma.project.findMany({
-    where: { organizationId: { in: organizationIds } },
-    select: { id: true, name: true, organizationId: true, config: true },
+    where: { id: { in: accessibleIds } },
+    select: { id: true, name: true, dataTenantId: true, config: true },
   });
   const clickhouse = await queryWorkspaceAnalytics(
-    projects.map((project) => ({ tenantId: project.organizationId, projectId: project.id })),
+    projects.map((project) => ({ tenantId: project.dataTenantId, projectId: project.id })),
     range,
     timezone,
   );
@@ -264,7 +263,7 @@ export const getWorkspaceAnalytics = async (userId: string, range: AnalyticsRang
 
 export const getProjectAnalyticsExport = async (organizationId: string, projectId: string, before?: string, limit?: number) => {
   const project = await assertProjectInOrg(organizationId, projectId);
-  return exportProjectAnalytics(project.organizationId, project.id, { before, limit });
+  return exportProjectAnalytics(project.dataTenantId, project.id, { before, limit });
 };
 
 /** How long the hot path waits for the queue before falling back to a direct
@@ -370,7 +369,7 @@ export const trackProjectEvents = async (
 ): Promise<void> => {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { id: true, organizationId: true, accessMode: true, config: true },
+    select: { id: true, dataTenantId: true, accessMode: true, config: true },
   });
   if (!project) return;
   const projectConfig = project.config as ProjectConfig | null;
@@ -379,7 +378,7 @@ export const trackProjectEvents = async (
     payloads.map((payload) =>
       trackEvent(
         {
-          tenantId: project.organizationId,
+          tenantId: project.dataTenantId,
           projectId: project.id,
           userAgent: options.userAgent,
           siteHost: options.siteHost,

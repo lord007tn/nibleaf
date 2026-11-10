@@ -16,7 +16,7 @@ vi.mock('@/hooks/api', () => ({
     data: {
       members: [
         { id: 'm1', role: state.role, user: { id: 'owner' } },
-        ...(state.admins ? [{ id: 'm2', role: 'admin', user: { id: 'other', name: 'Other', email: 'other@example.test' } }] : []),
+        ...(state.admins ? [{ id: 'm2', orgRole: 'admin', role: 'admin', user: { id: 'other', name: 'Other', email: 'other@example.test' } }] : []),
       ],
     },
   }),

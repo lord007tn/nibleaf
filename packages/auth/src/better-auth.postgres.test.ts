@@ -252,154 +252,25 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(diffSchema(expected, withoutCreatedAt)).toEqual([{ column: 'createdAt', kind: 'missing-column', table: 'invitation' }]);
   });
 
-  it('accepts an invitation inserted the way an older image inserts it', async () => {
-    const { organizationId, userId } = await signInAsOwner();
-    const email = addressFor('invitee');
-    const id = `invitation-${run}`;
-    await prisma.$executeRaw`
-      INSERT INTO "invitation" ("id", "organizationId", "email", "role", "status", "expiresAt", "inviterId")
-      VALUES (${id}, ${organizationId}, ${email}, 'member', 'pending', now() + interval '1 hour', ${userId})
-    `;
-    expect((await prisma.invitation.findUniqueOrThrow({ where: { id } })).createdAt).toBeInstanceOf(Date);
-
-    const cookie = sessionCookie(await signInWithCode(email));
-    expect((await send('/organization/accept-invitation', { body: { invitationId: id }, cookie })).status).toBe(200);
-    expect(await prisma.member.count({ where: { organizationId, user: { email } } })).toBe(1);
-  });
-
-  it('turns a viewer invitation into a read-only member that Better Auth grants no organization powers', async () => {
-    const { organizationId, userId: ownerId } = await signInAsOwner();
-    const email = addressFor('viewer');
-    const id = `viewer-invitation-${run}`;
-    await prisma.invitation.create({
-      data: { id, organizationId, email, role: 'viewer', status: 'pending', expiresAt: new Date(Date.now() + 3_600_000), inviterId: ownerId },
-    });
-    const cookie = sessionCookie(await signInWithCode(email));
-    expect((await send('/organization/accept-invitation', { body: { invitationId: id }, cookie })).status).toBe(200);
-    const viewer = await prisma.member.findFirstOrThrow({ where: { organizationId, user: { email } } });
-    expect(viewer.role).toBe('viewer');
-
-    // Better Auth's own organization endpoints stay closed to the role: it is
-    // not in the plugin's access-control table, so it holds no permission.
-    const editorUser = await prisma.user.create({ data: { email: addressFor('viewer-teammate'), emailVerified: true, name: 'Editor' } });
-    const editor = await prisma.member.create({ data: { organizationId, userId: editorUser.id, role: 'member' } });
-    const attempts = [
-      ['/organization/update-member-role', { memberId: viewer.id, role: 'admin', organizationId }],
-      ['/organization/remove-member', { memberIdOrEmail: editor.id, organizationId }],
-      ['/organization/update', { data: { name: 'Taken over' }, organizationId }],
-      ['/organization/cancel-invitation', { invitationId: id }],
-    ] as const;
-    for (const [path, body] of attempts) {
-      const response = await send(path, { body, cookie });
-      // Better Auth answers 401 or 403 depending on the endpoint; both are a refusal on permission.
-      expect([401, 403], path).toContain(response.status);
-    }
-    expect((await prisma.member.findUniqueOrThrow({ where: { id: viewer.id } })).role).toBe('viewer');
-    expect(await prisma.member.count({ where: { id: editor.id } })).toBe(1);
-    expect((await prisma.organization.findUniqueOrThrow({ where: { id: organizationId } })).name).not.toBe('Taken over');
-  });
-
-  it("disables a member's join links when Better Auth's own endpoints remove or demote them", async () => {
-    const { cookie, organizationId } = await signInAsOwner();
-    const person = async (label: string, role: string) => {
-      const user = await prisma.user.create({ data: { email: addressFor(label), emailVerified: true, name: label } });
-      const member = await prisma.member.create({ data: { organizationId, userId: user.id, role } });
-      const link = await prisma.joinLink.create({
-        data: { organizationId, tokenHash: `hash-${label}-${run}`, role: 'admin', createdById: user.id },
-      });
-      return { member, link };
-    };
-    const demoted = await person('ba-demoted', 'admin');
-    const removed = await person('ba-removed', 'admin');
-
-    const demote = await send('/organization/update-member-role', { body: { memberId: demoted.member.id, role: 'member', organizationId }, cookie });
-    expect(demote.status).toBe(200);
-    const remove = await send('/organization/remove-member', { body: { memberIdOrEmail: removed.member.id, organizationId }, cookie });
-    expect(remove.status).toBe(200);
-
-    for (const { link } of [demoted, removed]) {
-      expect((await prisma.joinLink.findUniqueOrThrow({ where: { id: link.id } })).revokedAt).toBeInstanceOf(Date);
-    }
-  });
-
-  it('keeps workspace invitations on the Nibleaf action that enforces the single-owner rule', async () => {
-    const { cookie, organizationId } = await signInAsOwner();
-    const email = addressFor('second-owner');
-    const paths = ['/organization/invite-member', '/organization/invite-member/', '/organization//invite-member', '/organization/invite%2Dmember'];
-    for (const path of paths) {
-      const response = await send(path, { body: { email, organizationId, role: 'owner' }, cookie });
-      expect(response.status, path).toBe(404);
-    }
-    expect(await prisma.invitation.count({ where: { email } })).toBe(0);
-  });
-
-  it('never returns the Git webhook secret from the organization endpoints', async () => {
+  it('closes every plugin organization endpoint to owners and members without exposing metadata or admitting legacy invitations', async () => {
+    const { ORGANIZATION_DISABLED_PATHS } = await import('./organization-paths');
     const owner = await signInAsOwner();
-    const secret = `webhook-secret-${randomUUID()}`;
-    await prisma.organizationGitWebhookSecret.create({ data: { organizationId: owner.organizationId, secret } });
-    await prisma.organization.update({
-      where: { id: owner.organizationId },
-      data: { metadata: JSON.stringify({ plan: 'free', git: { repo: 'acme/docs' } }) },
-    });
-    const memberEmail = addressFor(`member-${randomUUID()}`);
-    const memberCookie = sessionCookie(await signInWithCode(memberEmail));
-    const memberId = (await readSession(memberCookie))?.user.id as string;
-    await prisma.member.create({ data: { organizationId: owner.organizationId, userId: memberId, role: 'member' } });
-
-    // An organization update cannot put a copy back into member-readable metadata.
-    const updated = await send('/organization/update', {
-      body: { organizationId: owner.organizationId, data: { metadata: { plan: 'free', git: { repo: 'acme/docs', webhookSecret: secret } } } },
-      cookie: owner.cookie,
-    });
-    expect(updated.status).toBe(200);
-    expect(await updated.text()).not.toContain(secret);
-    const stored = await prisma.organization.findUniqueOrThrow({ where: { id: owner.organizationId }, select: { metadata: true } });
-    expect(stored.metadata).toContain('acme/docs');
-    expect(stored.metadata).not.toContain(secret);
-
-    const reads = [
-      send('/organization/list', { cookie: memberCookie }),
-      send(`/organization/get-full-organization?organizationId=${encodeURIComponent(owner.organizationId)}`, { cookie: memberCookie }),
-      send('/organization/set-active', { body: { organizationId: owner.organizationId }, cookie: memberCookie }),
-    ];
-    for (const response of await Promise.all(reads)) {
-      expect(response.status, response.url).toBe(200);
-      const text = await response.text();
-      expect(text).toContain(owner.organizationId);
-      expect(text).not.toContain(secret);
-    }
-  });
-
-  it('never returns a webhook secret still stored in metadata the migration skipped', async () => {
-    const owner = await signInAsOwner();
-    const secret = `webhook-secret-${randomUUID()}`;
-    // Valid JSON that PostgreSQL cannot read as jsonb (a NUL escape and a lone
-    // surrogate), so the data migration leaves its copy in place.
-    const skipped = `{"plan":"free","note":"a\\u0000b","label":"\\ud800","git":{"repo":"acme/docs","webhookSecret":"${secret}"}}`;
-    await prisma.organization.update({ where: { id: owner.organizationId }, data: { metadata: skipped } });
-    const memberCookie = sessionCookie(await signInWithCode(addressFor(`member-${randomUUID()}`)));
-    const memberId = (await readSession(memberCookie))?.user.id as string;
-    await prisma.member.create({ data: { organizationId: owner.organizationId, userId: memberId, role: 'member' } });
-
-    // No settings request has run, so nothing has cleaned this row up.
-    const organizationId = encodeURIComponent(owner.organizationId);
-    const reads = [
-      () => send('/organization/list', { cookie: memberCookie }),
-      () => send(`/organization/get-full-organization?organizationId=${organizationId}`, { cookie: memberCookie }),
-      () => send(`/organization/get-organization?organizationId=${organizationId}`, { cookie: memberCookie }),
-      () => send('/organization/set-active', { body: { organizationId: owner.organizationId }, cookie: memberCookie }),
-      // With the organization active, the same reads without an explicit id.
-      () => send('/organization/get-full-organization', { cookie: memberCookie }),
-    ];
-    for (const read of reads) {
-      const response = await read();
-      expect(response.status, response.url).toBe(200);
-      const text = await response.text();
-      expect(text, response.url).toContain(owner.organizationId);
-      expect(text, response.url).not.toContain(secret);
-    }
-    const stored = await prisma.organization.findUniqueOrThrow({ where: { id: owner.organizationId }, select: { metadata: true } });
-    expect(stored.metadata).toBe(skipped);
+    const email = addressFor('closed-invitee');
+    const id = `closed-invitation-${run}`;
+    await prisma.$executeRaw`INSERT INTO invitation (id, "organizationId", email, role, status, "expiresAt", "inviterId") VALUES (${id}, ${owner.organizationId}, ${email}, 'member', 'pending', now() + interval '1 hour', ${owner.userId})`;
+    const memberCookie = sessionCookie(await signInWithCode(email));
+    for (const cookie of [owner.cookie, memberCookie])
+      for (const path of ORGANIZATION_DISABLED_PATHS) {
+        for (const options of [{ cookie }, { cookie, body: { organizationId: owner.organizationId, invitationId: id, role: 'owner', email } }]) {
+          const response = await send(path, options);
+          expect(response.status, path).toBe(404);
+          expect(await response.text()).not.toContain(owner.organizationId);
+        }
+      }
+    expect((await prisma.invitation.findUniqueOrThrow({ where: { id } })).status).toBe('pending');
+    expect(await prisma.member.count({ where: { organizationId: owner.organizationId, user: { email } } })).toBe(0);
+    for (const path of ['/organization/invite-member/', '/organization//invite-member', '/organization/invite%2Dmember'])
+      expect((await send(path, { cookie: owner.cookie, body: { email, organizationId: owner.organizationId, role: 'owner' } })).status).toBe(404);
   });
 
   it('signs in with an email code, provisions a workspace, reads the session, and signs out', async () => {
@@ -418,6 +289,10 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(current?.user.email).toBe(email);
     const userId = current?.user.id as string;
     expect(await prisma.member.count({ where: { role: 'owner', userId } })).toBe(1);
+    // PR 1 rollback compatibility: the starter website shares its org's data partition.
+    const { organizationId } = await prisma.member.findFirstOrThrow({ where: { role: 'owner', userId } });
+    const starter = await prisma.project.findFirstOrThrow({ where: { organizationId } });
+    expect(starter.dataTenantId).toBe(organizationId);
 
     expect((await send('/sign-out', { body: {}, cookie })).status).toBe(200);
     expect(await readSession(cookie)).toBeNull();

@@ -13,10 +13,15 @@ describe.skipIf(process.env.TENANT_FENCE_INTEGRATION !== '1')('tenant fences wit
     organizationId = `fence-org-${randomUUID()}`;
     projectId = `fence-project-${randomUUID()}`;
     await database.prisma.organization.create({
-      data: { id: organizationId, name: 'Synthetic fence test', projects: { create: { id: projectId, name: 'Synthetic', slug: projectId } } },
+      data: {
+        id: organizationId,
+        name: 'Synthetic fence test',
+        projects: { create: { id: projectId, dataTenantId: organizationId, name: 'Synthetic', slug: projectId } },
+      },
     });
   });
   afterEach(async () => {
+    await database.prisma.project.deleteMany({ where: { id: projectId } });
     await database.prisma.organization.deleteMany({ where: { id: organizationId } });
   });
   afterAll(async () => {
@@ -30,8 +35,12 @@ describe.skipIf(process.env.TENANT_FENCE_INTEGRATION !== '1')('tenant fences wit
       pendingCount: 0,
     });
     expect((await database.prisma.usageStorageMarker.findUnique({ where: { organizationId } }))?.deletionPendingAt).toBeInstanceOf(Date);
-    await database.prisma.organization.delete({ where: { id: organizationId } });
-    expect(await database.prisma.project.findUnique({ where: { id: projectId } })).toBeNull();
+    // PR 1 keeps project → organization Cascade (design §10.1); new code's fence
+    // deletes an organization only once it holds no website.
+    await database.prisma.organization.deleteMany({ where: { id: organizationId, projects: { none: {} } } });
+    expect(await database.prisma.project.count({ where: { id: projectId } })).toBe(1);
+    await database.prisma.project.delete({ where: { id: projectId } });
+    expect(await database.prisma.usageStorageMarker.findUnique({ where: { partitionId: organizationId } })).toBeNull();
   });
 
   it('holds the shared lock through an analytics write and fences subsequent writes', async () => {

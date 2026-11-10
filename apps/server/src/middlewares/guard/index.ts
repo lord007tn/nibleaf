@@ -3,7 +3,8 @@ import type { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import type { Context, MiddlewareHandler } from 'hono';
 import { assertProjectAccess } from '@/actions/projects';
-import { AppError } from '@/errors';
+import { AppError, conflict } from '@/errors';
+import { accessibleProjectIds, assertUsableAccount, resolveOrgAccess } from '@/lib/access';
 import type { HonoEnv } from '@/lib/hono/context';
 
 /** Require a signed-in dashboard user. Suspended accounts are rejected outright:
@@ -15,36 +16,52 @@ export const isAuthenticated: MiddlewareHandler<HonoEnv> = async (ctx, next) => 
   if (!user) {
     throw new AppError({ code: 'auth:no_user', message: 'Authentication required.' });
   }
-  const record = await prisma.user.findUnique({ where: { id: user.id }, select: { suspendedAt: true } });
-  if (record?.suspendedAt) {
-    throw new AppError({
-      code: 'auth:invalid_session',
-      message: 'This account has been suspended. Contact support@nibleaf.com if you believe this is a mistake.',
-    });
-  }
+  await assertUsableAccount(user.id);
   await next();
 };
 
-/** Require the user's role in the active (session) org to be at least `required`.
- *  Used by genuinely org-level routes (workspace settings, account members). */
-export const requireRole =
-  (required: MemberRole): MiddlewareHandler<HonoEnv> =>
+/** Organization authorization always reads the organization from the path. */
+export const requireOrgRole =
+  (required: MemberRole, param = 'organizationId'): MiddlewareHandler<HonoEnv> =>
   async (ctx, next) => {
     const user = ctx.get('user');
-    const organizationId = ctx.get('organizationId');
+    const organizationId = ctx.req.param(param);
     if (!(user && organizationId)) {
       throw new AppError({ code: 'auth:no_user' });
     }
-    const member = await prisma.member.findUnique({
-      where: { organizationId_userId: { organizationId, userId: user.id } },
-    });
-    if (!member) {
-      throw new AppError({ code: 'auth:insufficient_role', message: 'Not a member of this workspace.' });
-    }
-    const role = member.role as MemberRole;
+    const { orgRole } = await resolveOrgAccess(user.id, organizationId);
+    const role = orgRole as MemberRole;
     if (!roleAtLeast(role, required)) {
       throw new AppError({ code: 'auth:insufficient_role' });
     }
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(ctx.req.method)) {
+      const organization = await prisma.organization.findUniqueOrThrow({
+        where: { id: organizationId },
+        select: { needsRepair: true, deletionStartedAt: true },
+      });
+      if (organization.needsRepair || organization.deletionStartedAt) throw conflict('This organization cannot be changed right now.');
+    }
+    ctx.set('membership', { organizationId, role });
+    ctx.set('organizationId', organizationId);
+    await next();
+  };
+
+/** Compatibility for the old 1:1 routes. Callers must identify their website
+ * explicitly; the session's selected organization never authorizes a request. */
+export const requireLegacyProjectRole =
+  (required: MemberRole): MiddlewareHandler<HonoEnv> =>
+  async (ctx, next) => {
+    const user = ctx.get('user');
+    let projectId = ctx.req.param('projectId') ?? ctx.req.query('projectId');
+    if (!user) throw new AppError({ code: 'auth:no_user' });
+    if (!projectId) {
+      const ids = await accessibleProjectIds(user.id);
+      if (ids.length === 1) projectId = ids[0];
+    }
+    if (!projectId) throw new AppError({ code: 'http:bad_request', message: 'Identify a website with projectId.' });
+    const { organizationId, role } = await assertProjectAccess(user.id, projectId);
+    if (!roleAtLeast(role, required)) throw new AppError({ code: 'auth:insufficient_role' });
+    ctx.set('organizationId', organizationId);
     ctx.set('membership', { organizationId, role });
     await next();
   };
@@ -52,7 +69,7 @@ export const requireRole =
 /**
  * Resolve a project's OWN organization (from its `:projectId` / `:id` path param)
  * and the caller's role in it, then pin both onto the request context. This makes
- * access = membership in the site's own org, so every downstream handler that
+ * access uses the effective site role, so every downstream handler that
  * reads `organizationId` is scoped to the project, not the session's active org.
  */
 const resolveProjectOrg = async (ctx: Context<HonoEnv>, paramKey: string): Promise<MemberRole> => {
@@ -86,5 +103,20 @@ export const requireProjectRole =
     if (!roleAtLeast(role, required)) {
       throw new AppError({ code: 'auth:insufficient_role' });
     }
+    await next();
+  };
+
+/** Website actions that §4.2 reserves for the organization (deleting a
+ *  website): the caller must reach the website (else 404) and hold the org
+ *  Owner/Admin role — a site-only Admin grant is not enough (403). */
+export const requireProjectOrgRole =
+  (required: MemberRole, paramKey = 'projectId'): MiddlewareHandler<HonoEnv> =>
+  async (ctx, next) => {
+    await resolveProjectOrg(ctx, paramKey);
+    const user = ctx.get('user');
+    const organizationId = ctx.get('organizationId');
+    if (!(user && organizationId)) throw new AppError({ code: 'auth:no_user' });
+    const { orgRole } = await resolveOrgAccess(user.id, organizationId);
+    if (!roleAtLeast(orgRole as MemberRole, required)) throw new AppError({ code: 'auth:insufficient_role' });
     await next();
   };

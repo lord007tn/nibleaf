@@ -7,6 +7,7 @@ import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
+import { optionalSiteAccess } from '@/lib/access';
 import {
   type CloudflareCustomHostname,
   cloudflareSaasEnabled,
@@ -80,9 +81,7 @@ const alreadyConnected = async (domain: string, projectId: string, userId: strin
     select: { projectId: true, project: { select: { name: true, organizationId: true } } },
   });
   if (holder?.projectId === projectId) return domainError('domain:already_added', 'That domain is already connected to this site.', { domain });
-  const member = holder
-    ? await prisma.member.findFirst({ where: { organizationId: holder.project.organizationId, userId }, select: { id: true } })
-    : null;
+  const member = holder ? await optionalSiteAccess(userId, holder.projectId) : null;
   return holder && member
     ? domainError('domain:already_connected', 'That domain is already connected to another of your sites.', {
         domain,

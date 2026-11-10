@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock('@/lib/access', () => ({
+  accessibleProjectIds: async () =>
+    (await mocks.memberFindMany()).map((m: { organizationId: string }) => m.organizationId.replace('org-', 'project-')),
+}));
+
 vi.mock('@nibleaf/auth/tenant-erasure', () => ({
   eraseProjectOrganization: vi.fn(),
   TenantUsageDeletionPendingError: class extends Error {},
@@ -63,9 +68,9 @@ describe('project page counts', () => {
     const projects = await listProjects('user-1');
 
     expect(mocks.projectFindMany).toHaveBeenCalledWith({
-      where: { organizationId: { in: ['org-a', 'org-b'] } },
+      where: { id: { in: ['project-a', 'project-b'] } },
       orderBy: { updatedAt: 'desc' },
-      include: { _count: { select: { pages: contentPages, deployments: true } } },
+      include: { organization: { select: { id: true, name: true } }, _count: { select: { pages: contentPages, deployments: true } } },
     });
     expect(projects[0]?._count).toEqual({ pages: 58, deployments: 3 });
   });

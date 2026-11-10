@@ -23,19 +23,18 @@ import { getContextMembership, getContextOrganizationIdOrThrow, getContextUserOr
 import { validator } from '@/lib/hono/validate';
 import projectSettingsRoutes from './routes';
 
-// organizationId here is the PROJECT's own org (resolved from :projectId by the
-// guards), so these reuse the org-scoped settings actions but operate per-site.
+// Guards resolve the owning org; website settings always use the explicit projectId.
 const app = new Hono<HonoEnv>()
   .get('/', ...projectSettingsRoutes.get, async (ctx) => {
     // Same scoped DTO as the workspace settings GET: the webhook secret is
     // ADMIN material, and this GET is member-level.
     const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '') }, 200);
+    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '', ctx.req.param('projectId')) }, 200);
   })
   .patch('/', ...projectSettingsRoutes.update, validator('json', updateWorkspaceSettingsBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    await updateWorkspaceSettings(organizationId, ctx.req.valid('json'));
-    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '') }, 200);
+    await updateWorkspaceSettings(organizationId, getContextUserOrThrow().id, ctx.req.valid('json'), ctx.req.param('projectId'));
+    return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '', ctx.req.param('projectId')) }, 200);
   })
   .get('/ai', ...projectSettingsRoutes.update, async (ctx) => ctx.json({ data: await getWorkspaceAi(ctx, ctx.req.param('projectId') ?? '') }, 200))
   .post('/ai/models', ...projectSettingsRoutes.update, validator('json', workspaceAiModelsBody), async (ctx) =>
@@ -69,10 +68,9 @@ const app = new Hono<HonoEnv>()
   })
   // Generate/rotate the push-to-deploy webhook secret. Server-side generation
   // only — the settings PATCH schema cannot set it (see gitConfigSchema note).
-  .post('/git/webhook-secret', ...projectSettingsRoutes.gitWebhookSecret, async (ctx) => {
-    const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: { webhookSecret: await rotateGitWebhookSecret(organizationId) } }, 200);
-  })
+  .post('/git/webhook-secret', ...projectSettingsRoutes.gitWebhookSecret, async (ctx) =>
+    ctx.json({ data: { webhookSecret: await rotateGitWebhookSecret(ctx.req.param('projectId') ?? '') } }, 200),
+  )
   .get('/usage', ...projectSettingsRoutes.usage, async (ctx) => {
     const projectId = ctx.req.param('projectId') ?? '';
     return ctx.json({ data: await getProjectUsageSummary(ctx, projectId) }, 200);

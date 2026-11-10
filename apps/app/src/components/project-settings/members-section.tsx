@@ -1,5 +1,4 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
@@ -30,7 +29,6 @@ import {
   useInviteProjectMember,
   useProjectMembers,
   useRemoveProjectMember,
-  useTransferProjectOwnership,
   useUpdateProjectMemberRole,
 } from '@/hooks/api';
 import { email as validateEmail } from '@/lib/form';
@@ -77,16 +75,12 @@ export function MembersSection({ projectId }: { projectId: string }) {
   const remove = useRemoveProjectMember(projectId);
   const updateRole = useUpdateProjectMemberRole(projectId);
   const cancelInvite = useCancelProjectInvitation(projectId);
-  const transfer = useTransferProjectOwnership(projectId);
-  const confirm = useConfirm();
   const { data: session } = useSession();
 
   const members = data?.members ?? [];
   const invitations = data?.invitations ?? [];
-  // The transfer action is only offered to the current owner (server-enforced too).
   const currentUserId = session?.user?.id;
   const currentMember = members.find((member) => member.user.id === currentUserId);
-  const isCurrentOwner = currentMember?.role === 'owner';
   const canManageMembers = canAdminister(currentMember?.role ?? '');
   const [lastInvite, setLastInvite] = useState<{ email: string; link: string; role: AssignableMemberRole } | null>(null);
   const [memberAction, setMemberAction] = useState<MemberAction | null>(null);
@@ -141,8 +135,13 @@ export function MembersSection({ projectId }: { projectId: string }) {
           { email: invited, role: value.role },
           {
             onSuccess: (created) => {
-              setLastInvite({ email: invited, link: inviteAcceptUrl(created.id), role: value.role });
-              toast.success(t('settings.members.inviteCreated', { email: invited }));
+              if (created.status === 'existing_member') {
+                setLastInvite(null);
+                toast.success(t('settings.members.toast.roleUpdated'));
+              } else {
+                setLastInvite({ email: invited, link: inviteAcceptUrl(created.id), role: value.role });
+                toast.success(t('settings.members.inviteCreated', { email: invited }));
+              }
               form.reset();
               resolve();
             },
@@ -279,49 +278,19 @@ export function MembersSection({ projectId }: { projectId: string }) {
                   <div className="ms-auto flex items-center gap-1.5">
                     {member.role === 'owner' ? (
                       // The single owner: a badge, never a role select — ownership
-                      // only moves via the explicit transfer action below.
+                      // is managed through the organization ownership action.
                       <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 font-medium text-[12px] text-primary">
                         <Crown className="size-3.5" />
                         {t('roles.owner')}
+                        {member.viaOrganization ? ` ? ${t('settings.members.viaOrganization')}` : ''}
                       </span>
-                    ) : !canManageMembers ? (
-                      <span className="text-muted-foreground text-sm">{t(roleLabelKey(member.role))}</span>
+                    ) : !canManageMembers || member.viaOrganization ? (
+                      <span className="text-muted-foreground text-sm">
+                        {t(roleLabelKey(member.role))}
+                        {member.viaOrganization ? ` ? ${t('settings.members.viaOrganization')}` : ''}
+                      </span>
                     ) : (
                       <>
-                        {isCurrentOwner && member.role === 'admin' ? (
-                          <Button
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label={t('settings.members.transferOwnership')}
-                            title={t('settings.members.transferOwnership')}
-                            loading={transfer.isPending && transfer.variables?.memberId === member.id}
-                            onClick={async () => {
-                              const ok = await confirm({
-                                title: t('settings.members.transferOwnership'),
-                                description: t('settings.members.transferConfirm', { name: member.user.name || member.user.email }),
-                                confirmLabel: t('settings.members.transferOwnership'),
-                                destructive: true,
-                              });
-                              if (!ok) {
-                                return;
-                              }
-                              transfer.mutate(
-                                { memberId: member.id },
-                                {
-                                  onSuccess: () => toast.success(t('settings.members.toast.ownershipTransferred')),
-                                  onError: (error) =>
-                                    toast.error(
-                                      friendlyErrorMessage(t, error, 'settings.members.toast.transferError', {
-                                        409: 'settings.members.toast.transferError',
-                                      }),
-                                    ),
-                                },
-                              );
-                            }}
-                          >
-                            <Crown className="size-4" />
-                          </Button>
-                        ) : null}
                         {/* A role this version doesn't know: say so, rather than an empty picker. */}
                         {isKnownRole(member.role) ? null : <span className="text-muted-foreground text-sm">{t('roles.unknown')}</span>}
                         <RoleSelect

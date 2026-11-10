@@ -51,6 +51,8 @@ model User {
   oauthConsents      OauthConsent[]
   mcpOAuthGrants     McpOAuthGrant[]
   siteMemberSessions SiteMemberSession[]
+  preference      UserPreference?
+  joinLinkRedemptions JoinLinkRedemption[]
 
   @@map("user")
 }
@@ -115,7 +117,9 @@ model Verification {
 model Organization {
   id        String   @id @default(cuid())
   name      String
-  slug      String?  @unique
+  slug      String   @unique @default(cuid())
+  needsRepair Boolean @default(false)
+  deletionStartedAt DateTime?
   logo      String?
   metadata  String?
   createdAt DateTime @default(now())
@@ -124,9 +128,8 @@ model Organization {
   invitations Invitation[]
   joinLinks   JoinLink[]
   projects    Project[]
+  handles     OrganizationHandle[]
   usagePlan          OrganizationUsagePlan?
-  usageStorageMarker UsageStorageMarker?
-  usageIngestCheckpoints UsageIngestCheckpoint[]
   gitWebhookSecret       OrganizationGitWebhookSecret?
 
   @@map("organization")
@@ -225,7 +228,9 @@ model OrganizationUsagePlan {
 /// provider payload, credentials, customer ids, subscription ids, or prices.
 model UsageProviderCheckpoint {
   id               String       @id @default(cuid())
-  organizationId   String
+  organizationId   String // Historical source partition; never repointed on org moves.
+  projectId        String?
+  billingOrganizationId String?
   provider         String
   reconciliationId String       @unique
   meterKey         String
@@ -248,8 +253,10 @@ model UsageProviderCheckpoint {
 /// Relational evidence that this tenant has written ClickHouse usage facts at
 /// least once. Privacy erasure consults it even when analytics is later disabled.
 model UsageStorageMarker {
-  organizationId String       @id
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @id // Legacy partition mirror, deliberately no org FK.
+  partitionId    String       @unique
+  projectId      String       @unique
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   firstEnqueuedAt DateTime    @default(now())
   lastEnqueuedAt  DateTime    @default(now())
   lastWrittenAt   DateTime?
@@ -264,7 +271,7 @@ model UsageStorageMarker {
 model UsageIngestCheckpoint {
   id             String       @id
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partitionId    String
   projectId      String
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   firstOccurredAt DateTime
@@ -279,6 +286,7 @@ model UsageIngestCheckpoint {
   updatedAt      DateTime     @updatedAt
 
   @@index([organizationId, writtenAt])
+  @@index([partitionId, writtenAt])
   @@index([projectId, writtenAt, firstOccurredAt, lastOccurredAt], map: "usage_ingest_project_pending_period_idx")
   @@map("usage_ingest_checkpoint")
 }
@@ -290,11 +298,87 @@ model Member {
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           String       @default("member")
+  orgRole        String       @default("__legacy__")
+  legacyWriter   Boolean      @default(false)
+  projectGrants  ProjectMember[]
   createdAt      DateTime     @default(now())
 
   @@unique([organizationId, userId])
   @@index([userId])
   @@map("member")
+}
+
+model ProjectMember {
+  id             String @id @default(cuid())
+  organizationId String
+  projectId      String
+  userId         String
+  role           String
+  createdById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  member         Member @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([organizationId, userId])
+  @@map("project_member")
+}
+
+model InvitationGrant {
+  invitationId   String
+  organizationId String
+  projectId      String
+  role           String
+  invitation     Invitation @relation(fields: [invitationId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([invitationId, projectId])
+  @@map("invitation_grant")
+}
+
+model JoinLinkGrant {
+  joinLinkId     String
+  organizationId String
+  projectId      String
+  role           String
+  joinLink       JoinLink @relation(fields: [joinLinkId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+  project        Project @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([joinLinkId, projectId])
+  @@map("join_link_grant")
+}
+
+model JoinLinkRedemption {
+  joinLinkId String
+  userId     String
+  createdAt  DateTime @default(now())
+  joinLink   JoinLink @relation(fields: [joinLinkId], references: [id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([joinLinkId, userId])
+  @@map("join_link_redemption")
+}
+
+model OrganizationHandle {
+  slug           String @id
+  organizationId String
+  current        Boolean
+  createdAt      DateTime @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_handle")
+}
+
+model UserPreference {
+  userId             String @id
+  lastOrganizationId String?
+  recentProjectIds   String[] @default([])
+  notifications      Json @default("{}")
+  updatedAt          DateTime @updatedAt
+  user               User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preference")
 }
 
 model Invitation {
@@ -303,12 +387,17 @@ model Invitation {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String
   role           String?
+  kind           String       @default("__legacy__")
+  orgRole        String       @default("__legacy__")
+  legacyWriter   Boolean      @default(false)
+  grants         InvitationGrant[]
   status         String       @default("pending")
   expiresAt      DateTime
   inviterId      String
   inviter        User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
   createdAt      DateTime     @default(now())
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("invitation")
 }
@@ -326,6 +415,10 @@ model JoinLink {
   label          String?
   /// Role granted on join: viewer | member | admin. Never owner.
   role           String        @default("member")
+  orgRole        String        @default("__legacy__")
+  legacyWriter   Boolean       @default(false)
+  grants         JoinLinkGrant[]
+  redemptions    JoinLinkRedemption[]
   /// Lower-case email domain the joiner's verified address must use, or null for any.
   allowedDomain  String?
   maxUses        Int?
@@ -338,6 +431,7 @@ model JoinLink {
   updatedAt      DateTime      @updatedAt
   uses           JoinLinkUse[]
 
+  @@unique([id, organizationId])
   @@index([organizationId])
   @@map("join_link")
 }
@@ -642,10 +736,17 @@ enum OpenApiSourceType {
 /// A documentation site.
 model Project {
   id             String            @id @default(cuid())
-  // Each site owns its own Organization (1:1) — that org IS the site's member
-  // boundary, so members/roles/invitations are per-site. See provisionSiteOrg.
-  organizationId String            @unique
+  organizationId String
+  /// Cascade until the contract PR: the previous release deletes the org and
+  /// expects its website to go with it. New code deletes an org only once it
+  /// holds no website (the erasure fence in @nibleaf/auth/tenant-erasure).
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        ProjectMember[]
+  invitationGrants InvitationGrant[]
+  joinLinkGrants  JoinLinkGrant[]
+  /// PR 1: every production creator passes the org id explicitly (rollback
+  /// readers query by organizationId); PR 2 lets new websites use this default.
+  dataTenantId   String            @unique @default(cuid())
   name           String
   slug           String
   description    String?
@@ -699,6 +800,10 @@ model Project {
   gitPreviews     GitPreview[]
   searchIndexRuns SearchIndexRun[]
   usageIngestCheckpoints UsageIngestCheckpoint[]
+  usageStorageMarker UsageStorageMarker?
+  gitSettings ProjectGitSettings?
+  gitWebhookSecret ProjectGitWebhookSecret?
+  legacySettings ProjectLegacySettings?
   addons          ProjectAddon[]
   addonAuditEvents ProjectAddonAuditEvent[]
   integrations                  ProjectIntegration[]
@@ -711,6 +816,8 @@ model Project {
 
   @@unique([organizationId, slug])
   @@unique([slug])
+  @@unique([id, organizationId])
+  @@index([organizationId])
   @@map("project")
 }
 
@@ -1911,6 +2018,7 @@ model Notification {
   id        String    @id @default(cuid())
   userId    String
   projectId String?
+  organizationId String?
   type      String
   title     String
   body      String?
@@ -1943,4 +2051,41 @@ model AnalyticsEvent {
   @@index([projectId, createdAt])
   @@index([projectId, type])
   @@map("analytics_event")
+}
+
+/// Website-owned one-way Git configuration. Secret material has its own table.
+model ProjectGitSettings {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  settings Json @default("{}")
+  @@map("project_git_settings")
+}
+
+model ProjectGitWebhookSecret {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  secret String
+  @@map("project_git_webhook_secret")
+}
+
+/// Server-only legacy website metadata, including unclassified keys.
+model ProjectLegacySettings {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  metadata Json @default("{}")
+  @@map("project_legacy_settings")
+}
+
+/// Operator-only, transactional merge undo log. No auth/secret-bearing rows.
+model OrgMergeJournal {
+  runId String @map("run_id")
+  seq BigInt @id @default(autoincrement())
+  groupKey String @map("group_key")
+  tableName String @map("table_name")
+  rowId String @map("row_id")
+  before Json?
+  after Json?
+
+  @@index([runId, groupKey])
+  @@map("org_merge_journal")
 }

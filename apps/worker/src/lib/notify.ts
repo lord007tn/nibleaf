@@ -34,7 +34,14 @@ async function createDeploymentNotifications(
   organizationId: string,
   opts: { deploymentId: string; projectId: string; projectName: string; version: number; outcome: 'ready' | 'failed'; error?: string },
 ): Promise<void> {
-  const members = await prisma.member.findMany({ where: { organizationId }, select: { userId: true } });
+  const members = await prisma.member.findMany({
+    where: {
+      organizationId,
+      user: { banned: false, suspendedAt: null },
+      OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId: opts.projectId } } }],
+    },
+    select: { userId: true },
+  });
   if (members.length === 0) {
     return;
   }
@@ -108,7 +115,14 @@ export async function notifyDeployment(opts: {
   if (opts.outcome === 'ready' && opts.recovery) {
     // A bell announcement may have succeeded before another channel failed.
     // Do not repeat it after the retained email jobs have been evicted.
-    const members = await prisma.member.findMany({ where: { organizationId: project.organizationId }, select: { userId: true } });
+    const members = await prisma.member.findMany({
+      where: {
+        organizationId: project.organizationId,
+        user: { banned: false, suspendedAt: null },
+        OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId: opts.projectId } } }],
+      },
+      select: { userId: true },
+    });
     const existing = await prisma.notification.findFirst({
       where: { id: { in: members.map((member) => deploymentNotificationId(opts, member.userId)) } },
       select: { id: true },
@@ -118,10 +132,14 @@ export async function notifyDeployment(opts: {
   const deliveries: Promise<unknown>[] = [createDeploymentNotifications(project.organizationId, opts)];
   const emailDelivery = async () => {
     const members = await prisma.member.findMany({
-      where: { organizationId: project.organizationId, role: { in: ['owner', 'admin'] } },
-      select: { user: { select: { email: true } } },
+      where: {
+        organizationId: project.organizationId,
+        user: { banned: false, suspendedAt: null },
+        OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId: opts.projectId, role: 'admin' } } }],
+      },
+      select: { userId: true, user: { select: { email: true } } },
     });
-    const recipients = [...new Set(members.map((m) => m.user.email).filter(Boolean))];
+    const recipients = members.filter((member) => member.user.email);
     if (recipients.length === 0) {
       return;
     }
@@ -134,10 +152,19 @@ export async function notifyDeployment(opts: {
       language: resolveEmailLanguage(opts.locale),
     });
     const queued = await Promise.allSettled(
-      recipients.map((to) =>
+      recipients.map(({ userId, user: { email: to } }) =>
         createJob(
           QueueNames.EMAIL,
-          { name: 'send-email', data: { to, subject: email.subject, html: email.html, text: email.text } },
+          {
+            name: 'send-email',
+            data: {
+              to,
+              subject: email.subject,
+              html: email.html,
+              text: email.text,
+              teamAccess: { userId, projectId: opts.projectId, minimumRole: 'admin', notificationId },
+            },
+          },
           { jobId: deploymentNotificationId(opts, to) },
         ),
       ),

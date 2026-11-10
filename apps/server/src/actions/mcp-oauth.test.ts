@@ -22,6 +22,10 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+vi.mock('@/lib/access', () => ({
+  accessibleProjectIds: async () => ['p-member', 'p-owner'],
+  resolveSiteAccess: async (_user: string, id: string) => ({ role: id === 'p-owner' ? 'owner' : 'member' }),
+}));
 vi.mock('@nibleaf/auth/mcp-oauth', () => ({ MCP_OAUTH_PENDING_GRANT_TTL_MS: 15 * 60_000, readSignedOAuthQuery: mocks.readSignedOAuthQuery }));
 vi.mock('@/env', () => ({ env: { BETTER_AUTH_SECRET: 'test-secret-that-is-at-least-32-characters' } }));
 vi.mock('./projects', () => ({ assertProjectAccess: mocks.assertProjectAccess, assertProjectInOrg: mocks.assertProjectInOrg }));
@@ -30,6 +34,14 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     session: { findUnique: mocks.sessionFindUnique },
     oauthClient: { findUnique: mocks.clientFindUnique },
+    project: {
+      findMany: async () =>
+        (await mocks.memberFindMany())
+          .filter((m: { role: string }) => m.role !== 'unknown')
+          .flatMap((m: { role: string; organization: { name: string; projects: { id: string }[] } }) =>
+            m.organization.projects.map((p) => ({ ...p, organization: { id: `org-${m.role}`, name: m.organization.name } })),
+          ),
+    },
     member: { findMany: mocks.memberFindMany },
     mcpOAuthGrant: { findFirst: mocks.grantFindFirst, findMany: mocks.grantFindMany },
     $queryRaw: mocks.queryRaw,
@@ -124,12 +136,21 @@ describe('MCP OAuth project choice', () => {
     const authorization = await getMcpOAuthAuthorization(user, session, 'signed');
     expect(authorization.projects).toEqual([
       // Same-named projects stay distinguishable by workspace and address.
-      { id: 'p-member', name: 'Docs', slug: 'docs', workspace: 'Acme', role: 'member', presets: ['read_only', 'support_writer'] },
+      {
+        id: 'p-member',
+        name: 'Docs',
+        slug: 'docs',
+        workspace: 'Acme',
+        organization: { id: 'org-member', name: 'Acme' },
+        role: 'member',
+        presets: ['read_only', 'support_writer'],
+      },
       {
         id: 'p-owner',
         name: 'Docs',
         slug: 'docs-2',
         workspace: 'My workspace',
+        organization: { id: 'org-owner', name: 'My workspace' },
         role: 'owner',
         presets: ['read_only', 'support_writer', 'full_admin'],
       },

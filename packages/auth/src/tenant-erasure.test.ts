@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   projectFindUnique: vi.fn(),
   markerFindUnique: vi.fn(),
   checkpointUpdateMany: vi.fn(),
-  organizationDelete: vi.fn(),
+  projectDelete: vi.fn(),
 }));
 
 vi.mock('@nibleaf/bullmq', () => ({
@@ -30,19 +30,18 @@ vi.mock('@nibleaf/clickhouse', () => ({
 vi.mock('@nibleaf/database', () => ({
   beginUsageDeletion: mocks.beginUsageDeletion,
   prisma: {
-    project: { findUnique: mocks.projectFindUnique },
+    project: { findUnique: mocks.projectFindUnique, delete: mocks.projectDelete },
     usageStorageMarker: { findUnique: mocks.markerFindUnique },
     usageProviderCheckpoint: { updateMany: mocks.checkpointUpdateMany },
-    organization: { delete: mocks.organizationDelete },
   },
 }));
 
-import { eraseProjectOrganization, TenantUsageDeletionPendingError } from './tenant-erasure';
+import { eraseProject, TenantUsageDeletionPendingError } from './tenant-erasure';
 
 describe('shared tenant privacy erasure', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a' });
+    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-after-move', dataTenantId: 'org-a' });
     mocks.beginUsageDeletion.mockResolvedValue({ exists: true, hadStorageMarker: true, pendingCount: 0 });
     mocks.deleteProjectAnalytics.mockResolvedValue(undefined);
     mocks.deleteProjectAiConversations.mockResolvedValue(undefined);
@@ -51,19 +50,19 @@ describe('shared tenant privacy erasure', () => {
     mocks.getJob.mockResolvedValue(undefined);
     mocks.removeJob.mockResolvedValue(true);
     mocks.checkpointUpdateMany.mockResolvedValue({ count: 0 });
-    mocks.organizationDelete.mockResolvedValue({ id: 'org-a' });
+    mocks.projectDelete.mockResolvedValue({ id: 'org-a' });
   });
 
   it('fails closed before ClickHouse, search, or relational deletion while usage is pending', async () => {
     mocks.beginUsageDeletion.mockResolvedValue({ exists: true, hadStorageMarker: true, pendingCount: 1 });
-    await expect(eraseProjectOrganization('org-a', 'project-a')).rejects.toBeInstanceOf(TenantUsageDeletionPendingError);
+    await expect(eraseProject('project-a')).rejects.toBeInstanceOf(TenantUsageDeletionPendingError);
     expect(mocks.deleteProjectUsage).not.toHaveBeenCalled();
     expect(mocks.createJob).not.toHaveBeenCalled();
-    expect(mocks.organizationDelete).not.toHaveBeenCalled();
+    expect(mocks.projectDelete).not.toHaveBeenCalled();
   });
 
   it('tombstones retained facts, queues search and storage erasure, then deletes relational scope', async () => {
-    await eraseProjectOrganization('org-a', 'project-a');
+    await eraseProject('project-a');
     expect(mocks.deleteProjectUsage).toHaveBeenCalledWith('org-a', 'project-a');
     expect(mocks.createJob).toHaveBeenCalledTimes(2);
     expect(mocks.createJob).toHaveBeenCalledWith(
@@ -77,18 +76,18 @@ describe('shared tenant privacy erasure', () => {
       { jobId: 'erase-storage-project-a', delay: 60_000 },
     );
     expect(mocks.deleteProjectUsage).toHaveBeenCalledBefore(mocks.createJob);
-    expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.organizationDelete.mock.invocationCallOrder[0] ?? 0);
+    expect(Math.max(...mocks.createJob.mock.invocationCallOrder)).toBeLessThan(mocks.projectDelete.mock.invocationCallOrder[0] ?? 0);
   });
 
   it('never deletes the relational scope when storage erasure cannot be queued', async () => {
     mocks.createJob.mockRejectedValueOnce(new Error('queue unavailable'));
-    await expect(eraseProjectOrganization('org-a', 'project-a')).rejects.toThrow('queue unavailable');
-    expect(mocks.organizationDelete).not.toHaveBeenCalled();
+    await expect(eraseProject('project-a')).rejects.toThrow('queue unavailable');
+    expect(mocks.projectDelete).not.toHaveBeenCalled();
   });
 
   it('replaces only a failed storage erasure job when deletion is retried', async () => {
     mocks.getJob.mockResolvedValue({ isFailed: async () => true });
-    await eraseProjectOrganization('org-a', 'project-a');
+    await eraseProject('project-a');
     expect(mocks.getJob).toHaveBeenCalledExactlyOnceWith('erasure', 'erase-storage-project-a');
     expect(mocks.removeJob).toHaveBeenCalledExactlyOnceWith('erasure', 'erase-storage-project-a');
     expect(mocks.removeJob).toHaveBeenCalledBefore(mocks.createJob);
@@ -96,7 +95,7 @@ describe('shared tenant privacy erasure', () => {
 
   it('leaves a waiting, delayed, or active storage erasure job alone', async () => {
     mocks.getJob.mockResolvedValue({ isFailed: async () => false });
-    await eraseProjectOrganization('org-a', 'project-a');
+    await eraseProject('project-a');
     expect(mocks.removeJob).not.toHaveBeenCalled();
     expect(mocks.createJob).toHaveBeenCalledWith(
       'erasure',

@@ -25,7 +25,8 @@ import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { arrivingThroughJoinLink, revokeJoinLinksBeyondRole } from './join-links';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
-import { organizationMetadataResponseFilter, stripServerOnlyOrganizationMetadata } from './organization-metadata';
+import { organizationMetadataResponseFilter } from './organization-metadata';
+import { ORGANIZATION_DISABLED_PATHS } from './organization-paths';
 import { googleOAuthEnabled } from './providers';
 import {
   STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT,
@@ -51,8 +52,8 @@ const safeEmailError = (error: unknown) => ({
 });
 
 /** Queue a transactional email; delivery is best-effort (logged without a sender). */
-const sendMail = (to: string, email: RenderedEmail) =>
-  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email } }).catch((error) => {
+const sendMail = (to: string, email: RenderedEmail, teamAccess?: SendEmailJobData['teamAccess']) =>
+  createJob(QueueNames.EMAIL, { name: 'send-email', data: { to, ...email, ...(teamAccess ? { teamAccess } : {}) } }).catch((error) => {
     log.warn({ error: safeEmailError(error) }, 'transactional email enqueue failed');
   });
 
@@ -456,9 +457,11 @@ async function createStarterProject(organizationId: string, actorUserId: string)
       const slug = attempt < 4 ? await uniqueStarterSlug() : `docs-${Date.now().toString(36)}`;
       try {
         return await prisma.$transaction(async (tx) => {
+          // PR 1: the website partition stays equal to its 1:1 org (rollback compatibility).
           const project = await tx.project.create({
             data: {
               organizationId,
+              dataTenantId: organizationId,
               name: 'Documentation',
               slug,
               description: 'Your first documentation site.',
@@ -626,9 +629,11 @@ type JoinedOrganization = { id: string; name: string; metadata?: string | null }
  */
 export async function notifyMemberJoined({
   organization: org,
+  projectId,
   userId,
   user,
 }: {
+  projectId: string;
   organization: JoinedOrganization;
   userId: string;
   user: { name?: string | null; email?: string | null };
@@ -638,16 +643,22 @@ export async function notifyMemberJoined({
       return;
     }
     const who = user.name || user.email || 'A new member';
-    const project = await prisma.project.findFirst({
-      where: { organizationId: org.id },
+    const project = await prisma.project.findUnique({
+      where: { id: projectId, organizationId: org.id },
       select: { id: true, languages: { where: { isDefault: true }, select: { code: true }, take: 1 } },
     });
-    const language = resolveEmailLanguage(project?.languages[0]?.code);
+    if (!project) return;
+    const language = resolveEmailLanguage(project.languages[0]?.code);
     // In-app bell: every existing member sees the join (the email below stays
     // admin-only). Each site owns its org 1:1, so the org's project is the link target.
     try {
       const others = await prisma.member.findMany({
-        where: { organizationId: org.id, userId: { not: userId } },
+        where: {
+          organizationId: org.id,
+          userId: { not: userId },
+          user: { banned: false, suspendedAt: null },
+          OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId } } }],
+        },
         select: { userId: true },
       });
       const notificationT = createEmailTranslator(language);
@@ -667,15 +678,26 @@ export async function notifyMemberJoined({
       // in-app inbox is best-effort; fall through to the email
     }
     const admins = await prisma.member.findMany({
-      where: { organizationId: org.id, role: { in: ['owner', 'admin'] }, userId: { not: userId } },
-      select: { user: { select: { email: true } } },
+      where: {
+        organizationId: org.id,
+        userId: { not: userId },
+        user: { banned: false, suspendedAt: null },
+        OR: [{ orgRole: { in: ['owner', 'admin'] } }, { orgRole: 'member', projectGrants: { some: { projectId, role: 'admin' } } }],
+      },
+      select: { userId: true, user: { select: { email: true } } },
     });
     const email = await renderMemberJoinedEmail({
       memberName: who,
       organizationName: org.name,
       language,
     });
-    await Promise.all(admins.map((admin) => (admin.user.email ? sendMail(admin.user.email, email) : undefined)));
+    await Promise.all(
+      admins.map((admin) =>
+        admin.user.email
+          ? sendMail(admin.user.email, email, { userId: admin.userId, projectId, minimumRole: 'admin', notificationId: 'member_joined' })
+          : undefined,
+      ),
+    );
   } catch {
     // never block the join
   }
@@ -712,10 +734,11 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
           slug: `${slugify(user.email.split('@')[0] ?? 'workspace')}-${Date.now().toString(36)}`,
         },
       });
+      await tx.organizationHandle.create({ data: { slug: organization.slug, organizationId: organization.id, current: true } });
       await assignDefaultUsagePlan(tx, organization.id);
       return organization;
     });
-    await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner' } });
+    await prisma.member.create({ data: { organizationId: org.id, userId: user.id, role: 'owner', orgRole: 'owner' } });
     await logPlatformEvent('signup_completed', { userId: user.id });
     const project = await createStarterProject(org.id, user.id);
     if (project) {
@@ -730,9 +753,9 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
 
 const authInstance = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
-  // Invitations go through `inviteMember`, which enforces the single-owner and
-  // role rules. Better Auth's endpoint would let an owner invite a second owner.
-  disabledPaths: ['/organization/invite-member', ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
+  // Organization access and admissions use our resource-addressed APIs.
+  // No plugin read or write may bypass those guards or expose organization metadata.
+  disabledPaths: [...ORGANIZATION_DISABLED_PATHS, ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
   hooks: { after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
@@ -779,8 +802,8 @@ const authInstance = betterAuth({
       beforeDelete: async (user) => {
         // A deleted account's join links stop working (createdById becomes null
         // and authorizes nothing); disable them so admins see that too.
-        await revokeJoinLinksBeyondRole(prisma, null, user.id, null);
         await reassignOrDeleteOrgs(user.id);
+        await revokeJoinLinksBeyondRole(prisma, null, user.id, null);
       },
     },
   },
@@ -823,43 +846,6 @@ const authInstance = betterAuth({
       // Workspaces are erased only through eraseProjectOrganization (analytics, search,
       // storage, usage); the plugin's own delete endpoint would skip all of it.
       disableOrganizationDeletion: true,
-      organizationHooks: {
-        // Organization metadata is readable by every member; server-only
-        // fields are never accepted into it.
-        beforeUpdateOrganization: stripServerOnlyOrganizationMetadata,
-        // Single-owner invariant, enforced even through better-auth's OWN
-        // update-member-role endpoint: `owner` can never be granted here, and
-        // the current owner's role can only change via the dedicated
-        // transfer-ownership endpoint (which swaps roles atomically).
-        beforeUpdateMemberRole: async ({ member, newRole }) => {
-          if (newRole.split(',').some((role) => role.trim() === 'owner')) {
-            throw new APIError('BAD_REQUEST', { message: 'Ownership is granted only via transfer-ownership.' });
-          }
-          if (member.role === 'owner') {
-            throw new APIError('BAD_REQUEST', { message: 'The owner role can only change via transfer-ownership.' });
-          }
-        },
-        afterCreateOrganization: async ({ organization: org, member }) => {
-          const project = await createStarterProject(org.id, member.userId).catch(() => null);
-          if (project) {
-            await publishStarterSite(project.id, member.userId);
-          }
-        },
-        // Someone accepted an invite (members added via the org API → joins). Tell the
-        // workspace's existing owners/admins, unless `member_joined` is disabled.
-        // Better Auth's own member endpoints: a removed or demoted member's join
-        // links stop granting more than they now can (the join-time creator
-        // check already refuses them; this keeps the admin list truthful).
-        afterRemoveMember: async ({ member, organization: org }) => {
-          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, null).catch(() => undefined);
-        },
-        afterUpdateMemberRole: async ({ member, organization: org }) => {
-          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, member.role).catch(() => undefined);
-        },
-        afterAddMember: async ({ member, user, organization: org }) => {
-          await notifyMemberJoined({ organization: org as JoinedOrganization, userId: member.userId, user });
-        },
-      },
     }),
     ...(mcpOAuth ? mcpOAuthPlugins(mcpOAuth) : []),
     // Every organization response is filtered, so metadata rows the API has

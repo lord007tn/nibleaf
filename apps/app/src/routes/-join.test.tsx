@@ -65,7 +65,7 @@ import { Route } from './join.$token';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const PageComponent = Route.options.component as ComponentType;
-const preview = { siteName: 'Acme Docs', role: 'viewer', allowedDomain: null as string | null };
+const preview = { grants: [{ name: 'Acme Docs', role: 'viewer' }], siteName: 'Acme Docs', role: 'viewer', allowedDomain: null as string | null };
 
 describe('join page', () => {
   let container: HTMLDivElement;
@@ -142,7 +142,7 @@ describe('join page', () => {
     expect(mocks.join).toHaveBeenCalledWith(TOKEN, expect.anything());
     const [, options] = mocks.join.mock.calls[0] as [string, { onSuccess: (result: unknown) => void }];
     await act(async () => {
-      options.onSuccess({ status: 'joined', projectId: 'site-9', role: 'viewer' });
+      options.onSuccess({ organizationId: 'org-1', landing: { projectId: 'site-9' } });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(mocks.toastSuccess).toHaveBeenCalledWith('join.joinedToast:Acme Docs');
@@ -158,10 +158,10 @@ describe('join page', () => {
     await act(async () => join?.click());
     const [, options] = mocks.join.mock.calls[0] as [string, { onSuccess: (result: unknown) => void }];
     await act(async () => {
-      options.onSuccess({ status: 'already_member', projectId: 'site-9', role: 'admin' });
+      options.onSuccess({ organizationId: 'org-1', landing: { projectId: 'site-9' } });
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('join.alreadyMemberToast:Acme Docs');
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('join.joinedToast:Acme Docs');
   });
 
   it('explains a domain mismatch and offers another account', async () => {

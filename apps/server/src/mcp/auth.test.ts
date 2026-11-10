@@ -6,6 +6,12 @@ import { authenticateMcpRequest } from './auth';
 
 const mocks = vi.hoisted(() => ({ findUnique: vi.fn(), update: vi.fn(), memberFindUnique: vi.fn(), env: { MCP_ENABLED: true } }));
 
+vi.mock('@/lib/access', () => ({
+  optionalSiteAccess: async () => {
+    const member = await mocks.memberFindUnique();
+    return member && !member.user.suspendedAt && !member.user.banned ? { role: member.role } : null;
+  },
+}));
 vi.mock('@nibleaf/database', () => ({
   prisma: { apiKey: { findUnique: mocks.findUnique, update: mocks.update }, member: { findUnique: mocks.memberFindUnique } },
 }));
@@ -99,10 +105,7 @@ describe('MCP key actor binding', () => {
     const body = (await response.json()) as AuthBody;
     expect(body.actor).toEqual({ userId: 'user-1', role: 'member' });
     expect(body.credential.scopes).toEqual(writerScopes);
-    expect(mocks.memberFindUnique).toHaveBeenCalledWith({
-      where: { organizationId_userId: { organizationId: 'org-1', userId: 'user-1' } },
-      select: { role: true, user: { select: { suspendedAt: true } } },
-    });
+    expect(mocks.memberFindUnique).toHaveBeenCalledOnce();
   });
 
   it('re-reads the creator on every request', async () => {

@@ -19,6 +19,7 @@ describe.skipIf(process.env.PEOPLE_INTEGRATION !== '1')('People page and invite 
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {
@@ -38,7 +39,14 @@ describe.skipIf(process.env.PEOPLE_INTEGRATION !== '1')('People page and invite 
     const project = await db.prisma.project.create({ data: { organizationId: organization.id, name: `${label} ${run}`, slug: id } });
     return { organizationId: organization.id, projectId: project.id };
   };
-  const add = (organizationId: string, userId: string, role: string) => db.prisma.member.create({ data: { organizationId, userId, role } });
+  const add = async (organizationId: string, userId: string, role: string) => {
+    const member = await db.prisma.member.create({
+      data: { organizationId, userId, orgRole: role === 'owner' ? 'owner' : 'member', role: role === 'owner' ? 'owner' : 'viewer' },
+    });
+    const project = await db.prisma.project.findFirstOrThrow({ where: { organizationId } });
+    if (role !== 'owner') await db.prisma.projectMember.create({ data: { organizationId, projectId: project.id, userId, role } });
+    return member;
+  };
 
   it('lists only the sites the caller administers, with each person role per site, and suggests only from them', async () => {
     const me = await person('Ada Admin');
@@ -59,7 +67,10 @@ describe.skipIf(process.env.PEOPLE_INTEGRATION !== '1')('People page and invite 
       data: {
         organizationId: administered.organizationId,
         email: `pending-${run}@nibleaf.test`,
-        role: MemberRole.VIEWER,
+        role: 'viewer',
+        orgRole: 'member',
+        kind: 'member',
+        grants: { create: { projectId: administered.projectId, role: 'viewer' } },
         status: 'pending',
         expiresAt: new Date(Date.now() + 86_400_000),
         inviterId: me.id,
@@ -190,17 +201,24 @@ describe.skipIf(process.env.PEOPLE_INTEGRATION !== '1')('People page and invite 
     const here = await site('invites');
     await add(here.organizationId, me.id, MemberRole.OWNER);
     const extra = 2;
-    await db.prisma.invitation.createMany({
-      data: Array.from({ length: people.MAX_PEOPLE_INVITATIONS + extra }, (_, index) => ({
-        organizationId: here.organizationId,
-        email: `invitee-${index}-${run}@nibleaf.test`,
-        role: MemberRole.VIEWER,
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 86_400_000),
-        inviterId: me.id,
-        createdAt: new Date(Date.now() - index * 1000),
-      })),
-    });
+    await Promise.all(
+      Array.from({ length: people.MAX_PEOPLE_INVITATIONS + extra }, (_, index) =>
+        db.prisma.invitation.create({
+          data: {
+            organizationId: here.organizationId,
+            email: `invitee-${index}-${run}@nibleaf.test`,
+            role: 'viewer',
+            orgRole: 'member',
+            kind: 'member',
+            grants: { create: { projectId: here.projectId, role: 'viewer' } },
+            status: 'pending',
+            expiresAt: new Date(Date.now() + 86_400_000),
+            inviterId: me.id,
+            createdAt: new Date(Date.now() - index * 1000),
+          },
+        }),
+      ),
+    );
     const first = await people.listPeople(me.id, { limit: 1 });
     expect(first.invitations).toHaveLength(people.MAX_PEOPLE_INVITATIONS);
     expect(first.invitationsTotal).toBe(people.MAX_PEOPLE_INVITATIONS + extra);

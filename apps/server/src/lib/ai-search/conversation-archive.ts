@@ -176,7 +176,7 @@ export const buildAiFeedbackRow = (c: ChatFeedbackCapture) => {
 const record = async (c: ChatFeedbackCapture | ChatTurnCapture, kind: 'ai-conversation-turn' | 'ai-conversation-feedback') => {
   try {
     if (keys().ANALYTICS_MODE === 'disabled') return;
-    const marker = await markAnalyticsStoragePending(c.tenantId);
+    const marker = await markAnalyticsStoragePending(c.tenantId, c.projectId);
     if (!marker.accepted) return;
     const key = resolveAiConversationTransportKey({ ...env, ANALYTICS_HASH_SALT: keys().ANALYTICS_HASH_SALT });
     const row = kind === 'ai-conversation-turn' ? buildAiTurnRow(c as ChatTurnCapture) : buildAiFeedbackRow(c as ChatFeedbackCapture);

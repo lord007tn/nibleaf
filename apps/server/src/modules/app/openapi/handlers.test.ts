@@ -10,6 +10,14 @@ const mocks = vi.hoisted(() => ({
   upsertOpenApiDocument: vi.fn(async () => ({ title: 'API Reference' })),
 }));
 
+vi.mock('@/actions/projects', () => ({
+  assertProjectAccess: async () => {
+    const role = mocks.role;
+    if (!role) throw new AppError({ code: 'database:not_found' });
+    return { organizationId: 'org', role };
+  },
+}));
+
 vi.mock('@nibleaf/database', () => ({
   prisma: {
     user: { findUnique: vi.fn(async () => ({ suspendedAt: null })) },

@@ -55,14 +55,14 @@ const resolveProjectAuthorization = async (ctx: Context<HonoEnv>, projectId: str
   const apiKey = ctx.get('apiKey');
   if (apiKey) {
     if (apiKey.projectId !== projectId) throw notFound('project', { id: projectId });
-    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true, organizationId: true } });
+    const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true, organizationId: true, dataTenantId: true } });
     if (!project) throw notFound('project', { id: projectId });
-    return { organizationId: project.organizationId, role: null, apiKey };
+    return { organizationId: project.organizationId, dataTenantId: project.dataTenantId, role: null, apiKey };
   }
   const user = ctx.get('user');
   if (!user) throw new AppError({ code: 'auth:no_user', message: 'Authentication required.' });
   const authorized = await assertProjectAccess(user.id, projectId);
-  return { organizationId: authorized.organizationId, role: authorized.role, apiKey: null };
+  return { organizationId: authorized.organizationId, dataTenantId: authorized.project.dataTenantId, role: authorized.role, apiKey: null };
 };
 
 const resolveProjectScope = async (ctx: Context<HonoEnv>, projectId: string, requiredScope: string) => {
@@ -109,27 +109,34 @@ const getEffectivePlanConfiguration = async (organizationId: string, now = new D
   return { availability: 'complete' as const, configured, reason: null };
 };
 
-/**
- * Paid author seats on a site: active members who can change content. Viewers
- * are read-only and never take a seat (so a Viewer join link can't consume
- * one); suspended and banned accounts don't either. This is the ONLY place the
- * `editor_seat` meter is counted: usage summaries, plan limits
- * (`@nibleaf/usage` evaluateLimit) and the legacy `members` projection all
- * read it from here.
- */
+/** One org seat per active author, even when they hold grants on many sites:
+ * org Owners and Admins, plus Members holding an Admin or Editor grant on any
+ * website. Viewer-only and grantless members, and suspended or banned
+ * accounts, are not seats. */
 export const countEditorSeats = async (organizationId: string): Promise<bigint | null> => {
   const rows = await prisma.$queryRaw<Array<{ quantity: bigint }>>(
-    Prisma.sql`SELECT COUNT(*)::bigint AS quantity FROM "member" AS member
-      INNER JOIN "user" AS account ON account."id" = member."userId"
-      WHERE member."organizationId" = ${organizationId} AND member."role" <> ${MemberRole.VIEWER}
-        AND account."suspendedAt" IS NULL AND account."banned" = false`,
+    Prisma.sql`SELECT COUNT(DISTINCT member."userId")::bigint AS quantity FROM member
+      JOIN "user" account ON account.id = member."userId"
+      WHERE member."organizationId" = ${organizationId}
+      AND (member."orgRole" IN ('owner','admin') OR EXISTS (
+        SELECT 1 FROM project_member grant_row WHERE grant_row."organizationId" = member."organizationId"
+        AND grant_row."userId" = member."userId" AND grant_row.role IN ('admin','member')))
+      AND account."suspendedAt" IS NULL AND account.banned = false`,
   );
   return rows[0]?.quantity ?? null;
 };
 
-const getSnapshotQuantities = async (organizationId: string, projectId: string) => {
+export const canReadOrganizationBilling = async (userId: string, organizationId: string) => {
+  const membership = await prisma.member.findUnique({
+    where: { organizationId_userId: { organizationId, userId } },
+    select: { orgRole: true },
+  });
+  return membership?.orgRole === 'owner' || membership?.orgRole === 'admin';
+};
+
+const getSnapshotQuantities = async (organizationId: string, projectId: string, includeBilling: boolean) => {
   const [seats, assets, domains, deployment] = await Promise.all([
-    countEditorSeats(organizationId),
+    includeBilling ? countEditorSeats(organizationId) : Promise.resolve(null),
     prisma.$queryRaw<Array<{ quantity: bigint }>>(
       Prisma.sql`SELECT COALESCE(SUM("size"), 0)::bigint AS quantity FROM "asset" WHERE "projectId" = ${projectId}`,
     ),
@@ -155,14 +162,20 @@ const getProjectUsageSummaryForOrganization = async (
   organizationId: string,
   projectId: string,
   period?: { periodStart?: string; periodEndExclusive?: string },
+  includeBilling = true,
 ) => {
   const range = parsePeriod(period);
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { dataTenantId: true } });
+  if (!project) throw notFound('project', { id: projectId });
+  const dataTenantId = project.dataTenantId;
   const [planState, snapshots, pendingCheckpoint] = await Promise.all([
-    getEffectivePlanConfiguration(organizationId),
-    getSnapshotQuantities(organizationId, projectId),
+    includeBilling
+      ? getEffectivePlanConfiguration(organizationId)
+      : Promise.resolve({ configured: null, availability: 'unavailable' as const, reason: 'missing' as const }),
+    getSnapshotQuantities(organizationId, projectId, includeBilling),
     prisma.usageIngestCheckpoint.findFirst({
       where: {
-        organizationId,
+        partitionId: dataTenantId,
         projectId,
         writtenAt: null,
         firstOccurredAt: { lt: new Date(range.endExclusive) },
@@ -177,9 +190,7 @@ const getProjectUsageSummaryForOrganization = async (
   let highVolumeAvailability: MeterReading['availability'] = 'unavailable';
   if (clickHouseKeys().ANALYTICS_MODE === 'clickhouse') {
     try {
-      highVolume = new Map(
-        (await queryUsageMeterTotals(organizationId, projectId, range.start, range.endExclusive)).map((row) => [row.meterKey, row]),
-      );
+      highVolume = new Map((await queryUsageMeterTotals(dataTenantId, projectId, range.start, range.endExclusive)).map((row) => [row.meterKey, row]));
       highVolumeAvailability = pendingCheckpoint
         ? Date.now() - pendingCheckpoint.enqueuedAt.getTime() > USAGE_PENDING_STALE_MS
           ? 'unavailable'
@@ -193,37 +204,39 @@ const getProjectUsageSummaryForOrganization = async (
   const configured = new Map(plan?.plan.meters.filter((item) => item.meter.active).map((item) => [item.meter.key, item]));
   const answered = BigInt(highVolume.get('ai_answer')?.eventCount ?? '0');
   const tokenCompleteness = (key: 'ai_input_token' | 'ai_output_token') => {
-    if (highVolumeAvailability === 'unavailable') return 'unavailable' as const;
+    if (highVolumeAvailability !== 'complete') return highVolumeAvailability;
     return BigInt(highVolume.get(key)?.eventCount ?? '0') < answered ? ('partial' as const) : ('complete' as const);
   };
 
-  const meters = allMeterKeys.map((key) => {
-    const planMeter = configured.get(key);
-    const snapshotValue = snapshots.get(key);
-    const eventMeter = meterKeySchema.safeParse(key);
-    const availability = snapshots.has(key)
-      ? snapshotValue === null
-        ? ('unavailable' as const)
-        : ('complete' as const)
-      : key === 'ai_input_token' || key === 'ai_output_token'
-        ? tokenCompleteness(key)
-        : highVolumeAvailability;
-    const quantity =
-      availability === 'unavailable' || availability === 'partial'
-        ? null
-        : (snapshotValue ?? (eventMeter.success ? highVolume.get(eventMeter.data)?.quantity : null) ?? '0');
-    const reading: MeterReading = {
-      meterKey: key,
-      quantity,
-      limit: planMeter?.limit?.toString() ?? null,
-      availability,
-      behavior: planMeter?.behavior === 'block' || planMeter?.behavior === 'warn' ? planMeter.behavior : 'observe',
-      enforcement: 'advisory',
-      periodStart: snapshots.has(key) ? null : range.start,
-      periodEndExclusive: snapshots.has(key) ? null : range.endExclusive,
-    };
-    return { key, unit: units[key], ...reading, ...evaluateLimit(reading, (planMeter?.warningRatio ?? 80) / 100) };
-  });
+  const meters = allMeterKeys
+    .filter((key) => includeBilling || key !== 'editor_seat')
+    .map((key) => {
+      const planMeter = configured.get(key);
+      const snapshotValue = snapshots.get(key);
+      const eventMeter = meterKeySchema.safeParse(key);
+      const availability = snapshots.has(key)
+        ? snapshotValue === null
+          ? ('unavailable' as const)
+          : ('complete' as const)
+        : key === 'ai_input_token' || key === 'ai_output_token'
+          ? tokenCompleteness(key)
+          : highVolumeAvailability;
+      const quantity =
+        availability === 'unavailable' || availability === 'partial'
+          ? null
+          : (snapshotValue ?? (eventMeter.success ? highVolume.get(eventMeter.data)?.quantity : null) ?? '0');
+      const reading: MeterReading = {
+        meterKey: key,
+        quantity,
+        limit: planMeter?.limit?.toString() ?? null,
+        availability,
+        behavior: planMeter?.behavior === 'block' || planMeter?.behavior === 'warn' ? planMeter.behavior : 'observe',
+        enforcement: 'advisory',
+        periodStart: snapshots.has(key) ? null : range.start,
+        periodEndExclusive: snapshots.has(key) ? null : range.endExclusive,
+      };
+      return { key, unit: units[key], ...reading, ...evaluateLimit(reading, (planMeter?.warningRatio ?? 80) / 100) };
+    });
 
   return {
     schemaVersion: 1 as const,
@@ -234,12 +247,19 @@ const getProjectUsageSummaryForOrganization = async (
       : meters.every((meter) => meter.availability === 'unavailable')
         ? ('unavailable' as const)
         : ('partial' as const),
-    plan: {
-      key: plan?.plan.key ?? null,
-      status:
-        planState.availability === 'complete' ? ('active' as const) : planState.reason === 'inactive' ? ('inactive' as const) : ('unknown' as const),
-    },
-    meters,
+    incomplete: meters.some((meter) => meter.availability !== 'complete'),
+    plan: includeBilling
+      ? {
+          key: plan?.plan.key ?? null,
+          status:
+            planState.availability === 'complete'
+              ? ('active' as const)
+              : planState.reason === 'inactive'
+                ? ('inactive' as const)
+                : ('unknown' as const),
+        }
+      : undefined,
+    meters: includeBilling ? meters : meters.map((meter) => ({ ...meter, limit: undefined, behavior: undefined, enforcement: undefined })),
     generatedAt: new Date().toISOString(),
   };
 };
@@ -252,7 +272,61 @@ export const getProjectUsageSummary = async (
   period?: { periodStart?: string; periodEndExclusive?: string },
 ) => {
   const { organizationId } = await resolveProjectScope(ctx, projectId, 'usage:read');
-  return getProjectUsageSummaryForOrganization(organizationId, projectId, period);
+  const user = ctx.get('user');
+  const includeBilling = user ? await canReadOrganizationBilling(user.id, organizationId) : false;
+  return getProjectUsageSummaryForOrganization(organizationId, projectId, period, includeBilling);
+};
+
+/** Org-only billing DTO. Callers must supply the signed-in user, never a role. */
+export const getOrganizationUsageSummary = async (
+  userId: string,
+  organizationId: string,
+  period?: { periodStart?: string; periodEndExclusive?: string },
+) => {
+  if (!(await canReadOrganizationBilling(userId, organizationId))) throw forbidden('Organization billing requires an owner or admin role.');
+  const range = parsePeriod(period);
+  const [projects, seats, planState] = await Promise.all([
+    prisma.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } }),
+    countEditorSeats(organizationId),
+    getEffectivePlanConfiguration(organizationId),
+  ]);
+  const websites: Awaited<ReturnType<typeof getProjectUsageSummaryForOrganization>>[] = [];
+  // Bound database/ClickHouse fanout for large organizations.
+  for (const project of projects) websites.push(await getProjectUsageSummaryForOrganization(organizationId, project.id, period, false));
+  const quantities = new Map<string, string | null>([['editor_seat', seats?.toString() ?? null]]);
+  for (const key of allMeterKeys.filter((key) => key !== 'editor_seat')) {
+    const readings = websites.map((site) => site.meters.find((meter) => meter.key === key));
+    quantities.set(
+      key,
+      readings.some((meter) => meter?.availability !== 'complete' || meter.quantity === null)
+        ? null
+        : readings.reduce((sum, meter) => sum + BigInt(meter?.quantity ?? '0'), 0n).toString(),
+    );
+  }
+  const meters = allMeterKeys.map((key) => {
+    const configured = planState.configured?.plan.meters.find((item) => item.meter.key === key && item.meter.active);
+    const quantity = quantities.get(key) ?? null;
+    const reading: MeterReading = {
+      meterKey: key,
+      quantity,
+      limit: configured?.limit?.toString() ?? null,
+      availability: quantity === null ? 'unavailable' : 'complete',
+      behavior: configured?.behavior === 'block' || configured?.behavior === 'warn' ? configured.behavior : 'observe',
+      enforcement: 'advisory',
+      periodStart: range.start,
+      periodEndExclusive: range.endExclusive,
+    };
+    return { key, unit: units[key], ...reading, ...evaluateLimit(reading, (configured?.warningRatio ?? 80) / 100) };
+  });
+  return {
+    schemaVersion: 1 as const,
+    organizationId,
+    period: range,
+    websites,
+    meters,
+    plan: { key: planState.configured?.plan.key ?? null, availability: planState.availability },
+    incomplete: seats === null || websites.some((site) => site.incomplete),
+  };
 };
 
 export const getProjectEntitlements = async (ctx: Context<HonoEnv>, projectId: string) => {
@@ -414,14 +488,14 @@ export const resolveProjectCapability = async (
 };
 
 export const exportProjectUsage = async (ctx: Context<HonoEnv>, projectId: string, period: { periodStart: string; periodEndExclusive: string }) => {
-  const { organizationId, role } = await resolveProjectScope(ctx, projectId, 'usage:export');
+  const { dataTenantId, role } = await resolveProjectScope(ctx, projectId, 'usage:export');
   if (role !== MemberRole.OWNER && role !== MemberRole.ADMIN) throw forbidden('Usage export requires an owner or admin role.');
   const range = parsePeriod(period);
   if (clickHouseKeys().ANALYTICS_MODE !== 'clickhouse') throw new AppError({ code: 'usage:unavailable', message: 'Usage facts are unavailable.' });
   try {
     const pendingCheckpoint = await prisma.usageIngestCheckpoint.findFirst({
       where: {
-        organizationId,
+        partitionId: dataTenantId,
         projectId,
         writtenAt: null,
         firstOccurredAt: { lt: new Date(range.endExclusive) },
@@ -430,7 +504,7 @@ export const exportProjectUsage = async (ctx: Context<HonoEnv>, projectId: strin
       select: { id: true },
     });
     if (pendingCheckpoint) throw new AppError({ code: 'usage:export_not_ready', message: 'Usage ingestion is pending.' });
-    const meters = await queryUsageMeterTotals(organizationId, projectId, range.start, range.endExclusive);
+    const meters = await queryUsageMeterTotals(dataTenantId, projectId, range.start, range.endExclusive);
     if (meters.some((meter) => meter.lateEventCount !== '0'))
       throw new AppError({ code: 'usage:export_not_ready', message: 'Late usage is pending reconciliation.' });
     return {

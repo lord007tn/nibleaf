@@ -51,8 +51,11 @@ describe('deployment notification retry identity', () => {
     mocks.project.mockResolvedValue({ organizationId: 'org-a' });
     mocks.organization.mockResolvedValue({ metadata: null });
     mocks.members.mockImplementation(async ({ where }) =>
-      where.role
-        ? [{ user: { email: 'a@example.invalid' } }, { user: { email: 'b@example.invalid' } }]
+      where.OR[1].projectGrants.some.role
+        ? [
+            { userId: 'a', user: { email: 'a@example.invalid' } },
+            { userId: 'b', user: { email: 'b@example.invalid' } },
+          ]
         : [{ userId: 'a' }, { userId: 'b' }, { userId: 'member-only' }],
     );
     mocks.render.mockResolvedValue({ subject: 'Fixture', html: '<p>Fixture</p>', text: 'Fixture' });
@@ -79,7 +82,17 @@ describe('deployment notification retry identity', () => {
     await notifyDeployment({ ...options, deploymentId: 'deployment-b' });
     expect(rows.size).toBe(9);
     expect(jobs.size).toBe(6);
-    expect(mocks.members).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: 'org-a', role: { in: ['owner', 'admin'] } } }));
+    expect(mocks.members).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          organizationId: 'org-a',
+          OR: [
+            { orgRole: { in: ['owner', 'admin'] } },
+            { orgRole: 'member', projectGrants: { some: { projectId: options.projectId, role: 'admin' } } },
+          ],
+        }),
+      }),
+    );
     expect(mocks.render).toHaveBeenCalledWith(expect.objectContaining({ language: 'ar' }));
   });
 

@@ -3,6 +3,8 @@ import { MemberRole } from './constants';
 import { MCP_KEY_PRESETS, mcpPresetScopesForRole, mcpScopesForRole } from './mcp';
 import {
   ASSIGNABLE_MEMBER_ROLES,
+  ASSIGNABLE_ORG_ROLES,
+  ASSIGNABLE_SITE_ROLES,
   canAdminister,
   canAssignRole,
   canEdit,
@@ -10,10 +12,29 @@ import {
   canView,
   EXPORT_CREATE_ROLE,
   EXPORT_SCHEDULE_ROLE,
+  effectiveSiteRole,
   planOwnershipTransfer,
   rankOf,
   roleAtLeast,
 } from './rbac';
+
+describe('organization roles and website grants', () => {
+  it.each(['admin', 'member', 'viewer', null])('inherits organization authority over a dormant %s grant', (grant) => {
+    expect(effectiveSiteRole('owner', grant)).toBe('owner');
+    expect(effectiveSiteRole('admin', grant)).toBe('admin');
+  });
+  it.each(['admin', 'member', 'viewer'])('uses a member grant of %s', (grant) => {
+    expect(effectiveSiteRole('member', grant)).toBe(grant);
+  });
+  it('fails closed for missing or invalid grants and invalid organization roles', () => {
+    expect(effectiveSiteRole('member', null)).toBeNull();
+    expect(effectiveSiteRole('member', 'owner')).toBeNull();
+    expect(effectiveSiteRole('viewer', 'admin')).toBeNull();
+    expect(effectiveSiteRole('unknown', 'admin')).toBeNull();
+    expect(ASSIGNABLE_ORG_ROLES).toEqual(['admin', 'member']);
+    expect(ASSIGNABLE_SITE_ROLES).toEqual(['admin', 'member', 'viewer']);
+  });
+});
 
 describe('rankOf', () => {
   it('orders owner > admin > member > viewer > unknown', () => {

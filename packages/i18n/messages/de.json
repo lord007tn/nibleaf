@@ -4067,5 +4067,8 @@
   "notifications_bellunreadlabel": "Benachrichtigungen öffnen. Ungelesen: {count}",
   "notifications_unread": "Ungelesen",
   "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb.",
-  "settings_appearance_theme_system": "Wie mein Gerät"
+  "settings_appearance_theme_system": "Wie mein Gerät",
+  "settings_members_viaorganization": "über die Organisation",
+  "settings_members_nowebsiteaccess": "Sie haben noch keinen Zugriff auf Websites in {org}. Bitte wenden Sie sich an einen Organisationsadministrator.",
+  "roles_organizationmember": "Mitglied"
 }

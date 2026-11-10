@@ -104,7 +104,7 @@ const principal: McpPrincipal = {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.mode = 'clickhouse';
-  mocks.project.mockResolvedValue({ config: { analytics: { storePublicSearchTerms: true } } });
+  mocks.project.mockResolvedValue({ dataTenantId: 'partition', config: { analytics: { storePublicSearchTerms: true } } });
   mocks.sql.mockResolvedValue([
     { key: 'person@example.com +49 123 456789', count: 4n, helpful: 1n, unhelpful: 3n, visitors: 2, lastSeen: new Date('2026-11-01T00:00:00Z') },
   ]);
@@ -186,7 +186,7 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
         expect(mocks.project).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'project', organizationId: 'org' } }));
         if (mode === 'clickhouse' && (name === 'get_top_searches' || name === 'get_failed_searches')) {
           // The dashboard's search model, for the same org, project and period.
-          expect(mocks.searchInsights).toHaveBeenCalledWith('org', 'project', { range: '7d', timezone: 'UTC', compare: 'none' });
+          expect(mocks.searchInsights).toHaveBeenCalledWith('partition', 'project', { range: '7d', timezone: 'UTC', compare: 'none' });
           expect(mocks.query).not.toHaveBeenCalled();
         } else if (mode === 'clickhouse')
           for (const [request] of mocks.query.mock.calls) {
@@ -194,7 +194,11 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
             expect(request.query).toContain("e.actor_type = 'human'");
             expect(request.query).toMatch(/LIMIT (1|50)\b/);
             // Feedback records no language, so its language filter is dropped (and reported).
-            expect(request.query_params).toMatchObject({ tenant: 'org', project: 'project', language: name === 'get_page_feedback' ? '' : 'en' });
+            expect(request.query_params).toMatchObject({
+              tenant: 'partition',
+              project: 'project',
+              language: name === 'get_page_feedback' ? '' : 'en',
+            });
           }
         else
           for (const [query] of mocks.sql.mock.calls) {
@@ -423,7 +427,7 @@ describe('clickhouse search insights', () => {
       timezone: 'Europe/Berlin',
       language: 'en',
     });
-    expect(mocks.searchInsights).toHaveBeenCalledWith('org', 'project', {
+    expect(mocks.searchInsights).toHaveBeenCalledWith('partition', 'project', {
       range: 'custom',
       from: '2026-10-02',
       to: '2026-10-08',

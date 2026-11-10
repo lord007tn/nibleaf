@@ -45,6 +45,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('reader access req
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {
@@ -64,7 +65,16 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('reader access req
     for (const role of ['owner', 'admin', 'member', 'viewer']) {
       const user = await db.prisma.user.create({ data: { email: `${role}-${randomUUID()}@nibleaf.test`, name: role, emailVerified: true } });
       userIds.push(user.id);
-      await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role } });
+      await db.prisma.member.create({
+        data: {
+          organizationId: organization.id,
+          userId: user.id,
+          role: role === 'owner' ? 'owner' : 'viewer',
+          orgRole: role === 'owner' ? 'owner' : 'member',
+        },
+      });
+      if (role !== 'owner')
+        await db.prisma.projectMember.create({ data: { organizationId: organization.id, projectId: project.id, userId: user.id, role } });
       team[role] = { id: user.id, email: user.email };
     }
     const reader = await readerAccess.inviteReader(project.id, team.owner?.id ?? 'owner', { email: `reader-${randomUUID()}@example.invalid` });

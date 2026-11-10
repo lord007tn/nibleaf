@@ -24,6 +24,7 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {
@@ -51,7 +52,16 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
       ['viewer', MemberRole.VIEWER],
     ] as const) {
       const user = await person(key);
-      const member = await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role } });
+      const member = await db.prisma.member.create({
+        data: {
+          organizationId: organization.id,
+          userId: user.id,
+          role: role === 'owner' ? 'owner' : 'viewer',
+          orgRole: role === 'owner' ? 'owner' : 'member',
+        },
+      });
+      if (role !== 'owner')
+        await db.prisma.projectMember.create({ data: { organizationId: organization.id, projectId: project.id, userId: user.id, role } });
       team[key] = { userId: user.id, memberId: member.id };
     }
     return { organization, project, team };
@@ -129,7 +139,7 @@ describe.skipIf(process.env.VIEWER_ROLE_INTEGRATION !== '1')('Viewer role in Pos
       code: 'auth:insufficient_role',
     });
     const roles = await db.prisma.member.findMany({ where: { organizationId: organization.id }, select: { role: true } });
-    expect(roles.map(({ role }) => role).sort()).toEqual([MemberRole.ADMIN, MemberRole.MEMBER, MemberRole.OWNER, MemberRole.VIEWER].sort());
+    expect(roles.map(({ role }) => role).sort()).toEqual([MemberRole.VIEWER, MemberRole.VIEWER, MemberRole.OWNER, MemberRole.VIEWER].sort());
   });
 
   it('keeps the single-owner rule: a Viewer can never be invited or promoted to owner', async () => {

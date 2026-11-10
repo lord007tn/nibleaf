@@ -45,7 +45,14 @@ const recordRequest = async (projectId: string, body: ReaderAccessRequestBody) =
   // A revoked reader, or a member of the site (a suspended one included), doesn't get to ask.
   const [reader, member] = await Promise.all([
     prisma.reader.findUnique({ where: { projectId_email: { projectId, email } }, select: { id: true } }),
-    prisma.member.findFirst({ where: { organizationId: project.organizationId, user: { email } }, select: { id: true } }),
+    prisma.member.findFirst({
+      where: {
+        organizationId: project.organizationId,
+        user: { email },
+        OR: [{ orgRole: { in: ADMIN_ROLES } }, { orgRole: 'member', projectGrants: { some: { projectId } } }],
+      },
+      select: { id: true },
+    }),
   ]);
   if (reader || member) return;
   const recent = await prisma.readerAccessRequest.count({ where: { projectId, createdAt: { gt: new Date(Date.now() - 60 * 60_000) } } });
@@ -78,7 +85,11 @@ const notifyAdmins = async (
   request: { email: string; name: string | null; note: string | null },
 ) => {
   const admins = await prisma.member.findMany({
-    where: { organizationId: project.organizationId, role: { in: ADMIN_ROLES } },
+    where: {
+      organizationId: project.organizationId,
+      user: { banned: false, suspendedAt: null },
+      OR: [{ orgRole: { in: ADMIN_ROLES } }, { orgRole: 'member', projectGrants: { some: { projectId, role: 'admin' } } }],
+    },
     select: { userId: true, user: { select: { email: true } } },
   });
   const requester = request.name ? `${request.name} (${request.email})` : request.email;
@@ -106,7 +117,10 @@ const notifyAdmins = async (
   await Promise.all(
     admins.map((admin) =>
       admin.user.email
-        ? createJob(QueueNames.EMAIL, { name: 'send-email', data: { to: admin.user.email, ...message } }).catch(() => undefined)
+        ? createJob(QueueNames.EMAIL, {
+            name: 'send-email',
+            data: { to: admin.user.email, ...message, teamAccess: { userId: admin.userId, projectId, minimumRole: 'admin' } },
+          }).catch(() => undefined)
         : undefined,
     ),
   );

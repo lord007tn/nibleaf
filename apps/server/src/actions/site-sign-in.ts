@@ -7,6 +7,7 @@ import type { SiteSignInStartBody, SiteSignInVerifyBody } from '@nibleaf/validat
 import type { Context } from 'hono';
 import { env } from '@/env';
 import { badRequest, notFound } from '@/errors';
+import { optionalSiteAccess } from '@/lib/access';
 import type { HonoEnv } from '@/lib/hono/context';
 import { ensureSiteAudience, logAudit, newSecret, requestFingerprint, setSessionCookie, sha256 } from './reader-access';
 
@@ -70,14 +71,9 @@ export const signInIdentity = async (projectId: string, email: string): Promise<
     select: { accessMode: true, organizationId: true, takedownAt: true, readerEmailDomains: true },
   });
   if (!project || project.accessMode === 'PUBLIC' || project.takedownAt) return null;
-  const member = await prisma.member.findFirst({
-    where: { organizationId: project.organizationId, user: { email } },
-    select: { userId: true, user: { select: { banned: true, suspendedAt: true } } },
-  });
-  // A suspended account gets no code and no session, as on the dashboard, and
-  // doesn't get in as a reader under the same address either.
-  if (member?.user.banned || member?.user.suspendedAt) return null;
-  if (member) return { kind: 'member', userId: member.userId };
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true, banned: true, suspendedAt: true } });
+  if (user?.banned || user?.suspendedAt) return null;
+  if (user && (await optionalSiteAccess(user.id, projectId))) return { kind: 'member', userId: user.id };
   if (project.accessMode !== 'READERS') return null;
   const reader = await prisma.reader.findUnique({ where: { projectId_email: { projectId, email } }, select: { id: true, revokedAt: true } });
   // A revoked reader stays revoked, even at an allowed domain.

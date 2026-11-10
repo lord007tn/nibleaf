@@ -4067,5 +4067,8 @@
   "notifications_bellunreadlabel": "Open notifications. Unread: {count}",
   "notifications_unread": "Unread",
   "admin_sidebardescription": "Navigate platform customers, sites, and operations.",
-  "settings_appearance_theme_system": "Match my device"
+  "settings_appearance_theme_system": "Match my device",
+  "settings_members_viaorganization": "via organization",
+  "settings_members_nowebsiteaccess": "You don't have access to any websites in {org} yet. Ask an organization admin.",
+  "roles_organizationmember": "Member"
 }

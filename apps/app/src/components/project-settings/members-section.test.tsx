@@ -21,7 +21,7 @@ const openTab = async (key: string) => {
   await act(async () => tab?.click());
 };
 let currentUserId = 'u-owner';
-const members = [
+const members: Array<{ id: string; role: string; viaOrganization?: boolean; user: { id: string; name: string; email: string } }> = [
   { id: 'm-owner', role: 'owner', user: { id: 'u-owner', name: 'Owner', email: 'owner@example.com' } },
   { id: 'm-admin', role: 'admin', user: { id: 'u-admin', name: 'Admin', email: 'admin@example.com' } },
   { id: 'm-member', role: 'member', user: { id: 'u-member', name: 'Member', email: 'member@example.com' } },
@@ -76,12 +76,33 @@ describe('MembersSection role selects', () => {
     // Invite form (defaults to Editor), then the admin, editor and viewer rows —
     // the owner row is a badge, never a select.
     const triggerLabels = [...container.querySelectorAll('[data-slot="select-value"]')].map((node) => node.textContent);
+    expect(container.querySelector('[aria-label="settings.members.transferOwnership"]')).toBeNull();
     expect(triggerLabels).toEqual(['عضو', 'مدير', 'عضو', 'مشاهد']);
     for (const label of triggerLabels) {
       expect(label).not.toMatch(/^(admin|member|viewer)$/);
     }
 
     act(() => root.unmount());
+  });
+
+  it('labels inherited organization admin access and offers no website grant controls on it', async () => {
+    members.push({
+      id: 'm-org-admin',
+      role: 'admin',
+      viaOrganization: true,
+      user: { id: 'u-org-admin', name: 'Organization admin', email: 'org-admin@example.com' },
+    });
+    const root = createRoot(container);
+    try {
+      await act(async () => root.render(<MembersSection projectId="project-a" />));
+      const row = [...container.querySelectorAll('.border-t')].find((node) => node.textContent?.includes('org-admin@example.com'));
+      expect(row?.textContent).toContain('settings.members.viaOrganization');
+      expect(row?.querySelector('[role="combobox"]')).toBeNull();
+      expect(row?.querySelector('button')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      members.pop();
+    }
   });
 
   it('shows member roles without offering administration to an editor', async () => {
