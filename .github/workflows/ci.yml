@@ -83,7 +83,10 @@ jobs:
           git -C "$preview_dir" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
           cd "$preview_dir"
           node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const path="CHANGELOG.md"; const text=readFileSync(path,"utf8"); writeFileSync(path, "## Unreleased\n\n### Highlights\n\nPreview release notes from the checked-out source.\n\n" + text.replace(/^## Unreleased$/m,"## Source changes"));'
-          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
+          # Preview from the latest stable release tag, like a real release does. A
+          # fixed old tag made changelogen's git log outgrow execSync's 1 MiB buffer.
+          from=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude 'v*-*' HEAD)
+          pnpm release:notes:dry -- --from "$from" --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
 
       - name: Test production email diagnostic boundaries
         run: node --test scripts/production-email-diagnostic.test.mjs
@@ -264,6 +267,9 @@ jobs:
 
       - name: Check for unused source files
         run: pnpm check:dead-code
+
+      - name: Dashboard type scale (no new arbitrary font sizes)
+        run: pnpm --filter @nibleaf/app run check:type-scale
 
       - name: Typecheck
         run: pnpm typecheck

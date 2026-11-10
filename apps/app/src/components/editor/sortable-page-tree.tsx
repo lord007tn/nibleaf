@@ -34,7 +34,7 @@ import {
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { ChevronRight, CornerDownRight, FileText, Folder, GripVertical, MoreHorizontal, Pencil, Plus, Settings2, Trash2 } from 'lucide-react';
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageNode } from '@/hooks/api';
 
@@ -655,6 +655,16 @@ function RowPresentation({
   const collapsible = Boolean(hasChildren && onToggleCollapse);
   const dragging = placeholder !== undefined;
   const iconClass = cn('size-3.5 shrink-0', active ? 'text-primary' : 'text-muted-foreground');
+  // "Rename" from the row menu (AUTH-01). The menu normally hands focus back to
+  // whatever had it before it opened, which is often the open page's body. As
+  // the rename field replaces the menu, that would steal focus from the field
+  // and send the next keystrokes into that page. So from the moment Rename is
+  // chosen until the rename ends, the menu restores focus nowhere, through its
+  // whole close and unmount, and the field focuses itself.
+  const holdMenuFocus = useRef(false);
+  useEffect(() => {
+    if (!renaming) holdMenuFocus.current = false;
+  }, [renaming]);
   return (
     <div
       className={cn(
@@ -774,9 +784,14 @@ function RowPresentation({
           >
             <MoreHorizontal className="size-3.5" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-52" finalFocus={() => !holdMenuFocus.current}>
             {onStartRename ? (
-              <DropdownMenuItem onClick={() => onStartRename(node.id)}>
+              <DropdownMenuItem
+                onClick={() => {
+                  holdMenuFocus.current = true;
+                  onStartRename(node.id);
+                }}
+              >
                 <Pencil /> {t('editor.rename')}
               </DropdownMenuItem>
             ) : null}
@@ -820,6 +835,11 @@ function RowPresentation({
 function RenameInput({ initialValue, label, onDone }: { initialValue: string; label: string; onDone: (title: string | null) => void }) {
   const [value, setValue] = useState(initialValue);
   const [done, setDone] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Focus as soon as the field is in the document, before any keystroke can land elsewhere.
+  useLayoutEffect(() => {
+    inputRef.current?.focus();
+  }, []);
   const finish = (save: boolean) => {
     if (done) return;
     setDone(true);
@@ -828,7 +848,7 @@ function RenameInput({ initialValue, label, onDone }: { initialValue: string; la
   };
   return (
     <input
-      autoFocus
+      ref={inputRef}
       aria-label={label}
       className="h-7 min-w-0 flex-1 rounded-sm border border-input bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:h-10"
       dir="auto"

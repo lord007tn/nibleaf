@@ -83,14 +83,56 @@ Until then, new code goes into new files. After the merge we merge `main` in (ne
 
 ## 3. Production audit findings (from the master)
 
-> Placeholder. The master is running a production audit in four areas: signed-out/onboarding,
-> authoring/editor/settings, workspace/team/AI/billing, and reader-facing published docs. The consolidated findings
-> (severity, screenshot, likely files) go here verbatim, and each one is mapped to a track in §2, or marked "Organizations
-> thread" or "out of scope" with a reason.
+Source: the master's production audit of 2026-11-10 (nibleaf.com, 1440 and 390 px, light and dark, EN and AR):
+`authoring.md`, `public.md`, `workspace.md` and `reader.md` in the master's audit scratchpad. Every finding is mapped
+below to an owner and a track.
 
-| ID | Severity | Area | Finding | Likely files | Track | Status |
-|---|---|---|---|---|---|---|
-| | | | | | | |
+Owners:
+
+- **UI** is this thread.
+- **Editor** is thread `b4214e35`: editor core, page tree, pickers, autosave, publish, versions, create-site and
+  first run.
+- **Reader** is thread `1188b10b`: published reader, edge, search and SEO.
+- **Org** is the Organizations thread: shell, switcher, people, members, invites, join links, account and org pages.
+- **Ops** is deployment and configuration.
+- **Master** marks findings no thread owns yet.
+
+### 3.1 This thread (UI)
+
+| ID | Sev | Finding | Track |
+|---|---|---|---|
+| AUTH-14 | P1 | Settings are four levels deep. Appearance has an 11-item sub-list that pushes content below the fold, and SEO, Redirects, Variables and a second Search sit under it | §5.7; sections in B2–B5, nav in shell adoption |
+| WORKSPACE-03 | P1 | Smart AI BYO key: two full wizards rendered on Cloud that can never save, with "ask your administrator" copy | B4 + `FeatureUnavailable` (§6.6) |
+| WORKSPACE-04 | P1 | MCP disabled on Cloud, but the whole key form still renders under an "ask your operator" note | B4 + `FeatureUnavailable` |
+| WORKSPACE-01 | P1 | Site Analytics on Cloud: every tab says "needs ClickHouse… self-hosting guide", while account Analytics shows data | B6 + `FeatureUnavailable`; configuration is Ops |
+| WORKSPACE-02 | P1 (UI part) | AI page: two stacked operator banners (one missing a period), empty tabs | B6 + `FeatureUnavailable`; the reader disclosure is Reader; the key is Ops |
+| WORKSPACE-06 | P1 | Integration secret fields autofilled with the saved login | **#422** (standalone, off main) |
+| WORKSPACE-20 | P2 | Integrations lists infrastructure (Qdrant, Postmark, MinIO, S3, ClickHouse…) as customer integrations; ragged grid | B4: customer-actionable entries only; instance health goes to admin |
+| WORKSPACE-19 | P2 | Plan and Usage contradict each other; "Unknown —" metrics; internal-tooling copy; "No limit" in warning orange | Shell adoption (`usage-tab.tsx` is a PR 2 file) |
+| AUTH-23, PUBLIC-05, WORKSPACE-27 | P2/P3 | Overview is low-signal: vanity tiles, Activity not clickable, duplicated actions, a checklist that never ticks, the address hidden before first publish, over-precise KPIs | B6 |
+| WORKSPACE-14 | P2 | Page-views chart sometimes blank (remount restarts the area animation) | B6 (`trend-chart.tsx`: no animation, stable data) |
+| WORKSPACE-23 | P2 | 390 px analytics: the range control wraps, the delta overlaps its label, the tab strip shows native scrollbars, resize refetches | B6 |
+| AUTH-13 (UI part) | P1 | Overview Activity rows not clickable, no publish history | B6 links Activity; the history page is Editor |
+| AUTH-24 | P2 | Import: centred hero card, the source picker sits after the form fields | B3 |
+| AUTH-25 (UI part) | P2 | Git connect needs a hand-made PAT | B3 restructures the flow; the GitHub App itself is a product and server decision for Master |
+| AUTH-29 (UI part), AUTH-30, AUTH-31 | P2/P3 | Languages section glyph "◫"; General says "add a custom domain below"; DNS steps shown before any domain exists; double nav labels | B2 (nav labels in shell adoption) |
+| AUTH-32 | P3 | Native scrollbars with arrows on both settings columns | Shell adoption (single scroll, §5.1) |
+| AUTH-39 | P3 | Overview "Recent pages": Arabic titles left-aligned | B6 (`dir="auto"` per cell) |
+| AUTH-40 | P3 | Danger zone says "Delete project"; transfer ownership shown twice | Shell adoption (`danger-section.tsx` is a PR 2 file) |
+| AUTH-20 | P2 | A locale change from another tab half-applies (messages switch, `lang`/`dir` don't) | B9 |
+| PUBLIC-16 | P2 | Interface-language dialog: options not exposed to assistive tech, close button overlaps the text | B9 (dialogs) |
+| PUBLIC-21 (UI part) | P3 | Every app route shares one `<title>`; product nouns drift | B9 (per-route titles); vocabulary is for Master and Org |
+| AUTH-07 (UI part) | P1 | Failed mutations can be silent | B1b (the error-owner rule in §8.2 and a default mutation error toast); the editor create-page fix is Editor |
+
+### 3.2 Other owners
+
+| Owner | Findings |
+|---|---|
+| Editor | AUTH-01, 02, 03, 04, 05, 06, 07 (create page), 08, 09, 10, 11, 12, 13 (history), 15, 16, 17, 18, 21, 22, 27, 28, 33–38; PUBLIC-04, 06, 18, 23 |
+| Reader | AUTH-19, AUTH-26 (one content stylesheet, shared with Editor); PUBLIC-07, 22; WORKSPACE-05; WORKSPACE-02 (reader disclosure); everything in `reader.md` |
+| Org | WORKSPACE-07, 08 (PR 2 adds account security), 09, 10, 11, 12, 13, 16 (palette), 17 (user menu), 18 (switcher), 21 (notifications move to account), 22 (org analytics), 25, 26, 28; PUBLIC-09 |
+| Ops | WORKSPACE-24 / PUBLIC-01 (deploy downtime page); the Cloud configuration behind WORKSPACE-01/02/03/04 |
+| Master to assign | PUBLIC-02, 03 (create-site; probably Editor), 08 (sign-up terms bypass), 10–13 and 19 (auth pages), 14, 15, 17, 24 (marketing), 20 (Google OAuth branding) |
 
 ## 4. Local audit (code and screens)
 
@@ -302,7 +344,9 @@ Every section is one of two kinds, never both:
 **SaveRegion** (one per page, not one per form):
 
 - Every explicit form on the page registers with it (`useSaveRegion(formId, { isDirty, isSubmitting, submit, discard
-  })`). It shows while any registered form is dirty: "Unsaved changes", then Discard, then Save.
+  })`). It shows while any registered form is dirty **or a save is still in flight**: "Unsaved changes", then Discard,
+  then Save. A pending save keeps it up even if the person types the value back to the baseline, because the request
+  can still change the stored value.
 - With one dirty form, Save and Discard act on it. With several (rare: General with translations), Save submits every
   dirty form in order and stops at the first invalid one. The region names how many have changes.
 - It is `position: sticky; bottom: 0` within the content column, so its containing block spans the forms it serves. It
@@ -313,8 +357,8 @@ Every section is one of two kinds, never both:
 - When the region hides after a successful save, focus moves to `returnFocusTo()` (default: the page `h1`, without
   scrolling) only if focus was on one of its buttons and fell to the body.
   Otherwise focus stays where it is. The "Saved" status is announced politely.
-- **Navigating away** while any form is dirty goes through the route's unsaved-changes guard. The guard reads the same
-  registry, with one dirty source per form.
+- **Navigating away** while any form is dirty, or while a save is in flight, goes through the route's unsaved-changes
+  guard. The guard reads the same registry, with one source for the page.
 
 ### 5.4 Other dashboard pages
 
@@ -332,7 +376,9 @@ Every section is one of two kinds, never both:
 - `<main id="main-content" tabIndex={-1}>` wraps the content column, and the skip link targets it. A `main` with
   `tabIndex=-1` is a landmark; the bug today is a focusable generic `div` (fixed by the Organizations thread in PR 2).
 - The settings nav is `<nav aria-label="Settings">`, with `aria-current="page"` on the active item. Items are router
-  links (`<Link search={{ section }} replace>`), so middle-click and copy-link work.
+  links, so middle-click and copy-link work. They merge into the current search params and clear only the params that
+  belong to the section being left: `<Link search={(prev) => ({ ...prev, section, appearanceSection: undefined })}
+  replace>`.
 - One h1 per page (`PageHeader`). Previews (theme, typography) render inert presentational elements, never headings.
 - Focus moves to the h1 on section change. Dialogs restore focus to their trigger, or to a fallback when the trigger is
   gone (§6.3).
@@ -353,6 +399,43 @@ Every section is one of two kinds, never both:
 - **Narrow screens:** rows stack by container width (§5.2), tables become `DataList` cards, and the SaveRegion spans the
   column.
 - **Test widths:** 320, 390, 768 and 1440 px, plus 200% zoom.
+
+### 5.7 Settings information architecture (AUTH-14)
+
+**Today.** There are four levels: the app sidebar, then "Site configurations", then the 11-item Appearance sub-list,
+then the content. Search is configured in two places. Redirects are hidden under Appearance. On mobile there is a
+section dropdown followed by an 11-item list before any field.
+
+**Target: two levels.** The app sidebar, then a settings nav whose every item is a page. A page's sections are
+headings on that page, never another nav. On a long page, an optional in-page "On this page" anchor list sits beside
+the column at ≥1280 px only. It is never above the content.
+
+| Group | Pages (site settings) | Notes |
+|---|---|---|
+| Website | General · Appearance · Languages · Custom domain · Visibility & access | Appearance is **one page** with four sections: Brand (logo, favicon, colours), Theme (themes, styling and radius merged; today both edit radius), Typography, and Site chrome (navbar, footer, banner) |
+| Content | SEO · Redirects · Variables · Search | each its own page. Search is a single page: today's top-level Search plus Appearance → Search, with index health at the bottom |
+| Publishing | Git · API reference · Import · Exports | Exports moves here from "Advanced" (it is a publishing output) |
+| AI | Smart AI · AI assistants (MCP) · Integrations | Integrations shows customer-actionable entries only (WORKSPACE-20) |
+| Team | Members | owned by the Organizations thread |
+| Usage | Usage | org-level billing lives on the org pages (PR 2) |
+| (last, separated) | Danger zone | org Owner and Admins only (PR 2) |
+
+- **Labels:** one heading for the nav ("Settings"). Group labels are plain, never "SITE CONFIGURATIONS" followed by
+  "SITE" (AUTH-30).
+- **The editor's Configuration tab** shows the same Appearance page and the Content pages with `chrome="plain"`. No
+  "Also available in…" text on the settings page itself.
+- **Mobile (< 768 px):** `/settings` with no section is the nav as a full-width list, and each item opens its page
+  with a back link to the list. This replaces the section dropdown.
+- **Old links keep working.** `validateSearch` maps them:
+  - `?section=appearance&appearanceSection=seo|redirects|variables|search` → the new page;
+  - `?section=appearance&appearanceSection=branding|…` → Appearance, scrolled to its section;
+  - `?section=analytics` → Integrations (already handled).
+
+  The section ids live in `features/site-settings/model/ids.ts` (§7.1).
+- **Sequencing.** The groups in the PR 2 route file (`website`, `publishing`, `team`, `usage`, `advanced`) are the
+  starting point. This thread changes the nav in shell adoption right after PR 2 merges, agreed with the
+  Organizations thread, which owns Team and Usage. The pages themselves land with B2–B5, so each move ships with its
+  section's rebuild. The Appearance merge is B5.
 
 ## 6. Primitives
 
@@ -386,6 +469,7 @@ Every section is one of two kinds, never both:
 | `OptionCards` | DS | `aria-pressed` button groups acting as radios | a real radio group (base-ui RadioGroup), cards with title, description and icon |
 | `StatTile` | DS | 4 stat-tile variants | |
 | `Meter` | DS | hand-rolled quota bars | `role="meter"` with `aria-valuetext`, for quotas and usage. `Progress` stays for task progress |
+| `FeatureUnavailable` | app | operator copy and dead forms on Cloud (WORKSPACE-01–04) | §6.6 |
 | `IconButton`, `TooltipButton` | DS | `Button size="icon"` with an optional label | `IconButton.label` is required; the tooltip shows the same label. Both live apart from Button so reader pages stay light |
 
 ### 6.1 Composition, not cloning
@@ -458,6 +542,25 @@ semantics:
   why it is read-only ("You're a Viewer on this site. Ask an Admin to change these settings.").
 - **Unknown access** (§7.2) locks controls with no reason text. This is the adapter's `locked` state, distinct from
   "enabled", so a null reason never means "enabled".
+
+### 6.6 Features that aren't available (`FeatureUnavailable`)
+
+WORKSPACE-01 to 04 come from missing Cloud configuration, which Ops is fixing. The UI must still never show a Cloud
+customer operator or self-hosting instructions, or a form that can't save.
+
+- **`FeatureUnavailable`** replaces the feature's whole body. Unusable forms are never rendered under a notice.
+  - It is an app-level component (`components/ui/feature-unavailable.tsx`) over the DS `EmptyState`.
+  - Props: `feature` (message keys for name and benefit), `reason: 'notConfigured' | 'notOnPlan' | 'needsAdmin' |
+    'comingSoon'`, and an optional `action`.
+- **It knows the deployment** from the existing Cloud/self-hosted flag and picks its copy from that:
+  - **Cloud:** plain product copy ("Analytics will appear here once your site has visitors", "AI assistants aren't
+    available on your plan yet", "Ask a site Admin"), and never "server", "operator", "encryption key" or "self-hosting".
+  - **Self-hosted:** the operator copy plus a link to the self-hosting guide section.
+- **One per page.** Stacked banners (WORKSPACE-02) become one `FeatureUnavailable`, or one `Callout` when only part of a
+  page is affected.
+- **Pure decision, unit-tested:** `model/availability.ts` (`featureState(availability, deployment, access)` →
+  `available | unavailable(reason)`) is a pure function with tests. The server's `availability` field
+  (`not_configured`…) is the input.
 
 ## 7. Module structure
 
@@ -629,6 +732,11 @@ These extend `apps/app/DATA_LOADING.md` and do not replace it. Its rules (query 
 
 - When the identity changes, the form resets to the new source's values and pending state is dropped. If the form was
   dirty, the switch must already have been confirmed by the caller's guard (scope picker, route blocker).
+- **Saves carry a generation.** Every identity change bumps it, including a switch back to an earlier identity
+  (A → B → A). A save remembers the generation it started in. If it settles in another generation, its success and
+  failure are both ignored: it moves no baseline and maps no field error. The submit handler checks `isCurrent()`
+  before touching the form itself. Dropping pending state does not cancel the request, so this check is what keeps
+  an old result out of the new form. Covered by a test that runs A → B → A while A's save is pending.
 
 **Three values per form:**
 
@@ -648,13 +756,22 @@ that changes only unrelated fields (`updatedAt`, counters) is not a change.
    - if the form is dirty and the server change touches fields the person has not edited, those fields update in
      `current` and the baseline moves;
    - if it touches a field the person has edited, the edit is kept and a `Callout` offers "This was changed elsewhere.
-     Use theirs / Keep mine". There is no silent overwrite either way.
+     Use theirs / Keep mine". There is no silent overwrite either way. A conflict stays until the person resolves it or
+     the draft matches the server again. A later refetch that touches other fields never clears it;
+   - during a save, the refetch only merges values. It never resets the form and never drops the save's snapshot or its
+     pending state, even when the form looks clean (the person typed the value back).
 3. **When a save succeeds**, the baseline becomes `submitted`, reconciled with the response's values when they differ
    (server normalization). Fields the person edited **during** the request (`current ≠ submitted` for that field) keep
    their newer values and stay dirty. Today `general-section.tsx:130` does this by hand; the hook makes it the default.
 4. **When a save fails**, the baseline is unchanged, the form stays dirty, field errors are mapped (§6.4), and
    `submitted` is cleared.
 5. **Discard** resets `current` to `baseline`. It is disabled while a save is pending.
+6. **One save at a time.** Every submit, whether Save, Enter or Cmd/Ctrl+S, goes through the hook's `submit()`. It takes a
+   synchronous lock and records a snapshot for that request. A submit while a save is in flight returns `'busy'` and
+   sends nothing. Only that request's own completion releases the lock, so pending can't end early. "Saving" is the
+   hook's state (`isSaving`), not TanStack's `isSubmitting`, which a form reset clears.
+7. **Field errors from a save apply only to the value that was sent.** If the field has changed since (a corrected
+   address while the refusal of the old one was in flight), the new value stays clean and can be saved.
 
 `useServerDraft` is a small state machine in `lib/forms/server-draft.ts`, with unit tests for every rule above.
 

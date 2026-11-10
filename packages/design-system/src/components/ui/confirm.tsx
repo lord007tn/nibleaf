@@ -1,5 +1,5 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { restoreFocusFallback } from '../../lib/focus';
+import { currentFocusTarget, restoreFocusFallback } from '../../lib/focus';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 import { Input } from './input';
@@ -46,8 +46,6 @@ const PromptContext = createContext<PromptFn | null>(null);
  * waits forever. On close, focus returns to what had it before, or to the
  * page h1 when that element is gone.
  */
-const currentFocus = () => (document.activeElement instanceof HTMLElement ? document.activeElement : null);
-
 export function ConfirmProvider({ children, labels }: { children: ReactNode; labels?: ConfirmProviderLabels }) {
   const [confirmState, setConfirmState] = useState<{ options: ConfirmOptions } | null>(null);
   const [promptState, setPromptState] = useState<{ options: PromptOptions } | null>(null);
@@ -68,7 +66,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         const replacing = confirmResolve.current !== null;
         confirmResolve.current?.(false);
         confirmResolve.current = resolve;
-        if (!replacing) confirmReturnFocus.current = currentFocus();
+        if (!replacing) confirmReturnFocus.current = currentFocusTarget();
         setConfirmState({ options });
       }),
     [],
@@ -79,7 +77,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         const replacing = promptResolve.current !== null;
         promptResolve.current?.(null);
         promptResolve.current = resolve;
-        if (!replacing) promptReturnFocus.current = currentFocus();
+        if (!replacing) promptReturnFocus.current = currentFocusTarget();
         setPromptValue(options.initialValue ?? '');
         setPromptState({ options });
       }),
