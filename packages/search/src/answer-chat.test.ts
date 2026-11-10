@@ -393,7 +393,8 @@ describe('a bounded context and strict reservations', () => {
       5000,
     );
     expect(fitChatSources(shape, [huge], 2000)).toHaveLength(1);
-    expect(performance.now() - started).toBeLessThan(1000);
+    // A generous wall-clock bound: CI runs packages in parallel, and a quadratic regression on 1 MB takes minutes.
+    expect(performance.now() - started).toBeLessThan(5000);
   });
 
   it('reads fewer sources when a budget has less room, never more than it reserved', () => {
@@ -527,7 +528,8 @@ describe('follow-up suggestions', () => {
     const started = performance.now();
     expect(parseFollowUpQuestions(`["${'\\"'.repeat(500_000)}`, 'How?')).toEqual({ questions: [], unreadable: true });
     expect(parseFollowUpQuestions(`[${'"Can I? ", '.repeat(100_000)}`, 'How?').questions).toEqual(['Can I?']);
-    expect(performance.now() - started).toBeLessThan(500);
+    // A generous wall-clock bound: CI runs packages in parallel, and a quadratic pass over 1 MB takes minutes.
+    expect(performance.now() - started).toBeLessThan(3000);
   });
   it('finds the list past a bracket in prose before it', async () => {
     expect(parseFollowUpQuestions('Here are [two] ideas: ["Can I export?", "Is it free?"]', 'How?')).toEqual({
