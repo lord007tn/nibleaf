@@ -244,10 +244,11 @@ const validInstant = (value: Date | string): number | null => {
   return Number.isFinite(timestamp) ? timestamp : null;
 };
 
-/** Resolve the add-ons that may reach public delivery or publish execution.
- * Durable enabled state remains the user's preference, while the current plan
- * and capability state are a separate fail-closed gate. Meter quantities and
- * limits are intentionally absent: usage enforcement is advisory. */
+/** Resolve add-ons for dashboard, public delivery and publish execution.
+ * Unconfigured plans/capabilities inherit registry availability, including the
+ * free plan provisioned without entitlement rows. Explicit plan restrictions
+ * still apply, separately from the owner's durable enabled preference. Meter
+ * quantities and limits are intentionally absent: usage enforcement is advisory. */
 export const projectAddonRowsForDelivery = (
   rows: readonly { key: string; enabled: boolean; config: unknown }[],
   assignment: AddonDeliveryPlanAssignment | null | undefined,
@@ -258,11 +259,12 @@ export const projectAddonRowsForDelivery = (
   const effectiveAt = assignment ? validInstant(assignment.effectiveAt) : null;
   const expiresAt = assignment?.expiresAt ? validInstant(assignment.expiresAt) : null;
   const activePlan =
-    assignment?.status === 'active' &&
-    assignment.plan.active &&
-    effectiveAt !== null &&
-    effectiveAt <= nowAt &&
-    (assignment.expiresAt === null || (expiresAt !== null && expiresAt > nowAt));
+    !assignment ||
+    (assignment.status === 'active' &&
+      assignment.plan.active &&
+      effectiveAt !== null &&
+      effectiveAt <= nowAt &&
+      (assignment.expiresAt === null || (expiresAt !== null && expiresAt > nowAt)));
 
   return addonDefinitions.map((definition) => {
     const row = byId.get(definition.id);
@@ -271,9 +273,9 @@ export const projectAddonRowsForDelivery = (
     const capabilityAvailable =
       activePlan &&
       availability.state !== 'coming_soon' &&
-      availability.plans.some((planKey) => planKey === assignment.plan.key) &&
-      entitlement?.enabled === true &&
-      (entitlement.meter?.active ?? true);
+      availability.plans.some((planKey) => planKey === (assignment?.plan.key ?? 'free')) &&
+      (entitlement?.enabled ?? true) &&
+      (entitlement?.meter?.active ?? true);
     return {
       key: definition.id,
       enabled: (row?.enabled ?? definition.defaultEnabled) && capabilityAvailable,

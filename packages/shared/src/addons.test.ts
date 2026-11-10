@@ -151,9 +151,29 @@ describe('delivery entitlement projection', () => {
   const feedback = [{ key: 'feedback' as const, enabled: true, config: { placement: 'after-content', presentation: 'compact' } }];
   const now = new Date('2026-08-24T00:00:00.000Z');
 
-  it('fails closed for missing and expired plan state', () => {
-    expect(projectAddonRowsForDelivery(feedback, null, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
-    expect(projectAddonRowsForDelivery(feedback, assignment(), now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+  it('inherits registry defaults for unconfigured plans and capabilities', () => {
+    for (const plan of [null, assignment({ plan: { key: 'free', active: true, entitlements: [] } })]) {
+      expect(projectConfigWithAddons({}, projectAddonRowsForDelivery([], plan, now))).toMatchObject({
+        addons: { feedback: true, consentBanner: { enabled: true }, grammarLinter: false },
+        analytics: { cookieConsent: true },
+      });
+      expect(
+        projectAddonRowsForDelivery([{ key: 'feedback', enabled: false, config: {} }], plan, now).find((addon) => addon.key === 'feedback'),
+      ).toMatchObject({
+        enabled: false,
+      });
+    }
+  });
+
+  it('fails closed for explicitly invalid plan state', () => {
+    for (const plan of [
+      assignment({ status: 'inactive' }),
+      assignment({ effectiveAt: new Date('2027-01-01') }),
+      assignment({ plan: { key: 'unknown', active: true, entitlements: [] } }),
+      assignment({ plan: { key: 'free', active: false, entitlements: [] } }),
+    ]) {
+      expect(projectAddonRowsForDelivery(feedback, plan, now).find((addon) => addon.key === 'feedback')).toMatchObject({ enabled: false });
+    }
     expect(
       projectAddonRowsForDelivery(feedback, assignment({ expiresAt: new Date('2026-08-23T00:00:00.000Z') }), now).find(
         (addon) => addon.key === 'feedback',

@@ -1,0 +1,142 @@
+import type { AddonDeliveryPlanAssignment } from '@nibleaf/shared/addons';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
+import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
+import { projectConfigSchema } from '@nibleaf/validators';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({
+  project: vi.fn(),
+  deploymentHead: vi.fn(),
+  deploymentSnapshot: vi.fn(),
+  pages: vi.fn(),
+}));
+
+vi.mock('@nibleaf/database', () => ({
+  Prisma: { DbNull: null },
+  prisma: {
+    project: { findUnique: mocks.project, findFirst: mocks.project },
+    page: { findMany: mocks.pages },
+    deployment: { findFirst: mocks.deploymentHead, findUnique: mocks.deploymentSnapshot, count: vi.fn(async () => 1) },
+  },
+}));
+vi.mock('@nibleaf/auth/tenant-erasure', () => ({
+  eraseProjectOrganization: vi.fn(),
+  TenantErasureProjectNotFoundError: class extends Error {},
+  TenantUsageDeletionPendingError: class extends Error {},
+}));
+vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: {} }));
+vi.mock('@nibleaf/search', () => ({ searchDocs: vi.fn() }));
+vi.mock('hono/context-storage', () => ({ getContext: () => ({ req: { raw: { headers: new Headers() } } }) }));
+vi.mock('@/env', () => ({ env: {} }));
+vi.mock('@/lib/access', () => ({ accessibleProjectIds: vi.fn(), resolveSiteAccess: vi.fn() }));
+vi.mock('@/lib/ai-search/quota', () => ({ consumeAnswerQuota: vi.fn() }));
+vi.mock('@/lib/ai-search/runtime', () => ({ answerPublishedSearch: vi.fn(), answerSearchAvailable: vi.fn(), runPublishedSearch: vi.fn() }));
+vi.mock('@/lib/search-cache', () => ({ getCachedIndex: vi.fn() }));
+vi.mock('./analytics', () => ({ trackProjectEvent: vi.fn(), trackProjectEvents: vi.fn() }));
+vi.mock('./notifications', () => ({ createNotificationsForOrgMembers: vi.fn() }));
+vi.mock('./reader-access', () => ({ resolveViewerAccess: vi.fn(async () => ({ kind: 'public', allowedPageIds: null })) }));
+
+import { getCurrentSnapshot } from './deployments';
+import { getProject } from './projects';
+import { getSite, invalidatePublishedSiteConfig } from './sites';
+
+const freePlan: AddonDeliveryPlanAssignment = {
+  status: 'active',
+  effectiveAt: new Date('2026-01-01T00:00:00Z'),
+  expiresAt: null,
+  plan: { key: 'free', active: true, entitlements: [] },
+};
+
+const project = () => ({
+  id: 'reader-addon-parity',
+  organizationId: 'org-parity',
+  name: 'Docs',
+  slug: 'docs',
+  description: null,
+  icon: null,
+  // Both the stored config and older snapshots can contain the broken values.
+  config: { addons: { feedback: false }, analytics: { cookieConsent: false }, redirects: [], visibility: 'public' },
+  accessMode: 'PUBLIC' as const,
+  readerAccessRequests: false,
+  takedownAt: null,
+  domains: [],
+  addons: [] as { key: string; enabled: boolean; config: unknown }[],
+  organization: { usagePlan: freePlan as AddonDeliveryPlanAssignment | null },
+  languages: [{ code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true, enabled: true, config: null, projectTranslations: [] }],
+  branches: [{ id: 'main', name: 'main', isDefault: true }],
+});
+
+describe('reader add-on parity', () => {
+  let live: ReturnType<typeof project>;
+  let frozen: SiteSnapshot;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    live = project();
+    frozen = buildSnapshot(live, [], '2026-01-01T00:00:00Z');
+    frozen.project.config = {
+      addons: { feedback: false, consentBanner: { enabled: false, placement: 'bottom-end', presentation: 'comfortable', buttonLayout: 'inline' } },
+      analytics: { cookieConsent: false },
+      redirects: [],
+    };
+    mocks.project.mockResolvedValue(live);
+    mocks.pages.mockResolvedValue([]);
+    mocks.deploymentHead.mockResolvedValue({ id: `deployment-${expect.getState().currentTestName}`, version: 1 });
+    mocks.deploymentSnapshot.mockResolvedValue({ snapshot: frozen });
+    invalidatePublishedSiteConfig(live.id);
+  });
+
+  it.each(['free', 'legacy'] as const)('serves registry defaults for a %s project with no add-on rows, without republishing', async (kind) => {
+    if (kind === 'legacy') live.organization.usagePlan = null;
+    const original = structuredClone(frozen);
+    const dashboard = await getProject(live.organizationId, live.id);
+    const published = await getSite(live.id);
+    const nextPublish = await getCurrentSnapshot(live.id);
+
+    expect(published.project.config).toEqual(dashboard.config);
+    expect(nextPublish.project.config).toEqual(dashboard.config);
+    expect(published.project.config).toMatchObject({
+      addons: { feedback: true, consentBanner: { enabled: true }, grammarLinter: false },
+      analytics: { cookieConsent: true },
+    });
+    expect(projectConfigSchema.safeParse(published.project.config).success).toBe(true);
+    expect(analyticsConsentPolicy(published.project.config)).toBe('required');
+    expect(frozen).toEqual(original);
+    expect(dashboard).not.toHaveProperty('organization');
+    expect(dashboard).not.toHaveProperty('addons');
+  });
+
+  it('honors explicit owner disables over enabled frozen or stored config', async () => {
+    live.addons = [
+      { key: 'feedback', enabled: false, config: {} },
+      { key: 'consent-banner', enabled: false, config: {} },
+    ];
+    frozen.project.config = { addons: { feedback: true }, analytics: { cookieConsent: true }, redirects: [] };
+    const dashboard = await getProject(live.organizationId, live.id);
+    const published = await getSite(live.id);
+
+    expect(published.project.config).toEqual(dashboard.config);
+    expect((await getCurrentSnapshot(live.id)).project.config).toEqual(dashboard.config);
+    expect(published.project.config).toMatchObject({
+      addons: { feedback: false, consentBanner: { enabled: false } },
+      analytics: { cookieConsent: false },
+    });
+    expect(analyticsConsentPolicy(published.project.config)).toBe('not_required');
+  });
+
+  it('applies explicit capability restrictions consistently to dashboard and readers', async () => {
+    live.organization.usagePlan = {
+      ...freePlan,
+      plan: { ...freePlan.plan, entitlements: [{ capabilityKey: 'addons.feedback', enabled: false, meter: null }] },
+    };
+    const dashboard = await getProject(live.organizationId, live.id);
+    const published = await getSite(live.id);
+
+    expect(published.project.config).toEqual(dashboard.config);
+    expect((await getCurrentSnapshot(live.id)).project.config).toEqual(dashboard.config);
+    expect(published.project.config).toMatchObject({
+      addons: { feedback: false, consentBanner: { enabled: true } },
+      analytics: { cookieConsent: true },
+    });
+  });
+});

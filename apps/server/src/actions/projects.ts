@@ -1,6 +1,6 @@
 import { eraseProjectOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
-import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
+import { addonDefinitions, defaultProjectAddonProvisioning, projectAddonRowsForDelivery, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { THEME_PRESETS, THEME_SCHEMA_VERSION } from '@nibleaf/shared/themes';
 import { slugify } from '@nibleaf/shared/utils';
@@ -179,6 +179,25 @@ export const getProject = async (organizationId: string, id: string) => {
       where: { id, organizationId },
       include: {
         _count: { select: { pages: { where: contentPagesWhere }, deployments: true, domains: true } },
+        addons: { select: { key: true, enabled: true, config: true } },
+        organization: {
+          select: {
+            usagePlan: {
+              select: {
+                status: true,
+                effectiveAt: true,
+                expiresAt: true,
+                plan: {
+                  select: {
+                    key: true,
+                    active: true,
+                    entitlements: { select: { capabilityKey: true, enabled: true, meter: { select: { active: true } } } },
+                  },
+                },
+              },
+            },
+          },
+        },
         languages: { orderBy: [{ position: 'asc' }], include: { projectTranslations: { where: { projectId: id }, take: 1 } } },
       },
     }),
@@ -188,8 +207,10 @@ export const getProject = async (organizationId: string, id: string) => {
   if (!project) {
     throw notFound('project', { id });
   }
+  const { addons, organization, ...details } = project;
   return {
-    ...project,
+    ...details,
+    config: projectConfigWithAddons(project.config, projectAddonRowsForDelivery(addons, organization.usagePlan)),
     hasPublishedVersion: published !== null,
     readyPublishes,
     languages: project.languages.map(({ projectTranslations, ...language }) => ({
