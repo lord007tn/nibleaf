@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { restoreFocusFallback } from '../../lib/focus';
 import { Button } from './button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './dialog';
 import { Input } from './input';
@@ -39,34 +40,76 @@ const PromptContext = createContext<PromptFn | null>(null);
  * Mount once near the root. `useConfirm()` → `await confirm({…})` (true/false);
  * `usePrompt()` → `await prompt({…})` (the entered string, or null on cancel).
  * Theme- and RTL-aware, and non-blocking (unlike the native dialogs).
+ *
+ * A question that is still open settles as a cancel (`false` / `null`) when a
+ * new one of the same kind replaces it or the provider unmounts, so no caller
+ * waits forever. On close, focus returns to what had it before, or to the
+ * page h1 when that element is gone.
  */
-export function ConfirmProvider({ children, labels }: { children: ReactNode; labels?: ConfirmProviderLabels }) {
-  const [confirmState, setConfirmState] = useState<{ options: ConfirmOptions; resolve: (value: boolean) => void } | null>(null);
-  const [promptState, setPromptState] = useState<{ options: PromptOptions; resolve: (value: string | null) => void } | null>(null);
-  const [promptValue, setPromptValue] = useState('');
-  const returnFocus = useRef<HTMLElement | null>(null);
+const currentFocus = () => (document.activeElement instanceof HTMLElement ? document.activeElement : null);
 
-  const confirm = useCallback<ConfirmFn>((options) => new Promise<boolean>((resolve) => { returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; setConfirmState({ options, resolve }); }), []);
+export function ConfirmProvider({ children, labels }: { children: ReactNode; labels?: ConfirmProviderLabels }) {
+  const [confirmState, setConfirmState] = useState<{ options: ConfirmOptions } | null>(null);
+  const [promptState, setPromptState] = useState<{ options: PromptOptions } | null>(null);
+  const [promptValue, setPromptValue] = useState('');
+  // Where focus returns when each kind of question closes. A question that
+  // replaces an open one of the same kind keeps the original target: focus
+  // is inside the closing dialog by then, and that element is about to go.
+  const confirmReturnFocus = useRef<HTMLElement | null>(null);
+  const promptReturnFocus = useRef<HTMLElement | null>(null);
+  // The open question's resolver lives in a ref, not in state, so settling it
+  // never runs inside a state updater (React may call those twice).
+  const confirmResolve = useRef<((value: boolean) => void) | null>(null);
+  const promptResolve = useRef<((value: string | null) => void) | null>(null);
+
+  const confirm = useCallback<ConfirmFn>(
+    (options) =>
+      new Promise<boolean>((resolve) => {
+        const replacing = confirmResolve.current !== null;
+        confirmResolve.current?.(false);
+        confirmResolve.current = resolve;
+        if (!replacing) confirmReturnFocus.current = currentFocus();
+        setConfirmState({ options });
+      }),
+    [],
+  );
   const prompt = useCallback<PromptFn>(
     (options) =>
       new Promise<string | null>((resolve) => {
-        returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const replacing = promptResolve.current !== null;
+        promptResolve.current?.(null);
+        promptResolve.current = resolve;
+        if (!replacing) promptReturnFocus.current = currentFocus();
         setPromptValue(options.initialValue ?? '');
-        setPromptState({ options, resolve });
+        setPromptState({ options });
       }),
     [],
   );
 
-  const settleConfirm = (result: boolean) =>
-    setConfirmState((current) => {
-      current?.resolve(result);
-      return null;
-    });
-  const settlePrompt = (result: string | null) =>
-    setPromptState((current) => {
-      current?.resolve(result);
-      return null;
-    });
+  useEffect(
+    () => () => {
+      confirmResolve.current?.(false);
+      confirmResolve.current = null;
+      promptResolve.current?.(null);
+      promptResolve.current = null;
+    },
+    [],
+  );
+
+  const settleConfirm = (result: boolean) => {
+    const resolve = confirmResolve.current;
+    confirmResolve.current = null;
+    resolve?.(result);
+    setConfirmState(null);
+  };
+  const settlePrompt = (result: string | null) => {
+    const resolve = promptResolve.current;
+    promptResolve.current = null;
+    resolve?.(result);
+    setPromptState(null);
+  };
+  const confirmFinalFocus = () => restoreFocusFallback(confirmReturnFocus.current);
+  const promptFinalFocus = () => restoreFocusFallback(promptReturnFocus.current);
 
   const confirmValue = useMemo(() => confirm, [confirm]);
   const promptFnValue = useMemo(() => prompt, [prompt]);
@@ -83,7 +126,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         {children}
 
         <Dialog open={Boolean(confirmState)} onOpenChange={(open) => !open && settleConfirm(false)}>
-          <DialogContent className="max-w-sm" finalFocus={returnFocus} showCloseButton={false}>
+          <DialogContent className="max-w-sm" finalFocus={confirmFinalFocus} showCloseButton={false}>
             <DialogHeader>
               <DialogTitle>{c?.title}</DialogTitle>
               {c?.description ? <DialogDescription>{c.description}</DialogDescription> : null}
@@ -100,7 +143,7 @@ export function ConfirmProvider({ children, labels }: { children: ReactNode; lab
         </Dialog>
 
         <Dialog open={Boolean(promptState)} onOpenChange={(open) => !open && settlePrompt(null)}>
-          <DialogContent className="max-w-sm" finalFocus={returnFocus} showCloseButton={false}>
+          <DialogContent className="max-w-sm" finalFocus={promptFinalFocus} showCloseButton={false}>
             <form
               onSubmit={(event) => {
                 event.preventDefault();
