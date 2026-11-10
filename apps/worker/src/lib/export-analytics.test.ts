@@ -20,13 +20,20 @@ import { trackExportLifecycle } from './export-analytics';
 describe('export analytics durability', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.projectFindUnique.mockResolvedValue({ id: 'project-a', organizationId: 'org-a', accessMode: 'PRIVATE', config: null });
+    mocks.projectFindUnique.mockResolvedValue({
+      id: 'project-a',
+      organizationId: 'new-billing-org',
+      dataTenantId: 'org-a',
+      accessMode: 'PRIVATE',
+      config: null,
+    });
     mocks.buildAnalyticsEvent.mockReturnValue({ eventId: 'event-a', tenantId: 'org-a', projectId: 'project-a' });
     mocks.enqueueAnalyticsEvent.mockResolvedValue('analytics-job-a');
   });
 
   it('routes export lifecycle telemetry through the durable analytics queue instead of a direct ClickHouse write', async () => {
     await trackExportLifecycle('project-a', 'export-a', { name: 'export_completed', operationId: 'export-a', itemCount: 2 });
+    expect(mocks.buildAnalyticsEvent).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ tenantId: 'org-a', projectId: 'project-a' }));
     expect(mocks.enqueueAnalyticsEvent).toHaveBeenCalledWith({ eventId: 'event-a', tenantId: 'org-a', projectId: 'project-a' });
   });
 

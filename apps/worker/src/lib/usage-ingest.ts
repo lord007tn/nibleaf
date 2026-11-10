@@ -27,7 +27,7 @@ export const enqueueUsageEvents = async (events: UsageEvent[]) => {
   if (!first) throw new Error('Usage ingestion requires at least one event.');
   const jobId = usageIngestJobId(parsed);
   const data = ingestUsageJobDataSchema.parse({ kind: 'ingest-usage', checkpointId: jobId });
-  await markUsageStoragePending({ id: jobId, organizationId: first.tenantId, projectId: first.projectId, events: parsed });
+  await markUsageStoragePending({ id: jobId, partitionId: first.tenantId, projectId: first.projectId, events: parsed });
   try {
     await createJob(QueueNames.ANALYTICS, { name: 'ingest-usage', data }, { ...durableUsageJobOptions, jobId });
     await markUsageStorageQueued(jobId, first.tenantId);
@@ -40,10 +40,10 @@ export const enqueueUsageEvents = async (events: UsageEvent[]) => {
 export const enqueueAnalyticsEvent = async (envelope: AnalyticsEventEnvelope) => {
   const jobId = analyticsIngestJobId(envelope);
   const usageEvents = usageEventsFromAnalytics(envelope);
-  const analyticsMarker = await markAnalyticsStoragePending(envelope.tenantId);
+  const analyticsMarker = await markAnalyticsStoragePending(envelope.tenantId, envelope.projectId);
   if (!analyticsMarker.accepted) return jobId;
   if (usageEvents.length > 0) {
-    await markUsageStoragePending({ id: jobId, organizationId: envelope.tenantId, projectId: envelope.projectId, events: usageEvents });
+    await markUsageStoragePending({ id: jobId, partitionId: envelope.tenantId, projectId: envelope.projectId, events: usageEvents });
   }
   try {
     await createJob(QueueNames.ANALYTICS, { name: 'track-event', data: { kind: 'track-event', envelope } }, { ...durableUsageJobOptions, jobId });

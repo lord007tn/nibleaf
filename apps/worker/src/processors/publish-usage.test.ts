@@ -122,6 +122,7 @@ describe('publish usage queue isolation', () => {
       id: 'project-a',
       name: 'QA project',
       organizationId: 'org-a',
+      dataTenantId: 'org-a',
       accessMode: 'PUBLIC',
       config: null,
       branches: [],
@@ -132,7 +133,7 @@ describe('publish usage queue isolation', () => {
     mocks.enqueueAnalyticsEvent.mockRejectedValue(new mocks.DurableUsageEnqueueError(true));
     await expect(
       trackPublishLifecycle(
-        { id: 'project-a', organizationId: 'org-a', accessMode: 'PUBLIC', config: null },
+        { id: 'project-a', organizationId: 'org-a', dataTenantId: 'org-a', accessMode: 'PUBLIC', config: null },
         'deployment-a',
         { name: 'publish_completed', operationId: 'deployment-a', itemCount: 2 },
         '2026-08-24T00:00:00.000Z',
@@ -145,7 +146,7 @@ describe('publish usage queue isolation', () => {
     mocks.enqueueAnalyticsEvent.mockRejectedValue(new Error('postgres unavailable'));
     await expect(
       trackPublishLifecycle(
-        { id: 'project-a', organizationId: 'org-a', accessMode: 'PUBLIC', config: null },
+        { id: 'project-a', organizationId: 'org-a', dataTenantId: 'org-a', accessMode: 'PUBLIC', config: null },
         'deployment-a',
         { name: 'publish_completed', operationId: 'deployment-a', itemCount: 2 },
         '2026-08-24T00:00:00.000Z',
@@ -329,6 +330,7 @@ describe('publish usage queue isolation', () => {
       name: 'Docs',
       slug: 'docs',
       organizationId: 'org-a',
+      dataTenantId: 'org-a',
       accessMode: 'PUBLIC',
       config: {},
       icon: null,
@@ -378,6 +380,7 @@ describe('publish usage queue isolation', () => {
       description: null,
       icon: null,
       organizationId: 'org-a',
+      dataTenantId: 'org-a',
       accessMode: 'PUBLIC',
       config: null,
       organization: { usagePlan: null },
