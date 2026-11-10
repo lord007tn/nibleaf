@@ -29,7 +29,7 @@ vi.mock('@nibleaf/database', () => ({
 }));
 
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
-import { createDeployment, getCurrentSnapshot, rollbackDeployment } from './deployments';
+import { createDeployment, getCurrentSnapshot, getPendingChanges, rollbackDeployment } from './deployments';
 
 const project = (redirects: Array<{ from: string; to: string }>) => ({
   id: 'project-1',
@@ -234,5 +234,29 @@ describe('createDeployment redirect preflight', () => {
         data: expect.objectContaining({ status: 'FAILED' }),
       }),
     );
+  });
+});
+
+describe('pending changes after a language move', () => {
+  const arabic = { ...project([]).languages[0], id: 'language-2', code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, position: 1 };
+  const bilingual = { ...project([]), languages: [project([]).languages[0], arabic] };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.projectFindFirst.mockResolvedValue(bilingual);
+    mocks.projectFindUnique.mockResolvedValue(bilingual);
+  });
+
+  it('lists a top-level page that only changed language, and changes the reviewed fingerprint', async () => {
+    // Published in English; then moved to the empty Arabic section with the same slug, path, parent and position.
+    mocks.pageFindMany.mockResolvedValue([page]);
+    const published = await getCurrentSnapshot('project-1');
+    mocks.deploymentFindFirst.mockResolvedValue({ id: 'deployment-1', version: 1, status: 'READY', snapshot: published, completedAt: new Date() });
+    const unchanged = await getPendingChanges('project-1');
+    expect(unchanged.changes).toEqual([]);
+
+    mocks.pageFindMany.mockResolvedValue([{ ...page, languageId: 'language-2', language: { code: 'ar' } }]);
+    const moved = await getPendingChanges('project-1');
+    expect(moved.changes).toEqual([expect.objectContaining({ id: 'page-1', status: 'modified', languageCode: 'ar', fields: ['language'] })]);
+    expect(moved.reviewedStateHash).not.toBe(unchanged.reviewedStateHash);
   });
 });

@@ -104,16 +104,16 @@ export function LanguageSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl" showCloseButton={false}>
         <DialogDescription className="sr-only">{t('editor.langSettings.desc')}</DialogDescription>
-        <div className="flex h-[min(520px,80vh)]">
+        <div className="flex h-[min(520px,80vh)] flex-col sm:flex-row">
           {/* Left settings sidebar */}
-          <aside className="flex w-48 shrink-0 flex-col border-border border-e bg-muted/30 p-2.5">
+          <aside className="flex w-full shrink-0 flex-col border-border border-b bg-muted/30 p-2.5 sm:w-48 sm:border-e sm:border-b-0">
             <DialogHeader className="px-2 pt-1.5 pb-3">
               <DialogTitle className="text-start text-base">{t('editor.langSettings.title')}</DialogTitle>
               <p className="truncate text-muted-foreground text-xs">{language.label}</p>
             </DialogHeader>
-            <nav className="flex flex-col gap-0.5">
+            <nav className="flex gap-0.5 overflow-x-auto sm:flex-col">
               {LANG_SETTINGS_SECTIONS.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -122,7 +122,7 @@ export function LanguageSettingsDialog({
                     type="button"
                     onClick={() => setSection(item.id)}
                     className={cn(
-                      'flex h-9 cursor-pointer items-center gap-2 rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
+                      'flex h-9 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md px-2.5 text-start font-medium text-[13.5px] transition-colors',
                       section === item.id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                     )}
                   >
@@ -134,8 +134,9 @@ export function LanguageSettingsDialog({
             </nav>
           </aside>
 
-          {/* Content + footer */}
-          <div className="flex min-w-0 flex-1 flex-col">
+          {/* Content + footer. Below `sm` the sections stack above the form (as in
+              page settings), so Cancel and Save stay on screen on a narrow phone. */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {section === 'general' ? (
                 <div className="flex flex-col gap-4">

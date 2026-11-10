@@ -265,7 +265,7 @@
         "title": "Write and organize pages",
         "path": "product/authoring",
         "heading": "Change page details",
-        "content": "## Change page details\n\nSelect **Page settings** (the sliders icon above the page) to change:\n\n- **Title** and **Web address**, the last part of the page's address. Changing\n  the address of a published page breaks links people saved, so add a\n  [redirect](/redirects) from the old address.\n- **Description**, shown under the title and in search results.\n- **Hidden**, which keeps the page out of the navigation.\n\n**More options** in the same dialog holds the sidebar title, search-engine and\nsocial sharing settings, page width, and the **Translation key** that links a\npage to its translations. See [Arabic and right-to-left docs](/product/arabic-rtl)."
+        "content": "## Change page details\n\nSelect **Page settings** (the sliders icon above the page) to change:\n\n- **Title** and **Web address**, the last part of the page's address. Changing\n  the address of a published page breaks links people saved, so add a\n  [redirect](/redirects) from the old address.\n- **Description**, shown under the title and in search results.\n- **Language**, which moves the page, with every page inside it, to the top\n  level of another language of the site. Its address changes, so add a\n  [redirect](/redirects) if the page is already published.\n- **Hidden**, which keeps the page out of the navigation.\n\n**More options** in the same dialog holds the sidebar title, search-engine and\nsocial sharing settings, page width, and the **Translation key** that links a\npage to its translations. See [Arabic and right-to-left docs](/product/arabic-rtl)."
       },
       {
         "title": "Export and archive your docs",
@@ -1088,7 +1088,7 @@
         "title": "اكتب الصفحات ونظّمها",
         "path": "ar/product/authoring",
         "heading": "غيّر تفاصيل الصفحة",
-        "content": "## غيّر تفاصيل الصفحة\n\nاختر **إعدادات الصفحة** (أيقونة المنزلقات أعلى الصفحة) لتغيير:\n\n- **العنوان** و**عنوان الصفحة على الويب**، أي الجزء الأخير من رابط الصفحة. يؤدي\n  تغيير عنوان صفحة منشورة إلى تعطيل الروابط التي حفظها الآخرون، لذا أضف\n  [إعادة توجيه](/ar/redirects) من العنوان القديم.\n- **الوصف**، ويظهر أسفل العنوان وفي نتائج البحث.\n- **مخفية**، لإبقاء الصفحة خارج التنقّل.\n\nوتضم **خيارات إضافية** في النافذة نفسها عنوان الشريط الجانبي، وإعدادات محركات\nالبحث والمشاركة الاجتماعية، وعرض الصفحة، و**مفتاح الترجمة** الذي يربط الصفحة\nبترجماتها. راجع [التوثيق العربي ومن اليمين إلى اليسار](/ar/product/arabic-rtl)."
+        "content": "## غيّر تفاصيل الصفحة\n\nاختر **إعدادات الصفحة** (أيقونة المنزلقات أعلى الصفحة) لتغيير:\n\n- **العنوان** و**عنوان الصفحة على الويب**، أي الجزء الأخير من رابط الصفحة. يؤدي\n  تغيير عنوان صفحة منشورة إلى تعطيل الروابط التي حفظها الآخرون، لذا أضف\n  [إعادة توجيه](/ar/redirects) من العنوان القديم.\n- **الوصف**، ويظهر أسفل العنوان وفي نتائج البحث.\n- **اللغة**، لنقل الصفحة، مع كل الصفحات التي بداخلها، إلى المستوى الأعلى في لغة\n  أخرى من لغات الموقع. يتغيّر عنوانها، لذا أضف [إعادة توجيه](/ar/redirects) إن\n  كانت الصفحة منشورة.\n- **مخفية**، لإبقاء الصفحة خارج التنقّل.\n\nوتضم **خيارات إضافية** في النافذة نفسها عنوان الشريط الجانبي، وإعدادات محركات\nالبحث والمشاركة الاجتماعية، وعرض الصفحة، و**مفتاح الترجمة** الذي يربط الصفحة\nبترجماتها. راجع [التوثيق العربي ومن اليمين إلى اليسار](/ar/product/arabic-rtl)."
       },
       {
         "title": "صدّر توثيقك وأرشفه",

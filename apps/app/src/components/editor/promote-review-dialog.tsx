@@ -46,7 +46,7 @@ export function PromoteReviewDialog({
   const losesEdits = groups.some((section) => section.group === 'lost');
   return (
     <Dialog open={preview !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{t('editor.promote.title', { name: versionName })}</DialogTitle>
           <DialogDescription>{t(blocked ? 'error.promoteBlocked' : 'editor.promote.description')}</DialogDescription>
