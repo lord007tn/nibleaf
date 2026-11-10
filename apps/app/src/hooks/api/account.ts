@@ -1,4 +1,5 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+import { useSessionMutation, useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { authClient } from '@/services/auth-client';
 
 /*
@@ -46,22 +47,22 @@ export const useAccountSessions = () => useQuery(accountSessionsQueryOptions());
 export const useLinkedAccounts = () => useQuery(linkedAccountsQueryOptions());
 
 export const useRevokeSession = () => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (token: string) => unwrap((await authClient.revokeSession({ token })) as { data: unknown; error: null }, 'session'),
     onSettled: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
   });
 };
 export const useRevokeOtherSessions = () => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async () => unwrap((await authClient.revokeOtherSessions()) as { data: unknown; error: null }, 'sessions'),
     onSettled: () => qc.invalidateQueries({ queryKey: accountKeys.sessions() }),
   });
 };
 /** Refused by the server while you own an organization (§5.4.4); the UI lists them first. */
 export const useDeleteAccount = () =>
-  useMutation({
+  useSessionMutation({
     mutationFn: async () => {
       const result = (await authClient.deleteUser({})) as { data: unknown; error: { message?: string; status?: number } | null };
       if (result.error) throw Object.assign(new Error(result.error.message ?? 'Could not delete the account.'), { status: result.error.status });

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { NotFound } from '@/components/not-found';
@@ -9,6 +9,7 @@ import { useSwitcher } from '@/hooks/api';
 import { organizationBySlugQueryOptions, switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { OrganizationLayout } from '@/layouts/organization';
 
 const subscribeToHydration = () => () => undefined;
@@ -29,7 +30,7 @@ export const Route = createFileRoute('/app/o/$orgSlug')({
 function OrganizationRoute() {
   const { orgSlug } = Route.useParams();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const search = useRouterState({ select: (s) => s.location.searchStr });
   // Refetch on focus: the cheapest way to notice a removal in a background tab.

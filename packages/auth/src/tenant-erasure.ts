@@ -58,21 +58,47 @@ export const eraseProject = async (projectId: string) => {
   return { organizationId: project.organizationId, projectId: project.id };
 };
 
+export class TenantErasureManifestMismatchError extends Error {
+  constructor() {
+    super('A website outside the deletion manifest belongs to this organization.');
+    this.name = 'TenantErasureManifestMismatchError';
+  }
+}
+
 /**
- * Erase an organization and every website in it. The deletion fence is
- * committed first (org mutations, admissions and new websites refuse a fenced
- * org), then each website is erased on its own, outside any long transaction,
- * so a retry resumes with whatever websites remain. The org row goes last,
- * and only once it holds no website (`project → organization` is Restrict).
+ * Erase an organization and every website in it (design §6.12). The fence and
+ * a fixed website manifest are written atomically first: by the owner's own
+ * transaction for an org deletion, or here, under the org row lock, for a
+ * caller that has none. Each manifest website is then erased on its own,
+ * outside any long transaction, so a retry resumes with whatever is left. A
+ * website that is not on the manifest is never erased; it stops the deletion
+ * (fenced orgs refuse new websites, so it can only be a bug). The org row goes
+ * last, once it holds no website (`project → organization` is Restrict).
  */
 export const eraseOrganization = async (organizationId: string) => {
-  const fenced = await prisma.organization.updateMany({
-    where: { id: organizationId },
-    data: { deletionStartedAt: new Date() },
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM organization WHERE id = ${organizationId} FOR NO KEY UPDATE`;
+    const org = await tx.organization.findUnique({ where: { id: organizationId }, select: { deletionStartedAt: true } });
+    if (!org || org.deletionStartedAt) return;
+    const websites = await tx.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
+    await tx.organization.update({
+      where: { id: organizationId },
+      data: { deletionStartedAt: new Date(), deletionWebsiteIds: websites.map((website) => website.id) },
+    });
   });
-  if (fenced.count === 0) return { organizationId };
-  const projects = await prisma.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
-  for (const project of projects) await eraseProject(project.id);
+  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { deletionWebsiteIds: true } });
+  if (!org) return { organizationId };
+  const manifest = new Set(org.deletionWebsiteIds);
+  const present = await prisma.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
+  if (present.some((website) => !manifest.has(website.id))) throw new TenantErasureManifestMismatchError();
+  for (const website of present) {
+    try {
+      await eraseProject(website.id);
+    } catch (error) {
+      // A concurrent retry already erased it.
+      if (!(error instanceof TenantErasureProjectNotFoundError)) throw error;
+    }
+  }
   await prisma.organization.deleteMany({ where: { id: organizationId, projects: { none: {} } } });
   return { organizationId };
 };

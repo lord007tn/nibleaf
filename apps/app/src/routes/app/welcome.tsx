@@ -6,7 +6,6 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useT } from '@nibleaf/i18n/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { Building2, Mail } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
@@ -17,6 +16,7 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { acceptInvitation, type PendingInvitation, useCreateOrganization, useMyInvitations, useSwitcher } from '@/hooks/api';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { useFormatters } from '@/lib/format';
 import { roleLabelKey } from '@/lib/member-roles';
 import { useSession } from '@/services/auth-client';
@@ -103,7 +103,7 @@ function PendingInvitations() {
 function InvitationCard({ invitation }: { invitation: PendingInvitation }) {
   const t = useT();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const { relativeTime } = useFormatters();
   const [accepting, setAccepting] = useState(false);
   const accept = async () => {

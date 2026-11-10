@@ -6,7 +6,6 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { useT } from '@nibleaf/i18n/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { Building2, Mail, TriangleAlert } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
@@ -25,6 +24,7 @@ import {
   useUpdateOrganization,
 } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { useFormatters } from '@/lib/format';
 
 export const Route = createFileRoute('/app/o/$orgSlug/settings')({ component: OrganizationSettingsPage });
@@ -187,7 +187,7 @@ function InvitationsSection({ organization }: { organization: OrganizationDetail
 function DangerZone({ organization }: { organization: OrganizationDetail }) {
   const t = useT();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const confirm = useConfirm();
   const prompt = usePrompt();
   const owner = organization.orgRole === 'owner';

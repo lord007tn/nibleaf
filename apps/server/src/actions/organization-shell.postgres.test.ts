@@ -1,5 +1,21 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+// Website erasure queues storage and search jobs; no Redis in this suite.
+// No ClickHouse in this suite: erasure's partition deletes are recorded, not sent.
+vi.mock('@nibleaf/clickhouse', async (original) => ({
+  ...(await original<typeof import('@nibleaf/clickhouse')>()),
+  deleteProjectAiConversations: vi.fn(async () => undefined),
+  deleteProjectAnalytics: vi.fn(async () => undefined),
+  deleteProjectUsage: vi.fn(async () => undefined),
+}));
+vi.mock('@nibleaf/bullmq', async (original) => ({
+  ...(await original<typeof import('@nibleaf/bullmq')>()),
+  createJob: vi.fn(async () => undefined),
+  getJob: vi.fn(async () => undefined),
+  removeJob: vi.fn(async () => undefined),
+  sendRequiredEmail: vi.fn(async () => undefined),
+}))
 
 /**
  * The organization shell's server side (design §5.4) against a real database:
@@ -46,7 +62,7 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization shell o
     await member(org.x, u[4] ?? '', 'owner', 5);
     await db.prisma.projectMember.create({ data: { organizationId: org.a, projectId: site.a1, userId: u[2] ?? '', role: 'viewer' } });
     await db.prisma.deployment.create({ data: { projectId: site.a1, version: 1, status: 'READY' } }).catch(() => undefined);
-  });
+  }, 120_000);
 
   afterAll(async () => {
     if (!db) return;
@@ -151,10 +167,16 @@ describe.skipIf(process.env.ORG_SHELL_INTEGRATION !== '1')('organization shell o
     const doomed = await orgs.createOrganization(u[3] ?? '', `Doomed ${run}`);
     createdOrgs.push(doomed.id);
     await db.prisma.member.create({ data: { organizationId: doomed.id, userId: u[1] ?? '', orgRole: 'admin', role: 'admin' } });
+    // Not empty: deletion erases its websites first, then the org.
+    const doomedSites = [
+      await projects.createProject(u[3] ?? '', { name: `Doomed site 1 ${run}`, organizationId: doomed.id }),
+      await projects.createProject(u[3] ?? '', { name: `Doomed site 2 ${run}`, organizationId: doomed.id }),
+    ];
     await expect(orgs.deleteOrganization(doomed.id, u[3] ?? '', 'doomed')).rejects.toMatchObject({ status: 400 });
     await expect(orgs.deleteOrganization(doomed.id, u[1] ?? '', doomed.name)).rejects.toMatchObject({ status: 403 });
     await expect(orgs.deleteOrganization(doomed.id, u[3] ?? '', doomed.name)).resolves.toEqual({ id: doomed.id });
     expect(await db.prisma.organization.findUnique({ where: { id: doomed.id } })).toBeNull();
+    expect(await db.prisma.project.count({ where: { id: { in: doomedSites.map((site) => site.id) } } })).toBe(0);
   });
 
   it('lists pending invitations only for a verified address', async () => {

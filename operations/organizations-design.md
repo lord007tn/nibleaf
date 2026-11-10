@@ -777,6 +777,18 @@ deleted ("3 websites, 412 pages") → type the org name. Then (review #16):
 The Owner authorises the start; the job continues under that authorisation
 even if the Owner's session ends.
 
+**As built in PR 2 (merge council on #418):** step 1 runs inside the same
+transaction that checks the Owner and the typed name, under the org lock, and
+writes `deletionStartedAt` with `Organization.deletionWebsiteIds` (the fixed
+manifest). A transfer, new website or admission either commits before it (and
+is part of what is deleted) or waits for the lock and is then refused. Step 2
+erases only manifest websites and stops if any other website appears. Step 2
+runs in the request, not yet as a background job: if it stops part-way
+(ingestion still draining, a website failure), the Owner retries the same
+`DELETE /organizations/:id`, which is the only org write that passes the
+fence (route guard and `lockOrganization`), and it resumes from what is left.
+A durable background job that resumes on its own is a follow-up.
+
 ### 6.13 Switch organization
 
 Org switcher → pick org → `/app/o/$orgSlug/websites`; it becomes the
