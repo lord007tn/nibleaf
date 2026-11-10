@@ -91,7 +91,7 @@ export function searchValues(configuration: SearchConfigurationLike, languages: 
 }
 
 /** The suggested questions a block of text holds: one per non-empty line, trimmed. */
-export const starterQuestions = (text: string): string[] =>
+const starterQuestions = (text: string): string[] =>
   text
     .split('\n')
     .map((line) => line.trim())

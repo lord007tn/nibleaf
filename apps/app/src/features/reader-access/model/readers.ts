@@ -98,7 +98,7 @@ export type ReaderLike = {
 
 export type AudienceLike = { id: string; name: string; grants: ReadonlyArray<{ pageId: string | null }>; _count: { readers: number } };
 
-export type ReaderTone = 'success' | 'info' | 'neutral';
+type ReaderTone = 'success' | 'info' | 'neutral';
 
 const INVITED: { label: MessageKey; tone: ReaderTone } = { label: 'settings.visibility.status.invited', tone: 'info' };
 const READER_STATUS: Record<string, { label: MessageKey; tone: ReaderTone }> = {
@@ -128,7 +128,7 @@ export function readerActivity(reader: ReaderLike): ReaderActivity {
 }
 
 /** An audience limited to some pages, as opposed to one that covers the whole site. */
-export const isPageGroup = (audience: Pick<AudienceLike, 'grants'>) => !audience.grants.some((grant) => grant.pageId === null);
+const isPageGroup = (audience: Pick<AudienceLike, 'grants'>) => !audience.grants.some((grant) => grant.pageId === null);
 
 /** The page-limited groups a reader can be invited to (the whole site is the default). */
 export const pageGroups = <A extends Pick<AudienceLike, 'grants'>>(audiences: readonly A[]): A[] => audiences.filter(isPageGroup);
