@@ -345,6 +345,9 @@ Every section is one of two kinds, never both:
   - Text that ends up in a string (toasts, `aria-label`s, interpolated copy) goes through the existing `isolate()`,
     which wraps it in the Unicode isolates FSI…PDI.
   - Names, domains and emails rendered as elements use `<bdi>` or `dir="auto"`.
+  - Inputs and textareas that hold user content get `dir="auto"`. Today a Latin description in an Arabic UI shows its
+    final period on the wrong side (seen in the B1a gallery). This is an app-wide input change, so it lands in B2 with
+    its own screenshots.
 - **Touch:** targets are 44 px (the existing `--control-size-*` under `pointer: coarse`).
 - **Narrow screens:** rows stack by container width (§5.2), tables become `DataList` cards, and the SaveRegion spans the
   column.
@@ -382,7 +385,7 @@ Every section is one of two kinds, never both:
 | `OptionCards` | DS | `aria-pressed` button groups acting as radios | a real radio group (base-ui RadioGroup), cards with title, description and icon |
 | `StatTile` | DS | 4 stat-tile variants | |
 | `Meter` | DS | hand-rolled quota bars | `role="meter"` with `aria-valuetext`, for quotas and usage. `Progress` stays for task progress |
-| `IconButton` | DS | `Button size="icon"` with an optional label | `label` is required; the tooltip shows the same label |
+| `IconButton`, `TooltipButton` | DS | `Button size="icon"` with an optional label | `IconButton.label` is required; the tooltip shows the same label. Both live apart from Button so reader pages stay light |
 
 ### 6.1 Composition, not cloning
 
@@ -433,10 +436,11 @@ in the wrappers in B1b, so sections that haven't migrated yet benefit at once.
 There is no universal `aria-disabled` wrapper. Each control kind has an adapter that uses the primitive's own disabled
 semantics:
 
-- **Button:** `<Button disabled focusableWhenDisabled disabledReason={…}>`. base-ui's `focusableWhenDisabled` keeps it
-  in the tab order while blocking activation, form submission and styling it disabled. The reason is linked through
-  `aria-describedby`. On hover and focus a tooltip shows it. The tooltip is anchored on the button itself, never on a
-  wrapper button, so no interactive element is nested in another.
+- **Button:** `<Button disabledReason={…}>` sets `disabled` + base-ui `focusableWhenDisabled` (stays in the tab order,
+  blocks activation and form submission, looks disabled) and links the reason through `aria-describedby`. Button itself
+  imports no tooltip, because published docs pages use Button. Dashboard code uses `TooltipButton` (and `IconButton`,
+  built on it), which also shows the reason, or its `tooltip`, on hover and focus, anchored on the button itself, never
+  on a wrapper button.
 - **Menu items** (`RowActions.Item disabledReason`): the item is disabled and the reason renders as a second line of
   the item's text, visible on touch too.
 - **Switches and inputs** inside a `SettingsRow`: the row's `disabledReason` renders as visible muted text under the
