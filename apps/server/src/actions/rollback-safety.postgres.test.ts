@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 vi.mock('@nibleaf/bullmq', async (original) => ({
   ...(await original<typeof import('@nibleaf/bullmq')>()),
   createJob: vi.fn(async () => undefined),
+  getJob: vi.fn(async () => undefined),
+  removeJob: vi.fn(async () => undefined),
   sendRequiredEmail: vi.fn(async () => undefined),
 }));
 

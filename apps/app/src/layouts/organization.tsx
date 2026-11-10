@@ -27,7 +27,7 @@ export function OrganizationLayout({
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
       <OrgSidebar isAdmin={isAdmin} orgSlug={organization?.slug ?? orgSlug} />
-      <SidebarInset>
+      <SidebarInset as="div">
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
           <Breadcrumb aria-label={t('nav.breadcrumb')} className="min-w-0 flex-1">
@@ -48,9 +48,9 @@ export function OrganizationLayout({
           <ShellSearchButton />
           <NotificationsPopover />
         </header>
-        <div className="w-full flex-1 px-4 py-6 outline-none sm:px-6 sm:py-8" id="main-content" tabIndex={-1}>
+        <main className="w-full flex-1 px-4 py-6 outline-none sm:px-6 sm:py-8" id="main-content" tabIndex={-1}>
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

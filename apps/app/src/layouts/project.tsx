@@ -177,7 +177,7 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
       <ProjectSidebar orgSlug={organization?.slug} projectId={projectId} />
-      <SidebarInset>
+      <SidebarInset as="div">
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
           {/* Where am I: [Org ▾] / [Website ▾] / Section (§5.2). Org and website are switchers. */}
@@ -232,9 +232,11 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             </Button>
           </div>
         </header>
-        <div className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
+        {/* The page's one main landmark, after the header. The draft preview puts
+            the skip target on its own article area instead. */}
+        <main className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
           {children}
-        </div>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );
