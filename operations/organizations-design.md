@@ -972,10 +972,13 @@ promote them deliberately.
 
 1. Survivor: U's owned org with a website, oldest `createdAt`, then lowest id.
    Reason recorded.
-2. Name: survivor's, except auto names "<X>'s workspace"/"My workspace" →
-   "<X>'s organization"/"My organization". Handles: the survivor keeps its
-   current slug; **all** handles of merged orgs (current and aliases) become
-   aliases of the survivor.
+2. Name (master's rule): if exactly one org of the group has a name that is
+   not the default pattern ("<First>'s workspace" / "My workspace"), use that
+   name; otherwise "<Owner first name>'s organization" (AR «مؤسسة <الاسم>»;
+   no first name → "My organization"). Handle: the **oldest valid** slug of the
+   group becomes current; every other handle of the group (current and
+   aliases) becomes an alias. The report shows the chosen name and handle; the
+   owner can rename later.
 3. Plans: the group merges only if every org has the **same** plan id, status
    and expiry. Anything else is a conflict: the plan file must carry an
    explicit per-group decision (`plan: <planId>` chosen by a human) or the
@@ -1095,12 +1098,14 @@ that group.
 ### 10.6 Production
 
 1. Deploy PR 1 with the stop-then-start cutover; `pg_dump` **before** it, and
-   verify the dump restores (review #1).
-2. Deploy PRs 2 and 3.
-3. `pg_dump`, then `org:merge plan` through the audit thread's deploy path;
-   review the report (JOODPMS first), resolve skipped groups.
-4. `apply <planFile>`, then `verify <runId>`; spot-check in the browser.
-5. Later PR: contract migration.
+   verify the dump restores (review #1). Users see no change (1:1 orgs).
+2. In **one window**: deploy PRs 2 and 3 together, `pg_dump`, `org:merge plan`
+   through the audit thread's deploy path, review the report (JOODPMS first),
+   `apply <planFile>` right after review, `verify <runId>`, browser spot-check.
+   Users never see a switcher full of one-site orgs. PR 2's UI must still look
+   right for 1:1 orgs (one org per website, named as today) for the minutes
+   before the merge and for any group the plan skips.
+3. Later PR: contract migration.
 
 The feature thread never runs any of this against production.
 
