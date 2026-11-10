@@ -298,7 +298,8 @@ model Member {
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           String       @default("member")
-  orgRole        String       @default("member")
+  orgRole        String       @default("__legacy__")
+  legacyWriter   Boolean      @default(false)
   projectGrants  ProjectMember[]
   createdAt      DateTime     @default(now())
 
@@ -386,8 +387,9 @@ model Invitation {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String
   role           String?
-  kind           String       @default("member")
-  orgRole        String       @default("member")
+  kind           String       @default("__legacy__")
+  orgRole        String       @default("__legacy__")
+  legacyWriter   Boolean      @default(false)
   grants         InvitationGrant[]
   status         String       @default("pending")
   expiresAt      DateTime
@@ -413,7 +415,8 @@ model JoinLink {
   label          String?
   /// Role granted on join: viewer | member | admin. Never owner.
   role           String        @default("member")
-  orgRole        String        @default("member")
+  orgRole        String        @default("__legacy__")
+  legacyWriter   Boolean       @default(false)
   grants         JoinLinkGrant[]
   redemptions    JoinLinkRedemption[]
   /// Lower-case email domain the joiner's verified address must use, or null for any.
@@ -2066,4 +2069,18 @@ model ProjectLegacySettings {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   metadata Json @default("{}")
   @@map("project_legacy_settings")
+}
+
+/// Operator-only, transactional merge undo log. No auth/secret-bearing rows.
+model OrgMergeJournal {
+  runId String @map("run_id")
+  seq BigInt @id @default(autoincrement())
+  groupKey String @map("group_key")
+  tableName String @map("table_name")
+  rowId String @map("row_id")
+  before Json?
+  after Json?
+
+  @@index([runId, groupKey])
+  @@map("org_merge_journal")
 }
