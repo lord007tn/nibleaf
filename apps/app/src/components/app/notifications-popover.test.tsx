@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NotificationItem } from '@/hooks/api/types';
 
 const mocks = vi.hoisted(() => ({
@@ -17,12 +17,15 @@ const mocks = vi.hoisted(() => ({
   items: undefined as NotificationItem[] | undefined,
   count: 1,
   translations: {} as Record<string, string>,
+  organizationId: undefined as string | undefined,
+  notificationOptions: [] as Array<{ enabled: boolean; organizationId?: string }>,
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string, vars?: { count: string }) => (vars ? `${key}: ${vars.count}` : (mocks.translations[key] ?? key)),
   useLocale: () => ({ t: (key: string) => key, locale: 'en' }),
 }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('./org-switcher/switcher-context', () => ({ useSwitcherControls: () => ({ current: { organizationId: mocks.organizationId } }) }));
 vi.mock('@/lib/format', () => ({
   useFormatters: () => ({ relativeTime: () => 'recently', number: (count: number) => count.toLocaleString('en-US') }),
 }));
@@ -39,24 +42,27 @@ vi.mock('@/hooks/api', () => ({
     };
   },
   useUnreadNotificationCount: () => ({ data: { count: mocks.count } }),
-  useNotifications: () => ({
-    data: {
-      items: mocks.items ?? [
-        {
-          id: 'failed-1',
-          type: 'deploy_failed',
-          projectId: 'project-1',
-          title: 'Raw title',
-          body: 'Legacy text',
-          params: { projectName: 'Fixture', details: mocks.detail },
-          readAt: null,
-          href: '/app/projects/project-1',
-          createdAt: '2026-11-07T00:00:00Z',
-        },
-      ],
-    },
-    isPending: false,
-  }),
+  useNotifications: (options: { enabled: boolean; organizationId?: string }) => {
+    mocks.notificationOptions.push(options);
+    return {
+      data: {
+        items: mocks.items ?? [
+          {
+            id: 'failed-1',
+            type: 'deploy_failed',
+            projectId: 'project-1',
+            title: 'Raw title',
+            body: 'Legacy text',
+            params: { projectName: 'Fixture', details: mocks.detail },
+            readAt: null,
+            href: '/app/projects/project-1',
+            createdAt: '2026-11-07T00:00:00Z',
+          },
+        ],
+      },
+      isPending: false,
+    };
+  },
   useMarkNotificationsRead: () => ({ mutate: mocks.markRead, isPending: false }),
 }));
 
@@ -76,6 +82,8 @@ beforeEach(() => {
   mocks.items = undefined;
   mocks.count = 1;
   mocks.translations = {};
+  mocks.organizationId = undefined;
+  mocks.notificationOptions = [];
 });
 
 it('allows the long German header action and title to shrink and wrap', async () => {
@@ -220,4 +228,79 @@ it.each([false, true])('only enables member lookups for publish redirect failure
     await act(() => root.unmount());
     host.remove();
   }
+});
+
+describe('organization scope', () => {
+  const item = (id: string, organization: NotificationItem['organization'], project: NotificationItem['project']): NotificationItem => ({
+    id,
+    type: 'deploy_ready',
+    projectId: project?.id ?? null,
+    title: 'Ready',
+    body: '',
+    params: null,
+    href: null,
+    readAt: null,
+    createdAt: '2026-11-07T00:00:00Z',
+    organization,
+    project,
+  });
+  async function open() {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    await act(() => root.render(<NotificationsPopover />));
+    await act(() => host.querySelector<HTMLButtonElement>('button')?.click());
+    return async () => {
+      await act(() => root.unmount());
+      host.remove();
+    };
+  }
+
+  it('says where each item comes from: "Org · Website", or just the org', async () => {
+    mocks.items = [
+      item('a', { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null }, { id: 'p-1', name: 'Developer docs' }),
+      item('b', { id: 'org-2', slug: 'jood', name: 'JOODPMS', logo: null }, null),
+      item('c', null, null),
+    ];
+    const close = await open();
+    try {
+      const sources = [...document.querySelectorAll('[data-slot="notification-source"]')].map((node) => node.textContent);
+      expect(sources).toHaveLength(2);
+      expect(sources[0]).toContain('Acme Docs · Developer docs');
+      expect(sources[1]).toContain('JOODPMS');
+      expect(sources[1]).not.toContain(' · ');
+    } finally {
+      await close();
+    }
+  });
+
+  it('has no This organization / All filter outside an organization', async () => {
+    const close = await open();
+    try {
+      expect(document.querySelector('[aria-label="notifications.filter.label"]')).toBeNull();
+      expect(mocks.notificationOptions.at(-1)).toEqual({ enabled: true, organizationId: undefined });
+    } finally {
+      await close();
+    }
+  });
+
+  it('filters to the current organization only when "This organization" is chosen', async () => {
+    mocks.organizationId = 'org-1';
+    const close = await open();
+    try {
+      const filter = document.querySelector('[aria-label="notifications.filter.label"]') as HTMLElement;
+      const [thisOrg, all] = [...filter.querySelectorAll<HTMLButtonElement>('button')];
+      expect(thisOrg?.textContent).toBe('notifications.filter.organization');
+      // All by default, so nothing is hidden by surprise.
+      expect(all?.getAttribute('aria-pressed')).toBe('true');
+      expect(mocks.notificationOptions.at(-1)).toEqual({ enabled: true, organizationId: undefined });
+      await act(() => thisOrg?.click());
+      expect(thisOrg?.getAttribute('aria-pressed')).toBe('true');
+      expect(mocks.notificationOptions.at(-1)).toEqual({ enabled: true, organizationId: 'org-1' });
+      await act(() => all?.click());
+      expect(mocks.notificationOptions.at(-1)).toEqual({ enabled: true, organizationId: undefined });
+    } finally {
+      await close();
+    }
+  });
 });
