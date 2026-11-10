@@ -12,13 +12,13 @@ import { z } from 'zod';
 import { badRequest } from '@/errors';
 import { isPrivateIp } from '@/lib/client-ip';
 import { assertBranchInProject, getDefaultBranch } from './branches';
-import { moveLegacyWebhookSecret } from './git-webhook-secret';
 import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './importers/cleanup-locks';
 import { deriveTitle, humanize, MAX_IMPORT_FILES, parseFrontmatter } from './importers/content';
 import { getGitHubTextFile, listGitHubFiles } from './importers/github';
 import { ensureGroupPage, type ImportTarget } from './importers/persistence';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
 import { createPage } from './pages';
+import { readProjectGitSettings, writeProjectSettings } from './project-settings-storage';
 import { assertProjectInOrg } from './projects';
 
 const execFileAsync = promisify(execFile);
@@ -287,9 +287,7 @@ const isUniqueViolation = (error: unknown) => hasPrismaCode(error, 'P2002');
 export const importFromGitProvider = async (organizationId: string, projectId: string): Promise<GitImportSummary> => {
   await assertProjectInOrg(organizationId, projectId);
 
-  const org = await prisma.organization.findUnique({ where: { id: organizationId }, select: { metadata: true } });
-  const metadata = org?.metadata ? (JSON.parse(org.metadata) as Record<string, unknown>) : {};
-  const git = (metadata.git ?? {}) as GitConfig;
+  const git = (await readProjectGitSettings(projectId)) as GitConfig;
   const provider = git.provider ?? 'github';
   if (provider !== 'github' && provider !== 'gitlab' && provider !== 'git') {
     throw badRequest('Connect a public Git repository first.');
@@ -548,9 +546,10 @@ export const importFromGitProvider = async (organizationId: string, projectId: s
   }
 
   // Record that this repo is connected + when it last imported.
-  await moveLegacyWebhookSecret(organizationId, metadata);
-  metadata.git = { ...git, connected: true, lastImportedAt: new Date().toISOString() };
-  await prisma.organization.update({ where: { id: organizationId }, data: { metadata: JSON.stringify(metadata) } });
+  await writeProjectSettings(projectId, ({ git: current, legacy }) => ({
+    git: { ...current, connected: true, lastImportedAt: new Date().toISOString() },
+    legacy,
+  }));
 
   return summary;
 };
