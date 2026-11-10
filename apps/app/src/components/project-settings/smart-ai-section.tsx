@@ -1,7 +1,6 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
-import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Skeleton, SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
@@ -12,6 +11,7 @@ import { Bot, Check, KeyRound, RefreshCw, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
+import { SecretInput } from '@/components/secret-input';
 import type { Project } from '@/hooks/api';
 import { useCreateProjectSearchReindex } from '@/hooks/api';
 import { useSaveWorkspaceAiConnection, useSelectWorkspaceAi, useWorkspaceAi, useWorkspaceAiModels } from '@/hooks/api/workspace-ai';
@@ -339,19 +339,16 @@ function ProviderCard({
       <form className="space-y-4" onSubmit={submit}>
         <div className="space-y-2">
           <Label htmlFor={`${id}-key`}>{t('settings.smartAi.apiKey')}</Label>
-          <Input
-            autoComplete="new-password"
+          <SecretInput
             disabled={pending || !canSave}
             id={`${id}-key`}
+            name="ai-provider-api-key"
             onChange={(event) => {
               setApiKey(event.target.value);
               models.reset();
               setAnswerModel(provider.answerModel ?? '');
             }}
-            spellCheck={false}
-            type="password"
             value={apiKey}
-            dir="ltr"
           />
           <p className="text-muted-foreground text-xs">{t(provider.configured ? 'settings.smartAi.keepKey' : 'settings.smartAi.keyHint')}</p>
         </div>
