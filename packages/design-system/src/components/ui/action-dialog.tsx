@@ -10,6 +10,9 @@ import { Input } from './input'
 import { Label } from './label'
 import { restoreFocusFallback } from '../../lib/focus'
 
+const hasContent = (node: React.ReactNode) =>
+  node != null && node !== false && !(typeof node === "string" && node.trim() === "")
+
 /** Typed confirmation compares what a person sees: no edge spaces, one Unicode form, same case. */
 const normalizeTyped = (value: string) => value.trim().normalize("NFC")
 
@@ -39,10 +42,16 @@ type ActionDialogProps = {
   /** The action. Resolve to close the dialog; reject to keep it open and show the error. */
   onConfirm: () => Promise<void>
   /**
-   * Turns a rejection into friendly copy shown inside the dialog. Without it
-   * an `Error`'s own message is shown.
+   * Turns a rejection into friendly copy shown inside the dialog. Return
+   * nothing to fall back to `fallbackErrorMessage`.
    */
   errorMessage?: (error: unknown) => React.ReactNode
+  /**
+   * Shown when the action fails and `errorMessage` gives nothing usable, e.g.
+   * "Couldn't delete the site. Try again." Required so no rejection, whatever
+   * its shape, ever fails silently. Raw error text is never shown.
+   */
+  fallbackErrorMessage: React.ReactNode
   /** Overrides where focus returns on close (defaults to the trigger, else the page h1). */
   finalFocus?: DialogPrimitive.Popup.Props["finalFocus"]
   className?: string
@@ -73,6 +82,7 @@ function ActionDialog({
   destructive = false,
   onConfirm,
   errorMessage,
+  fallbackErrorMessage,
   finalFocus,
   className,
   confirmText,
@@ -89,6 +99,10 @@ function ActionDialog({
   const [typed, setTyped] = React.useState("")
   const [typedAttempted, setTypedAttempted] = React.useState(false)
   const [wasOpen, setWasOpen] = React.useState(false)
+  // Bumped on every open and close. An action remembers the generation it
+  // started in; if the dialog has closed or reopened since, its result
+  // belongs to a dialog that no longer exists and is ignored.
+  const generationRef = React.useRef(0)
   const returnFocus = React.useRef<HTMLElement | null>(null)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -104,6 +118,9 @@ function ActionDialog({
   // moves focus before any of this component's effects run).
   if (open !== wasOpen) {
     setWasOpen(open)
+    generationRef.current += 1
+    pendingRef.current = false
+    setPending(false)
     if (open) {
       returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
       setFailure(null)
@@ -131,30 +148,27 @@ function ActionDialog({
       inputRef.current?.focus()
       return
     }
+    const generation = generationRef.current
+    const isCurrent = () => mountedRef.current && generation === generationRef.current
     pendingRef.current = true
     setPending(true)
     setFailure(null)
     try {
       await onConfirm()
+      if (!isCurrent()) return
       pendingRef.current = false
-      if (!mountedRef.current) return
       setPending(false)
       onOpenChange(false)
     } catch (error) {
+      if (!isCurrent()) return
       pendingRef.current = false
-      if (!mountedRef.current) return
       setPending(false)
       setFailure({ error })
     }
   }
 
-  const failureContent = failure
-    ? errorMessage
-      ? errorMessage(failure.error)
-      : failure.error instanceof Error
-        ? failure.error.message
-        : null
-    : null
+  const mapped = failure && errorMessage ? errorMessage(failure.error) : null
+  const failureContent = failure ? (hasContent(mapped) ? mapped : fallbackErrorMessage) : null
 
   return (
     <Dialog open={open} onOpenChange={requestOpenChange} disablePointerDismissal={pending}>

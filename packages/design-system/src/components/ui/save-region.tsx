@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { restoreFocusFallback } from '../../lib/focus'
 import { cn } from '../../lib/utils'
 import { Button } from "./button"
 
@@ -17,6 +18,10 @@ import { Button } from "./button"
  *
  * `status` is announced politely and stays mounted when the bar hides, so
  * "Saved" is heard after a successful save.
+ *
+ * Focus contract: when the bar hides while focus was on one of its buttons
+ * (Save just succeeded, or Discard), focus moves to `returnFocusTo()` or, by
+ * default, the page's h1. Focus anywhere else is left where it is.
  */
 function SaveRegion({
   open,
@@ -30,6 +35,7 @@ function SaveRegion({
   saving = false,
   docked = false,
   status,
+  returnFocusTo,
   className,
 }: {
   open: boolean
@@ -45,9 +51,26 @@ function SaveRegion({
   saving?: boolean
   docked?: boolean
   status?: React.ReactNode
+  /** Where focus goes if the bar hides while it had focus. Defaults to the page h1. */
+  returnFocusTo?: () => HTMLElement | null
   className?: string
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
+  const focusInside = React.useRef(false)
+  const returnFocusRef = React.useRef(returnFocusTo)
+  returnFocusRef.current = returnFocusTo
+
+  React.useEffect(() => {
+    if (open || !focusInside.current) return
+    focusInside.current = false
+    // The focused button was removed with the bar, so focus fell to the body.
+    // Only then is it ours to move; anything else means the person moved on.
+    const active = document.activeElement
+    if (active && active !== document.body) return
+    const target = returnFocusRef.current?.() ?? restoreFocusFallback(null)
+    // No scroll jump after saving: the person is still reading the form.
+    target.focus({ preventScroll: true })
+  }, [open])
 
   React.useLayoutEffect(() => {
     const element = ref.current
@@ -75,6 +98,15 @@ function SaveRegion({
           aria-label={label}
           data-slot="save-region"
           data-docked={docked ? "" : undefined}
+          onFocus={() => {
+            focusInside.current = true
+          }}
+          onBlur={(event) => {
+            // Only a move to another element counts as leaving: removing the
+            // focused button (the bar hiding) may blur with no related target.
+            const next = event.relatedTarget as Node | null
+            if (next && !event.currentTarget.contains(next)) focusInside.current = false
+          }}
           className={cn(
             "z-20 pt-3",
             docked ? "relative" : "sticky bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]",

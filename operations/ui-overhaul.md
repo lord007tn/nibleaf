@@ -310,7 +310,8 @@ Every section is one of two kinds, never both:
   `env(safe-area-inset-bottom)`. It must not cover a focused input: on mobile, when the on-screen keyboard is open
   (`visualViewport` height shrinks), it docks inline at the end of the form instead of floating.
 - **Discard** is disabled while a submission is pending. It resets each form to its baseline (§8.3), with no confirm.
-- When the region hides after a successful save, focus moves to the page `h1` only if focus was inside the region.
+- When the region hides after a successful save, focus moves to `returnFocusTo()` (default: the page `h1`, without
+  scrolling) only if focus was on one of its buttons and fell to the body.
   Otherwise focus stays where it is. The "Saved" status is announced politely.
 - **Navigating away** while any form is dirty goes through the route's unsaved-changes guard. The guard reads the same
   registry, with one dirty source per form.
@@ -409,7 +410,11 @@ in the wrappers in B1b, so sections that haven't migrated yet benefit at once.
   - While pending, the confirm button shows `loading`, a second confirm is ignored, and Escape, outside-click and
     Cancel are blocked. The dialog says it is working; it does not silently stay open.
   - On success it closes and resolves.
-  - On rejection it stays open and shows the friendly error inside the dialog. The mutation sets
+  - On rejection it stays open and shows the friendly error inside the dialog: `errorMessage(error)` when it maps the
+    failure, otherwise the required `fallbackErrorMessage`. Raw error text is never shown, and no rejection shape (a
+    string, an object, an empty `Error`) fails silently.
+  - Each opening is its own generation. A result that arrives after the dialog was closed or reopened is ignored, so
+    it can't close or show an error in a newer opening. The mutation sets
     `meta: { suppressGlobalError: true }`, so the global cache doesn't toast as well, and the person can retry or
     cancel.
   - **Typed confirmation** (`confirmText="docs"`): compares after `trim()` and NFC normalization, case-sensitive,

@@ -83,6 +83,7 @@ const baseProps = {
   confirmLabel: 'Remove',
   cancelLabel: 'Keep',
   pendingLabel: 'Removing…',
+  fallbackErrorMessage: "Couldn't finish that. Try again.",
 };
 
 describe('ActionDialog', () => {
@@ -181,5 +182,95 @@ describe('ActionDialog', () => {
 
     await render(<Harness {...baseProps} onConfirm={() => Promise.resolve()} />);
     expect(document.activeElement).toBe(button('Remove'));
+  });
+});
+
+describe('ActionDialog — results from an earlier opening', () => {
+  async function controlled(first: ActionDialogProps) {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<ActionDialog {...first} />));
+    return (next: ActionDialogProps) => act(async () => root.render(<ActionDialog {...next} />));
+  }
+
+  it('ignores a success that arrives after the dialog was closed and reopened', async () => {
+    const actionA = deferred();
+    const onOpenChange = vi.fn();
+    const props = { ...baseProps, onOpenChange, open: true, onConfirm: () => actionA.promise } as ActionDialogProps;
+    const rerender = await controlled(props);
+    await act(async () => button('Remove').click());
+    expect(button('Removing…').getAttribute('aria-busy')).toBe('true');
+
+    // The caller closes it from outside, then opens it again for another action.
+    await rerender({ ...props, open: false });
+    const onConfirmB = vi.fn(() => new Promise<void>(() => undefined));
+    await rerender({ ...props, open: true, onConfirm: onConfirmB });
+    // The new opening starts idle.
+    expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+
+    await act(async () => actionA.resolve());
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog()).not.toBeNull();
+    expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+  });
+
+  it('ignores a failure that arrives after the dialog was closed and reopened', async () => {
+    const actionA = deferred();
+    const onOpenChange = vi.fn();
+    const props = { ...baseProps, onOpenChange, open: true, onConfirm: () => actionA.promise } as ActionDialogProps;
+    const rerender = await controlled(props);
+    await act(async () => button('Remove').click());
+    await rerender({ ...props, open: false });
+    await rerender({ ...props, open: true, onConfirm: () => new Promise<void>(() => undefined) });
+
+    await act(async () => actionA.reject(new Error('A failed')));
+    expect(document.querySelector('[data-slot="action-dialog-error"]')).toBeNull();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('keeps the current opening busy when an earlier action settles', async () => {
+    const actionA = deferred();
+    const actionB = deferred();
+    const props = { ...baseProps, onOpenChange: vi.fn(), open: true, onConfirm: () => actionA.promise } as ActionDialogProps;
+    const rerender = await controlled(props);
+    await act(async () => button('Remove').click());
+    await rerender({ ...props, open: false });
+    await rerender({ ...props, open: true, onConfirm: () => actionB.promise });
+    await act(async () => button('Remove').click());
+    await act(async () => actionA.resolve());
+    expect(button('Removing…').getAttribute('aria-busy')).toBe('true');
+    await act(async () => actionB.resolve());
+    expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
+describe('ActionDialog — every failure is explained', () => {
+  const shapes: Array<[string, unknown]> = [
+    ['a string', 'denied'],
+    ['a plain object', { code: 'FORBIDDEN' }],
+    // biome-ignore lint/suspicious/useErrorMessage: an empty message is the case under test.
+    ['an Error with no message', new Error('')],
+    ['an Error with a raw message', new Error('PrismaClientKnownRequestError: P2025')],
+    ['undefined', undefined],
+  ];
+
+  it.each(shapes)('shows the fallback for %s when there is no errorMessage', async (_label, rejection) => {
+    await render(<Harness {...baseProps} onConfirm={() => Promise.reject(rejection)} />);
+    await act(async () => button('Remove').click());
+    expect(document.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe("Couldn't finish that. Try again.");
+  });
+
+  it('shows the fallback when errorMessage maps the failure to nothing', async () => {
+    await render(<Harness {...baseProps} errorMessage={() => '  '} onConfirm={() => Promise.reject('denied')} />);
+    await act(async () => button('Remove').click());
+    expect(document.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe("Couldn't finish that. Try again.");
+  });
+
+  it('prefers the mapped message when there is one', async () => {
+    await render(<Harness {...baseProps} errorMessage={() => 'Only Admins can remove people.'} onConfirm={() => Promise.reject('denied')} />);
+    await act(async () => button('Remove').click());
+    expect(document.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe('Only Admins can remove people.');
   });
 });

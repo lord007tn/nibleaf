@@ -210,4 +210,47 @@ describe('SaveRegion', () => {
     await render(<SaveRegion {...props} docked open />);
     expect(document.documentElement.style.getPropertyValue('--save-region-h')).toBe('');
   });
+
+  it('moves focus to the page h1 when it hides with focus on its buttons', async () => {
+    const page = (open: boolean) => (
+      <div>
+        <h1 tabIndex={-1}>General</h1>
+        <SaveRegion {...props} open={open} />
+      </div>
+    );
+    const { container, rerender } = await render(page(true));
+    const save = [...container.querySelectorAll<HTMLButtonElement>('[role="region"] button')].at(-1);
+    await act(async () => save?.focus());
+    expect(document.activeElement).toBe(save);
+    await rerender(page(false));
+    expect(document.activeElement).toBe(container.querySelector('h1'));
+  });
+
+  it('leaves focus alone when it hides while focus is elsewhere', async () => {
+    const page = (open: boolean) => (
+      <div>
+        <h1 tabIndex={-1}>General</h1>
+        <input aria-label="Name" />
+        <SaveRegion {...props} open={open} />
+      </div>
+    );
+    const { container, rerender } = await render(page(true));
+    const save = [...container.querySelectorAll<HTMLButtonElement>('[role="region"] button')].at(-1);
+    const input = container.querySelector('input') as HTMLInputElement;
+    await act(async () => save?.focus());
+    await act(async () => input.focus());
+    await rerender(page(false));
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('uses returnFocusTo when given', async () => {
+    const target = document.createElement('button');
+    target.textContent = 'Name field';
+    document.body.append(target);
+    const page = (open: boolean) => <SaveRegion {...props} open={open} returnFocusTo={() => target} />;
+    const { container, rerender } = await render(page(true));
+    await act(async () => container.querySelector<HTMLButtonElement>('[role="region"] button')?.focus());
+    await rerender(page(false));
+    expect(document.activeElement).toBe(target);
+  });
 });

@@ -124,4 +124,46 @@ describe('useConfirm focus', () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
     expect(document.activeElement).toBe(trigger);
   });
+
+  it('keeps the original trigger as the focus target when a confirmation replaces another', async () => {
+    const api: Partial<Api> = {};
+    const { container } = await render(
+      <ConfirmProvider>
+        <h1>Members</h1>
+        <Capture api={api} />
+      </ConfirmProvider>,
+    );
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Remove Ada';
+    container.append(trigger);
+    trigger.focus();
+    await act(async () => void api.confirm?.({ title: 'Remove Ada?', cancelLabel: 'Keep' }));
+    // Focus is inside the first dialog when the second question replaces it.
+    expect(trigger).not.toBe(document.activeElement);
+    await act(async () => void api.confirm?.({ title: 'Remove Ada from every site?', cancelLabel: 'Keep all' }));
+    await act(async () => buttonByText('Keep all')?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('tracks confirm and prompt focus targets separately', async () => {
+    const api: Partial<Api> = {};
+    const { container } = await render(
+      <ConfirmProvider>
+        <h1>Pages</h1>
+        <Capture api={api} />
+      </ConfirmProvider>,
+    );
+    const renameTrigger = document.createElement('button');
+    renameTrigger.textContent = 'Rename';
+    container.append(renameTrigger);
+    renameTrigger.focus();
+    await act(async () => void api.prompt?.({ title: 'Rename page' }));
+    // A confirmation asked while the prompt is open must not take over the prompt's target.
+    await act(async () => void api.confirm?.({ title: 'Discard changes?', cancelLabel: 'Keep editing' }));
+    await act(async () => buttonByText('Keep editing')?.click());
+    await act(async () => buttonByText('Cancel')?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(document.activeElement).toBe(renameTrigger);
+  });
 });
