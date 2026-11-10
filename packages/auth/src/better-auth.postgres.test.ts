@@ -289,10 +289,10 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(current?.user.email).toBe(email);
     const userId = current?.user.id as string;
     expect(await prisma.member.count({ where: { role: 'owner', userId } })).toBe(1);
-    // PR 1 rollback compatibility: the starter website shares its org's data partition.
+    // From PR 2 on, a new website (the starter included) has its own data partition.
     const { organizationId } = await prisma.member.findFirstOrThrow({ where: { role: 'owner', userId } });
     const starter = await prisma.project.findFirstOrThrow({ where: { organizationId } });
-    expect(starter.dataTenantId).toBe(organizationId);
+    expect(starter.dataTenantId).not.toBe(organizationId);
 
     expect((await send('/sign-out', { body: {}, cookie })).status).toBe(200);
     expect(await readSession(cookie)).toBeNull();

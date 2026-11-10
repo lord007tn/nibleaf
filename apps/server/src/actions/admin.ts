@@ -43,11 +43,10 @@ export async function inviteOrganizationOwner(adminUserId: string, input: Invite
       data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
     });
     await assignDefaultUsagePlan(tx, organization.id);
-    // PR 1: the website partition stays equal to its 1:1 org (rollback compatibility, §10.1).
+    // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
     const project = await tx.project.create({
       data: {
         organizationId: organization.id,
-        dataTenantId: organization.id,
         name: input.siteName.trim(),
         slug,
         ...(input.description?.trim() ? { description: input.description.trim() } : {}),

@@ -737,15 +737,15 @@ enum OpenApiSourceType {
 model Project {
   id             String            @id @default(cuid())
   organizationId String
-  /// Cascade until the contract PR: the previous release deletes the org and
-  /// expects its website to go with it. New code deletes an org only once it
-  /// holds no website (the erasure fence in @nibleaf/auth/tenant-erasure).
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Restrict (design §3 rule 4): an org is deleted only after each of its
+  /// websites was erased. Rolling back from here lands on PR 1, whose erasure
+  /// deletes the website first and the org only once it holds none.
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   members        ProjectMember[]
   invitationGrants InvitationGrant[]
   joinLinkGrants  JoinLinkGrant[]
-  /// PR 1: every production creator passes the org id explicitly (rollback
-  /// readers query by organizationId); PR 2 lets new websites use this default.
+  /// Immutable partition key: the org id for websites created before PR 2, an
+  /// independent cuid for new ones (design §3, "Website data partition").
   dataTenantId   String            @unique @default(cuid())
   name           String
   slug           String

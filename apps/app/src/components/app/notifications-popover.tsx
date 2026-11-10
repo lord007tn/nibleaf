@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@nibleaf/design-system/components/ui/popover';
+import { SegmentedControl, SegmentedControlItem } from '@nibleaf/design-system/components/ui/segmented-control';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
@@ -12,6 +13,8 @@ import type { NotificationItem } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useFormatters } from '@/lib/format';
 import { notificationDetails, notificationText } from './notification-text';
+import { OrgAvatar } from './org-switcher/org-avatar';
+import { useSwitcherControls } from './org-switcher/switcher-context';
 
 const NOTIFICATION_SKELETON_ROWS = ['a', 'b', 'c'];
 
@@ -34,6 +37,21 @@ function NotificationRow({ item, onOpen }: { item: NotificationItem; onOpen: (it
         <span aria-hidden className={`mt-1.5 size-2 shrink-0 rounded-full ${unread ? 'bg-primary' : 'bg-transparent'}`} />
         <span className="min-w-0 flex-1 leading-snug">
           {unread ? <span className="sr-only">{t('notifications.unread')} </span> : null}
+          {/* One inbox across organizations (§5.4.5): say where each item comes from. */}
+          {item.organization ? (
+            <span className="mb-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground" data-slot="notification-source">
+              <OrgAvatar className="size-4 rounded text-[8px]" logo={item.organization.logo} name={item.organization.name} />
+              <span className="min-w-0 truncate">
+                <bdi>{item.organization.name}</bdi>
+                {item.project ? (
+                  <>
+                    {' · '}
+                    <bdi>{item.project.name}</bdi>
+                  </>
+                ) : null}
+              </span>
+            </span>
+          ) : null}
           <span className={`block truncate text-sm ${unread ? 'font-semibold' : 'font-medium'}`} dir="auto">
             {text.title}
           </span>
@@ -67,8 +85,12 @@ export function NotificationsPopover() {
   const { number } = useFormatters();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  // "This organization / All": defaults to All so nothing is hidden by surprise.
+  const currentOrganizationId = useSwitcherControls()?.current.organizationId;
+  const [scope, setScope] = useState<'organization' | 'all'>('all');
+  const filterOrganizationId = scope === 'organization' ? currentOrganizationId : undefined;
   const { data: unread } = useUnreadNotificationCount();
-  const { data: inbox, isPending, isError, isFetching, refetch } = useNotifications({ enabled: open });
+  const { data: inbox, isPending, isError, isFetching, refetch } = useNotifications({ enabled: open, organizationId: filterOrganizationId });
   const markRead = useMarkNotificationsRead();
   // The same mutation marks single rows read; only "Mark all read" spins this button.
   const markingAll = markRead.isPending && markRead.variables?.all === true;
@@ -123,6 +145,23 @@ export function NotificationsPopover() {
             {t('notifications.markAllRead')}
           </Button>
         </div>
+        {currentOrganizationId ? (
+          <div className="shrink-0 border-border border-b px-3 py-2">
+            <SegmentedControl aria-label={t('notifications.filter.label')} density="compact" role="group">
+              <SegmentedControlItem
+                active={scope === 'organization'}
+                aria-pressed={scope === 'organization'}
+                onClick={() => setScope('organization')}
+                type="button"
+              >
+                {t('notifications.filter.organization')}
+              </SegmentedControlItem>
+              <SegmentedControlItem active={scope === 'all'} aria-pressed={scope === 'all'} onClick={() => setScope('all')} type="button">
+                {t('notifications.filter.all')}
+              </SegmentedControlItem>
+            </SegmentedControl>
+          </div>
+        ) : null}
         <div aria-busy={isPending && !isError ? true : undefined} className="min-h-0 max-h-96 shrink-0 overflow-y-auto p-1.5">
           {isError && !inbox ? (
             <div className="p-1.5">

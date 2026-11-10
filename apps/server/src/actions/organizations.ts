@@ -1,12 +1,14 @@
 import { type AdmissionGrant, issuerAuthorizes, revokeJoinLinksBeyondRole } from '@nibleaf/auth/join-links';
+import { eraseOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
-import { type Invitation, Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, type Invitation, Prisma, prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
 import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto';
 import { joinLinkPath, joinLinkStatus } from '@nibleaf/shared/join-links';
+import { isValidOrganizationHandle, organizationHandleCandidates } from '@nibleaf/shared/organization-handles';
 import { planOwnershipTransfer } from '@nibleaf/shared/rbac';
 import { env } from '@/env';
-import { conflict, forbidden, notFound } from '@/errors';
+import { badRequest, conflict, forbidden, notFound } from '@/errors';
 import { assertUsableAccount } from '@/lib/access';
 import { applyAdmission, lockOrganization } from './admissions';
 import { syncLegacyMembership } from './legacy-membership';
@@ -60,21 +62,116 @@ export const listOrganizations = async (userId: string) => {
   });
   return members.map((m) => orgDto(m.organization, m.orgRole));
 };
+/** One organization for any of its members: the list DTO plus its org-level
+ *  invitation setting and the names of who administers it (Owner first), so a
+ *  Member without websites knows whom to ask (design §5.1). */
 export const getOrganization = async (userId: string, organizationId: string) => {
   const member = await prisma.member.findUnique({
     where: { organizationId_userId: { organizationId, userId } },
-    include: { organization: { select: { id: true, slug: true, name: true, logo: true } } },
+    include: { organization: { select: { id: true, slug: true, name: true, logo: true, metadata: true } } },
   });
   if (!member) throw notFound('organization');
-  return orgDto(member.organization, member.orgRole);
+  const administrators = await prisma.member.findMany({
+    where: { organizationId, orgRole: { in: ['owner', 'admin'] } },
+    select: { orgRole: true, user: { select: { name: true } } },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+  });
+  return {
+    ...orgDto(member.organization, member.orgRole),
+    sendInvitationEmails: notificationEnabled(member.organization.metadata, 'member_invited'),
+    administrators: administrators
+      .sort((a, b) => Number(b.orgRole === 'owner') - Number(a.orgRole === 'owner'))
+      .map((admin) => ({ name: admin.user.name })),
+  };
+};
+
+/** `metadata` is a legacy JSON text column; unreadable values start over. */
+const withInvitationEmails = (metadata: string | null, enabled: boolean) => {
+  let parsed: Record<string, unknown> = {};
+  try {
+    const value: unknown = metadata ? JSON.parse(metadata) : {};
+    if (value && typeof value === 'object' && !Array.isArray(value)) parsed = value as Record<string, unknown>;
+  } catch {
+    parsed = {};
+  }
+  const notifications = parsed.notifications && typeof parsed.notifications === 'object' ? (parsed.notifications as Record<string, unknown>) : {};
+  return JSON.stringify({ ...parsed, notifications: { ...notifications, member_invited: enabled } });
+};
+
+const MAX_HANDLE_ATTEMPTS = 1000;
+
+/**
+ * Create an empty organization (design §6.14): the caller is its Owner, it gets
+ * the default plan and a URL handle from its name (§3), and it becomes their
+ * landing organization. A concurrent create that takes the same handle makes
+ * the transaction fail on the unique handle; it is retried with the next one.
+ */
+export const createOrganization = async (userId: string, name: string) => {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await prisma.$transaction(async (tx) => {
+        await assertUsableAccount(userId, tx);
+        const org = await tx.organization.create({ data: { name }, select: { id: true } });
+        let slug: string | undefined;
+        let tries = 0;
+        for (const candidate of organizationHandleCandidates(name, org.id)) {
+          if (++tries > MAX_HANDLE_ATTEMPTS) break;
+          if (!(await tx.organizationHandle.findUnique({ where: { slug: candidate }, select: { slug: true } }))) {
+            slug = candidate;
+            break;
+          }
+        }
+        if (!slug) throw conflict('Could not choose a URL handle for this organization.');
+        await tx.organizationHandle.create({ data: { slug, organizationId: org.id, current: true } });
+        const created = await tx.organization.update({ where: { id: org.id }, data: { slug } });
+        await assignDefaultUsagePlan(tx, org.id);
+        await tx.member.create({ data: { organizationId: org.id, userId, role: 'owner', orgRole: 'owner' } });
+        await tx.userPreference.upsert({ where: { userId }, create: { userId, lastOrganizationId: org.id }, update: { lastOrganizationId: org.id } });
+        return orgDto(created, 'owner');
+      });
+    } catch (error) {
+      if (attempt < 2 && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') continue;
+      throw error;
+    }
+  }
+};
+
+/**
+ * Delete an organization and every website in it (design §6.12). Only the
+ * Owner, who must type its exact name. Under the org lock its invitations and
+ * join links stop working; then the fenced erasure removes each website and,
+ * last, the organization. A retry resumes with whatever is left.
+ */
+export const deleteOrganization = async (organizationId: string, actorId: string, confirmName: string) => {
+  await withOrganization(organizationId, actorId, async (tx, org, actor) => {
+    if (actor.orgRole !== 'owner') throw forbidden('Only the owner can delete the organization.');
+    if (confirmName !== org.name) throw badRequest('Type the organization name exactly to delete it.', { reason: 'confirm_name_mismatch' });
+    await tx.invitation.updateMany({ where: { organizationId, status: 'pending' }, data: { status: 'canceled' } });
+    await tx.joinLink.updateMany({ where: { organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
+  });
+  try {
+    await eraseOrganization(organizationId);
+  } catch (error) {
+    if (error instanceof TenantUsageDeletionPendingError) {
+      throw conflict('Usage ingestion is still draining. Retry organization deletion.', { reason: 'usage_ingestion_pending' });
+    }
+    if (error instanceof TenantErasureProjectNotFoundError) throw conflict('A website changed during deletion. Retry organization deletion.');
+    throw error;
+  }
+  return { id: organizationId };
 };
 export const organizationBySlug = async (userId: string, slug: string) => {
   const handle = await prisma.organizationHandle.findUnique({ where: { slug }, select: { organizationId: true } });
   if (!handle) throw notFound('organization');
   return getOrganization(userId, handle.organizationId);
 };
-export const updateOrganization = (organizationId: string, actorId: string, body: { name?: string; logo?: string | null; slug?: string }) =>
-  withOrganization(organizationId, actorId, async (tx, org, actor) => {
+export const updateOrganization = (
+  organizationId: string,
+  actorId: string,
+  { sendInvitationEmails, ...body }: { name?: string; logo?: string | null; slug?: string; sendInvitationEmails?: boolean },
+) =>
+  withOrganization(organizationId, actorId, async (tx, org) => {
+    if (body.slug && !isValidOrganizationHandle(body.slug)) throw badRequest('This organization handle is reserved.', { reason: 'reserved_handle' });
     if (body.slug && body.slug !== org.slug) {
       const existing = await tx.organizationHandle.findUnique({ where: { slug: body.slug } });
       if (existing && existing.organizationId !== org.id) throw conflict('This organization handle is already taken.');
@@ -87,12 +184,17 @@ export const updateOrganization = (organizationId: string, actorId: string, body
       if (existing) await tx.organizationHandle.update({ where: { slug: body.slug, organizationId }, data: { current: true } });
       else await tx.organizationHandle.create({ data: { slug: body.slug, organizationId, current: true } });
     }
-    const updated = await tx.organization.update({ where: { id: organizationId }, data: body });
-    return orgDto(updated, actor.orgRole);
-  }).catch((error: unknown) => {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw conflict('This organization handle is already taken.');
-    throw error;
-  });
+    await tx.organization.update({
+      where: { id: organizationId },
+      data: { ...body, ...(sendInvitationEmails === undefined ? {} : { metadata: withInvitationEmails(org.metadata, sendInvitationEmails) }) },
+    });
+  })
+    .then(() => getOrganization(actorId, organizationId))
+    .catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
+        throw conflict('This organization handle is already taken.');
+      throw error;
+    });
 export const listOrganizationMembers = async (organizationId: string) =>
   prisma.member.findMany({
     where: { organizationId },

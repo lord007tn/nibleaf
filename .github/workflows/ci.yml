@@ -83,7 +83,10 @@ jobs:
           git -C "$preview_dir" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
           cd "$preview_dir"
           node --input-type=module -e 'import {readFileSync,writeFileSync} from "node:fs"; const path="CHANGELOG.md"; const text=readFileSync(path,"utf8"); writeFileSync(path, "## Unreleased\n\n### Highlights\n\nPreview release notes from the checked-out source.\n\n" + text.replace(/^## Unreleased$/m,"## Source changes"));'
-          pnpm release:notes:dry -- --from v0.1.2 --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
+          # Preview from the latest stable release tag, like a real release does. A
+          # fixed old tag made changelogen's git log outgrow execSync's 1 MiB buffer.
+          from=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude 'v*-*' HEAD)
+          pnpm release:notes:dry -- --from "$from" --to HEAD --version v0.2.1 --output "$RUNNER_TEMP/release-notes-preview.md"
 
       - name: Test production email diagnostic boundaries
         run: node --test scripts/production-email-diagnostic.test.mjs
@@ -132,7 +135,10 @@ jobs:
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
           ORG_ACCESS_INTEGRATION: "1"
-        run: pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
+        # The org guard test loads the server env, which imports built workspace packages.
+        run: |
+          pnpm exec turbo run build --filter="@nibleaf/server^..."
+          pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
 
       - name: Verify publishing retention aggregates
         env:

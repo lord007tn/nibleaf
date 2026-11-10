@@ -63,9 +63,7 @@ export const eraseProject = async (projectId: string) => {
  * committed first (org mutations, admissions and new websites refuse a fenced
  * org), then each website is erased on its own, outside any long transaction,
  * so a retry resumes with whatever websites remain. The org row goes last,
- * and only once it holds no website. `project → organization` stays Cascade in
- * PR 1 for the previous release, so this `projects: { none: {} }` predicate is
- * the fence: no new-code org delete may cascade past website erasure.
+ * and only once it holds no website (`project → organization` is Restrict).
  */
 export const eraseOrganization = async (organizationId: string) => {
   const fenced = await prisma.organization.updateMany({

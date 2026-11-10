@@ -199,7 +199,7 @@ Invariants enforced **by the database**, not only by code:
    (partial unique index); one current handle per org.
 4. Deleting an org with websites is impossible (`onDelete: Restrict`); org
    deletion erases each website first behind the deletion fence (§6.12).
-   **PR 1 keeps `Cascade`** because the previous release deletes the org and
+   **PR 1 kept `Cascade`** (Restrict from PR 2) because the previous release deletes the org and
    relies on it removing the website (§10.1, rollback); until the contract PR
    the rule is enforced in application code: new code deletes an org only
    with `projects: { none: {} }` in the same statement.
@@ -1022,7 +1022,15 @@ Harness rollback steps (all four must pass before a deploy):
 | Delete a website, then roll back | — (old code deletes) | site **and** org gone; nothing half-erased |
 
 Because the FK is Cascade again, the previous release's own suites no longer
-need the cleanup-only adapter (`--cleanup-adapter`) to tear down. The **contract** migration
+need the cleanup-only adapter (`--cleanup-adapter`) to tear down.
+
+**PR 2 (done):** new websites get an independent `dataTenantId` (the Prisma
+cuid default; `createProject`, the platform-created and starter sites no
+longer pass the org id), and migration `20261111120000_project_organization_restrict`
+sets `project → organization` to `ON DELETE RESTRICT`. The rollback target of
+PR 2 is PR 1, which reads `dataTenantId` and erases each website before its org,
+so both are safe there. The `8a3ce217` harness above applies only to the PR 1
+deploy; rolling back past PR 1 is unsupported once PR 2 has run. The **contract** migration
 (`Member.role := orgRole`, drop legacy tables/columns) is a later PR once
 merges are verified.
 
