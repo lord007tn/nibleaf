@@ -18,6 +18,7 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
   let members: typeof import('./members');
   let organizations: typeof import('./organizations');
   let projects: typeof import('./projects');
+  let access: typeof import('@/lib/access');
   const orgIds: string[] = [];
   const userIds: string[] = [];
   beforeAll(async () => {
@@ -25,6 +26,7 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
     members = await import('./members');
     organizations = await import('./organizations');
     projects = await import('./projects');
+    access = await import('@/lib/access');
   }, 120_000);
   afterAll(async () => {
     // project → organization is Restrict from PR 2 on: websites go first.
@@ -80,12 +82,14 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
       expect(after?.role).toBe('viewer');
       expect(after?.projectGrants.map((g) => g.role)).toEqual(['admin']);
     });
-    it('removing a legacy Admin from the only website deletes the legacy membership row', async () => {
+    it('removing a legacy Admin from the only website keeps them in the org with no website and the least legacy role', async () => {
       const f = await legacyFixture();
       const { user, member } = await f.legacy('admin');
       await members.removeMember(f.organizationId, member.id, f.owner.id, f.site.id);
-      expect(await row(f.organizationId, user.id)).toBeNull();
-      expect(await db.prisma.projectMember.count({ where: { userId: user.id } })).toBe(0);
+      // PR 3: an org member without websites is legitimate (design §5, §6.7); removal from the org stays explicit.
+      expect(await row(f.organizationId, user.id)).toMatchObject({ role: 'viewer', orgRole: 'member', legacyWriter: false, projectGrants: [] });
+      // The 404 invariant holds: no grant, no website.
+      await expect(access.resolveSiteAccess(user.id, f.site.id)).rejects.toMatchObject({ status: 404 });
     });
     it('org-level access changes keep the legacy role at or below the remaining grant', async () => {
       const f = await legacyFixture();
@@ -103,26 +107,41 @@ describe.skipIf(process.env.ROLLBACK_SAFETY_INTEGRATION !== '1')('rollback safet
       });
       expect(await row(f.organizationId, user.id)).toMatchObject({ role: 'viewer', orgRole: 'member' });
     });
-    it('refuses to leave an org member with zero websites', async () => {
+    it('allows an org member with zero websites, at the least legacy role and with no website access', async () => {
       const f = await legacyFixture();
-      const { member } = await f.legacy('member');
-      await expect(organizations.replaceOrganizationMemberAccess(f.organizationId, f.owner.id, member.id, [])).rejects.toMatchObject({ status: 409 });
+      const { user, member } = await f.legacy('member');
+      await organizations.replaceOrganizationMemberAccess(f.organizationId, f.owner.id, member.id, []);
+      expect(await row(f.organizationId, user.id)).toMatchObject({ role: 'viewer', orgRole: 'member', projectGrants: [] });
+      await expect(access.resolveSiteAccess(user.id, f.site.id)).rejects.toMatchObject({ status: 404 });
+
       const admin = await person();
       const orgAdmin = await db.prisma.member.create({
         data: { organizationId: f.organizationId, userId: admin.id, orgRole: 'admin', role: 'admin' },
       });
-      await expect(
-        organizations.updateOrganizationMember(f.organizationId, f.owner.id, orgAdmin.id, { orgRole: 'member', grants: [] }),
-      ).rejects.toMatchObject({ status: 409 });
-      await expect(
-        organizations.inviteOrganizationMembers(
-          f.organizationId,
-          f.owner.id,
-          { emails: ['zero@nibleaf.test'], orgRole: 'member', grants: [] },
-          { sendEmail: false },
-        ),
-      ).rejects.toMatchObject({ status: 409 });
-      expect(await db.prisma.invitation.count({ where: { organizationId: f.organizationId } })).toBe(0);
+      await organizations.updateOrganizationMember(f.organizationId, f.owner.id, orgAdmin.id, { orgRole: 'member', grants: [] });
+      expect(await row(f.organizationId, admin.id)).toMatchObject({ role: 'viewer', orgRole: 'member', projectGrants: [] });
+      await expect(access.resolveSiteAccess(admin.id, f.site.id)).rejects.toMatchObject({ status: 404 });
+
+      const invited = await organizations.inviteOrganizationMembers(
+        f.organizationId,
+        f.owner.id,
+        { emails: ['zero@nibleaf.test'], orgRole: 'member', grants: [] },
+        { sendEmail: false },
+      );
+      expect(invited.invitations).toHaveLength(1);
+      expect(await db.prisma.invitationGrant.count({ where: { invitationId: invited.invitations[0]?.id } })).toBe(0);
+    });
+    it('a demotion without a website list keeps the dormant grants', async () => {
+      const f = await legacyFixture();
+      const user = await person();
+      const member = await db.prisma.member.create({ data: { organizationId: f.organizationId, userId: user.id, orgRole: 'admin', role: 'admin' } });
+      await db.prisma.projectMember.create({ data: { organizationId: f.organizationId, projectId: f.site.id, userId: user.id, role: 'member' } });
+      await organizations.updateOrganizationMember(f.organizationId, f.owner.id, member.id, { orgRole: 'member' });
+      expect(await row(f.organizationId, user.id)).toMatchObject({
+        role: 'viewer',
+        orgRole: 'member',
+        projectGrants: [expect.objectContaining({ role: 'member' })],
+      });
     });
   });
 

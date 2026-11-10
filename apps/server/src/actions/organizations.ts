@@ -43,10 +43,6 @@ export async function withOrganization<T>(
   });
 }
 
-/** PR 1 keeps one website per organization, and the previous release reads any
- * membership as site access, so an org member always holds at least one grant
- * (design §10.1). Removing the last grant removes the membership instead. */
-const noWebsites = () => conflict('Choose at least one website, or remove this person instead.');
 export async function validateOrganizationGrants(tx: Tx, organizationId: string, grants: AdmissionGrant[]) {
   if (grants.some((g) => !['admin', 'member', 'viewer'].includes(g.role))) throw forbidden('Invalid website role.');
   if (new Set(grants.map((g) => g.projectId)).size !== grants.length) throw conflict('Each website may appear only once.');
@@ -195,12 +191,81 @@ export const updateOrganization = (
         throw conflict('This organization handle is already taken.');
       throw error;
     });
-export const listOrganizationMembers = async (organizationId: string) =>
-  prisma.member.findMany({
+/** When each person last used Nibleaf: their most recently refreshed session (sessions refresh daily while in use). */
+export const lastActiveByUser = async (userIds: string[]) => {
+  if (!userIds.length) return new Map<string, Date>();
+  const rows = await prisma.session.groupBy({ by: ['userId'], where: { userId: { in: userIds } }, _max: { updatedAt: true } });
+  return new Map(rows.flatMap((row) => (row._max.updatedAt ? [[row.userId, row._max.updatedAt] as const] : [])));
+};
+export const listOrganizationMembers = async (organizationId: string) => {
+  const members = await prisma.member.findMany({
     where: { organizationId },
     select: { id: true, userId: true, orgRole: true, createdAt: true, user: { select: userSelect }, projectGrants: { include: grantsInclude } },
     orderBy: { createdAt: 'asc' },
   });
+  const lastActive = await lastActiveByUser(members.map((member) => member.userId));
+  return members.map((member) => ({ ...member, lastActiveAt: lastActive.get(member.userId) ?? null }));
+};
+
+/** Pending invitations of the organization, newest first, with their whole scope (org Owner/Admin view, design §5.1). */
+export const listOrganizationInvitations = async (organizationId: string) =>
+  prisma.invitation.findMany({
+    where: { organizationId, status: 'pending', kind: 'member' },
+    select: {
+      id: true,
+      email: true,
+      orgRole: true,
+      createdAt: true,
+      expiresAt: true,
+      inviter: { select: { id: true, name: true, email: true } },
+      grants: { select: { projectId: true, role: true, project: { select: { name: true } } } },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+  });
+
+const INVITATION_DAYS = 7;
+/**
+ * Send a pending invitation again: a fresh 7-day expiry (an expired one comes
+ * back only through this explicit action) and a new email when the
+ * organization sends invitation emails. On the org path the caller is an org
+ * Owner/Admin; on the website path a site Admin of a website the invitation
+ * grants, who must still be able to grant all of it.
+ */
+export const resendOrganizationInvitation = async (
+  organizationId: string,
+  actorId: string,
+  id: string,
+  options: { siteProjectId?: string; language?: EmailLanguage } = {},
+) => {
+  const invitation = await withOrganization(
+    organizationId,
+    actorId,
+    async (tx) => {
+      const current = await tx.invitation.findFirst({ where: { id, organizationId, kind: 'member' }, include: { grants: true } });
+      assertRevocable(current);
+      if (!current) throw notFound('invitation');
+      if (options.siteProjectId) {
+        if (!current.grants.some((grant) => grant.projectId === options.siteProjectId)) throw notFound('invitation');
+        if (!(await issuerAuthorizes(tx, organizationId, actorId, current.orgRole, current.grants)))
+          throw forbidden('Ask an organization admin to resend this invitation.');
+      }
+      return tx.invitation.update({
+        where: { id },
+        data: { expiresAt: new Date(Date.now() + INVITATION_DAYS * 86_400_000) },
+        include: { grants: true },
+      });
+    },
+    !options.siteProjectId,
+  );
+  const emailed = await sendOrganizationInvitations(
+    organizationId,
+    invitation.inviterId,
+    [invitation],
+    { orgRole: invitation.orgRole, grants: invitation.grants.map(({ projectId, role }) => ({ projectId, role })) },
+    { language: options.language },
+  );
+  return { id: invitation.id, expiresAt: invitation.expiresAt, emailed };
+};
 
 export const inviteOrganizationMembers = async (
   organizationId: string,
@@ -213,7 +278,6 @@ export const inviteOrganizationMembers = async (
     actorId,
     async (tx) => {
       await validateOrganizationGrants(tx, organizationId, body.grants);
-      if (body.orgRole === 'member' && !body.grants.length) throw noWebsites();
       if (options.siteProjectId && (body.orgRole !== 'member' || body.grants.length !== 1 || body.grants[0]?.projectId !== options.siteProjectId))
         throw forbidden('Invite from the organization to grant additional access.');
       if (!(await issuerAuthorizes(tx, organizationId, actorId, body.orgRole, body.grants))) throw forbidden('You cannot grant this access.');
@@ -237,7 +301,7 @@ export const inviteOrganizationMembers = async (
               role: 'viewer',
               kind: 'member',
               status: 'pending',
-              expiresAt: new Date(Date.now() + 7 * 86_400_000),
+              expiresAt: new Date(Date.now() + INVITATION_DAYS * 86_400_000),
               grants: { create: body.grants.map(({ projectId, role }) => ({ projectId, role })) },
             },
           });
@@ -248,8 +312,8 @@ export const inviteOrganizationMembers = async (
     },
     !options.siteProjectId,
   );
-  await sendOrganizationInvitations(organizationId, actorId, result.invitations, body, options);
-  return result;
+  const emailed = await sendOrganizationInvitations(organizationId, actorId, result.invitations, body, options);
+  return { ...result, emailed };
 };
 
 export async function sendOrganizationInvitations(
@@ -258,7 +322,7 @@ export async function sendOrganizationInvitations(
   invitations: Array<{ id: string; email: string }>,
   body: { orgRole: string; grants: AdmissionGrant[] },
   options: { sendEmail?: boolean; language?: EmailLanguage },
-) {
+): Promise<boolean> {
   if (options.sendEmail !== false && invitations.length) {
     const [org, inviter, projects] = await Promise.all([
       prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, metadata: true } }),
@@ -269,7 +333,7 @@ export async function sendOrganizationInvitations(
       for (const invitation of invitations) {
         const message = await renderMemberInvitationEmail({
           acceptUrl: `${env.APP_URL}/accept-invite/${invitation.id}`,
-          days: 7,
+          days: INVITATION_DAYS,
           inviterName: inviter.name,
           organizationName: org.name,
           role: body.orgRole,
@@ -282,7 +346,9 @@ export async function sendOrganizationInvitations(
           data: { to: invitation.email, ...message },
         }).catch(() => undefined);
       }
+    return notificationEnabled(org.metadata, 'member_invited');
   }
+  return false;
 }
 
 /** Only a pending invitation can be revoked. An accepted one already made a
@@ -320,9 +386,10 @@ export const updateOrganizationMember = (
 ) =>
   withOrganization(organizationId, actorId, async (tx) => {
     const member = await targetMember(tx, organizationId, id);
-    if (member.orgRole === 'admin' && body.orgRole === 'member' && !body.grants?.length) throw noWebsites();
     if (body.grants) await validateOrganizationGrants(tx, organizationId, body.grants);
-    if (member.orgRole === 'admin' && body.orgRole === 'member') await replaceGrants(tx, organizationId, member.userId, body.grants ?? [], actorId);
+    // Admin → Member writes exactly the chosen websites (none is allowed); without a list the dormant grants stay (§6.6).
+    if (member.orgRole === 'admin' && body.orgRole === 'member' && body.grants)
+      await replaceGrants(tx, organizationId, member.userId, body.grants, actorId);
     const result = await tx.member.update({ where: { id }, data: { orgRole: body.orgRole, role: body.orgRole === 'member' ? 'viewer' : 'admin' } });
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.orgRole);
     await syncLegacyMembership(tx, organizationId, member.userId);
@@ -333,7 +400,6 @@ export const replaceOrganizationMemberAccess = (organizationId: string, actorId:
     await validateOrganizationGrants(tx, organizationId, grants);
     const member = await targetMember(tx, organizationId, id);
     if (member.orgRole !== 'member') throw forbidden('Organization admins have access via the organization.');
-    if (!grants.length) throw noWebsites();
     await replaceGrants(tx, organizationId, member.userId, grants, actorId);
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, 'member');
     await syncLegacyMembership(tx, organizationId, member.userId);
@@ -483,3 +549,25 @@ export function changeOrganizationJoinLink(organizationId: string, actorId: stri
     !siteProjectId,
   );
 }
+
+/**
+ * Delete a join link that no longer admits anyone (disabled, expired, used up,
+ * or its creator lost the authority), with its recent-joins list. An active
+ * link must be disabled first, so one click can't silently end a live link.
+ */
+export const deleteOrganizationJoinLink = (organizationId: string, actorId: string, id: string, siteProjectId?: string) =>
+  withOrganization(
+    organizationId,
+    actorId,
+    async (tx, _org, actor) => {
+      const link = await tx.joinLink.findFirst({ where: { id, organizationId }, include: { grants: true } });
+      if (!link || (siteProjectId && (link.grants.length !== 1 || link.grants[0]?.projectId !== siteProjectId))) throw notFound('join_link');
+      if (!isAdmin(actor.orgRole) && !(await issuerAuthorizes(tx, organizationId, actorId, 'member', link.grants)))
+        throw forbidden('You cannot manage this access.');
+      const usable = joinLinkStatus(link) === 'active' && (await issuerAuthorizes(tx, organizationId, link.createdById, 'member', link.grants));
+      if (usable) throw conflict('Disable this link before deleting it.', { reason: 'join_link_active' });
+      await tx.joinLink.delete({ where: { id } });
+      return { id };
+    },
+    !siteProjectId,
+  );

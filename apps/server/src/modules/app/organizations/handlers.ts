@@ -9,14 +9,17 @@ import {
   createOrganization,
   createOrganizationJoinLink,
   deleteOrganization,
+  deleteOrganizationJoinLink,
   getOrganization,
   inviteOrganizationMembers,
+  listOrganizationInvitations,
   listOrganizationJoinLinks,
   listOrganizationMembers,
   listOrganizations,
   organizationBySlug,
   removeOrganizationMember,
   replaceOrganizationMemberAccess,
+  resendOrganizationInvitation,
   transferOrganizationOwnership,
   updateOrganization,
   updateOrganizationMember,
@@ -101,6 +104,14 @@ const app = new Hono<HonoEnv>()
       201,
     ),
   )
+  .get('/:organizationId/invitations', ...admin, async (ctx) =>
+    ctx.json({ data: await listOrganizationInvitations(ctx.req.param('organizationId')) }),
+  )
+  .post('/:organizationId/invitations/:id/resend', ...admin, async (ctx) =>
+    ctx.json({
+      data: await resendOrganizationInvitation(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), { language: getContextLocale() }),
+    }),
+  )
   .delete('/:organizationId/invitations/:id', ...admin, async (ctx) =>
     ctx.json({ data: await cancelOrganizationInvitation(ctx.req.param('organizationId'), userId(), ctx.req.param('id')) }),
   )
@@ -129,8 +140,15 @@ const app = new Hono<HonoEnv>()
   .post('/:organizationId/join-links', ...admin, validator('json', link), async (ctx) =>
     ctx.json({ data: await createOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.valid('json')) }, 201),
   )
-  .delete('/:organizationId/join-links/:id', ...admin, async (ctx) =>
-    ctx.json({ data: (await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), false)).link }),
+  // Disables a link; `?permanent=true` deletes a link that no longer admits anyone.
+  .delete(
+    '/:organizationId/join-links/:id',
+    ...admin,
+    validator('query', z.object({ permanent: z.enum(['true', 'false']).optional() })),
+    async (ctx) =>
+      ctx.req.valid('query').permanent === 'true'
+        ? ctx.json({ data: await deleteOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id')) })
+        : ctx.json({ data: (await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), false)).link }),
   )
   .post('/:organizationId/join-links/:id/regenerate', ...admin, async (ctx) =>
     ctx.json({ data: await changeOrganizationJoinLink(ctx.req.param('organizationId'), userId(), ctx.req.param('id'), true) }),

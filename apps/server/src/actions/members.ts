@@ -10,6 +10,7 @@ import { syncLegacyMembership } from './legacy-membership';
 import {
   assertRevocable,
   inviteOrganizationMembers,
+  resendOrganizationInvitation,
   sendOrganizationInvitations,
   transferOrganizationOwnership,
   withOrganization,
@@ -34,8 +35,10 @@ export const getInvitationInfo = async (id: string) => {
       orgRole: true,
       status: true,
       expiresAt: true,
-      organization: { select: { name: true } },
-      grants: { select: { role: true, project: { select: { name: true } } } },
+      organizationId: true,
+      organization: { select: { name: true, logo: true } },
+      inviter: { select: { name: true } },
+      grants: { select: { role: true, project: { select: { id: true, name: true } } } },
     },
   });
   if (!invitation || !['pending', 'accepted'].includes(invitation.status)) throw notFound('invitation');
@@ -44,8 +47,11 @@ export const getInvitationInfo = async (id: string) => {
     email: invitation.email,
     orgRole: invitation.orgRole,
     role: invitation.kind === 'bootstrap_owner' ? 'owner' : invitation.orgRole === 'admin' ? 'admin' : (invitation.grants[0]?.role ?? 'viewer'),
+    organizationId: invitation.organizationId,
     organizationName: invitation.organization.name,
-    grants: invitation.grants.map((g) => ({ name: g.project.name, role: g.role })),
+    organizationLogo: invitation.organization.logo,
+    inviterName: invitation.inviter.name || null,
+    grants: invitation.grants.map((g) => ({ projectId: g.project.id, name: g.project.name, role: g.role })),
     status: invitation.status,
     expired: invitation.expiresAt <= new Date(),
   };
@@ -67,7 +73,16 @@ export const listMembers = async (organizationId: string, siteId?: string) => {
     }),
     prisma.invitation.findMany({
       where: { organizationId, status: 'pending', grants: { some: { projectId } } },
-      select: { id: true, email: true, status: true, expiresAt: true, inviterId: true, grants: { where: { projectId }, select: { role: true } } },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        expiresAt: true,
+        inviterId: true,
+        inviter: { select: { name: true, email: true } },
+        grants: { where: { projectId }, select: { role: true } },
+      },
       orderBy: { createdAt: 'desc' },
     }),
   ]);
@@ -118,7 +133,7 @@ export const inviteMember = async (
     { ...options, siteProjectId: projectId },
   );
   const invitation = result.invitations[0];
-  if (invitation) return { ...invitation, role: body.role };
+  if (invitation) return { ...invitation, role: body.role, emailed: result.emailed };
   const existing = result.existingMembers[0];
   if (!existing) throw notFound('member');
   return { id: existing.userId, email: body.email, role: body.role, status: 'existing_member' };
@@ -167,7 +182,7 @@ export const removeMember = async (organizationId: string, id: string, actorId: 
       const removed = await tx.projectMember.deleteMany({ where: { organizationId, projectId, userId: member.userId } });
       if (!removed.count) throw notFound('member');
       await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, null);
-      // Zero grants left: the legacy row goes too, so a rollback cannot restore access.
+      // They stay in the organization, possibly with no website (design §6.7); the legacy role follows down.
       await syncLegacyMembership(tx, organizationId, member.userId);
       return { id };
     },
@@ -192,3 +207,10 @@ export const cancelInvitation = async (organizationId: string, id: string, actor
   );
 };
 export const transferOwnership = transferOrganizationOwnership;
+
+/** Resend a pending invitation from a website's Team page (site Admin of a website it grants). */
+export const resendInvitation = async (organizationId: string, id: string, actorId: string, siteId?: string, language?: EmailLanguage) => {
+  const projectId = await singleProject(organizationId, siteId);
+  await prisma.$transaction(async (tx) => siteActor(tx, organizationId, projectId, actorId));
+  return resendOrganizationInvitation(organizationId, actorId, id, { siteProjectId: projectId, language });
+};
