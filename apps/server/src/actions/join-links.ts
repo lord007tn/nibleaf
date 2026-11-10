@@ -1,269 +1,54 @@
 import { joinLinkCreatorAuthorizes } from '@nibleaf/auth/join-links';
-import { notifyMemberJoined } from '@nibleaf/auth/server';
-import { Prisma, prisma } from '@nibleaf/database';
-import { generateJoinLinkToken, hashJoinLinkToken } from '@nibleaf/shared/crypto';
-import { emailInDomain, isJoinLinkToken, joinLinkPath, joinLinkStatus } from '@nibleaf/shared/join-links';
-import { canAssignRole } from '@nibleaf/shared/rbac';
+import { prisma } from '@nibleaf/database';
+import { hashJoinLinkToken } from '@nibleaf/shared/crypto';
+import { isJoinLinkToken, joinLinkStatus } from '@nibleaf/shared/join-links';
 import type { CreateJoinLinkBody } from '@nibleaf/validators';
-import { env } from '@/env';
-import { AppError, conflict, forbidden, notFound } from '@/errors';
-import { assertUsableAccount, resolveSiteAccess } from '@/lib/access';
-import { logPlatformEvent } from './platform-events';
+import { notFound } from '@/errors';
+import { admit, invalidJoinLink } from './admissions';
+import { changeOrganizationJoinLink, createOrganizationJoinLink, listOrganizationJoinLinks } from './organizations';
 
-type Actor = { id: string; role: string };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-/** Most recent joins returned with each link in the admin list. */
-const RECENT_USES = 20;
-
-const linkSelect = {
-  id: true,
-  label: true,
-  role: true,
-  grants: { select: { role: true } },
-  allowedDomain: true,
-  maxUses: true,
-  useCount: true,
-  expiresAt: true,
-  revokedAt: true,
-  createdAt: true,
-  createdBy: { select: { id: true, name: true, email: true } },
-  uses: {
-    orderBy: { createdAt: 'desc' },
-    take: RECENT_USES,
-    select: { id: true, email: true, role: true, createdAt: true, user: { select: { id: true, name: true, email: true } } },
-  },
-} satisfies Prisma.JoinLinkSelect;
-
-type LinkRow = Prisma.JoinLinkGetPayload<{ select: typeof linkSelect }>;
-
-/** A link as admins see it. Never includes the token or its hash. */
-const present = ({ grants, ...link }: LinkRow) => ({ ...link, role: grants[0]?.role ?? 'viewer', status: joinLinkStatus(link) });
-
-const absoluteUrl = (token: string) => `${env.APP_URL}${joinLinkPath(token)}`;
-
-/** The one answer for a bad, revoked, expired or used-up token, so a caller
- *  can never tell which (and can't probe for live tokens). */
-const invalidLink = () => new AppError({ code: 'join:invalid', message: 'This join link is not valid.' });
-
-// TODO(organizations-admission): scoped CRUD replaces this single-site bridge.
-const legacyProjectId = async (organizationId: string) => {
-  const sites = await prisma.project.findMany({ where: { organizationId }, select: { id: true }, take: 2 });
-  const [site] = sites;
-  if (sites.length !== 1 || !site) throw conflict('Use organization join-link actions for this organization.');
-  return site.id;
-};
-
-/** Admins see a link whose creator can no longer grant its role as disabled:
- *  that's how it behaves (see joinLinkCreatorAuthorizes). */
-export const listJoinLinks = async (organizationId: string) => {
-  await legacyProjectId(organizationId);
-  const links = await prisma.joinLink.findMany({ where: { organizationId }, orderBy: { createdAt: 'desc' }, select: linkSelect });
-  return Promise.all(
-    links.map(async (link) => {
-      const shown = present(link);
-      if (shown.status !== 'active') return shown;
-      const authorized = await joinLinkCreatorAuthorizes(prisma, {
-        id: link.id,
-        organizationId,
-        createdById: link.createdBy?.id ?? null,
-        role: link.role,
-      });
-      return authorized ? shown : { ...shown, status: 'revoked' as const };
-    }),
-  );
-};
-
-/**
- * Create a join link for a site. The granted role is never owner (schema) and
- * never above the creator's own role. The token is returned ONCE: only its
- * SHA-256 is stored, so the admin copies it now or regenerates later.
- */
-export const createJoinLink = async (organizationId: string, actor: Actor, body: CreateJoinLinkBody) => {
-  if (!canAssignRole(actor.role, body.role)) {
-    throw forbidden('You cannot create a link that grants a role higher than your own.', { role: body.role });
-  }
-  const projectId = await legacyProjectId(organizationId);
-  const token = generateJoinLinkToken();
-  const link = await prisma.joinLink.create({
-    data: {
-      organizationId,
-      tokenHash: hashJoinLinkToken(token),
-      label: body.label || null,
-      role: 'viewer',
-      orgRole: 'member',
-      grants: { create: { organizationId, projectId, role: body.role } },
-      allowedDomain: body.allowedDomain ?? null,
-      maxUses: body.maxUses ?? null,
-      expiresAt: body.expiresInDays ? new Date(Date.now() + body.expiresInDays * DAY_MS) : null,
-      createdById: actor.id,
-    },
-    select: linkSelect,
+const soleProject = async (organizationId: string, projectId?: string) => {
+  const projects = await prisma.project.findMany({
+    where: { organizationId, ...(projectId ? { id: projectId } : {}) },
+    select: { id: true },
+    take: 2,
   });
-  logPlatformEvent('join_link_created', { userId: actor.id, metadata: { organizationId, joinLinkId: link.id, role: link.role } });
-  return { link: present(link), token, url: absoluteUrl(token) };
+  if (projects.length !== 1 || !projects[0]) throw notFound('project');
+  return projects[0].id;
 };
-
-const findLink = async (organizationId: string, id: string) => {
-  await legacyProjectId(organizationId);
-  const link = await prisma.joinLink.findFirst({
-    where: { id, organizationId },
-    select: { id: true, grants: { select: { role: true } }, revokedAt: true },
-  });
-  if (!link) throw notFound('join_link', { id });
-  return link;
+export const listJoinLinks = async (organizationId: string, projectId?: string) =>
+  listOrganizationJoinLinks(organizationId, await soleProject(organizationId, projectId));
+export const createJoinLink = async (organizationId: string, actor: { id: string; role: string }, body: CreateJoinLinkBody, siteId?: string) => {
+  const projectId = await soleProject(organizationId, siteId);
+  return createOrganizationJoinLink(organizationId, actor.id, { ...body, grants: [{ projectId, role: body.role }] }, projectId);
 };
-
-/** Stop a link from working. Idempotent; people who already joined stay. */
-export const revokeJoinLink = async (organizationId: string, id: string, actor: Actor) => {
-  const existing = await findLink(organizationId, id);
-  const link = existing.revokedAt
-    ? await prisma.joinLink.findUniqueOrThrow({ where: { id }, select: linkSelect })
-    : await prisma.joinLink.update({ where: { id }, data: { revokedAt: new Date() }, select: linkSelect });
-  if (!existing.revokedAt) logPlatformEvent('join_link_revoked', { userId: actor.id, metadata: { organizationId, joinLinkId: id } });
-  return present(link);
-};
-
-/**
- * Replace a link's token, keeping its settings and history. The old URL stops
- * working at once. A revoked link stays revoked: create a new one instead, so
- * "disable" is always final.
- */
-export const regenerateJoinLink = async (organizationId: string, id: string, actor: Actor) => {
-  const existing = await findLink(organizationId, id);
-  if (existing.revokedAt) throw conflict('This link was disabled. Create a new link instead.');
-  if (!existing.grants.every((grant) => canAssignRole(actor.role, grant.role)))
-    throw forbidden('You cannot manage a link that grants a role higher than your own.');
-  const token = generateJoinLinkToken();
-  const link = await prisma.joinLink.update({ where: { id }, data: { tokenHash: hashJoinLinkToken(token) }, select: linkSelect });
-  logPlatformEvent('join_link_regenerated', { userId: actor.id, metadata: { organizationId, joinLinkId: id } });
-  return { link: present(link), token, url: absoluteUrl(token) };
-};
-
-const usableLinkByToken = async (token: string) => {
-  if (!isJoinLinkToken(token)) return null;
+export const revokeJoinLink = async (organizationId: string, id: string, actor: { id: string; role: string }, siteId?: string) =>
+  (await changeOrganizationJoinLink(organizationId, actor.id, id, false, await soleProject(organizationId, siteId))).link;
+export const regenerateJoinLink = async (organizationId: string, id: string, actor: { id: string; role: string }, siteId?: string) =>
+  changeOrganizationJoinLink(organizationId, actor.id, id, true, await soleProject(organizationId, siteId));
+export const getJoinLinkPreview = async (token: string) => {
+  if (!isJoinLinkToken(token)) throw invalidJoinLink();
   const link = await prisma.joinLink.findUnique({
     where: { tokenHash: hashJoinLinkToken(token) },
-    select: {
-      id: true,
-      organizationId: true,
-      createdById: true,
-      role: true,
-      grants: { select: { role: true } },
-      allowedDomain: true,
-      maxUses: true,
-      useCount: true,
-      expiresAt: true,
-      revokedAt: true,
-      organization: { select: { id: true, name: true, metadata: true, projects: { select: { id: true, name: true }, take: 2 } } },
+    include: {
+      organization: { select: { name: true, needsRepair: true, deletionStartedAt: true } },
+      grants: { select: { role: true, project: { select: { name: true } } } },
     },
   });
-  // Its creator must still be able to grant its role (same single answer otherwise).
-  return link && link.organization.projects.length === 1 && joinLinkStatus(link) === 'active' && (await joinLinkCreatorAuthorizes(prisma, link))
-    ? { ...link, role: link.grants[0]?.role ?? 'viewer' }
-    : null;
+  if (
+    !link ||
+    link.organization.needsRepair ||
+    link.organization.deletionStartedAt ||
+    joinLinkStatus(link) !== 'active' ||
+    !(await joinLinkCreatorAuthorizes(prisma, link))
+  )
+    throw invalidJoinLink();
+  return {
+    organizationName: link.organization.name,
+    siteName: link.grants.length === 1 ? (link.grants[0]?.project.name ?? link.organization.name) : link.organization.name,
+    role: link.grants[0]?.role ?? 'viewer',
+    grants: link.grants.map((g) => ({ name: g.project.name, role: g.role })),
+    allowedDomain: link.allowedDomain,
+  };
 };
-
-/** What the public /join page shows before anyone signs in: the site, the
- *  role and any domain rule. Unknown and unusable tokens get one answer. */
-export const getJoinLinkPreview = async (token: string) => {
-  const link = await usableLinkByToken(token);
-  const site = link?.organization.projects[0];
-  if (!(link && site)) throw invalidLink();
-  return { siteName: site.name, role: link.role, allowedDomain: link.allowedDomain };
-};
-
-export type JoinResult = { status: 'joined' | 'already_member'; projectId: string; role: string };
-
-/**
- * Join a site through a link, as the signed-in user.
- * - The address must be verified, and inside the link's domain when it has one.
- * - Someone already on the team gets "already a member" (with their own role),
- *   which never consumes a use.
- * - A use is taken atomically: one UPDATE that only matches while the link is
- *   active and `useCount < maxUses`. Concurrent joins can never exceed the cap,
- *   and the membership is created in the same transaction, so a failed insert
- *   gives the use back.
- */
-export const joinWithLink = async (token: string, userId: string): Promise<JoinResult> => {
-  await assertUsableAccount(userId);
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, name: true, emailVerified: true } });
-  if (!user) throw new AppError({ code: 'auth:no_user' });
-  const link = await usableLinkByToken(token);
-  const site = link?.organization.projects[0];
-  if (!(link && site)) throw invalidLink();
-
-  const existing = await prisma.member.findUnique({
-    where: { organizationId_userId: { organizationId: link.organizationId, userId } },
-    select: { role: true },
-  });
-  if (existing) return { status: 'already_member', projectId: site.id, role: (await resolveSiteAccess(userId, site.id)).role };
-
-  if (!user.emailVerified) {
-    throw new AppError({ code: 'join:email_unverified', message: 'Verify your email address before joining.' });
-  }
-  if (!emailInDomain(user.email, link.allowedDomain)) {
-    throw new AppError({
-      code: 'join:domain_not_allowed',
-      message: `Only @${link.allowedDomain} addresses can join with this link.`,
-      details: { domain: link.allowedDomain },
-    });
-  }
-
-  const now = new Date();
-  const tokenHash = hashJoinLinkToken(token);
-  try {
-    await prisma.$transaction(async (tx) => {
-      // Hold the creator's member and account rows until commit, so a demote,
-      // removal or suspension can't interleave with this join; then re-check
-      // their authority on the locked, current rows.
-      if (!link.createdById) throw invalidLink();
-      await tx.$queryRaw`SELECT member."id" FROM "member" AS member
-        INNER JOIN "user" AS account ON account."id" = member."userId"
-        WHERE member."organizationId" = ${link.organizationId} AND member."userId" = ${link.createdById}
-        FOR SHARE`;
-      if (!(await joinLinkCreatorAuthorizes(tx, link))) throw invalidLink();
-      const taken = await tx.joinLink.updateMany({
-        where: {
-          id: link.id,
-          // A regenerate between the lookup and here changed the hash: this
-          // (now old) token no longer reserves anything.
-          tokenHash,
-          revokedAt: null,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          AND: [{ OR: [{ maxUses: null }, { useCount: { lt: tx.joinLink.fields.maxUses } }] }],
-        },
-        data: { useCount: { increment: 1 } },
-      });
-      if (taken.count !== 1) throw invalidLink();
-      // TODO(organizations-admission): replace with the shared locked admission.
-      await tx.member.create({ data: { organizationId: link.organizationId, userId, orgRole: 'member', role: 'viewer' } });
-      const grants = await tx.joinLinkGrant.findMany({ where: { joinLinkId: link.id } });
-      for (const grant of grants)
-        await tx.projectMember.create({ data: { organizationId: link.organizationId, projectId: grant.projectId, userId, role: grant.role } });
-      await tx.joinLinkRedemption.create({ data: { joinLinkId: link.id, userId } });
-      await tx.joinLinkUse.create({ data: { joinLinkId: link.id, userId, email: user.email, role: link.role } });
-      // They're in: any pending invitation to this site for this address is
-      // used up (its accept page then says so) instead of lingering.
-      await tx.invitation.updateMany({
-        where: { organizationId: link.organizationId, status: 'pending', email: { equals: user.email, mode: 'insensitive' } },
-        data: { status: 'accepted' },
-      });
-    });
-  } catch (error) {
-    // Joined in parallel (another tab, a double click): the unique member row
-    // already exists and this attempt's use was rolled back with it.
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      const member = await prisma.member.findUnique({
-        where: { organizationId_userId: { organizationId: link.organizationId, userId } },
-        select: { role: true },
-      });
-      if (member) return { status: 'already_member', projectId: site.id, role: (await resolveSiteAccess(userId, site.id)).role };
-    }
-    throw error;
-  }
-
-  logPlatformEvent('join_link_used', { userId, projectId: site.id, metadata: { joinLinkId: link.id, role: link.role } });
-  await notifyMemberJoined({ projectId: site.id, organization: link.organization, userId, user });
-  return { status: 'joined', projectId: site.id, role: link.role };
-};
+export const joinWithLink = (token: string, userId: string) => admit(userId, { token });

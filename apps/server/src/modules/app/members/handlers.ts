@@ -34,7 +34,7 @@ const app = new Hono<HonoEnv>()
   })
   .delete('/invitations/:id', ...membersRoutes.cancelInvite, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await cancelInvitation(organizationId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await cancelInvitation(organizationId, ctx.req.param('id'), getContextUserOrThrow().id) }, 200);
   });
 
 export default app;

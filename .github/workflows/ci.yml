@@ -161,6 +161,12 @@ jobs:
           DATA_PARTITION_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/actions/data-partition.postgres.test.ts
 
+      - name: Verify transactional organization admissions
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ADMISSION_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/admissions.postgres.test.ts --no-file-parallelism
+
       - name: Verify join links (atomic max uses, one answer for bad links)
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf

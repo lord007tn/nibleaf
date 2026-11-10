@@ -9,15 +9,17 @@ import routes from './routes';
 const actor = () => ({ id: getContextUserOrThrow().id, role: getContextMembershipOrThrow().role });
 
 const app = new Hono<HonoEnv>()
-  .get('/', ...routes.list, async (ctx) => ctx.json({ data: await listJoinLinks(getContextOrganizationIdOrThrow()) }, 200))
+  .get('/', ...routes.list, async (ctx) =>
+    ctx.json({ data: await listJoinLinks(getContextOrganizationIdOrThrow(), ctx.req.param('projectId')) }, 200),
+  )
   .post('/', ...routes.create, validator('json', createJoinLinkBody), async (ctx) =>
-    ctx.json({ data: await createJoinLink(getContextOrganizationIdOrThrow(), actor(), ctx.req.valid('json')) }, 201),
+    ctx.json({ data: await createJoinLink(getContextOrganizationIdOrThrow(), actor(), ctx.req.valid('json'), ctx.req.param('projectId')) }, 201),
   )
   .post('/:id/revoke', ...routes.revoke, async (ctx) =>
-    ctx.json({ data: await revokeJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor()) }, 200),
+    ctx.json({ data: await revokeJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor(), ctx.req.param('projectId')) }, 200),
   )
   .post('/:id/regenerate', ...routes.regenerate, async (ctx) =>
-    ctx.json({ data: await regenerateJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor()) }, 200),
+    ctx.json({ data: await regenerateJoinLink(getContextOrganizationIdOrThrow(), ctx.req.param('id'), actor(), ctx.req.param('projectId')) }, 200),
   );
 
 export default app;

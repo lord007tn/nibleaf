@@ -36,8 +36,12 @@ vi.mock('@nibleaf/database', async (importOriginal) => {
   const models: Record<string, unknown> = {
     project: model({ findUnique: async () => ({ id: 'project-1', organizationId: 'org-1' }) }),
     member: model({
-      findUnique: async () => (state.role ? { id: 'member-1', role: state.role, orgRole: state.orgRole, user: { suspendedAt: null } } : null),
+      findUnique: async ({ where }: { where: { organizationId_userId: { organizationId: string } } }) =>
+        where.organizationId_userId.organizationId === state.organizationId && (state.role || state.orgRole !== 'member')
+          ? { id: 'member-1', role: state.role, orgRole: state.orgRole, user: { suspendedAt: null } }
+          : null,
     }),
+    organization: model({ findUniqueOrThrow: async () => ({ needsRepair: false, deletionStartedAt: null }) }),
     user: model({ findUnique: async () => ({ id: 'user-1', role: 'user', suspendedAt: null }) }),
   };
   const prisma = new Proxy(models, {
@@ -89,6 +93,7 @@ const routes = [
 /** Writes that act on the caller's OWN account, not on a site the caller
  *  joined, so a site role does not apply. Each one says why. */
 const ACCOUNT_SCOPED_WRITES: Record<string, string> = {
+  'POST /invitations/:id/accept': 'invitation admission checks the recipient and issuer in its transaction',
   'POST /activation-events': 'records onboarding milestones for the caller only',
   'POST /notifications/read': "marks the caller's own inbox read",
   'POST /projects': 'creates a brand-new site the caller owns',
@@ -146,7 +151,9 @@ describe('dashboard API permission matrix', () => {
     for (const key of [...Object.keys(ACCOUNT_SCOPED_WRITES), ...VIEWER_DENIED_READS]) expect(keys, key).toContain(key);
   });
 
-  const writes = routes.filter(({ method, path }) => WRITE_METHODS.has(method) && !ACCOUNT_SCOPED_WRITES[`${method} ${path}`]);
+  const writes = routes.filter(
+    ({ method, path }) => WRITE_METHODS.has(method) && !path.startsWith('/organizations') && !ACCOUNT_SCOPED_WRITES[`${method} ${path}`],
+  );
 
   it.each(writes)('a Viewer cannot $method $path', async ({ method, path }) => {
     state.orgRole = 'member';
@@ -214,6 +221,26 @@ describe('dashboard API permission matrix', () => {
       const result = await call(method, path);
       if (result.status === 404) expect(result.code).toBe('addon:not_found');
       if (grant === 'admin' && !path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
+    });
+  }
+  const orgRoutes = routes.filter(({ path }) => path.startsWith('/organizations/:organizationId'));
+  for (const orgRole of ['owner', 'admin', 'member', 'non-member', 'other-org']) {
+    it.each(orgRoutes)(`${orgRole} organization guard at $method $path`, async ({ method, path }) => {
+      state.orgRole = orgRole === 'owner' || orgRole === 'admin' ? orgRole : 'member';
+      state.role = orgRole === 'non-member' ? null : 'viewer';
+      state.organizationId = orgRole === 'other-org' ? 'org-2' : 'org-1';
+      const url = path.replace(':organizationId', 'org-1').replace(/:[A-Za-z]+/g, 'x');
+      const response = await harness.request(url, {
+        method,
+        headers: { 'content-type': 'application/json' },
+        ...(WRITE_METHODS.has(method) ? { body: '{}' } : {}),
+      });
+      const body = (await response.json()) as { code?: string };
+      if (orgRole === 'non-member' || orgRole === 'other-org') expect(response.status).toBe(404);
+      else if (orgRole === 'member' && !(method === 'GET' && path === '/organizations/:organizationId') && !path.endsWith('/leave'))
+        expect(response.status).toBe(403);
+      else if (orgRole === 'admin' && path.endsWith('/transfer-ownership')) expect(response.status).toBe(403);
+      else expect(body.code).not.toBe('auth:insufficient_role');
     });
   }
 });

@@ -3,6 +3,7 @@ import { transactionLock } from './transaction-lock.test-helper';
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  findUnique: vi.fn(),
   findFirst: vi.fn(),
   count: vi.fn(),
   update: vi.fn(),
@@ -11,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   transaction: vi.fn(),
   revokeJoinLinks: vi.fn(async () => 0),
 }));
-vi.mock('@nibleaf/database', () => ({ prisma: { member: mocks, $transaction: mocks.transaction } }));
+vi.mock('@nibleaf/database', () => ({
+  prisma: { member: mocks, project: { findMany: async () => [{ id: 'project' }] }, $transaction: mocks.transaction },
+}));
 vi.mock('@nibleaf/bullmq', () => ({ createJob: vi.fn(), QueueNames: {} }));
 // Join-link revocation has its own PostgreSQL tests (join-links.postgres.test.ts).
 vi.mock('@nibleaf/auth/join-links', () => ({ revokeJoinLinksBeyondRole: mocks.revokeJoinLinks }));
@@ -36,6 +39,7 @@ describe('workspace owner serialization', () => {
     mocks.findFirst.mockImplementation(async ({ where }) =>
       structuredClone(members.find((member) => (where.id ? member.id === where.id : member.userId === where.userId))),
     );
+    mocks.findUnique.mockImplementation(async ({ where }) => structuredClone(members.find((m) => m.userId === where.organizationId_userId.userId)));
     mocks.count.mockImplementation(async () => members.filter((member) => member.role === 'owner').length);
     mocks.updateMany.mockImplementation(async ({ where, data }) => {
       for (const member of members) if (where.id ? where.id.in.includes(member.id) : member.orgRole === where.orgRole) Object.assign(member, data);
@@ -53,7 +57,8 @@ describe('workspace owner serialization', () => {
     mocks.transaction.mockImplementation((work) =>
       transaction(work, {
         member: mocks,
-        organization: { findUniqueOrThrow: async () => ({ needsRepair: false, deletionStartedAt: null }) },
+        organization: { findUnique: async () => ({ id: 'org', needsRepair: false, deletionStartedAt: null }) },
+        user: { findUnique: async () => ({ id: 'user', banned: false, suspendedAt: null }) },
         project: { findMany: async () => [{ id: 'project' }] },
       }),
     );
@@ -70,6 +75,7 @@ describe('workspace owner serialization', () => {
     if (!actor) throw new Error('Missing actor fixture');
     actor.role = 'viewer';
     actor.orgRole = 'member';
+    actor.projectGrants = [{ role: 'viewer' }];
     const target = members.find((member) => member.id === 'b');
     if (!target) throw new Error('Missing target fixture');
     target.role = 'viewer';

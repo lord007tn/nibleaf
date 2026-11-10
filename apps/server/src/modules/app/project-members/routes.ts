@@ -5,7 +5,6 @@ import { isAuthenticated, requireProjectMember, requireProjectRole } from '@/mid
 
 const ok = { 200: { description: 'ok' }, ...errorResponses };
 const admin = [isAuthenticated, requireProjectRole(MemberRole.ADMIN)] as const;
-const owner = [isAuthenticated, requireProjectRole(MemberRole.OWNER)] as const;
 
 // Per-site members: scoped to the project's OWN organization (resolved from
 // `:projectId` by the guards), so each website manages its own people/roles.
@@ -29,12 +28,6 @@ const projectMembersRoutes = {
     responses: { 201: { description: 'created' }, ...errorResponses },
   }),
   updateRole: createRouteConfig({ guard: [...admin], tags: ['members'], description: "Change a site member's role.", responses: ok }),
-  transferOwner: createRouteConfig({
-    guard: [...owner],
-    tags: ['members'],
-    description: 'Transfer site ownership to another member.',
-    responses: ok,
-  }),
   remove: createRouteConfig({ guard: [...admin], tags: ['members'], description: 'Remove a member from the site.', responses: ok }),
   cancelInvite: createRouteConfig({ guard: [...admin], tags: ['members'], description: 'Cancel a pending site invitation.', responses: ok }),
 };
