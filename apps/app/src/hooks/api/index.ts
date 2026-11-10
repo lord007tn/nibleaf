@@ -1,3 +1,4 @@
+export * from './admissions';
 export * from './analytics';
 export * from './deployment-cache';
 export * from './domain-state';

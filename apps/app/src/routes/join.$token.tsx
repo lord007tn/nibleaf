@@ -83,23 +83,27 @@ function JoinContent() {
   const site = info?.siteName ?? '';
   const role = info ? t(roleLabelKey(info.role)) : '';
 
-  const finish = async (projectId: string, status: 'joined' | 'already_member') => {
+  const finish = async (result: Awaited<ReturnType<typeof join.mutateAsync>>) => {
     if (readPendingDestination() === path) clearPendingDestination();
     forgetJoinToken();
-    toast.success(t(status === 'joined' ? 'join.joinedToast' : 'join.alreadyMemberToast', { site }));
+    toast.success(t('join.joinedToast', { site }));
     // Same landing as an accepted invitation: this account's cache, a fresh
     // site list that includes the site, the site selected and open.
     if (session) syncDashboardSession(queryClient, session.user.id);
     await queryClient.invalidateQueries({ queryKey: projectsQueryOptions().queryKey });
     await queryClient.fetchQuery(projectsQueryOptions()).catch(() => undefined);
-    rememberActiveProject(projectId);
-    await navigate({ to: '/app/projects/$projectId', params: { projectId } });
+    if ('projectId' in result.landing) {
+      rememberActiveProject(result.landing.projectId);
+      await navigate({ to: '/app/projects/$projectId', params: { projectId: result.landing.projectId } });
+    } else {
+      await navigate({ to: '/app/o/$orgSlug/websites', params: { orgSlug: result.landing.organization } });
+    }
   };
 
   const onJoin = () => {
     setError(null);
     join.mutate(token, {
-      onSuccess: (result) => void finish(result.projectId, result.status),
+      onSuccess: (result) => void finish(result),
       onError: (failure) => {
         const code = failure instanceof ApiResponseError ? failure.code : undefined;
         if (code === 'join:invalid') void preview.refetch();
@@ -163,6 +167,9 @@ function JoinContent() {
   const details = (
     <>
       <p className="text-center text-sm">{t('join.offer', { role })}</p>
+      <p className="text-center text-muted-foreground text-sm" dir="auto">
+        {info.grants.map((grant) => `${grant.name} (${t(roleLabelKey(grant.role))})`).join(' · ')}
+      </p>
       {info.allowedDomain ? (
         <p className="text-center text-muted-foreground text-sm" dir="auto">
           {t('join.domainOnly', { domain: info.allowedDomain })}

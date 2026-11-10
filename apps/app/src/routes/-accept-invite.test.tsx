@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
-vi.mock('@/hooks/api', () => ({ useGetInvitationInfo: mocks.invitation }));
+vi.mock('@/hooks/api', () => ({ useGetInvitationInfo: mocks.invitation, acceptInvitation: mocks.accept }));
 vi.mock('@/hooks/api/query-options', () => ({
   getInvitationInfoQueryOptions: (invitationId: string) => ({ queryKey: ['public', 'invitations', invitationId] }),
   projectsQueryOptions: () => ({ queryKey: ['projects'], queryFn: mocks.projects }),
@@ -29,7 +29,7 @@ vi.mock('@/hooks/api/query-options', () => ({
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetchRouteData }));
 vi.mock('@/services/auth-client', () => ({
   useSession: mocks.session,
-  authClient: { organization: { acceptInvitation: mocks.accept }, signOut: mocks.signOut },
+  authClient: { signOut: mocks.signOut },
 }));
 vi.mock('sonner', () => ({ toast: { success: mocks.toastSuccess } }));
 vi.mock('@/components/auth-providers', () => ({ AuthProviders: ({ children }: { children: ReactNode }) => children }));
@@ -61,7 +61,14 @@ const Page = () => (
     <PageComponent />
   </QueryClientProvider>
 );
-const info = { email: 'recipient@example.com', organizationName: 'Example workspace', status: 'pending', expired: false };
+const info = {
+  orgRole: 'member',
+  grants: [],
+  email: 'recipient@example.com',
+  organizationName: 'Example workspace',
+  status: 'pending',
+  expired: false,
+};
 
 describe('invitation recovery', () => {
   let container: HTMLDivElement;
@@ -78,7 +85,7 @@ describe('invitation recovery', () => {
       isFetching: false,
       refetch: mocks.refetch,
     });
-    mocks.accept.mockResolvedValue({ error: null });
+    mocks.accept.mockResolvedValue({ organizationId: 'org-1', landing: { projectId: 'site-9' } });
     mocks.signOut.mockResolvedValue({ error: null });
     mocks.navigate.mockResolvedValue(undefined);
     container = document.createElement('div');
@@ -176,10 +183,10 @@ describe('invitation recovery', () => {
     expect(readPendingInvitation()).toBe('invite-1');
     await act(async () => button()?.click());
     expect(mocks.accept).toHaveBeenCalledTimes(2);
-    expect(mocks.accept).toHaveBeenLastCalledWith({ invitationId: 'invite-1' });
+    expect(mocks.accept).toHaveBeenLastCalledWith('invite-1');
     expect(readPendingInvitation()).toBeNull();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('auth.invite.acceptedToast');
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app' });
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId', params: { projectId: 'site-9' } });
   });
 
   it('offers retry for an invitation load failure instead of calling it missing', async () => {
@@ -222,10 +229,11 @@ describe('invitation recovery', () => {
     'clears only the matching pending invitation when it expires during acceptance (%s)',
     async (storedId) => {
       setPendingInvitation(storedId);
-      mocks.accept.mockResolvedValueOnce({ error: { code: 'INVITATION_EXPIRED' } });
+      mocks.accept.mockRejectedValueOnce(new ApiResponseError('Invalid invitation', 404, 'database:not_found'));
+
       await render();
       await act(async () => button()?.click());
-      expect(container.textContent).toContain('auth.invite.expiredError');
+      expect(container.textContent).toContain('auth.invite.error');
       expect(button()?.disabled).toBe(false);
       expect(readPendingInvitation()).toBe(storedId === 'invite-1' ? null : storedId);
       expect(mocks.navigate).not.toHaveBeenCalled();
@@ -263,14 +271,14 @@ describe('invitation recovery', () => {
     // The dashboard last belonged to another account (the user chose "Log in with the invited account").
     syncDashboardSession(queryClient, 'previous-account');
     window.localStorage.setItem('nibleaf.activeProjectId', 'own-site');
-    mocks.accept.mockResolvedValueOnce({ data: { invitation: { organizationId: 'org-joined' } }, error: null });
+    mocks.accept.mockResolvedValueOnce({ organizationId: 'org-joined', landing: { projectId: 'joined-site' } });
     mocks.projects.mockResolvedValue([
       { id: 'own-site', organizationId: 'org-own' },
       { id: 'joined-site', organizationId: 'org-joined' },
     ]);
     await render();
     await act(async () => button()?.click());
-    expect(mocks.projects).toHaveBeenCalledOnce();
+    expect(mocks.projects).not.toHaveBeenCalled();
     expect(window.localStorage.getItem('nibleaf.activeProjectId')).toBe('joined-site');
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/projects/$projectId', params: { projectId: 'joined-site' } });
     // What /app's session check does next must keep that selection.
