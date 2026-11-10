@@ -263,10 +263,12 @@ export const projectMembersQueryOptions = (projectId: string | undefined) =>
   });
 
 /** The first inbox page (newest 50). */
-export const notificationsQueryOptions = () =>
+/** The bell inbox: every organization, or one (`organizationId`) for "This organization". */
+export const notificationsQueryOptions = (organizationId?: string) =>
   queryOptions({
-    queryKey: queryKeys.notifications.list(),
-    queryFn: async () => getData<NotificationList>(await api.app.notifications.$get({ query: {} }), 'notifications'),
+    queryKey: queryKeys.notifications.list(organizationId),
+    queryFn: async () =>
+      getData<NotificationList>(await api.app.notifications.$get({ query: organizationId ? { organizationId } : {} }), 'notifications'),
   });
 
 /** Unread badge count for the header bell (the hook adds polling). */

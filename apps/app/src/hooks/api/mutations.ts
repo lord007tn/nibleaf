@@ -88,8 +88,14 @@ export const useImportProjectTheme = (projectId: string) => {
 export const useCreateProject = () => {
   const qc = useQueryClient();
   return useMutation({
+    // Websites are always created inside an organization (`organizationId`).
     mutationFn: async (body: CreateProjectBody) => mutateData<Project>(await api.app.projects.$post({ json: body }), 'Could not create the site.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+      ]),
   });
 };
 
@@ -193,7 +199,11 @@ export const useDeleteProject = () => {
     onSuccess: (_data, projectId) => {
       // Drop the deleted site's detail rather than refetching it into a "not found".
       qc.removeQueries({ queryKey: queryKeys.projects.detail(projectId), exact: true });
-      return qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
+      return Promise.all([
+        qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.organizations.all() }),
+        qc.invalidateQueries({ queryKey: queryKeys.me.switcher() }),
+      ]);
     },
   });
 };
@@ -1040,6 +1050,8 @@ export const useMarkNotificationsRead = () => {
       if (qc.isMutating({ mutationKey }) > 1) return;
       markReads.drop(qc);
       void qc.invalidateQueries({ queryKey: listKey, exact: true });
+      // "This organization" inbox views are separate lists; they refetch rather than guess.
+      void qc.invalidateQueries({ queryKey: ['notifications', 'organization'] });
       void qc.invalidateQueries({ queryKey: countKey, exact: true });
     },
     meta: { errorMessage: t('notifications.markReadError') },
