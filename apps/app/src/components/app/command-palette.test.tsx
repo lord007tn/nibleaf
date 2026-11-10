@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   usePages: vi.fn(),
   params: {} as { projectId?: string },
   t: vi.fn((key: string) => key),
+  organizations: [] as Array<{ id: string; slug: string; name: string; logo: null; orgRole: string; canCreateWebsite: boolean }>,
+  openSwitcher: vi.fn(),
+  openCreateOrganization: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.t }));
@@ -18,7 +21,19 @@ vi.mock('@tanstack/react-router', () => ({
   useRouterState: ({ select }: { select: (state: { matches: Array<{ params: unknown }> }) => unknown }) =>
     select({ matches: [{ params: {} }, { params: mocks.params }] }),
 }));
-vi.mock('@/hooks/api', () => ({ useProjects: mocks.useProjects, usePages: mocks.usePages }));
+// The palette is scoped to the current org: its websites come from the switcher's per-org list.
+vi.mock('@/hooks/api', () => ({
+  useOrganizationSwitcherProjects: mocks.useProjects,
+  usePages: mocks.usePages,
+  useSwitcher: () => ({ data: { organizations: mocks.organizations } }),
+}));
+vi.mock('./org-switcher/switcher-context', () => ({
+  useSwitcherControls: () => ({
+    current: { organizationId: 'org-1' },
+    openSwitcher: mocks.openSwitcher,
+    openCreateOrganization: mocks.openCreateOrganization,
+  }),
+}));
 vi.mock('@/components/interface-language-dialog', () => ({ InterfaceLanguageDialog: () => null }));
 
 import { CommandPalette, CommandPaletteProvider } from './command-palette';
@@ -41,6 +56,10 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   mocks.t.mockImplementation((key: string) => key);
   mocks.params = {};
+  mocks.organizations = [
+    { id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'owner', canCreateWebsite: true },
+    { id: 'org-2', slug: 'joodpms', name: 'JOODPMS', logo: null, orgRole: 'member', canCreateWebsite: false },
+  ];
   mocks.usePages.mockImplementation((projectId?: string) => ({
     data: projectId
       ? [
@@ -128,9 +147,11 @@ describe('CommandPalette', () => {
     for (const key of [
       'command.group.projects',
       'command.group.goTo',
-      'command.allProjects',
-      'nav.sites',
+      'nav.websites',
       'command.analytics',
+      'nav.members',
+      'nav.billing',
+      'command.organizationSettings',
       'command.accountSettings',
     ]) {
       expect(text).toContain(key);
@@ -146,8 +167,7 @@ describe('CommandPalette', () => {
 
   it('finds go-to shortcuts by their localized label, not only the English value', async () => {
     const arabic: Record<string, string> = {
-      'command.allProjects': 'كل المشاريع',
-      'nav.sites': 'المواقع',
+      'nav.websites': 'المواقع',
       'command.analytics': 'التحليلات',
       'command.accountSettings': 'إعدادات الحساب',
     };
@@ -242,6 +262,44 @@ describe('CommandPalette', () => {
     // Outside a site there is no page list and no per-site invite shortcut.
     expect(mocks.usePages).toHaveBeenCalledWith(undefined);
     expect(itemLabels()).not.toContain('command.invite');
+  });
+
+  it('scopes go-to pages to the current organization and hides admin pages from Members', async () => {
+    mocks.organizations = [{ id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: 'member', canCreateWebsite: false }];
+    await render(true);
+    expect(itemLabels()).toContain('nav.websites');
+    expect(itemLabels()).not.toContain('nav.members');
+    expect(itemLabels()).not.toContain('nav.billing');
+    // A Member cannot create websites; one org needs no "Switch organization" list.
+    expect(itemLabels()).not.toContain('dashboard.newProject');
+    expect(document.body.textContent).not.toContain('command.group.switchOrganization');
+    const websites = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'nav.websites');
+    await act(async () => websites?.click());
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' } });
+  });
+
+  it('switches organization, opens the switcher and creates an organization', async () => {
+    await render(true);
+    expect(document.body.textContent).toContain('command.group.switchOrganization');
+    const other = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.includes('JOODPMS'));
+    await act(async () => other?.click());
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'joodpms' } });
+
+    const switcher = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
+      (node) => node.textContent?.trim() === 'command.switchOrganizationOrWebsite',
+    );
+    await act(async () => switcher?.click());
+    expect(mocks.openSwitcher).toHaveBeenCalledWith('organization');
+    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'command.createOrganization');
+    await act(async () => create?.click());
+    expect(mocks.openCreateOrganization).toHaveBeenCalledOnce();
+  });
+
+  it('opens New website in the current organization for Owner/Admin', async () => {
+    await render(true);
+    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'dashboard.newProject');
+    await act(async () => create?.click());
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' }, search: { newSite: true } });
   });
 
   it('leaves Ctrl/⌘+K alone when a focused widget already handled it', async () => {
