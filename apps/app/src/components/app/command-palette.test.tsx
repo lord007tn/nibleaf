@@ -273,7 +273,9 @@ describe('CommandPalette', () => {
     // A Member cannot create websites; one org needs no "Switch organization" list.
     expect(itemLabels()).not.toContain('dashboard.newProject');
     expect(document.body.textContent).not.toContain('command.group.switchOrganization');
-    const websites = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'nav.websites');
+    const websites = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
+      (node) => node.textContent?.trim() === 'nav.websites',
+    );
     await act(async () => websites?.click());
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' } });
   });
@@ -290,14 +292,18 @@ describe('CommandPalette', () => {
     );
     await act(async () => switcher?.click());
     expect(mocks.openSwitcher).toHaveBeenCalledWith('organization');
-    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'command.createOrganization');
+    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
+      (node) => node.textContent?.trim() === 'command.createOrganization',
+    );
     await act(async () => create?.click());
     expect(mocks.openCreateOrganization).toHaveBeenCalledOnce();
   });
 
   it('opens New website in the current organization for Owner/Admin', async () => {
     await render(true);
-    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find((node) => node.textContent?.trim() === 'dashboard.newProject');
+    const create = [...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]')].find(
+      (node) => node.textContent?.trim() === 'dashboard.newProject',
+    );
     await act(async () => create?.click());
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/app/o/$orgSlug/websites', params: { orgSlug: 'acme' }, search: { newSite: true } });
   });

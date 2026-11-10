@@ -322,9 +322,13 @@ describe('site settings permissions', () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'owner' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     const nav = container.querySelector('nav')?.textContent ?? '';
-    const order = ['settings.group.website', 'settings.group.publishing', 'settings.group.team', 'settings.group.usage', 'settings.group.advanced'].map(
-      (key) => nav.indexOf(key),
-    );
+    const order = [
+      'settings.group.website',
+      'settings.group.publishing',
+      'settings.group.team',
+      'settings.group.usage',
+      'settings.group.advanced',
+    ].map((key) => nav.indexOf(key));
     expect(order.every((index) => index >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     // Plan and Notifications moved to the organization and Account.

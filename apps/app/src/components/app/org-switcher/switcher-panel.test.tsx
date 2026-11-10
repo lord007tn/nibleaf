@@ -5,7 +5,15 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-type Org = { id: string; slug: string; name: string; logo: null; orgRole: 'owner' | 'admin' | 'member'; canCreateWebsite: boolean; websiteCount: number };
+type Org = {
+  id: string;
+  slug: string;
+  name: string;
+  logo: null;
+  orgRole: 'owner' | 'admin' | 'member';
+  canCreateWebsite: boolean;
+  websiteCount: number;
+};
 type Site = { id: string; name: string; icon: null; domain: string | null; live: boolean };
 
 const mocks = vi.hoisted(() => ({
@@ -23,7 +31,20 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mocks.navigate,
-  Link: ({ children, to, params, search: _search, onClick, ...props }: { children: ReactNode; to: string; params?: Record<string, string>; search?: unknown; onClick?: () => void }) => (
+  Link: ({
+    children,
+    to,
+    params,
+    search: _search,
+    onClick,
+    ...props
+  }: {
+    children: ReactNode;
+    to: string;
+    params?: Record<string, string>;
+    search?: unknown;
+    onClick?: () => void;
+  }) => (
     <a href={to.replace('$orgSlug', params?.orgSlug ?? '')} onClick={onClick} {...props}>
       {children}
     </a>
@@ -92,7 +113,12 @@ async function render(props: { current?: string; project?: string; direction?: '
       <QueryClientProvider client={new QueryClient()}>
         <DirectionProvider direction={props.direction ?? 'ltr'}>
           <div dir={props.direction ?? 'ltr'}>
-            <SwitcherPanel currentOrganizationId={props.current ?? 'acme'} currentProjectId={props.project} initialPane={props.pane} onClose={onClose} />
+            <SwitcherPanel
+              currentOrganizationId={props.current ?? 'acme'}
+              currentProjectId={props.project}
+              initialPane={props.pane}
+              onClose={onClose}
+            />
           </div>
         </DirectionProvider>
       </QueryClientProvider>,
