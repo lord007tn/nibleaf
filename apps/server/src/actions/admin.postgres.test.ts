@@ -28,7 +28,7 @@ describe.skipIf(process.env.ADMIN_POSTGRES !== '1')('admin discovery beyond rece
         createdAt: new Date(1_700_000_000_000 + index * 1000),
       })),
     });
-    await db.prisma.member.create({ data: { organizationId: older, userId: older, role: 'owner' } });
+    await db.prisma.member.create({ data: { organizationId: older, userId: older, role: 'owner', orgRole: 'owner' } });
     await db.prisma.deployment.createMany({
       data: Array.from({ length: 105 }, (_, index) => ({
         id: `${prefix}-dep-${index}`,
@@ -83,6 +83,7 @@ describe.skipIf(process.env.ADMIN_POSTGRES !== '1')('admin discovery beyond rece
     if (!db) return;
     await db.prisma.exportJob.deleteMany({ where: { projectId: { in: ids } } });
     await db.prisma.exportSnapshot.deleteMany({ where: { projectId: { in: ids } } });
+    await db.prisma.project.deleteMany({ where: { organizationId: { in: ids } } });
     await db.prisma.organization.deleteMany({ where: { id: { in: ids } } });
     await db.prisma.user.deleteMany({ where: { id: { in: ids } } });
     await db.prisma.$disconnect();

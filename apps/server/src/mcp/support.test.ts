@@ -98,7 +98,7 @@ const aiInsights = (availability = 'complete') => ({
 });
 const principal: McpPrincipal = {
   credential: { kind: 'api_key', id: 'key', name: 'test', scopes: [...MCP_SCOPES], expiresAt: new Date('2030-01-01T00:00:00Z') },
-  project: { id: 'project', organizationId: 'org', dataTenantId: 'partition', name: 'Docs' },
+  project: { id: 'project', organizationId: 'org', name: 'Docs' },
   actor: null,
 };
 beforeEach(() => {
@@ -194,7 +194,11 @@ describe.each(['relational', 'clickhouse'])('%s support analytics', (mode) => {
             expect(request.query).toContain("e.actor_type = 'human'");
             expect(request.query).toMatch(/LIMIT (1|50)\b/);
             // Feedback records no language, so its language filter is dropped (and reported).
-            expect(request.query_params).toMatchObject({ tenant: 'partition', project: 'project', language: name === 'get_page_feedback' ? '' : 'en' });
+            expect(request.query_params).toMatchObject({
+              tenant: 'partition',
+              project: 'project',
+              language: name === 'get_page_feedback' ? '' : 'en',
+            });
           }
         else
           for (const [query] of mocks.sql.mock.calls) {

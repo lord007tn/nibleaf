@@ -59,6 +59,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {
@@ -117,7 +118,8 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('site email-code s
     const memberEmail = `member-${randomUUID()}@nibleaf.test`;
     const user = await db.prisma.user.create({ data: { email: memberEmail, name: 'Member', emailVerified: true } });
     userIds.push(user.id);
-    await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'member' } });
+    await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'viewer', orgRole: 'member' } });
+    await db.prisma.projectMember.create({ data: { organizationId: organization.id, projectId: project.id, userId: user.id, role: 'member' } });
     const audience = await db.prisma.audience.create({
       data: { projectId: project.id, name: 'Everyone', grants: { create: [{ projectId: project.id, pageId: null, scopeKey: 'SITE' }] } },
     });

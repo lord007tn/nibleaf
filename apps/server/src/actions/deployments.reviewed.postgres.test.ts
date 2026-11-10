@@ -42,6 +42,7 @@ describe.skipIf(process.env.REVIEWED_PUBLISH_POSTGRES !== '1')('reviewed publish
     pageId = page.id;
   }, 120_000);
   afterAll(async () => {
+    await db?.prisma.project.deleteMany({ where: { organizationId: id } });
     await db?.prisma.organization.deleteMany({ where: { id } });
     await db?.prisma.platformEvent.deleteMany({ where: { projectId: id } });
     await db?.prisma.user.deleteMany({ where: { id } });

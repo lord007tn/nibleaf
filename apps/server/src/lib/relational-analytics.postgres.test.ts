@@ -13,13 +13,14 @@ describe.skipIf(process.env.ANALYTICS_POSTGRES !== '1')('relational analytics SQ
     actions = await import('../actions/analytics');
     await db.prisma.organization.createMany({ data: [id, other].map((orgId) => ({ id: orgId, name: orgId })) });
     await db.prisma.user.create({ data: { id: userId, name: 'Synthetic analyst', email: `${id}@example.invalid` } });
-    await db.prisma.member.createMany({ data: [id, other].map((organizationId) => ({ organizationId, userId, role: 'owner' })) });
+    await db.prisma.member.createMany({ data: [id, other].map((organizationId) => ({ organizationId, userId, role: 'owner', orgRole: 'owner' })) });
     await db.prisma.project.createMany({
       data: [id, other].map((projectId) => ({ id: projectId, organizationId: projectId, name: projectId, slug: projectId })),
     });
   }, 120_000);
   afterAll(async () => {
     vi.useRealTimers();
+    await db?.prisma.project.deleteMany({ where: { organizationId: { in: [id, other] } } });
     await db?.prisma.organization.deleteMany({ where: { id: { in: [id, other] } } });
     await db?.prisma.user.deleteMany({ where: { id: userId } });
     await db?.prisma.$disconnect();

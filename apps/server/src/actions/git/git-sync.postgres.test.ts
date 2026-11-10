@@ -56,6 +56,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git sync apply in 
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
     } finally {
       await db.prisma.$disconnect();

@@ -17,6 +17,7 @@ describe.skipIf(process.env.BRANCH_PROMOTE_INTEGRATION !== '1')('promoting a ver
     branches = await import('./branches');
   }, IMPORT_TIMEOUT_MS);
   afterAll(async () => {
+    if (organizations.length > 0) await db?.prisma.project.deleteMany({ where: { organizationId: { in: organizations } } });
     if (organizations.length > 0) await db?.prisma.organization.deleteMany({ where: { id: { in: organizations } } });
     if (users.length > 0) await db?.prisma.user.deleteMany({ where: { id: { in: users } } });
     await db?.prisma.$disconnect();

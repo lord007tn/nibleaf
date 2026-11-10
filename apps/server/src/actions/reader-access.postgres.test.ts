@@ -27,6 +27,7 @@ describe.skipIf(process.env.READER_ACCESS_POSTGRES !== '1')('reader access revoc
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
     } finally {
       await db.prisma.$disconnect();

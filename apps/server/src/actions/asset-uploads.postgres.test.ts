@@ -46,6 +46,7 @@ describe.skipIf(process.env.ASSET_UPLOADS_POSTGRES !== '1')('pending asset uploa
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
     } finally {
       await db.prisma.$disconnect();

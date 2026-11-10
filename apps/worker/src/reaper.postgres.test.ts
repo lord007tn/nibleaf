@@ -177,6 +177,7 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
     } finally {
       clearTimeout(timeout);
       releaseReads();
+      await prisma.project.deleteMany({ where: { organizationId: run } });
       await prisma.organization.deleteMany({ where: { id: run } });
       await prisma.$disconnect();
     }

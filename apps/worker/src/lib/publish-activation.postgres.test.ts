@@ -93,6 +93,7 @@ it.skipIf(process.env.ACTIVATION_INTEGRATION !== '1')(
       members.mockRestore();
       await prisma.notification.deleteMany({ where: { userId } });
       await prisma.platformEvent.deleteMany({ where: { projectId: run, type: 'publish_announced' } });
+      await prisma.project.deleteMany({ where: { organizationId: fixture.id } });
       await prisma.organization.delete({ where: { id: fixture.id } });
       await prisma.$disconnect();
     }

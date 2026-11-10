@@ -143,7 +143,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
     });
     const user = await db.prisma.user.create({ data: { email: `${id}@nibleaf.test`, name: label, emailVerified: true } });
     userIds.push(user.id);
-    await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'owner' } });
+    await db.prisma.member.create({ data: { organizationId: organization.id, userId: user.id, role: 'owner', orgRole: 'owner' } });
     const audience = await db.prisma.audience.create({
       data: { projectId: project.id, name: 'Everyone', grants: { create: [{ projectId: project.id, pageId: null, scopeKey: 'SITE' }] } },
     });
@@ -247,6 +247,7 @@ describe.skipIf(process.env.PRIVATE_SITE_INTEGRATION !== '1')('published site ac
   afterAll(async () => {
     if (!db) return;
     try {
+      await db.prisma.project.deleteMany({ where: { organizationId: { in: organizationIds } } });
       await db.prisma.organization.deleteMany({ where: { id: { in: organizationIds } } });
       await db.prisma.user.deleteMany({ where: { id: { in: userIds } } });
     } finally {
