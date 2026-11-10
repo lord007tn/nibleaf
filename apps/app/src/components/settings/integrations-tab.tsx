@@ -35,6 +35,7 @@ import { type ComponentType, type FormEvent, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon, SlackIcon } from '@/components/icons/brand';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
+import { NO_AUTOFILL_PROPS, SecretInput } from '@/components/secret-input';
 import {
   type Project,
   useActivateProjectIntegration,
@@ -624,9 +625,11 @@ function IntegrationDetail({
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`${entry.id}-label`}>{t('settings.integrations.field.label')}</Label>
                 <Input
+                  {...NO_AUTOFILL_PROPS}
                   className="h-9"
                   id={`${entry.id}-label`}
                   maxLength={80}
+                  name={`${entry.id}-integration-label`}
                   onChange={(event) => setLabel(event.target.value)}
                   placeholder={t('settings.integrations.labelPlaceholder')}
                   value={label}
@@ -634,15 +637,14 @@ function IntegrationDetail({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor={`${entry.id}-url`}>{t('settings.integrations.webhookUrl')}</Label>
-                <Input
-                  autoComplete="off"
-                  className="h-9 font-mono"
-                  dir="ltr"
+                <SecretInput
+                  className="h-9"
                   id={`${entry.id}-url`}
+                  inputMode="url"
+                  name={`${entry.id}-webhook-url`}
                   onChange={(event) => setWebhookUrl(event.target.value)}
                   placeholder={connection ? t('settings.integrations.credentialKept') : t(PLACEHOLDER_KEYS[entry.id])}
                   required={!connection}
-                  type="password"
                   value={webhookUrl}
                 />
               </div>
