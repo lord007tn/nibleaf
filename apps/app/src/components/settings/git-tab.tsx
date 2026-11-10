@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
 import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
+import { SecretInput } from '@/components/secret-input';
 import type { Deployment } from '@/hooks/api';
 import {
   useBranches,
@@ -326,7 +327,7 @@ function DeployOnPush({
                 <Label htmlFor="git-webhook-secret">{t('settings.git.webhook.secret')}</Label>
                 {secret ? (
                   <div className="flex gap-2">
-                    <Input className="font-mono" dir="ltr" id="git-webhook-secret" readOnly type={revealed ? 'text' : 'password'} value={secret} />
+                    <SecretInput id="git-webhook-secret" masked={!revealed} name="git-webhook-secret" readOnly value={secret} />
                     <Button
                       aria-label={revealed ? t('settings.git.webhook.hide') : t('settings.git.webhook.reveal')}
                       onClick={() => setRevealed((value) => !value)}
