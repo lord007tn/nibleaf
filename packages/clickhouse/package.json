@@ -19,7 +19,7 @@
     "seed:demo": "tsx ./scripts/seed-demo.ts"
   },
   "dependencies": {
-    "@clickhouse/client": "1.24.1",
+    "@clickhouse/client": "1.25.0",
     "@nibleaf/database": "workspace:*",
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/usage": "workspace:*",
@@ -30,8 +30,8 @@
     "@nibleaf/tsconfig": "workspace:*",
     "@types/node": "^26.6.6",
     "tsx": "4.23.15",
-    "tsdown": "^0.23.4",
+    "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }

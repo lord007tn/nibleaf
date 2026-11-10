@@ -16,7 +16,7 @@
     "@nibleaf/i18n": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-email": "^6.11.6"
+    "react-email": "^6.11.8"
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
