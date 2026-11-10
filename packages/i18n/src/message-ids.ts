@@ -3455,6 +3455,7 @@ export const MESSAGE_IDS = {
   'editor.image.finishing': 'editor_image_finishing',
   'editor.image.removeFile': 'editor_image_removefile',
   'editor.link.search': 'editor_link_search',
+  'editor.link.suggestions': 'editor_link_suggestions',
   'editor.callout.remove': 'editor_callout_remove',
   'editor.image.tooLarge': 'editor_image_toolarge',
   'editor.image.wrongType': 'editor_image_wrongtype',
