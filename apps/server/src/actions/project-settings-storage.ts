@@ -1,6 +1,6 @@
 import { type Prisma, prisma } from '@nibleaf/database';
 
-export const parseOrganizationMetadata = (raw: string | null): Record<string, unknown> => {
+const parseOrganizationMetadata = (raw: string | null): Record<string, unknown> => {
   if (!raw) return {};
   try {
     const parsed: unknown = JSON.parse(raw);
