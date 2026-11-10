@@ -25,7 +25,8 @@ import { deliverAuthOtpEmail } from './auth-email-expiry';
 import { arrivingThroughJoinLink, revokeJoinLinksBeyondRole } from './join-links';
 import { keys } from './keys.server';
 import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins, resolveMcpOAuthConfig } from './mcp-oauth';
-import { organizationMetadataResponseFilter, stripServerOnlyOrganizationMetadata } from './organization-metadata';
+import { organizationMetadataResponseFilter } from './organization-metadata';
+import { ORGANIZATION_DISABLED_PATHS } from './organization-paths';
 import { googleOAuthEnabled } from './providers';
 import {
   STARTER_GETTING_STARTED_CONTENT as GETTING_STARTED_CONTENT,
@@ -751,9 +752,9 @@ async function provisionWorkspace(user: { id: string; name?: string | null; emai
 
 const authInstance = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
-  // Invitations go through `inviteMember`, which enforces the single-owner and
-  // role rules. Better Auth's endpoint would let an owner invite a second owner.
-  disabledPaths: ['/organization/invite-member', ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
+  // Organization access and admissions use our resource-addressed APIs.
+  // No plugin read or write may bypass those guards or expose organization metadata.
+  disabledPaths: [...ORGANIZATION_DISABLED_PATHS, ...(mcpOAuth ? MCP_OAUTH_DISABLED_PATHS : [])],
   hooks: { after: requireAuthEmailEnqueue },
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
@@ -844,70 +845,6 @@ const authInstance = betterAuth({
       // Workspaces are erased only through eraseProjectOrganization (analytics, search,
       // storage, usage); the plugin's own delete endpoint would skip all of it.
       disableOrganizationDeletion: true,
-      organizationHooks: {
-        // Organization metadata is readable by every member; server-only
-        // fields are never accepted into it.
-        beforeUpdateOrganization: stripServerOnlyOrganizationMetadata,
-        // Single-owner invariant, enforced even through better-auth's OWN
-        // update-member-role endpoint: `owner` can never be granted here, and
-        // the current owner's role can only change via the dedicated
-        // transfer-ownership endpoint (which swaps roles atomically).
-        beforeUpdateMemberRole: async ({ member, newRole }) => {
-          if (newRole.split(',').some((role) => role.trim() === 'owner')) {
-            throw new APIError('BAD_REQUEST', { message: 'Ownership is granted only via transfer-ownership.' });
-          }
-          if (member.role === 'owner') {
-            throw new APIError('BAD_REQUEST', { message: 'The owner role can only change via transfer-ownership.' });
-          }
-        },
-        afterCreateOrganization: async ({ organization: org, member }) => {
-          await prisma.member.update({ where: { id: member.id }, data: { orgRole: 'owner', role: 'owner' } });
-          await prisma.organizationHandle.create({ data: { slug: org.slug, organizationId: org.id, current: true } });
-          const project = await createStarterProject(org.id, member.userId).catch(() => null);
-          if (project) {
-            await publishStarterSite(project.id, member.userId);
-          }
-        },
-        // Someone accepted an invite (members added via the org API → joins). Tell the
-        // workspace's existing owners/admins, unless `member_joined` is disabled.
-        // Better Auth's own member endpoints: a removed or demoted member's join
-        // links stop granting more than they now can (the join-time creator
-        // check already refuses them; this keeps the admin list truthful).
-        afterRemoveMember: async ({ member, organization: org }) => {
-          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, null).catch(() => undefined);
-        },
-        afterUpdateMemberRole: async ({ member, organization: org }) => {
-          await revokeJoinLinksBeyondRole(prisma, org.id, member.userId, member.role).catch(() => undefined);
-        },
-        // TODO(organizations-admission): replace these compatibility hooks with
-        // the locked admission operation before enabling multi-site organizations.
-        afterAcceptInvitation: async ({ invitation, member, user, organization: org }) => {
-          const stored = await prisma.invitation.findUniqueOrThrow({ where: { id: invitation.id }, include: { grants: true } });
-          await prisma.$transaction(async (tx) => {
-            const orgRole = stored.kind === 'bootstrap_owner' ? 'owner' : stored.orgRole;
-            await tx.member.update({ where: { id: member.id }, data: { orgRole, role: orgRole === 'member' ? 'viewer' : orgRole } });
-            for (const grant of stored.grants) {
-              await tx.projectMember.upsert({
-                where: { projectId_userId: { projectId: grant.projectId, userId: member.userId } },
-                create: { organizationId: org.id, projectId: grant.projectId, userId: member.userId, role: grant.role },
-                update: {},
-              });
-            }
-          });
-          for (const grant of stored.grants)
-            await notifyMemberJoined({ projectId: grant.projectId, organization: org as JoinedOrganization, userId: member.userId, user });
-        },
-        afterAddMember: async ({ member, user, organization: org }) => {
-          const sites = await prisma.project.findMany({ where: { organizationId: org.id }, select: { id: true }, take: 2 });
-          const [site] = sites;
-          if (sites.length !== 1 || !site) return;
-          const projectId = site.id;
-          await prisma.member.update({ where: { id: member.id }, data: { orgRole: 'member', role: 'viewer' } });
-          if (['admin', 'member', 'viewer'].includes(member.role))
-            await prisma.projectMember.create({ data: { organizationId: org.id, projectId, userId: member.userId, role: member.role } });
-          await notifyMemberJoined({ projectId, organization: org as JoinedOrganization, userId: member.userId, user });
-        },
-      },
     }),
     ...(mcpOAuth ? mcpOAuthPlugins(mcpOAuth) : []),
     // Every organization response is filtered, so metadata rows the API has

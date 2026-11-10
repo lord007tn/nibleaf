@@ -1,4 +1,3 @@
-/** Never transfer an organization implicitly during personal account deletion.
- * Validate ALL ownerships before removing even an empty organization. */
+/** Personal deletion never deletes or transfers an owned organization, even empty ones. */
 export declare const reassignOrDeleteOrgs: (userId: string) => Promise<void>;
 //# sourceMappingURL=account-deletion.d.ts.map
