@@ -14,12 +14,12 @@ import { useLocale } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { BarChart3, Bot, LayoutDashboard, type LucideIcon, PenLine, Settings as SettingsIcon } from 'lucide-react';
 import { SidebarAccountFooter } from '@/components/app/sidebar-account-footer';
-import { SiteSwitcher } from '@/components/app/site-switcher';
+import { SidebarBrand } from '@/components/app/sidebar-brand';
 
 type NavItem = { labelKey: MessageKey; to: string; icon: LucideIcon; isActive: boolean };
 
-/** Per-site sidebar: site switcher, the site's sections, and the account footer. */
-export function ProjectSidebar({ projectId }: { projectId: string }) {
+/** Per-site sidebar: brand, the site's sections, and the account footer. The switcher lives in the header. */
+export function ProjectSidebar({ projectId, orgSlug }: { projectId: string; orgSlug?: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { t } = useLocale();
   const direction = useDirection();
@@ -42,7 +42,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
       variant="inset"
     >
       <SidebarHeader>
-        <SiteSwitcher projectId={projectId} />
+        <SidebarBrand orgSlug={orgSlug} />
       </SidebarHeader>
 
       <SidebarContent>

@@ -8,7 +8,6 @@ import {
 } from '@nibleaf/design-system/components/ui/breadcrumb';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@nibleaf/design-system/components/ui/sidebar';
-import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
@@ -16,13 +15,16 @@ import { Eye, Rocket } from 'lucide-react';
 import { type CSSProperties, Fragment, type ReactNode, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
+import { OrganizationSwitcher } from '@/components/app/org-switcher/organization-switcher';
+import { WebsiteSwitcher } from '@/components/app/org-switcher/website-switcher';
 import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
-import { useDeployments, usePendingChanges, useProject } from '@/hooks/api';
+import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
@@ -158,6 +160,9 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
   const t = useT();
   const { data: project } = useProject(projectId);
+  // The website implies its org (§5.4.2): the switcher shows it and it becomes the last org.
+  const { organization } = useOrganizationOfProject(project?.organizationId);
+  useRecordVisitEffect({ projectId: project ? projectId : undefined });
   const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
@@ -171,40 +176,27 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
 
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
-      <ProjectSidebar projectId={projectId} />
+      <ProjectSidebar orgSlug={organization?.slug} projectId={projectId} />
       <SidebarInset>
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
-          {/* Where am I: Sites › <site> › <section>, each step a way back. */}
+          {/* Where am I: [Org ▾] / [Website ▾] / Section (§5.2). Org and website are switchers. */}
           <Breadcrumb aria-label={t('nav.breadcrumb')} className="min-w-0 flex-1">
-            <BreadcrumbList className="flex-nowrap">
-              <BreadcrumbItem className="hidden shrink-0 lg:inline-flex">
-                <BreadcrumbLink render={<Link activeOptions={{ exact: true }} to="/app/sites" />}>{t('nav.sites')}</BreadcrumbLink>
+            <BreadcrumbList className="flex-nowrap gap-1 sm:gap-1">
+              <BreadcrumbItem className="min-w-0 shrink">
+                {/* Phones keep the org as its avatar only, so the website name has room. */}
+                <OrganizationSwitcher collapseName currentProjectId={projectId} organization={organization} />
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden shrink-0 lg:inline-flex" />
-              <BreadcrumbItem className="min-w-0 max-w-40">
-                {!project?.name ? (
-                  <Skeleton aria-hidden className="h-4 w-16 sm:w-28" />
-                ) : sectionKeys.length > 0 ? (
-                  <BreadcrumbLink
-                    className="truncate"
-                    dir="auto"
-                    render={<Link activeOptions={{ exact: true }} params={{ projectId }} to="/app/projects/$projectId" />}
-                  >
-                    {project.name}
-                  </BreadcrumbLink>
-                ) : (
-                  <BreadcrumbPage className="truncate font-medium" dir="auto">
-                    {project.name}
-                  </BreadcrumbPage>
-                )}
+              <BreadcrumbSeparator className="shrink-0" />
+              <BreadcrumbItem className="min-w-0 shrink">
+                <WebsiteSwitcher organization={organization} project={project ? { id: project.id, name: project.name } : undefined} />
               </BreadcrumbItem>
               {sectionKeys.map((key, index) => {
                 const current = index === sectionKeys.length - 1;
                 return (
                   <Fragment key={key}>
-                    <BreadcrumbSeparator className={current ? 'shrink-0' : 'hidden lg:inline-flex'} />
-                    <BreadcrumbItem className={current ? 'min-w-0' : 'hidden min-w-0 shrink-0 lg:inline-flex'}>
+                    <BreadcrumbSeparator className={current ? 'hidden shrink-0 sm:inline-flex' : 'hidden lg:inline-flex'} />
+                    <BreadcrumbItem className={current ? 'hidden min-w-0 sm:inline-flex' : 'hidden min-w-0 shrink-0 lg:inline-flex'}>
                       {current ? (
                         <BreadcrumbPage className="truncate font-medium">{t(key)}</BreadcrumbPage>
                       ) : (
