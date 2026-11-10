@@ -1,71 +1,157 @@
 ---
 title: 'Invite your team'
-description: 'Invite teammates to a site, choose the right role for each person, transfer ownership, and remove access when someone leaves.'
-audience: 'site owners and admins'
+description: 'Invite people to your organization, choose which websites they can open and their role on each, share join links, and remove access when someone leaves.'
+audience: 'organization owners and admins, website admins'
 content_type: 'how-to'
-last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/members-section.tsx, apps/app/src/routes/app/projects/$projectId/settings.tsx, apps/server/src/actions/members.ts, apps/server/src/modules/app/project-members/routes.ts, packages/shared/src/rbac.ts, and packages/i18n/messages'
+last_reviewed: '2026-11-11'
+verified_against: 'apps/app/src/features/people, apps/app/src/routes/app/o/$orgSlug/members.tsx, apps/app/src/routes/accept-invite.$invitationId.tsx, apps/app/src/routes/join.$token.tsx, apps/server/src/actions/organizations.ts, apps/server/src/actions/members.ts, apps/server/src/actions/admissions.ts, packages/shared/src/rbac.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'product/team'
 ---
 
-Each site has its own team. Inviting someone to one site does not give them
-access to your other sites. You manage the team in **Settings → Members**.
+Your **organization** owns your websites, and its people are its **members**.
+Each member has an organization role and, unless they are an Owner or Admin,
+access to the websites you choose, with a role on each.
 
-## Choose a role
+You manage people in two places:
+
+- **Members** in your organization's sidebar: everyone in the organization,
+  invitations and join links. Owners and Admins only.
+- **Settings → Team** on a website: who can open that website. Website Admins
+  can add people and change roles there.
+
+## Roles
+
+**Organization roles**
 
 | Role | What they can do |
 | --- | --- |
-| **Owner** | Everything an Admin can do, plus transfer ownership. Each site has exactly one Owner. |
-| **Admin** | Manage site settings and the team: invite and remove people, change roles, connect domains, and set up AI, add-ons, and integrations. Also writes and publishes. |
-| **Editor** | Write, comment, preview, and publish pages. Editors can also see the team, manage languages, check usage, create one-time exports, and create their own AI assistant keys. |
+| **Owner** | Everything an Admin can do, plus delete the organization and transfer ownership. Every organization has exactly one Owner. |
+| **Admin** | Manage the organization: people, invitations, join links, billing and settings. Admins open and manage **every website**, including future ones. |
+| **Member** | Open only the websites they were given, with the role below on each. A Member can also have no website yet. |
 
-Give people the smallest role that lets them do their job. Most writers only need
-**Editor**.
+**Website roles** (for Members)
 
-If an Editor opens a settings section reserved for Admins, Nibleaf shows
-**Administrator access required** and suggests asking an Owner or Admin.
+| Role | What they can do on that website |
+| --- | --- |
+| **Admin** | Everything on the website: settings, domains, Git, API keys, readers, add-ons, integrations, and its team. Can't delete the website. |
+| **Editor** | Write, comment, preview and publish; manage languages; see the team and usage; one-time exports; their own AI assistant keys. |
+| **Viewer** | Read content, drafts, history and analytics, and see settings read-only. |
 
-## Invite a teammate
+Give people the smallest role that lets them do their job. Most writers only
+need **Editor** on the websites they write for.
 
-You need to be an Owner or Admin.
+## Invite people to the organization
 
-1. Open **Settings → Members**.
-2. Under **Invite by email**, enter the person's email address and choose a role:
-   **Admin** or **Editor**.
-3. Select **Invite**.
+You need to be the Owner or an Admin.
 
-Nibleaf creates the invitation and emails it to the person, unless member
-invitation emails are turned off in **Settings → Notifications**. You can also
-select **Copy invite link** and send the link yourself.
+1. Open **Members** and select **Invite people**.
+2. Enter one or more email addresses, separated by commas or new lines.
+3. Choose the **organization role**: **Member** or **Admin**.
+4. For a Member, tick the websites they can open and choose a role for each
+   (Editor by default). Choosing none is fine: they join the organization and
+   you give them websites later.
+5. Select **Send invitations**.
 
-The person opens the link and signs in, or creates an account with the invited
-email address. An invitation expires after 7 days.
+Each person gets an email with a link that works for 7 days, unless invitation
+emails are turned off in the organization's **Settings**. The last step shows
+whether an email was sent and lets you copy each link. Someone who already
+belongs to the organization gets the access straight away, without an
+invitation.
 
-To check who hasn't joined yet, look under **Pending invitations**. Select
-**Revoke invitation** to stop an invitation link from working.
+## Add someone to one website
 
-## Change a role or remove someone
+Website Admins can do this from the website, without managing the whole
+organization.
 
-- To change a role, choose a new one in the person's **Role** menu.
-- To remove someone, select **Remove member**. They lose access to the site's
-  docs and settings straight away.
+1. Open **Settings → Team** on the website and select **Add people**.
+2. Type an email address. People you already work with are suggested.
+3. Choose their role on this website and select **Add people**.
 
-You can't give someone a role higher than your own, and you can't change or
-remove someone who ranks above you.
+Someone already in the organization gets access at once. Anyone else gets an
+invitation to the organization with access to this website only.
+
+## Invitations
+
+Pending invitations are listed with their count under **Members** (and, for one
+website, under **Settings → Team**). Each row shows who invited them, when, and
+when the invitation expires. Its **⋯** menu offers:
+
+- **Copy invite link**, to send it yourself. Only the invited address can
+  accept it.
+- **Resend**, which sends the email again and gives the link 7 more days.
+- **Revoke invitation**. On a website's Team page this is **Remove from this
+  invitation**: it removes only that website from it.
+
+An invitation that was already accepted can't be revoked: the person is a
+member now, so remove them instead.
+
+## Join links
+
+A join link lets anyone who has it join with the access you choose, without an
+email invitation. Links never make anyone an Admin of the organization.
+
+1. Under **Members → Join links**, select **Create link**.
+2. Choose the websites and a role for each. **Viewer** is the default; Editor
+   or Admin through a link shows a warning, because anyone the link is
+   forwarded to gets it too.
+3. Optionally limit it to addresses at one email domain, set a maximum number
+   of joins, and choose when it expires.
+4. Copy the link: for security it is shown only once.
+
+**Regenerate link** replaces the URL and keeps the settings. **Disable link**
+stops it for good. Links that no longer work (disabled, expired or used up) can
+be deleted.
+
+Website Admins can also create join links for their website from
+**Settings → Team**.
+
+## Accept an invitation or join
+
+The link opens a page that shows the organization, who invited you and what you
+get. Sign in, or create an account with the invited address, then accept.
+
+- If you're signed in with another address, the page asks you to switch
+  accounts.
+- If you already have the access a join link gives, it says **You're already a
+  member** and offers to open the website.
+- An invalid, revoked, expired or used link says so plainly and offers to sign
+  in, create an account, or go to your organizations.
+
+## Change access
+
+- **Organization role:** in **Members**, open a person's **⋯** menu and choose
+  **Manage access**. Making someone an Admin gives them every website. Making
+  an Admin a Member asks which websites they can still open; their earlier
+  website roles are filled in.
+- **Websites and roles:** in the same panel, tick or untick websites and change
+  the role on each, then select **Save changes**. On a website's **Settings →
+  Team**, change the role in the person's role menu.
+
+Owners and Admins appear on every website's Team page as **via organization**;
+change their role on the organization's Members page.
+
+When a control is unavailable, Nibleaf says why, for example "Only the Owner
+can transfer ownership" or "You can't change your own role".
 
 ## Transfer ownership
 
 Only the Owner can do this, and the new Owner must already be an Admin.
 
-1. If needed, change the person's role to **Admin** first.
-2. Select **Transfer ownership** next to their name and confirm.
+1. In **Members**, open the person's **⋯** menu and select **Transfer
+   ownership**.
+2. Type the organization name to confirm.
 
 You become an Admin, and they become the Owner.
 
-## When someone leaves
+## Remove access
 
-Remove the person from every site they worked on. Their personal AI assistant
-keys and connected apps stop working on their next request; see
-[Work on your docs with an AI assistant](/product/ai-assistants).
+- **From one website:** on the website's **Settings → Team**, select **Remove
+  from website** in the person's **⋯** menu. They stay in the organization.
+- **From the organization:** in **Members**, select **Remove from
+  organization**. They lose access to every website at once, and the join links
+  they made stop working.
+
+Their personal AI assistant keys and connected apps stop working on their next
+request; see [Work on your docs with an AI assistant](/product/ai-assistants).
