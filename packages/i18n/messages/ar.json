@@ -1773,7 +1773,7 @@
   "settings_billing_notice_title": "مساحة عمل بيتا مجانية",
   "settings_billing_notice_description": "مساحة العمل هذه نشطة على Nibleaf Cloud. تُدار تغييرات الخطط المدفوعة يدويًا بينما تبقى البيتا مجانية.",
   "settings_usage_title": "الاستخدام",
-  "settings_usage_description": "عرض محايد عن مزود الفوترة للاستخدام القابل للقياس والحدود. تبقى القياسات المفقودة غير معروفة بدل عرضها كصفر.",
+  "settings_usage_description": "ما استُخدم في فترة الفوترة الحالية، ومقارنته بحدود خطتك.",
   "settings_usage_plan_unconfigured": "لا توجد خطة مُعدّة",
   "settings_usage_period": "فترة UTC: {start} – {end}",
   "settings_usage_period_loading": "جارٍ تحميل فترة UTC الحالية",
@@ -1813,7 +1813,7 @@
   "settings_usage_unit_byte": "بايت",
   "settings_usage_unit_mib": "ميبيبايت",
   "settings_usage_unit_gib": "غيبيبايت",
-  "settings_usage_privacyNote": "لا تحتوي حقائق الفوترة إلا على المعرّفات المقيدة والطوابع الزمنية ومفاتيح المقاييس والكميات. لا تُخزن المطالبات أو الإجابات أو محتوى الوثائق أو المتجهات أو الأسرار أو عناوين IP أو وكلاء المستخدم الخام كحقائق استخدام.",
+  "settings_usage_privacyNote": "يسجّل الاستخدام الكميات وأوقاتها فقط، ولا يخزّن أبدًا محتوى صفحاتك أو أسئلة الذكاء الاصطناعي وإجاباته أو البيانات الشخصية للزوار.",
   "settings_usage_plan_free": "مجاني خلال البيتا",
   "settings_usage_group_content": "المحتوى",
   "settings_usage_group_content_description": "الصفحات واللغات وعمليات النشر والملفات المرفوعة في هذا الموقع.",
@@ -4280,5 +4280,12 @@
   "welcome_invitations_accept": "قبول",
   "organization_websites_new": "موقع جديد",
   "organization_billing_notice_title": "مجاني خلال الفترة التجريبية",
-  "organization_billing_notice_description": "هذه المؤسسة على النسخة التجريبية المجانية من Nibleaf Cloud. تُعالَج تغييرات الخطط المدفوعة يدويًا طوال الفترة التجريبية المجانية."
+  "organization_billing_notice_description": "هذه المؤسسة على النسخة التجريبية المجانية من Nibleaf Cloud. تُعالَج تغييرات الخطط المدفوعة يدويًا طوال الفترة التجريبية المجانية.",
+  "settings_usage_reason_meteringDisabled": "لم يُفعَّل قياس الاستخدام على خادم Nibleaf هذا بعد، لذا لا يُحتسب هذا. ما زالت التحليلات تعرض زياراتك.",
+  "settings_usage_reason_queryFailed": "تعذّرت قراءة الاستخدام الآن. أعد التحميل للمحاولة مجددًا.",
+  "settings_usage_reason_delayed": "يتأخر وصول الاستخدام الجديد أكثر من المعتاد. سيُحدَّث هذا المجموع عند وصوله.",
+  "settings_usage_reason_catchingUp": "ما زال الاستخدام الأخير قيد الاحتساب. سيُحدَّث هذا المجموع خلال دقائق.",
+  "settings_usage_reason_tokensIncomplete": "لم تُبلغ بعض إجابات الذكاء الاصطناعي عن عدد رموزها بعد، لذا سيكون هذا المجموع أقل من الحقيقي.",
+  "settings_usage_reason_notMeasured": "لم يُقَس هذا بعد. يُحدَّث بعد الاحتساب اليومي التالي.",
+  "settings_usage_reason_seatsUnavailable": "تعذّر احتساب مقاعد المحررين الآن. أعد التحميل للمحاولة مجددًا."
 }

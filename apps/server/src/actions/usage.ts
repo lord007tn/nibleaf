@@ -17,6 +17,17 @@ import { AppError, forbidden, notFound } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { assertProjectAccess, assertProjectInOrg } from './projects';
 
+/** Why a meter has no number. The UI names the cause; "Unknown" is never shown
+ *  without one (production audit WORKSPACE-19). */
+export type UsageUnavailableReason =
+  | 'metering_disabled'
+  | 'query_failed'
+  | 'delayed'
+  | 'catching_up'
+  | 'tokens_incomplete'
+  | 'not_measured'
+  | 'seats_unavailable';
+
 type SnapshotMeterKey = 'editor_seat' | 'asset_storage_byte' | 'custom_domain' | 'published_page';
 type SummaryMeterKey = SnapshotMeterKey | MeterKey;
 
@@ -188,16 +199,16 @@ const getProjectUsageSummaryForOrganization = async (
   const plan = planState.configured;
   let highVolume = new Map<MeterKey, UsageMeterTotal>();
   let highVolumeAvailability: MeterReading['availability'] = 'unavailable';
+  let highVolumeReason: UsageUnavailableReason | null = 'metering_disabled';
   if (clickHouseKeys().ANALYTICS_MODE === 'clickhouse') {
     try {
       highVolume = new Map((await queryUsageMeterTotals(dataTenantId, projectId, range.start, range.endExclusive)).map((row) => [row.meterKey, row]));
-      highVolumeAvailability = pendingCheckpoint
-        ? Date.now() - pendingCheckpoint.enqueuedAt.getTime() > USAGE_PENDING_STALE_MS
-          ? 'unavailable'
-          : 'partial'
-        : 'complete';
+      const stale = pendingCheckpoint ? Date.now() - pendingCheckpoint.enqueuedAt.getTime() > USAGE_PENDING_STALE_MS : false;
+      highVolumeAvailability = pendingCheckpoint ? (stale ? 'unavailable' : 'partial') : 'complete';
+      highVolumeReason = pendingCheckpoint ? (stale ? 'delayed' : 'catching_up') : null;
     } catch {
       highVolumeAvailability = 'unavailable';
+      highVolumeReason = 'query_failed';
     }
   }
 
@@ -235,7 +246,15 @@ const getProjectUsageSummaryForOrganization = async (
         periodStart: snapshots.has(key) ? null : range.start,
         periodEndExclusive: snapshots.has(key) ? null : range.endExclusive,
       };
-      return { key, unit: units[key], ...reading, ...evaluateLimit(reading, (planMeter?.warningRatio ?? 80) / 100) };
+      const unavailableReason: UsageUnavailableReason | null =
+        availability === 'complete'
+          ? null
+          : snapshots.has(key)
+            ? 'not_measured'
+            : (key === 'ai_input_token' || key === 'ai_output_token') && highVolumeAvailability === 'complete'
+              ? 'tokens_incomplete'
+              : highVolumeReason;
+      return { key, unit: units[key], ...reading, unavailableReason, ...evaluateLimit(reading, (planMeter?.warningRatio ?? 80) / 100) };
     });
 
   return {
@@ -295,14 +314,13 @@ export const getOrganizationUsageSummary = async (
   for (const project of projects)
     websites.push({ ...(await getProjectUsageSummaryForOrganization(organizationId, project.id, period, false)), name: project.name });
   const quantities = new Map<string, string | null>([['editor_seat', seats?.toString() ?? null]]);
+  // An org total is unknown when any website's reading is; it carries that website's reason.
+  const reasons = new Map<string, UsageUnavailableReason | null>([['editor_seat', seats === null ? 'seats_unavailable' : null]]);
   for (const key of allMeterKeys.filter((key) => key !== 'editor_seat')) {
     const readings = websites.map((site) => site.meters.find((meter) => meter.key === key));
-    quantities.set(
-      key,
-      readings.some((meter) => meter?.availability !== 'complete' || meter.quantity === null)
-        ? null
-        : readings.reduce((sum, meter) => sum + BigInt(meter?.quantity ?? '0'), 0n).toString(),
-    );
+    const missing = readings.find((meter) => meter?.availability !== 'complete' || meter.quantity === null);
+    quantities.set(key, missing ? null : readings.reduce((sum, meter) => sum + BigInt(meter?.quantity ?? '0'), 0n).toString());
+    reasons.set(key, missing ? (missing.unavailableReason ?? 'not_measured') : null);
   }
   const meters = allMeterKeys.map((key) => {
     const configured = planState.configured?.plan.meters.find((item) => item.meter.key === key && item.meter.active);
@@ -317,7 +335,13 @@ export const getOrganizationUsageSummary = async (
       periodStart: range.start,
       periodEndExclusive: range.endExclusive,
     };
-    return { key, unit: units[key], ...reading, ...evaluateLimit(reading, (configured?.warningRatio ?? 80) / 100) };
+    return {
+      key,
+      unit: units[key],
+      ...reading,
+      unavailableReason: quantity === null ? (reasons.get(key) ?? 'not_measured') : null,
+      ...evaluateLimit(reading, (configured?.warningRatio ?? 80) / 100),
+    };
   });
   return {
     schemaVersion: 1 as const,

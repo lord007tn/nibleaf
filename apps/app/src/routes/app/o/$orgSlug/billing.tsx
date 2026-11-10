@@ -9,7 +9,7 @@ import { AdminRequired } from '@/components/organization/admin-required';
 import { isOrgAdmin, useCurrentOrganization } from '@/components/organization/organization-context';
 import { isAccessLoss } from '@/components/organization/use-access-loss';
 import { QueryErrorState } from '@/components/query-error-state';
-import { UsageOverview } from '@/components/settings/usage-tab';
+import { UsageOverview, unavailableExplanationKey } from '@/components/settings/usage-tab';
 import { useOrganizationUsage } from '@/hooks/api';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { organizationUsageQueryOptions } from '@/hooks/api/organization-query-options';
@@ -33,7 +33,7 @@ const BREAKDOWN: Array<{ key: string; label: MessageKey }> = [
   { key: 'build', label: 'settings.usage.meter.build' },
 ];
 
-type Reading = { key: string; unit?: string; quantity: string | null };
+type Reading = { key: string; unit?: string; quantity: string | null; unavailableReason?: string | null };
 type WebsiteUsage = { projectId: string; name?: string; meters: Reading[] };
 
 /** Usage & billing (§5.1, Owner/Admin): plan, org totals with seats computed once, and a per-website breakdown. */
@@ -74,6 +74,19 @@ function BillingPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** A missing number says why (hover, and for screen readers) instead of a bare dash. */
+function MissingAware({ reading, text }: { reading: Reading | undefined; text: (reading: Reading | undefined) => string }) {
+  const t = useT();
+  if (reading && reading.quantity !== null) return <>{text(reading)}</>;
+  const why = t(unavailableExplanationKey(reading?.unavailableReason));
+  return (
+    <span title={why}>
+      <span aria-hidden>—</span>
+      <span className="sr-only">{why}</span>
+    </span>
   );
 }
 
@@ -136,7 +149,7 @@ function WebsiteBreakdown({ websites, pending }: { websites: WebsiteUsage[]; pen
                     </TableCell>
                     {BREAKDOWN.map((column) => (
                       <TableCell className="text-end tabular-nums" key={column.key}>
-                        {format(website.meters.find((meter) => meter.key === column.key))}
+                        <MissingAware reading={website.meters.find((meter) => meter.key === column.key)} text={format} />
                       </TableCell>
                     ))}
                   </TableRow>

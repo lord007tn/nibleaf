@@ -1749,7 +1749,7 @@
   "settings_billing_notice_title": "Free beta workspace",
   "settings_billing_notice_description": "This workspace is active on Nibleaf Cloud. Paid plan changes are handled manually while the beta is free.",
   "settings_usage_title": "Usage",
-  "settings_usage_description": "A provider-neutral view of measurable product usage and limits. Missing measurements stay unknown instead of being shown as zero.",
+  "settings_usage_description": "What was used this billing period, and how it compares with your plan's limits.",
   "settings_usage_plan_unconfigured": "No plan configured",
   "settings_usage_period": "UTC period: {start} – {end}",
   "settings_usage_period_loading": "Loading the current UTC period",
@@ -1789,7 +1789,7 @@
   "settings_usage_unit_byte": "B",
   "settings_usage_unit_mib": "MiB",
   "settings_usage_unit_gib": "GiB",
-  "settings_usage_privacyNote": "Billing facts contain only scoped identifiers, timestamps, meter keys, and quantities. Prompts, answers, document content, vectors, secrets, IP addresses, and raw user agents are never stored as usage facts.",
+  "settings_usage_privacyNote": "Usage records only amounts and when they happened. It never stores your page content, AI prompts or answers, or visitors' personal data.",
   "settings_usage_plan_free": "Free during beta",
   "settings_usage_group_content": "Content",
   "settings_usage_group_content_description": "Pages, languages, publishes, and uploaded assets on this site.",
@@ -4241,5 +4241,12 @@
   "welcome_invitations_accept": "Accept",
   "organization_websites_new": "New website",
   "organization_billing_notice_title": "Free during the beta",
-  "organization_billing_notice_description": "This organization is on Nibleaf Cloud's free beta. Paid plan changes are handled manually while the beta is free."
+  "organization_billing_notice_description": "This organization is on Nibleaf Cloud's free beta. Paid plan changes are handled manually while the beta is free.",
+  "settings_usage_reason_meteringDisabled": "Usage metering isn't turned on for this Nibleaf server yet, so this isn't counted. Analytics still shows your traffic.",
+  "settings_usage_reason_queryFailed": "Usage couldn't be read just now. Reload to try again.",
+  "settings_usage_reason_delayed": "New usage is taking longer than usual to arrive. This total will update once it's in.",
+  "settings_usage_reason_catchingUp": "Recent usage is still being counted. This total will update in a few minutes.",
+  "settings_usage_reason_tokensIncomplete": "Some AI answers haven't reported their token counts yet, so this total would be too low.",
+  "settings_usage_reason_notMeasured": "This hasn't been measured yet. It updates after the next daily count.",
+  "settings_usage_reason_seatsUnavailable": "Editor seats couldn't be counted just now. Reload to try again."
 }

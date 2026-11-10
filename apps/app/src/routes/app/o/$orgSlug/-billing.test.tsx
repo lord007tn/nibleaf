@@ -28,6 +28,7 @@ vi.mock('@/components/organization/organization-context', () => ({
   isOrgAdmin: (organization: { orgRole: OrgRole }) => organization.orgRole !== 'member',
 }));
 vi.mock('@/components/settings/usage-tab', () => ({
+  unavailableExplanationKey: (reason?: string | null) => (reason ? `reason:${reason}` : 'settings.usage.unknownExplanation'),
   UsageOverview: (props: { planKey: string | null; isPending: boolean }) => {
     mocks.overview(props);
     return <div data-plan={props.planKey ?? ''} data-testid="usage-overview" />;
@@ -63,7 +64,7 @@ beforeEach(() => {
           meters: [
             { key: 'published_page', quantity: '42' },
             { key: 'public_page_view', quantity: '1200' },
-            { key: 'build', quantity: null },
+            { key: 'build', quantity: null, unavailableReason: 'metering_disabled' },
           ],
         },
         { projectId: 'p-api', name: 'API reference', meters: [{ key: 'published_page', quantity: '7' }] },
@@ -106,8 +107,9 @@ describe('organization Usage & billing page', () => {
     const first = [...(rows[0]?.querySelectorAll('td') ?? [])].map((cell) => cell.textContent);
     expect(first[0]).toBe('Developer docs');
     expect(rows[0]?.querySelector('a')?.getAttribute('href')).toBe('/app/projects/p-docs');
-    // published pages, page views, storage (missing), builds (null).
-    expect(first.slice(1)).toEqual(['42', '1,200', '—', '—']);
+    // published pages, page views, storage (missing), builds (null): a missing number says why.
+    expect(first.slice(1)).toEqual(['42', '1,200', '—settings.usage.unknownExplanation', '—reason:metering_disabled']);
+    expect(rows[0]?.querySelectorAll('td')[4]?.querySelector('[title]')?.getAttribute('title')).toBe('reason:metering_disabled');
     expect(rows[1]?.querySelector('td')?.textContent).toBe('API reference');
     // A website without a name falls back to its id.
     expect(rows[2]?.querySelector('td')?.textContent).toBe('p-unnamed');

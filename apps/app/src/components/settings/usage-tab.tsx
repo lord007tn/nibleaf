@@ -79,6 +79,22 @@ const planLabelKeys: ReadonlyMap<string, MessageKey> = new Map([['free', 'settin
 type UsageSummary = NonNullable<ReturnType<typeof useProjectUsage>['data']>;
 type Meter = UsageSummary['meters'][number];
 
+/** Why a number is missing, named instead of a bare "Unknown" (audit WORKSPACE-19). */
+const unavailableReasonKeys = {
+  metering_disabled: 'settings.usage.reason.meteringDisabled',
+  query_failed: 'settings.usage.reason.queryFailed',
+  delayed: 'settings.usage.reason.delayed',
+  catching_up: 'settings.usage.reason.catchingUp',
+  tokens_incomplete: 'settings.usage.reason.tokensIncomplete',
+  not_measured: 'settings.usage.reason.notMeasured',
+  seats_unavailable: 'settings.usage.reason.seatsUnavailable',
+} as const satisfies Record<NonNullable<Meter['unavailableReason']> | 'seats_unavailable', string>;
+/** The explanation for a missing number; the generic line only for an unknown cause. */
+export const unavailableExplanationKey = (reason: string | null | undefined) =>
+  reason && reason in unavailableReasonKeys
+    ? unavailableReasonKeys[reason as keyof typeof unavailableReasonKeys]
+    : ('settings.usage.unknownExplanation' as const);
+
 /**
  * Website usage (§7, review #20): this website's pages, storage, traffic and AI —
  * no plan, no seats, no limits. Plan and billing live with the organization,
@@ -234,8 +250,10 @@ export function UsageOverview({
                               'shrink-0 rounded-full px-2 py-0.5 font-medium text-[11px]',
                               metric.state === 'exceeded' && 'bg-destructive/10 text-destructive',
                               metric.state === 'approaching' && 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-                              (metric.state === 'unknown' || metric.availability === 'partial') && 'bg-muted text-muted-foreground',
-                              (metric.state === 'available' || metric.state === 'unlimited') && 'bg-primary/10 text-primary',
+                              // Only approaching/exceeded may look like a warning; "No limit" is neutral (audit WORKSPACE-19).
+                              (metric.state === 'unknown' || metric.state === 'unlimited' || metric.availability === 'partial') &&
+                                'bg-muted text-muted-foreground',
+                              metric.state === 'available' && 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
                             )}
                           >
                             {metric.availability === 'partial' ? t('settings.usage.state.partial') : t(stateKeys[metric.state])}
@@ -284,7 +302,9 @@ export function UsageOverview({
                             />
                           </div>
                         ) : null}
-                        {unavailable ? <p className="mt-2 text-muted-foreground text-xs">{t('settings.usage.unknownExplanation')}</p> : null}
+                        {unavailable ? (
+                          <p className="mt-2 text-muted-foreground text-xs">{t(unavailableExplanationKey(metric.unavailableReason))}</p>
+                        ) : null}
                       </article>
                     );
                   })}
