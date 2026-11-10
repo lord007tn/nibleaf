@@ -58,19 +58,23 @@ export function normalizeLinkUrl(raw: string): string | null {
   return /\s/.test(url) ? null : url;
 }
 
+/** A scheme-less relative path written out on purpose: no spaces, and a `/`, `#` or `?` in it (`guides/intro`, `intro#setup`). */
+const EXPLICIT_RELATIVE_RE = /^[^\s]*[/#?][^\s]*$/;
+
 /**
- * Whether typed link-field text reads as a page search rather than a link: no
- * scheme, not `/…`, `#…`, `./…` or `../…`, and not a bare domain. "Getting" or
- * "getting-started" typed into the field is a search for a page, and saving it
- * as an href would make a relative link that is broken on the published site
- * (AUTH-02). Pick a page instead, or type a full link.
+ * Whether typed link-field text reads as a page search rather than a link.
+ * Links are anything with a scheme, `/…`, `#…`, `./…`, `../…`, a bare domain, or
+ * an explicit relative path such as `guides/intro#setup`. Bare words like
+ * "Getting" or "getting-started" are a search for a page. Saving one as an
+ * href would make a relative link that is broken on the published site
+ * (AUTH-02), so the user picks a page instead or types a full link.
  */
 export function isPageQuery(raw: string): boolean {
   const url = raw.trim();
   if (!url || url.startsWith('/') || url.startsWith('#') || url.startsWith('./') || url.startsWith('../')) {
     return false;
   }
-  return !(BARE_DOMAIN_RE.test(url) || SCHEME_RE.test(url));
+  return !(BARE_DOMAIN_RE.test(url) || SCHEME_RE.test(url) || EXPLICIT_RELATIVE_RE.test(url));
 }
 
 /** A page offered by the link field's search. */

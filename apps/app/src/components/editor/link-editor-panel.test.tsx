@@ -68,8 +68,9 @@ async function renderPanel(initialUrl = '') {
   await act(async () => {
     await vi.dynamicImportSettled();
   });
-  const input = container.querySelector<HTMLInputElement>('input[role="combobox"]');
-  if (!input) throw new Error('No link combobox');
+  // Found by its label, as on main, so behaviour is what fails there, not a selector.
+  const input = container.querySelector<HTMLInputElement>(`input[aria-label="${translate('editor.link.search')}"]`);
+  if (!input) throw new Error('No link field');
   return { editor, input, onDone, container };
 }
 
@@ -83,9 +84,11 @@ async function type(input: HTMLInputElement, value: string) {
   });
 }
 
-const press = (input: HTMLInputElement, key: string) =>
+const press = (input: HTMLInputElement, key: string, init: KeyboardEventInit & { keyCode?: number } = {}) =>
   act(async () => {
-    input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init });
+    if (init.keyCode !== undefined) Object.defineProperty(event, 'keyCode', { value: init.keyCode });
+    input.dispatchEvent(event);
   });
 
 const linkHref = (editor: Editor) => {
@@ -101,8 +104,10 @@ describe('link field page suggestions (AUTH-02)', () => {
   it('is a combobox whose options are listed for assistive tech', async () => {
     const { input, container } = await renderPanel();
     await type(input, 'Getting');
+    expect(input.getAttribute('role')).toBe('combobox');
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox).not.toBeNull();
+    expect(listbox?.getAttribute('aria-label')).toBe(translate('editor.link.suggestions'));
     expect(input.getAttribute('aria-controls')).toBe(listbox?.id);
     expect(input.getAttribute('aria-expanded')).toBe('true');
     // Groups are not linkable pages.
@@ -139,15 +144,38 @@ describe('link field page suggestions (AUTH-02)', () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(translate('editor.link.invalid'));
   });
 
-  it('still saves real links and site paths typed in full', async () => {
-    const first = await renderPanel();
-    await type(first.input, 'https://example.com/docs');
-    await press(first.input, 'Enter');
-    expect(linkHref(first.editor)).toBe('https://example.com/docs');
+  it.each([
+    ['https://example.com/docs', 'https://example.com/docs'],
+    ['mailto:help@example.com', 'mailto:help@example.com'],
+    ['#setup', '#setup'],
+    ['/configuration', '/configuration'],
+    ['./intro', './intro'],
+    ['../guides/intro', '../guides/intro'],
+    ['guides/intro#setup', 'guides/intro#setup'],
+    ['intro#setup', 'intro#setup'],
+    ['example.com/docs', 'https://example.com/docs'],
+  ])('saves the link %s typed in full', async (typed, href) => {
+    const { editor, input } = await renderPanel();
+    await type(input, typed);
+    await press(input, 'Enter');
+    expect(linkHref(editor)).toBe(href);
+  });
 
-    const second = await renderPanel();
-    await type(second.input, '/configuration');
-    await press(second.input, 'Enter');
-    expect(linkHref(second.editor)).toBe('/configuration');
+  it.each([
+    ['isComposing', { isComposing: true }],
+    ['keyCode 229', { keyCode: 229 }],
+  ])('leaves arrow keys and Enter to the IME while composing (%s)', async (_label, composing) => {
+    const { editor, input, onDone } = await renderPanel();
+    await type(input, 'Getting');
+    await press(input, 'ArrowDown', composing);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    await press(input, 'ArrowUp', composing);
+    expect(input.getAttribute('aria-activedescendant')).toBeNull();
+    await press(input, 'Enter', composing);
+    expect(linkHref(editor)).toBeUndefined();
+    expect(onDone).not.toHaveBeenCalled();
+    // Once composition ends, the keys work again.
+    await press(input, 'ArrowDown');
+    expect(document.getElementById(input.getAttribute('aria-activedescendant') ?? '')?.textContent).toBe('Getting started');
   });
 });

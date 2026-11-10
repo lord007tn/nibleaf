@@ -3427,6 +3427,7 @@
   "editor_image_legacyupload": "Enviar imagem",
   "editor_image_legacyuploaded": "{filename} foi enviada e vai aparecer no seu site publicado",
   "editor_link_search": "Buscar páginas ou colar um link",
+  "editor_link_suggestions": "Páginas correspondentes",
   "editor_callout_remove": "Remover destaque",
   "editor_image_toolarge": "Esta imagem é muito grande. Escolha uma com menos de 50 MB.",
   "editor_image_wrongtype": "Escolha uma imagem PNG, JPEG, GIF, WebP, AVIF ou ICO.",

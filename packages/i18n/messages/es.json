@@ -3426,6 +3426,7 @@
   "editor_image_legacyupload": "Subir imagen",
   "editor_image_legacyuploaded": "{filename} se subió y se mostrará en tu sitio publicado",
   "editor_link_search": "Buscar páginas o pegar un enlace",
+  "editor_link_suggestions": "Páginas coincidentes",
   "editor_callout_remove": "Quitar recuadro",
   "editor_image_toolarge": "Esta imagen es demasiado grande. Elige una de menos de 50 MB.",
   "editor_image_wrongtype": "Elige una imagen PNG, JPEG, GIF, WebP, AVIF o ICO.",

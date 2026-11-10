@@ -3426,6 +3426,7 @@
   "editor_image_legacyupload": "Importer l’image",
   "editor_image_legacyuploaded": "{filename} a été importée et s’affichera sur votre site publié",
   "editor_link_search": "Rechercher des pages ou coller un lien",
+  "editor_link_suggestions": "Pages correspondantes",
   "editor_callout_remove": "Retirer l’encadré",
   "editor_image_toolarge": "Cette image est trop volumineuse. Choisissez une image de moins de 50 Mo.",
   "editor_image_wrongtype": "Choisissez une image PNG, JPEG, GIF, WebP, AVIF ou ICO.",

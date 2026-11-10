@@ -3447,6 +3447,7 @@
   "editor_image_legacyupload": "Загрузить изображение",
   "editor_image_legacyuploaded": "{filename} загружено и будет отображаться на опубликованном сайте",
   "editor_link_search": "Найти страницу или вставить ссылку",
+  "editor_link_suggestions": "Подходящие страницы",
   "editor_callout_remove": "Убрать рамку заметки",
   "editor_image_toolarge": "Изображение слишком большое. Выберите файл меньше 50 МБ.",
   "editor_image_wrongtype": "Выберите изображение PNG, JPEG, GIF, WebP, AVIF или ICO.",

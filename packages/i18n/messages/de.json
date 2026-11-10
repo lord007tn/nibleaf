@@ -3426,6 +3426,7 @@
   "editor_image_legacyupload": "Bild hochladen",
   "editor_image_legacyuploaded": "{filename} wurde hochgeladen und wird auf Ihrer veröffentlichten Website angezeigt",
   "editor_link_search": "Seiten suchen oder Link einfügen",
+  "editor_link_suggestions": "Passende Seiten",
   "editor_callout_remove": "Hinweisrahmen entfernen",
   "editor_image_toolarge": "Dieses Bild ist zu groß. Wählen Sie ein Bild unter 50 MB.",
   "editor_image_wrongtype": "Wählen Sie ein PNG-, JPEG-, GIF-, WebP-, AVIF- oder ICO-Bild.",

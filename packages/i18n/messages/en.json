@@ -3426,6 +3426,7 @@
   "editor_image_legacyupload": "Upload image",
   "editor_image_legacyuploaded": "{filename} is uploaded and will show on your published site",
   "editor_link_search": "Search pages or paste a link",
+  "editor_link_suggestions": "Matching pages",
   "editor_callout_remove": "Remove callout",
   "editor_image_toolarge": "This image is too large. Choose an image under 50 MB.",
   "editor_image_wrongtype": "Choose a PNG, JPEG, GIF, WebP, AVIF or ICO image.",

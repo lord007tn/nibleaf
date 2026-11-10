@@ -125,11 +125,13 @@ export function LinkEditorPanel({
         aria-controls={matches.length > 0 ? listboxId : undefined}
         aria-activedescendant={matches[activeIndex] ? optionId(activeIndex) : undefined}
         onKeyDown={(event) => {
+          // Keys that confirm or move an IME composition belong to the IME.
+          if (event.nativeEvent.isComposing || event.keyCode === 229) return;
           if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && matches.length > 0) {
             event.preventDefault();
             const step = event.key === 'ArrowDown' ? 1 : -1;
             setActiveIndex((index) => (index < 0 ? (step > 0 ? 0 : matches.length - 1) : (index + step + matches.length) % matches.length));
-          } else if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+          } else if (event.key === 'Enter') {
             event.preventDefault();
             save();
           } else if (event.key === 'Escape') {

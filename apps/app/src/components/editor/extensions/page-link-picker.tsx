@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { useT } from '@nibleaf/i18n/react';
 import { useParams } from '@tanstack/react-router';
 import type { Editor } from '@tiptap/core';
 import { useEffect, useMemo } from 'react';
@@ -29,6 +30,7 @@ export default function PageLinkPicker({
   onMatches: (matches: PageLinkMatch[]) => void;
   onPick: (match: PageLinkMatch) => void;
 }) {
+  const t = useT();
   const params = useParams({ strict: false });
   const projectId = 'projectId' in params ? params.projectId : undefined;
   const languages = useLanguages(projectId);
@@ -48,7 +50,7 @@ export default function PageLinkPicker({
   useEffect(() => () => onMatches([]), [onMatches]);
   if (matches.length === 0) return null;
   return (
-    <div id={listboxId} role="listbox" className="w-full">
+    <div id={listboxId} role="listbox" aria-label={t('editor.link.suggestions')} className="w-full">
       {matches.map((page, index) => (
         <div
           key={page.id}

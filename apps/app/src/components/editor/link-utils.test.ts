@@ -62,7 +62,20 @@ describe('isPageQuery (AUTH-02)', () => {
   });
 
   it('treats links, paths, anchors and domains as links', () => {
-    for (const value of ['https://example.com', 'mailto:a@b.co', '/getting-started', '#setup', './intro', '../intro', 'example.com', '', '  ']) {
+    for (const value of [
+      'https://example.com',
+      'mailto:a@b.co',
+      '/getting-started',
+      '#setup',
+      './intro',
+      '../intro',
+      'example.com',
+      'guides/intro#setup',
+      'intro#setup',
+      'guides/intro?tab=1',
+      '',
+      '  ',
+    ]) {
       expect(isPageQuery(value)).toBe(false);
     }
   });
