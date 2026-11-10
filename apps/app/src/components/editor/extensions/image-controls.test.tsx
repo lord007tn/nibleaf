@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
+import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildEditorExtensions, getMarkdown } from '../tiptap-editor';
+import { buildEditorExtensions, getMarkdown, seedMarkdown } from '../tiptap-editor';
 import { ImageControls } from './image-controls';
 
 let editor: Editor;
@@ -51,7 +52,39 @@ const press = async (element: HTMLElement) => {
 };
 const sizeOptions = () => [...document.querySelectorAll<HTMLElement>('[data-image-size-options] [role="option"]')];
 
+const NL = String.fromCharCode(10);
+
 describe('image description controls', () => {
+  it.each([
+    [
+      'ends with an image',
+      ['Install the app.', ['| Name | Value |', '| --- | --- |', '| a | b |'].join(NL), '![Screenshot](/shot.png)'].join(NL + NL),
+    ],
+    ['starts with an image', ['![Logo](/logo.png)', 'Welcome to the docs.'].join(NL + NL)],
+  ])('stays closed when a page that %s loads, with nothing selected by the user (AUTH-17)', async (_label, markdown) => {
+    await mount();
+    await act(async () => seedMarkdown(editor, markdown));
+    expect(editor.state.selection).toBeInstanceOf(TextSelection);
+    expect(editor.isActive('image')).toBe(false);
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    // The image itself is untouched.
+    expect(getMarkdown(editor)).toMatch(/\/(shot|logo)\.png/);
+  });
+
+  it('still opens when the user selects the image after the page loads', async () => {
+    await mount();
+    await act(async () => seedMarkdown(editor, ['Intro', '![Screenshot](/shot.png)'].join(NL + NL)));
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    let imagePos = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'image') imagePos = pos;
+    });
+    await act(async () => {
+      editor.commands.setNodeSelection(imagePos);
+    });
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+  });
+
   it('keeps a validated percentage width visible and editable without turning it into NaN', async () => {
     await mount();
     await act(async () => {

@@ -15,7 +15,7 @@ import TaskItem from '@tiptap/extension-task-item';
 import TaskList from '@tiptap/extension-task-list';
 import Typography from '@tiptap/extension-typography';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -104,6 +104,16 @@ export function seedMarkdown(editor: Editor, markdown: string): void {
     return;
   }
   editor.commands.setContent(markdown, { emitUpdate: false });
+  // Replacing the document maps the selection to its end. When the page ends
+  // with an image, that is a node selection on the image, which reads as "the
+  // user selected this image" and opens its controls over the content on every
+  // load (AUTH-17). A freshly seeded page starts with the caret in its first
+  // text instead, or its last text when it opens with an image.
+  const { doc, selection } = editor.state;
+  if (selection instanceof NodeSelection) {
+    const caret = TextSelection.findFrom(doc.resolve(0), 1, true) ?? TextSelection.findFrom(doc.resolve(doc.content.size), -1, true);
+    if (caret) editor.view.dispatch(editor.state.tr.setSelection(caret).setMeta('addToHistory', false));
+  }
 }
 
 /** Typed accessor for the CharacterCount storage (not part of the core Storage type). */
