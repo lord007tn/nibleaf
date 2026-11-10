@@ -32,6 +32,11 @@ export function checkFeatureImports(files: FeatureImports[]): string[] {
         (/^(?:react(?:-dom)?(?:\/|$)|@tanstack\/|@nibleaf\/design-system(?:\/|$))/.test(specifier) ||
           target === 'services' ||
           target?.startsWith('services/') ||
+          // App components and the data layer (even type-only): a model takes plain values.
+          target === 'components' ||
+          target?.startsWith('components/') ||
+          target === 'hooks/api' ||
+          target?.startsWith('hooks/api/') ||
           (dependency && /^(?:api|components)(?:\/|$)/.test(dependencyPath)))
       ) {
         reason('models must stay pure');
@@ -102,6 +107,12 @@ describe('feature import boundaries', () => {
     '../components/view',
     '@/features/b/api/hooks',
     '@/features/b/components/view',
+    '@/components/project-settings/shared',
+    '@/components/ui/form-field',
+    '../../../components/ui/form-field',
+    '@/hooks/api',
+    '@/hooks/api/types',
+    '../../../hooks/api/query-keys',
   ])('rejects impure model dependency %s', (specifier) => {
     expect(checkFeatureImports([{ file: 'features/a/model/access.ts', imports: [specifier] }])).not.toEqual([]);
   });

@@ -60,7 +60,6 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
   const defaultLanguage = ordered.find((language) => language.isDefault);
   const extraLanguages = ordered.filter((language) => !language.isDefault);
   const source = useMemo(() => generalValues(project, languages), [project, languages]);
-  const result = useRef<'saved' | 'invalid' | 'failed'>('invalid');
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
   const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
   const formRef = useRef<HTMLFormElement>(null);
@@ -72,31 +71,33 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
       try {
         await save(outcome.baseline, value);
         outcome.succeeded(normalizeGeneral(value));
-        result.current = 'saved';
+        return 'saved';
       } catch (error) {
         outcome.failed();
         // A save for a site this form no longer shows must not touch it.
-        if (!outcome.isCurrent()) return;
+        if (!outcome.isCurrent()) return 'failed';
         if (isSlugTaken(error)) {
+          // The refusal is about the address that was sent. If it has been
+          // changed since, the new one hasn't been judged: leave it clean.
+          if (form.state.values.slug !== value.slug) return 'failed';
           form.setFieldMeta('slug', (meta) => withServerError(meta, t('settings.general.url.taken')));
-          result.current = 'invalid';
-          return;
+          return 'invalid';
         }
         toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
-        result.current = 'failed';
+        return 'failed';
       }
     },
   });
-  const isSubmitting = useStore(form.store, (state) => state.isSubmitting);
   const defaultName = useStore(form.store, (state) => state.values.name);
   const defaultDescription = useStore(form.store, (state) => state.values.description);
 
+  const { submit: submitDraft } = draft;
+  // The page's save bar disables Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
-    result.current = 'invalid';
-    await form.handleSubmit();
-    return result.current;
-  }, [form]);
-  useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting, submit, discard: draft.discard });
+    const outcome = await submitDraft();
+    return outcome === 'busy' ? 'failed' : outcome;
+  }, [submitDraft]);
+  useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 
   const required = (value: string) => (nameProblem(value) ? t('validation.required', { label: t('settings.general.name.label') }) : undefined);
   const slugMessage = (value: string) => (slugProblem(value) ? t('settings.general.url.error') : undefined);

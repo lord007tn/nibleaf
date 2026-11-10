@@ -156,6 +156,63 @@ describe('GeneralSettings', () => {
     expect(slug.getAttribute('aria-invalid')).toBeNull();
   });
 
+  it('leaves a corrected address clean when the refusal for the old one arrives late', async () => {
+    const pending = deferred();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    const slug = input('settings.general.url.label');
+    await type(slug, 'help');
+    await save();
+    // While the save runs, the person picks another address.
+    await type(slug, 'help-center');
+    await act(async () => pending.reject({ status: 409, details: { slug: 'help' } }));
+    expect(slug.getAttribute('aria-invalid')).toBeNull();
+    // The corrected address can be saved.
+    mocks.updateProject.mockResolvedValueOnce(undefined);
+    await save();
+    expect(mocks.updateProject).toHaveBeenLastCalledWith(expect.objectContaining({ slug: 'help-center' }));
+  });
+
+  it('does not start a second save when Enter is pressed during a save', async () => {
+    const pending = deferred();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    const name = input('settings.general.name.label');
+    await type(name, 'A');
+    await save();
+    await type(name, 'AB');
+    await act(async () => {
+      container.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    });
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    await act(async () => pending.resolve());
+    expect(name.value).toBe('AB');
+    expect(region()).not.toBeNull();
+    expect(dirty.size).toBeGreaterThan(0);
+  });
+
+  it('keeps the save in flight through a refetch after the text was typed back', async () => {
+    const pending = deferred();
+    mocks.updateProject.mockReturnValueOnce(pending.promise);
+    const name = input('settings.general.name.label');
+    await type(name, 'Renamed');
+    await save();
+    await type(name, 'Original');
+    // Someone else's description change arrives while the save runs.
+    await act(async () =>
+      root.render(
+        <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
+          <GeneralSettings project={{ ...project, description: 'Changed elsewhere' }} />
+        </ConfigDirtyProvider>,
+      ),
+    );
+    expect(region()).not.toBeNull();
+    expect(dirty.size).toBeGreaterThan(0);
+    expect(input('settings.general.description.label').value).toBe('Changed elsewhere');
+    await act(async () => pending.resolve());
+    // The server holds "Renamed"; the field says "Original": still an unsaved change.
+    expect(name.value).toBe('Original');
+    expect(region()).not.toBeNull();
+  });
+
   it('discards back to the saved values', async () => {
     const name = input('settings.general.name.label');
     await type(name, 'Changed');
