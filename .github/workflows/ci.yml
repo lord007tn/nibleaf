@@ -265,6 +265,9 @@ jobs:
       - name: Check for unused source files
         run: pnpm check:dead-code
 
+      - name: Dashboard type scale (no new arbitrary font sizes)
+        run: pnpm --filter @nibleaf/app run check:type-scale
+
       - name: Typecheck
         run: pnpm typecheck
 
