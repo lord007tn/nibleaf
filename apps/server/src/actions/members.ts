@@ -136,7 +136,7 @@ export const inviteMember = async (
   if (invitation) return { ...invitation, role: body.role, emailed: result.emailed };
   const existing = result.existingMembers[0];
   if (!existing) throw notFound('member');
-  return { id: existing.userId, email: body.email, role: body.role, status: 'existing_member' };
+  return { id: existing.userId, email: body.email, role: body.role, status: 'existing_member', changed: existing.changed };
 };
 const siteActor = async (tx: Prisma.TransactionClient, organizationId: string, projectId: string, userId: string) => {
   const member = await tx.member.findUnique({

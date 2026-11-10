@@ -12,7 +12,7 @@ const people = [
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 // Debounce is time-based; the field's behaviour is what matters here.
 vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => [state.lagging ?? value] }));
-vi.mock('@/hooks/api', () => ({
+vi.mock('@/hooks/api/people', () => ({
   useInviteSuggestions: (projectId: string, query: string, options?: { enabled?: boolean }) => {
     state.calls.push({ projectId, query, enabled: options?.enabled });
     const data = options?.enabled && query.trim() ? people : undefined;

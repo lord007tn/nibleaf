@@ -3,7 +3,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { type ComponentProps, useId, useState } from 'react';
-import { useInviteSuggestions } from '@/hooks/api';
+import { useInviteSuggestions } from '@/hooks/api/people';
 
 /**
  * The invite box's email input. As an Admin types, it suggests people who are
