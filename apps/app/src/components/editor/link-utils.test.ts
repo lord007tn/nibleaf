@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeLinkUrl } from './link-utils';
+import { isPageQuery, matchPages, normalizeLinkUrl } from './link-utils';
 
 describe('normalizeLinkUrl', () => {
   it('accepts http(s) URLs as-is', () => {
@@ -51,5 +51,36 @@ describe('normalizeLinkUrl', () => {
     expect(normalizeLinkUrl('tel:')).toBeNull();
     // Protocol-relative URLs inherit the scheme — too easy to abuse, reject.
     expect(normalizeLinkUrl('//evil.com')).toBeNull();
+  });
+});
+
+describe('isPageQuery (AUTH-02)', () => {
+  it('treats bare words typed in the link field as a page search', () => {
+    expect(isPageQuery('Getting')).toBe(true);
+    expect(isPageQuery('getting-started')).toBe(true);
+    expect(isPageQuery('Getting started')).toBe(true);
+  });
+
+  it('treats links, paths, anchors and domains as links', () => {
+    for (const value of ['https://example.com', 'mailto:a@b.co', '/getting-started', '#setup', './intro', '../intro', 'example.com', '', '  ']) {
+      expect(isPageQuery(value)).toBe(false);
+    }
+  });
+});
+
+describe('matchPages', () => {
+  const pages = [
+    { kind: 'PAGE', title: 'Install guide', path: 'install' },
+    { kind: 'PAGE', title: 'Getting started', path: 'getting-started' },
+    { kind: 'GROUP', title: 'Getting there', path: 'there' },
+    { kind: 'PAGE', title: 'Quickstart', path: 'guides/getting-going' },
+  ];
+
+  it('ranks titles that start with the query first and also matches the address', () => {
+    expect(matchPages(pages, 'getting').map((page) => page.title)).toEqual(['Getting started', 'Quickstart']);
+  });
+
+  it('never offers groups', () => {
+    expect(matchPages(pages, 'there')).toEqual([]);
   });
 });

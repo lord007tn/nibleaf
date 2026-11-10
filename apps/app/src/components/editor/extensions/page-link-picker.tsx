@@ -1,10 +1,34 @@
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { useParams } from '@tanstack/react-router';
 import type { Editor } from '@tiptap/core';
+import { useEffect, useMemo } from 'react';
 import { useLanguages, usePages } from '@/hooks/api';
 import { useActiveBranchId } from '../active-branch-context';
+import { matchPages, type PageLinkMatch } from '../link-utils';
 
-/** Loaded when the link panel opens; the basic formatting tools need no API client. */
-export default function PageLinkPicker({ editor, query, onDone }: { editor: Editor; query: string; onDone: () => void }) {
+/**
+ * The page suggestions under the link field: the listbox of its combobox. The
+ * field owns the keyboard (Arrow keys move `activeIndex`, Enter picks); this
+ * list only reports what matches and renders it.
+ * Loaded when the link panel opens; the basic formatting tools need no API client.
+ */
+export default function PageLinkPicker({
+  editor,
+  query,
+  listboxId,
+  optionId,
+  activeIndex,
+  onMatches,
+  onPick,
+}: {
+  editor: Editor;
+  query: string;
+  listboxId: string;
+  optionId: (index: number) => string;
+  activeIndex: number;
+  onMatches: (matches: PageLinkMatch[]) => void;
+  onPick: (match: PageLinkMatch) => void;
+}) {
   const params = useParams({ strict: false });
   const projectId = 'projectId' in params ? params.projectId : undefined;
   const languages = useLanguages(projectId);
@@ -14,29 +38,31 @@ export default function PageLinkPicker({ editor, query, onDone }: { editor: Edit
   // the version the page is published in.
   const branchId = useActiveBranchId();
   const pages = usePages(projectId, language?.id, branchId);
-  const matches = (pages.data ?? [])
-    .filter((page) => page.kind === 'PAGE' && page.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-    .slice(0, 6);
+  const matches = useMemo(
+    () => matchPages(pages.data ?? [], query).map((page) => ({ id: page.id, title: page.title, path: page.path })),
+    [pages.data, query],
+  );
+  const matchKey = matches.map((match) => match.id).join('\n');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: report only when the matched pages change.
+  useEffect(() => onMatches(matches), [matchKey]);
+  useEffect(() => () => onMatches([]), [onMatches]);
+  if (matches.length === 0) return null;
   return (
-    <div className="w-full">
-      {matches.map((page) => (
-        <button
+    <div id={listboxId} role="listbox" className="w-full">
+      {matches.map((page, index) => (
+        <div
           key={page.id}
-          type="button"
-          className="block w-full rounded p-2 text-start text-sm hover:bg-muted"
+          id={optionId(index)}
+          role="option"
+          aria-selected={index === activeIndex}
+          tabIndex={-1}
+          className={cn('block w-full cursor-pointer rounded p-2 text-start text-sm hover:bg-muted', index === activeIndex && 'bg-muted')}
+          // Keep focus in the link field (and the selection in the editor).
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            editor
-              .chain()
-              .focus()
-              .extendMarkRange('link')
-              .setLink({ href: `/${page.path}` })
-              .run();
-            onDone();
-          }}
+          onClick={() => onPick(page)}
         >
-          {page.title}
-        </button>
+          <span dir="auto">{page.title}</span>
+        </div>
       ))}
     </div>
   );

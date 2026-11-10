@@ -9,8 +9,8 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { Bold, Check, Code, ExternalLink, Highlighter, Italic, Link as LinkIcon, Strikethrough, Unlink } from 'lucide-react';
-import { type ComponentType, lazy, Suspense, useEffect, useState } from 'react';
-import { normalizeLinkUrl } from './link-utils';
+import { type ComponentType, lazy, Suspense, useEffect, useId, useState } from 'react';
+import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
 
 const PageLinkPicker = lazy(() => import('./extensions/page-link-picker'));
 
@@ -48,20 +48,50 @@ export function LinkEditorPanel({
   const [draft, setDraft] = useState(initialUrl);
 
   const [invalid, setInvalid] = useState(false);
+  // The field is a combobox over the page suggestions: Arrow keys move the
+  // highlight, Enter links the highlighted page (AUTH-02).
+  const [matches, setMatches] = useState<PageLinkMatch[]>([]);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listboxId = useId();
+  const optionId = (index: number) => `${listboxId}-option-${index}`;
   // Re-seed when the caret moves to a different link (the prefilled URL changes).
   useEffect(() => {
     setDraft(initialUrl);
     setInvalid(false);
   }, [initialUrl]);
+  // A new list of suggestions starts with nothing highlighted.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the suggestions change.
+  useEffect(() => setActiveIndex(-1), [matches]);
 
+  const setHref = (href: string) => {
+    editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+    onDone();
+  };
+  const pick = (match: PageLinkMatch) => setHref(`/${match.path}`);
   const save = () => {
+    const highlighted = matches[activeIndex];
+    if (highlighted) {
+      pick(highlighted);
+      return;
+    }
+    // Typed text that isn't a link is a page search: link the best match, and
+    // never save the words themselves as the address. An existing link saved
+    // unchanged keeps its address.
+    if (isPageQuery(draft) && draft.trim() !== initialUrl.trim()) {
+      const best = matches[0];
+      if (best) {
+        pick(best);
+      } else {
+        setInvalid(true);
+      }
+      return;
+    }
     const href = normalizeLinkUrl(draft);
     if (!href) {
       setInvalid(true);
       return;
     }
-    editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
-    onDone();
+    setHref(href);
   };
   const remove = () => {
     editor.chain().focus().extendMarkRange('link').unsetLink().run();
@@ -89,8 +119,17 @@ export function LinkEditorPanel({
           setDraft(event.target.value);
           setInvalid(false);
         }}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={matches.length > 0}
+        aria-controls={matches.length > 0 ? listboxId : undefined}
+        aria-activedescendant={matches[activeIndex] ? optionId(activeIndex) : undefined}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') {
+          if ((event.key === 'ArrowDown' || event.key === 'ArrowUp') && matches.length > 0) {
+            event.preventDefault();
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+            setActiveIndex((index) => (index < 0 ? (step > 0 ? 0 : matches.length - 1) : (index + step + matches.length) % matches.length));
+          } else if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
             event.preventDefault();
             save();
           } else if (event.key === 'Escape') {
@@ -134,7 +173,15 @@ export function LinkEditorPanel({
         <ExternalLink className="size-4" />
       </Button>
       <Suspense fallback={null}>
-        <PageLinkPicker editor={editor} query={draft} onDone={onDone} />
+        <PageLinkPicker
+          editor={editor}
+          query={draft}
+          listboxId={listboxId}
+          optionId={optionId}
+          activeIndex={activeIndex}
+          onMatches={setMatches}
+          onPick={pick}
+        />
       </Suspense>
       {editor.isActive('link') ? (
         <Button
