@@ -20,7 +20,13 @@ import { Route as authSignUpRouteImport } from './routes/(auth)/sign-up'
 import { Route as authVerifyEmailRouteImport } from './routes/(auth)/verify-email'
 import { Route as AcceptInviteInvitationIdRouteImport } from './routes/accept-invite.$invitationId'
 import { Route as AlternativesSlugRouteImport } from './routes/alternatives/$slug'
+import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppdashboardRouteRouteImport } from './routes/app/(dashboard)/route'
+import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
+import { Route as AppMembersRouteImport } from './routes/app/members'
+import { Route as AppPeopleRouteImport } from './routes/app/people'
+import { Route as AppSitesRouteImport } from './routes/app/sites'
+import { Route as AppWelcomeRouteImport } from './routes/app/welcome'
 import { Route as ArPageRouteImport } from './routes/ar/$page'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as CompareSlugRouteImport } from './routes/compare/$slug'
@@ -31,24 +37,25 @@ import { Route as OauthProjectRouteImport } from './routes/oauth.project'
 import { Route as SitesProjectIdRouteRouteImport } from './routes/sites/$projectId/route'
 import { Route as ToolsSlugRouteImport } from './routes/tools/$slug'
 import { Route as UseCasesSlugRouteImport } from './routes/use-cases/$slug'
-import { Route as AppdashboardIndexRouteImport } from './routes/app/(dashboard)/index'
-import { Route as AppdashboardAnalyticsRouteImport } from './routes/app/(dashboard)/analytics'
-import { Route as AppdashboardMembersRouteImport } from './routes/app/(dashboard)/members'
-import { Route as AppdashboardPeopleRouteImport } from './routes/app/(dashboard)/people'
 import { Route as AppdashboardSettingsRouteImport } from './routes/app/(dashboard)/settings'
-import { Route as AppdashboardSitesRouteImport } from './routes/app/(dashboard)/sites'
+import { Route as AppOOrgSlugRouteRouteImport } from './routes/app/o/$orgSlug/route'
 import { Route as AppProjectsProjectIdRouteRouteImport } from './routes/app/projects/$projectId/route'
 import { Route as ArUseCasesSlugRouteImport } from './routes/ar/use-cases/$slug'
 import { Route as SitesProjectIdIndexRouteImport } from './routes/sites/$projectId/index'
 import { Route as SitesProjectIdSplatRouteImport } from './routes/sites/$projectId/$'
 import { Route as SitesProjectIdChangelogRouteImport } from './routes/sites/$projectId/changelog'
+import { Route as AppOOrgSlugIndexRouteImport } from './routes/app/o/$orgSlug/index'
+import { Route as AppOOrgSlugAnalyticsRouteImport } from './routes/app/o/$orgSlug/analytics'
+import { Route as AppOOrgSlugBillingRouteImport } from './routes/app/o/$orgSlug/billing'
+import { Route as AppOOrgSlugMembersRouteImport } from './routes/app/o/$orgSlug/members'
+import { Route as AppOOrgSlugSettingsRouteImport } from './routes/app/o/$orgSlug/settings'
+import { Route as AppOOrgSlugWebsitesRouteImport } from './routes/app/o/$orgSlug/websites'
 import { Route as AppProjectsProjectIdIndexRouteImport } from './routes/app/projects/$projectId/index'
 import { Route as AppProjectsProjectIdAiRouteImport } from './routes/app/projects/$projectId/ai'
 import { Route as AppProjectsProjectIdAnalyticsRouteImport } from './routes/app/projects/$projectId/analytics'
 import { Route as AppProjectsProjectIdEditorRouteImport } from './routes/app/projects/$projectId/editor'
 import { Route as AppProjectsProjectIdPreviewRouteImport } from './routes/app/projects/$projectId/preview'
 import { Route as AppProjectsProjectIdSettingsRouteImport } from './routes/app/projects/$projectId/settings'
-import { Route as AppdashboardOOrgSlugWebsitesRouteImport } from './routes/app/(dashboard)/o/$orgSlug/websites'
 import { Route as AppProjectsProjectIdAnalyticsIndexRouteImport } from './routes/app/projects/$projectId/analytics.index'
 import { Route as AppProjectsProjectIdAnalyticsAiRouteImport } from './routes/app/projects/$projectId/analytics.ai'
 import { Route as AppProjectsProjectIdAnalyticsFeedbackRouteImport } from './routes/app/projects/$projectId/analytics.feedback'
@@ -111,8 +118,38 @@ const AlternativesSlugRoute = AlternativesSlugRouteImport.update({
   path: '/alternatives/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppdashboardRouteRoute = AppdashboardRouteRouteImport.update({
   id: '/(dashboard)',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppMembersRoute = AppMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppPeopleRoute = AppPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSitesRoute = AppSitesRouteImport.update({
+  id: '/sites',
+  path: '/sites',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppWelcomeRoute = AppWelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const ArPageRoute = ArPageRouteImport.update({
@@ -165,35 +202,15 @@ const UseCasesSlugRoute = UseCasesSlugRouteImport.update({
   path: '/use-cases/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppdashboardIndexRoute = AppdashboardIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AppdashboardRouteRoute,
-} as any)
-const AppdashboardAnalyticsRoute = AppdashboardAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AppdashboardRouteRoute,
-} as any)
-const AppdashboardMembersRoute = AppdashboardMembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => AppdashboardRouteRoute,
-} as any)
-const AppdashboardPeopleRoute = AppdashboardPeopleRouteImport.update({
-  id: '/people',
-  path: '/people',
-  getParentRoute: () => AppdashboardRouteRoute,
-} as any)
 const AppdashboardSettingsRoute = AppdashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AppdashboardRouteRoute,
 } as any)
-const AppdashboardSitesRoute = AppdashboardSitesRouteImport.update({
-  id: '/sites',
-  path: '/sites',
-  getParentRoute: () => AppdashboardRouteRoute,
+const AppOOrgSlugRouteRoute = AppOOrgSlugRouteRouteImport.update({
+  id: '/o/$orgSlug',
+  path: '/o/$orgSlug',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const AppProjectsProjectIdRouteRoute =
   AppProjectsProjectIdRouteRouteImport.update({
@@ -220,6 +237,36 @@ const SitesProjectIdChangelogRoute = SitesProjectIdChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
   getParentRoute: () => SitesProjectIdRouteRoute,
+} as any)
+const AppOOrgSlugIndexRoute = AppOOrgSlugIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
+} as any)
+const AppOOrgSlugAnalyticsRoute = AppOOrgSlugAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
+} as any)
+const AppOOrgSlugBillingRoute = AppOOrgSlugBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
+} as any)
+const AppOOrgSlugMembersRoute = AppOOrgSlugMembersRouteImport.update({
+  id: '/members',
+  path: '/members',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
+} as any)
+const AppOOrgSlugSettingsRoute = AppOOrgSlugSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
+} as any)
+const AppOOrgSlugWebsitesRoute = AppOOrgSlugWebsitesRouteImport.update({
+  id: '/websites',
+  path: '/websites',
+  getParentRoute: () => AppOOrgSlugRouteRoute,
 } as any)
 const AppProjectsProjectIdIndexRoute =
   AppProjectsProjectIdIndexRouteImport.update({
@@ -255,12 +302,6 @@ const AppProjectsProjectIdSettingsRoute =
     id: '/settings',
     path: '/settings',
     getParentRoute: () => AppProjectsProjectIdRouteRoute,
-  } as any)
-const AppdashboardOOrgSlugWebsitesRoute =
-  AppdashboardOOrgSlugWebsitesRouteImport.update({
-    id: '/o/$orgSlug/websites',
-    path: '/o/$orgSlug/websites',
-    getParentRoute: () => AppdashboardRouteRoute,
   } as any)
 const AppProjectsProjectIdAnalyticsIndexRoute =
   AppProjectsProjectIdAnalyticsIndexRouteImport.update({
@@ -311,6 +352,11 @@ export interface FileRoutesByFullPath {
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/members': typeof AppMembersRoute
+  '/app/people': typeof AppPeopleRoute
+  '/app/sites': typeof AppSitesRoute
+  '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
@@ -320,24 +366,26 @@ export interface FileRoutesByFullPath {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/app/': typeof AppIndexRoute
+  '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
-  '/app/analytics': typeof AppdashboardAnalyticsRoute
-  '/app/members': typeof AppdashboardMembersRoute
-  '/app/people': typeof AppdashboardPeopleRoute
   '/app/settings': typeof AppdashboardSettingsRoute
-  '/app/sites': typeof AppdashboardSitesRoute
   '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
-  '/app/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
+  '/app/o/$orgSlug/analytics': typeof AppOOrgSlugAnalyticsRoute
+  '/app/o/$orgSlug/billing': typeof AppOOrgSlugBillingRoute
+  '/app/o/$orgSlug/members': typeof AppOOrgSlugMembersRoute
+  '/app/o/$orgSlug/settings': typeof AppOOrgSlugSettingsRoute
+  '/app/o/$orgSlug/websites': typeof AppOOrgSlugWebsitesRoute
   '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRouteWithChildren
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
+  '/app/o/$orgSlug/': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
-  '/app/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -347,8 +395,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppdashboardIndexRoute
   '/$page': typeof PageRoute
+  '/app': typeof AppIndexRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/reset-password': typeof authResetPasswordRoute
   '/sign-in': typeof authSignInRoute
@@ -356,6 +404,11 @@ export interface FileRoutesByTo {
   '/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/members': typeof AppMembersRoute
+  '/app/people': typeof AppPeopleRoute
+  '/app/sites': typeof AppSitesRoute
+  '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
@@ -365,21 +418,22 @@ export interface FileRoutesByTo {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
-  '/app/analytics': typeof AppdashboardAnalyticsRoute
-  '/app/members': typeof AppdashboardMembersRoute
-  '/app/people': typeof AppdashboardPeopleRoute
   '/app/settings': typeof AppdashboardSettingsRoute
-  '/app/sites': typeof AppdashboardSitesRoute
   '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
   '/sites/$projectId': typeof SitesProjectIdIndexRoute
+  '/app/o/$orgSlug/analytics': typeof AppOOrgSlugAnalyticsRoute
+  '/app/o/$orgSlug/billing': typeof AppOOrgSlugBillingRoute
+  '/app/o/$orgSlug/members': typeof AppOOrgSlugMembersRoute
+  '/app/o/$orgSlug/settings': typeof AppOOrgSlugSettingsRoute
+  '/app/o/$orgSlug/websites': typeof AppOOrgSlugWebsitesRoute
   '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
+  '/app/o/$orgSlug': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId': typeof AppProjectsProjectIdIndexRoute
-  '/app/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -402,6 +456,11 @@ export interface FileRoutesById {
   '/(auth)/verify-email': typeof authVerifyEmailRoute
   '/accept-invite/$invitationId': typeof AcceptInviteInvitationIdRoute
   '/alternatives/$slug': typeof AlternativesSlugRoute
+  '/app/analytics': typeof AppAnalyticsRoute
+  '/app/members': typeof AppMembersRoute
+  '/app/people': typeof AppPeopleRoute
+  '/app/sites': typeof AppSitesRoute
+  '/app/welcome': typeof AppWelcomeRoute
   '/ar/$page': typeof ArPageRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
@@ -411,24 +470,26 @@ export interface FileRoutesById {
   '/oauth/project': typeof OauthProjectRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/use-cases/$slug': typeof UseCasesSlugRoute
+  '/app/': typeof AppIndexRoute
+  '/app/o/$orgSlug': typeof AppOOrgSlugRouteRouteWithChildren
   '/app/projects/$projectId': typeof AppProjectsProjectIdRouteRouteWithChildren
-  '/app/(dashboard)/analytics': typeof AppdashboardAnalyticsRoute
-  '/app/(dashboard)/members': typeof AppdashboardMembersRoute
-  '/app/(dashboard)/people': typeof AppdashboardPeopleRoute
   '/app/(dashboard)/settings': typeof AppdashboardSettingsRoute
-  '/app/(dashboard)/sites': typeof AppdashboardSitesRoute
   '/ar/use-cases/$slug': typeof ArUseCasesSlugRoute
   '/sites/$projectId/$': typeof SitesProjectIdSplatRoute
   '/sites/$projectId/changelog': typeof SitesProjectIdChangelogRoute
-  '/app/(dashboard)/': typeof AppdashboardIndexRoute
   '/sites/$projectId/': typeof SitesProjectIdIndexRoute
+  '/app/o/$orgSlug/analytics': typeof AppOOrgSlugAnalyticsRoute
+  '/app/o/$orgSlug/billing': typeof AppOOrgSlugBillingRoute
+  '/app/o/$orgSlug/members': typeof AppOOrgSlugMembersRoute
+  '/app/o/$orgSlug/settings': typeof AppOOrgSlugSettingsRoute
+  '/app/o/$orgSlug/websites': typeof AppOOrgSlugWebsitesRoute
   '/app/projects/$projectId/ai': typeof AppProjectsProjectIdAiRoute
   '/app/projects/$projectId/analytics': typeof AppProjectsProjectIdAnalyticsRouteWithChildren
   '/app/projects/$projectId/editor': typeof AppProjectsProjectIdEditorRoute
   '/app/projects/$projectId/preview': typeof AppProjectsProjectIdPreviewRoute
   '/app/projects/$projectId/settings': typeof AppProjectsProjectIdSettingsRoute
+  '/app/o/$orgSlug/': typeof AppOOrgSlugIndexRoute
   '/app/projects/$projectId/': typeof AppProjectsProjectIdIndexRoute
-  '/app/(dashboard)/o/$orgSlug/websites': typeof AppdashboardOOrgSlugWebsitesRoute
   '/app/projects/$projectId/analytics/ai': typeof AppProjectsProjectIdAnalyticsAiRoute
   '/app/projects/$projectId/analytics/feedback': typeof AppProjectsProjectIdAnalyticsFeedbackRoute
   '/app/projects/$projectId/analytics/pages': typeof AppProjectsProjectIdAnalyticsPagesRoute
@@ -450,6 +511,11 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
+    | '/app/analytics'
+    | '/app/members'
+    | '/app/people'
+    | '/app/sites'
+    | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
     | '/compare/$slug'
@@ -459,24 +525,26 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/app/'
+    | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/people'
     | '/app/settings'
-    | '/app/sites'
     | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
-    | '/app/'
     | '/sites/$projectId/'
+    | '/app/o/$orgSlug/analytics'
+    | '/app/o/$orgSlug/billing'
+    | '/app/o/$orgSlug/members'
+    | '/app/o/$orgSlug/settings'
+    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
+    | '/app/o/$orgSlug/'
     | '/app/projects/$projectId/'
-    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -486,8 +554,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
     | '/$page'
+    | '/app'
     | '/forgot-password'
     | '/reset-password'
     | '/sign-in'
@@ -495,6 +563,11 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
+    | '/app/analytics'
+    | '/app/members'
+    | '/app/people'
+    | '/app/sites'
+    | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
     | '/compare/$slug'
@@ -504,21 +577,22 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
-    | '/app/analytics'
-    | '/app/members'
-    | '/app/people'
     | '/app/settings'
-    | '/app/sites'
     | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
     | '/sites/$projectId'
+    | '/app/o/$orgSlug/analytics'
+    | '/app/o/$orgSlug/billing'
+    | '/app/o/$orgSlug/members'
+    | '/app/o/$orgSlug/settings'
+    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
+    | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
-    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -540,6 +614,11 @@ export interface FileRouteTypes {
     | '/(auth)/verify-email'
     | '/accept-invite/$invitationId'
     | '/alternatives/$slug'
+    | '/app/analytics'
+    | '/app/members'
+    | '/app/people'
+    | '/app/sites'
+    | '/app/welcome'
     | '/ar/$page'
     | '/blog/$slug'
     | '/compare/$slug'
@@ -549,24 +628,26 @@ export interface FileRouteTypes {
     | '/oauth/project'
     | '/tools/$slug'
     | '/use-cases/$slug'
+    | '/app/'
+    | '/app/o/$orgSlug'
     | '/app/projects/$projectId'
-    | '/app/(dashboard)/analytics'
-    | '/app/(dashboard)/members'
-    | '/app/(dashboard)/people'
     | '/app/(dashboard)/settings'
-    | '/app/(dashboard)/sites'
     | '/ar/use-cases/$slug'
     | '/sites/$projectId/$'
     | '/sites/$projectId/changelog'
-    | '/app/(dashboard)/'
     | '/sites/$projectId/'
+    | '/app/o/$orgSlug/analytics'
+    | '/app/o/$orgSlug/billing'
+    | '/app/o/$orgSlug/members'
+    | '/app/o/$orgSlug/settings'
+    | '/app/o/$orgSlug/websites'
     | '/app/projects/$projectId/ai'
     | '/app/projects/$projectId/analytics'
     | '/app/projects/$projectId/editor'
     | '/app/projects/$projectId/preview'
     | '/app/projects/$projectId/settings'
+    | '/app/o/$orgSlug/'
     | '/app/projects/$projectId/'
-    | '/app/(dashboard)/o/$orgSlug/websites'
     | '/app/projects/$projectId/analytics/ai'
     | '/app/projects/$projectId/analytics/feedback'
     | '/app/projects/$projectId/analytics/pages'
@@ -674,11 +755,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AlternativesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/app/(dashboard)': {
       id: '/app/(dashboard)'
       path: ''
       fullPath: '/app'
       preLoaderRoute: typeof AppdashboardRouteRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/members': {
+      id: '/app/members'
+      path: '/members'
+      fullPath: '/app/members'
+      preLoaderRoute: typeof AppMembersRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/people': {
+      id: '/app/people'
+      path: '/people'
+      fullPath: '/app/people'
+      preLoaderRoute: typeof AppPeopleRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/sites': {
+      id: '/app/sites'
+      path: '/sites'
+      fullPath: '/app/sites'
+      preLoaderRoute: typeof AppSitesRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/welcome': {
+      id: '/app/welcome'
+      path: '/welcome'
+      fullPath: '/app/welcome'
+      preLoaderRoute: typeof AppWelcomeRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/ar/$page': {
@@ -751,34 +874,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UseCasesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/(dashboard)/': {
-      id: '/app/(dashboard)/'
-      path: '/'
-      fullPath: '/app/'
-      preLoaderRoute: typeof AppdashboardIndexRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/app/(dashboard)/analytics': {
-      id: '/app/(dashboard)/analytics'
-      path: '/analytics'
-      fullPath: '/app/analytics'
-      preLoaderRoute: typeof AppdashboardAnalyticsRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/app/(dashboard)/members': {
-      id: '/app/(dashboard)/members'
-      path: '/members'
-      fullPath: '/app/members'
-      preLoaderRoute: typeof AppdashboardMembersRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
-    '/app/(dashboard)/people': {
-      id: '/app/(dashboard)/people'
-      path: '/people'
-      fullPath: '/app/people'
-      preLoaderRoute: typeof AppdashboardPeopleRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
-    }
     '/app/(dashboard)/settings': {
       id: '/app/(dashboard)/settings'
       path: '/settings'
@@ -786,12 +881,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppdashboardSettingsRouteImport
       parentRoute: typeof AppdashboardRouteRoute
     }
-    '/app/(dashboard)/sites': {
-      id: '/app/(dashboard)/sites'
-      path: '/sites'
-      fullPath: '/app/sites'
-      preLoaderRoute: typeof AppdashboardSitesRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
+    '/app/o/$orgSlug': {
+      id: '/app/o/$orgSlug'
+      path: '/o/$orgSlug'
+      fullPath: '/app/o/$orgSlug'
+      preLoaderRoute: typeof AppOOrgSlugRouteRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/app/projects/$projectId': {
       id: '/app/projects/$projectId'
@@ -827,6 +922,48 @@ declare module '@tanstack/react-router' {
       fullPath: '/sites/$projectId/changelog'
       preLoaderRoute: typeof SitesProjectIdChangelogRouteImport
       parentRoute: typeof SitesProjectIdRouteRoute
+    }
+    '/app/o/$orgSlug/': {
+      id: '/app/o/$orgSlug/'
+      path: '/'
+      fullPath: '/app/o/$orgSlug/'
+      preLoaderRoute: typeof AppOOrgSlugIndexRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
+    }
+    '/app/o/$orgSlug/analytics': {
+      id: '/app/o/$orgSlug/analytics'
+      path: '/analytics'
+      fullPath: '/app/o/$orgSlug/analytics'
+      preLoaderRoute: typeof AppOOrgSlugAnalyticsRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
+    }
+    '/app/o/$orgSlug/billing': {
+      id: '/app/o/$orgSlug/billing'
+      path: '/billing'
+      fullPath: '/app/o/$orgSlug/billing'
+      preLoaderRoute: typeof AppOOrgSlugBillingRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
+    }
+    '/app/o/$orgSlug/members': {
+      id: '/app/o/$orgSlug/members'
+      path: '/members'
+      fullPath: '/app/o/$orgSlug/members'
+      preLoaderRoute: typeof AppOOrgSlugMembersRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
+    }
+    '/app/o/$orgSlug/settings': {
+      id: '/app/o/$orgSlug/settings'
+      path: '/settings'
+      fullPath: '/app/o/$orgSlug/settings'
+      preLoaderRoute: typeof AppOOrgSlugSettingsRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
+    }
+    '/app/o/$orgSlug/websites': {
+      id: '/app/o/$orgSlug/websites'
+      path: '/websites'
+      fullPath: '/app/o/$orgSlug/websites'
+      preLoaderRoute: typeof AppOOrgSlugWebsitesRouteImport
+      parentRoute: typeof AppOOrgSlugRouteRoute
     }
     '/app/projects/$projectId/': {
       id: '/app/projects/$projectId/'
@@ -869,13 +1006,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/projects/$projectId/settings'
       preLoaderRoute: typeof AppProjectsProjectIdSettingsRouteImport
       parentRoute: typeof AppProjectsProjectIdRouteRoute
-    }
-    '/app/(dashboard)/o/$orgSlug/websites': {
-      id: '/app/(dashboard)/o/$orgSlug/websites'
-      path: '/o/$orgSlug/websites'
-      fullPath: '/app/o/$orgSlug/websites'
-      preLoaderRoute: typeof AppdashboardOOrgSlugWebsitesRouteImport
-      parentRoute: typeof AppdashboardRouteRoute
     }
     '/app/projects/$projectId/analytics/': {
       id: '/app/projects/$projectId/analytics/'
@@ -943,27 +1073,36 @@ const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
 )
 
 interface AppdashboardRouteRouteChildren {
-  AppdashboardAnalyticsRoute: typeof AppdashboardAnalyticsRoute
-  AppdashboardMembersRoute: typeof AppdashboardMembersRoute
-  AppdashboardPeopleRoute: typeof AppdashboardPeopleRoute
   AppdashboardSettingsRoute: typeof AppdashboardSettingsRoute
-  AppdashboardSitesRoute: typeof AppdashboardSitesRoute
-  AppdashboardIndexRoute: typeof AppdashboardIndexRoute
-  AppdashboardOOrgSlugWebsitesRoute: typeof AppdashboardOOrgSlugWebsitesRoute
 }
 
 const AppdashboardRouteRouteChildren: AppdashboardRouteRouteChildren = {
-  AppdashboardAnalyticsRoute: AppdashboardAnalyticsRoute,
-  AppdashboardMembersRoute: AppdashboardMembersRoute,
-  AppdashboardPeopleRoute: AppdashboardPeopleRoute,
   AppdashboardSettingsRoute: AppdashboardSettingsRoute,
-  AppdashboardSitesRoute: AppdashboardSitesRoute,
-  AppdashboardIndexRoute: AppdashboardIndexRoute,
-  AppdashboardOOrgSlugWebsitesRoute: AppdashboardOOrgSlugWebsitesRoute,
 }
 
 const AppdashboardRouteRouteWithChildren =
   AppdashboardRouteRoute._addFileChildren(AppdashboardRouteRouteChildren)
+
+interface AppOOrgSlugRouteRouteChildren {
+  AppOOrgSlugAnalyticsRoute: typeof AppOOrgSlugAnalyticsRoute
+  AppOOrgSlugBillingRoute: typeof AppOOrgSlugBillingRoute
+  AppOOrgSlugMembersRoute: typeof AppOOrgSlugMembersRoute
+  AppOOrgSlugSettingsRoute: typeof AppOOrgSlugSettingsRoute
+  AppOOrgSlugWebsitesRoute: typeof AppOOrgSlugWebsitesRoute
+  AppOOrgSlugIndexRoute: typeof AppOOrgSlugIndexRoute
+}
+
+const AppOOrgSlugRouteRouteChildren: AppOOrgSlugRouteRouteChildren = {
+  AppOOrgSlugAnalyticsRoute: AppOOrgSlugAnalyticsRoute,
+  AppOOrgSlugBillingRoute: AppOOrgSlugBillingRoute,
+  AppOOrgSlugMembersRoute: AppOOrgSlugMembersRoute,
+  AppOOrgSlugSettingsRoute: AppOOrgSlugSettingsRoute,
+  AppOOrgSlugWebsitesRoute: AppOOrgSlugWebsitesRoute,
+  AppOOrgSlugIndexRoute: AppOOrgSlugIndexRoute,
+}
+
+const AppOOrgSlugRouteRouteWithChildren =
+  AppOOrgSlugRouteRoute._addFileChildren(AppOOrgSlugRouteRouteChildren)
 
 interface AppProjectsProjectIdAnalyticsRouteChildren {
   AppProjectsProjectIdAnalyticsAiRoute: typeof AppProjectsProjectIdAnalyticsAiRoute
@@ -1021,11 +1160,25 @@ const AppProjectsProjectIdRouteRouteWithChildren =
 
 interface AppRouteRouteChildren {
   AppdashboardRouteRoute: typeof AppdashboardRouteRouteWithChildren
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
+  AppMembersRoute: typeof AppMembersRoute
+  AppPeopleRoute: typeof AppPeopleRoute
+  AppSitesRoute: typeof AppSitesRoute
+  AppWelcomeRoute: typeof AppWelcomeRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppOOrgSlugRouteRoute: typeof AppOOrgSlugRouteRouteWithChildren
   AppProjectsProjectIdRouteRoute: typeof AppProjectsProjectIdRouteRouteWithChildren
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppdashboardRouteRoute: AppdashboardRouteRouteWithChildren,
+  AppAnalyticsRoute: AppAnalyticsRoute,
+  AppMembersRoute: AppMembersRoute,
+  AppPeopleRoute: AppPeopleRoute,
+  AppSitesRoute: AppSitesRoute,
+  AppWelcomeRoute: AppWelcomeRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppOOrgSlugRouteRoute: AppOOrgSlugRouteRouteWithChildren,
   AppProjectsProjectIdRouteRoute: AppProjectsProjectIdRouteRouteWithChildren,
 }
 
@@ -1070,6 +1223,7 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
 
 import type { getRouter } from './router.tsx'
 import type { createStart } from '@tanstack/react-start'
