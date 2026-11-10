@@ -133,6 +133,8 @@ export async function renderMemberInvitationEmail({
   language = DEFAULT_EMAIL_LANGUAGE,
   organizationName,
   role,
+  organizationRole = false,
+  grants = [],
 }: {
   acceptUrl: string;
   days: number;
@@ -140,14 +142,24 @@ export async function renderMemberInvitationEmail({
   language?: EmailLanguage;
   organizationName: string;
   role: string;
+  organizationRole?: boolean;
+  grants?: Array<{ name: string; role: string }>;
 }) {
   const t = createEmailTranslator(language);
   // The sentence names the role in the reader's language, never the stored value.
-  const params = { days, inviterName, organizationName, role: t(INVITE_ROLE_LABELS[role] ?? 'roles.editor') };
+  const params = {
+    days,
+    inviterName,
+    organizationName,
+    role: t(organizationRole && role === 'member' ? 'roles.organizationMember' : (INVITE_ROLE_LABELS[role] ?? 'roles.editor')),
+  };
   const { html, text } = await renderEmail(
     createElement(TransactionalEmail, {
       action: { label: t('email.invite.action'), url: acceptUrl },
-      detail: t('email.invite.expiry', params),
+      detail: [
+        ...grants.map((grant) => `${grant.name} (${t(INVITE_ROLE_LABELS[grant.role] ?? 'roles.viewer')})`),
+        t('email.invite.expiry', params),
+      ].join(' · '),
       language,
       message: t('email.invite.message', params),
       preview: t('email.invite.preview', params),

@@ -4102,5 +4102,8 @@
   "notifications_bellunreadlabel": "فتح الإشعارات. غير المقروءة: {count}",
   "notifications_unread": "غير مقروء",
   "admin_sidebardescription": "تنقّل بين عملاء المنصة ومواقعها وعملياتها.",
-  "settings_appearance_theme_system": "مطابقة جهازي"
+  "settings_appearance_theme_system": "مطابقة جهازي",
+  "settings_members_viaorganization": "عبر المؤسسة",
+  "settings_members_nowebsiteaccess": "ليس لديك صلاحية الوصول إلى أي موقع في {org} بعد. تواصل مع مسؤول المؤسسة.",
+  "roles_organizationmember": "عضو"
 }

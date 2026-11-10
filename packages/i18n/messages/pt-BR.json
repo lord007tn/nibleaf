@@ -4068,5 +4068,8 @@
   "notifications_bellunreadlabel": "Abrir notificações. Não lidas: {count}",
   "notifications_unread": "Não lida",
   "admin_sidebardescription": "Navegue pelos clientes, sites e operações da plataforma.",
-  "settings_appearance_theme_system": "Igual ao meu dispositivo"
+  "settings_appearance_theme_system": "Igual ao meu dispositivo",
+  "settings_members_viaorganization": "pela organização",
+  "settings_members_nowebsiteaccess": "Você ainda não tem acesso a nenhum site em {org}. Fale com um administrador da organização.",
+  "roles_organizationmember": "Membro"
 }

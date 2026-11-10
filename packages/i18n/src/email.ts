@@ -70,6 +70,7 @@ import {
   // @ts-ignore -- named imports keep dashboard and public-site catalogs out of transactional email bundles.
   roles_admin,
   roles_editor,
+  roles_organizationmember,
   roles_owner,
   roles_viewer,
 } from './paraglide/messages/_index.js';
@@ -117,6 +118,7 @@ const emailMessages = {
   'email.invite.action': email_invite_action,
   'email.invite.expiry': email_invite_expiry,
   // Role names inside the invitation sentence ("…as Viewer").
+  'roles.organizationMember': roles_organizationmember,
   'roles.owner': roles_owner,
   'roles.admin': roles_admin,
   'roles.editor': roles_editor,

@@ -1,5 +1,8 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'roles.organizationMember': 'roles_organizationmember',
+  'settings.members.viaOrganization': 'settings_members_viaorganization',
+  'settings.members.noWebsiteAccess': 'settings_members_nowebsiteaccess',
   'admin.sidebarDescription': 'admin_sidebardescription',
   'nav.sidebarTitle': 'nav_sidebartitle',
   'nav.sidebarDescription': 'nav_sidebardescription',

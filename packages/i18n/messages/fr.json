@@ -4067,5 +4067,8 @@
   "notifications_bellunreadlabel": "Ouvrir les notifications. Non lues : {count}",
   "notifications_unread": "Non lue",
   "admin_sidebardescription": "Accédez aux clients, aux sites et aux opérations de la plateforme.",
-  "settings_appearance_theme_system": "Comme mon appareil"
+  "settings_appearance_theme_system": "Comme mon appareil",
+  "settings_members_viaorganization": "via l’organisation",
+  "settings_members_nowebsiteaccess": "Vous n’avez encore accès à aucun site de {org}. Contactez un administrateur de l’organisation.",
+  "roles_organizationmember": "Membre"
 }

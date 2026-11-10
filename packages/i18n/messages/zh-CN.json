@@ -4002,5 +4002,8 @@
   "notifications_bellunreadlabel": "打开通知。未读：{count}",
   "notifications_unread": "未读",
   "admin_sidebardescription": "浏览平台客户、站点和运营功能。",
-  "settings_appearance_theme_system": "跟随设备"
+  "settings_appearance_theme_system": "跟随设备",
+  "settings_members_viaorganization": "通过组织",
+  "settings_members_nowebsiteaccess": "你尚无权访问 {org} 中的任何网站。请联系组织管理员。",
+  "roles_organizationmember": "成员"
 }
