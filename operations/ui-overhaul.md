@@ -132,7 +132,7 @@ of the local app on 2026-11-10 (seeded demo site, 1440 px, light, EN). It does n
   Import and others, about 20 in total).
 - **Landmarks.** The page's skip target is a focusable generic `div#main-content tabIndex=-1`
   (`layouts/project.tsx:243`) that wraps all of the page text. There is no `<main>`, and the settings nav is a `<nav>`
-  with no label. This is a PR 2 file, so it is fixed in "Settings shell adoption".
+  with no label. This is a PR 2 file; the master asked the Organizations thread to make it a `<main>` in PR 2.
 - **Navigation.** Nav items are buttons calling `navigate()`, so they can't be middle-clicked or have their link
   copied.
 - **Mobile.** The section picker is a full-width Select above the content (acceptable). Content gutters differ per page:
@@ -329,7 +329,7 @@ Every section is one of two kinds, never both:
 ### 5.5 Landmarks and keyboard
 
 - `<main id="main-content" tabIndex={-1}>` wraps the content column, and the skip link targets it. A `main` with
-  `tabIndex=-1` is a landmark; the bug today is a focusable generic `div`.
+  `tabIndex=-1` is a landmark; the bug today is a focusable generic `div` (fixed by the Organizations thread in PR 2).
 - The settings nav is `<nav aria-label="Settings">`, with `aria-current="page"` on the active item. Items are router
   links (`<Link search={{ section }} replace>`), so middle-click and copy-link work.
 - One h1 per page (`PageHeader`). Previews (theme, typography) render inert presentational elements, never headings.
@@ -488,7 +488,7 @@ apps/app/src/features/<feature>/
 `scripts/bundle-boundaries.mjs` classifies dashboard code by today's paths
 (`components/(app|project|project-settings|settings|analytics|ai-conversations)/`, `hooks/api/`). Code moved into
 `features/**` would silently escape both the forbidden-public-module list and the dashboard-chunk classification.
-So, in B1a, before any code moves:
+So, in B1b, before the first code moves into `features/**`:
 
 - `features/**` is added to the forbidden-public-modules list, with explicit allow-listed exceptions for `model/ids.ts`
   and any `validateSearch` parsers (today's analytics/AI search validators are already exceptions).
@@ -677,8 +677,8 @@ turns a `Decision` into enabled, locked, or disabled-with-reason.
 
 | PR | Content | Files (est.) |
 |---|---|---|
-| **B1a** `feat(design-system): settings layout primitives` | the §6 DS primitives (PageContainer, PageHeader, SettingsSection, SettingsRow, SaveRegion view, EmptyState, DataList/RowActions, ActionDialog + confirm fixes, Button `disabledReason`/`focusableWhenDisabled`, StatusBadge, Callout, CopyButton, OptionCards, StatTile, Meter, IconButton); their tests in `apps/app`; `bundle-boundaries` updated for `features/**`; `features-boundaries.test.ts`; the `text-[Npx]` counter | ~30 |
-| **B1b** `feat(settings): form lifecycle and the General reference section` | `lib/forms/{server-draft,save-region,field-errors}` + tests; `FormField` adapter; `SaveBar`/`saveConfigSection` fixes in `shared.tsx`; `features/site-general` migrated end to end as the worked example; `apps/app/UI_GUIDE.md` (how to build a settings section) | ~20 |
+| **B1a** `feat(design-system): settings layout primitives` | this doc; PageContainer, PageHeader, SettingsSection, SettingsRow, SaveRegion view, EmptyState, DataList/RowActions, ActionDialog + confirm fixes, Button `disabledReason`, IconButton, StatusBadge, Callout, CopyButton; their tests in `apps/app`. Kept small so the Organizations thread's PR 3 can adopt it at once. OptionCards, StatTile and Meter land with their first user (B2/B4/B6) | ~25 |
+| **B1b** `feat(settings): form lifecycle and the General reference section` | `bundle-boundaries` updated for `features/**` (§7.2); `features-boundaries.test.ts`; the `text-[Npx]` counter; `lib/forms/{server-draft,save-region,field-errors}` + tests; `FormField` adapter; `SaveBar`/`saveConfigSection` fixes in `shared.tsx`; `features/site-general` migrated end to end as the worked example; `apps/app/UI_GUIDE.md` (how to build a settings section) | ~20 |
 | **B1c** `feat(access): site access model` | `features/site-access` (`decide`, actions, `useSiteAccess`) + table tests; `useProjectAdminStatus` and `project-settings-access` as wrappers; no UI changes | ~10 |
 | **Shell adoption**, right after PR 2 merges | settings route on `SettingsPage`: document scroll, sticky nav of links, `<main>`, section registry in `features/site-settings`; Danger zone and Usage migrated | ~20 |
 | **B2** `refactor(settings): site group` | Languages, Custom domain, Visibility & access, Search, Add-ons | ~35 |
