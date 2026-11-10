@@ -272,13 +272,13 @@ describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data pa
     expect(await db.prisma.usageStorageMarker.count({ where: { projectId: { in: [a.id, b.id] } } })).toBe(0);
   });
 
-  it('refuses account deletion before changing any owned org; permits only an empty sole-member org', async () => {
+  it('refuses account deletion while owning any organization, including empty ones', async () => {
     const user = await db.prisma.user.create({ data: { name: 'Synthetic owner', email: `partition-${randomUUID()}@nibleaf.test` } });
     userIds.push(user.id);
     const empty = await org();
     const populated = await org();
     for (const organizationId of [empty.id, populated.id])
-      await db.prisma.member.create({ data: { userId: user.id, organizationId, role: 'owner' } });
+      await db.prisma.member.create({ data: { userId: user.id, organizationId, role: 'owner', orgRole: 'owner' } });
     const project = await site(populated.id);
     await expect(account.reassignOrDeleteOrgs(user.id)).rejects.toThrow('Transfer ownership or delete your organization first');
     expect(await db.prisma.organization.findUnique({ where: { id: empty.id } })).not.toBeNull();
@@ -288,7 +288,7 @@ describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data pa
     const member = await db.prisma.member.create({ data: { organizationId: populated.id, userId: other.id, role: 'viewer' } });
     await expect(account.reassignOrDeleteOrgs(user.id)).rejects.toThrow('Transfer ownership or delete your organization first');
     await db.prisma.member.delete({ where: { id: member.id } });
-    await account.reassignOrDeleteOrgs(user.id);
-    expect(await db.prisma.organization.count({ where: { id: { in: [empty.id, populated.id] } } })).toBe(0);
+    await expect(account.reassignOrDeleteOrgs(user.id)).rejects.toThrow('Transfer ownership or delete your organization first');
+    expect(await db.prisma.organization.count({ where: { id: { in: [empty.id, populated.id] } } })).toBe(2);
   });
 });
