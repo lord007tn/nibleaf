@@ -35,7 +35,10 @@ describe.skipIf(process.env.TENANT_FENCE_INTEGRATION !== '1')('tenant fences wit
       pendingCount: 0,
     });
     expect((await database.prisma.usageStorageMarker.findUnique({ where: { organizationId } }))?.deletionPendingAt).toBeInstanceOf(Date);
-    await expect(database.prisma.organization.delete({ where: { id: organizationId } })).rejects.toThrow();
+    // PR 1 keeps project → organization Cascade (design §10.1); new code's fence
+    // deletes an organization only once it holds no website.
+    await database.prisma.organization.deleteMany({ where: { id: organizationId, projects: { none: {} } } });
+    expect(await database.prisma.project.count({ where: { id: projectId } })).toBe(1);
     await database.prisma.project.delete({ where: { id: projectId } });
     expect(await database.prisma.usageStorageMarker.findUnique({ where: { partitionId: organizationId } })).toBeNull();
   });

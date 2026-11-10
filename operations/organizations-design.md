@@ -95,7 +95,7 @@ model Member {
 
 model Project {
   organizationId String            // was @unique — now many per org
-  organization   Organization @relation(..., onDelete: Restrict)   // was Cascade
+  organization   Organization @relation(..., onDelete: Restrict)   // was Cascade; Restrict lands in the contract PR (§10.1)
   dataTenantId   String  @unique   // immutable partition key (below)
   @@unique([id, organizationId])   // composite target for grant FKs
   @@index([organizationId])
@@ -199,6 +199,10 @@ Invariants enforced **by the database**, not only by code:
    (partial unique index); one current handle per org.
 4. Deleting an org with websites is impossible (`onDelete: Restrict`); org
    deletion erases each website first behind the deletion fence (§6.12).
+   **PR 1 keeps `Cascade`** because the previous release deletes the org and
+   relies on it removing the website (§10.1, rollback); until the contract PR
+   the rule is enforced in application code: new code deletes an org only
+   with `projects: { none: {} }` in the same statement.
 5. `Project.dataTenantId` is non-null, unique, never reused, and an update
    trigger rejects any change.
 6. Handles: every slug an org ever had is a row of `OrganizationHandle`, so a
@@ -225,7 +229,11 @@ and let erasure miss old facts.
 
 Decision: add **`Project.dataTenantId`**, immutable, set once: existing
 websites → their current `organizationId` (unique per website today because
-of the 1:1); new websites → a fresh id. Every reader/writer of those facts
+of the 1:1); new websites → a fresh id **from PR 2 on**. In PR 1, where every
+website is still created with its own org, new websites also get
+`dataTenantId = organizationId`, so a rollback's readers (by
+`organizationId`) and workers see the same tenant (§10.1). Rolling back from
+PR 2 lands on PR 1, which already reads `dataTenantId`. Every reader/writer of those facts
 uses `project.dataTenantId` instead of `project.organizationId`. One partition
 therefore always belongs to exactly one website, forever: no ClickHouse
 rewrite is ever needed, a merge changes nothing in ClickHouse or in queued
@@ -845,8 +853,9 @@ person arrives through a pending invitation or a valid join link.
 - Erasure split: `eraseProject(projectId)` cleans one website (content,
   storage, search, its `dataTenantId` partition and fence) and deletes the
   project row; `eraseOrganization(orgId)` erases each website, then the org.
-  `Project → Organization` is `onDelete: Restrict`, so no org delete can
-  cascade past website erasure.
+  `Project → Organization` becomes `onDelete: Restrict` in the contract PR, so
+  no org delete can cascade past website erasure; until then the
+  `projects: { none: {} }` predicate on every new-code org delete is the fence.
 - Account deletion: refused while the user owns an org that has other members
   ("Transfer ownership or delete <Org> first"); a sole-member org is erased
   with `eraseOrganization`. Replaces "promote the oldest member".
@@ -953,7 +962,67 @@ never hand an old server more than the new model grants.
 minutes; the deploy runbook says so), and the expand-only migration is the
 defence in depth if anything old keeps running. **Rollback:** redeploying the
 previous image is safe until the first organization holds two websites or the
-merge runs; after that, roll forward only. The **contract** migration
+merge runs; after that, roll forward only.
+
+#### Rollback compatibility (merge council on #415)
+
+The rule is absolute: **after a rollback, the previous release must never
+grant more than the new model.** Each case below has a regression test
+(`rollback-safety.postgres.test.ts`) and a rollback step in the old-release
+harness (`scripts/legacy-schema-compat.mjs`: new code acts, the previous
+release runs `legacy-rollback-scenario.fixture`, new code re-reads).
+
+1. **Legacy mirror on change.** Every new-code change of a member's grants
+   (site role change, site removal, org access replacement, org Admin →
+   member) runs `syncLegacyMembership` in the same transaction:
+   - org `member` with grants: `Member.role` becomes the **lower** of its
+     current legacy role and its lowest grant. A grant never raises the legacy
+     role (a rollback can only under-grant); a demotion lowers it at once
+     (legacy Admin demoted to Viewer → `viewer`).
+   - org `member` with **zero** grants: the `Member` row is **deleted**
+     (decision). The previous release treats any `Member` row as access
+     (project list, private-reader access, analytics, MCP, site sign-in), so
+     no role value means "no access" there. In PR 1 orgs are 1:1, so removing
+     someone from the only website is removing them from the org. To keep
+     that equivalence, PR 1 refuses (409) every other way to reach zero
+     grants: an org-member invitation with no website, an access replacement
+     with no website, and an org Admin → member demotion with no website.
+     PR 2/3 (org members without websites) revisit this together with the
+     contract migration; rolling back to PR 1 from there must be preceded by
+     the same deletion.
+   - The UPDATE sets `role` and `orgRole` together, so the legacy-writer
+     triggers treat it as an explicit new-model write and leave grants alone.
+   - Org Owner/Admin rows keep the explicit `owner`/`admin` mirror (old
+     `admin` ⊆ new org Admin).
+2. **Website deletion is an org action** (§4.2). `DELETE /projects/:id`
+   requires the org Owner/Admin role (`requireProjectOrgRole`); a site-only
+   Admin gets 403, an outsider 404.
+3. **Org settings are authorized by org role.** The website settings PATCH
+   (and the legacy `/workspace` PATCH) are guarded by the website Admin role;
+   the org fields in them (`plan`, `notifications`) additionally need the org
+   Owner/Admin role, checked before any write (403, nothing changed).
+4. **New websites share the org partition in PR 1.** `createProject`, the
+   platform-created site and the sign-up starter site set
+   `dataTenantId = organizationId` explicitly; PR 2 switches new websites to
+   an independent id.
+5. **`project → organization` stays `ON DELETE CASCADE` in PR 1.** The
+   previous release's `eraseProjectOrganization` erases ClickHouse data,
+   queues search deletion, then deletes the org and expects the website to go
+   with it; `Restrict` would leave a live website with its data erased.
+   `Restrict` moves to the contract migration; meanwhile every new-code org
+   delete carries `projects: { none: {} }` (the erasure fence).
+
+Harness rollback steps (all four must pass before a deploy):
+
+| Step | New release does | Previous release must see |
+| --- | --- | --- |
+| Demote, then roll back | legacy Admin → Viewer | role `viewer`; cannot edit or administer |
+| Remove from website, then roll back | legacy Admin removed | no `Member` row; site not listed; 404 |
+| Create a website, then roll back | `createProject` | owner access; `dataTenantId = organizationId` |
+| Delete a website, then roll back | — (old code deletes) | site **and** org gone; nothing half-erased |
+
+Because the FK is Cascade again, the previous release's own suites no longer
+need the cleanup-only adapter (`--cleanup-adapter`) to tear down. The **contract** migration
 (`Member.role := orgRole`, drop legacy tables/columns) is a later PR once
 merges are verified.
 

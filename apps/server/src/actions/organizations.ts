@@ -9,6 +9,7 @@ import { env } from '@/env';
 import { conflict, forbidden, notFound } from '@/errors';
 import { assertUsableAccount } from '@/lib/access';
 import { applyAdmission, lockOrganization } from './admissions';
+import { syncLegacyMembership } from './legacy-membership';
 import { notificationEnabled } from './notifications';
 
 type Tx = Prisma.TransactionClient;
@@ -40,6 +41,10 @@ export async function withOrganization<T>(
   });
 }
 
+/** PR 1 keeps one website per organization, and the previous release reads any
+ * membership as site access, so an org member always holds at least one grant
+ * (design §10.1). Removing the last grant removes the membership instead. */
+const noWebsites = () => conflict('Choose at least one website, or remove this person instead.');
 export async function validateOrganizationGrants(tx: Tx, organizationId: string, grants: AdmissionGrant[]) {
   if (grants.some((g) => !['admin', 'member', 'viewer'].includes(g.role))) throw forbidden('Invalid website role.');
   if (new Set(grants.map((g) => g.projectId)).size !== grants.length) throw conflict('Each website may appear only once.');
@@ -106,6 +111,7 @@ export const inviteOrganizationMembers = async (
     actorId,
     async (tx) => {
       await validateOrganizationGrants(tx, organizationId, body.grants);
+      if (body.orgRole === 'member' && !body.grants.length) throw noWebsites();
       if (options.siteProjectId && (body.orgRole !== 'member' || body.grants.length !== 1 || body.grants[0]?.projectId !== options.siteProjectId))
         throw forbidden('Invite from the organization to grant additional access.');
       if (!(await issuerAuthorizes(tx, organizationId, actorId, body.orgRole, body.grants))) throw forbidden('You cannot grant this access.');
@@ -203,11 +209,12 @@ export const updateOrganizationMember = (
 ) =>
   withOrganization(organizationId, actorId, async (tx) => {
     const member = await targetMember(tx, organizationId, id);
-    if (member.orgRole === 'admin' && body.orgRole === 'member' && !body.grants) throw conflict('Choose the websites this member can keep.');
+    if (member.orgRole === 'admin' && body.orgRole === 'member' && !body.grants?.length) throw noWebsites();
     if (body.grants) await validateOrganizationGrants(tx, organizationId, body.grants);
     if (member.orgRole === 'admin' && body.orgRole === 'member') await replaceGrants(tx, organizationId, member.userId, body.grants ?? [], actorId);
     const result = await tx.member.update({ where: { id }, data: { orgRole: body.orgRole, role: body.orgRole === 'member' ? 'viewer' : 'admin' } });
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, body.orgRole);
+    await syncLegacyMembership(tx, organizationId, member.userId);
     return { id: result.id, orgRole: result.orgRole };
   });
 export const replaceOrganizationMemberAccess = (organizationId: string, actorId: string, id: string, grants: AdmissionGrant[]) =>
@@ -215,8 +222,10 @@ export const replaceOrganizationMemberAccess = (organizationId: string, actorId:
     await validateOrganizationGrants(tx, organizationId, grants);
     const member = await targetMember(tx, organizationId, id);
     if (member.orgRole !== 'member') throw forbidden('Organization admins have access via the organization.');
+    if (!grants.length) throw noWebsites();
     await replaceGrants(tx, organizationId, member.userId, grants, actorId);
     await revokeJoinLinksBeyondRole(tx, organizationId, member.userId, 'member');
+    await syncLegacyMembership(tx, organizationId, member.userId);
     return { id };
   });
 export const removeOrganizationMember = (organizationId: string, actorId: string, id?: string) =>

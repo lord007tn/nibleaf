@@ -1,7 +1,7 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { errorResponses } from '@/errors/utils';
 import { createRouteConfig } from '@/lib/hono/route-config';
-import { isAuthenticated, requireProjectMember, requireProjectRole } from '@/middlewares/guard';
+import { isAuthenticated, requireProjectMember, requireProjectOrgRole, requireProjectRole } from '@/middlewares/guard';
 
 // The projects module mounts these at the top level, so the project id arrives
 // as `:id` (not `:projectId`) — point the project-org guards at that param.
@@ -62,7 +62,8 @@ const projectsRoutes = {
     responses: { 200: { description: 'ok' }, ...errorResponses },
   }),
   remove: createRouteConfig({
-    guard: [isAuthenticated, requireProjectRole(MemberRole.ADMIN, 'id')],
+    // §4.2: deleting a website is an organization action (org Owner/Admin only).
+    guard: [isAuthenticated, requireProjectOrgRole(MemberRole.ADMIN, 'id')],
     tags: ['projects'],
     description: 'Delete a documentation site.',
     responses: { 200: { description: 'ok' }, ...errorResponses },

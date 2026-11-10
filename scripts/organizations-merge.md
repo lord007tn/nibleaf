@@ -109,19 +109,24 @@ pnpm exec turbo run build --filter="@nibleaf/server^..."
 # Back in this new worktree, after creating the owned database:
 $env:POSTGRES_URL='postgresql://nibleaf:nibleaf@127.0.0.1:5562/orgs_legacy_example'
 pnpm --filter @nibleaf/database exec prisma migrate deploy
-node scripts/legacy-schema-compat.mjs C:/Users/raedb/AppData/Local/OpenAI/Codex/worktrees/nibleaf-legacy-check .cache/legacy-check --cleanup-adapter
+node scripts/legacy-schema-compat.mjs C:/Users/raedb/AppData/Local/OpenAI/Codex/worktrees/nibleaf-legacy-check .cache/legacy-check
 git worktree remove C:/Users/raedb/AppData/Local/OpenAI/Codex/worktrees/nibleaf-legacy-check
 ```
 
 The harness runs the eight previous-release PostgreSQL suites sequentially,
 then old `createProject`, invite/OTP sign-in/accept, join-link redemption, role
 change and removal. New-code tests check the resulting roles and denials.
+Then the rollback steps (design §10.1, "Rollback compatibility"): the new
+release demotes a legacy Admin, removes one, creates a website and prepares
+one for deletion (`legacy-rollback-setup.postgres.test.ts`); the previous
+release runs `legacy-rollback-scenario.fixture` against that database
+(demote/remove/create/delete, then roll back); new code re-reads the result.
 Artifacts include command exit codes, suite counts and full logs.
 The harness removes its temporary test/config/setup files in `finally`.
 
-Without `--cleanup-adapter`, the seven old server suites pass their assertions
-but fail teardown: they delete organizations before their websites, while the
-expand schema deliberately uses `ON DELETE RESTRICT`. The optional adapter
+`project → organization` stays `ON DELETE CASCADE` in this release, so the old
+suites tear down without help. `--cleanup-adapter` is kept only for re-running
+against databases from the earlier `RESTRICT` draft. The optional adapter
 changes only `organization.deleteMany({where:{id:{in:exactFixtureIds}}})` cleanup,
 deleting those fixture projects first. It does not change the old assertions or
 the app's transaction paths. The auth suite and scripted journey are unadapted.

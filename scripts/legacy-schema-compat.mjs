@@ -33,8 +33,10 @@ function main() {
   mkdirSync(artifactDir, { recursive: true });
   const root = fileURLToPath(new URL('../', import.meta.url));
   const scenario = resolve(oldTree, 'apps/server/src/scripts/legacy-compat-scenario.test.ts');
-  if (existsSync(scenario)) throw new Error('Refusing to overwrite an existing scenario');
+  const rollbackScenario = resolve(oldTree, 'apps/server/src/scripts/legacy-rollback-scenario.test.ts');
+  if (existsSync(scenario) || existsSync(rollbackScenario)) throw new Error('Refusing to overwrite an existing scenario');
   copyFileSync(resolve(root, 'scripts/legacy-compat-scenario.fixture'), scenario);
+  copyFileSync(resolve(root, 'scripts/legacy-rollback-scenario.fixture'), rollbackScenario);
   const env = { ...process.env, LEGACY_COMPAT_RESULT: resolve(artifactDir, 'scenario.json') };
   const cleanupAdapter = process.argv.includes('--cleanup-adapter');
   const config = resolve(oldTree, 'apps/server/.legacy-compat.vitest.config.ts');
@@ -88,12 +90,18 @@ prisma.organization.deleteMany = async (args) => {
         { [gate]: '1' },
       );
     run(oldTree, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-compat-scenario.test.ts', '--maxWorkers=1']);
+    // Rollback: the new release changes access, then the previous release runs on it.
+    run(root, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-rollback-setup.postgres.test.ts', '--maxWorkers=1'], {
+      LEGACY_ROLLBACK_SETUP: '1',
+    });
+    run(oldTree, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-rollback-scenario.test.ts', '--maxWorkers=1']);
     if (existsSync(env.LEGACY_COMPAT_RESULT))
       run(root, ['--filter', '@nibleaf/server', 'exec', 'vitest', 'run', 'src/scripts/legacy-schema-compat.postgres.test.ts', '--maxWorkers=1'], {
         LEGACY_SCHEMA_COMPAT: '1',
       });
   } finally {
     rmSync(scenario);
+    rmSync(rollbackScenario);
     if (cleanupAdapter) {
       rmSync(config);
       rmSync(setup);

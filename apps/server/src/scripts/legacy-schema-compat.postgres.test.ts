@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { prisma } from '@nibleaf/database';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveOrgAccess, resolveSiteAccess } from '../lib/access';
@@ -37,5 +37,22 @@ describe.skipIf(process.env.LEGACY_SCHEMA_COMPAT !== '1')('new resolver reads pr
     expect(await prisma.joinLinkGrant.count({ where: { joinLinkId: data.joinLinkId } })).toBe(1);
     expect(await prisma.joinLinkRedemption.count({ where: { joinLinkId: data.joinLinkId, userId: joinerId } })).toBe(1);
     expect(await prisma.organizationHandle.count({ where: { organizationId, current: true } })).toBe(1);
+  });
+  it('after a rollback, the new release still agrees with what the previous release did', async () => {
+    const file = `${process.env.LEGACY_COMPAT_RESULT}.rollback.json`;
+    expect(existsSync(`${process.env.LEGACY_COMPAT_RESULT}.rollback-old.json`), 'previous-release rollback scenario must have run').toBe(true);
+    const ids = JSON.parse(readFileSync(file, 'utf8')) as Record<string, string>;
+    // Demote, then roll back.
+    expect((await resolveSiteAccess(ids.demotedId!, ids.siteId!)).role).toBe('viewer');
+    expect(await prisma.member.findFirst({ where: { userId: ids.demotedId } })).toMatchObject({ role: 'viewer', orgRole: 'member' });
+    // Remove from the website, then roll back.
+    await expect(resolveSiteAccess(ids.removedId!, ids.siteId!)).rejects.toMatchObject({ status: 404 });
+    expect(await prisma.member.count({ where: { userId: ids.removedId } })).toBe(0);
+    // Create a website, then roll back.
+    expect((await resolveSiteAccess(ids.creatorId!, ids.createdSiteId!)).role).toBe('owner');
+    // Delete a website, then roll back: nothing of it is left half-erased.
+    expect(await prisma.project.count({ where: { id: ids.deletedSiteId } })).toBe(0);
+    expect(await prisma.organization.count({ where: { id: ids.deletedOrganizationId } })).toBe(0);
+    expect(await prisma.member.count({ where: { organizationId: ids.deletedOrganizationId } })).toBe(0);
   });
 });

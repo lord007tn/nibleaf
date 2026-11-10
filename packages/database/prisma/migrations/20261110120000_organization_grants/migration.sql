@@ -1,8 +1,5 @@
 -- Expand only: legacy role columns are deliberately never updated.
 BEGIN;
--- DropForeignKey
-ALTER TABLE "project" DROP CONSTRAINT "project_organizationId_fkey";
-
 -- DropIndex
 DROP INDEX "project_organizationId_key";
 
@@ -135,8 +132,10 @@ ALTER TABLE "organization_handle" ADD CONSTRAINT "organization_handle_organizati
 -- AddForeignKey
 ALTER TABLE "user_preference" ADD CONSTRAINT "user_preference_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "project" ADD CONSTRAINT "project_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- project_organizationId_fkey stays ON DELETE CASCADE in PR 1: the previous
+-- release deletes the organization and relies on it removing the website. The
+-- change to RESTRICT moves to the contract migration; until then new code only
+-- deletes an organization that holds no website (tenant-erasure fence).
 
 -- Keep every valid existing handle before allocating generated names. This
 -- prevents a generated name from taking a later organization's existing slug.

@@ -193,6 +193,7 @@ describe.skipIf(process.env.DATA_PARTITION_INTEGRATION !== '1')('website data pa
     const secret = await git.getGitWebhookSecret(a.id);
     await workspace.updateWorkspaceSettings(
       organization.id,
+      'website-settings-only-actor',
       { git: { provider: 'github', repo: 'synthetic/updated' }, integrations: { website: a.id } },
       a.id,
     );

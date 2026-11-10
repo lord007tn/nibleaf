@@ -132,10 +132,13 @@ export const createProject = async (userId: string, body: CreateProjectBody) => 
     });
     await assignDefaultUsagePlan(tx, org.id);
     await tx.member.create({ data: { organizationId: org.id, userId, role: MemberRole.OWNER, orgRole: MemberRole.OWNER } });
-    // Project.dataTenantId gets an independent cuid from the Prisma default.
+    // PR 1 keeps the website partition equal to its 1:1 org, so a rollback's
+    // readers (by organizationId) and workers see the same tenant. PR 2 switches
+    // new websites to an independent id (§10.1, rollback compatibility).
     const project = await tx.project.create({
       data: {
         organizationId: org.id,
+        dataTenantId: org.id,
         name: body.name,
         slug,
         ...(body.description ? { description: body.description } : {}),

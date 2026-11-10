@@ -20,7 +20,7 @@ const app = new Hono<HonoEnv>()
   })
   .patch('/', ...workspaceRoutes.updateSettings, validator('json', updateWorkspaceSettingsBody), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    await updateWorkspaceSettings(organizationId, ctx.req.valid('json'));
+    await updateWorkspaceSettings(organizationId, getContextUserOrThrow().id, ctx.req.valid('json'));
     return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembershipOrThrow().role) }, 200);
   });
 
