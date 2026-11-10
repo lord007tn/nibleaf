@@ -23,6 +23,8 @@ const forbiddenPublicModules = [
   // validateSearch can't be split.
   /\/apps\/app\/src\/hooks\/api\/(?:index|query-options|mutations|route-prefetch|deployment-cache|analytics\/)/,
   /\/apps\/app\/src\/components\/(?:app|project|project-settings|settings|editor|oauth)\//,
+  // Feature modules (operations/ui-overhaul.md §7) are dashboard code.
+  /\/apps\/app\/src\/features\//,
   /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
   /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
   /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
@@ -116,7 +118,7 @@ export function nonReaderRouteBytes(modules) {
 // same data hooks, so a chunk is the dashboard's only when none of the other
 // lazy imports of the chunk holding the preload table loads it.
 const DASHBOARD_ONLY_MODULE =
-  /\/apps\/app\/src\/(?:routes\/app\/|components\/(?:app|project|project-settings|settings|analytics|ai-conversations)\/|hooks\/api\/)/;
+  /\/apps\/app\/src\/(?:routes\/app\/|features\/|components\/(?:app|project|project-settings|settings|analytics|ai-conversations)\/|hooks\/api\/)/;
 const DASHBOARD_ROUTE_MODULE = /\/apps\/app\/src\/routes\/app\//;
 
 /** The files of a chunk's `__vite__mapDeps` preload table (`m.f=[…]`), or []. */
