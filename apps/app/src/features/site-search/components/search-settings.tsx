@@ -17,6 +17,7 @@ import { FormField } from '@/components/ui/form-field';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
+import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange } from '@/lib/forms/field-errors';
 import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
@@ -255,7 +256,7 @@ function SearchForm({
                     maxLength={SEARCH_PLACEHOLDER_MAX}
                     onChange={(event) => onValueChange(event.target.value)}
                     // Empty uses the site's placeholder, so that is what it shows.
-                    placeholder={sitePlaceholder.trim() || t('settings.search.placeholder.input')}
+                    placeholder={isolate(sitePlaceholder.trim() || t('settings.search.placeholder.input'))}
                     value={value}
                   />
                 )}

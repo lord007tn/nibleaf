@@ -3,6 +3,7 @@ import { type AnchorHTMLAttributes, act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api';
+import { isolate } from '@/lib/bidi';
 import { SearchSettings } from './search-settings';
 
 type Diagnostics = { availability: { configured: boolean; reason: string | null }; health: string } & Record<string, unknown>;
@@ -236,7 +237,7 @@ describe('SearchSettings', () => {
     expect(field('ar').dir).toBe('rtl');
     expect(field('ar').value).toBe('ابحث');
     // Empty falls back to the site's placeholder, so that is what it shows.
-    expect(field('fr').placeholder).toBe('Search the guides');
+    expect(field('fr').placeholder).toBe(isolate('Search the guides'));
     await type(field('fr'), 'Chercher');
     await type(field('ar'), '');
     await save();
