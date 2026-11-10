@@ -9,36 +9,48 @@ import {
   resolveConflict as resolveConflictValues,
 } from './server-draft';
 
-/** What a submit handler gets besides the values, to report how the save went. */
+/** What a submit handler gets besides the values, to report how its save went. */
 export type DraftSave<T extends DraftValues> = {
-  /** The baseline the save is relative to (what the server last confirmed). */
+  /** The baseline the save is relative to (what the server last confirmed when it started). */
   baseline: T;
   /** Call after the server confirmed. Pass its normalized values when it returned them. */
   succeeded: (confirmed?: T) => void;
   /** Call after a failed save: nothing is confirmed and the edits stay. */
   failed: () => void;
   /**
-   * False once the form moved to another identity (or another switch back)
-   * after this save started. `succeeded` and `failed` then do nothing; check
-   * it before touching the form yourself (e.g. mapping a field error).
+   * False once this save no longer belongs to the form: it moved to another
+   * identity (or away and back) since the save started. `succeeded` and
+   * `failed` then do nothing; check it before touching the form yourself
+   * (e.g. mapping a field error).
    */
   isCurrent: () => boolean;
 };
+
+/** How a call to `submit()` ended. */
+export type DraftSubmitResult = 'saved' | 'invalid' | 'failed' | 'busy';
+
+/** The one save in flight: what it sent and which identity generation it belongs to. */
+type ActiveSave<T> = { id: number; generation: number; snapshot: T; outcome?: 'saved' | 'invalid' | 'failed' };
 
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
  * §8.3), never silently dropping an edit:
  * - a new `identity` (another site, another language scope) resets the form;
  * - a server change updates fields the person hasn't edited, keeps their
- *   edits, and reports keys both sides changed as `conflicts`;
+ *   edits, and reports keys both sides changed as `conflicts`, which stay
+ *   until resolved or until the draft matches the server again;
+ * - one save at a time: `submit()` takes a synchronous lock, so Enter or
+ *   Cmd+S during a save can't start a second one; only that save's own
+ *   completion releases it;
+ * - a refetch during a save reconciles values but never drops the save's
+ *   snapshot or its pending state;
  * - after a save, edits made while it was in flight survive and stay dirty;
  * - `isDirty` compares the form with the confirmed baseline, nothing else.
  *
  * The hook owns the form so the form's `defaultValues` is always the
- * baseline. (`useForm` re-applies its `defaultValues` on every render while
- * the form is untouched, so any other default would undo a reset.)
- *
- * `source` is the normalized editable values (`toValues(query.data)`).
+ * baseline (`useForm` re-applies its `defaultValues` on every render while
+ * the form is untouched). Always submit through `submit()`, never
+ * `form.handleSubmit()`.
  */
 export function useServerDraftForm<T extends DraftValues>({
   identity,
@@ -47,18 +59,19 @@ export function useServerDraftForm<T extends DraftValues>({
 }: {
   identity: ReadonlyArray<string | number | null | undefined>;
   source: T;
-  onSubmit: (values: T, save: DraftSave<T>) => Promise<void>;
+  onSubmit: (values: T, save: DraftSave<T>) => Promise<'saved' | 'invalid' | 'failed'>;
 }) {
   const identityKey = JSON.stringify(identity);
   const [baseline, setBaselineState] = useState<T>(source);
   const baselineRef = useRef(baseline);
   const identityRef = useRef(identityKey);
   const lastSource = useRef(source);
-  const submittedRef = useRef<T | null>(null);
-  // Bumped on every identity change. A save remembers the generation it began
-  // in; if the form has since switched to another identity (even back to the
-  // same one), its result belongs to a form that no longer exists.
+  // Bumped on every identity change, so a save that started for an earlier
+  // identity (even one we came back to) can recognise it no longer applies.
   const generationRef = useRef(0);
+  const activeRef = useRef<ActiveSave<T> | null>(null);
+  const nextSaveId = useRef(0);
+  const [isSaving, setIsSaving] = useState(false);
   const [conflicts, setConflicts] = useState<Array<keyof T & string>>([]);
   const onSubmitRef = useRef(onSubmit);
   onSubmitRef.current = onSubmit;
@@ -68,26 +81,31 @@ export function useServerDraftForm<T extends DraftValues>({
     setBaselineState(next);
   }, []);
 
+  const release = useCallback((save: ActiveSave<T>) => {
+    if (activeRef.current?.id !== save.id) return;
+    activeRef.current = null;
+    setIsSaving(false);
+  }, []);
+
   const form = useForm({
     defaultValues: baseline,
     onSubmit: async ({ value }) => {
-      const generation = generationRef.current;
-      const isCurrent = () => generation === generationRef.current;
-      submittedRef.current = value;
-      await onSubmitRef.current(value, {
+      const save = activeRef.current;
+      if (!save) return;
+      save.snapshot = value;
+      const isCurrent = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
+      save.outcome = await onSubmitRef.current(value, {
         baseline: baselineRef.current,
         succeeded: (confirmed) => {
-          if (isCurrent()) succeededRef.current(confirmed);
+          if (isCurrent()) succeededRef.current(save, confirmed);
         },
-        failed: () => {
-          if (isCurrent()) submittedRef.current = null;
-        },
+        failed: () => undefined,
         isCurrent,
       });
     },
   });
 
-  /** Applies `next` to the form, field by field, leaving fields that already hold it alone. */
+  /** Applies `next` to the form field by field; never resets meta or pending state. */
   const applyValues = useCallback(
     (next: T) => {
       const current = form.state.values as T;
@@ -98,52 +116,82 @@ export function useServerDraftForm<T extends DraftValues>({
     [form],
   );
 
-  const resetTo = useCallback(
-    (next: T) => {
-      setBaseline(next);
-      form.reset(next);
-    },
-    [form, setBaseline],
-  );
+  /** Keeps a conflict until it is resolved or the draft agrees with the server again; adds new ones. */
+  const mergeConflicts = useCallback((found: Array<keyof T & string>, current: T, nextBaseline: T) => {
+    setConflicts((previous) => {
+      const kept = previous.filter((key) => !deepEqual(current[key], nextBaseline[key]));
+      const merged = [...new Set([...kept, ...found])];
+      return merged.length === previous.length && merged.every((key, index) => key === previous[index]) ? previous : merged;
+    });
+  }, []);
 
   useEffect(() => {
     const identityChanged = identityRef.current !== identityKey;
     if (!identityChanged && deepEqual(lastSource.current, source)) return;
     lastSource.current = source;
     identityRef.current = identityKey;
-    if (identityChanged) generationRef.current += 1;
-    const current = form.state.values as T;
-    const prior = baselineRef.current;
-    if (identityChanged || !isDraftDirty(current, prior)) {
-      // Something else to edit, or nothing edited yet: take the server's values.
-      submittedRef.current = null;
+    if (identityChanged) {
+      // Something else to edit: start clean. A save still in flight belongs to
+      // the old identity and will find itself no longer current.
+      generationRef.current += 1;
+      activeRef.current = null;
+      setIsSaving(false);
       setConflicts([]);
-      resetTo(source);
+      setBaseline(source);
+      form.reset(source);
       return;
     }
+    const current = form.state.values as T;
+    const prior = baselineRef.current;
+    if (!activeRef.current && !isDraftDirty(current, prior)) {
+      // Nothing edited and nothing saving: take the server's values.
+      setConflicts([]);
+      setBaseline(source);
+      form.reset(source);
+      return;
+    }
+    // Edits or a save in flight: merge without resetting anything.
     const change = reconcileServerChange({ baseline: prior, current, next: source });
     setBaseline(change.baseline);
     applyValues(change.current);
-    setConflicts(change.conflicts);
-  }, [applyValues, form, identityKey, resetTo, setBaseline, source]);
+    mergeConflicts(change.conflicts, change.current, change.baseline);
+  }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
 
-  const succeeded = (confirmed?: T) => {
-    const submitted = submittedRef.current ?? (form.state.values as T);
-    submittedRef.current = null;
-    const result = reconcileSaveSuccess({ submitted, current: form.state.values as T, confirmed });
+  const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
+    const result = reconcileSaveSuccess({ submitted: save.snapshot, current: form.state.values as T, confirmed });
     lastSource.current = result.baseline;
-    resetTo(result.baseline);
+    setBaseline(result.baseline);
+    form.reset(result.baseline);
     applyValues(result.current);
     setConflicts((previous) => previous.filter((key) => !deepEqual(result.current[key], result.baseline[key])));
   };
   const succeededRef = useRef(succeeded);
   succeededRef.current = succeeded;
 
+  /**
+   * Validates and saves. Returns 'busy' (and does nothing) while another save
+   * from this form is in flight.
+   */
+  const submit = useCallback(async (): Promise<DraftSubmitResult> => {
+    if (activeRef.current) return 'busy';
+    nextSaveId.current += 1;
+    const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current, snapshot: form.state.values as T };
+    activeRef.current = save;
+    setIsSaving(true);
+    try {
+      await form.handleSubmit();
+      // A save for an identity the form has since left reports nothing useful to this form.
+      return save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
+    } finally {
+      release(save);
+    }
+  }, [form, release]);
+
   const values = useStore(form.store, (state) => state.values) as T;
   const isDirty = isDraftDirty(values, baseline);
 
   const discard = useCallback(() => {
-    if (submittedRef.current) return;
+    if (activeRef.current) return;
     setConflicts([]);
     form.reset(baselineRef.current);
   }, [form]);
@@ -156,5 +204,5 @@ export function useServerDraftForm<T extends DraftValues>({
     [applyValues, form],
   );
 
-  return { form, baseline, isDirty, conflicts, discard, resolveConflict };
+  return { form, baseline, isDirty, isSaving, conflicts, submit, discard, resolveConflict };
 }

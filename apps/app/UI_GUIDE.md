@@ -50,12 +50,16 @@ Use the design-system primitives. Never hand-write a card.
 
 ```tsx
 const { form, ...draft } = useServerDraftForm({ identity: [projectId, 'general'], source, onSubmit });
-useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting, submit, discard: draft.discard });
+// onSubmit returns 'saved' | 'invalid' | 'failed' and calls save.succeeded(confirmed) on success.
+useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
 ```
 
 - **`source`** is the normalized editable values from the query (`toValues(query.data)`). The hook keeps the form in
   step with the server and never drops an edit. Fields the person hasn't touched take server changes. Edits made
   during a save survive it. Fields both sides changed show a "Use theirs / Keep mine" callout.
+- **Always submit through `draft.submit()`**, never `form.handleSubmit()`. Only one save runs at a time, and a second
+  Save, Enter or Cmd+S during a save is refused. Map a server field error only if the field still holds the value that
+  was sent, and only while `save.isCurrent()`.
 - **Every editable value is in the form**, including icons, toggles and per-language drafts. No `useState` beside it,
   and no `useEffect` copying server data.
 - **Wrap the screen in `SaveRegionProvider`.** The bar appears only while something is dirty. It saves with Save,
