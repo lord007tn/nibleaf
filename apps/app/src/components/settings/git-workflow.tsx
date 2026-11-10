@@ -24,6 +24,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
+import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
 import {
   type GitConflict as Conflict,
@@ -301,15 +302,14 @@ export function GitWorkflow({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="git2-token">{t('settings.git.workflow.token')}</Label>
-                  <Input
-                    autoComplete="off"
+                  <SecretInput
                     id="git2-token"
+                    name="github-access-token"
                     onChange={(e) => {
                       setToken(e.target.value);
                       setAuthorizedAccount(null);
                     }}
                     placeholder="github_pat_…"
-                    type="password"
                     value={token}
                   />
                 </div>
@@ -649,7 +649,7 @@ export function GitWorkflow({
               </div>
               <div>
                 <Label htmlFor="git2-update-token">{t('settings.git.workflow.rotateToken')}</Label>
-                <Input autoComplete="off" id="git2-update-token" onChange={(e) => setToken(e.target.value)} type="password" value={token} />
+                <SecretInput id="git2-update-token" name="github-access-token" onChange={(e) => setToken(e.target.value)} value={token} />
               </div>
               <div>
                 <Label htmlFor="git2-update-base">{t('settings.git.workflow.baseBranch')}</Label>
