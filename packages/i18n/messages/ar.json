@@ -3882,6 +3882,7 @@
   "settings_smartai_disableconfirm_description": "سيتوقف القرّاء عن تلقي إجابات الذكاء الاصطناعي فورًا. يمكنك إعادة تفعيله لهذا الموقع من هذه الإعدادات.",
   "settings_languages_defaultconfirm_title": "هل تريد تغيير اللغة الافتراضية؟",
   "settings_languages_defaultconfirm_description": "سيغيّر هذا لغة المحتوى الذي تعرضه جميع روابط الموقع التي لا تتضمن رمز لغة، بما فيها الصفحة الرئيسية. سيرى زوّار هذه الروابط اللغة الافتراضية الجديدة.",
+  "settings_languages_defaultconfirm_nextpublish": "يرى القرّاء اللغة الافتراضية الجديدة بعد النشر التالي.",
   "settings_languages_actionsfor": "إجراءات {label}",
   "settings_languages_show": "إظهار على الموقع",
   "settings_languages_hide": "إخفاء من الموقع",

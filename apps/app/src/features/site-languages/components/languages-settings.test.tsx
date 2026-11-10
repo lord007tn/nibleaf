@@ -154,6 +154,8 @@ describe('LanguagesSettings', () => {
     await openActions('ar');
     await act(async () => menuItem('settings.languages.makeDefault')?.click());
     expect(dialog()?.textContent).toContain('settings.languages.defaultConfirm.description');
+    // The change reaches readers on the next publish, and the dialog says so.
+    expect(dialog()?.textContent).toContain('settings.languages.defaultConfirm.nextPublish');
     expect(mocks.update).not.toHaveBeenCalled();
     await act(async () => dialogButton(approved ? 'settings.languages.makeDefault' : 'common.cancel')?.click());
     expect(mocks.update).toHaveBeenCalledTimes(approved ? 1 : 0);

@@ -80,6 +80,8 @@ const addons = [
 ] satisfies ProjectAddon[];
 
 const mocks = vi.hoisted(() => ({
+  /** What the add-ons query returns; a test changes it and re-renders to simulate a refetch. */
+  addons: [] as ProjectAddon[],
   update: vi.fn(),
   activate: vi.fn(),
   deactivate: vi.fn(),
@@ -92,7 +94,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }));
 vi.mock('@/hooks/api', () => ({
-  useProjectAddons: () => ({ data: addons, isPending: false, isError: false, isFetching: false, refetch: vi.fn() }),
+  useProjectAddons: () => ({ data: mocks.addons, isPending: false, isError: false, isFetching: false, refetch: vi.fn() }),
   useUpdateProjectAddon: () => ({ mutateAsync: mocks.update, isPending: false }),
   useActivateProjectAddon: () => ({ mutateAsync: mocks.activate, isPending: false }),
   useDeactivateProjectAddon: () => ({ mutateAsync: mocks.deactivate, isPending: false }),
@@ -105,6 +107,12 @@ vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 let dirty: Set<string>;
+const report = (id: string, changed: boolean) => (changed ? dirty.add(id) : dirty.delete(id));
+const page = () => (
+  <ConfigDirtyProvider report={report}>
+    <AddonsSettings projectId="site-1" />
+  </ConfigDirtyProvider>
+);
 
 async function render() {
   container = document.createElement('div');
@@ -112,18 +120,21 @@ async function render() {
   document.body.append(container);
   root = createRoot(container);
   dirty = new Set();
-  const report = (id: string, changed: boolean) => (changed ? dirty.add(id) : dirty.delete(id));
-  await act(async () =>
-    root.render(
-      <ConfigDirtyProvider report={report}>
-        <AddonsSettings projectId="site-1" />
-      </ConfigDirtyProvider>,
-    ),
-  );
+  await act(async () => root.render(page()));
 }
+
+/** The add-ons query returns `next` (a refetch, or someone else's change) and the page re-renders with it. */
+const serverSends = async (next: ProjectAddon[]) => {
+  mocks.addons = next;
+  await act(async () => root.render(page()));
+};
+/** The add-ons as the server now holds them, with one add-on changed. */
+const withAddon = (id: ProjectAddon['id'], patch: Partial<ProjectAddon>) =>
+  mocks.addons.map((addon) => (addon.id === id ? { ...addon, ...patch } : addon));
 
 beforeEach(async () => {
   mocks.access = { status: 'admin', edit: 'edit' };
+  mocks.addons = addons;
   await render();
 });
 
@@ -161,7 +172,19 @@ const blur = (el: HTMLElement) =>
     el.dispatchEvent(new FocusEvent('blur'));
   });
 const region = () => container.querySelector('[data-slot="save-region"]');
-const save = () => act(async () => [...(region()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes('common.save'))?.click());
+const buttonNamed = (scope: ParentNode | null | undefined, name: string) =>
+  [...(scope?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes(name));
+const saveButton = () => buttonNamed(region(), 'common.save');
+const save = () => act(async () => saveButton()?.click());
+/** Enter in a field: the browser submits the field's form. */
+const pressEnterIn = (el: HTMLElement) =>
+  act(async () => {
+    el.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+const pressCtrlS = () =>
+  act(async () => {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
 const errorOf = (el: HTMLElement) =>
   (el.getAttribute('aria-describedby') ?? '')
     .split(' ')
@@ -172,6 +195,34 @@ const describedText = (el: HTMLElement) =>
     .split(' ')
     .map((id) => document.getElementById(id)?.textContent ?? '')
     .join(' ');
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const addonById = (id: ProjectAddon['id']): ProjectAddon => {
+  const addon = addons.find((item) => item.id === id);
+  if (!addon) throw new Error(`No add-on ${id}`);
+  return addon;
+};
+const consent = addonById('consent-banner');
+const consentBody = (privacyPolicyUrl: string, expectedRevision: number) => ({
+  addonId: 'consent-banner',
+  body: { config: { ...consent.config, privacyPolicyUrl }, expectedRevision },
+});
+/** The consent banner as the server returns it after saving `privacyPolicyUrl`. */
+const savedConsent = (privacyPolicyUrl: string, patch: Partial<ProjectAddon> = {}): ProjectAddon => ({
+  ...consent,
+  config: { ...consent.config, privacyPolicyUrl },
+  ...patch,
+});
+const conflictNote = () => container.textContent?.includes('forms.changedElsewhere') ?? false;
 
 describe('AddonsSettings', () => {
   it('lays the add-on groups out as sections under one page title, with no inner headings', () => {
@@ -297,5 +348,237 @@ describe('AddonsSettings', () => {
     await act(async () => toggle.click());
     expect(mocks.deactivate).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain('settings.addons.unavailableDescription');
+  });
+
+  describe('saving through the page bar', () => {
+    it('keeps the bar and the leave guard up while a save is in flight, then hides the bar and keeps the saved value', async () => {
+      const pending = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pending.promise);
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/privacy');
+      await save();
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 1));
+      expect(region()).not.toBeNull();
+      expect(saveButton()?.getAttribute('aria-busy')).toBe('true');
+      expect(dirty.size).toBeGreaterThan(0);
+
+      await act(async () => pending.resolve(savedConsent('https://acme.test/privacy', { revision: 2 })));
+      expect(privacy.value).toBe('https://acme.test/privacy');
+      expect(region()).toBeNull();
+      expect(dirty.size).toBe(0);
+    });
+
+    it('keeps an edit made during a save, dirty, and saves it next with the revision the first save produced', async () => {
+      const pending = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pending.promise);
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/a');
+      await save();
+      await type(privacy, 'https://acme.test/b');
+      await act(async () => pending.resolve(savedConsent('https://acme.test/a', { revision: 2 })));
+      expect(privacy.value).toBe('https://acme.test/b');
+      expect(region()).not.toBeNull();
+      expect(dirty.size).toBeGreaterThan(0);
+
+      // The list refetch after the save brings the new revision; the newer edit stays.
+      await serverSends(withAddon('consent-banner', savedConsent('https://acme.test/a', { revision: 2 })));
+      expect(privacy.value).toBe('https://acme.test/b');
+      expect(region()).not.toBeNull();
+
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/b', { revision: 3 }));
+      await save();
+      expect(mocks.update).toHaveBeenLastCalledWith(consentBody('https://acme.test/b', 2));
+      expect(region()).toBeNull();
+      expect(dirty.size).toBe(0);
+    });
+
+    it('starts exactly one save while one is in flight, whatever submits again (Enter, Save, Ctrl+S)', async () => {
+      const pending = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pending.promise);
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/a');
+      await save();
+      await type(privacy, 'https://acme.test/b');
+      await pressEnterIn(privacy);
+      await save();
+      await pressCtrlS();
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+
+      await act(async () => pending.resolve(savedConsent('https://acme.test/a', { revision: 2 })));
+      // Nothing was queued behind the first save: the newer edit waits for the person.
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(privacy.value).toBe('https://acme.test/b');
+      expect(region()).not.toBeNull();
+
+      // Once it settled, Enter saves again (so the Enter above was really refused), and Ctrl+S during that save is too.
+      const second = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(second.promise);
+      await pressEnterIn(privacy);
+      expect(mocks.update).toHaveBeenCalledTimes(2);
+      // It sends the revision the first save returned, before the list has refetched.
+      expect(mocks.update).toHaveBeenLastCalledWith(consentBody('https://acme.test/b', 2));
+      await type(privacy, 'https://acme.test/c');
+      await pressCtrlS();
+      expect(mocks.update).toHaveBeenCalledTimes(2);
+      await act(async () => second.resolve(savedConsent('https://acme.test/b', { revision: 3 })));
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/c', { revision: 4 }));
+      await pressCtrlS();
+      expect(mocks.update).toHaveBeenCalledTimes(3);
+      expect(mocks.update).toHaveBeenLastCalledWith(consentBody('https://acme.test/c', 3));
+    });
+  });
+
+  describe('server changes while editing', () => {
+    it('flags a field someone else changed, keeps the edit, and keeps the flag through a refetch of another field', async () => {
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://mine.test/privacy');
+      expect(conflictNote()).toBe(false);
+
+      await serverSends(withAddon('consent-banner', savedConsent('https://theirs.test/privacy', { revision: 2 })));
+      expect(conflictNote()).toBe(true);
+      expect(buttonNamed(container, 'forms.useTheirs')).toBeTruthy();
+      expect(buttonNamed(container, 'forms.keepMine')).toBeTruthy();
+      expect(privacy.value).toBe('https://mine.test/privacy');
+      expect(region()).not.toBeNull();
+
+      // Another field changes elsewhere: it is merged in, and the open conflict stays.
+      await serverSends(
+        withAddon('consent-banner', {
+          config: { ...consent.config, presentation: 'compact', privacyPolicyUrl: 'https://theirs.test/privacy' },
+          revision: 3,
+        }),
+      );
+      expect(conflictNote()).toBe(true);
+      expect(privacy.value).toBe('https://mine.test/privacy');
+      expect(controlFor('settings.addons.consent.presentation').textContent).toContain('settings.addons.consent.presentation.compact');
+
+      // "Use theirs" takes the server's address; nothing is left to save.
+      await act(async () => buttonNamed(container, 'forms.useTheirs')?.click());
+      expect(conflictNote()).toBe(false);
+      expect(privacy.value).toBe('https://theirs.test/privacy');
+      expect(region()).toBeNull();
+      expect(dirty.size).toBe(0);
+    });
+
+    it('"Keep mine" clears the flag and saves the edit against the newest revision', async () => {
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://mine.test/privacy');
+      await serverSends(withAddon('consent-banner', savedConsent('https://theirs.test/privacy', { revision: 2 })));
+      await act(async () => buttonNamed(container, 'forms.keepMine')?.click());
+      expect(conflictNote()).toBe(false);
+      expect(privacy.value).toBe('https://mine.test/privacy');
+      expect(region()).not.toBeNull();
+
+      mocks.update.mockResolvedValueOnce(savedConsent('https://mine.test/privacy', { revision: 3 }));
+      await save();
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://mine.test/privacy', 2));
+      expect(region()).toBeNull();
+    });
+  });
+
+  describe('the switch and the settings save together', () => {
+    it('locks the switch while a settings save runs, then flips it with the saved revision', async () => {
+      const pendingSave = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pendingSave.promise);
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/privacy');
+      await save();
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 1));
+
+      // Both write the same add-on revision, so the switch waits for the save.
+      const toggle = switchFor('settings.addons.consent.title');
+      expect(toggle.getAttribute('aria-disabled')).toBe('true');
+      await act(async () => toggle.click());
+      expect(mocks.deactivate).not.toHaveBeenCalled();
+
+      await act(async () => pendingSave.resolve(savedConsent('https://acme.test/privacy', { revision: 2 })));
+      expect(privacy.value).toBe('https://acme.test/privacy');
+      expect(region()).toBeNull();
+
+      // Before the list refetches, the switch already sends the revision the save produced.
+      mocks.deactivate.mockResolvedValueOnce({ ...consent, enabled: false, status: 'inactive', revision: 3 });
+      const unlocked = switchFor('settings.addons.consent.title');
+      expect(unlocked.getAttribute('aria-disabled')).not.toBe('true');
+      await act(async () => unlocked.click());
+      expect(mocks.deactivate).toHaveBeenCalledWith({ addonId: 'consent-banner', expectedRevision: 2 });
+      await serverSends(withAddon('consent-banner', { enabled: false, status: 'inactive', revision: 3 }));
+      expect(privacy.value).toBe('https://acme.test/privacy');
+      expect(region()).toBeNull();
+
+      // The next save sends the newest revision.
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/next', { revision: 4 }));
+      await type(privacy, 'https://acme.test/next');
+      await save();
+      expect(mocks.update).toHaveBeenLastCalledWith(consentBody('https://acme.test/next', 3));
+    });
+
+    it('holds a settings save until a switch flip lands, then sends its revision', async () => {
+      const pendingToggle = deferred<ProjectAddon>();
+      mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
+      await act(async () => switchFor('settings.addons.consent.title').click());
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/privacy');
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/privacy', { enabled: false, status: 'inactive', revision: 3 }));
+      await save();
+      // Nothing is sent while the switch's write is in flight.
+      expect(mocks.update).not.toHaveBeenCalled();
+      await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
+    });
+
+    it('sends the revision the switch produced when settings are saved after it', async () => {
+      mocks.deactivate.mockResolvedValueOnce({ ...consent, enabled: false, status: 'inactive', revision: 2 });
+      await act(async () => switchFor('settings.addons.consent.title').click());
+      await serverSends(withAddon('consent-banner', { enabled: false, status: 'inactive', revision: 2 }));
+
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/privacy', { revision: 3 }));
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      expect(privacy.disabled).toBe(false); // settings stay editable while the add-on is off
+      await type(privacy, 'https://acme.test/privacy');
+      await save();
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
+    });
+  });
+
+  describe('add-ons the plan no longer includes', () => {
+    const unavailable = (addon: ProjectAddon, enabled: boolean): Partial<ProjectAddon> => ({
+      enabled,
+      status: 'unavailable',
+      availability: { ...addon.availability, state: 'coming_soon', available: false, decision: 'disabled' },
+    });
+
+    it('lets an enabled one be switched off, with its settings disabled', async () => {
+      const editSuggestions = addonById('edit-suggestions');
+      await serverSends(withAddon('edit-suggestions', unavailable(editSuggestions, true)));
+      const toggle = switchFor('settings.addons.editSuggestions.title');
+      expect(toggle.getAttribute('aria-disabled')).not.toBe('true');
+      expect(toggle.getAttribute('aria-checked')).toBe('true');
+      expect(describedText(toggle)).not.toContain('settings.addons.unavailableDescription');
+      expect(inputFor('settings.addons.editUrl.label').disabled).toBe(true);
+
+      mocks.deactivate.mockResolvedValueOnce({ ...editSuggestions, ...unavailable(editSuggestions, false), revision: 3 });
+      await act(async () => toggle.click());
+      expect(mocks.deactivate).toHaveBeenCalledWith({ addonId: 'edit-suggestions', expectedRevision: 2 });
+      expect(mocks.activate).not.toHaveBeenCalled();
+    });
+
+    it('keeps a disabled one off, says why next to the switch, and disables its settings', async () => {
+      const feedback = addonById('feedback');
+      await serverSends(withAddon('feedback', unavailable(feedback, false)));
+      const toggle = switchFor('settings.addons.feedback.title');
+      expect(toggle.getAttribute('aria-disabled')).toBe('true');
+      expect(toggle.getAttribute('aria-checked')).toBe('false');
+      expect(describedText(toggle)).toContain('settings.addons.unavailableDescription');
+      expect(container.textContent).toContain('settings.addons.unavailableDescription');
+      for (const label of ['settings.addons.feedback.placement', 'settings.addons.feedback.presentation']) {
+        const trigger = controlFor(label);
+        expect(trigger.hasAttribute('disabled') || trigger.hasAttribute('data-disabled')).toBe(true);
+      }
+
+      await act(async () => toggle.click());
+      expect(mocks.activate).not.toHaveBeenCalled();
+    });
   });
 });

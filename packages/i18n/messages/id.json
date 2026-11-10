@@ -3782,6 +3782,7 @@
   "settings_smartai_disableconfirm_description": "Pembaca akan langsung berhenti menerima jawaban AI. Anda dapat mengaktifkan AI lagi untuk situs ini dari pengaturan ini.",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "Pembaca melihat bahasa default baru setelah Anda menerbitkan berikutnya.",
   "settings_languages_actionsfor": "Tindakan untuk {label}",
   "settings_languages_show": "Tampilkan di situs",
   "settings_languages_hide": "Sembunyikan di situs",

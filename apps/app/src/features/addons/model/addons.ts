@@ -12,6 +12,7 @@ export type AddonLike = {
   id: AddonId;
   group: AddonGroup;
   config: Record<string, unknown>;
+  enabled: boolean;
   status: 'active' | 'inactive' | 'needs_configuration' | 'unavailable';
   availability: { state: 'available' | 'preview' | 'coming_soon'; available: boolean };
 };
@@ -89,15 +90,28 @@ export function readOnlyNote(status: AdminStatus, edit: EditStatus): MessageKey 
   return edit === 'viewOnly' ? 'settings.permissions.viewerBody' : 'settings.permissions.body';
 }
 
-/** The on/off switch: Admins only, never while a switch for it is saving, and only for add-ons the plan includes. */
-export function toggleDecision(addon: Pick<AddonLike, 'availability'>, status: AdminStatus, saving: boolean): Decision {
+/**
+ * The on/off switch: Admins only, never while a switch for it is saving.
+ * Turning an add-on ON needs the plan to include it; turning it OFF never
+ * does, so an add-on the plan no longer covers can still be switched off
+ * (the server allows deactivation and refuses only activation).
+ */
+export function toggleDecision(addon: Pick<AddonLike, 'availability' | 'enabled'>, status: AdminStatus, saving: boolean): Decision {
   if (status !== 'admin' || saving) return locked;
-  if (!addon.availability.available) return { kind: 'denied', reason: 'settings.addons.unavailableDescription' };
+  if (!addon.enabled && !addon.availability.available) return { kind: 'denied', reason: 'settings.addons.unavailableDescription' };
   return allowed;
 }
 
-/** An add-on's settings fields: Admins only. They stay editable while the add-on is off, so it can be set up first. */
-export const settingsDecision = (status: AdminStatus): Decision => (status === 'admin' ? allowed : locked);
+/**
+ * An add-on's settings fields: Admins only, and only while the plan includes
+ * the add-on (the server refuses settings updates for unavailable add-ons).
+ * They stay editable while the add-on is off, so it can be set up first.
+ */
+export function settingsDecision(addon: Pick<AddonLike, 'availability'>, status: AdminStatus): Decision {
+  if (status !== 'admin') return locked;
+  if (!addon.availability.available) return { kind: 'denied', reason: 'settings.addons.unavailableDescription' };
+  return allowed;
+}
 
 // ─── Settings forms ─────────────────────────────────────────────────────────
 

@@ -3782,6 +3782,7 @@
   "settings_smartai_disableconfirm_description": "读者将立即不再收到 AI 回答。你可以在这些设置中为此站点重新开启 AI。",
   "settings_languages_defaultconfirm_title": "Change the default language?",
   "settings_languages_defaultconfirm_description": "This changes the language served by every site URL without a language prefix, including the home page. Visitors using those links will see the new default language.",
+  "settings_languages_defaultconfirm_nextpublish": "读者会在你下次发布后看到新的默认语言。",
   "settings_languages_actionsfor": "{label} 的操作",
   "settings_languages_show": "在站点上显示",
   "settings_languages_hide": "在站点上隐藏",

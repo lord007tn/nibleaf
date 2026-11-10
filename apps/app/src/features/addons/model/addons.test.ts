@@ -25,6 +25,7 @@ const addon = (overrides: Partial<AddonLike> = {}): AddonLike => ({
   id: 'feedback',
   group: 'engagement',
   config: {},
+  enabled: true,
   status: 'active',
   availability: available,
   ...overrides,
@@ -70,11 +71,17 @@ describe('access', () => {
     expect(toggleDecision(addon(), 'admin', false)).toEqual({ kind: 'allowed' });
   });
 
-  it('explains an add-on the plan does not include', () => {
-    expect(toggleDecision(addon({ availability: { state: 'available', available: false } }), 'admin', false)).toEqual({
+  const unavailable = { state: 'available' as const, available: false };
+
+  it('explains why an add-on the plan does not include cannot be switched on', () => {
+    expect(toggleDecision(addon({ enabled: false, availability: unavailable }), 'admin', false)).toEqual({
       kind: 'denied',
       reason: 'settings.addons.unavailableDescription',
     });
+  });
+
+  it('still lets Admins switch OFF an add-on the plan no longer includes (the server allows deactivation)', () => {
+    expect(toggleDecision(addon({ enabled: true, availability: unavailable }), 'admin', false)).toEqual({ kind: 'allowed' });
   });
 
   it('locks without a reason while access loads, for non-Admins, and while a switch saves', () => {
@@ -86,9 +93,19 @@ describe('access', () => {
   });
 
   it('opens settings to Admins only', () => {
-    expect(settingsDecision('admin')).toEqual({ kind: 'allowed' });
-    expect(settingsDecision('notAdmin')).toEqual({ kind: 'locked' });
-    expect(settingsDecision('pending')).toEqual({ kind: 'locked' });
+    expect(settingsDecision(addon(), 'admin')).toEqual({ kind: 'allowed' });
+    expect(settingsDecision(addon(), 'notAdmin')).toEqual({ kind: 'locked' });
+    expect(settingsDecision(addon(), 'pending')).toEqual({ kind: 'locked' });
+  });
+
+  it('closes settings of an add-on the plan does not include, on or off (the server refuses those updates)', () => {
+    for (const enabled of [true, false]) {
+      expect(settingsDecision(addon({ enabled, availability: unavailable }), 'admin')).toEqual({
+        kind: 'denied',
+        reason: 'settings.addons.unavailableDescription',
+      });
+    }
+    expect(settingsDecision(addon({ enabled: false }), 'admin')).toEqual({ kind: 'allowed' });
   });
 
   it('says once why the page is read-only, worded for Viewers when they are one', () => {

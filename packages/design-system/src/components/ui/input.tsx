@@ -4,21 +4,27 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { cn } from '../../lib/utils'
 
 /**
- * `unicode-bidi: plaintext` makes typed text take its own direction: a Latin
- * value in an Arabic interface reads and aligns left-to-right with its
- * punctuation in place, while an empty field keeps the interface's direction
- * for the caret and placeholder (which `dir="auto"` would lose).
+ * Without a `dir`, `unicode-bidi: plaintext` makes typed text take its own
+ * direction: a Latin value in an Arabic interface reads and aligns
+ * left-to-right with its punctuation in place, while an empty field keeps the
+ * interface's direction for the caret and placeholder (which `dir="auto"`
+ * would lose). With an explicit `dir` (paths, hosts, emails, code) the field
+ * keeps that base direction, because plaintext would let an Arabic-first path
+ * like `/دليل/start` flip it and move its separators.
  */
-function Input({ className, type, density = "default", ...props }: React.ComponentProps<"input"> & { density?: "default" | "compact" }) {
+function Input({ className, type, density = "default", dir, ...props }: React.ComponentProps<"input"> & { density?: "default" | "compact" }) {
   return (
     <InputPrimitive
       type={type}
       data-slot="input"
       data-density={density}
       className={cn(
-        "h-(--control-size-default) min-h-(--control-size-default) data-[density=compact]:h-(--control-size-compact) data-[density=compact]:min-h-(--control-size-compact) w-full min-w-0 rounded-md border border-input bg-transparent [unicode-bidi:plaintext] px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        "h-(--control-size-default) min-h-(--control-size-default) data-[density=compact]:h-(--control-size-compact) data-[density=compact]:min-h-(--control-size-compact) w-full min-w-0 rounded-md border border-input bg-transparent px-2.5 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        // Fields with a fixed direction (paths, hosts, emails, code) keep it.
+        dir === undefined && "[unicode-bidi:plaintext]",
         className
       )}
+      dir={dir}
       {...props}
     />
   )
