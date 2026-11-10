@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Loader2Icon } from "lucide-react"
@@ -57,6 +58,29 @@ type ButtonLoadingProps = {
   loadingText?: string
 }
 
+type ButtonReasonProps = {
+  /**
+   * Why the button can't be used right now (operations/ui-overhaul.md §6.5).
+   * The button is disabled but stays in the tab order (base-ui
+   * `focusableWhenDisabled`), so keyboard and screen reader users reach it and
+   * hear the reason through `aria-describedby`. `loading` wins: busy is not a
+   * reason. Without it the button renders exactly as before.
+   *
+   * Button itself shows no tooltip, so published docs pages that use Button
+   * don't load tooltip code. Dashboard code that wants the reason on hover
+   * uses `TooltipButton` (./tooltip-button), which shows it.
+   */
+  disabledReason?: React.ReactNode
+}
+
+/** Joins `aria-describedby` id lists, dropping blanks and duplicates. */
+const joinIds = (...ids: Array<string | undefined>) => {
+  const unique = [...new Set(ids.flatMap((id) => (id ? id.split(/\s+/) : [])).filter(Boolean))]
+  return unique.length ? unique.join(" ") : undefined
+}
+
+const hasContent = (node: React.ReactNode) => node != null && node !== false && node !== ""
+
 function Button({
   className,
   variant = "default",
@@ -64,54 +88,77 @@ function Button({
   loading,
   loadingText,
   disabled,
+  disabledReason,
   children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & ButtonLoadingProps) {
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & ButtonLoadingProps & ButtonReasonProps) {
+  const reasonId = React.useId()
   // Buttons that never pass `loading` render exactly as before.
   const canLoad = loading !== undefined
-  return (
+  const hasReason = !loading && hasContent(disabledReason)
+  const content = canLoad ? (
+      // Both states share one grid cell, so the button is as wide as the
+      // wider of the two and never jumps when loading starts or ends. Both
+      // may shrink, so a long loadingText wraps instead of overflowing.
+      // Without loadingText the label is hidden with opacity, not
+      // visibility, so it stays the button's accessible name.
+      <span className="inline-grid min-w-0 max-w-full items-center justify-items-center gap-[inherit]">
+        <span
+          className={cn(
+            "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-[inherit]",
+            loading && (loadingText ? "invisible" : "opacity-0")
+          )}
+          aria-hidden={loading && loadingText ? true : undefined}
+        >
+          {children}
+        </span>
+        <span
+          className={cn(
+            "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-1.5",
+            !loading && "invisible"
+          )}
+          aria-hidden={!loading || !loadingText ? true : undefined}
+        >
+          <Loader2Icon aria-hidden className="animate-spin motion-reduce:animate-none" />
+          {loadingText ? <span className="min-w-0 overflow-x-clip text-ellipsis">{loadingText}</span> : null}
+        </span>
+      </span>
+    ) : (
+      children
+    )
+  const button = (
     <ButtonPrimitive
       data-slot="button"
       data-loading={loading ? "" : undefined}
       aria-busy={loading || undefined}
       className={cn(
         buttonVariants({ variant, size, className }),
-        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100"
+        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100",
+        // A reason keeps the button focusable, so it's `aria-disabled` rather
+        // than `:disabled`, and it keeps pointer events for the tooltip.
+        hasReason && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       )}
-      disabled={disabled || loading}
+      disabled={disabled || loading || hasReason}
       {...props}
+      {...(hasReason
+        ? { focusableWhenDisabled: true, "aria-describedby": joinIds(props["aria-describedby"], reasonId) }
+        : {})}
     >
-      {canLoad ? (
-        // Both states share one grid cell, so the button is as wide as the
-        // wider of the two and never jumps when loading starts or ends. Both
-        // may shrink, so a long loadingText wraps instead of overflowing.
-        // Without loadingText the label is hidden with opacity, not
-        // visibility, so it stays the button's accessible name.
-        <span className="inline-grid min-w-0 max-w-full items-center justify-items-center gap-[inherit]">
-          <span
-            className={cn(
-              "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-[inherit]",
-              loading && (loadingText ? "invisible" : "opacity-0")
-            )}
-            aria-hidden={loading && loadingText ? true : undefined}
-          >
-            {children}
-          </span>
-          <span
-            className={cn(
-              "col-start-1 row-start-1 inline-flex min-w-0 max-w-full items-center justify-center gap-1.5",
-              !loading && "invisible"
-            )}
-            aria-hidden={!loading || !loadingText ? true : undefined}
-          >
-            <Loader2Icon aria-hidden className="animate-spin motion-reduce:animate-none" />
-            {loadingText ? <span className="min-w-0 overflow-x-clip text-ellipsis">{loadingText}</span> : null}
-          </span>
-        </span>
-      ) : (
-        children
-      )}
+      {content}
     </ButtonPrimitive>
+  )
+  if (!hasReason) return button
+  return (
+    <>
+      {button}
+      {/* The description for assistive tech; `hidden` keeps it out of the
+          reading order and layout while `aria-describedby` still reads it. */}
+      {hasReason ? (
+        <span hidden id={reasonId} data-slot="button-disabled-reason">
+          {disabledReason}
+        </span>
+      ) : null}
+    </>
   )
 }
 
