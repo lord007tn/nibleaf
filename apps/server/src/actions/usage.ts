@@ -286,13 +286,14 @@ export const getOrganizationUsageSummary = async (
   if (!(await canReadOrganizationBilling(userId, organizationId))) throw forbidden('Organization billing requires an owner or admin role.');
   const range = parsePeriod(period);
   const [projects, seats, planState] = await Promise.all([
-    prisma.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } }),
+    prisma.project.findMany({ where: { organizationId }, select: { id: true, name: true }, orderBy: { id: 'asc' } }),
     countEditorSeats(organizationId),
     getEffectivePlanConfiguration(organizationId),
   ]);
-  const websites: Awaited<ReturnType<typeof getProjectUsageSummaryForOrganization>>[] = [];
+  const websites: Array<Awaited<ReturnType<typeof getProjectUsageSummaryForOrganization>> & { name: string }> = [];
   // Bound database/ClickHouse fanout for large organizations.
-  for (const project of projects) websites.push(await getProjectUsageSummaryForOrganization(organizationId, project.id, period, false));
+  for (const project of projects)
+    websites.push({ ...(await getProjectUsageSummaryForOrganization(organizationId, project.id, period, false)), name: project.name });
   const quantities = new Map<string, string | null>([['editor_seat', seats?.toString() ?? null]]);
   for (const key of allMeterKeys.filter((key) => key !== 'editor_seat')) {
     const readings = websites.map((site) => site.meters.find((meter) => meter.key === key));
