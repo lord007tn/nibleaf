@@ -170,6 +170,20 @@ describe.skipIf(process.env.ORG_PEOPLE_INTEGRATION !== '1')('organization people
     expect(await db.prisma.member.findUnique({ where: { id: member.id } })).toBeNull();
   });
 
+  it('suggests org members without websites to an org Owner, never by prefix to a site-only Admin', async () => {
+    const f = await fixture();
+    const people = await import('./people');
+    const loner = await person('Zorro Nowebsite');
+    await db.prisma.member.create({ data: { organizationId: f.org.id, userId: loner.id, orgRole: 'member', role: 'viewer' } });
+    const siteAdmin = await person('Site admin');
+    await db.prisma.member.create({ data: { organizationId: f.org.id, userId: siteAdmin.id, orgRole: 'member', role: 'viewer' } });
+    await db.prisma.projectMember.create({ data: { organizationId: f.org.id, projectId: f.docs.id, userId: siteAdmin.id, role: 'admin' } });
+    expect((await people.suggestPeopleToInvite(f.owner.id, f.org.id, 'Zorro', f.docs.id)).map((u) => u.id)).toEqual([loner.id]);
+    expect(await people.suggestPeopleToInvite(siteAdmin.id, f.org.id, 'Zorro', f.docs.id)).toEqual([]);
+    // An exact address still finds them for the site Admin (design §6.5).
+    expect((await people.suggestPeopleToInvite(siteAdmin.id, f.org.id, loner.email, f.docs.id)).map((u) => u.id)).toEqual([loner.id]);
+  });
+
   it('reports last activity from the newest session', async () => {
     const f = await fixture();
     const at = new Date('2026-11-01T10:00:00.000Z');
