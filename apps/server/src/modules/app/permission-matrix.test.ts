@@ -84,6 +84,20 @@ harness.onError((error, ctx) =>
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
+/** Website routes that a site Admin grant does not reach: only org Owner/Admins
+ *  may delete a website (design §4.2). Checked in the action, by org role. */
+const ORG_ADMIN_ONLY_SITE_ROUTES = new Set(['DELETE /projects/:id']);
+
+/** Organization routes every member may use (Members see only what they can open). */
+const ORG_MEMBER_ROUTES = new Set([
+  'GET /organizations/:organizationId',
+  'GET /organizations/:organizationId/projects',
+  'GET /organizations/:organizationId/analytics',
+  'POST /organizations/:organizationId/leave',
+]);
+/** Organization routes only the Owner may use. */
+const ORG_OWNER_ROUTES = new Set(['POST /organizations/:organizationId/transfer-ownership', 'DELETE /organizations/:organizationId']);
+
 const routes = [
   ...new Map(appRoutes.routes.filter((route) => route.method !== 'ALL').map((route) => [`${route.method} ${route.path}`, route])).values(),
 ]
@@ -96,7 +110,10 @@ const ACCOUNT_SCOPED_WRITES: Record<string, string> = {
   'POST /invitations/:id/accept': 'invitation admission checks the recipient and issuer in its transaction',
   'POST /activation-events': 'records onboarding milestones for the caller only',
   'POST /notifications/read': "marks the caller's own inbox read",
-  'POST /projects': 'creates a brand-new site the caller owns',
+  'POST /projects': 'creates a website in the body organization; createProject requires org Owner/Admin there (see projects.test.ts)',
+  'POST /organizations': 'creates a brand-new, empty organization the caller owns',
+  'PUT /me/last-organization': "records the caller's own landing org / recent website after resolveOrgAccess or resolveSiteAccess",
+  'PUT /me/preferences': "changes the caller's own personal email notifications",
   'POST /join/:token': 'joins the site the token belongs to, as the caller; the token is the authorization',
   'POST /mcp-oauth/grants': 'checked per site in createMcpOAuthGrant: a Viewer role offers no MCP preset (see shared mcp tests)',
 };
@@ -148,7 +165,50 @@ describe('dashboard API permission matrix', () => {
 
   it('lists only account-scoped and secret routes that exist', () => {
     const keys = new Set(routes.map(({ method, path }) => `${method} ${path}`));
-    for (const key of [...Object.keys(ACCOUNT_SCOPED_WRITES), ...VIEWER_DENIED_READS]) expect(keys, key).toContain(key);
+    for (const key of [
+      ...Object.keys(ACCOUNT_SCOPED_WRITES),
+      ...VIEWER_DENIED_READS,
+      ...ORG_ADMIN_ONLY_SITE_ROUTES,
+      ...ORG_MEMBER_ROUTES,
+      ...ORG_OWNER_ROUTES,
+    ])
+      expect(keys, key).toContain(key);
+  });
+
+  it('keeps every /me route on the session user, never on a website or organization path', () => {
+    const me = routes.filter(({ path }) => path.startsWith('/me/'));
+    expect(me.map(({ method, path }) => `${method} ${path}`).sort()).toEqual([
+      'GET /me/invitations',
+      'GET /me/preferences',
+      'GET /me/switcher',
+      'PUT /me/last-organization',
+      'PUT /me/preferences',
+    ]);
+    for (const { path } of me) expect(path).not.toMatch(/:/);
+  });
+
+  it('records a last organization only for an organization the caller belongs to', async () => {
+    state.orgRole = 'member';
+    state.role = 'viewer';
+    state.organizationId = 'org-2';
+    const response = await harness.request('/me/last-organization', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ organizationId: 'org-1' }),
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it('records a recent website only when the caller can open it', async () => {
+    state.orgRole = 'member';
+    state.role = 'viewer';
+    state.organizationId = 'org-1';
+    const response = await harness.request('/me/last-organization', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ projectId: 'project-sibling' }),
+    });
+    expect(response.status).toBe(404);
   });
 
   const writes = routes.filter(
@@ -220,7 +280,8 @@ describe('dashboard API permission matrix', () => {
       state.role = grant;
       const result = await call(method, path);
       if (result.status === 404) expect(result.code).toBe('addon:not_found');
-      if (grant === 'admin' && !path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
+      if (ORG_ADMIN_ONLY_SITE_ROUTES.has(`${method} ${path}`)) expect(result).toMatchObject({ status: 403, code: 'auth:insufficient_role' });
+      else if (grant === 'admin' && !path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
     });
   }
   const orgRoutes = routes.filter(({ path }) => path.startsWith('/organizations/:organizationId'));
@@ -236,10 +297,10 @@ describe('dashboard API permission matrix', () => {
         ...(WRITE_METHODS.has(method) ? { body: '{}' } : {}),
       });
       const body = (await response.json()) as { code?: string };
+      const key = `${method} ${path}`;
       if (orgRole === 'non-member' || orgRole === 'other-org') expect(response.status).toBe(404);
-      else if (orgRole === 'member' && !(method === 'GET' && path === '/organizations/:organizationId') && !path.endsWith('/leave'))
-        expect(response.status).toBe(403);
-      else if (orgRole === 'admin' && path.endsWith('/transfer-ownership')) expect(response.status).toBe(403);
+      else if (orgRole === 'member' && !ORG_MEMBER_ROUTES.has(key)) expect(response.status).toBe(403);
+      else if (orgRole === 'admin' && ORG_OWNER_ROUTES.has(key)) expect(response.status).toBe(403);
       else expect(body.code).not.toBe('auth:insufficient_role');
     });
   }
