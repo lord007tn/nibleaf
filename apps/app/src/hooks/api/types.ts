@@ -374,6 +374,10 @@ export interface NotificationItem {
   href: string | null;
   readAt: string | null;
   createdAt: string;
+  /** The item's organization (website events: the website's org at read time). */
+  organization?: { id: string; slug: string; name: string; logo: string | null } | null;
+  /** The website the item is about, when it is about one. */
+  project?: { id: string; name: string } | null;
 }
 
 /** One inbox page, newest first. `nextCursor` is null on the last page. */

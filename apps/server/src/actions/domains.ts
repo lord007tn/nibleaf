@@ -1,7 +1,7 @@
 import { resolve4, resolve6, resolveCname, resolveTxt } from 'node:dns/promises';
 import { request as httpsRequest } from 'node:https';
 import { connect } from 'node:tls';
-import { prisma } from '@nibleaf/database';
+import { type Domain as DomainRow, type Prisma, prisma } from '@nibleaf/database';
 import { isDomainLive } from '@nibleaf/shared/domains';
 import { newToken } from '@nibleaf/shared/ids';
 import type { AddDomainBody } from '@nibleaf/validators';
@@ -314,6 +314,22 @@ export const verifyDomain = async (organizationId: string, projectId: string, id
   }
 };
 
+const withDomainLock = <T>(projectId: string, write: (tx: Prisma.TransactionClient) => Promise<T>) =>
+  prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`domain-primary:${projectId}`}, 0))::text`;
+    return write(tx);
+  });
+
+// Provider/DNS work stays outside the transaction. Read flags again under the
+// same lock as promotion/removal; a check must never restore an old primary.
+const writeDomainCheck = (projectId: string, id: string, data: (current: DomainRow) => Prisma.DomainUpdateInput, demote = false) =>
+  withDomainLock(projectId, async (tx) => {
+    const current = await tx.domain.findFirst({ where: { id, projectId } });
+    if (!current) throw notFound('domain', { id });
+    const updated = await tx.domain.update({ where: { id }, data: { ...data(current), ...(demote ? { isPrimary: false } : {}) } });
+    return { ...updated, demoted: demote && current.isPrimary };
+  });
+
 const checkDomain = async (projectId: string, id: string) => {
   const domain = await prisma.domain.findFirst({ where: { id, projectId } });
   if (!domain) {
@@ -336,47 +352,42 @@ const checkDomain = async (projectId: string, id: string) => {
     } catch (error) {
       // Not reaching the provider says nothing about the domain itself, so its status (and primary) stay.
       const message = `Cloudflare status could not be refreshed: ${providerMessage(error)}`;
-      await prisma.domain.update({ where: { id }, data: { lastCheckedAt: new Date(), lastError: message } });
+      await writeDomainCheck(projectId, id, () => ({ lastCheckedAt: new Date(), lastError: message }));
       throw domainError('domain:provider_failed', message, { domain: domain.domain, stage: 'provider' });
     }
     const state = customHostnameState(current);
-    const updated = await prisma.domain.update({
-      where: { id },
-      data: {
+    return writeDomainCheck(
+      projectId,
+      id,
+      (stored) => ({
         ...state,
         providerData: {
           ...current,
-          nibleafWorkerRouteId: (domain.providerData as { nibleafWorkerRouteId?: string } | null)?.nibleafWorkerRouteId,
+          nibleafWorkerRouteId: (stored.providerData as { nibleafWorkerRouteId?: string } | null)?.nibleafWorkerRouteId,
         } as never,
-        verifiedAt: state.verified ? (domain.verifiedAt ?? new Date()) : null,
-        isPrimary: state.verified ? domain.isPrimary : false,
+        verifiedAt: state.verified ? (stored.verifiedAt ?? new Date()) : null,
         lastCheckedAt: new Date(),
-      },
-    });
-    return { ...updated, demoted: domain.isPrimary && !state.verified };
+      }),
+      !state.verified,
+    );
   }
 
   if (env.NODE_ENV !== 'production') {
-    const updated = await prisma.domain.update({
-      where: { id },
-      data: {
-        verified: true,
-        verifiedAt: domain.verifiedAt ?? new Date(),
-        dnsStatus: 'VERIFIED',
-        sslStatus: 'ACTIVE',
-        lastCheckedAt: new Date(),
-        lastError: null,
-      },
-    });
-    return { ...updated, demoted: false };
+    return writeDomainCheck(projectId, id, (stored) => ({
+      verified: true,
+      verifiedAt: stored.verifiedAt ?? new Date(),
+      dnsStatus: 'VERIFIED',
+      sslStatus: 'ACTIVE',
+      lastCheckedAt: new Date(),
+      lastError: null,
+    }));
   }
 
   const checkedAt = new Date();
   const wasLive = isDomainLive(domain);
-  const wasPrimary = domain.isPrimary;
   // Only the check time is recorded: the stored status is still the best answer we have.
   const inconclusive = async (stage: string, message: string): Promise<never> => {
-    await prisma.domain.update({ where: { id }, data: { lastCheckedAt: checkedAt } });
+    await writeDomainCheck(projectId, id, () => ({ lastCheckedAt: checkedAt }));
     throw domainError('domain:check_inconclusive', message, { domain: domain.domain, stage });
   };
 
@@ -385,17 +396,16 @@ const checkDomain = async (projectId: string, id: string) => {
   if (ownershipRecordMissing && !domain.verified) {
     if (ownershipInconclusive) return inconclusive('ownership', `DNS did not answer for _nibleaf.${domain.domain}. Retry in a few minutes.`);
     const message = `Ownership TXT record is missing. Add the exact _nibleaf.${domain.domain} record shown below, then retry.`;
-    await prisma.domain.update({
-      where: { id },
-      data: { dnsStatus: 'ERROR', sslStatus: 'PENDING', isPrimary: false, lastCheckedAt: checkedAt, lastError: message },
-    });
-    throw domainError('domain:ownership_missing', message, { domain: domain.domain, stage: 'ownership', demoted: wasPrimary });
+    const updated = await writeDomainCheck(
+      projectId,
+      id,
+      () => ({ dnsStatus: 'ERROR', sslStatus: 'PENDING', lastCheckedAt: checkedAt, lastError: message }),
+      true,
+    );
+    throw domainError('domain:ownership_missing', message, { domain: domain.domain, stage: 'ownership', demoted: updated.demoted });
   }
 
-  await prisma.domain.update({
-    where: { id },
-    data: { verified: true, verifiedAt: domain.verifiedAt ?? checkedAt, lastCheckedAt: checkedAt },
-  });
+  await writeDomainCheck(projectId, id, (stored) => ({ verified: true, verifiedAt: stored.verifiedAt ?? checkedAt, lastCheckedAt: checkedAt }));
 
   const directTarget = pointsAtTarget(snapshot, cnameTarget());
   const earlyTls = directTarget ? null : await probeTls(domain.domain, snapshot.addresses);
@@ -405,15 +415,17 @@ const checkDomain = async (projectId: string, id: string) => {
       return inconclusive('routing', `Could not confirm where ${domain.domain} points: DNS or the site did not answer. Retry in a few minutes.`);
     }
     const message = `Ownership is verified, but ${domain.domain} does not point to ${cnameTarget()}. Update the CNAME record and retry.`;
-    await prisma.domain.update({
-      where: { id },
-      data: { dnsStatus: 'ERROR', sslStatus: earlyTls?.status ?? 'PENDING', isPrimary: false, lastError: message },
-    });
-    throw domainError('domain:not_pointed', message, { domain: domain.domain, stage: 'routing', demoted: wasPrimary });
+    const updated = await writeDomainCheck(
+      projectId,
+      id,
+      () => ({ dnsStatus: 'ERROR', sslStatus: earlyTls?.status ?? 'PENDING', lastError: message }),
+      true,
+    );
+    throw domainError('domain:not_pointed', message, { domain: domain.domain, stage: 'routing', demoted: updated.demoted });
   }
 
   // A live domain keeps showing as live while its certificate is re-checked.
-  if (!wasLive) await prisma.domain.update({ where: { id }, data: { dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING', lastError: null } });
+  if (!wasLive) await writeDomainCheck(projectId, id, () => ({ dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING', lastError: null }));
   const tls = earlyTls ?? (await probeTls(domain.domain, snapshot.addresses));
   // Without every address answered, a failed handshake may be the missing address, not the certificate.
   const tlsInconclusive = tls.inconclusive || (tls.status !== 'ACTIVE' && routingInconclusive);
@@ -422,33 +434,32 @@ const checkDomain = async (projectId: string, id: string) => {
   }
   // Still being set up (not live before) is not a failure; only a confirmed certificate problem demotes.
   const demote = tls.status === 'ERROR' && !tlsInconclusive;
-  const updated = await prisma.domain.update({
-    where: { id },
-    data: {
+  const updated = await writeDomainCheck(
+    projectId,
+    id,
+    () => ({
       dnsStatus: 'VERIFIED',
       sslStatus: tlsInconclusive ? 'PROVISIONING' : tls.status,
-      ...(demote ? { isPrimary: false } : {}),
       lastCheckedAt: new Date(),
       lastError: tls.error,
-    },
-  });
+    }),
+    demote,
+  );
   // Only a confirmed absence: a TXT lookup that got no answer says nothing about the record.
-  return { ...updated, demoted: demote && wasPrimary, ownershipRecordMissing: ownershipRecordMissing && !ownershipInconclusive };
+  return { ...updated, ownershipRecordMissing: ownershipRecordMissing && !ownershipInconclusive };
 };
 
 export const setPrimaryDomain = async (organizationId: string, projectId: string, id: string) => {
   await assertProjectInOrg(organizationId, projectId);
-  const domain = await prisma.domain.findFirst({ where: { id, projectId } });
-  if (!domain) {
-    throw notFound('domain', { id });
-  }
-  if (!(domain.verified && domain.dnsStatus === 'VERIFIED' && domain.sslStatus === 'ACTIVE')) {
-    throw domainError('domain:not_ready', 'DNS and TLS must both be active before making this domain primary.', { id, domain: domain.domain });
-  }
-  await prisma.$transaction([
-    prisma.domain.updateMany({ where: { projectId }, data: { isPrimary: false } }),
-    prisma.domain.update({ where: { id }, data: { isPrimary: true } }),
-  ]);
+  await withDomainLock(projectId, async (tx) => {
+    const domain = await tx.domain.findFirst({ where: { id, projectId } });
+    if (!domain) throw notFound('domain', { id });
+    if (!isDomainLive(domain)) {
+      throw domainError('domain:not_ready', 'DNS and TLS must both be active before making this domain primary.', { id, domain: domain.domain });
+    }
+    await tx.domain.updateMany({ where: { projectId }, data: { isPrimary: false } });
+    await tx.domain.update({ where: { id }, data: { isPrimary: true } });
+  });
   invalidatePublishedSiteConfig(projectId);
   return prisma.domain.findUnique({ where: { id } });
 };
@@ -472,7 +483,11 @@ export const deleteDomain = async (organizationId: string, projectId: string, id
       });
     }
   }
-  await prisma.domain.delete({ where: { id } });
+  await withDomainLock(projectId, async (tx) => {
+    const current = await tx.domain.findFirst({ where: { id, projectId } });
+    if (!current) throw notFound('domain', { id });
+    await tx.domain.delete({ where: { id } });
+  });
   // A removed primary must stop being the redirect target at once.
   invalidatePublishedSiteConfig(projectId);
   return { id };

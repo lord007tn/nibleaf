@@ -4,26 +4,29 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { type LucideIcon, Palette, UserRound } from 'lucide-react';
+import { Bell, type LucideIcon, Palette, UserRound } from 'lucide-react';
 import { PageHeader } from '@/components/app/page-header';
 import { ConfigDirtyProvider, useSettingsDirtyGuard } from '@/components/project-settings/shared';
+import { DeleteAccountSection, PersonalNotificationsSection, SessionsSection, SignInMethodsSection } from '@/components/settings/account-security';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
 import { navFromIds } from '@/lib/section-nav';
 
 // Tab ids alone: `validateSearch` is in the router's eager chunk, which published
 // docs pages load, so it must not read SECTIONS and pull in its icons.
-const TAB_VALUES = ['account', 'appearance'] as const;
+const TAB_VALUES = ['account', 'appearance', 'notifications'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const isTabValue = (value: unknown): value is TabValue => (TAB_VALUES as readonly unknown[]).includes(value);
 
-// Global account settings only — everything site-specific (members, billing,
-// integrations, notifications, git) now lives per-site under each site's Settings.
+// Personal account settings only (§5.4.4): profile, sign-in, devices, appearance,
+// personal email notifications and account deletion. Organization and website
+// settings live in their own shells.
 // Keyed by TAB_VALUES, so a tab added to one list and not the other fails typecheck.
 const SECTIONS = navFromIds<TabValue, { labelKey: MessageKey; icon: LucideIcon }>(TAB_VALUES, {
   account: { labelKey: 'settings.tab.account', icon: UserRound },
   appearance: { labelKey: 'settings.tab.appearance', icon: Palette },
+  notifications: { labelKey: 'account.notifications.title', icon: Bell },
 });
 
 export const Route = createFileRoute('/app/(dashboard)/settings')({
@@ -43,7 +46,7 @@ function WorkspaceSettingsPage() {
   return (
     <ConfigDirtyProvider report={reportDirty}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-7">
-        <PageHeader description={t('settings.subtitle')} title={t('settings.title')} />
+        <PageHeader description={t('account.subtitle')} title={t('account.title')} />
 
         <div className="flex min-w-0 flex-col gap-6 sm:flex-row sm:gap-8">
           <div className="sm:hidden">
@@ -96,7 +99,20 @@ function WorkspaceSettingsPage() {
             })}
           </nav>
 
-          <div className="min-w-0 w-full flex-1">{tab === 'appearance' ? <AppearanceTab /> : <AccountTab />}</div>
+          <div className="min-w-0 w-full flex-1">
+            {tab === 'appearance' ? (
+              <AppearanceTab />
+            ) : tab === 'notifications' ? (
+              <PersonalNotificationsSection />
+            ) : (
+              <div className="flex flex-col gap-6">
+                <AccountTab />
+                <SignInMethodsSection />
+                <SessionsSection />
+                <DeleteAccountSection />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </ConfigDirtyProvider>
