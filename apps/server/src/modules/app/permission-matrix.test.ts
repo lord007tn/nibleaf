@@ -1,5 +1,6 @@
 import { MemberRole } from '@nibleaf/shared/constants';
 import { INTEGRATION_PROVIDER_IDS } from '@nibleaf/shared/integrations';
+import { effectiveSiteRole } from '@nibleaf/shared/rbac';
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,7 +23,7 @@ import type { HonoEnv } from '@/lib/hono/context';
  * fails this test instead of passing by accident.
  */
 
-const state = vi.hoisted(() => ({ role: 'viewer' as string | null }));
+const state = vi.hoisted(() => ({ role: 'viewer' as string | null, orgRole: 'member', organizationId: 'org-1' }));
 
 vi.mock('@nibleaf/database', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/database')>();
@@ -35,13 +36,21 @@ vi.mock('@nibleaf/database', async (importOriginal) => {
   const models: Record<string, unknown> = {
     project: model({ findUnique: async () => ({ id: 'project-1', organizationId: 'org-1' }) }),
     member: model({
-      findUnique: async () => (state.role ? { id: 'member-1', role: state.role, user: { suspendedAt: null } } : null),
+      findUnique: async () => (state.role ? { id: 'member-1', role: state.role, orgRole: state.orgRole, user: { suspendedAt: null } } : null),
     }),
     user: model({ findUnique: async () => ({ id: 'user-1', role: 'user', suspendedAt: null }) }),
   };
   const prisma = new Proxy(models, {
     get: (target, key) => {
       if (key === 'then') return;
+      if (key === '$queryRaw')
+        return async (query: { values: unknown[]; strings: string[] }) => {
+          const projectId = query.values.find((value) => typeof value === 'string' && value.startsWith('project-'));
+          const orgId = projectId === 'project-other-org' ? 'org-2' : 'org-1';
+          const role = effectiveSiteRole(state.orgRole, projectId === 'project-sibling' ? null : state.role);
+          if (orgId !== state.organizationId || !role) return [];
+          return [{ id: projectId, organizationId: orgId, effectiveRole: role }];
+        };
       if (typeof key === 'string' && key.startsWith('$')) return unavailable;
       return target[key as string] ?? model();
     },
@@ -115,8 +124,8 @@ const siteUrlFor = (path: string) =>
     .replace(/:providerId/g, INTEGRATION_PROVIDER_IDS[0])
     .replace(/:[A-Za-z]+/g, 'x');
 
-const call = async (method: string, path: string) => {
-  const response = await harness.request(siteUrlFor(path), {
+const call = async (method: string, path: string, projectId = 'project-1') => {
+  const response = await harness.request(`${siteUrlFor(path).replace('project-1', projectId)}?projectId=${projectId}`, {
     method,
     headers: { 'content-type': 'application/json' },
     ...(WRITE_METHODS.has(method) ? { body: '{}' } : {}),
@@ -140,6 +149,8 @@ describe('dashboard API permission matrix', () => {
   const writes = routes.filter(({ method, path }) => WRITE_METHODS.has(method) && !ACCOUNT_SCOPED_WRITES[`${method} ${path}`]);
 
   it.each(writes)('a Viewer cannot $method $path', async ({ method, path }) => {
+    state.orgRole = 'member';
+    state.organizationId = 'org-1';
     state.role = MemberRole.VIEWER;
     const result = await call(method, path);
     expect(result, `${method} ${path} must reject a Viewer at its guard`).toMatchObject({ status: 403, code: 'auth:insufficient_role' });
@@ -148,6 +159,8 @@ describe('dashboard API permission matrix', () => {
   it.each(VIEWER_DENIED_READS.map((key) => ({ method: key.split(' ')[0] ?? 'GET', path: key.split(' ')[1] ?? '' })))(
     'a Viewer cannot read secrets at $method $path',
     async ({ method, path }) => {
+      state.orgRole = 'member';
+      state.organizationId = 'org-1';
       state.role = MemberRole.VIEWER;
       const result = await call(method, path);
       expect(result, `${method} ${path}`).toMatchObject({ status: 403, code: 'auth:insufficient_role' });
@@ -157,16 +170,50 @@ describe('dashboard API permission matrix', () => {
   const siteRoutes = routes.filter(({ path }) => /^\/projects\/:(?:projectId|id)(?:\/|$)/.test(path));
 
   it.each(siteRoutes)('someone outside the site cannot $method $path', async ({ method, path }) => {
+    state.orgRole = 'member';
+    state.organizationId = 'org-1';
     state.role = null;
     const result = await call(method, path);
     expect(result, `${method} ${path} must hide the site from non-members`).toMatchObject({ status: 404 });
   });
 
   it.each([MemberRole.MEMBER, MemberRole.ADMIN])('an Editor-level write still admits role %s past its guard', async (role) => {
+    state.orgRole = 'member';
+    state.organizationId = 'org-1';
     state.role = role;
     // Publishing is an Editor action: the guard lets the role through, and the
     // stubbed database then stops the handler.
     const result = await call('POST', '/projects/:projectId/deployments');
     expect(result.code).not.toBe('auth:insufficient_role');
   });
+  it.each(siteRoutes)('an ungranted sibling and another org stay hidden at $method $path', async ({ method, path }) => {
+    state.orgRole = 'member';
+    state.organizationId = 'org-1';
+    state.role = 'admin';
+    expect(await call(method, path, 'project-sibling')).toMatchObject({ status: 404 });
+    expect(await call(method, path, 'project-other-org')).toMatchObject({ status: 404 });
+  });
+
+  for (const orgRole of ['owner', 'admin']) {
+    it.each(siteRoutes)(`${orgRole} inherits admin access at $method $path`, async ({ method, path }) => {
+      state.orgRole = orgRole;
+      state.organizationId = 'org-1';
+      state.role = null;
+      const result = await call(method, path, 'project-sibling');
+      // Owner-only operations remain owner-only. Validation/handlers may fail,
+      // but lack of a grant must never cause a 404 or a site-admin denial.
+      if (!path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
+      if (result.status === 404) expect(result.code).toBe('addon:not_found');
+    });
+  }
+  for (const grant of ['admin', 'member']) {
+    it.each(siteRoutes)(`a ${grant} grant reaches the role check at $method $path`, async ({ method, path }) => {
+      state.orgRole = 'member';
+      state.organizationId = 'org-1';
+      state.role = grant;
+      const result = await call(method, path);
+      if (result.status === 404) expect(result.code).toBe('addon:not_found');
+      if (grant === 'admin' && !path.endsWith('/transfer-ownership')) expect(result.code).not.toBe('auth:insufficient_role');
+    });
+  }
 });

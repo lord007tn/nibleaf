@@ -128,6 +128,12 @@ jobs:
           AUTH_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/auth exec vitest run src/better-auth.postgres.test.ts
 
+      - name: Verify organization grants and expand-only backfill
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ORG_ACCESS_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/lib/access.postgres.test.ts
+
       - name: Verify publishing retention aggregates
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
