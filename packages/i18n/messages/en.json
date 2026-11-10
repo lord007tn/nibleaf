@@ -4084,6 +4084,13 @@
   "admin_sidebardescription": "Navigate platform customers, sites, and operations.",
   "settings_appearance_theme_system": "Match my device",
   "settings_members_viaorganization": "via organization",
+  "access_reason_notmember": "You're not on this site's team. Ask a site Admin for access.",
+  "access_reason_organizationadmin": "Only an organization Owner or Admin can delete this site.",
+  "access_reason_owner": "Only the organization Owner can transfer ownership.",
+  "access_reason_organizationmember": "This person's access is managed by the organization. Ask an organization Admin.",
+  "access_reason_transfertarget": "Choose another organization Admin to receive ownership.",
+  "access_reason_keyscope": "Choose API key permissions allowed for your site role.",
+  "access_reason_keyowner": "Only a site Admin or the key's creator with Editor access can revoke this key.",
   "settings_members_nowebsiteaccess": "You don't have access to any websites in {org} yet. Ask an organization admin.",
   "roles_organizationmember": "Member"
 }

@@ -4084,6 +4084,13 @@
   "admin_sidebardescription": "Navigation für Kunden, Websites und den Plattformbetrieb.",
   "settings_appearance_theme_system": "Wie mein Gerät",
   "settings_members_viaorganization": "über die Organisation",
+  "access_reason_notmember": "Sie gehören nicht zum Team dieser Website. Bitten Sie einen Website-Admin um Zugriff.",
+  "access_reason_organizationadmin": "Nur Inhaber oder Admins der Organisation können diese Website löschen.",
+  "access_reason_owner": "Nur der Inhaber der Organisation kann die Inhaberschaft übertragen.",
+  "access_reason_organizationmember": "Der Zugriff dieser Person wird von der Organisation verwaltet. Frage einen Organisationsadmin.",
+  "access_reason_transfertarget": "Wählen Sie einen anderen Organisationsadmin als neuen Inhaber.",
+  "access_reason_keyscope": "Wählen Sie API-Schlüsselberechtigungen, die Ihre Website-Rolle erlaubt.",
+  "access_reason_keyowner": "Nur ein Website-Admin oder der Ersteller mit Bearbeitungszugriff kann diesen Schlüssel widerrufen.",
   "settings_members_nowebsiteaccess": "Sie haben noch keinen Zugriff auf Websites in {org}. Bitte wenden Sie sich an einen Organisationsadministrator.",
   "roles_organizationmember": "Mitglied"
 }

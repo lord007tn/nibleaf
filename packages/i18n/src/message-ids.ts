@@ -2,6 +2,13 @@
 export const MESSAGE_IDS = {
   'roles.organizationMember': 'roles_organizationmember',
   'settings.members.viaOrganization': 'settings_members_viaorganization',
+  'access.reason.notMember': 'access_reason_notmember',
+  'access.reason.organizationAdmin': 'access_reason_organizationadmin',
+  'access.reason.owner': 'access_reason_owner',
+  'access.reason.organizationMember': 'access_reason_organizationmember',
+  'access.reason.transferTarget': 'access_reason_transfertarget',
+  'access.reason.keyScope': 'access_reason_keyscope',
+  'access.reason.keyOwner': 'access_reason_keyowner',
   'settings.members.noWebsiteAccess': 'settings_members_nowebsiteaccess',
   'admin.sidebarDescription': 'admin_sidebardescription',
   'nav.sidebarTitle': 'nav_sidebartitle',

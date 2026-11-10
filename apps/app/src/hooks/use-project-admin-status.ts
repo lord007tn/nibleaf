@@ -1,6 +1,6 @@
-import { useProjectMembers } from '@/hooks/api';
-import { resolveProjectEditAccess, resolveProjectSettingsAccess, type SiteAdminState, type SiteEditState } from '@/lib/project-settings-access';
-import { useSession } from '@/services/auth-client';
+import { useSiteAccessQuery } from '@/features/site-access/api/use-site-access';
+import { decide } from '@/features/site-access/model/access';
+import { resolveProjectSettingsAccess, type SiteAdminState, type SiteEditState } from '@/lib/project-settings-access';
 
 /**
  * The signed-in person's {@link SiteAdminState} and {@link SiteEditState} on a site, plus the members
@@ -14,13 +14,10 @@ import { useSession } from '@/services/auth-client';
  * extra request there.
  */
 export function useProjectAdminStatus(projectId: string | undefined) {
-  const members = useProjectMembers(projectId);
-  const session = useSession();
-  const isError = members.isError && !members.data;
-  const role = members.data?.members.find((candidate) => candidate.user.id === session.data?.user.id)?.role;
-  const pending = !projectId || members.isPending || !members.data || session.isPending || !session.data;
-  const status: SiteAdminState = resolveProjectSettingsAccess(role, pending);
-  // Whether they may change content (Viewers may not); see resolveProjectEditAccess.
-  const edit: SiteEditState = resolveProjectEditAccess(role, pending, Boolean(projectId) && isError);
-  return { status, edit, role, isError, retrying: members.isFetching, retry: members.refetch };
+  const { access, role, isError, retrying, retry } = useSiteAccessQuery(projectId);
+  const content = decide(access, { type: 'site.content.edit' });
+  const status: SiteAdminState = resolveProjectSettingsAccess(role, access.status === 'loading' || access.status === 'unavailable');
+  const edit: SiteEditState =
+    access.status === 'unavailable' ? 'unknown' : content.kind === 'locked' ? 'pending' : content.kind === 'allowed' ? 'edit' : 'viewOnly';
+  return { status, edit, role, isError, retrying, retry };
 }

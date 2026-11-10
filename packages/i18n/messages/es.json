@@ -4084,6 +4084,13 @@
   "admin_sidebardescription": "Navega por los clientes, sitios y operaciones de la plataforma.",
   "settings_appearance_theme_system": "Como mi dispositivo",
   "settings_members_viaorganization": "a través de la organización",
+  "access_reason_notmember": "No formas parte del equipo de este sitio. Pide acceso a un administrador del sitio.",
+  "access_reason_organizationadmin": "Solo el propietario o un administrador de la organización puede eliminar este sitio.",
+  "access_reason_owner": "Solo el propietario de la organización puede transferir la propiedad.",
+  "access_reason_organizationmember": "La organización gestiona el acceso de esta persona. Consulta a un administrador de la organización.",
+  "access_reason_transfertarget": "Elige a otro administrador de la organización para recibir la propiedad.",
+  "access_reason_keyscope": "Elige permisos de clave API permitidos para tu rol en el sitio.",
+  "access_reason_keyowner": "Solo un administrador del sitio o el creador con acceso de editor puede revocar esta clave.",
   "settings_members_nowebsiteaccess": "Todavía no tienes acceso a ningún sitio web de {org}. Consulta a un administrador de la organización.",
   "roles_organizationmember": "Miembro"
 }
