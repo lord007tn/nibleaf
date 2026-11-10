@@ -4415,6 +4415,9 @@ export const MESSAGE_IDS = {
   'people.admission.joinFailed': 'people_admission_joinfailed',
   'people.admission.wrongDomain': 'people_admission_wrongdomain',
   'people.admission.useAnotherAccount': 'people_admission_useanotheraccount',
+  'people.site.promote': 'people_site_promote',
+  'people.site.promoteTitle': 'people_site_promotetitle',
+  'people.site.promoteConfirm': 'people_site_promoteconfirm',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

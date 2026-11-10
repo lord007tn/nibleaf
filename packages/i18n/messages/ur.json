@@ -4525,5 +4525,8 @@
   "people_admission_wrongdomain": "Only @{domain} addresses can join with this link. You’re signed in as {email}.",
   "people_admission_useanotheraccount": "Use another account",
   "email_invite_accessadmin": "You’ll be an Admin: every website, its people and billing.",
-  "email_invite_accessnone": "An Admin will give you access to websites after you join."
+  "email_invite_accessnone": "An Admin will give you access to websites after you join.",
+  "people_site_promote": "Make Admin",
+  "people_site_promotetitle": "Make {name} an Admin of this website?",
+  "people_site_promoteconfirm": "{name} will be able to change the settings, domains, integrations and team of {site}."
 }

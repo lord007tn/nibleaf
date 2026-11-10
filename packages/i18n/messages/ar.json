@@ -4573,5 +4573,8 @@
   "people_admission_wrongdomain": "وحدها عناوين @{domain} تستطيع الانضمام بهذا الرابط. أنت مسجّل الدخول باسم {email}.",
   "people_admission_useanotheraccount": "استخدام حساب آخر",
   "email_invite_accessadmin": "ستكون مشرفًا: كل المواقع وأعضاؤها وفوترتها.",
-  "email_invite_accessnone": "سيمنحك مشرف الوصول إلى المواقع بعد انضمامك."
+  "email_invite_accessnone": "سيمنحك مشرف الوصول إلى المواقع بعد انضمامك.",
+  "people_site_promote": "تعيين مشرفًا",
+  "people_site_promotetitle": "تعيين {name} مشرفًا لهذا الموقع؟",
+  "people_site_promoteconfirm": "سيتمكن {name} من تغيير إعدادات {site} ونطاقاته وتكاملاته وفريقه."
 }

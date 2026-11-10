@@ -21,7 +21,7 @@ import { useChangeSiteRole, useRemoveFromSite, useResendSiteInvitation, useRevok
 import { siteJoinLinksQueryOptions } from '../api/query-options';
 import { canManageSiteTeam, canOnSiteMember, type SiteViewer } from '../model/permissions';
 import { personDisplay } from '../model/person';
-import { assignableSiteRoles, type EffectiveSiteRole, isOrgAdminRole, isSiteRole, siteRoleLabel } from '../model/roles';
+import { assignableSiteRoles, type EffectiveSiteRole, isOrgAdminRole, isSiteRole, type SiteRole, siteRoleLabel } from '../model/roles';
 import { AddPeopleDialog } from './add-people-dialog';
 import { useReason } from './decision';
 import { InvitationsList } from './invitations-list';
@@ -62,6 +62,21 @@ export function SiteTeamPage({
   const [linkOpen, setLinkOpen] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
   const [removeOpen, setRemoveOpen] = useState(false);
+  const [promoting, setPromoting] = useState<{ id: string; name: string } | null>(null);
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const promote = (target: { id: string; name: string }) => {
+    setPromoting(target);
+    setPromoteOpen(true);
+  };
+  const applyRole = (memberId: string, name: string, role: SiteRole) =>
+    changeRole.mutateAsync({ memberId, role }).then(
+      () => {
+        toast.success(t('people.site.roleChanged', { name, role: t(siteRoleLabel(role)) }));
+      },
+      (error: unknown) => {
+        toast.error(t('people.site.roleChangeFailed', { name }), { description: friendlyErrorMessage(t, error, 'settings.members.toast.roleError') });
+      },
+    );
   const orgName = organization?.name ?? '';
   const allowed = viewer.role ? assignableSiteRoles(viewer.role) : [];
 
@@ -162,16 +177,8 @@ export function SiteTeamPage({
                           allowed={allowed}
                           label={t('people.site.roleFor', { name: person.primary })}
                           onChange={(role) =>
-                            changeRole.mutate(
-                              { memberId: member.id, role },
-                              {
-                                onSuccess: () => toast.success(t('people.site.roleChanged', { name: person.primary, role: t(siteRoleLabel(role)) })),
-                                onError: (error) =>
-                                  toast.error(t('people.site.roleChangeFailed', { name: person.primary }), {
-                                    description: friendlyErrorMessage(t, error, 'settings.members.toast.roleError'),
-                                  }),
-                              },
-                            )
+                            // Admin can change settings, domains and the team: ask first (WORKSPACE-26).
+                            role === 'admin' ? promote({ id: member.id, name: person.primary }) : applyRole(member.id, person.primary, role)
                           }
                           value={member.role}
                         />
@@ -284,6 +291,18 @@ export function SiteTeamPage({
             open={linkOpen}
             scope={{ kind: 'site', projectId }}
             websites={[{ id: projectId, name: siteName }]}
+          />
+          <ActionDialog
+            cancelLabel={t('common.cancel')}
+            confirmLabel={t('people.site.promote')}
+            description={promoting ? t('people.site.promoteConfirm', { name: promoting.name, site: siteName }) : undefined}
+            fallbackErrorMessage={t('settings.members.toast.roleError')}
+            onConfirm={async () => {
+              if (promoting) await applyRole(promoting.id, promoting.name, 'admin');
+            }}
+            onOpenChange={setPromoteOpen}
+            open={promoteOpen}
+            title={t('people.site.promoteTitle', { name: promoting?.name ?? '' })}
           />
           <ActionDialog
             cancelLabel={t('common.cancel')}
