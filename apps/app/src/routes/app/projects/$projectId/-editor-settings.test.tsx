@@ -83,7 +83,11 @@ vi.mock('@/components/editor/comments-panel', () => ({ CommentsPanel: () => null
 vi.mock('@/components/editor/language-settings-dialog', () => ({ LanguageSettingsDialog: () => null }));
 vi.mock('@/components/editor/markdown-source-editor', () => ({ MarkdownSourceEditor: () => null }));
 vi.mock('@/components/editor/page-settings-dialog', () => ({ PageSettingsDialog: () => null }));
-vi.mock('@/components/editor/sortable-page-tree', () => ({ SortablePageTree: () => null }));
+vi.mock('@/components/editor/sortable-page-tree', () => ({
+  SortablePageTree: () => null,
+  PageTreeDndProvider: ({ children }: { children: ReactNode }) => children,
+  LanguageDropTarget: ({ children }: { children: ReactNode }) => children,
+}));
 vi.mock('@/components/editor/tiptap-editor', () => ({ TiptapEditor: () => null }));
 vi.mock('@/components/editor/save-status', () => ({ NeverPublishedBanner: () => null, PagePublishStateBar: () => null, SaveStatus: () => null }));
 

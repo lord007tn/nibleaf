@@ -33,7 +33,7 @@ import { putAsset } from '@/lib/upload-asset-put';
 import { api } from '@/services/api';
 import { ApiResponseError, getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
-import { applyPageReorder, isPageListKey } from './page-cache';
+import { applyPageReorder, applyPageReorderToList, isPageListKey } from './page-cache';
 import { queryKeys } from './query-keys';
 import type {
   ApiKey,
@@ -283,8 +283,16 @@ export const useReorderPages = (projectId: string) => {
     onMutate: async (body) => {
       await qc.cancelQueries(listFilter);
       const previous = qc.getQueriesData<PageNode[]>(listFilter);
+      // Every cached page after the move, so a list filtered to one language can
+      // take in the pages that moved into it from another language.
+      const known = new Map<string, PageNode>();
+      for (const [, pages] of previous) {
+        if (Array.isArray(pages)) for (const page of applyPageReorder(pages, body.items)) known.set(page.id, page);
+      }
       for (const [key, pages] of previous) {
-        if (Array.isArray(pages)) qc.setQueryData<PageNode[]>(key, applyPageReorder(pages, body.items));
+        if (!Array.isArray(pages)) continue;
+        const scope = { languageId: typeof key[2] === 'string' ? key[2] : null, branchId: typeof key[3] === 'string' ? key[3] : null };
+        qc.setQueryData<PageNode[]>(key, applyPageReorderToList(pages, body.items, scope, known));
       }
       return { previous };
     },
