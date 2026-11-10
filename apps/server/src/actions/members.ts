@@ -7,7 +7,13 @@ import { conflict, forbidden, notFound } from '@/errors';
 import { assertUsableAccount } from '@/lib/access';
 import { lockOrganization } from './admissions';
 import { syncLegacyMembership } from './legacy-membership';
-import { inviteOrganizationMembers, sendOrganizationInvitations, transferOrganizationOwnership, withOrganization } from './organizations';
+import {
+  assertRevocable,
+  inviteOrganizationMembers,
+  sendOrganizationInvitations,
+  transferOrganizationOwnership,
+  withOrganization,
+} from './organizations';
 
 const singleProject = async (organizationId: string, projectId?: string) => {
   const projects = await prisma.project.findMany({
@@ -175,6 +181,7 @@ export const cancelInvitation = async (organizationId: string, id: string, actor
     actorId,
     async (tx) => {
       await siteActor(tx, organizationId, projectId, actorId);
+      assertRevocable(await tx.invitation.findFirst({ where: { id, organizationId }, select: { status: true, expiresAt: true } }));
       const removed = await tx.invitationGrant.deleteMany({ where: { invitationId: id, organizationId, projectId } });
       if (!removed.count) throw notFound('invitation');
       if (!(await tx.invitationGrant.count({ where: { invitationId: id } })))

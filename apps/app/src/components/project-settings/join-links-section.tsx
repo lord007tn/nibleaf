@@ -272,7 +272,8 @@ function CreateJoinLinkForm({
   const t = useT();
   const ids = { label: useId(), expiry: useId(), maxUses: useId(), domain: useId(), domainError: useId() };
   const [label, setLabel] = useState('');
-  const [role, setRole] = useState<AssignableMemberRole>(MemberRole.MEMBER);
+  // Anyone with the link joins with this role: start at the least privilege.
+  const [role, setRole] = useState<AssignableMemberRole>(MemberRole.VIEWER);
   const [expiry, setExpiry] = useState<(typeof EXPIRY_OPTIONS)[number]['value']>('7');
   const [maxUses, setMaxUses] = useState('');
   const [domain, setDomain] = useState('');

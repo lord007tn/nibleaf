@@ -108,7 +108,7 @@ describe('JoinLinksSection', () => {
     expect(button('settings.joinLinks.disable')).toBeUndefined();
   });
 
-  it('creates a link with the chosen limits and shows it once', async () => {
+  it('creates a Viewer link by default with the chosen limits and shows it once', async () => {
     await render();
     await act(async () => button('settings.joinLinks.create')?.click());
     const inputs = [...host.querySelectorAll<HTMLInputElement>('[data-testid="join-link-form"] input')];
@@ -117,7 +117,8 @@ describe('JoinLinksSection', () => {
     await type(host.querySelector<HTMLInputElement>('input[dir="ltr"]') as HTMLInputElement, '@Acme.com');
     await act(async () => host.querySelector<HTMLFormElement>('[data-testid="join-link-form"]')?.requestSubmit());
     expect(state.create).toHaveBeenCalledWith(
-      { label: 'Partners', role: 'member', expiresInDays: 7, maxUses: 3, allowedDomain: 'acme.com' },
+      // Anyone with the link joins as Viewer unless the admin picks more (WORKSPACE-12).
+      { label: 'Partners', role: 'viewer', expiresInDays: 7, maxUses: 3, allowedDomain: 'acme.com' },
       expect.anything(),
     );
     const [, options] = state.create.mock.calls[0] as [unknown, { onSuccess: (result: unknown) => void }];
