@@ -2,7 +2,10 @@ import type { MeterKey } from './contract';
 import { aggregateDecimalSchema } from './contract';
 
 export interface FinalizedUsageRecord {
+  /** Immutable Project.dataTenantId, never the current billing organization. */
   tenantId: string;
+  projectId?: string;
+  billingOrganizationId?: string;
   meterKey: MeterKey;
   periodStart: string;
   periodEndExclusive: string;

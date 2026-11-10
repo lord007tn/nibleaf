@@ -125,8 +125,6 @@ model Organization {
   joinLinks   JoinLink[]
   projects    Project[]
   usagePlan          OrganizationUsagePlan?
-  usageStorageMarker UsageStorageMarker?
-  usageIngestCheckpoints UsageIngestCheckpoint[]
   gitWebhookSecret       OrganizationGitWebhookSecret?
 
   @@map("organization")
@@ -225,7 +223,9 @@ model OrganizationUsagePlan {
 /// provider payload, credentials, customer ids, subscription ids, or prices.
 model UsageProviderCheckpoint {
   id               String       @id @default(cuid())
-  organizationId   String
+  organizationId   String // Historical source partition; never repointed on org moves.
+  projectId        String?
+  billingOrganizationId String?
   provider         String
   reconciliationId String       @unique
   meterKey         String
@@ -248,8 +248,10 @@ model UsageProviderCheckpoint {
 /// Relational evidence that this tenant has written ClickHouse usage facts at
 /// least once. Privacy erasure consults it even when analytics is later disabled.
 model UsageStorageMarker {
-  organizationId String       @id
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String       @id // Legacy partition mirror, deliberately no org FK.
+  partitionId    String       @unique
+  projectId      String       @unique
+  project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   firstEnqueuedAt DateTime    @default(now())
   lastEnqueuedAt  DateTime    @default(now())
   lastWrittenAt   DateTime?
@@ -264,7 +266,7 @@ model UsageStorageMarker {
 model UsageIngestCheckpoint {
   id             String       @id
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partitionId    String
   projectId      String
   project        Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   firstOccurredAt DateTime
@@ -279,6 +281,7 @@ model UsageIngestCheckpoint {
   updatedAt      DateTime     @updatedAt
 
   @@index([organizationId, writtenAt])
+  @@index([partitionId, writtenAt])
   @@index([projectId, writtenAt, firstOccurredAt, lastOccurredAt], map: "usage_ingest_project_pending_period_idx")
   @@map("usage_ingest_checkpoint")
 }
@@ -644,8 +647,9 @@ model Project {
   id             String            @id @default(cuid())
   // Each site owns its own Organization (1:1) — that org IS the site's member
   // boundary, so members/roles/invitations are per-site. See provisionSiteOrg.
-  organizationId String            @unique
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  dataTenantId   String            @unique @default(cuid())
   name           String
   slug           String
   description    String?
@@ -699,6 +703,10 @@ model Project {
   gitPreviews     GitPreview[]
   searchIndexRuns SearchIndexRun[]
   usageIngestCheckpoints UsageIngestCheckpoint[]
+  usageStorageMarker UsageStorageMarker?
+  gitSettings ProjectGitSettings?
+  gitWebhookSecret ProjectGitWebhookSecret?
+  legacySettings ProjectLegacySettings?
   addons          ProjectAddon[]
   addonAuditEvents ProjectAddonAuditEvent[]
   integrations                  ProjectIntegration[]
@@ -709,6 +717,7 @@ model Project {
   mcpIdempotencyRecords McpIdempotencyRecord[]
   mcpOAuthGrants  McpOAuthGrant[]
 
+  @@index([organizationId])
   @@unique([organizationId, slug])
   @@unique([slug])
   @@map("project")
@@ -1943,4 +1952,27 @@ model AnalyticsEvent {
   @@index([projectId, createdAt])
   @@index([projectId, type])
   @@map("analytics_event")
+}
+
+/// Website-owned one-way Git configuration. Secret material has its own table.
+model ProjectGitSettings {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  settings Json @default("{}")
+  @@map("project_git_settings")
+}
+
+model ProjectGitWebhookSecret {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  secret String
+  @@map("project_git_webhook_secret")
+}
+
+/// Server-only legacy website metadata, including unclassified keys.
+model ProjectLegacySettings {
+  projectId String @id
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  metadata Json @default("{}")
+  @@map("project_legacy_settings")
 }

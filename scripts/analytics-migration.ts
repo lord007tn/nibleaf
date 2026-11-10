@@ -21,7 +21,7 @@ if (!config.ANALYTICS_HASH_SALT) throw new Error('ANALYTICS_HASH_SALT is require
 
 const projectContexts = new Map<
   string,
-  { organizationId: string; privacy: { visibility: 'private' | 'public'; allowCampaignDimensions: boolean; allowRawPublicSearchQueries: boolean } }
+  { dataTenantId: string; privacy: { visibility: 'private' | 'public'; allowCampaignDimensions: boolean; allowRawPublicSearchQueries: boolean } }
 >();
 
 const contextFor = async (projectId: string) => {
@@ -29,12 +29,12 @@ const contextFor = async (projectId: string) => {
   if (cached) return cached;
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: { organizationId: true, accessMode: true, config: true },
+    select: { dataTenantId: true, accessMode: true, config: true },
   });
   if (!project) throw new Error(`Project ${projectId} no longer exists.`);
   const projectConfig = project.config as ProjectConfig | null;
   const value = {
-    organizationId: project.organizationId,
+    dataTenantId: project.dataTenantId,
     privacy: {
       visibility: (project.accessMode === 'PUBLIC' && projectConfig?.visibility !== 'private' ? 'public' : 'private') as 'private' | 'public',
       allowCampaignDimensions: false,
@@ -92,7 +92,7 @@ const backfill = async (): Promise<void> => {
             payload: payloadFor(row),
           },
           {
-            tenantId: context.organizationId,
+            tenantId: context.dataTenantId,
             projectId: row.projectId,
             siteId: row.projectId,
             source: 'backfill',
@@ -125,8 +125,8 @@ const backfill = async (): Promise<void> => {
 
 const reconcile = async (): Promise<void> => {
   const projects = projectFilter
-    ? await prisma.project.findMany({ where: { id: projectFilter }, select: { id: true, organizationId: true } })
-    : await prisma.project.findMany({ select: { id: true, organizationId: true } });
+    ? await prisma.project.findMany({ where: { id: projectFilter }, select: { id: true, dataTenantId: true } })
+    : await prisma.project.findMany({ select: { id: true, dataTenantId: true } });
   const client = getClickHouseClient('reader');
   let mismatches = 0;
   for (const project of projects) {
@@ -147,7 +147,7 @@ const reconcile = async (): Promise<void> => {
         query: `SELECT uniqExact(event_id) AS count FROM analytics_events FINAL
           WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String}
             AND event_id IN {event_ids:Array(UUID)}`,
-        query_params: { tenant_id: project.organizationId, project_id: project.id, event_ids: expectedIds },
+        query_params: { tenant_id: project.dataTenantId, project_id: project.id, event_ids: expectedIds },
         format: 'JSONEachRow',
       });
       const [row] = await result.json<{ count: string | number }>();
@@ -166,16 +166,16 @@ const rollback = async (): Promise<void> => {
   if (!projectFilter || arg('confirm-project') !== projectFilter) {
     throw new Error('Rollback requires --project=<id> and the matching --confirm-project=<id>.');
   }
-  const project = await prisma.project.findUnique({ where: { id: projectFilter }, select: { organizationId: true } });
+  const project = await prisma.project.findUnique({ where: { id: projectFilter }, select: { dataTenantId: true } });
   if (!project) throw new Error(`Project ${projectFilter} not found.`);
   const client = getClickHouseClient('writer');
   await client.command({
     query: `ALTER TABLE analytics_events DELETE
       WHERE tenant_id = {tenant_id:String} AND project_id = {project_id:String} AND source = 'backfill'`,
-    query_params: { tenant_id: project.organizationId, project_id: projectFilter },
+    query_params: { tenant_id: project.dataTenantId, project_id: projectFilter },
     clickhouse_settings: { mutations_sync: '1' },
   });
-  await rebuildProjectAnalyticsRollups(project.organizationId, projectFilter, client);
+  await rebuildProjectAnalyticsRollups(project.dataTenantId, projectFilter, client);
   process.stdout.write(`Rolled back backfilled facts for project ${projectFilter}. Live ClickHouse events were preserved.\n`);
 };
 

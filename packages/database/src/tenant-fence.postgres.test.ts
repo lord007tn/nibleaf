@@ -13,10 +13,15 @@ describe.skipIf(process.env.TENANT_FENCE_INTEGRATION !== '1')('tenant fences wit
     organizationId = `fence-org-${randomUUID()}`;
     projectId = `fence-project-${randomUUID()}`;
     await database.prisma.organization.create({
-      data: { id: organizationId, name: 'Synthetic fence test', projects: { create: { id: projectId, name: 'Synthetic', slug: projectId } } },
+      data: {
+        id: organizationId,
+        name: 'Synthetic fence test',
+        projects: { create: { id: projectId, dataTenantId: organizationId, name: 'Synthetic', slug: projectId } },
+      },
     });
   });
   afterEach(async () => {
+    await database.prisma.project.deleteMany({ where: { id: projectId } });
     await database.prisma.organization.deleteMany({ where: { id: organizationId } });
   });
   afterAll(async () => {
@@ -30,8 +35,9 @@ describe.skipIf(process.env.TENANT_FENCE_INTEGRATION !== '1')('tenant fences wit
       pendingCount: 0,
     });
     expect((await database.prisma.usageStorageMarker.findUnique({ where: { organizationId } }))?.deletionPendingAt).toBeInstanceOf(Date);
-    await database.prisma.organization.delete({ where: { id: organizationId } });
-    expect(await database.prisma.project.findUnique({ where: { id: projectId } })).toBeNull();
+    await expect(database.prisma.organization.delete({ where: { id: organizationId } })).rejects.toThrow();
+    await database.prisma.project.delete({ where: { id: projectId } });
+    expect(await database.prisma.usageStorageMarker.findUnique({ where: { partitionId: organizationId } })).toBeNull();
   });
 
   it('holds the shared lock through an analytics write and fences subsequent writes', async () => {
