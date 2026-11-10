@@ -27,6 +27,10 @@ const forbiddenPublicModules = [
   /\/apps\/app\/src\/features\//,
   /\/apps\/app\/src\/components\/analytics\/(?!insights\/filters\.ts$)/,
   /\/apps\/app\/src\/components\/ai-conversations\/(?!search\.ts$)/,
+  // Route ids and validateSearch parsers stay in non-split route options.
+  /\/apps\/app\/src\/features\/(?![^/]+\/model\/(?:ids|[^/]+-search)\.ts$)/,
+  // Dashboard form plumbing and app-level UI adapters.
+  /\/apps\/app\/src\/(?:lib\/forms|components\/ui)\//,
   /\/apps\/app\/src\/lib\/mcp-oauth\.ts$/,
   // The signed-in shell's intent preload, which reads the dashboard's chunk lists.
   /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,

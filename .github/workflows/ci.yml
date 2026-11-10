@@ -167,6 +167,12 @@ jobs:
           ORG_MERGE_INTEGRATION: "1"
         run: pnpm --filter @nibleaf/server exec vitest run src/scripts/org-merge.postgres.test.ts src/scripts/org-merge-credentials.postgres.test.ts src/scripts/legacy-writer.postgres.test.ts --maxWorkers=1
 
+      - name: Verify the organization shell and organization deletion
+        env:
+          POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
+          ORG_SHELL_INTEGRATION: "1"
+        run: pnpm --filter @nibleaf/server exec vitest run src/actions/organization-shell.postgres.test.ts src/actions/organization-deletion.postgres.test.ts --maxWorkers=1
+
       - name: Verify immutable website data partitions
         env:
           POSTGRES_URL: postgresql://nibleaf:nibleaf@127.0.0.1:5432/nibleaf
@@ -276,6 +282,9 @@ jobs:
 
       - name: Check for unused source files
         run: pnpm check:dead-code
+
+      - name: Dashboard type scale (no new arbitrary font sizes)
+        run: pnpm --filter @nibleaf/app run check:type-scale
 
       - name: Typecheck
         run: pnpm typecheck

@@ -234,6 +234,15 @@ describe('organization switcher panel', () => {
     const labels = [...left().querySelectorAll('[role="option"]')].map((node) => node.textContent);
     expect(labels[0]).toContain('Acme Docs');
     expect(labels.some((label) => label?.includes('Developer docs · Acme Docs'))).toBe(true);
+    // A website in the results and in the websites pane never shares an option id,
+    // so aria-activedescendant always names exactly one element (council on #418).
+    const ids = [...document.querySelectorAll('[role="option"]')].map((node) => node.id);
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const listbox of listboxes()) {
+      const active = listbox.getAttribute('aria-activedescendant');
+      if (active) expect(document.querySelectorAll(`[id="${active}"]`)).toHaveLength(1);
+    }
   });
 
   it('leads with the websites when the person belongs to one organization', async () => {

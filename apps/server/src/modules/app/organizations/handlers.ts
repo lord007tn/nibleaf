@@ -50,6 +50,8 @@ const link = z.object({
 const member = [isAuthenticated, requireOrgRole(MemberRole.MEMBER)] as const;
 const admin = [isAuthenticated, requireOrgRole(MemberRole.ADMIN)] as const;
 const owner = [isAuthenticated, requireOrgRole(MemberRole.OWNER)] as const;
+/** Deleting passes a fenced org so the Owner can resume an interrupted deletion. */
+const ownerDeleting = [isAuthenticated, requireOrgRole(MemberRole.OWNER, 'organizationId', { resumeDeletion: true })] as const;
 const userId = () => getContextUserOrThrow().id;
 
 const app = new Hono<HonoEnv>()
@@ -81,7 +83,7 @@ const app = new Hono<HonoEnv>()
     ),
     async (ctx) => ctx.json({ data: await updateOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json')) }),
   )
-  .delete('/:organizationId', ...owner, validator('json', z.object({ confirmName: z.string().max(200) }).strict()), async (ctx) =>
+  .delete('/:organizationId', ...ownerDeleting, validator('json', z.object({ confirmName: z.string().max(200) }).strict()), async (ctx) =>
     ctx.json({ data: await deleteOrganization(ctx.req.param('organizationId'), userId(), ctx.req.valid('json').confirmName) }),
   )
   // Every member lists the websites they can open; `view=switcher` is the compact switcher row.

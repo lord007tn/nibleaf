@@ -1,5 +1,5 @@
 import { type AdmissionGrant, issuerAuthorizes, revokeJoinLinksBeyondRole } from '@nibleaf/auth/join-links';
-import { eraseOrganization, TenantErasureProjectNotFoundError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
+import { eraseOrganization, TenantErasureManifestMismatchError, TenantUsageDeletionPendingError } from '@nibleaf/auth/tenant-erasure';
 import { createJob, QueueNames } from '@nibleaf/bullmq';
 import { assignDefaultUsagePlan, type Invitation, Prisma, prisma } from '@nibleaf/database';
 import { type EmailLanguage, renderMemberInvitationEmail } from '@nibleaf/email';
@@ -32,9 +32,10 @@ export async function withOrganization<T>(
   actorId: string,
   action: (tx: Tx, org: Awaited<ReturnType<typeof lockOrganization>>, actor: { id: string; orgRole: string }) => Promise<T>,
   admin = true,
+  resumeDeletion = false,
 ) {
   return prisma.$transaction(async (tx) => {
-    const org = await lockOrganization(tx, organizationId);
+    const org = await lockOrganization(tx, organizationId, false, resumeDeletion);
     await assertUsableAccount(actorId, tx);
     const actor = await tx.member.findUnique({ where: { organizationId_userId: { organizationId, userId: actorId } } });
     if (!actor) throw notFound('organization');
@@ -134,24 +135,41 @@ export const createOrganization = async (userId: string, name: string) => {
 
 /**
  * Delete an organization and every website in it (design §6.12). Only the
- * Owner, who must type its exact name. Under the org lock its invitations and
- * join links stop working; then the fenced erasure removes each website and,
- * last, the organization. A retry resumes with whatever is left.
+ * Owner, who must type its exact name. In the SAME transaction that checks
+ * that, under the org lock: the deletion fence and the fixed list of websites
+ * to erase are written and invitations and join links stop working, so no
+ * ownership transfer, new website or admission can slip in between the check
+ * and the erasure. Then each website on the list is erased and, last, the
+ * organization. If that stops part-way (ingestion still draining, a website
+ * failure), the Owner retries the same call: it skips the fence and resumes.
  */
 export const deleteOrganization = async (organizationId: string, actorId: string, confirmName: string) => {
-  await withOrganization(organizationId, actorId, async (tx, org, actor) => {
-    if (actor.orgRole !== 'owner') throw forbidden('Only the owner can delete the organization.');
-    if (confirmName !== org.name) throw badRequest('Type the organization name exactly to delete it.', { reason: 'confirm_name_mismatch' });
-    await tx.invitation.updateMany({ where: { organizationId, status: 'pending' }, data: { status: 'canceled' } });
-    await tx.joinLink.updateMany({ where: { organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
-  });
+  await withOrganization(
+    organizationId,
+    actorId,
+    async (tx, org, actor) => {
+      if (actor.orgRole !== 'owner') throw forbidden('Only the owner can delete the organization.');
+      if (confirmName !== org.name) throw badRequest('Type the organization name exactly to delete it.', { reason: 'confirm_name_mismatch' });
+      if (org.deletionStartedAt) return; // Resume: the fence and the website list are already written.
+      const websites = await tx.project.findMany({ where: { organizationId }, select: { id: true }, orderBy: { id: 'asc' } });
+      await tx.organization.update({
+        where: { id: organizationId },
+        data: { deletionStartedAt: new Date(), deletionWebsiteIds: websites.map((website) => website.id) },
+      });
+      await tx.invitation.updateMany({ where: { organizationId, status: 'pending' }, data: { status: 'canceled' } });
+      await tx.joinLink.updateMany({ where: { organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
+    },
+    true,
+    true,
+  );
   try {
     await eraseOrganization(organizationId);
   } catch (error) {
     if (error instanceof TenantUsageDeletionPendingError) {
       throw conflict('Usage ingestion is still draining. Retry organization deletion.', { reason: 'usage_ingestion_pending' });
     }
-    if (error instanceof TenantErasureProjectNotFoundError) throw conflict('A website changed during deletion. Retry organization deletion.');
+    if (error instanceof TenantErasureManifestMismatchError)
+      throw conflict('A website was added after deletion started. Contact support.', { reason: 'deletion_manifest_mismatch' });
     throw error;
   }
   return { id: organizationId };

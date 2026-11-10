@@ -120,6 +120,10 @@ model Organization {
   slug      String   @unique @default(cuid())
   needsRepair Boolean @default(false)
   deletionStartedAt DateTime?
+  /// The websites a started deletion erases, fixed in the same owner-authorized
+  /// transaction that sets `deletionStartedAt` (design §6.12). A retry resumes
+  /// from this list; a website that is not on it is never erased by it.
+  deletionWebsiteIds String[] @default([])
   logo      String?
   metadata  String?
   createdAt DateTime @default(now())

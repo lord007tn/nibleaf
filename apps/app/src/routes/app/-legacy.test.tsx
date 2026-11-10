@@ -3,9 +3,13 @@ import { act, type ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ legacy: 'sites', redirect: vi.fn() }));
+const mocks = vi.hoisted(() => ({ legacy: 'sites', search: {} as Record<string, unknown>, redirect: vi.fn() }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ legacy: mocks.legacy }) }),
+  createFileRoute: () => (options: { validateSearch: (search: Record<string, unknown>) => unknown }) => ({
+    options,
+    useParams: () => ({ legacy: mocks.legacy }),
+    useSearch: () => options.validateSearch(mocks.search),
+  }),
 }));
 vi.mock('@/components/not-found', () => ({ NotFound: () => <h1 data-testid="not-found">not found</h1> }));
 vi.mock('@/components/organization/landing-redirect', () => ({
@@ -23,7 +27,7 @@ let root: ReturnType<typeof createRoot>;
 afterEach(async () => {
   await act(async () => root?.unmount());
   document.body.replaceChildren();
-  window.history.replaceState(null, '', '/');
+  mocks.search = {};
   vi.clearAllMocks();
 });
 const render = async () => {
@@ -47,7 +51,7 @@ it.each([
 
 it('keeps /app/sites?newSite=true opening New website', async () => {
   mocks.legacy = 'sites';
-  window.history.replaceState(null, '', '/app/sites?newSite=true');
+  mocks.search = { newSite: true };
   await render();
   expect(mocks.redirect).toHaveBeenCalledWith({ section: 'websites', search: { newSite: true } });
 });
@@ -57,4 +61,15 @@ it('shows not-found for anything else under /app', async () => {
   const host = await render();
   expect(host.querySelector('[data-testid="not-found"]')).not.toBeNull();
   expect(mocks.redirect).not.toHaveBeenCalled();
+});
+
+it('ignores newSite on other sections and any value but true', async () => {
+  mocks.legacy = 'people';
+  mocks.search = { newSite: true };
+  await render();
+  expect(mocks.redirect).toHaveBeenLastCalledWith({ section: 'members', search: undefined });
+  mocks.legacy = 'sites';
+  mocks.search = { newSite: 'yes' };
+  await render();
+  expect(mocks.redirect).toHaveBeenLastCalledWith({ section: 'websites', search: undefined });
 });

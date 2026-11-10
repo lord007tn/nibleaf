@@ -1,7 +1,8 @@
 import type { AnalyticsRange } from '@nibleaf/validators';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { organizationKeys } from '@/hooks/api/organization-keys';
+import { useSessionMutation, useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { mutateData } from './client-helpers';
 import {
@@ -56,7 +57,7 @@ export const useMyInvitations = (enabled = true) => useQuery({ ...myInvitationsQ
 export const useMyPreferences = () => useQuery(myPreferencesQueryOptions());
 
 /** Everything that lists organizations or their websites. */
-const invalidateOrganizations = (qc: ReturnType<typeof useQueryClient>) =>
+const invalidateOrganizations = (qc: ReturnType<typeof useSessionQueryClient>) =>
   Promise.all([
     qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
     qc.invalidateQueries({ queryKey: organizationKeys.organizations.all() }),
@@ -68,7 +69,7 @@ const invalidateOrganizations = (qc: ReturnType<typeof useQueryClient>) =>
  * own reads stale. Refetching them now would 404 and trigger the "you lost
  * access" redirect while the caller is already navigating away on purpose.
  */
-const forgetOrganization = (qc: ReturnType<typeof useQueryClient>) =>
+const forgetOrganization = (qc: ReturnType<typeof useSessionQueryClient>) =>
   Promise.all([
     qc.invalidateQueries({ queryKey: organizationKeys.me.switcher() }),
     qc.invalidateQueries({ queryKey: queryKeys.projects.all() }),
@@ -76,8 +77,8 @@ const forgetOrganization = (qc: ReturnType<typeof useQueryClient>) =>
   ]);
 
 export const useCreateOrganization = () => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: { name: string }) =>
       mutateData<OrganizationDetail>(await api.app.organizations.$post({ json: body }), 'Could not create the organization.'),
     onSuccess: () => invalidateOrganizations(qc),
@@ -85,8 +86,8 @@ export const useCreateOrganization = () => {
 };
 
 export const useUpdateOrganization = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: { name?: string; slug?: string; logo?: string | null; sendInvitationEmails?: boolean }) =>
       mutateData<OrganizationDetail>(
         await api.app.organizations[':organizationId'].$patch({ param: { organizationId }, json: body }),
@@ -103,8 +104,8 @@ export const useUpdateOrganization = (organizationId: string) => {
 };
 
 export const useLeaveOrganization = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async () =>
       mutateData(await api.app.organizations[':organizationId'].leave.$post({ param: { organizationId } }), 'Could not leave the organization.'),
     onSuccess: () => forgetOrganization(qc),
@@ -112,8 +113,8 @@ export const useLeaveOrganization = (organizationId: string) => {
 };
 
 export const useTransferOrganizationOwnership = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (memberId: string) =>
       mutateData(
         await api.app.organizations[':organizationId']['transfer-ownership'].$post({ param: { organizationId }, json: { memberId } }),
@@ -124,8 +125,8 @@ export const useTransferOrganizationOwnership = (organizationId: string) => {
 };
 
 export const useDeleteOrganization = (organizationId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (confirmName: string) =>
       mutateData(
         await api.app.organizations[':organizationId'].$delete({ param: { organizationId }, json: { confirmName } }),
@@ -137,8 +138,8 @@ export const useDeleteOrganization = (organizationId: string) => {
 
 /** Records the org (and website) the person opened: landing org and switcher "Recent". */
 export const useRecordVisit = () => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (body: { organizationId: string } | { projectId: string }) =>
       mutateData(await api.app.me['last-organization'].$put({ json: body }), 'Could not remember the last organization.'),
     // Recent websites and order change; refresh quietly the next time the switcher opens.
@@ -147,8 +148,8 @@ export const useRecordVisit = () => {
 };
 
 export const useUpdatePreferences = () => {
-  const qc = useQueryClient();
-  return useMutation({
+  const qc = useSessionQueryClient();
+  return useSessionMutation({
     mutationFn: async (notifications: Partial<Record<PersonalNotificationKey, boolean>>) =>
       mutateData<PersonalPreferences>(await api.app.me.preferences.$put({ json: { notifications } }), 'Could not save your preferences.'),
     onMutate: async (notifications) => {

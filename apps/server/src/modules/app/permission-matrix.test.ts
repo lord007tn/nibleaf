@@ -23,7 +23,7 @@ import type { HonoEnv } from '@/lib/hono/context';
  * fails this test instead of passing by accident.
  */
 
-const state = vi.hoisted(() => ({ role: 'viewer' as string | null, orgRole: 'member', organizationId: 'org-1' }));
+const state = vi.hoisted(() => ({ role: 'viewer' as string | null, orgRole: 'member', organizationId: 'org-1', deleting: false }));
 
 vi.mock('@nibleaf/database', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@nibleaf/database')>();
@@ -41,7 +41,7 @@ vi.mock('@nibleaf/database', async (importOriginal) => {
           ? { id: 'member-1', role: state.role, orgRole: state.orgRole, user: { suspendedAt: null } }
           : null,
     }),
-    organization: model({ findUniqueOrThrow: async () => ({ needsRepair: false, deletionStartedAt: null }) }),
+    organization: model({ findUniqueOrThrow: async () => ({ needsRepair: false, deletionStartedAt: state.deleting ? new Date() : null }) }),
     user: model({ findUnique: async () => ({ id: 'user-1', role: 'user', suspendedAt: null }) }),
   };
   const prisma = new Proxy(models, {
@@ -336,4 +336,25 @@ describe('dashboard API permission matrix', () => {
       else expect(body.code).not.toBe('auth:insufficient_role');
     });
   }
+  it('lets only the Owner resume a started deletion; every other org write stays fenced', async () => {
+    state.organizationId = 'org-1';
+    state.role = null;
+    state.deleting = true;
+    const send = async (method: string, path: string, body = '{}') => {
+      const response = await harness.request(path, { method, headers: { 'content-type': 'application/json' }, body });
+      const payload = (await response.json().catch(() => ({}))) as { code?: string };
+      return { status: response.status, code: payload.code };
+    };
+    try {
+      state.orgRole = 'owner';
+      const resumed = await send('DELETE', '/organizations/org-1', JSON.stringify({ confirmName: 'x' }));
+      expect(resumed.status).not.toBe(409);
+      expect(resumed.code).not.toBe('auth:insufficient_role');
+      expect((await send('PATCH', '/organizations/org-1', JSON.stringify({ name: 'Renamed' }))).status).toBe(409);
+      state.orgRole = 'admin';
+      expect((await send('DELETE', '/organizations/org-1', JSON.stringify({ confirmName: 'x' }))).code).toBe('auth:insufficient_role');
+    } finally {
+      state.deleting = false;
+    }
+  });
 });

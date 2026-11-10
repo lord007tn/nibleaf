@@ -1,11 +1,11 @@
 import { useT } from '@nibleaf/i18n/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { organizationKeys } from '@/hooks/api/organization-keys';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 
 /** The server hides what you cannot open (404; 403 for a page you lost the role for). */
 export const isAccessLoss = (error: unknown) => error instanceof ApiResponseError && (error.status === 404 || error.status === 403);
@@ -18,7 +18,7 @@ export const isAccessLoss = (error: unknown) => error instanceof ApiResponseErro
 export function useAccessLoss() {
   const t = useT();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const refresh = useCallback(
     () =>
       Promise.all([

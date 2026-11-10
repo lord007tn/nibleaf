@@ -5,7 +5,7 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Check, ChevronsRight, Plus, Search, Settings } from 'lucide-react';
 import { type KeyboardEvent, type ReactNode, type RefObject, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -19,6 +19,7 @@ import {
   useOrganizationSwitcherProjects,
   useSwitcher,
 } from '@/hooks/api';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { OrgAvatar } from './org-avatar';
 import { useSwitcherControls } from './switcher-context';
 import { isTypingKey, moveWithinPane, orderOrganizations, type Pane, paneForArrow, type SearchResult, searchSwitcher } from './switcher-model';
@@ -63,7 +64,7 @@ export function SwitcherPanel({
   const direction = useDirection() === 'rtl' ? 'rtl' : 'ltr';
   const compact = useCompactSwitcher();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const controls = useSwitcherControls();
   const uid = useId();
   const switcher = useSwitcher();
@@ -247,7 +248,8 @@ export function SwitcherPanel({
     }
   };
 
-  const optionId = (id: string) => `${uid}-${id}`;
+  // Ids are per pane: a website can be a search result on the left and a row on the right.
+  const optionId = (pane: 'left' | 'right', id: string) => `${uid}-${pane}-${id}`;
   const rowHeight = compact ? 48 : 40;
   const activeLeft = leftItems[leftIndex];
   const leftLabel = searching ? t('switcher.results') : t('switcher.organizations');
@@ -279,7 +281,7 @@ export function SwitcherPanel({
 
   const leftPane = (
     <Listbox
-      activeId={isSelectable(activeLeft) ? optionId(activeLeft.id) : undefined}
+      activeId={isSelectable(activeLeft) ? optionId('left', activeLeft.id) : undefined}
       activeIndex={leftIndex}
       containerRef={leftRef}
       id={`${uid}-left`}
@@ -307,7 +309,7 @@ export function SwitcherPanel({
           return (
             <Option
               active={active}
-              id={optionId(item.id)}
+              id={optionId('left', item.id)}
               index={index}
               key={item.id}
               label={`${org.name}, ${t(ORG_ROLE_LABEL[org.orgRole])}`}
@@ -336,7 +338,7 @@ export function SwitcherPanel({
         return (
           <Option
             active={active}
-            id={optionId(item.id)}
+            id={optionId('left', item.id)}
             index={index}
             key={item.id}
             label={t('switcher.websiteLabel', {
@@ -413,7 +415,7 @@ export function SwitcherPanel({
         ) : null}
       </div>
       <Listbox
-        activeId={rightItems[rightIndex] ? optionId(`site-${rightItems[rightIndex]?.id}`) : undefined}
+        activeId={rightItems[rightIndex] ? optionId('right', `site-${rightItems[rightIndex]?.id}`) : undefined}
         activeIndex={rightIndex}
         containerRef={rightRef}
         id={`${uid}-right`}
@@ -424,7 +426,7 @@ export function SwitcherPanel({
         renderRow={(site, index) => (
           <Option
             active={index === rightIndex && pane === 'websites'}
-            id={optionId(`site-${site.id}`)}
+            id={optionId('right', `site-${site.id}`)}
             index={index}
             key={site.id}
             label={t('switcher.websiteLabel', {

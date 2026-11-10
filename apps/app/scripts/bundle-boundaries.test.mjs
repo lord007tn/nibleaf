@@ -37,6 +37,21 @@ describe('public docs module boundary', () => {
   it('passes the reader and the root route marketing-analytics check', () => {
     expect(forbiddenModuleIds(readerModules)).toEqual([]);
   });
+
+  it('forbids feature components, API and policy models in public profiles', () => {
+    const modules = [
+      app('features/site-general/components/general-section.tsx'),
+      app('features/site-general/api/query-options.ts'),
+      app('features/site-access/model/access.ts'),
+      app('features/site-general/model/internal/ids.ts'),
+      app('features/site-general/components/section-search.ts'),
+    ];
+    expect(forbiddenModuleIds(modules)).toEqual(modules);
+  });
+
+  it('allows only feature route ids and search parsers needed by non-split route options', () => {
+    expect(forbiddenModuleIds([app('features/site-general/model/ids.ts'), app('features/site-general/model/section-search.ts')])).toEqual([]);
+  });
 });
 
 describe('reader icon chunks shared with marketing (#345)', () => {
@@ -101,6 +116,18 @@ describe('dashboard chunk names in the eager preload table (#393)', () => {
   it('flags chunks only dashboard routes load', () => {
     const listed = ['assets/sites.js', 'assets/table.js', 'assets/session.js', 'assets/sign-in.js', 'assets/ui.js', 'assets/reader.js'];
     expect(leakedDashboardPreloads(chunks, 'assets/index.js', listed)).toEqual(['assets/sites.js', 'assets/table.js']);
+  });
+
+  it('classifies feature modules as dashboard-only preload chunks', () => {
+    const feature = chunk('assets/feature.js', null, [], [app('features/site-general/components/general-section.tsx')]);
+    const withFeature = chunks.map((entry) =>
+      entry.fileName === 'assets/sites.js' ? { ...entry, imports: [...entry.imports, feature.fileName] } : entry,
+    );
+    expect(leakedDashboardPreloads([...withFeature, feature], 'assets/index.js', [feature.fileName])).toEqual([feature.fileName]);
+    const shared = chunks.map((entry) =>
+      entry.fileName === 'assets/sign-in.js' ? { ...entry, imports: [...entry.imports, feature.fileName] } : entry,
+    );
+    expect(leakedDashboardPreloads([...shared, feature], 'assets/index.js', [feature.fileName])).toEqual([]);
   });
 
   it('allows dashboard data hooks that sign-in also loads, mixed chunks and CSS', () => {

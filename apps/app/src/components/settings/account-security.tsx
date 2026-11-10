@@ -6,7 +6,6 @@ import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Laptop, Mail, Monitor, Smartphone } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -14,6 +13,7 @@ import { toast } from 'sonner';
 import { QueryErrorState } from '@/components/query-error-state';
 import { PERSONAL_NOTIFICATION_KEYS, type PersonalNotificationKey, useMyPreferences, useSwitcher, useUpdatePreferences } from '@/hooks/api';
 import { useAccountSessions, useDeleteAccount, useLinkedAccounts, useRevokeOtherSessions, useRevokeSession } from '@/hooks/api/account';
+import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { useFormatters } from '@/lib/format';
 import { useSession } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
@@ -226,7 +226,7 @@ function NotificationToggle({
 export function DeleteAccountSection() {
   const t = useT();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const queryClient = useSessionQueryClient();
   const confirm = useConfirm();
   const switcher = useSwitcher();
   const remove = useDeleteAccount();
